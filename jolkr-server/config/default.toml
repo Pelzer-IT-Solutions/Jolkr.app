@@ -1,0 +1,47 @@
+# Jolkr Server — Default Configuration
+# Override any value via environment variables (e.g. DATABASE_URL)
+
+[database]
+url = "postgres://jolkr:jolkr@localhost:5432/jolkr"
+max_connections = 20
+min_connections = 2
+
+[redis]
+url = "redis://localhost:6379"
+
+[minio]
+endpoint = "http://localhost:9000"
+access_key = "minioadmin"
+secret_key = "minioadmin"
+bucket = "jolkr"
+region = "us-east-1"
+
+[nats]
+url = "nats://localhost:4222"
+
+[server]
+host = "0.0.0.0"
+port = 8080
+media_port = 8081
+
+[auth]
+jwt_secret = "jolkr-dev-secret-change-in-production"
+access_token_ttl_seconds = 900       # 15 minutes
+refresh_token_ttl_seconds = 604800   # 7 days
+bcrypt_cost = 12
+
+[e2ee]
+min_prekeys = 20
+prekey_replenish_threshold = 10
+
+[media]
+max_participants_per_room = 25
+enable_recording = false
+recording_bucket = "jolkr-recordings"
+
+[limits]
+max_message_length = 4000
+max_attachment_size_bytes = 52428800   # 50 MB
+max_servers_per_user = 100
+max_channels_per_server = 500
+max_members_per_server = 250000

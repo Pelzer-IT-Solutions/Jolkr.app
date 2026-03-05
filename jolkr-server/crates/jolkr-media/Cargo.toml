@@ -1,0 +1,20 @@
+[package]
+name = "jolkr-media"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "jolkr-media"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+axum = { workspace = true }
+uuid = { workspace = true }
+jsonwebtoken = { workspace = true }
+str0m = { workspace = true }
+futures-util = "0.3"

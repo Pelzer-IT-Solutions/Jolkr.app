@@ -1,0 +1,27 @@
+[package]
+name = "jolkr-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+jolkr-common = { path = "../jolkr-common" }
+jolkr-db = { path = "../jolkr-db" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+argon2 = { workspace = true }
+jsonwebtoken = { workspace = true }
+rand = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+base64 = { workspace = true }
+tokio = { workspace = true }
+sqlx = { workspace = true }
+sha2 = "0.10"
+hex = "0.4"
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+curve25519-dalek = "4"
+aes-gcm = "0.10"
+subtle = "2"

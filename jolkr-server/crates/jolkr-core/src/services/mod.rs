@@ -1,0 +1,15 @@
+pub mod auth;
+pub mod category;
+pub mod channel;
+pub mod dm;
+pub mod emoji;
+pub mod friendship;
+pub mod invite;
+pub mod key;
+pub mod message;
+pub mod role;
+pub mod server;
+pub mod poll;
+pub mod thread;
+pub mod user;
+pub mod webhook;

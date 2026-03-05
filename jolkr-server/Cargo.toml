@@ -1,0 +1,76 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/jolkr-common",
+    "crates/jolkr-db",
+    "crates/jolkr-core",
+    "crates/jolkr-api",
+    "crates/jolkr-media",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Jolkr Team"]
+license = "AGPL-3.0"
+
+[workspace.dependencies]
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Identifiers & Time
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "=0.4.38", features = ["serde"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["ws", "multipart"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Database
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "uuid",
+    "chrono",
+    "migrate",
+] }
+
+# Auth & Crypto
+argon2 = "0.5"
+jsonwebtoken = "9"
+rand = "0.8"
+base64 = "0.22"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "1"
+
+# Redis
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+
+# NATS
+async-nats = "0.38"
+
+# S3 / MinIO
+rust-s3 = { version = "0.35", default-features = false, features = ["tokio-rustls-tls"] }
+
+# WebRTC
+str0m = "0.16"
+
+# Web Push
+web-push = "0.11"
+
+# HTTP client (for link embed fetching)
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "charset", "gzip"] }
+
+# HTML parsing (for OG meta tags)
+scraper = "0.22"

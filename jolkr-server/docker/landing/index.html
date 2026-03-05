@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jolkr - Private Chat, No Jokes</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <meta name="description" content="Privacy-first chat with end-to-end encryption. Best Discord alternative">
+  <meta name="theme-color" content="#7C3AED">
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --purple-500: #7C3AED;
+      --purple-900: #4C1D95;
+      --purple-400: #A78BFA;
+      --purple-300: #C4B5FD;
+      --amber-400: #F59E0B;
+      --gray-900: #0F0B1A;
+      --gray-800: #1A1425;
+      --gray-700: #2D2440;
+      --gray-300: #D1D5DB;
+      --gray-100: #F3F4F6;
+      --white: #FAFAFA;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--gray-900);
+      color: var(--gray-100);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Nav */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      background: var(--gray-800);
+      border-bottom: 1px solid var(--gray-700);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--white);
+    }
+
+    .nav-brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+    }
+
+    .nav-brand span {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.6rem 1.5rem;
+      background: var(--purple-500);
+      color: var(--white);
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: background 0.2s;
+    }
+
+    .nav-link:hover {
+      background: var(--purple-400);
+    }
+
+    /* Hero */
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4rem 2rem;
+      background: linear-gradient(180deg, var(--gray-800) 0%, var(--gray-900) 100%);
+    }
+
+    .hero-icon {
+      width: 120px;
+      height: 120px;
+      border-radius: 28px;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3);
+    }
+
+    .hero h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--purple-300), var(--amber-400));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--gray-300);
+      max-width: 520px;
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 2rem;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple-500), var(--purple-900));
+      color: var(--white);
+    }
+
+    .btn-secondary {
+      background: var(--gray-700);
+      color: var(--gray-100);
+      border: 1px solid var(--gray-700);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--purple-500);
+    }
+
+    .btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    /* Features */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      width: 100%;
+      margin-top: 4rem;
+    }
+
+    .feature {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: left;
+    }
+
+    .feature-icon {
+      font-size: 1.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .feature h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      color: var(--white);
+    }
+
+    .feature p {
+      font-size: 0.9rem;
+      color: var(--gray-300);
+      line-height: 1.5;
+    }
+
+    /* Downloads */
+    .downloads {
+      padding: 4rem 2rem;
+      text-align: center;
+      background: var(--gray-800);
+      border-top: 1px solid var(--gray-700);
+    }
+
+    .downloads h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .downloads>p {
+      color: var(--gray-300);
+      margin-bottom: 2rem;
+    }
+
+    .download-grid {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* Footer */
+    footer {
+      padding: 1.5rem 2rem;
+      text-align: center;
+      color: var(--gray-300);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--gray-700);
+    }
+
+    footer a {
+      color: var(--purple-400);
+      text-decoration: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero h1 {
+        font-size: 2.25rem;
+      }
+
+      .hero p {
+        font-size: 1.05rem;
+      }
+
+      .hero-icon {
+        width: 88px;
+        height: 88px;
+        border-radius: 22px;
+      }
+
+      nav {
+        padding: 0.75rem 1rem;
+      }
+
+      .features {
+        margin-top: 2.5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav>
+    <a href="/" class="nav-brand">
+      <img src="/icon.svg" alt="Jolkr">
+      <span>Jolkr</span>
+    </a>
+    <a href="/app" class="nav-link">Open Jolkr</a>
+  </nav>
+
+  <main class="hero">
+    <img src="/icon.svg" alt="Jolkr" class="hero-icon">
+
+    <h1>Chat freely. Stay private.</h1>
+
+    <p>
+      Jolkr is a privacy-first chat platform with end-to-end encryption,
+      voice channels, and everything you need - without the surveillance.
+    </p>
+
+    <div class="btn-group">
+      <a href="/app" class="btn btn-primary">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-4.35-.65-3-3a.5.5 0 0 0-.85.35v2.05H9.5a.75.75 0 0 0 0 1.5h3.3v2.05a.5.5 0 0 0 .85.35l3-3a.5.5 0 0 0 0-.65Z"
+            fill-rule="evenodd" />
+        </svg>
+        Open in Browser
+      </a>
+      <a href="#downloads" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M12 2a1 1 0 0 1 1 1v10.59l2.3-2.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 1.4-1.42l2.3 2.3V3a1 1 0 0 1 1-1ZM5 17a1 1 0 0 1 1 1v1h12v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z" />
+        </svg>
+        Download
+      </a>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">&#x1F510;</div>
+        <h3>End-to-End Encrypted</h3>
+        <p>Messages are encrypted with X25519 + AES-256-GCM. Only you and your recipients can read them.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">&#x1F399;</div>
+        <h3>Voice &amp; Video</h3>
+        <p>Crystal-clear WebRTC voice and video channels powered by a custom SFU media server.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">&#x26A1;</div>
+        <h3>Blazing Fast</h3>
+        <p>Built with Rust on the backend. Real-time messaging via WebSocket and NATS event bus.</p>
+      </div>
+    </div>
+  </main>
+
+  <section class="downloads" id="downloads">
+    <h2>Download Jolkr</h2>
+    <p>Available on all major platforms.</p>
+
+    <div class="download-grid">
+      <a href="#" class="btn btn-secondary" data-platform="windows" title="Download for Windows">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M3 2h8.462l.075.003.126.017.111.03.111.044.098.052.104.074.082.073 4 4a1 1 0 0 1 .083.094l.064.092.045.089.03.078.03.116.013.1.002.058V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h6V4H5v16h10V8h-3a1 1 0 0 1-1-1V4H5Z" />
+        </svg>
+        Windows (.exe)
+      </a>
+      <a href="#" class="btn btn-secondary" data-platform="macos" title="Download for macOS">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M17.523 2c.157 1.4-.41 2.816-1.274 3.842-.875 1.04-2.305 1.842-3.698 1.736-.182-1.372.498-2.8 1.33-3.7C14.76 2.846 16.27 2.089 17.523 2ZM20.8 17.45c-.37.862-1.26 2.425-2.28 3.415-.92.89-1.873 1.136-2.85 1.136-.78 0-1.56-.27-2.33-.535-.73-.252-1.45-.5-2.32-.5-.92 0-1.68.262-2.43.52-.71.247-1.41.49-2.17.51-1.04.03-1.83-.27-2.73-1.16C2.28 19.41 1 16.26 1 13.29c0-4.44 2.87-6.79 5.7-6.79.99 0 1.84.33 2.56.61.55.22 1.04.42 1.44.42.35 0 .82-.19 1.38-.41.8-.32 1.79-.72 2.92-.72 1.61 0 3.37.68 4.5 2.09-1.29.83-2.76 2.28-2.57 4.78.17 2.24 1.76 3.64 2.87 4.17Z" />
+        </svg>
+        macOS (.dmg)
+      </a>
+      <a href="#" class="btn btn-secondary" data-platform="linux" title="Download for Linux">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M12.5 2c-1.54 0-2.89 1.52-2.89 3.26 0 .88.22 1.57.55 2.14-.63.28-1.2.68-1.6 1.2-.53.67-.85 1.5-.85 2.4 0 .33.04.65.12.96-1.38.5-2.36 1.36-2.98 2.39-.7 1.16-.93 2.54-.53 3.82.3.98.92 1.77 1.7 2.32.38.58.97 1.03 1.72 1.25.78.24 1.63.26 2.43.07.38.34.87.58 1.42.68.82.15 1.72.02 2.43-.44.65.37 1.44.52 2.18.42.52-.07.98-.26 1.35-.53.75.13 1.52.08 2.22-.16.74-.25 1.33-.72 1.71-1.31.73-.56 1.3-1.34 1.58-2.26.39-1.28.17-2.66-.53-3.82-.62-1.03-1.6-1.89-2.98-2.39.08-.31.12-.63.12-.96 0-.9-.32-1.73-.85-2.4-.4-.52-.97-.92-1.6-1.2.33-.57.55-1.26.55-2.14C15.39 3.52 14.04 2 12.5 2Z" />
+        </svg>
+        Linux (.AppImage)
+      </a>
+      <a href="#" class="btn btn-secondary" data-platform="android" title="Download for Android">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10ZM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8Zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5ZM15.53 2.16l1.3-1.3a.5.5 0 0 0-.7-.7l-1.51 1.5A5.59 5.59 0 0 0 12 1c-.96 0-1.86.23-2.66.7L7.87.16a.5.5 0 0 0-.7.7l1.31 1.31A5.56 5.56 0 0 0 6.05 6h11.9a5.56 5.56 0 0 0-2.42-3.84ZM10 5H9V4h1v1Zm5 0h-1V4h1v1Z" />
+        </svg>
+        Android (.apk)
+      </a>
+      <a href="#" class="btn btn-secondary" data-platform="ios" title="Download for iOS">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83Z" />
+        </svg>
+        iOS (TestFlight)
+      </a>
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var REPO = 'Pelzer-IT-Solutions/Jolkr.app';
+      var API_URL = 'https://api.github.com/repos/' + REPO + '/releases/latest';
+
+      // Map platform data-attribute to asset file extension matchers
+      var PLATFORM_MATCHERS = {
+        windows: function (name) { return /\.(exe|msi)$/i.test(name); },
+        macos: function (name) { return /\.dmg$/i.test(name); },
+        linux: function (name) { return /\.(AppImage|deb)$/i.test(name); },
+        android: function (name) { return /\.apk$/i.test(name); },
+        ios: function (name) { return /\.ipa$/i.test(name); }
+      };
+
+      fetch(API_URL)
+        .then(function (res) {
+          if (!res.ok) throw new Error('GitHub API ' + res.status);
+          return res.json();
+        })
+        .then(function (release) {
+          var assets = release.assets || [];
+          var buttons = document.querySelectorAll('[data-platform]');
+
+          buttons.forEach(function (btn) {
+            var platform = btn.getAttribute('data-platform');
+            var matcher = PLATFORM_MATCHERS[platform];
+            if (!matcher) return;
+
+            var asset = assets.find(function (a) { return matcher(a.name); });
+            if (asset) {
+              btn.href = asset.browser_download_url;
+              btn.title = 'Download ' + asset.name + ' (' + formatSize(asset.size) + ')';
+            } else {
+              btn.title = 'Not available yet';
+              btn.style.opacity = '0.5';
+              btn.style.pointerEvents = 'none';
+            }
+          });
+        })
+        .catch(function () {
+          // No release yet — buttons stay disabled gracefully
+          var buttons = document.querySelectorAll('[data-platform]');
+          buttons.forEach(function (btn) {
+            btn.title = 'Coming soon';
+            btn.style.opacity = '0.5';
+            btn.style.pointerEvents = 'none';
+          });
+        });
+
+      function formatSize(bytes) {
+        if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+        return (bytes / 1024).toFixed(0) + ' KB';
+      }
+    })();
+  </script>
+  </section>
+
+  <footer>
+    Jolkr &mdash; privacy-first chat.
+    <a href="https://github.com/Pelzer-IT-Solutions/Jolkr.app" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+</body>
+
+</html>

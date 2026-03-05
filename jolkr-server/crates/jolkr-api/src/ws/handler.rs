@@ -1,0 +1,231 @@
+use axum::{
+    extract::{
+        ws::{Message, WebSocket},
+        State, WebSocketUpgrade,
+    },
+    response::IntoResponse,
+};
+use futures_util::{SinkExt, StreamExt};
+use tokio::sync::mpsc;
+use tracing::{error, info, warn};
+use uuid::Uuid;
+
+use jolkr_common::Permissions;
+use jolkr_core::AuthService;
+use jolkr_db::repo::{ChannelRepo, DmRepo, MemberRepo, RoleRepo, ServerRepo};
+
+use super::events::{ClientEvent, GatewayEvent};
+use crate::routes::AppState;
+
+/// Check if a user has access to a channel (regular or DM).
+/// For regular channels: checks VIEW_CHANNELS permission (with channel overwrites).
+/// Server owner always has access.
+async fn can_access_channel(state: &AppState, user_id: Uuid, channel_id: Uuid) -> bool {
+    // Try as a regular channel first
+    if let Ok(channel) = ChannelRepo::get_by_id(&state.pool, channel_id).await {
+        if let Ok(member) = MemberRepo::get_member(&state.pool, channel.server_id, user_id).await {
+            // Owner always has access
+            if let Ok(server) = ServerRepo::get_by_id(&state.pool, channel.server_id).await {
+                if server.owner_id == user_id {
+                    return true;
+                }
+            }
+            // Check VIEW_CHANNELS with channel overwrites
+            if let Ok(perms) = RoleRepo::compute_channel_permissions(
+                &state.pool, channel.server_id, channel_id, member.id,
+            ).await {
+                return Permissions::from(perms).has(Permissions::VIEW_CHANNELS);
+            }
+        }
+        return false;
+    }
+    // Try as a DM channel
+    if let Ok(is_member) = DmRepo::is_member(&state.pool, channel_id, user_id).await {
+        return is_member;
+    }
+    false
+}
+
+/// HTTP handler that upgrades the connection to a WebSocket.
+pub async fn ws_upgrade(
+    State(state): State<AppState>,
+    ws: WebSocketUpgrade,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_socket(socket, state))
+}
+
+/// Handles the full lifecycle of a single WebSocket connection.
+async fn handle_socket(socket: WebSocket, state: AppState) {
+    let (mut ws_sender, mut ws_receiver) = socket.split();
+
+    // Create a channel for the gateway to push events into
+    let (tx, mut rx) = mpsc::unbounded_channel::<GatewayEvent>();
+
+    // We don't know the user yet; they must send an Identify event first.
+    let mut session_id: Option<Uuid> = None;
+    let mut user_id: Option<Uuid> = None;
+
+    // Spawn a task that forwards gateway events to the WebSocket sender
+    let send_task = tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            let json = match serde_json::to_string(&event) {
+                Ok(j) => j,
+                Err(e) => {
+                    error!("Failed to serialize gateway event: {e}");
+                    continue;
+                }
+            };
+            if ws_sender.send(Message::Text(json.into())).await.is_err() {
+                break; // connection closed
+            }
+        }
+    });
+
+    // Main receive loop: read messages from the client
+    while let Some(Ok(msg)) = ws_receiver.next().await {
+        let text = match msg {
+            Message::Text(t) => t.to_string(),
+            Message::Close(_) => break,
+            _ => continue, // ignore binary/ping/pong
+        };
+
+        let client_event: ClientEvent = match serde_json::from_str(&text) {
+            Ok(e) => e,
+            Err(e) => {
+                warn!("Invalid client event: {e}");
+                let err = GatewayEvent::Error {
+                    message: format!("Invalid event: {e}"),
+                };
+                let _ = tx.send(err);
+                continue;
+            }
+        };
+
+        match client_event {
+            ClientEvent::Identify { token } => {
+                // Validate the JWT
+                match AuthService::validate_token(&state.jwt_secret, &token) {
+                    Ok(claims) => {
+                        let sid = Uuid::new_v4();
+                        session_id = Some(sid);
+                        user_id = Some(claims.sub);
+
+                        // Register the client in the gateway
+                        state.gateway.add_client(sid, claims.sub, tx.clone());
+
+                        // Auto-subscribe to all servers the user is a member of
+                        if let Ok(server_ids) = MemberRepo::list_server_ids_for_user(&state.pool, claims.sub).await {
+                            state.gateway.subscribe_servers(&sid, server_ids);
+                        }
+
+                        // Set presence to online in Redis
+                        state.redis.set_presence(claims.sub, "online").await;
+
+                        // Publish presence update via NATS → all instances
+                        let presence_event = GatewayEvent::PresenceUpdate {
+                            user_id: claims.sub,
+                            status: "online".to_string(),
+                        };
+                        state.nats.publish_presence(&presence_event).await;
+
+                        // Send Ready event
+                        let ready = GatewayEvent::Ready {
+                            user_id: claims.sub,
+                            session_id: sid,
+                        };
+                        let _ = tx.send(ready);
+                        info!(user_id = %claims.sub, session_id = %sid, "WebSocket identified");
+                    }
+                    Err(e) => {
+                        let err = GatewayEvent::Error {
+                            message: format!("Authentication failed: {e}"),
+                        };
+                        let _ = tx.send(err);
+                    }
+                }
+            }
+
+            ClientEvent::Heartbeat { seq } => {
+                // Refresh presence TTL on heartbeat
+                if let Some(uid) = user_id {
+                    state.redis.refresh_presence(uid).await;
+                }
+                let _ = tx.send(GatewayEvent::HeartbeatAck { seq });
+            }
+
+            ClientEvent::Subscribe { channel_id } => {
+                if let Some(sid) = session_id {
+                    if let Some(uid) = user_id {
+                        if can_access_channel(&state, uid, channel_id).await {
+                            state.gateway.subscribe(&sid, channel_id);
+                        } else {
+                            let _ = tx.send(GatewayEvent::Error {
+                                message: "Cannot subscribe: no access to channel".to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+
+            ClientEvent::Unsubscribe { channel_id } => {
+                if let Some(sid) = session_id {
+                    state.gateway.unsubscribe(&sid, channel_id);
+                }
+            }
+
+            ClientEvent::TypingStart { channel_id } => {
+                if let Some(uid) = user_id {
+                    if can_access_channel(&state, uid, channel_id).await {
+                        let event = GatewayEvent::TypingStart {
+                            channel_id,
+                            user_id: uid,
+                            timestamp: chrono::Utc::now().timestamp(),
+                        };
+                        state.nats.publish_to_channel(channel_id, &event).await;
+                    }
+                }
+            }
+
+            ClientEvent::PresenceUpdate { status } => {
+                if let Some(uid) = user_id {
+                    // Validate status
+                    let valid = crate::redis_store::VALID_STATUSES;
+                    if valid.contains(&status.as_str()) {
+                        state.redis.set_presence(uid, &status).await;
+                        let event = GatewayEvent::PresenceUpdate {
+                            user_id: uid,
+                            status,
+                        };
+                        state.nats.publish_presence(&event).await;
+                    } else {
+                        let err = GatewayEvent::Error {
+                            message: format!("Invalid status. Must be one of: {}", valid.join(", ")),
+                        };
+                        let _ = tx.send(err);
+                    }
+                }
+            }
+        }
+    }
+
+    // Client disconnected — cleanup
+    if let Some(uid) = user_id {
+        // Only set offline if this was the user's last connection on this instance
+        let has_other_sessions = state.gateway.clients.iter().any(|entry| {
+            let c = entry.value();
+            c.user_id == uid && Some(c.session_id) != session_id
+        });
+        if !has_other_sessions {
+            state.redis.remove_presence(uid).await;
+            let event = GatewayEvent::PresenceUpdate {
+                user_id: uid,
+                status: "offline".to_string(),
+            };
+            state.nats.publish_presence(&event).await;
+        }
+    }
+    if let Some(sid) = session_id {
+        state.gateway.remove_client(&sid);
+    }
+    send_task.abort();
+}

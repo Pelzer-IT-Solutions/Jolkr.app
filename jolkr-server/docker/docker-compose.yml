@@ -1,0 +1,208 @@
+services:
+  # =============================================================================
+  # Jolkr API Server (Rust)
+  # =============================================================================
+  jolkr-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: jolkr-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    environment:
+      DATABASE_URL: "postgres://jolkr:jolkr_dev@postgres:5432/jolkr"
+      REDIS_URL: "redis://redis:6379"
+      MINIO_ENDPOINT: "http://minio:9000"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-jolkr}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-jolkr_dev_secret}"
+      MINIO_BUCKET: "jolkr"
+      NATS_URL: "nats://nats:4222"
+      JWT_SECRET: "${JWT_SECRET:-super_secret_dev_key_change_in_production}"
+      ADMIN_SECRET: "${ADMIN_SECRET:-jolkr_admin_dev}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
+      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@jolkr.app}"
+      SMTP_HOST: "mailhog"
+      SMTP_PORT: "1025"
+      SMTP_FROM: "${SMTP_FROM:-noreply@jolkr.app}"
+      APP_URL: "${APP_URL:-http://localhost/app}"
+      RUST_LOG: "${RUST_LOG:-info}"
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # Jolkr Media Server (Rust — WebRTC / voice & video)
+  # =============================================================================
+  jolkr-media:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.media
+    container_name: jolkr-media
+    ports:
+      - "8081:8081"
+      - "10000-10100:10000-10100/udp"
+    depends_on:
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    environment:
+      MEDIA_PORT: "8081"
+      MEDIA_UDP_PORT: "10000"
+      PUBLIC_IP: "${PUBLIC_IP:-127.0.0.1}"
+      JWT_SECRET: "${JWT_SECRET:-super_secret_dev_key_change_in_production}"
+      RUST_LOG: "${RUST_LOG:-debug}"
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # PostgreSQL — primary database
+  # =============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: jolkr-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: jolkr
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-jolkr_dev}"
+      POSTGRES_DB: jolkr
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jolkr -d jolkr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # Redis — caching, sessions, pub/sub
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: jolkr-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # MinIO — S3-compatible object storage (avatars, attachments, media)
+  # =============================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: jolkr-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-jolkr}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-jolkr_dev_secret}"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # NATS — messaging / event bus with JetStream
+  # =============================================================================
+  nats:
+    image: nats:2-alpine
+    container_name: jolkr-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: --jetstream --store_dir /data
+    volumes:
+      - nats_data:/data
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # Mailhog — dev SMTP catch-all (emails visible at http://localhost:8025)
+  # =============================================================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: jolkr-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # Nginx — reverse proxy & TLS termination
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: jolkr-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ../../jolkr-app/dist:/usr/share/nginx/html/app:ro
+      - ./landing:/usr/share/nginx/html/landing:ro
+      - ./updates:/usr/share/nginx/html/updates:ro
+    depends_on:
+      - jolkr-api
+      - jolkr-media
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  nats_data:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  jolkr-net:
+    driver: bridge

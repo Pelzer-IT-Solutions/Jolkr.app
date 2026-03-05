@@ -1,0 +1,58 @@
+/// Application configuration, loaded from environment variables.
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub database_url: String,
+    pub redis_url: String,
+    pub jwt_secret: String,
+    pub server_port: u16,
+    pub minio_endpoint: String,
+    pub minio_access_key: String,
+    pub minio_secret_key: String,
+    pub minio_bucket: String,
+    pub nats_url: String,
+    pub vapid_private_key: Option<String>,
+    pub vapid_public_key: Option<String>,
+    pub vapid_subject: String,
+    pub smtp_host: Option<String>,
+    pub smtp_port: u16,
+    pub smtp_from: String,
+    pub app_url: String,
+}
+
+impl Config {
+    /// Read config from environment variables with sensible defaults for local development.
+    pub fn from_env() -> Self {
+        Self {
+            database_url: env_or(
+                "DATABASE_URL",
+                "postgres://jolkr:jolkr_dev@localhost:5432/jolkr",
+            ),
+            redis_url: env_or("REDIS_URL", "redis://localhost:6379"),
+            jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| {
+                eprintln!("WARNING: JWT_SECRET not set — using insecure default. DO NOT use in production!");
+                "jolkr-dev-secret-change-in-production".to_string()
+            }),
+            server_port: env_or("SERVER_PORT", "8080")
+                .parse()
+                .expect("SERVER_PORT must be a valid u16"),
+            minio_endpoint: env_or("MINIO_ENDPOINT", "http://localhost:9000"),
+            minio_access_key: env_or("MINIO_ACCESS_KEY", "jolkr"),
+            minio_secret_key: env_or("MINIO_SECRET_KEY", "jolkr_dev_secret"),
+            minio_bucket: env_or("MINIO_BUCKET", "jolkr"),
+            nats_url: env_or("NATS_URL", "nats://localhost:4222"),
+            vapid_private_key: std::env::var("VAPID_PRIVATE_KEY").ok(),
+            vapid_public_key: std::env::var("VAPID_PUBLIC_KEY").ok(),
+            vapid_subject: env_or("VAPID_SUBJECT", "mailto:admin@jolkr.app"),
+            smtp_host: std::env::var("SMTP_HOST").ok(),
+            smtp_port: env_or("SMTP_PORT", "1025")
+                .parse()
+                .expect("SMTP_PORT must be a valid u16"),
+            smtp_from: env_or("SMTP_FROM", "noreply@jolkr.app"),
+            app_url: env_or("APP_URL", "http://localhost/app"),
+        }
+    }
+}
+
+fn env_or(key: &str, default: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| default.to_string())
+}

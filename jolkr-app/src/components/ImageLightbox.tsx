@@ -1,0 +1,49 @@
+import { useEffect, useState } from 'react';
+
+interface Props {
+  src: string;
+  alt?: string;
+  onClose: () => void;
+}
+
+export default function ImageLightbox({ src, alt, onClose }: Props) {
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  // Reset loaded state when src changes
+  useEffect(() => { setLoaded(false); }, [src]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center cursor-zoom-out"
+      onClick={onClose}
+    >
+      <button
+        className="absolute top-4 right-4 text-white/70 hover:text-white z-10"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Close"
+      >
+        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      {!loaded && (
+        <div className="absolute text-white/50 text-sm">Loading...</div>
+      )}
+      <img
+        src={src}
+        alt={alt ?? ''}
+        className={`max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl transition-opacity ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        onClick={(e) => e.stopPropagation()}
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+}

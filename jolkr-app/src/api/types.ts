@@ -1,0 +1,239 @@
+export interface User {
+  id: string;
+  username: string;
+  display_name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  status?: string | null;
+  bio?: string | null;
+  is_online?: boolean;
+  created_at?: string | null;
+}
+
+export interface Server {
+  id: string;
+  name: string;
+  icon_url?: string | null;
+  banner_url?: string | null;
+  owner_id: string;
+  description?: string | null;
+  created_at?: string | null;
+}
+
+export interface Channel {
+  id: string;
+  server_id: string;
+  name: string;
+  kind: 'text' | 'voice' | 'category';
+  topic?: string | null;
+  position: number;
+  category_id?: string | null;
+  is_nsfw?: boolean;
+  slowmode_seconds?: number;
+  created_at?: string | null;
+}
+
+export interface Reaction {
+  emoji: string;
+  count: number;
+  me: boolean;
+}
+
+export interface Message {
+  id: string;
+  channel_id: string;
+  author_id: string;
+  content: string;
+  encrypted_content?: string | null;
+  nonce?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+  is_edited: boolean;
+  is_pinned: boolean;
+  reply_to_id?: string | null;
+  thread_id?: string | null;
+  thread_reply_count?: number | null;
+  author?: User | null;
+  attachments: Attachment[];
+  reactions?: Reaction[];
+  embeds?: MessageEmbed[];
+  poll?: Poll;
+  webhook_id?: string | null;
+  webhook_name?: string | null;
+  webhook_avatar?: string | null;
+}
+
+export interface Thread {
+  id: string;
+  channel_id: string;
+  starter_msg_id?: string | null;
+  name?: string | null;
+  is_archived: boolean;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Attachment {
+  id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  url: string;
+}
+
+export interface MessageEmbed {
+  url: string;
+  title?: string | null;
+  description?: string | null;
+  image_url?: string | null;
+  site_name?: string | null;
+  color?: string | null;
+}
+
+export interface Member {
+  id: string;
+  server_id: string;
+  user_id: string;
+  nickname?: string | null;
+  joined_at: string;
+  timeout_until?: string | null;
+  user?: User;
+  role_ids?: string[];
+}
+
+export interface Webhook {
+  id: string;
+  channel_id: string;
+  server_id: string;
+  creator_id: string;
+  name: string;
+  avatar_url?: string | null;
+  token?: string;
+}
+
+export interface Poll {
+  id: string;
+  message_id: string;
+  channel_id: string;
+  question: string;
+  multi_select: boolean;
+  anonymous: boolean;
+  expires_at?: string | null;
+  options: PollOption[];
+  votes: Record<string, number>;
+  my_votes?: string[];
+  total_votes: number;
+}
+
+export interface PollOption {
+  id: string;
+  poll_id: string;
+  position: number;
+  text: string;
+}
+
+export interface Role {
+  id: string;
+  server_id: string;
+  name: string;
+  color: number;
+  position: number;
+  permissions: number;
+  is_default: boolean;
+}
+
+export interface Category {
+  id: string;
+  server_id: string;
+  name: string;
+  position: number;
+}
+
+export interface ChannelOverwrite {
+  id: string;
+  channel_id: string;
+  target_type: 'role' | 'member';
+  target_id: string;
+  allow: number;
+  deny: number;
+}
+
+export interface DmChannel {
+  id: string;
+  is_group: boolean;
+  name?: string | null;
+  members: string[];
+  created_at: string;
+}
+
+export interface Friendship {
+  id: string;
+  requester_id: string;
+  addressee_id: string;
+  status: 'pending' | 'accepted' | 'blocked';
+  requester?: User;
+  addressee?: User;
+}
+
+export interface Ban {
+  id: string;
+  server_id: string;
+  user_id: string;
+  banned_by?: string | null;
+  reason?: string | null;
+  created_at: string;
+}
+
+export interface Invite {
+  id: string;
+  server_id: string;
+  code: string;
+  creator_id: string;
+  max_uses?: number | null;
+  use_count: number;
+  expires_at?: string | null;
+}
+
+export interface TokenPair {
+  access_token: string;
+  refresh_token: string;
+}
+
+export interface ServerEmoji {
+  id: string;
+  server_id: string;
+  name: string;
+  image_url: string;
+  uploader_id: string;
+  animated: boolean;
+}
+
+export interface NotificationSetting {
+  target_type: 'server' | 'channel';
+  target_id: string;
+  muted: boolean;
+  mute_until?: string | null;
+  suppress_everyone: boolean;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  server_id: string;
+  user_id: string;
+  action_type: string;
+  target_id?: string | null;
+  target_type?: string | null;
+  changes?: Record<string, unknown> | null;
+  reason?: string | null;
+  created_at: string;
+}
+
+export interface PreKeyBundleResponse {
+  user_id: string;
+  device_id: string;
+  identity_key: string;
+  signed_prekey: string;
+  signed_prekey_signature: string;
+  one_time_prekey?: string | null;
+}

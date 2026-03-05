@@ -1,0 +1,39 @@
+[package]
+name = "jolkr-api"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "jolkr-api"
+path = "src/main.rs"
+
+[dependencies]
+jolkr-common = { path = "../jolkr-common" }
+jolkr-core = { path = "../jolkr-core" }
+jolkr-db = { path = "../jolkr-db" }
+axum = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+jsonwebtoken = { workspace = true }
+sqlx = { workspace = true }
+dashmap = "6"
+futures-util = "0.3"
+async-trait = "0.1"
+redis = { workspace = true }
+base64 = { workspace = true }
+async-nats = { workspace = true }
+rust-s3 = { workspace = true }
+web-push = { workspace = true }
+lettre = "0.11"
+subtle = "2"
+sha2 = "0.10"
+reqwest = { workspace = true }
+scraper = { workspace = true }
+regex = "1"

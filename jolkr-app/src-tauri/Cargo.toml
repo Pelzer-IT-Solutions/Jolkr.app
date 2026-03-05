@@ -1,0 +1,35 @@
+[package]
+name = "jolkr-app"
+version = "0.1.0"
+description = "Jolkr - Privacy-first Discord replacement"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "jolkr_app_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-stronghold = "2"
+tauri-plugin-updater = { version = "2", features = [] }
+tauri-plugin-process = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Pin url to avoid icu_locale_core (20MB data.rs that Windows Defender blocks)
+url = ">=2, <2.5.3"
+
+# Desktop-only dependencies (tray icon, single-instance, autostart)
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+[profile.dev.package.scrypt]
+opt-level = 3
