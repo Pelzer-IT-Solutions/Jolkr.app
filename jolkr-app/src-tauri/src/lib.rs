@@ -19,6 +19,7 @@ fn should_start_minimized() -> bool {
     std::env::args().any(|arg| arg == "--minimized")
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init());
