@@ -4,6 +4,9 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: write
+
 jobs:
   # ─── Desktop builds (Windows, macOS, Linux) ───
   build-desktop:
@@ -62,126 +65,10 @@ jobs:
           releaseDraft: true
           prerelease: false
 
-  # ─── Android build ───
-  build-android:
-    runs-on: ubuntu-latest
+  # ─── Android build (disabled — tauri android init not yet done) ───
+  # build-android:
+  #   ...
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: jolkr-app/package-lock.json
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android NDK
-        run: sdkmanager --install "ndk;27.0.12077973"
-
-      - name: Install dependencies
-        run: cd jolkr-app && npm ci
-
-      - name: Build Android APK
-        env:
-          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
-        run: |
-          cd jolkr-app
-          npx tauri android build --apk
-
-      - name: Find APK
-        id: find-apk
-        run: |
-          APK_PATH=$(find jolkr-app/src-tauri/gen/android -name '*.apk' -type f | head -1)
-          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
-          echo "Found APK: $APK_PATH"
-
-      - name: Upload APK to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: ${{ steps.find-apk.outputs.apk_path }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ─── iOS build (only when Apple secrets are configured) ───
-  build-ios:
-    runs-on: macos-latest
-    if: vars.APPLE_TEAM_ID != ''
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: jolkr-app/package-lock.json
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios
-
-      - name: Install Apple certificate and provisioning profile
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
-        run: |
-          # Create temporary keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Import certificate
-          CERT_PATH=$RUNNER_TEMP/certificate.p12
-          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERT_PATH"
-          security import "$CERT_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" \
-            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: \
-            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain
-
-          # Install provisioning profile
-          PP_PATH=$RUNNER_TEMP/profile.mobileprovision
-          echo "$APPLE_PROVISIONING_PROFILE" | base64 --decode > "$PP_PATH"
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
-
-      - name: Install dependencies
-        run: cd jolkr-app && npm ci
-
-      - name: Build iOS
-        run: |
-          cd jolkr-app
-          npx tauri ios build
-
-      - name: Find IPA
-        id: find-ipa
-        run: |
-          IPA_PATH=$(find jolkr-app/src-tauri/gen/apple -name '*.ipa' -type f | head -1)
-          echo "ipa_path=$IPA_PATH" >> "$GITHUB_OUTPUT"
-          echo "Found IPA: $IPA_PATH"
-
-      - name: Upload IPA to Release
-        if: steps.find-ipa.outputs.ipa_path != ''
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: ${{ steps.find-ipa.outputs.ipa_path }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # ─── iOS build (disabled — requires Apple Developer Account) ───
+  # build-ios:
+  #   ...
