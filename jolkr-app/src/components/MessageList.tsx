@@ -83,11 +83,16 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     if (allMsgs.length > prevLenRef.current) {
       const wasInitialLoad = prevLenRef.current === 0;
       if (wasInitialLoad) {
-        // Initial load — scroll to bottom (instant)
-        requestAnimationFrame(() => {
+        // Initial load — scroll to bottom (multiple attempts for virtualizer measurement)
+        const scrollAttempt = (n: number) => {
           virtualizer.scrollToIndex(msgs.length - 1, { align: 'end' });
-          initialScrollDoneRef.current = true;
-        });
+          if (n > 1) {
+            requestAnimationFrame(() => scrollAttempt(n - 1));
+          } else {
+            initialScrollDoneRef.current = true;
+          }
+        };
+        requestAnimationFrame(() => scrollAttempt(3));
       } else if (isAtBottomRef.current) {
         // New message and we're near bottom — smooth scroll
         requestAnimationFrame(() => {
@@ -96,7 +101,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
       }
     }
     prevLenRef.current = allMsgs.length;
-  }, [allMsgs.length, msgs.length, virtualizer]);
+  }, [allMsgs.length, msgs.length, virtualizer, channelId]);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
