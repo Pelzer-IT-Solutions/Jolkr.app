@@ -22,11 +22,16 @@ class TauriStorage implements SecureStorage {
   private initPromise: Promise<void> | null = null;
   private store: Awaited<ReturnType<Awaited<ReturnType<import('@tauri-apps/plugin-stronghold').Stronghold['loadClient']>>['getStore']>> | null = null;
   private stronghold: import('@tauri-apps/plugin-stronghold').Stronghold | null = null;
+  private fallbackToWeb = false;
 
   private async ensureInitialized(): Promise<void> {
-    if (this.store) return;
+    if (this.fallbackToWeb || this.store) return;
     if (this.initPromise) return this.initPromise;
-    this.initPromise = this._init();
+    this.initPromise = this._init().catch((e) => {
+      console.warn('[TauriStorage] Stronghold failed, falling back to localStorage:', e);
+      this.fallbackToWeb = true;
+      this.initPromise = null;
+    });
     return this.initPromise;
   }
 
@@ -71,6 +76,7 @@ class TauriStorage implements SecureStorage {
 
   async get(key: string): Promise<string | null> {
     await this.ensureInitialized();
+    if (this.fallbackToWeb) return localStorage.getItem(key);
     const data = await this.store!.get(key);
     if (!data) return null;
     return new TextDecoder().decode(new Uint8Array(data));
@@ -78,6 +84,7 @@ class TauriStorage implements SecureStorage {
 
   async set(key: string, value: string): Promise<void> {
     await this.ensureInitialized();
+    if (this.fallbackToWeb) { localStorage.setItem(key, value); return; }
     const data = Array.from(new TextEncoder().encode(value));
     await this.store!.insert(key, data);
     await this.stronghold!.save();
@@ -85,6 +92,7 @@ class TauriStorage implements SecureStorage {
 
   async remove(key: string): Promise<void> {
     await this.ensureInitialized();
+    if (this.fallbackToWeb) { localStorage.removeItem(key); return; }
     await this.store!.remove(key);
     await this.stronghold!.save();
   }
