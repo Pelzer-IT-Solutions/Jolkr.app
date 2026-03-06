@@ -1,6 +1,6 @@
 import type { LocalKeySet, PreKeyBundle, EncryptedPayload } from '../crypto';
 import {
-  generateKeySet,
+  generateKeySetFromSeed,
   encryptForRecipient,
   decryptFromSender,
   toBase64,
@@ -23,27 +23,31 @@ const bundleCache = new Map<string, CachedBundle>();
 // ── Public API ─────────────────────────────────────────────────────
 
 /**
- * Initialize E2EE: load keys from storage, or generate + upload if first time.
+ * Initialize E2EE: load keys from storage, or generate from seed if provided.
+ * When seed is provided (login/register), deterministic keys are generated so
+ * all devices of the same user share the same keypair.
  */
-export async function initE2EE(deviceId: string): Promise<void> {
-  // Try to load existing keys
+export async function initE2EE(deviceId: string, seed?: Uint8Array): Promise<void> {
+  if (seed) {
+    // Derive deterministic keys from password seed — identical across all devices
+    const keys = await generateKeySetFromSeed(seed);
+    localKeys = keys;
+    await saveKeySet(keys);
+    // Force re-upload (keys may differ from what's on server)
+    await storage.remove('e2ee_keys_uploaded');
+    await ensureKeysUploaded(deviceId, keys);
+    return;
+  }
+
+  // No seed — just load existing keys from storage
   const existing = await loadKeySet();
   if (existing) {
     localKeys = existing;
-    // Ensure keys are uploaded (may have failed on a previous session)
     await ensureKeysUploaded(deviceId, existing);
     return;
   }
 
-  // Generate new key set
-  const keys = generateKeySet();
-  localKeys = keys;
-
-  // Save to storage
-  await saveKeySet(keys);
-
-  // Upload to server
-  await ensureKeysUploaded(deviceId, keys);
+  // No seed and no stored keys — E2EE unavailable until next login
 }
 
 /** Upload prekeys to server if not yet confirmed uploaded. */

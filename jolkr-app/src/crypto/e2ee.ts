@@ -1,4 +1,4 @@
-import { x25519 } from '@noble/curves/ed25519.js';
+import { ed25519, x25519 } from '@noble/curves/ed25519.js';
 import type { LocalKeySet, PreKeyBundle } from './keys';
 import {
   verifySignedPreKey,
@@ -92,10 +92,45 @@ export async function decryptFromSender(
 // ── Key generation ─────────────────────────────────────────────────
 
 /**
- * Generate a complete local key set: Ed25519 identity + X25519 signed prekey.
+ * Generate a complete local key set with random keys.
  */
 export function generateKeySet(): LocalKeySet {
   const identity = generateIdentityKeyPair();
   const signedPreKey = generateSignedPreKey(identity.privateKey);
   return { identity, signedPreKey };
+}
+
+/**
+ * Derive a deterministic E2EE seed from the user's password.
+ * All devices with the same password produce the same seed → same keys.
+ */
+export async function deriveE2EESeed(password: string): Promise<Uint8Array> {
+  const input = new TextEncoder().encode(password + 'jolkr-e2ee-seed-v1');
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', input));
+}
+
+/**
+ * Generate a deterministic key set from a seed (derived from password).
+ * This ensures all devices of the same user have identical keys.
+ */
+export async function generateKeySetFromSeed(seed: Uint8Array): Promise<LocalKeySet> {
+  // Derive Ed25519 identity key deterministically
+  const idInput = new Uint8Array(seed.length + 7);
+  idInput.set(seed);
+  idInput.set(new TextEncoder().encode('ed25519'), seed.length);
+  const identityPriv = new Uint8Array(await crypto.subtle.digest('SHA-256', idInput));
+  const identityPub = ed25519.getPublicKey(identityPriv);
+
+  // Derive X25519 signed prekey deterministically
+  const spInput = new Uint8Array(seed.length + 6);
+  spInput.set(seed);
+  spInput.set(new TextEncoder().encode('x25519'), seed.length);
+  const spPriv = new Uint8Array(await crypto.subtle.digest('SHA-256', spInput));
+  const spPub = x25519.getPublicKey(spPriv);
+  const signature = ed25519.sign(spPub, identityPriv);
+
+  return {
+    identity: { publicKey: identityPub, privateKey: identityPriv },
+    signedPreKey: { keyPair: { publicKey: spPub, privateKey: spPriv }, signature },
+  };
 }

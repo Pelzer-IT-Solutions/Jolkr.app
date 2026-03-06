@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
+import { deriveE2EESeed } from '../crypto/e2ee';
+import { initE2EE } from '../services/e2ee';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -17,6 +19,15 @@ export default function Login() {
     e.preventDefault();
     try {
       await login(email, password);
+
+      // Init E2EE with deterministic keys derived from password
+      const seed = await deriveE2EESeed(password);
+      let deviceId = localStorage.getItem('jolkr_e2ee_device_id');
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem('jolkr_e2ee_device_id', deviceId);
+      }
+      initE2EE(deviceId, seed).catch(console.warn);
 
       // Handle pending deep-link invite
       const pendingInvite = sessionStorage.getItem('jolkr_pending_invite');

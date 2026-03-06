@@ -22,6 +22,8 @@ export {
   encryptForRecipient,
   decryptFromSender,
   generateKeySet,
+  deriveE2EESeed,
+  generateKeySetFromSeed,
 } from './e2ee';
 
 export type { EncryptedPayload } from './e2ee';

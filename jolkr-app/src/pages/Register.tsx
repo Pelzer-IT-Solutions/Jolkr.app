@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
+import { deriveE2EESeed } from '../crypto/e2ee';
+import { initE2EE } from '../services/e2ee';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -15,6 +17,16 @@ export default function Register() {
     e.preventDefault();
     try {
       await register(email, username, password);
+
+      // Init E2EE with deterministic keys derived from password
+      const seed = await deriveE2EESeed(password);
+      let deviceId = localStorage.getItem('jolkr_e2ee_device_id');
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem('jolkr_e2ee_device_id', deviceId);
+      }
+      initE2EE(deviceId, seed).catch(console.warn);
+
       navigate('/');
     } catch { /* error is in store */ }
   };

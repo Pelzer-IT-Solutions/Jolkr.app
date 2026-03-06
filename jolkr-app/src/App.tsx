@@ -70,18 +70,48 @@ function AppInit({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
+  // Disable default browser context menu globally — custom menus handle their own
+  useEffect(() => {
+    const handler = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener('contextmenu', handler);
+    return () => document.removeEventListener('contextmenu', handler);
+  }, []);
+
+  // In Tauri desktop: block browser shortcuts that don't belong in a desktop app
+  useEffect(() => {
+    if (!isTauri) return;
+    const handler = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      // Block: Ctrl+R/Shift+R (reload), Ctrl+L (address bar), Ctrl+G (find next),
+      // Ctrl+U (view source), Ctrl+P (print), Ctrl+J (downloads), Ctrl+H (history),
+      // F5/Shift+F5 (reload), F7 (caret browsing)
+      if (ctrl && ['r', 'l', 'g', 'u', 'p', 'j', 'h'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        return;
+      }
+      if (['F5', 'F7'].includes(e.key)) {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+Shift+I (devtools) in release builds
+      if (ctrl && e.shiftKey && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
   useEffect(() => {
     initTokens().then(() => loadUser()).then(() => {
       // Only register push if user is logged in (has access token)
       if (getAccessToken()) {
         requestNotificationPermission().then(() => registerPush()).catch(console.warn);
-        // Init E2EE with device ID (generate or reuse)
-        let deviceId = localStorage.getItem('jolkr_e2ee_device_id');
-        if (!deviceId) {
-          deviceId = crypto.randomUUID();
-          localStorage.setItem('jolkr_e2ee_device_id', deviceId);
+        // Load E2EE keys from storage (no seed — keys were set during login)
+        const deviceId = localStorage.getItem('jolkr_e2ee_device_id');
+        if (deviceId) {
+          initE2EE(deviceId).catch(console.warn);
         }
-        initE2EE(deviceId).catch(console.warn);
       }
 
       // Check for updates after 5s delay (Tauri only)
