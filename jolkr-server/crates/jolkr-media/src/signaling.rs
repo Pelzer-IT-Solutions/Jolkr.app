@@ -61,18 +61,35 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
     // Created when the client joins a voice channel.
     let (signal_tx, mut signal_rx) = mpsc::unbounded_channel::<SignalOut>();
 
-    // Spawn a task that forwards SFU events to the WebSocket
+    // Spawn a task that forwards SFU events + periodic pings to the WebSocket
     let send_task = tokio::spawn(async move {
-        while let Some(event) = signal_rx.recv().await {
-            let json = match serde_json::to_string(&event) {
-                Ok(j) => j,
-                Err(e) => {
-                    warn!("Failed to serialize voice event: {}", e);
-                    continue;
+        let mut ping_interval = tokio::time::interval(std::time::Duration::from_secs(20));
+        ping_interval.tick().await; // skip first immediate tick
+
+        loop {
+            tokio::select! {
+                event = signal_rx.recv() => {
+                    match event {
+                        Some(event) => {
+                            let json = match serde_json::to_string(&event) {
+                                Ok(j) => j,
+                                Err(e) => {
+                                    warn!("Failed to serialize voice event: {}", e);
+                                    continue;
+                                }
+                            };
+                            if ws_sender.send(Message::Text(json.into())).await.is_err() {
+                                break;
+                            }
+                        }
+                        None => break,
+                    }
                 }
-            };
-            if ws_sender.send(Message::Text(json.into())).await.is_err() {
-                break;
+                _ = ping_interval.tick() => {
+                    if ws_sender.send(Message::Ping(vec![].into())).await.is_err() {
+                        break;
+                    }
+                }
             }
         }
     });
