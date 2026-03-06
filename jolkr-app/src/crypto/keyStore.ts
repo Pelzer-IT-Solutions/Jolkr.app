@@ -8,32 +8,46 @@ const KEYS = {
   signedPrekeyPub: 'e2ee_signed_prekey_pub',
   signedPrekeyPriv: 'e2ee_signed_prekey_priv',
   signedPrekeySig: 'e2ee_signed_prekey_sig',
+  pqEncapsulationKey: 'e2ee_pq_encapsulation_key',
+  pqDecapsulationKey: 'e2ee_pq_decapsulation_key',
+  pqSignature: 'e2ee_pq_signature',
 } as const;
 
 export async function saveKeySet(keys: LocalKeySet): Promise<void> {
-  await Promise.all([
+  const ops = [
     storage.set(KEYS.identityPub, toBase64(keys.identity.publicKey)),
     storage.set(KEYS.identityPriv, toBase64(keys.identity.privateKey)),
     storage.set(KEYS.signedPrekeyPub, toBase64(keys.signedPreKey.keyPair.publicKey)),
     storage.set(KEYS.signedPrekeyPriv, toBase64(keys.signedPreKey.keyPair.privateKey)),
     storage.set(KEYS.signedPrekeySig, toBase64(keys.signedPreKey.signature)),
-  ]);
+  ];
+  if (keys.pqSignedPreKey) {
+    ops.push(
+      storage.set(KEYS.pqEncapsulationKey, toBase64(keys.pqSignedPreKey.keyPair.encapsulationKey)),
+      storage.set(KEYS.pqDecapsulationKey, toBase64(keys.pqSignedPreKey.keyPair.decapsulationKey)),
+      storage.set(KEYS.pqSignature, toBase64(keys.pqSignedPreKey.signature)),
+    );
+  }
+  await Promise.all(ops);
 }
 
 export async function loadKeySet(): Promise<LocalKeySet | null> {
-  const [idPub, idPriv, spPub, spPriv, spSig] = await Promise.all([
+  const [idPub, idPriv, spPub, spPriv, spSig, pqEncap, pqDecap, pqSig] = await Promise.all([
     storage.get(KEYS.identityPub),
     storage.get(KEYS.identityPriv),
     storage.get(KEYS.signedPrekeyPub),
     storage.get(KEYS.signedPrekeyPriv),
     storage.get(KEYS.signedPrekeySig),
+    storage.get(KEYS.pqEncapsulationKey),
+    storage.get(KEYS.pqDecapsulationKey),
+    storage.get(KEYS.pqSignature),
   ]);
 
   if (!idPub || !idPriv || !spPub || !spPriv || !spSig) {
     return null;
   }
 
-  return {
+  const keySet: LocalKeySet = {
     identity: {
       publicKey: fromBase64(idPub),
       privateKey: fromBase64(idPriv),
@@ -46,6 +60,19 @@ export async function loadKeySet(): Promise<LocalKeySet | null> {
       signature: fromBase64(spSig),
     },
   };
+
+  // Load PQ keys if available
+  if (pqEncap && pqDecap && pqSig) {
+    keySet.pqSignedPreKey = {
+      keyPair: {
+        encapsulationKey: fromBase64(pqEncap),
+        decapsulationKey: fromBase64(pqDecap),
+      },
+      signature: fromBase64(pqSig),
+    };
+  }
+
+  return keySet;
 }
 
 export async function clearKeySet(): Promise<void> {

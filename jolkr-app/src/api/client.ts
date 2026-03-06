@@ -323,10 +323,10 @@ export const getMessages = (channelId: string, limit = 50, before?: string) => {
   if (before) path += `&before=${before}`;
   return request<Message[]>(path, {}, 'messages');
 };
-export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string) =>
+export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string, encrypted_content?: string) =>
   request<Message>(`/channels/${channelId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ content, nonce, reply_to_id }),
+    body: JSON.stringify({ content, encrypted_content, nonce, reply_to_id }),
   }, 'message');
 export const editMessage = (messageId: string, content: string) =>
   request<Message>(`/messages/${messageId}`, {
@@ -545,6 +545,8 @@ export const uploadPrekeys = (body: {
   signed_prekey: string;
   signed_prekey_signature: string;
   one_time_prekeys: string[];
+  pq_signed_prekey?: string;
+  pq_signed_prekey_signature?: string;
 }) => request<{ message: string; prekey_count: number }>('/keys/upload', {
   method: 'POST',
   body: JSON.stringify(body),
@@ -552,6 +554,26 @@ export const uploadPrekeys = (body: {
 
 export const getPreKeyBundle = (userId: string) =>
   request<PreKeyBundleResponse>(`/keys/${userId}`);
+
+// Channel E2EE
+export const distributeChannelKeys = (channelId: string, body: {
+  key_generation: number;
+  recipients: Array<{ user_id: string; encrypted_key: string; nonce: string }>;
+}, isDm?: boolean) => request<{ ok: boolean }>(isDm ? `/dms/${channelId}/e2ee/distribute` : `/channels/${channelId}/e2ee/distribute`, {
+  method: 'POST',
+  body: JSON.stringify(body),
+});
+
+export const getMyChannelKey = (channelId: string, isDm?: boolean) =>
+  request<{
+    encrypted_key: string;
+    nonce: string;
+    key_generation: number;
+    distributor_user_id: string;
+  } | null>(isDm ? `/dms/${channelId}/e2ee/my-key` : `/channels/${channelId}/e2ee/my-key`);
+
+export const getChannelKeyGeneration = (channelId: string) =>
+  request<{ key_generation: number }>(`/channels/${channelId}/e2ee/generation`);
 
 // Threads
 export const createThread = (channelId: string, messageId: string, name?: string) =>

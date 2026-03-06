@@ -38,7 +38,7 @@ interface MessagesState {
 
   fetchMessages: (channelId: string, isDm?: boolean) => Promise<void>;
   fetchOlder: (channelId: string, isDm?: boolean) => Promise<void>;
-  sendMessage: (channelId: string, content: string, replyToId?: string) => Promise<Message>;
+  sendMessage: (channelId: string, content: string, replyToId?: string, encryptedContent?: string, nonce?: string) => Promise<Message>;
   sendDmMessage: (dmId: string, content: string, replyToId?: string, encryptedContent?: string, nonce?: string) => Promise<Message>;
   editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean) => Promise<void>;
   deleteMessage: (messageId: string, channelId: string, isDm?: boolean) => Promise<void>;
@@ -157,8 +157,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
-  sendMessage: async (channelId, content, replyToId) => {
-    return api.sendMessage(channelId, content, undefined, replyToId);
+  sendMessage: async (channelId, content, replyToId, encryptedContent, nonce) => {
+    return api.sendMessage(channelId, content, nonce, replyToId, encryptedContent);
   },
 
   sendDmMessage: async (dmId, content, replyToId, encryptedContent, nonce) => {

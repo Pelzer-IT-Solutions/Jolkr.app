@@ -3,6 +3,7 @@ pub mod health;
 pub mod audit_log;
 pub mod auth;
 pub mod categories;
+pub mod channel_encryption;
 pub mod channels;
 pub mod devices;
 pub mod dms;
@@ -135,6 +136,8 @@ pub fn create_router(state: AppState) -> Router {
             "/api/dms/:dm_id/messages/:message_id/attachments",
             post(dms::upload_dm_attachment),
         )
+        .route("/api/dms/:dm_id/e2ee/distribute", post(channel_encryption::dm_distribute_keys))
+        .route("/api/dms/:dm_id/e2ee/my-key", get(channel_encryption::dm_get_my_key))
         .route("/api/dms/:dm_id/call", post(dms::initiate_call))
         .route("/api/dms/:dm_id/call/accept", post(dms::accept_call))
         .route("/api/dms/:dm_id/call/reject", post(dms::reject_call))
@@ -251,6 +254,10 @@ pub fn create_router(state: AppState) -> Router {
         // ── Reactions ───────────────────────────────────────────────
         .route("/api/messages/:id/reactions", post(reactions::add_reaction).get(reactions::list_reactions))
         .route("/api/messages/:message_id/reactions/:emoji", delete(reactions::remove_reaction))
+        // ── Channel E2EE ─────────────────────────────────────────────
+        .route("/api/channels/:id/e2ee/distribute", post(channel_encryption::distribute_keys))
+        .route("/api/channels/:id/e2ee/my-key", get(channel_encryption::get_my_key))
+        .route("/api/channels/:id/e2ee/generation", get(channel_encryption::get_key_generation))
         // ── E2EE Keys ─────────────────────────────────────────────────
         .route("/api/keys/upload", post(keys::upload_prekeys))
         .route("/api/keys/count/:device_id", get(keys::get_prekey_count))

@@ -3,7 +3,8 @@ import type { Message, User } from '../api/types';
 import { useMessagesStore } from '../stores/messages';
 import { wsClient } from '../api/ws';
 import * as api from '../api/client';
-import { isE2EEReady, encryptDmMessage } from '../services/e2ee';
+import { isE2EEReady, encryptDmMessage, getLocalKeys } from '../services/e2ee';
+import { encryptChannelMessage } from '../crypto/channelKeys';
 import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../utils/emoji';
 
 const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
@@ -15,7 +16,10 @@ export interface MentionableUser {
 
 interface Props {
   channelId: string;
+  serverId?: string;
   isDm?: boolean;
+  isGroupDm?: boolean;
+  dmMemberIds?: string[];
   recipientUserId?: string;
   replyTo?: Message | null;
   replyAuthor?: User | null;
@@ -25,7 +29,7 @@ interface Props {
   slowmodeSeconds?: number;
 }
 
-export default function MessageInput({ channelId, isDm, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, slowmodeSeconds }: Props) {
+export default function MessageInput({ channelId, serverId, isDm, isGroupDm, dmMemberIds, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, slowmodeSeconds }: Props) {
   const [content, setContent] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [sending, setSending] = useState(false);
@@ -235,14 +239,44 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       const msgContent = text || (files.length > 0 ? '\u200B' : '');
       if (!msgContent) return;
       if (isDm && isE2EEReady() && recipientUserId) {
+        // 1-on-1 DM: pairwise E2EE
         const encrypted = await encryptDmMessage(recipientUserId, msgContent);
         if (encrypted) {
           msg = await sendDmMessage(channelId, msgContent, replyTo?.id, encrypted.encryptedContent, encrypted.nonce);
         } else {
           msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
         }
+      } else if (isDm && isGroupDm && isE2EEReady() && dmMemberIds && dmMemberIds.length > 0) {
+        // Group DM: shared key E2EE
+        const localKeys = getLocalKeys();
+        if (localKeys) {
+          const encrypted = await encryptChannelMessage(channelId, localKeys, msgContent, async () => dmMemberIds, true);
+          if (encrypted) {
+            msg = await sendDmMessage(channelId, msgContent, replyTo?.id, encrypted.encryptedContent, encrypted.nonce);
+          } else {
+            msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
+          }
+        } else {
+          msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
+        }
       } else if (isDm) {
         msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
+      } else if (isE2EEReady() && serverId) {
+        // Server channel: shared key E2EE
+        const localKeys = getLocalKeys();
+        if (localKeys) {
+          const encrypted = await encryptChannelMessage(channelId, localKeys, msgContent, async () => {
+            const members = await api.getServerMembers(serverId);
+            return members.map((m) => m.user_id);
+          });
+          if (encrypted) {
+            msg = await sendMessage(channelId, msgContent, replyTo?.id, encrypted.encryptedContent, encrypted.nonce);
+          } else {
+            msg = await sendMessage(channelId, msgContent, replyTo?.id);
+          }
+        } else {
+          msg = await sendMessage(channelId, msgContent, replyTo?.id);
+        }
       } else {
         msg = await sendMessage(channelId, msgContent, replyTo?.id);
       }

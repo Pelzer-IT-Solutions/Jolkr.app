@@ -1,7 +1,9 @@
 export type {
   IdentityKeyPair,
   X25519KeyPair,
+  MLKEMKeyPair,
   SignedPreKey,
+  PQSignedPreKey,
   LocalKeySet,
   PreKeyBundle,
 } from './keys';
@@ -9,9 +11,14 @@ export type {
 export {
   generateIdentityKeyPair,
   generateSignedPreKey,
+  generatePQSignedPreKey,
   verifySignedPreKey,
+  verifyPQSignedPreKey,
   x25519KeyAgreement,
+  mlkemEncapsulate,
+  mlkemDecapsulate,
   deriveMessageKey,
+  deriveHybridMessageKey,
   encryptMessage,
   decryptMessage,
   toBase64,
@@ -34,3 +41,12 @@ export {
   clearKeySet,
   hasKeySet,
 } from './keyStore';
+
+export {
+  encryptChannelMessage,
+  decryptChannelMessage,
+  getChannelKey,
+  generateAndDistributeChannelKey,
+  invalidateChannelKey,
+  clearAllChannelKeys,
+} from './channelKeys';

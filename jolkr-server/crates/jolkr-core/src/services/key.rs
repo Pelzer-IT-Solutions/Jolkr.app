@@ -17,6 +17,8 @@ pub struct UploadPreKeysRequest {
     pub signed_prekey: Vec<u8>,
     pub signed_prekey_signature: Vec<u8>,
     pub one_time_prekeys: Vec<Vec<u8>>,
+    pub pq_signed_prekey: Option<Vec<u8>>,
+    pub pq_signed_prekey_signature: Option<Vec<u8>>,
 }
 
 impl KeyService {
@@ -66,6 +68,29 @@ impl KeyService {
             ));
         }
 
+        // Validate post-quantum key sizes if provided
+        if let Some(ref pq_key) = req.pq_signed_prekey {
+            // ML-KEM-768 encapsulation key is 1184 bytes
+            if pq_key.len() != 1184 {
+                return Err(JolkrError::Validation(
+                    "PQ signed prekey must be 1184 bytes (ML-KEM-768)".into(),
+                ));
+            }
+        }
+        if let Some(ref pq_sig) = req.pq_signed_prekey_signature {
+            if pq_sig.len() != 64 {
+                return Err(JolkrError::Validation(
+                    "PQ signed prekey signature must be 64 bytes".into(),
+                ));
+            }
+        }
+        // Both PQ fields must be present together or absent together
+        if req.pq_signed_prekey.is_some() != req.pq_signed_prekey_signature.is_some() {
+            return Err(JolkrError::Validation(
+                "PQ signed prekey and signature must both be present or both absent".into(),
+            ));
+        }
+
         KeyRepo::upload_prekeys(
             pool,
             user_id,
@@ -74,6 +99,8 @@ impl KeyService {
             &req.signed_prekey,
             &req.signed_prekey_signature,
             &req.one_time_prekeys,
+            req.pq_signed_prekey.as_deref(),
+            req.pq_signed_prekey_signature.as_deref(),
         )
         .await
     }

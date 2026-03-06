@@ -77,6 +77,7 @@ pub struct ChannelRow {
     pub position: i32,
     pub is_nsfw: bool,
     pub slowmode_seconds: i32,
+    pub e2ee_key_generation: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -411,6 +412,22 @@ pub struct UserKeyRow {
     pub signed_prekey: Vec<u8>,
     pub signed_prekey_signature: Vec<u8>,
     pub one_time_prekey: Option<Vec<u8>>,
+    pub pq_signed_prekey: Option<Vec<u8>>,
+    pub pq_signed_prekey_signature: Option<Vec<u8>>,
     pub is_used: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+// ── Channel Encryption Keys ──────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ChannelEncryptionKeyRow {
+    pub id: Uuid,
+    pub channel_id: Uuid,
+    pub recipient_user_id: Uuid,
+    pub encrypted_key: String,
+    pub nonce: String,
+    pub key_generation: i32,
+    pub distributor_user_id: Uuid,
     pub created_at: DateTime<Utc>,
 }

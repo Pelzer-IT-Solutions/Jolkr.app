@@ -7,6 +7,7 @@ import {
   fromBase64,
 } from '../crypto';
 import { saveKeySet, loadKeySet, clearKeySet } from '../crypto/keyStore';
+import { clearAllChannelKeys } from '../crypto/channelKeys';
 import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
@@ -70,6 +71,9 @@ async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<
       signed_prekey: toBase64(keys.signedPreKey.keyPair.publicKey),
       signed_prekey_signature: toBase64(keys.signedPreKey.signature),
       one_time_prekeys: [],
+      // Post-quantum keys
+      pq_signed_prekey: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.keyPair.encapsulationKey) : undefined,
+      pq_signed_prekey_signature: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.signature) : undefined,
     });
     await storage.set(uploadedKey, 'true');
   } catch (e) {
@@ -82,6 +86,13 @@ async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<
  */
 export function isE2EEReady(): boolean {
   return localKeys !== null;
+}
+
+/**
+ * Get the local key set (for channel encryption).
+ */
+export function getLocalKeys(): LocalKeySet | null {
+  return localKeys;
 }
 
 /**
@@ -103,6 +114,8 @@ export async function getRecipientBundle(userId: string): Promise<PreKeyBundle |
       signedPrekey: fromBase64(resp.signed_prekey),
       signedPrekeySignature: fromBase64(resp.signed_prekey_signature),
       oneTimePrekey: resp.one_time_prekey ? fromBase64(resp.one_time_prekey) : undefined,
+      pqSignedPrekey: resp.pq_signed_prekey ? fromBase64(resp.pq_signed_prekey) : undefined,
+      pqSignedPrekeySignature: resp.pq_signed_prekey_signature ? fromBase64(resp.pq_signed_prekey_signature) : undefined,
     };
     bundleCache.set(userId, { bundle, fetchedAt: Date.now() });
     return bundle;
@@ -152,6 +165,7 @@ export function invalidateBundle(userId: string): void {
 export async function resetE2EE(): Promise<void> {
   localKeys = null;
   bundleCache.clear();
+  clearAllChannelKeys();
   await clearKeySet();
   // Clear upload flag and device ID so next login re-generates fresh keys
   await storage.remove('e2ee_keys_uploaded');

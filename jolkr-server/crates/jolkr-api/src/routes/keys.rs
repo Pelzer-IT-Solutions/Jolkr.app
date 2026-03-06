@@ -27,6 +27,10 @@ pub struct UploadPreKeysBody {
     pub signed_prekey_signature: String,
     /// Base64-encoded one-time X25519 public keys.
     pub one_time_prekeys: Vec<String>,
+    /// Base64-encoded ML-KEM-768 encapsulation key (1184 bytes). Optional for PQ hybrid E2EE.
+    pub pq_signed_prekey: Option<String>,
+    /// Base64-encoded Ed25519 signature over the PQ prekey (64 bytes). Optional.
+    pub pq_signed_prekey_signature: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -43,6 +47,10 @@ pub struct PreKeyBundleResponse {
     pub signed_prekey: String,
     pub signed_prekey_signature: String,
     pub one_time_prekey: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pq_signed_prekey: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pq_signed_prekey_signature: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -80,6 +88,18 @@ pub async fn upload_prekeys(
         one_time_prekeys.push(otpk);
     }
 
+    let pq_signed_prekey = body.pq_signed_prekey
+        .as_ref()
+        .map(|b64| engine.decode(b64))
+        .transpose()
+        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey".into())))?;
+
+    let pq_signed_prekey_signature = body.pq_signed_prekey_signature
+        .as_ref()
+        .map(|b64| engine.decode(b64))
+        .transpose()
+        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey_signature".into())))?;
+
     let count = one_time_prekeys.len();
 
     KeyService::upload_prekeys(
@@ -91,6 +111,8 @@ pub async fn upload_prekeys(
             signed_prekey,
             signed_prekey_signature,
             one_time_prekeys,
+            pq_signed_prekey,
+            pq_signed_prekey_signature,
         },
     )
     .await?;
@@ -120,6 +142,8 @@ pub async fn get_prekey_bundle(
         signed_prekey: engine.encode(&bundle.signed_prekey),
         signed_prekey_signature: engine.encode(&bundle.signed_prekey_signature),
         one_time_prekey: bundle.one_time_prekey.map(|k| engine.encode(&k)),
+        pq_signed_prekey: bundle.pq_signed_prekey.map(|k| engine.encode(&k)),
+        pq_signed_prekey_signature: bundle.pq_signed_prekey_signature.map(|k| engine.encode(&k)),
     }))
 }
 
@@ -142,6 +166,8 @@ pub async fn get_prekey_bundle_by_user(
         signed_prekey: engine.encode(&bundle.signed_prekey),
         signed_prekey_signature: engine.encode(&bundle.signed_prekey_signature),
         one_time_prekey: bundle.one_time_prekey.map(|k| engine.encode(&k)),
+        pq_signed_prekey: bundle.pq_signed_prekey.map(|k| engine.encode(&k)),
+        pq_signed_prekey_signature: bundle.pq_signed_prekey_signature.map(|k| engine.encode(&k)),
     }))
 }
 

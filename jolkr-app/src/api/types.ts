@@ -30,6 +30,7 @@ export interface Channel {
   category_id?: string | null;
   is_nsfw?: boolean;
   slowmode_seconds?: number;
+  e2ee_key_generation?: number;
   created_at?: string | null;
 }
 
@@ -236,4 +237,6 @@ export interface PreKeyBundleResponse {
   signed_prekey: string;
   signed_prekey_signature: string;
   one_time_prekey?: string | null;
+  pq_signed_prekey?: string | null;
+  pq_signed_prekey_signature?: string | null;
 }

@@ -325,6 +325,8 @@ export default function DmChat() {
               <MessageInput
                 channelId={dmId}
                 isDm
+                isGroupDm={isGroup}
+                dmMemberIds={isGroup ? dmChannel?.members : undefined}
                 recipientUserId={isGroup ? undefined : otherUser?.id}
                 replyTo={replyTo}
                 replyAuthor={replyAuthor}

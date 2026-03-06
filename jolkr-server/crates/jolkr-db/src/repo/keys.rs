@@ -16,6 +16,8 @@ pub struct PreKeyBundle {
     pub signed_prekey: Vec<u8>,
     pub signed_prekey_signature: Vec<u8>,
     pub one_time_prekey: Option<Vec<u8>>,
+    pub pq_signed_prekey: Option<Vec<u8>>,
+    pub pq_signed_prekey_signature: Option<Vec<u8>>,
 }
 
 impl KeyRepo {
@@ -28,20 +30,24 @@ impl KeyRepo {
         signed_prekey: &[u8],
         signed_prekey_signature: &[u8],
         one_time_prekeys: &[Vec<u8>],
+        pq_signed_prekey: Option<&[u8]>,
+        pq_signed_prekey_signature: Option<&[u8]>,
     ) -> Result<(), JolkrError> {
         let now = Utc::now();
 
         // Upsert the identity key + signed prekey row (one per device, no one_time_prekey)
         sqlx::query(
             r#"
-            INSERT INTO user_keys (id, user_id, device_id, identity_key, signed_prekey, signed_prekey_signature, is_used, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, false, $7)
+            INSERT INTO user_keys (id, user_id, device_id, identity_key, signed_prekey, signed_prekey_signature, pq_signed_prekey, pq_signed_prekey_signature, is_used, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9)
             ON CONFLICT (user_id, device_id) WHERE one_time_prekey IS NULL
             DO UPDATE SET
-                identity_key             = EXCLUDED.identity_key,
-                signed_prekey            = EXCLUDED.signed_prekey,
-                signed_prekey_signature  = EXCLUDED.signed_prekey_signature,
-                created_at               = EXCLUDED.created_at
+                identity_key                = EXCLUDED.identity_key,
+                signed_prekey               = EXCLUDED.signed_prekey,
+                signed_prekey_signature     = EXCLUDED.signed_prekey_signature,
+                pq_signed_prekey            = EXCLUDED.pq_signed_prekey,
+                pq_signed_prekey_signature  = EXCLUDED.pq_signed_prekey_signature,
+                created_at                  = EXCLUDED.created_at
             "#,
         )
         .bind(Uuid::new_v4())
@@ -50,6 +56,8 @@ impl KeyRepo {
         .bind(identity_key)
         .bind(signed_prekey)
         .bind(signed_prekey_signature)
+        .bind(pq_signed_prekey)
+        .bind(pq_signed_prekey_signature)
         .bind(now)
         .execute(pool)
         .await?;
@@ -124,6 +132,8 @@ impl KeyRepo {
             signed_prekey: base.signed_prekey,
             signed_prekey_signature: base.signed_prekey_signature,
             one_time_prekey: otpk_row.and_then(|r| r.one_time_prekey),
+            pq_signed_prekey: base.pq_signed_prekey,
+            pq_signed_prekey_signature: base.pq_signed_prekey_signature,
         })
     }
 

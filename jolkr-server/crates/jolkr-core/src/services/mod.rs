@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod category;
 pub mod channel;
+pub mod channel_encryption;
 pub mod dm;
 pub mod emoji;
 pub mod friendship;

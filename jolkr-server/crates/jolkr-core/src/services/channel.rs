@@ -19,6 +19,7 @@ pub struct ChannelInfo {
     pub position: i32,
     pub is_nsfw: bool,
     pub slowmode_seconds: i32,
+    pub e2ee_key_generation: i32,
 }
 
 impl From<ChannelRow> for ChannelInfo {
@@ -33,6 +34,7 @@ impl From<ChannelRow> for ChannelInfo {
             position: row.position,
             is_nsfw: row.is_nsfw,
             slowmode_seconds: row.slowmode_seconds,
+            e2ee_key_generation: row.e2ee_key_generation,
         }
     }
 }

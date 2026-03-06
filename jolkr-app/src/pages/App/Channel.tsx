@@ -428,6 +428,7 @@ export default function ChannelPage() {
               />
               <MessageInput
                 channelId={channelId}
+                serverId={serverId}
                 replyTo={replyTo}
                 replyAuthor={replyTo ? (memberUsers[replyTo.author_id] ?? null) : null}
                 onCancelReply={() => setReplyTo(null)}

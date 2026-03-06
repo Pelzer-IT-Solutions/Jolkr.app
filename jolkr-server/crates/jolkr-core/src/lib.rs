@@ -4,6 +4,7 @@ pub mod services;
 pub use services::auth::{AuthService, Claims, TokenPair};
 pub use services::category::CategoryService;
 pub use services::channel::ChannelService;
+pub use services::channel_encryption::ChannelEncryptionService;
 pub use services::dm::DmService;
 pub use services::emoji::EmojiService;
 pub use services::friendship::FriendshipService;
