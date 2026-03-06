@@ -42,6 +42,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const [users, setUsers] = useState<Record<string, User>>({});
   const fetchedIdsRef = useRef(new Set<string>());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [newMsgCount, setNewMsgCount] = useState(0);
   const isAtBottomRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
 
@@ -78,14 +79,19 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     });
   }, [allMsgs]);
 
+  // Reset new message count on channel switch
+  useEffect(() => {
+    setNewMsgCount(0);
+  }, [channelId]);
+
   // Auto-scroll logic — use raw DOM scroll to guarantee true bottom
   useEffect(() => {
-    if (allMsgs.length > prevLenRef.current) {
+    const added = allMsgs.length - prevLenRef.current;
+    if (added > 0) {
       const el = containerRef.current;
       const wasInitialLoad = prevLenRef.current === 0;
       if (wasInitialLoad) {
         // Keep scrolling to bottom until container height stabilizes.
-        // The virtualizer re-measures items each frame, changing scrollHeight.
         let lastHeight = 0;
         let settled = 0;
         const keepScrolling = () => {
@@ -97,7 +103,6 @@ export default function MessageList({ channelId, search, searchResults, searchLo
             settled = 0;
             lastHeight = el.scrollHeight;
           }
-          // Stop after 20 stable frames (~330ms at 60fps)
           if (settled < 20) {
             requestAnimationFrame(keepScrolling);
           } else {
@@ -106,10 +111,24 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         };
         requestAnimationFrame(keepScrolling);
       } else if (isAtBottomRef.current && el) {
-        // New message and we're near bottom — smooth scroll to absolute bottom
-        requestAnimationFrame(() => {
-          el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-        });
+        // New message while at bottom — scroll with stabilization
+        let lastHeight = 0;
+        let settled = 0;
+        const keepScrolling = () => {
+          if (!el) return;
+          el.scrollTop = el.scrollHeight;
+          if (el.scrollHeight === lastHeight) {
+            settled++;
+          } else {
+            settled = 0;
+            lastHeight = el.scrollHeight;
+          }
+          if (settled < 8) requestAnimationFrame(keepScrolling);
+        };
+        requestAnimationFrame(keepScrolling);
+      } else if (!isAtBottomRef.current && initialScrollDoneRef.current) {
+        // Scrolled up — show "new messages" indicator
+        setNewMsgCount((c) => c + added);
       }
     }
     prevLenRef.current = allMsgs.length;
@@ -121,6 +140,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     isAtBottomRef.current = distFromBottom < 150;
     setShowScrollBtn(distFromBottom > 300);
+    if (distFromBottom < 150) setNewMsgCount(0);
     if (canLoadMore && !isLoadingOlder && el.scrollTop < 100) {
       fetchOlder(channelId, isDm);
     }
@@ -129,6 +149,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const scrollToBottom = () => {
     const el = containerRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    setNewMsgCount(0);
   };
 
   const isCompact = (i: number) => {
@@ -222,7 +243,19 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         )}
       </div>
 
-      {showScrollBtn && (
+      {newMsgCount > 0 && showScrollBtn && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-accent hover:bg-accent/80 text-white text-sm font-medium rounded-full shadow-lg transition-colors z-10 flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+          {newMsgCount === 1 ? '1 new message' : `${newMsgCount} new messages`}
+        </button>
+      )}
+
+      {showScrollBtn && newMsgCount === 0 && (
         <button
           onClick={scrollToBottom}
           className="absolute bottom-16 right-4 w-9 h-9 bg-surface border border-divider rounded-full flex items-center justify-center shadow-lg hover:bg-white/10 transition-colors z-10"
