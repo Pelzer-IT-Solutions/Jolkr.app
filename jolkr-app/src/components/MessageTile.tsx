@@ -129,7 +129,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 
   return (
     <div
-      className={`group flex gap-4 px-4 hover:bg-white/[0.02] relative ${compact ? 'py-0.5' : 'py-1.5 [.compact-mode_&]:py-0.5'}`}
+      className={`group flex items-start gap-4 px-4 hover:bg-white/[0.02] relative ${compact ? 'py-0.5' : 'py-1.5 [.compact-mode_&]:py-0.5'}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onFocusCapture={() => setShowActions(true)}
