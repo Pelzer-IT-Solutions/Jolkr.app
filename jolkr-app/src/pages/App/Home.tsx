@@ -18,7 +18,7 @@ export default function Home() {
   return (
     <div className="flex-1 flex flex-col bg-bg min-h-0">
       {/* Top bar */}
-      <div className="h-12 px-4 flex items-center border-b border-divider shrink-0">
+      <div className="h-14 px-4 flex items-center border-b border-divider shrink-0">
         {isMobile && (
           <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-3">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

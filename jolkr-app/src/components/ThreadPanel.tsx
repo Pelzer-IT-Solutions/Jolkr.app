@@ -164,7 +164,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: Props) {
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="absolute right-0 top-0 z-50 w-full max-w-[400px] h-full bg-surface border-l border-divider flex flex-col shadow-xl">
         {/* Header */}
-        <div className="h-12 px-4 flex items-center gap-2 border-b border-divider shrink-0">
+        <div className="h-14 px-4 flex items-center gap-2 border-b border-divider shrink-0">
           <svg className="w-5 h-5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
           </svg>

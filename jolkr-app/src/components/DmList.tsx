@@ -319,7 +319,7 @@ export default function DmList({ onDmSelect }: Props) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="h-12 px-4 flex items-center border-b border-divider shrink-0">
+      <div className="h-14 px-4 flex items-center border-b border-divider shrink-0">
         <h2 className="text-text-primary font-semibold text-[15px]">Direct Messages</h2>
       </div>
 

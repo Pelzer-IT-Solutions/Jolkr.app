@@ -215,7 +215,7 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Server header with dropdown */}
-      <div className="h-12 px-4 flex items-center border-b border-divider shrink-0 relative">
+      <div className="h-14 px-4 flex items-center border-b border-divider shrink-0 relative">
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           aria-expanded={showDropdown}

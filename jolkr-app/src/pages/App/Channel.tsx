@@ -257,7 +257,7 @@ export default function ChannelPage() {
       {(!isMobile || !showSidebar) && (
         <div className="flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition">
           {/* Channel header */}
-          <div className="h-12 px-4 flex items-center gap-3 border-b border-divider shrink-0">
+          <div className="h-14 px-4 flex items-center gap-3 border-b border-divider shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to channels">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -443,7 +443,7 @@ export default function ChannelPage() {
                 <div className="fixed inset-0 z-50 flex">
                   <div className="flex-1" onClick={() => setShowMembers(false)} />
                   <div className="w-[280px] max-w-[80vw] bg-sidebar border-l border-divider h-full overflow-y-auto animate-slide-in-right">
-                    <div className="h-12 px-4 flex items-center border-b border-divider shrink-0">
+                    <div className="h-14 px-4 flex items-center border-b border-divider shrink-0">
                       <span className="text-text-primary font-semibold text-sm flex-1">Members</span>
                       <button onClick={() => setShowMembers(false)} className="text-text-secondary hover:text-text-primary" aria-label="Close members">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

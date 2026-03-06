@@ -43,24 +43,25 @@ export default function ServerSidebar() {
   const settingsServerObj = settingsServer ? servers.find((s) => s.id === settingsServer) : null;
 
   return (
-    <div className="w-[72px] h-full bg-serverbar flex flex-col items-center py-3 gap-2 overflow-y-auto shrink-0">
-      {/* Home button */}
-      <button
-        onClick={() => navigate('/')}
-        onMouseEnter={() => setHovered('home')}
-        onMouseLeave={() => setHovered(null)}
-        className={`w-12 h-12 flex items-center justify-center transition-all duration-200 ${!serverId
-            ? 'bg-primary rounded-2xl'
-            : hovered === 'home'
+    <div className="w-[72px] h-full bg-serverbar flex flex-col items-center shrink-0">
+      {/* Home button header */}
+      <div className="h-14 w-full flex items-center justify-center border-b border-divider shrink-0">
+        <button
+          onClick={() => navigate('/')}
+          onMouseEnter={() => setHovered('home')}
+          onMouseLeave={() => setHovered(null)}
+          className={`w-10 h-10 flex items-center justify-center transition-all duration-200 ${!serverId
               ? 'bg-primary rounded-2xl'
-              : 'bg-surface rounded-3xl'
-          }`}
-      >
-        <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Home" className="w-8 h-8 rounded" />
-      </button>
+              : hovered === 'home'
+                ? 'bg-primary rounded-2xl'
+                : 'bg-surface rounded-3xl'
+            }`}
+        >
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Home" className="w-7 h-7 rounded" />
+        </button>
+      </div>
 
-      <div className="w-8 h-0.5 bg-divider rounded-full" />
-
+      <div className="flex-1 flex flex-col items-center py-2 gap-2 overflow-y-auto w-full">
       {/* Server icons */}
       {servers.map((server) => {
         const serverChannelIds = (channels[server.id] ?? []).map((c) => c.id);
@@ -102,21 +103,23 @@ export default function ServerSidebar() {
         );
       })}
 
-      <div className="w-8 h-0.5 bg-divider rounded-full mt-auto" />
+      </div>
 
-      {/* Add server button */}
-      <button
-        onClick={() => setShowAddMenu(true)}
-        onMouseEnter={() => setHovered('add')}
-        onMouseLeave={() => setHovered(null)}
-        aria-label="Add a server"
-        className={`w-12 h-12 flex items-center justify-center transition-all duration-200 ${hovered === 'add' ? 'bg-online rounded-2xl' : 'bg-surface rounded-3xl'
-          }`}
-      >
-        <svg className={`w-6 h-6 ${hovered === 'add' ? 'text-white' : 'text-online'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
+      {/* Add server button — matches UserPanel height */}
+      <div className="min-h-[60px] w-full flex items-center justify-center border-t border-divider shrink-0">
+        <button
+          onClick={() => setShowAddMenu(true)}
+          onMouseEnter={() => setHovered('add')}
+          onMouseLeave={() => setHovered(null)}
+          aria-label="Add a server"
+          className={`w-10 h-10 flex items-center justify-center transition-all duration-200 ${hovered === 'add' ? 'bg-online rounded-2xl' : 'bg-surface rounded-3xl'
+            }`}
+        >
+          <svg className={`w-5 h-5 ${hovered === 'add' ? 'text-white' : 'text-online'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
 
       {/* Context menu for server icons */}
       {contextMenu && contextServer && (

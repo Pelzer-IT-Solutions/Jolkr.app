@@ -42,7 +42,7 @@ export default function PinnedMessagesPanel({ channelId, onClose }: Props) {
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="absolute right-0 top-0 z-50 w-[360px] h-full bg-surface border-l border-divider flex flex-col shadow-xl">
-        <div className="h-12 px-4 flex items-center justify-between border-b border-divider shrink-0">
+        <div className="h-14 px-4 flex items-center justify-between border-b border-divider shrink-0">
           <h3 className="text-text-primary font-semibold text-sm">Pinned Messages</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close pinned messages">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
