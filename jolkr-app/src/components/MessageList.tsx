@@ -78,25 +78,37 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     });
   }, [allMsgs]);
 
-  // Auto-scroll logic
+  // Auto-scroll logic — use raw DOM scroll to guarantee true bottom
   useEffect(() => {
     if (allMsgs.length > prevLenRef.current) {
+      const el = containerRef.current;
       const wasInitialLoad = prevLenRef.current === 0;
       if (wasInitialLoad) {
-        // Initial load — scroll to bottom (multiple attempts for virtualizer measurement)
-        const scrollAttempt = (n: number) => {
-          virtualizer.scrollToIndex(msgs.length - 1, { align: 'end' });
-          if (n > 1) {
-            requestAnimationFrame(() => scrollAttempt(n - 1));
+        // Keep scrolling to bottom until container height stabilizes.
+        // The virtualizer re-measures items each frame, changing scrollHeight.
+        let lastHeight = 0;
+        let settled = 0;
+        const keepScrolling = () => {
+          if (!el) { initialScrollDoneRef.current = true; return; }
+          el.scrollTop = el.scrollHeight;
+          if (el.scrollHeight === lastHeight) {
+            settled++;
+          } else {
+            settled = 0;
+            lastHeight = el.scrollHeight;
+          }
+          // Stop after 20 stable frames (~330ms at 60fps)
+          if (settled < 20) {
+            requestAnimationFrame(keepScrolling);
           } else {
             initialScrollDoneRef.current = true;
           }
         };
-        requestAnimationFrame(() => scrollAttempt(3));
-      } else if (isAtBottomRef.current) {
-        // New message and we're near bottom — smooth scroll
+        requestAnimationFrame(keepScrolling);
+      } else if (isAtBottomRef.current && el) {
+        // New message and we're near bottom — smooth scroll to absolute bottom
         requestAnimationFrame(() => {
-          virtualizer.scrollToIndex(msgs.length - 1, { align: 'end', behavior: 'smooth' });
+          el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
         });
       }
     }
@@ -115,7 +127,8 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   }, [canLoadMore, isLoadingOlder, channelId, isDm, fetchOlder]);
 
   const scrollToBottom = () => {
-    virtualizer.scrollToIndex(msgs.length - 1, { align: 'end', behavior: 'smooth' });
+    const el = containerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   };
 
   const isCompact = (i: number) => {

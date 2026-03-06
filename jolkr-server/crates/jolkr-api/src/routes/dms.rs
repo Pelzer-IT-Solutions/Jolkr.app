@@ -495,6 +495,58 @@ pub async fn upload_dm_attachment(
             .await
             .unwrap_or(row.url);
 
+        // Broadcast MessageUpdate so other clients see the new attachment
+        {
+            let mut dm_msg = DmMessageInfo::from(
+                DmRepo::get_message(&state.pool, message_id).await.unwrap(),
+            );
+            // Enrich with attachments
+            let atts = DmRepo::list_attachments_for_messages(&state.pool, &[message_id])
+                .await
+                .unwrap_or_default();
+            for att in atts {
+                let att_url = state
+                    .storage
+                    .presign_get(&att.url, 7 * 24 * 3600)
+                    .await
+                    .unwrap_or(att.url);
+                dm_msg.attachments.push(AttachmentInfo {
+                    id: att.id,
+                    filename: att.filename,
+                    content_type: att.content_type,
+                    size_bytes: att.size_bytes,
+                    url: att_url,
+                });
+            }
+            // Enrich with reactions
+            let reactions = DmRepo::list_reactions(&state.pool, message_id)
+                .await
+                .unwrap_or_default();
+            {
+                use std::collections::HashMap;
+                let mut by_emoji: HashMap<String, (i64, Vec<Uuid>)> = HashMap::new();
+                for r in reactions {
+                    let entry = by_emoji.entry(r.emoji).or_insert((0, Vec::new()));
+                    entry.0 += 1;
+                    entry.1.push(r.user_id);
+                }
+                dm_msg.reactions = by_emoji
+                    .into_iter()
+                    .map(|(emoji, (count, user_ids))| {
+                        jolkr_core::services::message::ReactionInfo {
+                            emoji,
+                            count,
+                            user_ids,
+                        }
+                    })
+                    .collect();
+            }
+            let event = crate::ws::events::GatewayEvent::MessageUpdate {
+                message: dm_to_message_info(&dm_msg),
+            };
+            state.nats.publish_to_channel(dm_id, &event).await;
+        }
+
         return Ok(Json(DmAttachmentResponse {
             attachment: AttachmentInfo {
                 id: row.id,

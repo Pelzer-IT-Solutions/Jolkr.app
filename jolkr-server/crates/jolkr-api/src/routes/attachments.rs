@@ -6,6 +6,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use jolkr_common::Permissions;
+use jolkr_core::services::message::MessageService;
 use jolkr_db::repo::{AttachmentRepo, ChannelRepo, MemberRepo, MessageRepo, RoleRepo};
 
 use crate::errors::AppError;
@@ -169,6 +170,17 @@ pub async fn upload_attachment(
         None,
     )
     .await?;
+
+    // Broadcast MessageUpdate so other clients see the new attachment
+    if let Ok(mut enriched) = MessageService::get_message_by_id(&state.pool, message_id).await {
+        for att in &mut enriched.attachments {
+            if let Ok(url) = state.storage.presign_get(&att.url, 7 * 24 * 3600).await {
+                att.url = url;
+            }
+        }
+        let event = crate::ws::events::GatewayEvent::MessageUpdate { message: enriched };
+        state.nats.publish_to_channel(channel_id, &event).await;
+    }
 
     Ok(Json(UploadResponse {
         attachment: AttachmentInfo {
