@@ -324,6 +324,9 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
 
             match change.apply() {
                 Some((offer, pending)) => {
+                    // dimpl 0.2.7+ requires handle_timeout after apply()
+                    drive_time(&mut rtc);
+
                     let offer_sdp = offer.to_sdp_string();
 
                     // Send Joined event with current participants
@@ -376,6 +379,8 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
                             if let Err(e) = client.rtc.sdp_api().accept_answer(pending, answer) {
                                 error!("Failed to accept answer from {}: {}", user_id, e);
                             } else {
+                                // dimpl 0.2.7+ requires handle_timeout after accept_answer()
+                                drive_time(&mut client.rtc);
                                 debug!("Accepted SDP answer from {}", user_id);
                             }
                         }
@@ -478,6 +483,9 @@ fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_i
 
         match change.apply() {
             Some((offer, pending)) => {
+                // dimpl 0.2.7+ requires handle_timeout after apply()
+                drive_time(&mut client.rtc);
+
                 let offer_sdp = offer.to_sdp_string();
                 client.pending = Some(pending);
                 let _ = client.signal_tx.send(SignalOut::Offer { sdp: offer_sdp });

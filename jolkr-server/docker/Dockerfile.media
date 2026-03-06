@@ -5,8 +5,8 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev cmake build-essen
 
 WORKDIR /app
 
-# Copy workspace manifests first for better layer caching
-COPY Cargo.toml ./
+# Copy workspace manifests + lock file for reproducible builds
+COPY Cargo.toml Cargo.lock ./
 COPY crates/jolkr-common/Cargo.toml crates/jolkr-common/Cargo.toml
 COPY crates/jolkr-db/Cargo.toml     crates/jolkr-db/Cargo.toml
 COPY crates/jolkr-core/Cargo.toml   crates/jolkr-core/Cargo.toml
