@@ -1,8 +1,20 @@
 import { useMemo, memo } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import hljs from 'highlight.js/lib/common';
+import 'highlight.js/styles/github-dark.css';
 import { useServersStore } from '../stores/servers';
 import { renderUnicodeEmojis, isEmojiOnly } from '../utils/emoji';
+
+// Unescape HTML entities that marked escapes in code blocks
+function unescapeHtml(html: string): string {
+  return html
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
 
 // Configure marked for chat-style markdown
 // In marked v17, custom renderers that accept tokens must call
@@ -34,8 +46,16 @@ marked.use({
     codespan({ text }) {
       return `<code class="px-1 py-0.5 bg-black/30 rounded text-[13px] text-pink-300 font-mono">${text}</code>`;
     },
-    code({ text }) {
-      return `<pre class="bg-black/30 rounded-md p-3 my-1 whitespace-pre-wrap break-words"><code class="text-[13px] font-mono text-text-primary/90">${text}</code></pre>`;
+    code({ text, lang }) {
+      const raw = unescapeHtml(text);
+      let highlighted: string;
+      if (lang && hljs.getLanguage(lang)) {
+        highlighted = hljs.highlight(raw, { language: lang }).value;
+      } else {
+        highlighted = hljs.highlightAuto(raw).value;
+      }
+      const langLabel = lang ? `<div class="text-[11px] text-text-muted">${lang}</div>` : '';
+      return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-[13px] font-mono hljs !p-0">${highlighted}</code></pre>`;
     },
     heading({ tokens, depth }) {
       const body = this.parser.parseInline(tokens);
@@ -99,7 +119,7 @@ interface Props {
   serverId?: string;
 }
 
-const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img'];
+const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div'];
 const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', 'loading', 'style', 'draggable'];
 
 export default memo(function MessageContent({ content, className, emojiMap, serverId }: Props) {

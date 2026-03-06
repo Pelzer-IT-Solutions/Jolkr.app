@@ -149,6 +149,12 @@ button, [role="button"], a {
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
+/* Override highlight.js theme background — we use our own <pre> bg */
+pre code.hljs {
+  background: transparent;
+  padding: 0;
+}
+
 /* Image loading placeholder */
 img {
   background-color: transparent;
