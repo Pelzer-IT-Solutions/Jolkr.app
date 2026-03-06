@@ -177,9 +177,11 @@ export default function Settings() {
     <div className="flex flex-1 h-full overflow-hidden bg-bg">
       {/* Settings sidebar — hidden on mobile, replaced by horizontal tabs */}
       {!isMobile && (
-        <div className="w-[220px] bg-sidebar flex flex-col shrink-0 border-r border-divider">
+        <div className="w-[240px] bg-sidebar flex flex-col shrink-0 border-r border-divider">
+          <div className="h-14 px-4 flex items-center border-b border-divider shrink-0">
+            <h2 className="text-text-primary font-semibold text-[15px]">User Settings</h2>
+          </div>
           <div className="p-4">
-            <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2">User Settings</div>
             <div className="space-y-0.5">
               {(['account', 'appearance', 'notifications', 'devices'] as const).map((tab) => (
                 <button
