@@ -17,6 +17,9 @@ const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
 ];
 
+/** Whether the browser supports RTCRtpScriptTransform (voice E2EE). */
+const supportsVoiceE2EE = typeof RTCRtpScriptTransform !== 'undefined';
+
 export class VoiceService {
   private client: VoiceClient;
   private pc: RTCPeerConnection | null = null;
@@ -34,6 +37,9 @@ export class VoiceService {
   private stateListeners = new Set<StateListener>();
   private participantsListeners = new Set<ParticipantsListener>();
   private errorListeners = new Set<ErrorListener>();
+
+  /** Web Worker for voice frame encryption/decryption (voice E2EE). */
+  private encryptionWorker: Worker | null = null;
 
   constructor(wsUrl: string) {
     this.client = new VoiceClient(wsUrl);
@@ -130,6 +136,25 @@ export class VoiceService {
       this._isMuted = false;
       this.client.setMuted(false);
       this.localStream?.getAudioTracks().forEach((t) => { t.enabled = true; });
+    }
+  }
+
+  /**
+   * Set the voice E2EE key. Pass raw AES-256 key bytes (32 bytes) to enable
+   * frame encryption, or null to disable.
+   */
+  setVoiceKey(rawKeyBytes: Uint8Array | null) {
+    if (!supportsVoiceE2EE || !this.encryptionWorker) return;
+
+    if (rawKeyBytes) {
+      // Transfer a copy of the buffer to the worker
+      const copy = rawKeyBytes.slice().buffer;
+      this.encryptionWorker.postMessage(
+        { type: 'setKey', keyBytes: copy },
+        [copy],
+      );
+    } else {
+      this.encryptionWorker.postMessage({ type: 'clearKey' });
     }
   }
 
@@ -239,13 +264,32 @@ export class VoiceService {
   private async ensurePeerConnection() {
     if (this.pc) return;
 
+    // Create encryption worker for voice E2EE (if supported)
+    if (supportsVoiceE2EE && !this.encryptionWorker) {
+      try {
+        this.encryptionWorker = new Worker(
+          new URL('./encryptionWorker.ts', import.meta.url),
+          { type: 'module' },
+        );
+      } catch {
+        console.warn('[Voice] Failed to create encryption worker, voice E2EE disabled');
+      }
+    }
+
     this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
     // Try to get microphone — if unavailable, join in listen-only mode
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       for (const track of this.localStream.getAudioTracks()) {
-        this.pc.addTrack(track, this.localStream);
+        const sender = this.pc.addTrack(track, this.localStream);
+        // Attach encryption transform for outgoing audio
+        if (supportsVoiceE2EE && this.encryptionWorker) {
+          sender.transform = new RTCRtpScriptTransform(
+            this.encryptionWorker,
+            { operation: 'encrypt' },
+          );
+        }
       }
     } catch (micErr) {
       console.warn('[Voice] No microphone available, joining in listen-only mode:', (micErr as Error).message);
@@ -259,6 +303,14 @@ export class VoiceService {
     };
 
     this.pc.ontrack = (ev) => {
+      // Attach decryption transform for incoming audio
+      if (supportsVoiceE2EE && this.encryptionWorker) {
+        ev.receiver.transform = new RTCRtpScriptTransform(
+          this.encryptionWorker,
+          { operation: 'decrypt' },
+        );
+      }
+
       const audio = new Audio();
       audio.srcObject = ev.streams[0] || new MediaStream([ev.track]);
       audio.autoplay = true;
@@ -317,6 +369,11 @@ export class VoiceService {
     }
 
     this.client.disconnect();
+
+    if (this.encryptionWorker) {
+      this.encryptionWorker.terminate();
+      this.encryptionWorker = null;
+    }
 
     this._isMuted = false;
     this._isDeafened = false;

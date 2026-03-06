@@ -68,8 +68,28 @@ export const useVoiceStore = create<VoiceState>((set) => ({
       return;
     }
     try {
-      await getVoiceService().joinChannel(channelId, token);
+      const svc = getVoiceService();
+      await svc.joinChannel(channelId, token);
       set({ channelId, serverId, channelName });
+
+      // Voice E2EE: try to get the channel's shared key and enable frame encryption
+      try {
+        const { isE2EEReady, getLocalKeys } = await import('../services/e2ee');
+        if (isE2EEReady()) {
+          const localKeys = getLocalKeys();
+          if (localKeys) {
+            const { getChannelKey } = await import('../crypto/channelKeys');
+            const isDm = !serverId;
+            const channelKey = await getChannelKey(channelId, localKeys, isDm);
+            if (channelKey) {
+              const rawBytes = await crypto.subtle.exportKey('raw', channelKey.key);
+              svc.setVoiceKey(new Uint8Array(rawBytes));
+            }
+          }
+        }
+      } catch {
+        // E2EE not available for voice — voice continues unencrypted
+      }
     } catch (e) {
       set({
         error: (e as Error).message || 'Failed to join voice channel',
