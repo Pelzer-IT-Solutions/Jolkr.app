@@ -171,16 +171,8 @@ export default function Friends() {
               </div>
             )}
             {friendsLoading && friends.length === 0 && pending.length === 0 && (
-              <div className="space-y-2 py-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 px-3 py-2 animate-pulse">
-                    <div className="w-9 h-9 rounded-full bg-white/5 shrink-0" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3 bg-white/5 rounded w-24" />
-                      <div className="h-2.5 bg-white/5 rounded w-16" />
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-center py-8">
+                <div className="w-5 h-5 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
               </div>
             )}
 

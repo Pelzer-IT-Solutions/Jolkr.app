@@ -141,19 +141,11 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     <div className="flex flex-col h-full relative min-h-0">
       <div ref={containerRef} className="flex-1 overflow-y-auto min-h-0" onScroll={handleScroll}>
         {((isLoading || searchLoading) && msgs.length === 0) || (notYetFetched && !search && !searchResults) ? (
-          <div className="flex flex-col gap-3 p-4">
+          <div className="flex items-center justify-center h-full">
             {searchLoading ? (
-              <div className="flex items-center justify-center h-full text-text-muted">Searching...</div>
+              <span className="text-text-muted">Searching...</span>
             ) : (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex gap-3 animate-pulse">
-                  <div className="w-10 h-10 rounded-full bg-white/5 shrink-0" />
-                  <div className="flex-1 space-y-2 py-1">
-                    <div className="h-3 bg-white/5 rounded w-24" />
-                    <div className="h-3 bg-white/5 rounded" style={{ width: `${40 + Math.random() * 50}%` }} />
-                  </div>
-                </div>
-              ))
+              <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
             )}
           </div>
         ) : msgs.length === 0 ? (

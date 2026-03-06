@@ -18,6 +18,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: Props) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [threadError, setThreadError] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [users, setUsers] = useState<Record<string, User>>({});
   const fetchedIdsRef = useRef(new Set<string>());
@@ -45,7 +46,8 @@ export default function ThreadPanel({ threadId, channelId, onClose }: Props) {
     setStarterMessage(null);
     prevLenRef.current = 0;
     fetchedIdsRef.current = new Set();
-    api.getThread(threadId).then((t) => { if (!stale) setThread(t); }).catch(() => {});
+    setThreadError(false);
+    api.getThread(threadId).then((t) => { if (!stale) setThread(t); }).catch(() => { if (!stale) setThreadError(true); });
     fetchThreadMessages(threadId);
     return () => {
       stale = true;
@@ -199,6 +201,19 @@ export default function ThreadPanel({ threadId, channelId, onClose }: Props) {
                 </span>
               </div>
               <MessageContent content={starterMessage.content} className="text-sm text-text-primary/90" />
+            </div>
+          )}
+
+          {/* Thread error */}
+          {threadError && !thread && (
+            <div className="flex flex-col items-center justify-center py-8 text-text-muted text-sm gap-2">
+              <span>Failed to load thread</span>
+              <button
+                onClick={() => { setThreadError(false); api.getThread(threadId).then(setThread).catch(() => setThreadError(true)); }}
+                className="text-primary hover:underline text-xs"
+              >
+                Retry
+              </button>
             </div>
           )}
 

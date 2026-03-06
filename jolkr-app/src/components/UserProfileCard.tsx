@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '../api/types';
 import { useAuthStore } from '../stores/auth';
@@ -195,7 +196,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
   };
 
   if (!user) {
-    return (
+    return createPortal(
       <>
         <div className="fixed inset-0 z-40" onClick={onClose} />
         <div ref={cardRef} className="fixed z-50 bg-surface rounded-lg shadow-xl border border-divider p-6 w-[300px]">
@@ -203,7 +204,8 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
             {fetchError ? 'Could not load user profile' : 'Loading...'}
           </div>
         </div>
-      </>
+      </>,
+      document.body,
     );
   }
 
@@ -211,7 +213,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
     ? new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
     : null;
 
-  return (
+  return createPortal(
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div ref={cardRef} className="fixed z-50 w-[300px]" style={{ left: anchor.x, top: anchor.y }}>
@@ -357,6 +359,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
           onCancel={() => setShowBlockConfirm(false)}
         />
       )}
-    </>
+    </>,
+    document.body,
   );
 }

@@ -40,11 +40,13 @@ export default function PollDisplay({ pollId, initialPoll }: Props) {
   }, [poll, voting]);
 
   if (loading) return (
-    <div className="mt-2 rounded-lg p-3 border border-divider max-w-[400px] space-y-2 animate-pulse">
-      <div className="h-4 bg-white/5 rounded w-2/3" />
-      <div className="h-8 bg-white/5 rounded" />
-      <div className="h-8 bg-white/5 rounded" />
-      <div className="h-3 bg-white/5 rounded w-1/4" />
+    <div className="mt-2 bg-background/50 rounded-lg p-3 border border-divider max-w-[400px] animate-pulse">
+      <div className="h-4 bg-white/5 rounded w-2/3 mb-2" />
+      <div className="space-y-1.5">
+        <div className="rounded px-3 py-1.5 border border-divider h-8 bg-white/5" />
+        <div className="rounded px-3 py-1.5 border border-divider h-8 bg-white/5" />
+      </div>
+      <div className="h-3 bg-white/5 rounded w-1/4 mt-2" />
     </div>
   );
   if (!poll) return null;

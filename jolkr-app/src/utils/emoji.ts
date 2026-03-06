@@ -10,7 +10,7 @@ export function unicodeToUnified(emoji: string): string {
   const codepoints: string[] = [];
   for (const char of emoji) {
     const cp = char.codePointAt(0);
-    if (cp !== undefined && cp !== 0xfe0f) { // skip variation selector
+    if (cp !== undefined) {
       codepoints.push(cp.toString(16));
     }
   }

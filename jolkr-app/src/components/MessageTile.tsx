@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense, memo } from 'react';
+import { useState, useRef, lazy, Suspense, memo } from 'react';
+import { createPortal } from 'react-dom';
 import type { Message, User, Reaction } from '../api/types';
 import { useAuthStore } from '../stores/auth';
 import { useMessagesStore } from '../stores/messages';
@@ -39,6 +40,8 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
+  const reactionBtnRef = useRef<HTMLButtonElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pinning, setPinning] = useState(false);
   const [editError, setEditError] = useState('');
@@ -350,7 +353,17 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
             </button>
           )}
           <button
-            onClick={() => setShowReactionPicker(!showReactionPicker)}
+            ref={reactionBtnRef}
+            onClick={() => {
+              if (!showReactionPicker && reactionBtnRef.current) {
+                const rect = reactionBtnRef.current.getBoundingClientRect();
+                setPickerPos({
+                  top: Math.min(rect.bottom + 4, window.innerHeight - 366),
+                  left: Math.min(rect.left, window.innerWidth - 316),
+                });
+              }
+              setShowReactionPicker(!showReactionPicker);
+            }}
             className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/5"
             title="Add Reaction"
             aria-label="Add Reaction"
@@ -389,10 +402,10 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
       )}
 
       {/* Reaction picker */}
-      {showReactionPicker && (
+      {showReactionPicker && pickerPos && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowReactionPicker(false)} />
-          <div className="absolute right-4 top-0 z-50">
+          <div className="fixed z-50" style={{ top: pickerPos.top, left: pickerPos.left }}>
             <Suspense fallback={<div className="w-[300px] h-[350px] bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
               <LazyEmojiPicker
                 theme={"dark" as never}
@@ -402,7 +415,8 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               />
             </Suspense>
           </div>
-        </>
+        </>,
+        document.body,
       )}
 
       {/* User profile card */}

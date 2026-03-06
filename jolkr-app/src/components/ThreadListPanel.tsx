@@ -12,14 +12,15 @@ interface Props {
 export default function ThreadListPanel({ channelId, onClose, onOpenThread }: Props) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const threadListVersion = useMessagesStore((s) => s.threadListVersion);
 
   useEffect(() => {
     setLoading(true);
     api.getThreads(channelId, showArchived)
-      .then(setThreads)
-      .catch(() => setThreads([]))
+      .then((t) => { setThreads(t); setError(false); })
+      .catch(() => { setThreads([]); setError(true); })
       .finally(() => setLoading(false));
   }, [channelId, showArchived, threadListVersion]);
 
@@ -51,7 +52,10 @@ export default function ThreadListPanel({ channelId, onClose, onOpenThread }: Pr
           {loading && (
             <div className="text-center text-text-muted text-sm py-8">Loading...</div>
           )}
-          {!loading && threads.length === 0 && (
+          {!loading && error && (
+            <div className="text-center text-error/70 text-sm py-8">Failed to load threads</div>
+          )}
+          {!loading && !error && threads.length === 0 && (
             <div className="text-center text-text-muted text-sm py-8">No threads yet.</div>
           )}
           {threads.map((thread) => (

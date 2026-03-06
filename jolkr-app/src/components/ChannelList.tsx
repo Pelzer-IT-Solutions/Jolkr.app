@@ -301,10 +301,8 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
 
       <div className="flex-1 overflow-y-auto py-2 px-2 min-h-0">
         {loading && !serverChannels.length && (
-          <div className="space-y-1.5 px-2 py-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-8 bg-white/5 rounded animate-pulse" style={{ width: `${50 + Math.random() * 40}%` }} />
-            ))}
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
           </div>
         )}
 

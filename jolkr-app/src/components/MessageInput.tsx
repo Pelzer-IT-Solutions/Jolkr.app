@@ -420,17 +420,8 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     );
   }
 
-  // Loading permissions — show skeleton input to prevent layout shift
-  if (canSend === undefined) {
-    return (
-      <div className="px-4 pb-4 shrink-0">
-        <div className="h-6" />
-        <div className="flex items-center bg-input rounded-lg px-4 py-3 opacity-40">
-          <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
-        </div>
-      </div>
-    );
-  }
+  // canSend === undefined means permissions are still loading (server channels only).
+  // Don't show a skeleton — just render the real input. DMs never set canSend so it's always undefined there.
 
   return (
     <div

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   title: string;
@@ -30,7 +31,7 @@ export default function ConfirmDialog({
     return () => window.removeEventListener('keydown', handleKey);
   }, [onCancel]);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onCancel}>
       <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[400px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-2">{title}</h3>
@@ -55,6 +56,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

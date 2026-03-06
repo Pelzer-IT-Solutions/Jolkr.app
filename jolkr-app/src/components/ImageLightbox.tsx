@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   src: string;
@@ -20,7 +21,8 @@ export default function ImageLightbox({ src, alt, onClose }: Props) {
   // Reset loaded state when src changes
   useEffect(() => { setLoaded(false); }, [src]);
 
-  return (
+  // Portal to document.body to escape transform containing blocks (virtualizer)
+  return createPortal(
     <div
       className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center cursor-zoom-out"
       onClick={onClose}
@@ -44,6 +46,7 @@ export default function ImageLightbox({ src, alt, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         onLoad={() => setLoaded(true)}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }
