@@ -6,7 +6,7 @@ import { useMessagesStore } from '../../stores/messages';
 import * as api from '../../api/client';
 import type { Message, User } from '../../api/types';
 import { useAuthStore } from '../../stores/auth';
-import { hasPermission, SEND_MESSAGES } from '../../utils/permissions';
+import { hasPermission, SEND_MESSAGES, ATTACH_FILES } from '../../utils/permissions';
 import ChannelList from '../../components/ChannelList';
 import MessageList from '../../components/MessageList';
 import MessageInput from '../../components/MessageInput';
@@ -50,6 +50,9 @@ export default function ChannelPage() {
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [memberUsers, setMemberUsers] = useState<Record<string, User>>({});
   const fetchedMemberIdsRef = useRef(new Set<string>());
+  const [isDragging, setIsDragging] = useState(false);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
+  const dragCounterRef = useRef(0);
   const { showSidebar, setShowSidebar, isMobile } = useMobileNav();
 
   // On mobile, when navigating to a channel, show content
@@ -193,6 +196,52 @@ export default function ChannelPage() {
     return hasPermission(perms, SEND_MESSAGES);
   }, [channelId, channelPermissions, isTimedOut]);
 
+  // Compute whether user can attach files
+  const canAttach = useMemo(() => {
+    if (isTimedOut) return false;
+    if (!channelId) return true;
+    const perms = channelPermissions[channelId];
+    if (perms === undefined) return undefined;
+    return hasPermission(perms, ATTACH_FILES);
+  }, [channelId, channelPermissions, isTimedOut]);
+
+  // Drag-and-drop handlers for the full chat area
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes('Files') && canAttach !== false) {
+      setIsDragging(true);
+    }
+  }, [canAttach]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (canAttach === false) return;
+    const dropped = Array.from(e.dataTransfer.files);
+    const valid = dropped.filter((f) => f.size <= 25 * 1024 * 1024);
+    if (valid.length > 0) {
+      setDroppedFiles(valid);
+    }
+  }, [canAttach]);
+
   // Global keyboard shortcuts
   useKeyboardShortcuts({
     toggleSearch: useCallback(() => setShowSearch((prev) => !prev), []),
@@ -255,7 +304,24 @@ export default function ChannelPage() {
 
       {/* Main chat area */}
       {(!isMobile || !showSidebar) && (
-        <div className="flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition">
+        <div
+          className="flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition relative"
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* Full-window drop overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
+              <div className="flex flex-col items-center gap-2">
+                <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                <span className="text-primary font-semibold text-lg">Drop files to upload</span>
+              </div>
+            </div>
+          )}
           {/* Channel header */}
           <div className="h-14 px-4 flex items-center gap-3 border-b border-divider shrink-0">
             {isMobile && (
@@ -434,7 +500,9 @@ export default function ChannelPage() {
                 onCancelReply={() => setReplyTo(null)}
                 mentionableUsers={mentionableUsers}
                 canSend={canSend}
+                canAttach={canAttach !== false}
                 slowmodeSeconds={channel?.slowmode_seconds}
+                droppedFiles={droppedFiles}
               />
             </div>
             {/* MemberList: overlay on mobile, inline on desktop */}

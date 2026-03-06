@@ -70,6 +70,9 @@ export default function DmChat() {
   const [addingMember, setAddingMember] = useState(false);
   const [actionError, setActionError] = useState('');
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
+  const dragCounterRef = useRef(0);
   const addMemberTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { setShowSidebar, isMobile } = useMobileNav();
 
@@ -253,6 +256,42 @@ export default function DmChat() {
     return names.join(', ') || 'Group DM';
   }, [isGroup, dmChannel, currentUser?.id, memberUsers]);
 
+  // Drag-and-drop handlers for the full DM chat area
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    const dropped = Array.from(e.dataTransfer.files);
+    const valid = dropped.filter((f) => f.size <= 25 * 1024 * 1024);
+    if (valid.length > 0) {
+      setDroppedFiles(valid);
+    }
+  }, []);
+
   if (!dmId) return null;
 
   const partnerStatus = otherUser ? (statuses[otherUser.id] ?? 'offline') : undefined;
@@ -266,7 +305,24 @@ export default function DmChat() {
 
   return (
     <>
-      <div className="flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition">
+      <div
+        className="flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition relative"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+          {/* Full-window drop overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
+              <div className="flex flex-col items-center gap-2">
+                <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                <span className="text-primary font-semibold text-lg">Drop files to upload</span>
+              </div>
+            </div>
+          )}
           {/* Header */}
           <div className="h-14 px-4 flex items-center gap-3 border-b border-divider shrink-0">
             {isMobile && (
@@ -332,6 +388,7 @@ export default function DmChat() {
                 replyAuthor={replyAuthor}
                 onCancelReply={() => setReplyTo(null)}
                 mentionableUsers={mentionableUsers}
+                droppedFiles={droppedFiles}
               />
             </div>
 

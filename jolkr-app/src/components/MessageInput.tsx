@@ -25,10 +25,12 @@ interface Props {
   onCancelReply?: () => void;
   mentionableUsers?: MentionableUser[];
   canSend?: boolean; // undefined = still loading perms
+  canAttach?: boolean; // false = hide file button, ignore paste/drop
   slowmodeSeconds?: number;
+  droppedFiles?: File[];
 }
 
-export default function MessageInput({ channelId, isDm, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, slowmodeSeconds }: Props) {
+export default function MessageInput({ channelId, isDm, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles }: Props) {
   const [content, setContent] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [sending, setSending] = useState(false);
@@ -39,10 +41,8 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   const [mentionIndex, setMentionIndex] = useState(0);
   const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
   const [emojiIndex, setEmojiIndex] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const [slowmodeCooldown, setSlowmodeCooldown] = useState(0);
   const slowmodeTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
-  const dragCounterRef = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,56 +67,23 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     };
   }, []);
 
-  // Drag-and-drop handlers
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current++;
-    if (e.dataTransfer.types.includes('Files')) {
-      setIsDragging(true);
+  // Merge files dropped from parent drag-and-drop overlay
+  useEffect(() => {
+    if (droppedFiles && droppedFiles.length > 0 && canAttach) {
+      setFiles((prev) => [...prev, ...droppedFiles]);
     }
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current--;
-    if (dragCounterRef.current === 0) {
-      setIsDragging(false);
-    }
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current = 0;
-    setIsDragging(false);
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    const valid = droppedFiles.filter((f) => f.size <= 25 * 1024 * 1024);
-    if (valid.length < droppedFiles.length) {
-      setSendError('Some files exceeded 25 MB limit and were skipped');
-      if (sendErrorTimerRef.current) clearTimeout(sendErrorTimerRef.current);
-      sendErrorTimerRef.current = setTimeout(() => setSendError(null), 5000);
-    }
-    if (valid.length > 0) {
-      setFiles((prev) => [...prev, ...valid]);
-    }
-  }, []);
+  }, [droppedFiles, canAttach]);
 
   // Paste-to-upload handler
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    if (!canAttach) return;
     const pastedFiles = Array.from(e.clipboardData.files);
     const valid = pastedFiles.filter((f) => f.size <= 25 * 1024 * 1024);
     if (valid.length > 0) {
       e.preventDefault();
       setFiles((prev) => [...prev, ...valid]);
     }
-  }, []);
+  }, [canAttach]);
 
   const sendMessage = useMessagesStore((s) => s.sendMessage);
   const sendDmMessage = useMessagesStore((s) => s.sendDmMessage);
@@ -427,19 +394,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   // Don't show a skeleton — just render the real input. DMs never set canSend so it's always undefined there.
 
   return (
-    <div
-      className="px-4 pb-4 shrink-0 relative"
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-    >
-      {/* Drop zone overlay */}
-      {isDragging && (
-        <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
-          <span className="text-primary font-medium text-sm">Drop files to upload</span>
-        </div>
-      )}
+    <div className="px-4 pb-4 shrink-0 relative">
       {/* Mention autocomplete */}
       {mentionQuery !== null && mentionMatches.length > 0 && (
         <div className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-lg shadow-lg py-1 max-h-[200px] overflow-y-auto z-50">
@@ -550,13 +505,15 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         ) : null}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={handleFileSelect}
-      />
+      {canAttach && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+      )}
 
       {/* Formatting toolbar */}
       <div className="flex items-center gap-0.5 mb-1">
@@ -581,16 +538,18 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       </div>
 
       <div className="flex items-center gap-2 bg-input rounded-lg px-4 py-2">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="text-text-muted hover:text-text-primary py-1"
-          title="Attach file"
-          aria-label="Attach file"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
+        {canAttach && (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-text-muted hover:text-text-primary py-1"
+            title="Attach file"
+            aria-label="Attach file"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        )}
 
         <button
           onMouseDown={(e) => e.preventDefault()}
