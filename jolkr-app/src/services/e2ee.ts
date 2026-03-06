@@ -7,7 +7,6 @@ import {
   fromBase64,
 } from '../crypto';
 import { saveKeySet, loadKeySet, clearKeySet } from '../crypto/keyStore';
-import { clearAllChannelKeys } from '../crypto/channelKeys';
 import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
@@ -165,7 +164,6 @@ export function invalidateBundle(userId: string): void {
 export async function resetE2EE(): Promise<void> {
   localKeys = null;
   bundleCache.clear();
-  clearAllChannelKeys();
   await clearKeySet();
   // Clear upload flag and device ID so next login re-generates fresh keys
   await storage.remove('e2ee_keys_uploaded');

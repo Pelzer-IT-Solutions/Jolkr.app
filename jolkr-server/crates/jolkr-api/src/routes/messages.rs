@@ -74,7 +74,11 @@ pub async fn send_message(
     // Only notify members who have VIEW_CHANNELS permission for this channel
     let push = state.push.clone();
     let pool = state.pool.clone();
-    let msg_content = message.content.clone();
+    let msg_content = if message.encrypted_content.is_some() {
+        Some("Sent an encrypted message".to_string())
+    } else {
+        message.content.clone()
+    };
     let msg_id = message.id;
     let author_id = auth.user_id;
     tokio::spawn(async move {

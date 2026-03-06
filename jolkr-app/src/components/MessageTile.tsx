@@ -50,7 +50,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null);
 
   const { displayContent, isEncrypted } = useDecryptedContent(
-    message.content, message.encrypted_content, message.nonce, isDm, message.channel_id,
+    message.content, message.encrypted_content, message.nonce, isDm,
   );
 
   // Use reactions directly from store (message.reactions)

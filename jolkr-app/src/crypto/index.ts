@@ -23,6 +23,7 @@ export {
   decryptMessage,
   toBase64,
   fromBase64,
+  generateSafetyNumber,
 } from './keys';
 
 export {
@@ -42,11 +43,3 @@ export {
   hasKeySet,
 } from './keyStore';
 
-export {
-  encryptChannelMessage,
-  decryptChannelMessage,
-  getChannelKey,
-  generateAndDistributeChannelKey,
-  invalidateChannelKey,
-  clearAllChannelKeys,
-} from './channelKeys';

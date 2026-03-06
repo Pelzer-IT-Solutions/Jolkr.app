@@ -29,7 +29,7 @@ function invalidateDmsCache() {
   dmsCacheData = null;
 }
 
-function CallButton({ dmId, recipientName }: { dmId: string; recipientName: string }) {
+function CallButton({ dmId, recipientName, recipientUserId }: { dmId: string; recipientName: string; recipientUserId?: string }) {
   const startCall = useCallStore((s) => s.startCall);
   const activeCallDmId = useCallStore((s) => s.activeCallDmId);
   const outgoingCall = useCallStore((s) => s.outgoingCall);
@@ -40,7 +40,7 @@ function CallButton({ dmId, recipientName }: { dmId: string; recipientName: stri
 
   return (
     <button
-      onClick={() => startCall(dmId, recipientName)}
+      onClick={() => startCall(dmId, recipientName, recipientUserId)}
       disabled={inCall}
       className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
       title={inCall ? 'Already in a call' : 'Start voice call'}
@@ -312,7 +312,7 @@ export default function DmChat() {
                   </svg>
                 )}
                 <div className="flex-1" />
-                <CallButton dmId={dmId!} recipientName={otherUser?.username ?? 'User'} />
+                <CallButton dmId={dmId!} recipientName={otherUser?.username ?? 'User'} recipientUserId={otherUser?.id} />
               </>
             )}
           </div>

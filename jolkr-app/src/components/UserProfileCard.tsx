@@ -7,6 +7,8 @@ import { usePresenceStore } from '../stores/presence';
 import * as api from '../api/client';
 import Avatar from './Avatar';
 import ConfirmDialog from './dialogs/ConfirmDialog';
+import { getLocalKeys, getRecipientBundle } from '../services/e2ee';
+import { generateSafetyNumber } from '../crypto';
 
 // Module-level cache for friendship data (avoids re-fetching on every card open)
 let friendsCacheData: Awaited<ReturnType<typeof api.getFriends>> | null = null;
@@ -71,6 +73,8 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [safetyNumber, setSafetyNumber] = useState<string | null>(null);
+  const [showSafetyNumber, setShowSafetyNumber] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const isOwnProfile = currentUser?.id === userId;
@@ -106,6 +110,21 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
         setFriendStatus('none');
       }
     }).catch(() => { if (!cancelled) setFriendStatus('none'); });
+    return () => { cancelled = true; };
+  }, [userId, isOwnProfile]);
+
+  // Compute safety number for non-self profiles
+  useEffect(() => {
+    if (isOwnProfile) return;
+    let cancelled = false;
+    (async () => {
+      const local = getLocalKeys();
+      if (!local) return;
+      const bundle = await getRecipientBundle(userId);
+      if (!bundle || cancelled) return;
+      const sn = await generateSafetyNumber(local.identity.publicKey, bundle.identityKey);
+      if (!cancelled) setSafetyNumber(sn);
+    })();
     return () => { cancelled = true; };
   }, [userId, isOwnProfile]);
 
@@ -260,6 +279,27 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
               <div>
                 <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">Member Since</div>
                 <div className="text-text-secondary text-sm">{joinedDate}</div>
+              </div>
+            )}
+            {!isOwnProfile && safetyNumber && (
+              <div className="mt-3">
+                <button
+                  onClick={() => setShowSafetyNumber((v) => !v)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-text-muted uppercase tracking-wider hover:text-text-secondary"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Safety Number
+                  <svg className={`w-3 h-3 transition-transform ${showSafetyNumber ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showSafetyNumber && (
+                  <div className="mt-2 p-2 bg-bg rounded text-[11px] font-mono text-text-secondary leading-relaxed tracking-widest select-all break-all">
+                    {safetyNumber}
+                  </div>
+                )}
               </div>
             )}
           </div>

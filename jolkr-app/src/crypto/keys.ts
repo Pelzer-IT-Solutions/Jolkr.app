@@ -213,6 +213,53 @@ export async function decryptMessage(
   return new TextDecoder().decode(decrypted);
 }
 
+// ── Safety numbers ──────────────────────────────────────────────────
+
+/**
+ * Generate a safety number from two users' identity public keys.
+ * SHA-256(sorted(keyA || keyB)) → formatted as groups of 5 digits.
+ * Both users computing this independently will get the same result.
+ */
+export async function generateSafetyNumber(
+  localIdentityKey: Uint8Array,
+  remoteIdentityKey: Uint8Array,
+): Promise<string> {
+  // Sort keys lexicographically so both sides produce the same hash
+  const cmp = compareBytes(localIdentityKey, remoteIdentityKey);
+  const first = cmp <= 0 ? localIdentityKey : remoteIdentityKey;
+  const second = cmp <= 0 ? remoteIdentityKey : localIdentityKey;
+
+  const combined = new Uint8Array(first.length + second.length);
+  combined.set(first);
+  combined.set(second, first.length);
+
+  const hash = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', toArrayBuffer(combined)),
+  );
+
+  // Convert to decimal digits: each byte → 3-digit number (mod 1000), take first 60 digits
+  let digits = '';
+  for (let i = 0; i < hash.length && digits.length < 60; i++) {
+    digits += hash[i].toString().padStart(3, '0');
+  }
+  digits = digits.slice(0, 60);
+
+  // Format as 12 groups of 5 digits
+  const groups: string[] = [];
+  for (let i = 0; i < 60; i += 5) {
+    groups.push(digits.slice(i, i + 5));
+  }
+  return groups.join(' ');
+}
+
+function compareBytes(a: Uint8Array, b: Uint8Array): number {
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return a.length - b.length;
+}
+
 // ── Base64 helpers ─────────────────────────────────────────────────
 
 export function toBase64(data: Uint8Array): string {

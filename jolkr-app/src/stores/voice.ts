@@ -13,7 +13,7 @@ interface VoiceState {
   isDeafened: boolean;
   participants: VoiceParticipant[];
   error: string | null;
-  joinChannel: (channelId: string, serverId: string | null, channelName: string) => Promise<void>;
+  joinChannel: (channelId: string, serverId: string | null, channelName: string, recipientUserId?: string) => Promise<void>;
   leaveChannel: () => Promise<void>;
   toggleMute: () => void;
   toggleDeafen: () => void;
@@ -60,7 +60,7 @@ export const useVoiceStore = create<VoiceState>((set) => ({
   participants: [],
   error: null,
 
-  joinChannel: async (channelId, serverId, channelName) => {
+  joinChannel: async (channelId, serverId, channelName, recipientUserId) => {
     set({ error: null });
     const token = getAccessToken();
     if (!token) {
@@ -72,23 +72,24 @@ export const useVoiceStore = create<VoiceState>((set) => ({
       await svc.joinChannel(channelId, token);
       set({ channelId, serverId, channelName });
 
-      // Voice E2EE: try to get the channel's shared key and enable frame encryption
-      try {
-        const { isE2EEReady, getLocalKeys } = await import('../services/e2ee');
-        if (isE2EEReady()) {
-          const localKeys = getLocalKeys();
-          if (localKeys) {
-            const { getChannelKey } = await import('../crypto/channelKeys');
-            const isDm = !serverId;
-            const channelKey = await getChannelKey(channelId, localKeys, isDm);
-            if (channelKey) {
-              const rawBytes = await crypto.subtle.exportKey('raw', channelKey.key);
-              svc.setVoiceKey(new Uint8Array(rawBytes));
+      // Voice E2EE for DM calls: pairwise X25519 DH shared key
+      if (recipientUserId) {
+        try {
+          const { isE2EEReady, getLocalKeys, getRecipientBundle } = await import('../services/e2ee');
+          const { x25519KeyAgreement, deriveMessageKey } = await import('../crypto/keys');
+          if (isE2EEReady()) {
+            const localKeys = getLocalKeys();
+            const bundle = await getRecipientBundle(recipientUserId);
+            if (localKeys && bundle) {
+              const shared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, bundle.signedPrekey);
+              const aesKey = await deriveMessageKey(shared);
+              const rawBytes = new Uint8Array(await crypto.subtle.exportKey('raw', aesKey));
+              svc.setVoiceKey(rawBytes);
             }
           }
+        } catch {
+          // E2EE not available — voice continues unencrypted
         }
-      } catch {
-        // E2EE not available for voice — voice continues unencrypted
       }
     } catch (e) {
       set({

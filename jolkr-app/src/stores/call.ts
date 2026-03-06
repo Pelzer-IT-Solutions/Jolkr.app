@@ -12,6 +12,7 @@ interface IncomingCall {
 interface OutgoingCall {
   dmId: string;
   recipientName: string;
+  recipientUserId?: string;
 }
 
 interface CallState {
@@ -19,7 +20,7 @@ interface CallState {
   outgoingCall: OutgoingCall | null;
   activeCallDmId: string | null;
 
-  startCall: (dmId: string, recipientName: string) => Promise<void>;
+  startCall: (dmId: string, recipientName: string, recipientUserId?: string) => Promise<void>;
   acceptIncoming: () => Promise<void>;
   rejectIncoming: () => Promise<void>;
   cancelOutgoing: () => Promise<void>;
@@ -49,13 +50,13 @@ export const useCallStore = create<CallState>((set, get) => ({
   outgoingCall: null,
   activeCallDmId: null,
 
-  startCall: async (dmId, recipientName) => {
+  startCall: async (dmId, recipientName, recipientUserId) => {
     const { activeCallDmId, outgoingCall, incomingCall } = get();
     if (activeCallDmId || outgoingCall || incomingCall) return;
 
     try {
       await api.initiateCall(dmId);
-      set({ outgoingCall: { dmId, recipientName } });
+      set({ outgoingCall: { dmId, recipientName, recipientUserId } });
 
       // Auto-cancel after 60s if no answer
       clearRingTimer();
@@ -85,7 +86,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       set({ activeCallDmId: dmId });
 
       // Join voice channel (dmId as channelId, serverId=null for DM calls)
-      await useVoiceStore.getState().joinChannel(dmId, null, callerUsername);
+      await useVoiceStore.getState().joinChannel(dmId, null, callerUsername, incomingCall.callerId);
     } catch (e) {
       console.warn('Failed to accept call:', e);
       set({ incomingCall: null, activeCallDmId: null });
@@ -158,11 +159,11 @@ export const useCallStore = create<CallState>((set, get) => ({
     if (!outgoingCall || outgoingCall.dmId !== dmId) return;
 
     clearRingTimer();
-    const { recipientName } = outgoingCall;
+    const { recipientName, recipientUserId } = outgoingCall;
     set({ outgoingCall: null, activeCallDmId: dmId });
 
     // Join voice channel
-    useVoiceStore.getState().joinChannel(dmId, null, recipientName).catch((e) => {
+    useVoiceStore.getState().joinChannel(dmId, null, recipientName, recipientUserId).catch((e) => {
       console.warn('Failed to join voice after call accepted:', e);
       set({ activeCallDmId: null });
     });

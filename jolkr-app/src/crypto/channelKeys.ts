@@ -65,8 +65,8 @@ export async function getChannelKey(
       channelKeyCache.set(channelId, entry);
       return entry;
     }
-  } catch {
-    // No key on server or decrypt failed
+  } catch (e) {
+    console.warn('Channel E2EE: Failed to fetch/decrypt channel key:', e);
   }
 
   return null;

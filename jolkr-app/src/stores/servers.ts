@@ -300,15 +300,6 @@ wsClient.on((op, d) => {
       useServersStore.setState({
         members: { ...store.members, [serverId]: current.filter((m) => m.user_id !== userId) },
       });
-      // Invalidate channel E2EE keys for all channels in this server (rekey needed)
-      const serverChannels = store.channels[serverId] ?? [];
-      if (serverChannels.length > 0) {
-        import('../crypto/channelKeys').then(({ invalidateChannelKey }) => {
-          for (const ch of serverChannels) {
-            invalidateChannelKey(ch.id);
-          }
-        });
-      }
       break;
     }
     case 'MemberUpdate': {

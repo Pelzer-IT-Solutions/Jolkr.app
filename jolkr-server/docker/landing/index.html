@@ -7,7 +7,7 @@
   <title>Jolkr - Private Chat, No Jokes</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
-  <meta name="description" content="Privacy-first chat with end-to-end encryption. Best Discord alternative">
+  <meta name="description" content="Privacy-first chat with quantum-proof end-to-end encryption. Hybrid X25519 + ML-KEM-768 protects your messages today and against future quantum computers.">
   <meta name="theme-color" content="#7C3AED">
   <style>
     *,
@@ -304,8 +304,8 @@
     <h1>Chat freely. Stay private.</h1>
 
     <p>
-      Jolkr is a privacy-first chat platform with end-to-end encryption,
-      voice channels, and everything you need - without the surveillance.
+      Jolkr is a privacy-first chat platform with quantum-proof end-to-end encrypted DMs
+      and voice calls, and everything you need &mdash; without the surveillance.
     </p>
 
     <div class="btn-group">
@@ -328,19 +328,34 @@
 
     <div class="features">
       <div class="feature">
+        <div class="feature-icon">&#x1F6E1;</div>
+        <h3>Quantum-Proof Encryption</h3>
+        <p>Hybrid X25519 + ML-KEM-768 key exchange with AES-256-GCM. Protected against both classical and future quantum attacks.</p>
+      </div>
+      <div class="feature">
         <div class="feature-icon">&#x1F510;</div>
-        <h3>End-to-End Encrypted</h3>
-        <p>Messages are encrypted with X25519 + AES-256-GCM. Only you and your recipients can read them.</p>
+        <h3>Encrypted DMs &amp; Voice</h3>
+        <p>Direct messages and voice calls are end-to-end encrypted. The server never sees your private conversations.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">&#x1F399;</div>
-        <h3>Voice &amp; Video</h3>
-        <p>Crystal-clear WebRTC voice and video channels powered by a custom SFU media server.</p>
+        <h3>Encrypted Voice</h3>
+        <p>WebRTC voice channels with per-frame AES-256-GCM encryption. Crystal-clear audio, completely private.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">&#x2705;</div>
+        <h3>Key Verification</h3>
+        <p>Verify contacts with safety numbers. Compare fingerprints to ensure nobody is intercepting your messages.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">&#x26A1;</div>
         <h3>Blazing Fast</h3>
         <p>Built with Rust on the backend. Real-time messaging via WebSocket and NATS event bus.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">&#x1F4F1;</div>
+        <h3>Multi-Platform</h3>
+        <p>Windows, macOS, Linux, Android, and web. Your encrypted conversations sync across all your devices.</p>
       </div>
     </div>
   </main>

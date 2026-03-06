@@ -323,10 +323,10 @@ export const getMessages = (channelId: string, limit = 50, before?: string) => {
   if (before) path += `&before=${before}`;
   return request<Message[]>(path, {}, 'messages');
 };
-export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string, encrypted_content?: string) =>
+export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string) =>
   request<Message>(`/channels/${channelId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ content, encrypted_content, nonce, reply_to_id }),
+    body: JSON.stringify({ content, nonce, reply_to_id }),
   }, 'message');
 export const editMessage = (messageId: string, content: string) =>
   request<Message>(`/messages/${messageId}`, {
