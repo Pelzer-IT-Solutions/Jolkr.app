@@ -61,6 +61,7 @@ dist-tauri/
 # Signing keys (private key — NEVER commit)
 # -----------------------------------------------------------------------------
 keys/jolkr-update.key
+keys/android-keystore.jks
 
 # -----------------------------------------------------------------------------
 # Cargo workaround (ESET Controlled Folder Access)
