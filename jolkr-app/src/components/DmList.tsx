@@ -57,6 +57,16 @@ export default function DmList({ onDmSelect }: Props) {
       setFetchError(false);
       setDms(channels);
       cachedDms = channels;
+      // Query presence for all DM partners
+      const otherMemberIds = channels
+        .filter((ch) => !ch.is_group)
+        .flatMap((ch) => ch.members.filter((id) => id !== currentUser?.id));
+      const uniqueIds = [...new Set(otherMemberIds)];
+      if (uniqueIds.length > 0) {
+        api.queryPresence(uniqueIds).then((result) => {
+          usePresenceStore.getState().setBulk(result);
+        }).catch(() => {});
+      }
       // Batch fetch user info for DM participants
       const idsToFetch: string[] = [];
       channels.forEach((ch) => ch.members.forEach((id) => {
