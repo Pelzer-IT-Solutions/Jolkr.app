@@ -67,10 +67,16 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     };
   }, []);
 
+  // Auto-focus textarea on channel/DM switch
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [channelId]);
+
   // Merge files dropped from parent drag-and-drop overlay
   useEffect(() => {
     if (droppedFiles && droppedFiles.length > 0 && canAttach) {
       setFiles((prev) => [...prev, ...droppedFiles]);
+      inputRef.current?.focus();
     }
   }, [droppedFiles, canAttach]);
 
@@ -471,7 +477,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* File preview bar */}
       {files.length > 0 && (
-        <div className="flex gap-2 mb-2 flex-wrap">
+        <div className="flex gap-2 mb-1 flex-wrap">
           {files.map((file, i) => (
             <div key={i} className="flex items-center gap-2 bg-input rounded-lg px-3 py-1.5 text-sm">
               <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -490,7 +496,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       )}
 
       {/* Fixed-height status area — prevents layout shift when messages appear/disappear */}
-      <div className="h-4 mb-0.5 flex items-center">
+      <div className="h-3 mb-0.5 flex items-center">
         {slowmodeCooldown > 0 ? (
           <div className="text-[11px] text-warning flex items-center gap-1">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

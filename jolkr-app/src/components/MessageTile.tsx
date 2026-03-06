@@ -52,6 +52,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
   const { displayContent, isEncrypted } = useDecryptedContent(
     message.content, message.encrypted_content, message.nonce, isDm,
   );
+  const hasText = !!displayContent && displayContent.trim().length > 0 && displayContent !== '\u200B';
 
   // Use reactions directly from store (message.reactions)
   const reactions = message.reactions ?? [];
@@ -213,13 +214,13 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               Enter to save &middot; Shift+Enter for new line &middot; Escape to cancel
             </div>
           </div>
-        ) : (
+        ) : hasText ? (
           <MessageContent content={displayContent} className="text-sm text-text-primary/90 break-words" />
-        )}
+        ) : null}
 
         {/* Attachments */}
         {(message.attachments ?? []).length > 0 && (
-          <div className="mt-2 flex flex-col gap-2">
+          <div className={`${hasText ? 'mt-2' : ''} flex flex-col gap-2`}>
             {(message.attachments ?? []).map((att) => {
               const attUrl = rewriteStorageUrl(att.url) ?? att.url;
               return isImage(att.content_type) ? (
