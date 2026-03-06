@@ -126,7 +126,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
     }
   };
 
-  const isImage = (ct: string) => ct.startsWith('image/');
+  const isImage = (ct: string) => ct.startsWith('image/') && ct !== 'image/svg+xml';
 
   return (
     <div
@@ -477,6 +477,8 @@ function AttachmentImage({ src, alt, onOpen }: { src: string; alt: string; onOpe
       <img
         src={src}
         alt={alt}
+        crossOrigin="anonymous"
+        referrerPolicy="no-referrer"
         className={`max-w-[400px] max-h-[300px] rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         onClick={onOpen}
         loading="lazy"
