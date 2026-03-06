@@ -338,7 +338,7 @@ export default function DmChat() {
               <div className={`${
                 isMobile
                   ? 'fixed inset-y-0 right-0 w-[80vw] max-w-[300px] z-40 shadow-xl animate-slide-in-right'
-                  : 'w-[240px] shrink-0 h-full overflow-hidden'
+                  : 'w-[240px] shrink-0 h-full overflow-hidden animate-fade-in'
               } bg-sidebar border-l border-divider flex flex-col`}>
                 <div className="p-3 border-b border-divider">
                   <h3 className="text-text-primary text-sm font-semibold">

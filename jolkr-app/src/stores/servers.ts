@@ -313,14 +313,22 @@ wsClient.on((op, d) => {
       if ('timeout_until' in d) updates.timeout_until = d.timeout_until as string | null;
       if ('nickname' in d) updates.nickname = d.nickname as string | null;
       if ('role_ids' in d) updates.role_ids = d.role_ids as string[];
-      useServersStore.setState({
+      const stateUpdate: Record<string, unknown> = {
         members: {
           ...store.members,
           [serverId]: current.map((m) =>
             m.user_id === userId ? { ...m, ...updates } : m
           ),
         },
-      });
+      };
+      // Invalidate permission caches when roles change so UI recomputes permissions
+      if ('role_ids' in d) {
+        const { [serverId]: _p, ...restPerms } = store.permissions;
+        const { [serverId]: _cp, ...restChanPerms } = store.channelPermissions;
+        stateUpdate.permissions = restPerms;
+        stateUpdate.channelPermissions = restChanPerms;
+      }
+      useServersStore.setState(stateUpdate);
       break;
     }
     case 'ServerUpdate': {

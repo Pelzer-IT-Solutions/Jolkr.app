@@ -408,12 +408,25 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     }
   };
 
-  // Disabled state: no permission to send (canSend === false means denied, undefined means still loading for DM channels default to true)
+  // Disabled state: no permission to send
   if (canSend === false) {
     return (
       <div className="px-4 pb-4 shrink-0">
+        <div className="h-6" />
         <div className="flex items-center bg-input rounded-lg px-4 py-3 opacity-60">
           <span className="text-text-muted text-sm">You do not have permission to send messages in this channel</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading permissions — show skeleton input to prevent layout shift
+  if (canSend === undefined) {
+    return (
+      <div className="px-4 pb-4 shrink-0">
+        <div className="h-6" />
+        <div className="flex items-center bg-input rounded-lg px-4 py-3 opacity-40">
+          <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
         </div>
       </div>
     );
@@ -527,22 +540,21 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         </div>
       )}
 
-      {slowmodeCooldown > 0 && (
-        <div className="text-[11px] text-warning mb-1 flex items-center gap-1">
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Slowmode: {slowmodeCooldown}s remaining
-        </div>
-      )}
-
-      {sendError && (
-        <div className="text-[11px] text-error mb-1">{sendError}</div>
-      )}
-
-      {uploading && (
-        <div className="text-[11px] text-text-muted mb-1">Uploading files...</div>
-      )}
+      {/* Fixed-height status area — prevents layout shift when messages appear/disappear */}
+      <div className="h-4 mb-0.5 flex items-center">
+        {slowmodeCooldown > 0 ? (
+          <div className="text-[11px] text-warning flex items-center gap-1">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Slowmode: {slowmodeCooldown}s remaining
+          </div>
+        ) : sendError ? (
+          <div className="text-[11px] text-error">{sendError}</div>
+        ) : uploading ? (
+          <div className="text-[11px] text-text-muted">Uploading files...</div>
+        ) : null}
+      </div>
 
       <input
         ref={fileInputRef}

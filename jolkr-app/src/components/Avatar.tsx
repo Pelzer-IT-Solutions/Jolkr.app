@@ -30,8 +30,11 @@ export default function Avatar({ url, name, size = 40, status }: AvatarProps) {
         <img
           src={resolvedUrl}
           alt={name}
+          width={size}
+          height={size}
           className="rounded-full object-cover"
           style={{ width: size, height: size }}
+          loading="lazy"
         />
       ) : (
         <div

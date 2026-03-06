@@ -35,12 +35,12 @@ export default function ImageLightbox({ src, alt, onClose }: Props) {
         </svg>
       </button>
       {!loaded && (
-        <div className="absolute text-white/50 text-sm">Loading...</div>
+        <div className="w-16 h-16 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
       )}
       <img
         src={src}
         alt={alt ?? ''}
-        className={`max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl transition-opacity ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0 absolute'}`}
         onClick={(e) => e.stopPropagation()}
         onLoad={() => setLoaded(true)}
       />

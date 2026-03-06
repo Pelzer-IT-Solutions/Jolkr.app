@@ -33,8 +33,8 @@ export default function JoinServerDialog({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[440px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[440px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Join a Server</h3>
         {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
 

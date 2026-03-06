@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { MessageEmbed } from '../api/types';
 
 interface LinkEmbedProps {
@@ -6,6 +7,8 @@ interface LinkEmbedProps {
 
 export default function LinkEmbed({ embed }: LinkEmbedProps) {
   const borderColor = embed.color || '#5865F2';
+  const [imgErrored, setImgErrored] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
     <a
@@ -30,16 +33,20 @@ export default function LinkEmbed({ embed }: LinkEmbedProps) {
           </div>
         )}
       </div>
-      {embed.image_url && (
-        <img
-          src={embed.image_url}
-          alt=""
-          className="w-full max-h-[200px] object-cover"
-          loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
+      {embed.image_url && !imgErrored && (
+        <div className="relative aspect-video max-h-[200px] overflow-hidden">
+          {!imgLoaded && (
+            <div className="absolute inset-0 bg-white/5 animate-pulse" />
+          )}
+          <img
+            src={embed.image_url}
+            alt=""
+            className={`w-full h-full object-cover transition-opacity duration-200 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            loading="lazy"
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgErrored(true)}
+          />
+        </div>
       )}
     </a>
   );

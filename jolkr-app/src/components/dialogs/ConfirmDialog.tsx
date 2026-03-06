@@ -31,8 +31,8 @@ export default function ConfirmDialog({
   }, [onCancel]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onCancel}>
-      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[400px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onCancel}>
+      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[400px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-2">{title}</h3>
         <p className="text-text-secondary text-sm mb-6">{message}</p>
         <div className="flex justify-end gap-2">

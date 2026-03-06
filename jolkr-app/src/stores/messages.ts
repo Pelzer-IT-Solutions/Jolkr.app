@@ -102,8 +102,12 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   fetchMessages: async (channelId, isDm) => {
     const hasCached = (get().messages[channelId]?.length ?? 0) > 0;
-    // Only show loading spinner if there's no cached data (stale-while-revalidate)
-    if (!hasCached) {
+    if (hasCached) {
+      // Ensure loading is explicitly false for cached channels (stale-while-revalidate)
+      if (get().loading[channelId]) {
+        set({ loading: { ...get().loading, [channelId]: false } });
+      }
+    } else {
       set({ loading: { ...get().loading, [channelId]: true } });
     }
     try {

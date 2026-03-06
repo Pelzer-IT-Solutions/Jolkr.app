@@ -80,8 +80,7 @@ export default function Register() {
               minLength={6}
               className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
             />
-            {password.length > 0 && (
-              <div className="mt-1.5 flex items-center gap-2">
+            <div className={`mt-1.5 flex items-center gap-2 transition-opacity duration-150 ${password.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <div className="flex-1 flex gap-1">
                   {[1, 2, 3, 4].map((i) => {
                     const strength = (password.length >= 6 ? 1 : 0) + (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0);
@@ -92,8 +91,7 @@ export default function Register() {
                 <span className="text-[10px] text-text-muted">
                   {password.length < 6 ? 'Too short' : (() => { const s = (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0); return s <= 0 ? 'Weak' : s <= 1 ? 'Fair' : s <= 2 ? 'Good' : 'Strong'; })()}
                 </span>
-              </div>
-            )}
+            </div>
           </div>
           <button
             type="submit"

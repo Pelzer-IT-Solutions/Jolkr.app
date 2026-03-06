@@ -47,8 +47,8 @@ export default function ServerSettingsDialog({ server, onClose }: Props) {
   if (canManageServer) tabs.push('audit-log');
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg w-[560px] max-w-[95vw] max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg w-[560px] max-w-[95vw] max-h-[85vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         {/* Tabs */}
         <div className="flex border-b border-divider shrink-0">
           <div className="flex-1 flex overflow-x-auto">

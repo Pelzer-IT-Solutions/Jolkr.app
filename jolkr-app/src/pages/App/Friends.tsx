@@ -171,7 +171,17 @@ export default function Friends() {
               </div>
             )}
             {friendsLoading && friends.length === 0 && pending.length === 0 && (
-              <div className="text-center text-text-muted py-8">Loading friends...</div>
+              <div className="space-y-2 py-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2 animate-pulse">
+                    <div className="w-9 h-9 rounded-full bg-white/5 shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 bg-white/5 rounded w-24" />
+                      <div className="h-2.5 bg-white/5 rounded w-16" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
 
             {tab === 'all' && (

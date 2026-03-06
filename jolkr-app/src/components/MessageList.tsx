@@ -30,6 +30,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const canLoadMore = useMessagesStore((s) => s.hasMore[channelId]);
   const typingUsers = usePresenceStore((s) => s.typing[channelId]) ?? EMPTY_TYPING;
   const currentUser = useAuthStore((s) => s.user);
+  const notYetFetched = channelMessages === undefined;
   const allMsgs = channelMessages ?? EMPTY_MSGS;
   const msgs = searchResults
     ? searchResults
@@ -55,6 +56,8 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   useEffect(() => {
     prevLenRef.current = 0;
     initialScrollDoneRef.current = false;
+    // Reset scroll position to prevent old channel's offset leaking into new channel
+    containerRef.current?.scrollTo(0, 0);
     fetchMessages(channelId, isDm);
     wsClient.subscribe(channelId);
     return () => { wsClient.unsubscribe(channelId); };
@@ -137,9 +140,21 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   return (
     <div className="flex flex-col h-full relative min-h-0">
       <div ref={containerRef} className="flex-1 overflow-y-auto min-h-0" onScroll={handleScroll}>
-        {(isLoading || searchLoading) && msgs.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-text-muted">
-            {searchLoading ? 'Searching...' : 'Loading messages...'}
+        {((isLoading || searchLoading) && msgs.length === 0) || (notYetFetched && !search && !searchResults) ? (
+          <div className="flex flex-col gap-3 p-4">
+            {searchLoading ? (
+              <div className="flex items-center justify-center h-full text-text-muted">Searching...</div>
+            ) : (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex gap-3 animate-pulse">
+                  <div className="w-10 h-10 rounded-full bg-white/5 shrink-0" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <div className="h-3 bg-white/5 rounded w-24" />
+                    <div className="h-3 bg-white/5 rounded" style={{ width: `${40 + Math.random() * 50}%` }} />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         ) : msgs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-muted">
@@ -209,21 +224,23 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         </button>
       )}
 
-      {otherTyping.length > 0 && (
-        <div className="px-4 py-1 text-[11px] text-text-muted shrink-0">
-          <span className="inline-flex gap-0.5 mr-1">
-            <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
-            <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
-            <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
-          </span>
-          {(() => {
-            const names = otherTyping.map((id) => users[id]?.username ?? 'Someone');
-            if (names.length === 1) return `${names[0]} is typing...`;
-            if (names.length === 2) return `${names[0]} and ${names[1]} are typing...`;
-            return `${names[0]} and ${names.length - 1} others are typing...`;
-          })()}
-        </div>
-      )}
+      <div className={`px-4 h-6 text-[11px] text-text-muted shrink-0 transition-opacity duration-150 ${otherTyping.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        {otherTyping.length > 0 && (
+          <>
+            <span className="inline-flex gap-0.5 mr-1">
+              <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+              <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+              <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+            </span>
+            {(() => {
+              const names = otherTyping.map((id) => users[id]?.username ?? 'Someone');
+              if (names.length === 1) return `${names[0]} is typing...`;
+              if (names.length === 2) return `${names[0]} and ${names[1]} are typing...`;
+              return `${names[0]} and ${names.length - 1} others are typing...`;
+            })()}
+          </>
+        )}
+      </div>
     </div>
   );
 }

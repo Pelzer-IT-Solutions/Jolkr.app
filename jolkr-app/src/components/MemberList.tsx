@@ -362,7 +362,14 @@ export default function MemberList({ serverId, className }: Props) {
       )}
 
       {!loadError && online.length === 0 && offline.length === 0 && (
-        <div className="px-4 py-6 text-center text-text-muted text-sm">No members found</div>
+        <div className="px-4 py-4 space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2 py-1.5 animate-pulse">
+              <div className="w-8 h-8 rounded-full bg-white/5 shrink-0" />
+              <div className="h-3 bg-white/5 rounded" style={{ width: `${40 + Math.random() * 40}%` }} />
+            </div>
+          ))}
+        </div>
       )}
 
       {profileTarget && (

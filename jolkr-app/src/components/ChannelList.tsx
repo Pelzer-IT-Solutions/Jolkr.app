@@ -246,7 +246,7 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
         {showDropdown && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
-            <div ref={dropdownRef} role="menu" className="absolute left-2 right-2 top-12 z-50 bg-surface border border-divider rounded-lg shadow-lg py-1">
+            <div ref={dropdownRef} role="menu" className="absolute left-2 right-2 top-12 z-50 bg-surface border border-divider rounded-lg shadow-lg py-1 animate-dropdown-enter">
               {canAccessSettings && (
                 <button
                   role="menuitem"
@@ -301,7 +301,11 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
 
       <div className="flex-1 overflow-y-auto py-2 px-2 min-h-0">
         {loading && !serverChannels.length && (
-          <div className="px-2 py-4 text-center text-text-muted text-sm">Loading channels...</div>
+          <div className="space-y-1.5 px-2 py-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-8 bg-white/5 rounded animate-pulse" style={{ width: `${50 + Math.random() * 40}%` }} />
+            ))}
+          </div>
         )}
 
         {error && (
@@ -415,7 +419,7 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setCategoryMenu(null)} />
           <div
-            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-[160px]"
+            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-[160px] animate-dropdown-enter"
             style={{ left: categoryMenu.x, top: categoryMenu.y }}
           >
             <button
@@ -447,7 +451,7 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setChannelMenu(null)} />
           <div
-            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-[160px]"
+            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-[160px] animate-dropdown-enter"
             style={{ left: channelMenu.x, top: channelMenu.y }}
           >
             <button
@@ -477,8 +481,8 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
 
       {/* Edit category dialog */}
       {editCategoryId && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setEditCategoryId(null)}>
-          <div className="bg-surface rounded-lg p-6 w-[400px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditCategoryId(null)}>
+          <div className="bg-surface rounded-lg p-6 w-[400px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-text-primary text-lg font-semibold mb-4">Edit Category</h3>
             <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Category Name</label>
             <input
@@ -764,8 +768,8 @@ function CreateChannelDialog({ serverId, categories, defaultCategoryId, onClose 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-surface rounded-lg p-6 w-[440px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div className="bg-surface rounded-lg p-6 w-[440px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Channel</h3>
         {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
 
@@ -850,8 +854,8 @@ function CreateCategoryDialog({ serverId, onClose }: { serverId: string; onClose
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-surface rounded-lg p-6 w-[440px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div className="bg-surface rounded-lg p-6 w-[440px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Category</h3>
         {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
 

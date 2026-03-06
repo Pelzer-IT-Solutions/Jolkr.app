@@ -376,8 +376,8 @@ export default function ChannelPage() {
           {/* Expanded topic panel */}
           {showTopicExpanded && channel?.topic && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setShowTopicExpanded(false)} />
-              <div className="relative z-40 px-4 py-3 bg-surface border-b border-divider">
+              <div className="fixed inset-0 z-30 animate-fade-in" onClick={() => setShowTopicExpanded(false)} />
+              <div className="relative z-40 px-4 py-3 bg-surface border-b border-divider animate-fade-in-down">
                 <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">Channel Topic</div>
                 <div className="text-text-secondary text-sm whitespace-pre-wrap">{channel.topic}</div>
               </div>

@@ -144,8 +144,8 @@ export default function EditChannelDialog({ channel, serverId, onClose }: Props)
   );
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[520px] max-w-[90vw] max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[520px] max-w-[90vw] max-h-[85vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Edit Channel</h3>
 
         {/* Tabs */}

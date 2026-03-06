@@ -220,22 +220,11 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
             {(message.attachments ?? []).map((att) => {
               const attUrl = rewriteStorageUrl(att.url) ?? att.url;
               return isImage(att.content_type) ? (
-                <img
+                <AttachmentImage
                   key={att.id}
                   src={attUrl}
                   alt={att.filename}
-                  className="max-w-[400px] max-h-[300px] rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setLightboxImage({ src: attUrl, alt: att.filename })}
-                  onError={(e) => {
-                    // Hide broken image — show filename fallback via CSS
-                    const target = e.currentTarget;
-                    if (target.dataset.retried) return;
-                    target.dataset.retried = '1';
-                    target.alt = `Image expired: ${att.filename}`;
-                    target.style.maxWidth = '300px';
-                    target.style.maxHeight = '40px';
-                    target.className = 'bg-input rounded-lg px-3 py-2 text-text-muted text-sm';
-                  }}
+                  onOpen={() => setLightboxImage({ src: attUrl, alt: att.filename })}
                 />
               ) : (
                 <a
@@ -452,6 +441,36 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 
 const MessageTile = memo(MessageTileInner);
 export default MessageTile;
+
+function AttachmentImage({ src, alt, onOpen }: { src: string; alt: string; onOpen: () => void }) {
+  const [loaded, setLoaded] = useState(false);
+  const [errored, setErrored] = useState(false);
+
+  if (errored) {
+    return (
+      <div className="bg-input rounded-lg px-3 py-2 text-text-muted text-sm max-w-[300px]">
+        Image expired: {alt}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative max-w-[400px] min-h-[60px] rounded-lg overflow-hidden">
+      {!loaded && (
+        <div className="absolute inset-0 bg-white/5 animate-pulse rounded-lg" />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        className={`max-w-[400px] max-h-[300px] rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        onClick={onOpen}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        onError={() => setErrored(true)}
+      />
+    </div>
+  );
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

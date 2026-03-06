@@ -323,28 +323,30 @@ export default function DmList({ onDmSelect }: Props) {
         />
       </div>
 
-      {/* User search results for starting new DMs */}
-      {search.trim().length >= 2 && searchResults.length > 0 && (
-        <div className="px-2 pt-2">
-          <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-2 mb-1">Start a conversation</div>
-          {searchResults.slice(0, 5).map((u) => (
-            <button
-              key={u.id}
-              onClick={() => startDm(u.id)}
-              className="w-full px-2 py-1.5 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary"
-            >
-              <Avatar url={u.avatar_url} name={u.username} size={28} />
-              <span className="truncate">{u.username}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {search.trim().length >= 2 && searching && (
-        <div className="px-4 pt-2 text-[11px] text-text-muted">Searching users...</div>
-      )}
-      {startDmError && (
-        <div className="mx-2 mt-1 px-3 py-1.5 bg-error/10 text-error text-xs rounded">{startDmError}</div>
-      )}
+      {/* User search results for starting new DMs — absolute to prevent layout shift */}
+      <div className="relative">
+        {search.trim().length >= 2 && searchResults.length > 0 && (
+          <div className="absolute left-0 right-0 top-0 z-20 bg-sidebar border border-divider rounded-lg mx-2 mt-1 py-1 shadow-lg animate-dropdown-enter">
+            <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-3 py-1">Start a conversation</div>
+            {searchResults.slice(0, 5).map((u) => (
+              <button
+                key={u.id}
+                onClick={() => startDm(u.id)}
+                className="w-full px-3 py-1.5 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary"
+              >
+                <Avatar url={u.avatar_url} name={u.username} size={28} />
+                <span className="truncate">{u.username}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {search.trim().length >= 2 && searching && (
+          <div className="px-4 pt-2 text-[11px] text-text-muted">Searching users...</div>
+        )}
+        {startDmError && (
+          <div className="mx-2 mt-1 px-3 py-1.5 bg-error/10 text-error text-xs rounded">{startDmError}</div>
+        )}
+      </div>
 
       {/* Friends link */}
       <button

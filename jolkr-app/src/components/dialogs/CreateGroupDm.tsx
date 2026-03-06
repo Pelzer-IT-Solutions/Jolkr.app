@@ -87,8 +87,8 @@ export default function CreateGroupDmDialog({ onClose }: Props) {
   const totalMembers = selectedUsers.length + 1; // +1 for caller
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[480px] max-w-[90vw] max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[480px] max-w-[90vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-1">Create Group DM</h3>
         <p className="text-text-muted text-xs mb-4">{totalMembers}/{MAX_MEMBERS} members</p>
 
