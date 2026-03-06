@@ -38,6 +38,10 @@ struct Client {
     /// Pending SDP offer waiting for the client's answer.
     pending: Option<SdpPendingOffer>,
 
+    /// DTLS is only initialized after accept_answer(). Calling poll_output()
+    /// before that panics in dimpl. We skip poll_output until this is true.
+    dtls_ready: bool,
+
     is_muted: bool,
     is_deafened: bool,
 }
@@ -107,6 +111,12 @@ pub fn run_sfu(
         let mut panicked_indices: Vec<usize> = Vec::new();
 
         for (idx, client) in clients.iter_mut().enumerate() {
+            // Skip poll_output for clients awaiting SDP answer — dimpl panics
+            // if poll_output is called before DTLS init (which happens in accept_answer).
+            if !client.dtls_ready {
+                continue;
+            }
+
             let poll_result = catch_unwind(AssertUnwindSafe(|| {
                 let mut props = Vec::new();
                 let mut timeout = now + Duration::from_millis(100);
@@ -338,7 +348,7 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
                     // Send the SDP offer
                     let _ = signal_tx.send(SignalOut::Offer { sdp: offer_sdp });
 
-                    // Add client to the list
+                    // Add client to the list (dtls_ready=false until answer received)
                     clients.push(Client {
                         user_id,
                         channel_id,
@@ -347,6 +357,7 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
                         recv_mid: Some(recv_mid),
                         send_mids,
                         pending: Some(pending),
+                        dtls_ready: false,
                         is_muted: false,
                         is_deafened: false,
                     });
@@ -379,7 +390,9 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
                             if let Err(e) = client.rtc.sdp_api().accept_answer(pending, answer) {
                                 error!("Failed to accept answer from {}: {}", user_id, e);
                             } else {
-                                // dimpl 0.2.7+ requires handle_timeout after accept_answer()
+                                // accept_answer calls init_dtls which sets dimpl's last_now.
+                                // Now it's safe to call poll_output().
+                                client.dtls_ready = true;
                                 drive_time(&mut client.rtc);
                                 debug!("Accepted SDP answer from {}", user_id);
                             }

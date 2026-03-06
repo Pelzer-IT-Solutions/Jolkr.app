@@ -1019,9 +1019,9 @@ dependencies = [
 
 [[package]]
 name = "dimpl"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4eea2b4836ad3b84fe0e2707dc93c5e9a3ce1fee1ebbca143c39bccaf5b247f2"
+checksum = "f9ef6a775c3c382927accaee1d2ecc09c2f0b97881ceec92748c6fbc36292517"
 dependencies = [
  "arrayvec",
  "aws-lc-rs",
