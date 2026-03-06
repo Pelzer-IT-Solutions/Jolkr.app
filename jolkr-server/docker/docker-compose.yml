@@ -61,6 +61,7 @@ services:
       MEDIA_PORT: "8081"
       MEDIA_UDP_PORT: "10000"
       PUBLIC_IP: "${PUBLIC_IP:-127.0.0.1}"
+      LOCAL_IP: "${LOCAL_IP:-}"
       JWT_SECRET: "${JWT_SECRET:-super_secret_dev_key_change_in_production}"
       RUST_LOG: "${RUST_LOG:-debug}"
     networks:

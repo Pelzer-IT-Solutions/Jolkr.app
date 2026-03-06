@@ -212,6 +212,14 @@ export class VoiceService {
       }
     }));
 
+    this.cleanups.push(this.client.on('iceCandidate', (d) => {
+      const candidate = d.candidate as string;
+      if (this.pc && candidate) {
+        this.pc.addIceCandidate(new RTCIceCandidate({ candidate, sdpMid: '0', sdpMLineIndex: 0 }))
+          .catch((e) => console.warn('[Voice] Failed to add remote ICE candidate:', e));
+      }
+    }));
+
     this.cleanups.push(this.client.on('participantJoined', (d) => {
       const userId = d.user_id as string;
       this._participants.set(userId, { userId, isMuted: false, isDeafened: false, isSpeaking: false });

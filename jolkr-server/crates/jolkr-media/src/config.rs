@@ -8,6 +8,8 @@ pub struct Config {
     /// Public IP address for ICE candidates.
     /// In Docker, set to the host's public IP or the container's IP.
     pub public_ip: String,
+    /// Optional LAN IP for ICE candidates (avoids NAT hairpinning for local clients).
+    pub local_ip: Option<String>,
     /// JWT secret for token validation (must match the API server).
     pub jwt_secret: String,
 }
@@ -25,6 +27,7 @@ impl Config {
                 .expect("MEDIA_UDP_PORT must be a valid u16"),
             public_ip: std::env::var("PUBLIC_IP")
                 .unwrap_or_else(|_| "0.0.0.0".into()),
+            local_ip: std::env::var("LOCAL_IP").ok(),
             jwt_secret: std::env::var("JWT_SECRET")
                 .expect("JWT_SECRET environment variable must be set"),
         }

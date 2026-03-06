@@ -27,8 +27,8 @@ async fn main() {
     let config = Config::from_env();
     info!("Jolkr Media Server starting...");
     info!(
-        "HTTP port: {}, UDP port: {}, public IP: {}",
-        config.http_port, config.udp_port, config.public_ip
+        "HTTP port: {}, UDP port: {}, public IP: {}, local IP: {:?}",
+        config.http_port, config.udp_port, config.public_ip, config.local_ip
     );
 
     // ── Shared state ────────────────────────────────────────────────────
@@ -46,22 +46,33 @@ async fn main() {
         std::net::UdpSocket::bind(udp_addr).expect("Failed to bind WebRTC UDP socket");
     info!("WebRTC UDP socket bound to {}", udp_addr);
 
-    // The local address used for ICE candidates.
-    // If a public IP is configured, use that; otherwise use the bind address.
-    let ice_addr: SocketAddr = if config.public_ip == "0.0.0.0" {
-        udp_addr
-    } else {
-        format!("{}:{}", config.public_ip, config.udp_port)
-            .parse()
-            .expect("Invalid PUBLIC_IP")
-    };
+    // Build ICE candidate addresses — public + optional LAN IP.
+    // Both are advertised so ICE works for local and remote clients.
+    let mut ice_addrs: Vec<SocketAddr> = Vec::new();
+    if config.public_ip != "0.0.0.0" {
+        ice_addrs.push(
+            format!("{}:{}", config.public_ip, config.udp_port)
+                .parse()
+                .expect("Invalid PUBLIC_IP"),
+        );
+    }
+    if let Some(ref local_ip) = config.local_ip {
+        ice_addrs.push(
+            format!("{}:{}", local_ip, config.udp_port)
+                .parse()
+                .expect("Invalid LOCAL_IP"),
+        );
+    }
+    if ice_addrs.is_empty() {
+        ice_addrs.push(udp_addr);
+    }
 
     // ── Start the SFU thread ────────────────────────────────────────────
     let sfu_room_list = room_list.clone();
     std::thread::Builder::new()
         .name("sfu-media-loop".into())
         .spawn(move || {
-            sfu::run_sfu(udp_socket, sfu_rx, ice_addr, sfu_room_list);
+            sfu::run_sfu(udp_socket, sfu_rx, ice_addrs, sfu_room_list);
         })
         .expect("Failed to spawn SFU thread");
 

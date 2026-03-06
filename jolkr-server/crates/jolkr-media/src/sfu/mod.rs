@@ -37,6 +37,8 @@ struct Client {
     send_mids: HashMap<Uuid, Mid>,
     /// Pending SDP offer waiting for the client's answer.
     pending: Option<SdpPendingOffer>,
+    /// User IDs queued for re-negotiation (when a pending offer blocks immediate renegotiation).
+    pending_renegotiations: Vec<Uuid>,
 
     /// DTLS is only initialized after accept_answer(). Calling poll_output()
     /// before that panics in dimpl. We skip poll_output until this is true.
@@ -63,10 +65,11 @@ fn drive_time(rtc: &mut Rtc) {
 pub fn run_sfu(
     udp_socket: UdpSocket,
     cmd_rx: mpsc::Receiver<SfuCommand>,
-    local_addr: SocketAddr,
+    ice_addrs: Vec<SocketAddr>,
     room_list: RoomList,
 ) {
-    info!("SFU media loop starting on UDP {}", local_addr);
+    info!("SFU media loop starting, ICE candidates: {:?}", ice_addrs);
+    let local_addr = ice_addrs[0];
 
     let mut clients: Vec<Client> = Vec::new();
     let mut buf = vec![0u8; 65535];
@@ -98,7 +101,7 @@ pub fn run_sfu(
         while let Ok(cmd) = cmd_rx.try_recv() {
             // Catch panics from str0m/dimpl to keep the SFU thread alive
             let result = catch_unwind(AssertUnwindSafe(|| {
-                handle_command(&mut clients, cmd, local_addr);
+                handle_command(&mut clients, cmd, &ice_addrs);
             }));
             if let Err(e) = result {
                 error!("SFU handle_command panic caught: {:?}", e);
@@ -187,6 +190,7 @@ pub fn run_sfu(
 
         // ── 4. Forward media to other clients in the same room ──────────
         for (sender_id, channel_id, ref media) in &propagations {
+            debug!("Media from {} in channel {} ({} bytes)", sender_id, channel_id, media.data.len());
             for client in clients.iter_mut() {
                 if client.user_id == *sender_id
                     || client.channel_id != *channel_id
@@ -203,8 +207,14 @@ pub fn run_sfu(
                                 media.time,
                                 media.data.clone(),
                             );
+                        } else {
+                            warn!("No matching codec params for {} -> {} (mid {:?})", sender_id, client.user_id, mid);
                         }
+                    } else {
+                        warn!("No writer for mid {:?} on {} (forwarding from {})", mid, client.user_id, sender_id);
                     }
+                } else {
+                    warn!("No send_mid for {} on target {} (send_mids: {:?})", sender_id, client.user_id, client.send_mids.keys().collect::<Vec<_>>());
                 }
             }
         }
@@ -212,28 +222,34 @@ pub fn run_sfu(
         // ── 5. Read UDP socket ──────────────────────────────────────────
         match udp_socket.recv_from(&mut buf) {
             Ok((len, addr)) => {
-                if let Ok(contents) = (&buf[..len]).try_into() {
-                    let receive = Receive {
-                        proto: Protocol::Udp,
-                        source: addr,
-                        destination: local_addr,
-                        contents,
-                    };
+                // Try each ICE address as destination — clients connected via
+                // different candidates (public vs LAN) need the matching destination.
+                let mut handled = false;
+                for &ice_addr in &ice_addrs {
+                    if let Ok(contents) = (&buf[..len]).try_into() {
+                        let receive = Receive {
+                            proto: Protocol::Udp,
+                            source: addr,
+                            destination: ice_addr,
+                            contents,
+                        };
+                        let input = Input::Receive(Instant::now(), receive);
+                        let target = clients
+                            .iter()
+                            .position(|c| c.rtc.accepts(&input));
 
-                    // Create Input to check which client owns this packet
-                    let input = Input::Receive(Instant::now(), receive);
-                    let target = clients
-                        .iter()
-                        .position(|c| c.rtc.accepts(&input));
-
-                    if let Some(i) = target {
-                        debug!("UDP packet from {} routed to {}", addr, clients[i].user_id);
-                        if let Err(e) = clients[i].rtc.handle_input(input) {
-                            warn!("Rtc input error for {}: {}", clients[i].user_id, e);
+                        if let Some(i) = target {
+                            debug!("UDP packet from {} routed to {} (via {})", addr, clients[i].user_id, ice_addr);
+                            if let Err(e) = clients[i].rtc.handle_input(input) {
+                                warn!("Rtc input error for {}: {}", clients[i].user_id, e);
+                            }
+                            handled = true;
+                            break;
                         }
-                    } else if !clients.is_empty() {
-                        debug!("UDP packet from {} not accepted by any client ({} clients)", addr, clients.len());
                     }
+                }
+                if !handled && !clients.is_empty() {
+                    debug!("UDP packet from {} not accepted by any client ({} clients)", addr, clients.len());
                 }
             }
             Err(e)
@@ -267,7 +283,7 @@ pub fn run_sfu(
 
 // ── Command handling ────────────────────────────────────────────────────
 
-fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: SocketAddr) {
+fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[SocketAddr]) {
     match cmd {
         SfuCommand::AddPeer {
             user_id,
@@ -300,9 +316,11 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
                 .set_ice_lite(true)
                 .build(Instant::now());
 
-            // Add the server's UDP address as a local ICE candidate
-            if let Ok(candidate) = Candidate::host(local_addr, "udp") {
-                let _ = rtc.add_local_candidate(candidate);
+            // Add all configured ICE candidates (public + LAN)
+            for &addr in ice_addrs {
+                if let Ok(candidate) = Candidate::host(addr, "udp") {
+                    let _ = rtc.add_local_candidate(candidate);
+                }
             }
 
             // dimpl requires handle_timeout before sdp_api().apply() / poll_output()
@@ -357,6 +375,7 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
                         recv_mid: Some(recv_mid),
                         send_mids,
                         pending: Some(pending),
+                        pending_renegotiations: Vec::new(),
                         dtls_ready: false,
                         is_muted: false,
                         is_deafened: false,
@@ -383,6 +402,10 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
         }
 
         SfuCommand::Answer { user_id, sdp } => {
+            // Collect queued renegotiations before borrowing clients mutably
+            let mut queued: Vec<Uuid> = Vec::new();
+            let mut channel_id_for_renego: Option<Uuid> = None;
+
             if let Some(client) = clients.iter_mut().find(|c| c.user_id == user_id) {
                 if let Some(pending) = client.pending.take() {
                     match SdpAnswer::from_sdp_string(&sdp) {
@@ -390,11 +413,15 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
                             if let Err(e) = client.rtc.sdp_api().accept_answer(pending, answer) {
                                 error!("Failed to accept answer from {}: {}", user_id, e);
                             } else {
-                                // accept_answer calls init_dtls which sets dimpl's last_now.
-                                // Now it's safe to call poll_output().
                                 client.dtls_ready = true;
                                 drive_time(&mut client.rtc);
                                 debug!("Accepted SDP answer from {}", user_id);
+
+                                // Drain queued re-negotiations
+                                if !client.pending_renegotiations.is_empty() {
+                                    queued = std::mem::take(&mut client.pending_renegotiations);
+                                    channel_id_for_renego = Some(client.channel_id);
+                                }
                             }
                         }
                         Err(e) => {
@@ -403,6 +430,14 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, local_addr: Socket
                     }
                 } else {
                     warn!("Answer from {} but no pending offer", user_id);
+                }
+            }
+
+            // Flush queued re-negotiations now that the pending offer is resolved
+            if let Some(ch_id) = channel_id_for_renego {
+                for new_peer_id in queued {
+                    info!("Flushing queued re-negotiation on {} for peer {}", user_id, new_peer_id);
+                    renegotiate_single_client(clients, user_id, new_peer_id, ch_id);
                 }
             }
         }
@@ -471,12 +506,13 @@ fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_i
         if client.channel_id != channel_id || client.user_id == new_user_id {
             continue;
         }
-        // Skip if there's already a pending negotiation
+        // Queue if there's already a pending negotiation — will be flushed after answer
         if client.pending.is_some() {
-            warn!(
-                "Skipping re-negotiation for {} (already pending)",
+            info!(
+                "Queueing re-negotiation for {} (pending offer, will flush after answer)",
                 client.user_id
             );
+            client.pending_renegotiations.push(new_user_id);
             continue;
         }
 
@@ -512,6 +548,43 @@ fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_i
                     "Re-negotiation failed for {}: apply returned None",
                     client.user_id
                 );
+            }
+        }
+    }
+}
+
+/// Re-negotiate a single client to add a SendOnly track for a new peer.
+fn renegotiate_single_client(clients: &mut [Client], target_user_id: Uuid, new_peer_id: Uuid, _channel_id: Uuid) {
+    if let Some(client) = clients.iter_mut().find(|c| c.user_id == target_user_id) {
+        if client.pending.is_some() {
+            // Still pending — re-queue
+            warn!("Re-queueing renegotiation for {} (still pending)", target_user_id);
+            client.pending_renegotiations.push(new_peer_id);
+            return;
+        }
+
+        drive_time(&mut client.rtc);
+
+        let mut change = client.rtc.sdp_api();
+        let send_mid = change.add_media(
+            MediaKind::Audio,
+            Direction::SendOnly,
+            None,
+            None,
+            None,
+        );
+        client.send_mids.insert(new_peer_id, send_mid);
+
+        match change.apply() {
+            Some((offer, pending)) => {
+                drive_time(&mut client.rtc);
+                let offer_sdp = offer.to_sdp_string();
+                client.pending = Some(pending);
+                let _ = client.signal_tx.send(SignalOut::Offer { sdp: offer_sdp });
+                info!("Sent deferred re-negotiation offer to {} for peer {}", target_user_id, new_peer_id);
+            }
+            None => {
+                error!("Deferred re-negotiation failed for {}: apply returned None", target_user_id);
             }
         }
     }
