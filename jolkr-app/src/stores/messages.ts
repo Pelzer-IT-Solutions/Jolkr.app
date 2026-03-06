@@ -424,6 +424,20 @@ wsClient.on((op, d) => {
       useMessagesStore.setState({ threadListVersion: store.threadListVersion + 1 });
       break;
     }
+    case 'ReactionUpdate': {
+      const channelId = d.channel_id as string;
+      const messageId = d.message_id as string;
+      const rawReactions = d.reactions as Array<{ emoji: string; count: number; user_ids?: string[] }>;
+      if (!channelId || !messageId || !rawReactions) break;
+      const currentUserId = useAuthStore.getState().user?.id;
+      const reactions = rawReactions.map((r) => ({
+        emoji: r.emoji,
+        count: r.count,
+        me: currentUserId ? (r.user_ids?.includes(currentUserId) ?? false) : false,
+      }));
+      store.updateReactions(channelId, messageId, reactions);
+      break;
+    }
     case 'PollUpdate': {
       const poll = d.poll as unknown as Message['poll'];
       const messageId = d.message_id as string;

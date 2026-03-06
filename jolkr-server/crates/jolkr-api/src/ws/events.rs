@@ -151,6 +151,13 @@ pub enum GatewayEvent {
         timeout_until: Option<String>,
     },
 
+    /// Reactions on a message were updated.
+    ReactionUpdate {
+        channel_id: Uuid,
+        message_id: Uuid,
+        reactions: Vec<jolkr_core::services::message::ReactionInfo>,
+    },
+
     /// A poll was updated (new vote).
     PollUpdate {
         poll: serde_json::Value,

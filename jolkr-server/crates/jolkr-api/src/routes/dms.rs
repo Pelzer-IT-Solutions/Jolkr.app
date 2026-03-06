@@ -306,6 +306,33 @@ pub async fn add_dm_reaction(
         )));
     }
     let row = DmRepo::add_reaction(&state.pool, message_id, auth.user_id, &body.emoji).await?;
+
+    // Broadcast aggregated reactions to DM channel
+    {
+        use std::collections::HashMap;
+        let rows = DmRepo::list_reactions(&state.pool, message_id).await.unwrap_or_default();
+        let mut by_emoji: HashMap<String, (i64, Vec<Uuid>)> = HashMap::new();
+        for r in &rows {
+            let entry = by_emoji.entry(r.emoji.clone()).or_insert((0, Vec::new()));
+            entry.0 += 1;
+            entry.1.push(r.user_id);
+        }
+        let reactions: Vec<jolkr_core::services::message::ReactionInfo> = by_emoji
+            .into_iter()
+            .map(|(emoji, (count, user_ids))| jolkr_core::services::message::ReactionInfo {
+                emoji,
+                count,
+                user_ids,
+            })
+            .collect();
+        let event = crate::ws::events::GatewayEvent::ReactionUpdate {
+            channel_id: msg.dm_channel_id,
+            message_id,
+            reactions,
+        };
+        state.nats.publish_to_channel(msg.dm_channel_id, &event).await;
+    }
+
     Ok(Json(DmReactionResponse {
         reaction: DmReactionInfo {
             id: row.id,
@@ -330,6 +357,33 @@ pub async fn remove_dm_reaction(
     }
 
     DmRepo::remove_reaction(&state.pool, message_id, auth.user_id, &emoji).await?;
+
+    // Broadcast aggregated reactions to DM channel
+    {
+        use std::collections::HashMap;
+        let rows = DmRepo::list_reactions(&state.pool, message_id).await.unwrap_or_default();
+        let mut by_emoji: HashMap<String, (i64, Vec<Uuid>)> = HashMap::new();
+        for r in &rows {
+            let entry = by_emoji.entry(r.emoji.clone()).or_insert((0, Vec::new()));
+            entry.0 += 1;
+            entry.1.push(r.user_id);
+        }
+        let reactions: Vec<jolkr_core::services::message::ReactionInfo> = by_emoji
+            .into_iter()
+            .map(|(emoji, (count, user_ids))| jolkr_core::services::message::ReactionInfo {
+                emoji,
+                count,
+                user_ids,
+            })
+            .collect();
+        let event = crate::ws::events::GatewayEvent::ReactionUpdate {
+            channel_id: msg.dm_channel_id,
+            message_id,
+            reactions,
+        };
+        state.nats.publish_to_channel(msg.dm_channel_id, &event).await;
+    }
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
