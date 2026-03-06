@@ -156,3 +156,24 @@ img {
 img[loading="lazy"] {
   transition: opacity 0.2s ease;
 }
+
+/* Emoji picker theme override — match app color scheme */
+.EmojiPickerReact.epr-dark-theme {
+  --epr-dark-bg-color: #16213E;
+  --epr-dark-search-input-bg-color: #233054;
+  --epr-dark-search-input-bg-color-active: #1A1A2E;
+  --epr-dark-hover-bg-color: #233054f6;
+  --epr-dark-hover-bg-color-reduced-opacity: #23305480;
+  --epr-dark-focus-bg-color: #2A3A5C;
+  --epr-dark-category-label-bg-color: #16213Ee6;
+  --epr-dark-picker-border-color: #0F172A;
+  --epr-dark-highlight-color: #E2E8F0;
+  --epr-dark-text-color: #94A3B8;
+  --epr-dark-category-icon-active-color: #7C3AED;
+  --epr-highlight-color: #7C3AED;
+  --epr-dark-reactions-bg-color: #16213E90;
+  --epr-dark-skin-tone-picker-menu-color: #16213E95;
+  --epr-dark-emoji-variation-picker-bg-color: #0F172A;
+  --epr-dark-emoji-variation-indicator-color: #2A3A5C;
+  --epr-dark-skin-tone-outer-border-color: #2A3A5C;
+}
