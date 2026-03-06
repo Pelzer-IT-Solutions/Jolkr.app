@@ -58,12 +58,13 @@ pub async fn ws_upgrade(
 async fn handle_socket(socket: WebSocket, state: AppState) {
     let (mut ws_sender, mut ws_receiver) = socket.split();
 
-    // Create a channel for the gateway to push events into
-    let (tx, mut rx) = mpsc::unbounded_channel::<GatewayEvent>();
+    // Create a bounded channel for backpressure (256 queued events max)
+    let (tx, mut rx) = mpsc::channel::<GatewayEvent>(256);
 
     // We don't know the user yet; they must send an Identify event first.
     let mut session_id: Option<Uuid> = None;
     let mut user_id: Option<Uuid> = None;
+    let mut last_heartbeat = tokio::time::Instant::now();
 
     // Spawn a task that forwards gateway events to the WebSocket sender
     let send_task = tokio::spawn(async move {
@@ -82,7 +83,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     });
 
     // Main receive loop: read messages from the client
-    while let Some(Ok(msg)) = ws_receiver.next().await {
+    // Use a heartbeat timeout to detect zombie connections
+    let heartbeat_timeout = tokio::time::Duration::from_secs(90);
+    while let Ok(Some(Ok(msg))) = tokio::time::timeout(heartbeat_timeout, ws_receiver.next()).await {
         let text = match msg {
             Message::Text(t) => t.to_string(),
             Message::Close(_) => break,
@@ -96,7 +99,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 let err = GatewayEvent::Error {
                     message: format!("Invalid event: {e}"),
                 };
-                let _ = tx.send(err);
+                let _ = tx.try_send(err);
                 continue;
             }
         };
@@ -133,24 +136,25 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                             user_id: claims.sub,
                             session_id: sid,
                         };
-                        let _ = tx.send(ready);
+                        let _ = tx.try_send(ready);
                         info!(user_id = %claims.sub, session_id = %sid, "WebSocket identified");
                     }
                     Err(e) => {
                         let err = GatewayEvent::Error {
                             message: format!("Authentication failed: {e}"),
                         };
-                        let _ = tx.send(err);
+                        let _ = tx.try_send(err);
                     }
                 }
             }
 
             ClientEvent::Heartbeat { seq } => {
+                last_heartbeat = tokio::time::Instant::now();
                 // Refresh presence TTL on heartbeat
                 if let Some(uid) = user_id {
                     state.redis.refresh_presence(uid).await;
                 }
-                let _ = tx.send(GatewayEvent::HeartbeatAck { seq });
+                let _ = tx.try_send(GatewayEvent::HeartbeatAck { seq });
             }
 
             ClientEvent::Subscribe { channel_id } => {
@@ -159,7 +163,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         if can_access_channel(&state, uid, channel_id).await {
                             state.gateway.subscribe(&sid, channel_id);
                         } else {
-                            let _ = tx.send(GatewayEvent::Error {
+                            let _ = tx.try_send(GatewayEvent::Error {
                                 message: "Cannot subscribe: no access to channel".to_string(),
                             });
                         }
@@ -201,10 +205,16 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         let err = GatewayEvent::Error {
                             message: format!("Invalid status. Must be one of: {}", valid.join(", ")),
                         };
-                        let _ = tx.send(err);
+                        let _ = tx.try_send(err);
                     }
                 }
             }
+        }
+    }
+    // Heartbeat timeout — log if applicable
+    if let Some(uid) = user_id {
+        if last_heartbeat.elapsed() >= heartbeat_timeout {
+            info!(user_id = %uid, "Client disconnected due to heartbeat timeout");
         }
     }
 

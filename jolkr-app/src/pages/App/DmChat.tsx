@@ -266,7 +266,7 @@ export default function DmChat() {
 
   return (
     <>
-      <div className="flex-1 flex flex-col bg-bg min-w-0 min-h-0">
+      <div className="flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition">
           {/* Header */}
           <div className="h-12 px-4 flex items-center gap-3 border-b border-divider shrink-0">
             {isMobile && (

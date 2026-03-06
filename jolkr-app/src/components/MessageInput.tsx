@@ -1,11 +1,12 @@
-import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
+import { useRef, useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import type { Message, User } from '../api/types';
 import { useMessagesStore } from '../stores/messages';
 import { wsClient } from '../api/ws';
 import * as api from '../api/client';
-import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { isE2EEReady, encryptDmMessage } from '../services/e2ee';
 import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../utils/emoji';
+
+const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
 
 export interface MentionableUser {
   id: string;
@@ -474,15 +475,17 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
           <div className="absolute bottom-full left-4 mb-2 z-50">
-            <EmojiPicker
-              theme={Theme.DARK}
-              onEmojiClick={(emoji) => {
-                setContent((prev) => prev + emoji.emoji);
-                inputRef.current?.focus();
-              }}
-              width={350}
-              height={400}
-            />
+            <Suspense fallback={<div className="w-[350px] h-[400px] bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+              <LazyEmojiPicker
+                theme={"dark" as never}
+                onEmojiClick={(emoji: { emoji: string }) => {
+                  setContent((prev) => prev + emoji.emoji);
+                  inputRef.current?.focus();
+                }}
+                width={350}
+                height={400}
+              />
+            </Suspense>
           </div>
         </>
       )}

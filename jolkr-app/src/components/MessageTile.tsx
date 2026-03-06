@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense, memo } from 'react';
 import type { Message, User, Reaction } from '../api/types';
 import { useAuthStore } from '../stores/auth';
 import { useMessagesStore } from '../stores/messages';
@@ -13,8 +13,9 @@ import LinkEmbed from './LinkEmbed';
 import PollDisplay from './PollDisplay';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import { useToast } from './Toast';
-import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useDecryptedContent } from '../hooks/useDecryptedContent';
+
+const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
 
 interface Props {
   message: Message;
@@ -28,7 +29,7 @@ interface Props {
   replyAuthor?: User;
 }
 
-export default function MessageTile({ message, compact, author, isDm, onReply, onOpenThread, hideThreadButton, replyMessage, replyAuthor }: Props) {
+function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThread, hideThreadButton, replyMessage, replyAuthor }: Props) {
   const user = useAuthStore((s) => s.user);
   const editMessage = useMessagesStore((s) => s.editMessage);
   const deleteMessage = useMessagesStore((s) => s.deleteMessage);
@@ -403,12 +404,14 @@ export default function MessageTile({ message, compact, author, isDm, onReply, o
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowReactionPicker(false)} />
           <div className="absolute right-4 top-0 z-50">
-            <EmojiPicker
-              theme={Theme.DARK}
-              onEmojiClick={(emoji) => handleReaction(emoji.emoji)}
-              width={300}
-              height={350}
-            />
+            <Suspense fallback={<div className="w-[300px] h-[350px] bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+              <LazyEmojiPicker
+                theme={"dark" as never}
+                onEmojiClick={(emoji: { emoji: string }) => handleReaction(emoji.emoji)}
+                width={300}
+                height={350}
+              />
+            </Suspense>
           </div>
         </>
       )}
@@ -446,6 +449,9 @@ export default function MessageTile({ message, compact, author, isDm, onReply, o
     </div>
   );
 }
+
+const MessageTile = memo(MessageTileInner);
+export default MessageTile;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

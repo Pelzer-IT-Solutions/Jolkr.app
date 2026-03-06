@@ -37,6 +37,7 @@ struct Services {
     cache: ServiceStatus,
     storage: ServiceStatus,
     events: ServiceStatus,
+    relay: ServiceStatus,
 }
 
 #[derive(Serialize, Clone)]
@@ -94,6 +95,24 @@ async fn check_minio(state: &AppState) -> ServiceStatus {
     }
 }
 
+async fn check_relay() -> ServiceStatus {
+    let url = std::env::var("MEDIA_SERVER_URL")
+        .unwrap_or_else(|_| "http://jolkr-media:8081".to_string());
+    let start = Instant::now();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build();
+    let client = match client {
+        Ok(c) => c,
+        Err(e) => return ServiceStatus::down(e.to_string()),
+    };
+    match client.get(format!("{url}/health")).send().await {
+        Ok(resp) if resp.status().is_success() => ServiceStatus::up(start.elapsed().as_millis() as u64),
+        Ok(resp) => ServiceStatus::down(format!("status {}", resp.status())),
+        Err(e) => ServiceStatus::down(e.to_string()),
+    }
+}
+
 fn check_nats(state: &AppState) -> ServiceStatus {
     use async_nats::connection::State as NatsState;
     match state.nats.connection_state() {
@@ -108,14 +127,16 @@ pub async fn health_check(
     headers: HeaderMap,
 ) -> Response {
     // Run all checks concurrently
-    let (db, cache, storage) = tokio::join!(
+    let (db, cache, storage, relay) = tokio::join!(
         check_postgres(&state),
         check_redis(&state),
         check_minio(&state),
+        check_relay(),
     );
     let events = check_nats(&state);
 
-    let all_up = db.status == "up" && cache.status == "up" && storage.status == "up" && events.status == "up";
+    let all_up = db.status == "up" && cache.status == "up" && storage.status == "up"
+        && events.status == "up" && relay.status == "up";
     let critical_down = db.status == "down" || cache.status == "down";
 
     let overall = if all_up {
@@ -137,6 +158,7 @@ pub async fn health_check(
         cache,
         storage,
         events,
+        relay,
     };
 
     let uptime = uptime_seconds();
@@ -230,6 +252,7 @@ fn render_html(overall: &str, uptime: u64, services: &Services) -> String {
         service_row("Cache", &services.cache),
         service_row("Storage", &services.storage),
         service_row("Event Bus", &services.events),
+        service_row("Relay", &services.relay),
     ]
     .join("\n");
 

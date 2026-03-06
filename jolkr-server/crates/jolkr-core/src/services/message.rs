@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{self, PgPool};
@@ -129,7 +131,6 @@ pub(crate) async fn enrich_with_reactions(pool: &PgPool, messages: &mut [Message
     let all_reactions = ReactionRepo::list_for_messages(pool, &msg_ids).await?;
 
     // Group by message_id, then by emoji
-    use std::collections::HashMap;
     let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
     for r in all_reactions {
         let entry = by_msg.entry(r.message_id).or_default();
@@ -177,7 +178,6 @@ pub(crate) async fn enrich_with_thread_counts(pool: &PgPool, messages: &mut [Mes
     let counts = ThreadRepo::message_counts(pool, &thread_ids).await?;
 
     // Map starter_msg_id → thread_id → count
-    use std::collections::HashMap;
     let thread_count_map: HashMap<Uuid, i64> = counts.into_iter().collect();
     let starter_to_thread: HashMap<Uuid, Uuid> = rows.into_iter().collect();
 
@@ -199,7 +199,6 @@ pub(crate) async fn enrich_with_embeds(pool: &PgPool, messages: &mut [MessageInf
     let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
     let all_embeds = EmbedRepo::list_for_messages(pool, &msg_ids).await?;
 
-    use std::collections::HashMap;
     let mut by_msg: HashMap<Uuid, Vec<EmbedInfo>> = HashMap::new();
     for e in all_embeds {
         by_msg.entry(e.message_id).or_default().push(EmbedInfo {
@@ -215,6 +214,30 @@ pub(crate) async fn enrich_with_embeds(pool: &PgPool, messages: &mut [MessageInf
     for msg in messages.iter_mut() {
         if let Some(embeds) = by_msg.remove(&msg.id) {
             msg.embeds = embeds;
+        }
+    }
+    Ok(())
+}
+
+/// Batch load attachments and attach them to messages using HashMap for O(n+m) lookup.
+pub(crate) async fn enrich_with_attachments(pool: &PgPool, messages: &mut [MessageInfo]) -> Result<(), JolkrError> {
+    let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
+    let all_atts = AttachmentRepo::list_for_messages(pool, &msg_ids).await?;
+
+    let mut by_msg: HashMap<Uuid, Vec<AttachmentInfo>> = HashMap::new();
+    for att in all_atts {
+        by_msg.entry(att.message_id).or_default().push(AttachmentInfo {
+            id: att.id,
+            filename: att.filename,
+            content_type: att.content_type,
+            size_bytes: att.size_bytes,
+            url: att.url,
+        });
+    }
+
+    for msg in messages.iter_mut() {
+        if let Some(atts) = by_msg.remove(&msg.id) {
+            msg.attachments = atts;
         }
     }
     Ok(())
@@ -394,28 +417,9 @@ impl MessageService {
 
         let mut messages: Vec<MessageInfo> = rows.iter().map(|r| MessageInfo::from(r.clone())).collect();
 
-        // Batch load all attachments in one query
-        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-        let all_atts = AttachmentRepo::list_for_messages(pool, &msg_ids).await?;
-        for att in all_atts {
-            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.message_id) {
-                msg.attachments.push(AttachmentInfo {
-                    id: att.id,
-                    filename: att.filename,
-                    content_type: att.content_type,
-                    size_bytes: att.size_bytes,
-                    url: att.url,
-                });
-            }
-        }
-
-        // Batch load all reactions in one query
+        enrich_with_attachments(pool, &mut messages).await?;
         enrich_with_reactions(pool, &mut messages).await?;
-
-        // Batch load thread reply counts for thread starter messages
         enrich_with_thread_counts(pool, &mut messages).await?;
-
-        // Batch load embeds
         enrich_with_embeds(pool, &mut messages).await?;
 
         Ok(messages)
@@ -436,28 +440,9 @@ impl MessageService {
 
         let mut messages: Vec<MessageInfo> = rows.iter().map(|r| MessageInfo::from(r.clone())).collect();
 
-        // Batch load all attachments in one query
-        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-        let all_atts = AttachmentRepo::list_for_messages(pool, &msg_ids).await?;
-        for att in all_atts {
-            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.message_id) {
-                msg.attachments.push(AttachmentInfo {
-                    id: att.id,
-                    filename: att.filename,
-                    content_type: att.content_type,
-                    size_bytes: att.size_bytes,
-                    url: att.url,
-                });
-            }
-        }
-
-        // Batch load all reactions in one query
+        enrich_with_attachments(pool, &mut messages).await?;
         enrich_with_reactions(pool, &mut messages).await?;
-
-        // Batch load thread reply counts
         enrich_with_thread_counts(pool, &mut messages).await?;
-
-        // Batch load embeds
         enrich_with_embeds(pool, &mut messages).await?;
 
         Ok(messages)
@@ -470,20 +455,7 @@ impl MessageService {
     ) -> Result<Vec<MessageInfo>, JolkrError> {
         let mut messages: Vec<MessageInfo> = rows.iter().map(|r| MessageInfo::from(r.clone())).collect();
 
-        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-        let all_atts = AttachmentRepo::list_for_messages(pool, &msg_ids).await?;
-        for att in all_atts {
-            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.message_id) {
-                msg.attachments.push(AttachmentInfo {
-                    id: att.id,
-                    filename: att.filename,
-                    content_type: att.content_type,
-                    size_bytes: att.size_bytes,
-                    url: att.url,
-                });
-            }
-        }
-
+        enrich_with_attachments(pool, &mut messages).await?;
         enrich_with_reactions(pool, &mut messages).await?;
         enrich_with_thread_counts(pool, &mut messages).await?;
         enrich_with_embeds(pool, &mut messages).await?;
@@ -642,22 +614,7 @@ impl MessageService {
         let rows = MessageRepo::get_by_ids(pool, &pin_ids).await?;
         let mut messages: Vec<MessageInfo> = rows.into_iter().map(MessageInfo::from).collect();
 
-        // Batch load attachments
-        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-        let all_atts = AttachmentRepo::list_for_messages(pool, &msg_ids).await?;
-        for att in all_atts {
-            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.message_id) {
-                msg.attachments.push(AttachmentInfo {
-                    id: att.id,
-                    filename: att.filename,
-                    content_type: att.content_type,
-                    size_bytes: att.size_bytes,
-                    url: att.url,
-                });
-            }
-        }
-
-        // Batch load reactions
+        enrich_with_attachments(pool, &mut messages).await?;
         enrich_with_reactions(pool, &mut messages).await?;
 
         Ok(messages)

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMessagesStore } from '../stores/messages';
 import { usePresenceStore } from '../stores/presence';
 import { useAuthStore } from '../stores/auth';
@@ -30,21 +31,30 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const typingUsers = usePresenceStore((s) => s.typing[channelId]) ?? EMPTY_TYPING;
   const currentUser = useAuthStore((s) => s.user);
   const allMsgs = channelMessages ?? EMPTY_MSGS;
-  // Use server-side search results when available (for non-DM channels), otherwise client-side filter
   const msgs = searchResults
     ? searchResults
     : search
       ? allMsgs.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
       : allMsgs;
-  const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const prevLenRef = useRef(0);
   const [users, setUsers] = useState<Record<string, User>>({});
   const fetchedIdsRef = useRef(new Set<string>());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const isAtBottomRef = useRef(true);
+  const initialScrollDoneRef = useRef(false);
+
+  // Virtualizer
+  const virtualizer = useVirtualizer({
+    count: msgs.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => 60,
+    overscan: 10,
+  });
 
   useEffect(() => {
     prevLenRef.current = 0;
+    initialScrollDoneRef.current = false;
     fetchMessages(channelId, isDm);
     wsClient.subscribe(channelId);
     return () => { wsClient.unsubscribe(channelId); };
@@ -59,47 +69,45 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         api.getUser(id).then((u) => {
           setUsers((prev) => ({ ...prev, [u.id]: u }));
         }).catch(() => {
-          // Allow retry on failure
           fetchedIdsRef.current.delete(id);
         });
       }
     });
   }, [allMsgs]);
 
-  // Auto-scroll: always on initial load, only near bottom for new messages
+  // Auto-scroll logic
   useEffect(() => {
     if (allMsgs.length > prevLenRef.current) {
       const wasInitialLoad = prevLenRef.current === 0;
       if (wasInitialLoad) {
-        // Initial load — always scroll to bottom (instant, no animation)
-        bottomRef.current?.scrollIntoView();
-      } else {
-        const el = containerRef.current;
-        if (el) {
-          const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-          if (distFromBottom < 150) {
-            bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-          }
-        } else {
-          bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
+        // Initial load — scroll to bottom (instant)
+        requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(msgs.length - 1, { align: 'end' });
+          initialScrollDoneRef.current = true;
+        });
+      } else if (isAtBottomRef.current) {
+        // New message and we're near bottom — smooth scroll
+        requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(msgs.length - 1, { align: 'end', behavior: 'smooth' });
+        });
       }
     }
     prevLenRef.current = allMsgs.length;
-  }, [allMsgs.length]);
+  }, [allMsgs.length, msgs.length, virtualizer]);
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    isAtBottomRef.current = distFromBottom < 150;
     setShowScrollBtn(distFromBottom > 300);
     if (canLoadMore && !isLoadingOlder && el.scrollTop < 100) {
       fetchOlder(channelId, isDm);
     }
-  };
+  }, [canLoadMore, isLoadingOlder, channelId, isDm, fetchOlder]);
 
   const scrollToBottom = () => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    virtualizer.scrollToIndex(msgs.length - 1, { align: 'end', behavior: 'smooth' });
   };
 
   const isCompact = (i: number) => {
@@ -107,18 +115,21 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     const prev = msgs[i - 1];
     const curr = msgs[i];
     if (prev.author_id !== curr.author_id) return false;
-    // Don't compact if this message is a reply
     if (curr.reply_to_id) return false;
     const diff = new Date(curr.created_at).getTime() - new Date(prev.created_at).getTime();
     return diff < 5 * 60 * 1000;
   };
 
-  // Lookup reply message and author
   const getReplyData = (msg: Message) => {
     if (!msg.reply_to_id) return {};
     const replyMessage = allMsgs.find((m) => m.id === msg.reply_to_id);
     const replyAuthor = replyMessage ? users[replyMessage.author_id] : undefined;
     return { replyMessage, replyAuthor };
+  };
+
+  const showDateSep = (i: number) => {
+    if (i === 0) return true;
+    return new Date(msgs[i - 1].created_at).toDateString() !== new Date(msgs[i].created_at).toDateString();
   };
 
   const otherTyping = typingUsers.filter((id) => id !== currentUser?.id);
@@ -135,19 +146,32 @@ export default function MessageList({ channelId, search, searchResults, searchLo
             {search ? 'No messages match your search.' : 'No messages yet. Start the conversation!'}
           </div>
         ) : (
-          <div className="py-4">
+          <div
+            className="py-4 relative"
+            style={{ height: virtualizer.getTotalSize(), width: '100%' }}
+          >
             {isLoadingOlder && (
-              <div className="text-center text-text-muted text-sm py-2">Loading older messages...</div>
+              <div className="text-center text-text-muted text-sm py-2 absolute top-0 left-0 right-0 z-10">Loading older messages...</div>
             )}
-            {msgs.map((msg, i) => {
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const i = virtualRow.index;
+              const msg = msgs[i];
               const { replyMessage, replyAuthor } = getReplyData(msg);
-              // Date separator between messages from different days
-              const showDateSep = i === 0 || (
-                new Date(msgs[i - 1].created_at).toDateString() !== new Date(msg.created_at).toDateString()
-              );
+              const hasSep = showDateSep(i);
               return (
-                <div key={msg.id}>
-                  {showDateSep && (
+                <div
+                  key={msg.id}
+                  data-index={i}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  {hasSep && (
                     <div className="flex items-center gap-3 px-4 my-3">
                       <div className="flex-1 h-px bg-divider" />
                       <span className="text-[11px] text-text-muted font-medium">
@@ -158,7 +182,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
                   )}
                   <MessageTile
                     message={msg}
-                    compact={!showDateSep && isCompact(i)}
+                    compact={!hasSep && isCompact(i)}
                     author={users[msg.author_id]}
                     isDm={isDm}
                     onReply={onReply}
@@ -171,7 +195,6 @@ export default function MessageList({ channelId, search, searchResults, searchLo
             })}
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       {showScrollBtn && (

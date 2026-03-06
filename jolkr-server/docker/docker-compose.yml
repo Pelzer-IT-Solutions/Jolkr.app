@@ -31,6 +31,7 @@ services:
       VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
       VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
       VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@jolkr.app}"
+      MEDIA_SERVER_URL: "http://jolkr-media:8081"
       SMTP_HOST: "mailhog"
       SMTP_PORT: "1025"
       SMTP_FROM: "${SMTP_FROM:-noreply@jolkr.app}"

@@ -57,22 +57,21 @@ pub async fn send_message(
         let embed_content = content.clone();
         tokio::spawn(async move {
             embed_svc.process_message(&embed_pool, embed_msg_id, &embed_content, false).await;
-            // After embeds are stored, send a MessageUpdate so clients get the embeds
-            if let Ok(msg) = MessageService::get_message_by_id(&embed_pool, embed_msg_id).await {
-                if !msg.embeds.is_empty() {
+            match MessageService::get_message_by_id(&embed_pool, embed_msg_id).await {
+                Ok(msg) if !msg.embeds.is_empty() => {
                     let event = crate::ws::events::GatewayEvent::MessageUpdate { message: msg };
                     embed_nats.publish_to_channel(embed_channel_id, &event).await;
                 }
+                Err(e) => {
+                    tracing::warn!("Embed enrichment failed for message {embed_msg_id}: {e}");
+                }
+                _ => {}
             }
         });
     }
 
     // Push notifications to offline channel members (fire-and-forget)
-    // TODO(H2): This sends push notifications to ALL server members, but should only
-    // notify members who have VIEW_CHANNELS permission for this channel and have not
-    // muted the channel. The full fix requires calling compute_channel_permissions for
-    // each recipient, which is expensive. Consider caching permissions or pre-computing
-    // a list of eligible recipients.
+    // Only notify members who have VIEW_CHANNELS permission for this channel
     let push = state.push.clone();
     let pool = state.pool.clone();
     let msg_content = message.content.clone();
@@ -81,27 +80,44 @@ pub async fn send_message(
     tokio::spawn(async move {
         let channel = match ChannelRepo::get_by_id(&pool, channel_id).await {
             Ok(c) => c,
-            Err(_) => return,
+            Err(e) => { tracing::warn!("Push: failed to get channel: {e}"); return; }
         };
         let sender = match UserRepo::get_by_id(&pool, author_id).await {
             Ok(u) => u,
-            Err(_) => return,
+            Err(e) => { tracing::warn!("Push: failed to get sender: {e}"); return; }
+        };
+        let server = match ServerRepo::get_by_id(&pool, channel.server_id).await {
+            Ok(s) => s,
+            Err(e) => { tracing::warn!("Push: failed to get server: {e}"); return; }
         };
         let members = match MemberRepo::list_for_server(&pool, channel.server_id).await {
             Ok(m) => m,
-            Err(_) => return,
+            Err(e) => { tracing::warn!("Push: failed to list members: {e}"); return; }
         };
         for member in members {
-            if member.user_id != author_id {
-                push.notify_message(
-                    member.user_id,
-                    &sender.username,
-                    &channel.name,
-                    msg_content.as_deref().unwrap_or(""),
-                    channel_id,
-                    msg_id,
-                ).await;
+            if member.user_id == author_id {
+                continue;
             }
+            // Server owner bypasses permission checks
+            if server.owner_id != member.user_id {
+                if let Ok(perms) = RoleRepo::compute_channel_permissions(
+                    &pool, channel.server_id, channel_id, member.id,
+                ).await {
+                    if !Permissions::from(perms).has(Permissions::VIEW_CHANNELS) {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
+            push.notify_message(
+                member.user_id,
+                &sender.username,
+                &channel.name,
+                msg_content.as_deref().unwrap_or(""),
+                channel_id,
+                msg_id,
+            ).await;
         }
     });
 

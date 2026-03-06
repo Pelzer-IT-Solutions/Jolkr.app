@@ -18,7 +18,7 @@ pub struct ConnectedClient {
     /// Servers this client is a member of (auto-subscribed on Identify).
     pub subscribed_servers: HashSet<Uuid>,
     /// Sender half for pushing events to the client's WebSocket write loop.
-    pub tx: mpsc::UnboundedSender<GatewayEvent>,
+    pub tx: mpsc::Sender<GatewayEvent>,
 }
 
 /// Shared gateway state, holding all connected clients.
@@ -41,7 +41,7 @@ impl GatewayState {
         &self,
         session_id: Uuid,
         user_id: Uuid,
-        tx: mpsc::UnboundedSender<GatewayEvent>,
+        tx: mpsc::Sender<GatewayEvent>,
     ) {
         info!(session_id = %session_id, user_id = %user_id, "Client connected to gateway");
         self.clients.insert(
@@ -115,10 +115,10 @@ impl GatewayState {
         for entry in self.clients.iter() {
             let client = entry.value();
             if client.subscribed_servers.contains(&server_id) {
-                if client.tx.send(event.clone()).is_err() {
+                if let Err(e) = client.tx.try_send(event.clone()) {
                     warn!(
                         session_id = %client.session_id,
-                        "Failed to send server event to client (channel closed)"
+                        "Failed to send server event to client: {e}"
                     );
                 }
             }
@@ -130,10 +130,10 @@ impl GatewayState {
         for entry in self.clients.iter() {
             let client = entry.value();
             if client.subscribed_channels.contains(&channel_id) {
-                if client.tx.send(event.clone()).is_err() {
+                if let Err(e) = client.tx.try_send(event.clone()) {
                     warn!(
                         session_id = %client.session_id,
-                        "Failed to send event to client (channel closed)"
+                        "Failed to send event to client: {e}"
                     );
                 }
             }
@@ -145,23 +145,16 @@ impl GatewayState {
         for entry in self.clients.iter() {
             let client = entry.value();
             if client.user_id == user_id {
-                let _ = client.tx.send(event.clone());
+                let _ = client.tx.try_send(event.clone());
             }
         }
     }
 
     /// Broadcast an event to every connected client.
-    #[allow(dead_code)]
     pub fn broadcast_all(&self, event: &GatewayEvent) {
         for entry in self.clients.iter() {
-            let _ = entry.value().tx.send(event.clone());
+            let _ = entry.value().tx.try_send(event.clone());
         }
-    }
-
-    /// Count total connected clients.
-    #[allow(dead_code)]
-    pub fn connected_count(&self) -> usize {
-        self.clients.len()
     }
 }
 
