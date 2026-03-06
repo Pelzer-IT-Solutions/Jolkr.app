@@ -42,7 +42,7 @@ export default function ImageLightbox({ src, alt, onClose }: Props) {
       <img
         src={src}
         alt={alt ?? ''}
-        className={`max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0 absolute'}`}
+        className={`max-w-[90vw] max-h-[90vh] min-w-[80vw] min-h-[60vh] object-contain rounded-lg shadow-2xl transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0 absolute'}`}
         onClick={(e) => e.stopPropagation()}
         onLoad={() => setLoaded(true)}
       />
