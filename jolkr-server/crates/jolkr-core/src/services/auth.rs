@@ -292,8 +292,8 @@ impl AuthService {
         device_id: Option<Uuid>,
     ) -> Result<TokenPair, JolkrError> {
         let now = Utc::now();
-        let access_exp = now + Duration::minutes(15);
-        let refresh_exp = now + Duration::days(7);
+        let access_exp = now + Duration::hours(1);
+        let refresh_exp = now + Duration::days(30);
 
         // Build access token
         let access_claims = Claims {
@@ -318,7 +318,7 @@ impl AuthService {
         Ok(TokenPair {
             access_token,
             refresh_token,
-            expires_in: 900, // 15 minutes in seconds
+            expires_in: 3600, // 1 hour in seconds
         })
     }
 

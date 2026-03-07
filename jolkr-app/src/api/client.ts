@@ -44,16 +44,31 @@ export async function initTokens() {
   refreshToken = await storage.get('refresh_token');
 }
 
+let proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
 export async function setTokens(tokens: TokenPair) {
   if (loggedOut || checkLogoutFlag()) return; // Block token writes after logout
   accessToken = tokens.access_token;
   refreshToken = tokens.refresh_token;
   await storage.set('access_token', tokens.access_token);
   await storage.set('refresh_token', tokens.refresh_token);
+  // Schedule proactive refresh 5 minutes before access token expires
+  scheduleProactiveRefresh(tokens.expires_in ?? 3600);
+}
+
+function scheduleProactiveRefresh(expiresInSecs: number) {
+  if (proactiveRefreshTimer) clearTimeout(proactiveRefreshTimer);
+  // Refresh 5 minutes before expiry (minimum 30s from now)
+  const refreshInMs = Math.max(30_000, (expiresInSecs - 300) * 1000);
+  proactiveRefreshTimer = setTimeout(async () => {
+    if (loggedOut || !refreshToken) return;
+    await refreshAccessToken();
+  }, refreshInMs);
 }
 
 export async function clearTokens() {
   setLogoutFlag(); // Sync — survives page refresh
+  if (proactiveRefreshTimer) { clearTimeout(proactiveRefreshTimer); proactiveRefreshTimer = null; }
   accessToken = null;
   refreshToken = null;
   // Clear from secure storage (Stronghold on Tauri, localStorage on web)
@@ -87,20 +102,27 @@ export class ApiError extends Error {
 
 async function refreshAccessToken(): Promise<boolean> {
   if (!refreshToken || loggedOut) return false;
-  try {
-    const res = await fetch(`${apiBase}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    if (!res.ok) return false;
-    const data = await res.json();
-    const tokens = data.tokens ?? data;
-    await setTokens(tokens);
-    return true;
-  } catch {
-    return false;
+  // Retry up to 3 times with backoff to survive transient network issues
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`${apiBase}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) return false; // Server rejected token — no point retrying
+      const data = await res.json();
+      const tokens = data.tokens ?? data;
+      await setTokens(tokens);
+      return true;
+    } catch {
+      // Network error — retry after backoff
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
   }
+  return false;
 }
 
 async function request<T>(
