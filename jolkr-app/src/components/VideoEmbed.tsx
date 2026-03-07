@@ -135,7 +135,11 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
   }
 
   if (platform === 'twitch' && id) {
-    const host = window.location.hostname;
+    // Twitch requires a valid parent domain — use the real app domain,
+    // not window.location.hostname which may be localhost/internal in Tauri
+    const host = window.location.hostname === 'localhost' || window.location.hostname === 'tauri.localhost'
+      ? 'jolkr.app'
+      : window.location.hostname;
     const twitchSrc =
       kind === 'vod'
         ? `https://player.twitch.tv/?video=${id}&parent=${host}`

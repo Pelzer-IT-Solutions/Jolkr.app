@@ -616,6 +616,7 @@ function ChannelGroup({
   onDragEnd?: (event: DragEndEvent) => void;
   sensors?: ReturnType<typeof useSensors>;
 }) {
+  const navigate = useNavigate();
   if (channels.length === 0) return null;
 
   const items = channels.map((ch) => {
@@ -626,7 +627,7 @@ function ChannelGroup({
         <div className="group flex items-center min-w-0">
           <Link
             to={`/servers/${serverId}/channels/${ch.id}`}
-            onClick={() => onChannelSelect?.()}
+            onClick={(e) => { e.preventDefault(); navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
             onContextMenu={(e) => onChannelContextMenu(ch.id, e)}
             className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors no-underline ${
               channelId === ch.id
@@ -700,6 +701,7 @@ function VoiceChannelGroup({
   userCacheRef: React.RefObject<Record<string, User>>;
   onChannelSelect?: () => void;
 }) {
+  const navigate = useNavigate();
   if (channels.length === 0) return null;
 
   return (
@@ -712,7 +714,7 @@ function VoiceChannelGroup({
             <div className="group flex items-center min-w-0">
               <Link
                 to={`/servers/${serverId}/channels/${ch.id}`}
-                onClick={() => onChannelSelect?.()}
+                onClick={(e) => { e.preventDefault(); navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
                 className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors no-underline ${
                   isActive
                     ? 'bg-text-primary/10 text-text-primary'

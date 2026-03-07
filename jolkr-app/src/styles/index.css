@@ -117,9 +117,11 @@ button:disabled, [role="button"][aria-disabled="true"] {
   animation: dropdown-enter 0.15s ease-out;
 }
 
-/* Smooth hover transitions */
-button, [role="button"], a {
-  transition: background-color 0.15s ease, color 0.15s ease;
+/* Smooth hover transitions (only on devices with real hover support) */
+@media (hover: hover) {
+  button, [role="button"], a {
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
 }
 
 /* Skeleton loading pulse animation */

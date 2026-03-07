@@ -5,6 +5,7 @@ import { wsClient } from '../api/ws';
 import * as api from '../api/client';
 import { isE2EEReady, encryptDmMessage } from '../services/e2ee';
 import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../utils/emoji';
+import { isMobile as isMobilePlatform } from '../platform/detect';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -112,9 +113,9 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     };
   }, []);
 
-  // Auto-focus textarea on channel/DM switch
+  // Auto-focus textarea on channel/DM switch (skip on mobile to avoid keyboard popup)
   useEffect(() => {
-    inputRef.current?.focus();
+    if (!isMobilePlatform()) inputRef.current?.focus();
   }, [channelId]);
 
   // Merge files dropped from parent drag-and-drop overlay

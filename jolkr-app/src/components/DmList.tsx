@@ -366,7 +366,7 @@ export default function DmList({ onDmSelect }: Props) {
       {/* Friends link */}
       <Link
         to="/friends"
-        onClick={() => onDmSelect?.()}
+        onClick={(e) => { e.preventDefault(); navigate('/friends'); onDmSelect?.(); }}
         aria-label="Friends"
         className="mx-2 mt-2 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/5 hover:text-text-primary text-sm no-underline"
       >
@@ -422,7 +422,13 @@ export default function DmList({ onDmSelect }: Props) {
             <Link
               key={dm.id}
               to={`/dm/${dm.id}`}
-              onClick={() => onDmSelect?.()}
+              onClick={(e) => {
+                // On Android WebView, <a> tags require two taps (first tap = hover/focus, second = navigate).
+                // Force immediate navigation by using navigate() directly.
+                e.preventDefault();
+                navigate(`/dm/${dm.id}`);
+                onDmSelect?.();
+              }}
               onContextMenu={(e) => handleContextMenu(dm, e)}
               className={`w-full px-2 py-1.5 rounded flex items-center gap-2 text-sm text-left transition-colors no-underline ${
                 dmId === dm.id
