@@ -110,7 +110,7 @@ jobs:
           cd jolkr-app
           npx tauri android build --apk
 
-      - name: Remove unsigned APKs and find signed APK
+      - name: Remove unsigned APKs and rename signed APK
         id: find-apk
         run: |
           find jolkr-app/src-tauri/gen/android -name '*unsigned*' -type f -delete
@@ -119,8 +119,10 @@ jobs:
             echo "ERROR: No signed APK found!"
             exit 1
           fi
-          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
-          echo "Found signed APK: $APK_PATH"
+          RENAMED="jolkr-app/src-tauri/gen/android/Jolkr_${{ github.ref_name }}_android.apk"
+          mv "$APK_PATH" "$RENAMED"
+          echo "apk_path=$RENAMED" >> "$GITHUB_OUTPUT"
+          echo "Renamed APK: $APK_PATH → $RENAMED"
 
       - name: Upload signed APK to Release
         uses: softprops/action-gh-release@v2
