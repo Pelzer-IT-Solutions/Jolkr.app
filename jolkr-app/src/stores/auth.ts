@@ -29,11 +29,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email, password) => {
     set({ loading: true, error: null });
     try {
+      console.log('[auth] api.login start');
       await api.login(email, password);
+      console.log('[auth] api.login done, calling getMe');
       const user = await api.getMe();
+      console.log('[auth] getMe done, user:', user?.username);
       set({ user, loading: false });
       wsClient.connect();
     } catch (e) {
+      console.error('[auth] login error:', e);
       set({ loading: false, error: (e as Error).message });
       throw e;
     }

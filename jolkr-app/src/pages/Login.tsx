@@ -5,29 +5,40 @@ import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
+import { getApiBaseUrl } from '../platform/config';
+import { isTauri } from '../platform/detect';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [debugLog, setDebugLog] = useState<string[]>([]);
   const login = useAuthStore((s) => s.login);
   const loading = useAuthStore((s) => s.loading);
   const error = useAuthStore((s) => s.error);
   const fetchServers = useServersStore((s) => s.fetchServers);
   const navigate = useNavigate();
 
+  const log = (msg: string) => setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setDebugLog([]);
+    log(`isTauri=${isTauri} apiBase=${getApiBaseUrl()} ua=${navigator.userAgent.slice(0, 50)}`);
     try {
+      log('Calling login()...');
       await login(email, password);
+      log('Login OK, user set');
 
-      // Init E2EE with deterministic keys derived from password
+      log('Deriving E2EE seed...');
       const seed = await deriveE2EESeed(password);
+      log('E2EE seed derived');
+
       let deviceId = localStorage.getItem('jolkr_e2ee_device_id');
       if (!deviceId) {
         deviceId = crypto.randomUUID();
         localStorage.setItem('jolkr_e2ee_device_id', deviceId);
       }
-      initE2EE(deviceId, seed).catch(console.warn);
+      initE2EE(deviceId, seed).catch(() => {});
 
       // Handle pending deep-link invite
       const pendingInvite = sessionStorage.getItem('jolkr_pending_invite');
@@ -41,8 +52,11 @@ export default function Login() {
         } catch { /* invite expired or invalid, proceed normally */ }
       }
 
+      log('Navigating to /');
       navigate('/');
-    } catch { /* error is in store */ }
+    } catch (err) {
+      log(`ERROR: ${err}`);
+    }
   };
 
   return (
@@ -52,6 +66,11 @@ export default function Login() {
         <p className="text-text-secondary text-center mb-6 text-sm">We're so excited to see you again!</p>
 
         {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+        {debugLog.length > 0 && (
+          <pre className="bg-black/60 text-green-400 text-[10px] p-2 rounded mb-3 whitespace-pre-wrap break-all max-h-32 overflow-auto">
+            {debugLog.join('\n')}
+          </pre>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
