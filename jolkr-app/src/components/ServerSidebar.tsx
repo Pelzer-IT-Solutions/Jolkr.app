@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useServersStore } from '../stores/servers';
 import { useAuthStore } from '../stores/auth';
 import { useUnreadStore } from '../stores/unread';
@@ -12,7 +12,6 @@ import InviteDialog from './dialogs/InviteDialog';
 import ServerDiscovery from './dialogs/ServerDiscovery';
 
 export default function ServerSidebar() {
-  const navigate = useNavigate();
   const { serverId } = useParams();
   const servers = useServersStore((s) => s.servers);
   const fetchServers = useServersStore((s) => s.fetchServers);
@@ -48,11 +47,11 @@ export default function ServerSidebar() {
     <div className="w-[72px] h-full bg-serverbar flex flex-col items-center shrink-0">
       {/* Home button header */}
       <div className="h-14 w-full flex items-center justify-center border-b border-divider shrink-0">
-        <button
-          onClick={() => navigate('/')}
+        <Link
+          to="/"
           onMouseEnter={() => setHovered('home')}
           onMouseLeave={() => setHovered(null)}
-          className={`w-10 h-10 flex items-center justify-center transition-all duration-200 ${!serverId
+          className={`w-10 h-10 flex items-center justify-center transition-all duration-200 no-underline ${!serverId
               ? 'bg-primary rounded-2xl'
               : hovered === 'home'
                 ? 'bg-primary rounded-2xl'
@@ -60,7 +59,7 @@ export default function ServerSidebar() {
             }`}
         >
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Home" className="w-7 h-7 rounded" />
-        </button>
+        </Link>
       </div>
 
       <div className="flex-1 flex flex-col items-center py-2 gap-2 overflow-y-auto w-full">
@@ -70,14 +69,14 @@ export default function ServerSidebar() {
         const serverUnread = serverChannelIds.reduce((sum, id) => sum + (unreadCounts[id] ?? 0), 0);
 
         return (
-          <button
+          <Link
             key={server.id}
-            onClick={() => navigate(`/servers/${server.id}`)}
+            to={`/servers/${server.id}`}
             onContextMenu={(e) => handleContextMenu(e, server.id)}
             onMouseEnter={() => setHovered(server.id)}
             onMouseLeave={() => setHovered(null)}
             title={server.name}
-            className={`w-12 h-12 flex items-center justify-center transition-all duration-200 relative ${serverId === server.id
+            className={`w-12 h-12 flex items-center justify-center transition-all duration-200 relative no-underline ${serverId === server.id
                 ? 'bg-primary rounded-2xl'
                 : hovered === server.id
                   ? 'bg-primary/80 rounded-2xl'
@@ -101,7 +100,7 @@ export default function ServerSidebar() {
                 <span className="text-[10px] font-bold text-white">{serverUnread > 99 ? '99+' : serverUnread}</span>
               </div>
             )}
-          </button>
+          </Link>
         );
       })}
 

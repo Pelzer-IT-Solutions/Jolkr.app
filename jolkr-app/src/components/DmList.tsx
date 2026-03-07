@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { DmChannel, Friendship, User } from '../api/types';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
@@ -359,16 +359,17 @@ export default function DmList({ onDmSelect }: Props) {
       </div>
 
       {/* Friends link */}
-      <button
-        onClick={() => { navigate('/friends'); onDmSelect?.(); }}
+      <Link
+        to="/friends"
+        onClick={() => onDmSelect?.()}
         aria-label="Friends"
-        className="mx-2 mt-2 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/5 hover:text-text-primary text-sm"
+        className="mx-2 mt-2 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/5 hover:text-text-primary text-sm no-underline"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
         Friends
-      </button>
+      </Link>
 
       {/* New Group DM button */}
       <button
@@ -413,11 +414,12 @@ export default function DmList({ onDmSelect }: Props) {
           const unread = unreadCounts[dm.id] ?? 0;
 
           return (
-            <button
+            <Link
               key={dm.id}
-              onClick={() => { navigate(`/dm/${dm.id}`); onDmSelect?.(); }}
+              to={`/dm/${dm.id}`}
+              onClick={() => onDmSelect?.()}
               onContextMenu={(e) => handleContextMenu(dm, e)}
-              className={`w-full px-2 py-1.5 rounded flex items-center gap-2 text-sm text-left transition-colors ${
+              className={`w-full px-2 py-1.5 rounded flex items-center gap-2 text-sm text-left transition-colors no-underline ${
                 dmId === dm.id
                   ? 'bg-white/10 text-text-primary'
                   : unread > 0
@@ -451,7 +453,7 @@ export default function DmList({ onDmSelect }: Props) {
                   <span className="text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>
                 </span>
               )}
-            </button>
+            </Link>
           );
         })}
       </div>
