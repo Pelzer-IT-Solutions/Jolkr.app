@@ -119,7 +119,7 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
   if (platform === 'youtube' && id) {
     return (
       <IframePlayer
-        src={`https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`}
+        src={`https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`}
         title="YouTube video"
       />
     );
@@ -128,7 +128,7 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
   if (platform === 'vimeo' && id) {
     return (
       <IframePlayer
-        src={`https://player.vimeo.com/video/${id}?autoplay=1`}
+        src={`https://player.vimeo.com/video/${id}`}
         title="Vimeo video"
       />
     );
@@ -168,7 +168,7 @@ function IframePlayer({ src, title }: { src: string; title: string }) {
         src={src}
         title={title}
         className="w-full h-full"
-        allow="autoplay; fullscreen; encrypted-media"
+        allow="fullscreen; encrypted-media"
         allowFullScreen
       />
     </div>
