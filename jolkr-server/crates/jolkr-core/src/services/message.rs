@@ -403,7 +403,7 @@ impl MessageService {
         enrich_with_thread_counts(pool, &mut msgs).await?;
         enrich_with_embeds(pool, &mut msgs).await?;
 
-        Ok(msgs.into_iter().next().unwrap())
+        msgs.into_iter().next().ok_or(JolkrError::Internal("Failed to enrich message".into()))
     }
 
     /// Fetch paginated messages for a channel, including attachments (batch loaded).

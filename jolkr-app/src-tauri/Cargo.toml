@@ -1,6 +1,6 @@
 [package]
 name = "jolkr-app"
-version = "0.1.0"
+version = "0.3.0"
 description = "Jolkr - Privacy-first Discord replacement"
 authors = ["you"]
 edition = "2021"
@@ -30,6 +30,10 @@ url = ">=2, <2.5.3"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+# Windows-only: WebView2 COM bindings (to enable browser context menu)
+[target.'cfg(target_os = "windows")'.dependencies]
+webview2-com = "0.38"
 
 [profile.dev.package.scrypt]
 opt-level = 3

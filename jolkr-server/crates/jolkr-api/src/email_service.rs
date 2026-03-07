@@ -67,17 +67,33 @@ impl EmailService {
                 }))
                 .subject("Reset your Jolkr password")
                 .header(ContentType::TEXT_HTML)
-                .body(html_body)
-                .unwrap_or_else(|e| {
+                .body(html_body);
+
+            let email = match email {
+                Ok(email) => email,
+                Err(e) => {
                     warn!("Failed to build email: {e}");
-                    // Return a minimal valid message so we don't crash
-                    Message::builder()
-                        .from(self.from.parse().unwrap())
-                        .to(to_email.parse().unwrap())
+                    // Try a minimal plaintext fallback — if this also fails, just log and return
+                    match Message::builder()
+                        .from(self.from.parse().unwrap_or_else(|_| "noreply@jolkr.app".parse().expect("valid fallback")))
+                        .to(match to_email.parse() {
+                            Ok(addr) => addr,
+                            Err(e2) => {
+                                warn!(to_email, error = %e2, "Fallback email also failed: invalid recipient");
+                                return;
+                            }
+                        })
                         .subject("Password Reset")
                         .body(format!("Reset your password: {reset_url}"))
-                        .unwrap()
-                });
+                    {
+                        Ok(fallback) => fallback,
+                        Err(e2) => {
+                            warn!(error = %e2, "Fallback email build also failed — skipping send");
+                            return;
+                        }
+                    }
+                }
+            };
 
             match mailer.send(&email) {
                 Ok(_) => info!(to = to_email, "Password reset email sent"),

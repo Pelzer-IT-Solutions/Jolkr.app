@@ -26,6 +26,7 @@ export class VoiceService {
   private localStream: MediaStream | null = null;
   private cleanups: Array<() => void> = [];
   private audioElements: HTMLAudioElement[] = [];
+  private disconnectTimer: ReturnType<typeof setTimeout> | undefined = undefined;
   private _leaving = false;
 
   private _state: VoiceConnectionState = 'disconnected';
@@ -333,9 +334,12 @@ export class VoiceService {
     this.pc.onconnectionstatechange = () => {
       const s = this.pc?.connectionState;
       console.log('[Voice] PeerConnection state:', s, '| voice state:', this._state);
-      if (s === 'connected' && this._state === 'connecting') {
-        if (this.connectingTimer) { clearTimeout(this.connectingTimer); this.connectingTimer = null; }
-        this.setState('connected');
+      if (s === 'connected') {
+        clearTimeout(this.disconnectTimer);
+        if (this._state === 'connecting') {
+          if (this.connectingTimer) { clearTimeout(this.connectingTimer); this.connectingTimer = null; }
+          this.setState('connected');
+        }
         console.log('[Voice] PeerConnection connected! Voice is live.');
       } else if (s === 'failed') {
         console.warn('PeerConnection failed');
@@ -347,7 +351,8 @@ export class VoiceService {
       } else if (s === 'disconnected') {
         // 'disconnected' is often temporary (network hiccup) — wait 5s before cleanup
         console.warn('PeerConnection disconnected, waiting for recovery...');
-        setTimeout(() => {
+        clearTimeout(this.disconnectTimer);
+        this.disconnectTimer = setTimeout(() => {
           if (this.pc?.connectionState === 'disconnected') {
             console.warn('PeerConnection still disconnected after 5s, cleaning up');
             this.emitError('Voice connection lost');
@@ -359,6 +364,7 @@ export class VoiceService {
   }
 
   private async cleanup() {
+    clearTimeout(this.disconnectTimer);
     this.cleanups.forEach((fn) => fn());
     this.cleanups = [];
 

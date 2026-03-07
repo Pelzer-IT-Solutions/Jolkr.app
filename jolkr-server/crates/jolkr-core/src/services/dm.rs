@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use tracing::warn;
+
 use jolkr_common::JolkrError;
 use jolkr_db::models::DmMessageRow;
 use jolkr_db::repo::{DmRepo, UserRepo};
@@ -439,7 +441,13 @@ impl DmService {
 
         // Batch load all attachments in one query
         let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-        let all_atts = DmRepo::list_attachments_for_messages(pool, &msg_ids).await.unwrap_or_default();
+        let all_atts = match DmRepo::list_attachments_for_messages(pool, &msg_ids).await {
+            Ok(atts) => atts,
+            Err(e) => {
+                warn!(error = %e, "Failed to load DM attachments");
+                Vec::new()
+            }
+        };
         for att in all_atts {
             if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
                 msg.attachments.push(AttachmentInfo {
@@ -453,7 +461,13 @@ impl DmService {
         }
 
         // Batch load all reactions in one query
-        let all_reactions = DmRepo::list_reactions_for_messages(pool, &msg_ids).await.unwrap_or_default();
+        let all_reactions = match DmRepo::list_reactions_for_messages(pool, &msg_ids).await {
+            Ok(reactions) => reactions,
+            Err(e) => {
+                warn!(error = %e, "Failed to load DM reactions");
+                Vec::new()
+            }
+        };
         {
             use std::collections::HashMap;
             let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
@@ -480,7 +494,13 @@ impl DmService {
         // Batch load DM embeds
         {
             use jolkr_db::repo::EmbedRepo;
-            let all_embeds = EmbedRepo::list_for_dm_messages(pool, &msg_ids).await.unwrap_or_default();
+            let all_embeds = match EmbedRepo::list_for_dm_messages(pool, &msg_ids).await {
+                Ok(embeds) => embeds,
+                Err(e) => {
+                    warn!(error = %e, "Failed to load DM embeds");
+                    Vec::new()
+                }
+            };
             use std::collections::HashMap;
             let mut by_msg: HashMap<Uuid, Vec<EmbedInfo>> = HashMap::new();
             for e in all_embeds {

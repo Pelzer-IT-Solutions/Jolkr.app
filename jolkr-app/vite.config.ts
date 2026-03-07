@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import pkg from './package.json' with { type: 'json' }
 
 const isTauri = !!process.env.TAURI_ENV_PLATFORM;
 
@@ -8,6 +9,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: isTauri ? '/' : '/app/',
   clearScreen: false,
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   server: isTauri
     ? { port: 1420, strictPort: true }
     : {

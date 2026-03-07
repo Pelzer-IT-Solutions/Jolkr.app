@@ -262,6 +262,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
           onClick={scrollToBottom}
           className="absolute bottom-16 right-4 w-9 h-9 bg-surface border border-divider rounded-full flex items-center justify-center shadow-lg hover:bg-white/10 transition-colors z-10"
           title="Scroll to bottom"
+          aria-label="Scroll to bottom"
         >
           <svg className="w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />

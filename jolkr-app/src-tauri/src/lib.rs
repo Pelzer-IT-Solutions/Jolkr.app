@@ -126,6 +126,19 @@ pub fn run() {
                 }
             }
 
+            // --- Enable browser context menu on Windows (cut/copy/paste) ---
+            #[cfg(target_os = "windows")]
+            {
+                if let Some(webview_window) = app.get_webview_window("main") {
+                    let _ = webview_window.with_webview(|webview| unsafe {
+                        let controller = webview.controller();
+                        let core = controller.CoreWebView2().unwrap();
+                        let settings = core.Settings().unwrap();
+                        settings.SetAreDefaultContextMenusEnabled(true.into()).unwrap();
+                    });
+                }
+            }
+
             Ok(())
         });
 

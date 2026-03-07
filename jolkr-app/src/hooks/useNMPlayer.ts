@@ -132,6 +132,8 @@ export function useNMPlayer(config: UseNMPlayerConfig): NMPlayerResult {
       } catch (e) {
         setState((s) => ({ ...s, error: (e as Error).message }));
       }
+    }).catch(() => {
+      if (!disposed) setState((s) => ({ ...s, error: 'Failed to load video player' }));
     });
 
     return () => {

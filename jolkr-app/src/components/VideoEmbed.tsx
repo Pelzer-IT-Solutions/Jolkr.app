@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { MessageEmbed } from '../api/types';
 import type { VideoInfo } from '../utils/videoUrl';
 import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../utils/videoUrl';
@@ -178,6 +178,10 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
   const player = useNMPlayer({ src, title, image, autoPlay: true });
   const [showControls, setShowControls] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => clearTimeout(hideTimerRef.current);
+  }, []);
 
   const scheduleHide = useCallback(() => {
     clearTimeout(hideTimerRef.current);

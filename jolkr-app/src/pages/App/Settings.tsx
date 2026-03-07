@@ -7,6 +7,7 @@ import { isTauri, isWeb } from '../../platform/detect';
 import { getServerUrl, isDevMachine } from '../../platform/config';
 import { useMobileNav } from '../../hooks/useMobileNav';
 import { registerPush, unregisterPush } from '../../services/pushRegistration';
+import { getRingtoneType } from '../../hooks/useCallEvents';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -30,9 +31,13 @@ export default function Settings() {
     if (isMobile) setShowSidebar(false);
   }, [isMobile, setShowSidebar]);
 
-  // Cleanup saved timer on unmount
+  // Cleanup saved timer + ringtone preview on unmount
   useEffect(() => {
-    return () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); };
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+      if (previewAudioRef.current) { previewAudioRef.current.pause(); previewAudioRef.current.currentTime = 0; }
+    };
   }, []);
 
   // Appearance settings
@@ -42,6 +47,11 @@ export default function Settings() {
   // Notification settings
   const [desktopNotif, setDesktopNotif] = useState(() => localStorage.getItem('jolkr_desktop_notif') !== 'false');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('jolkr_sound') !== 'false');
+  const [ringtone, setRingtone] = useState(() => getRingtoneType());
+  const [previewingRingtone, setPreviewingRingtone] = useState(false);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewCtxRef = useRef<AudioContext | null>(null);
+  const previewTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Auto-start (Tauri desktop only)
   const [autoStart, setAutoStart] = useState(false);
@@ -159,6 +169,50 @@ export default function Settings() {
       setPushEnabled(prev);
     }
     setPushLoading(false);
+  };
+
+  const handleRingtoneChange = (type: string) => {
+    setRingtone(type);
+    localStorage.setItem('jolkr_ringtone', type);
+    stopPreviewRingtone();
+  };
+
+  const stopPreviewRingtone = () => {
+    setPreviewingRingtone(false);
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current.currentTime = 0;
+    }
+    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+  };
+
+  const previewRingtone = () => {
+    if (previewingRingtone) { stopPreviewRingtone(); return; }
+    setPreviewingRingtone(true);
+    const type = localStorage.getItem('jolkr_ringtone') ?? 'classic';
+    if (type === 'classic') {
+      if (!previewAudioRef.current) previewAudioRef.current = new Audio('/ringtone.ogg');
+      previewAudioRef.current.currentTime = 0;
+      previewAudioRef.current.play().catch(() => {});
+      previewTimeoutRef.current = setTimeout(stopPreviewRingtone, 4000);
+    } else {
+      if (!previewCtxRef.current) previewCtxRef.current = new AudioContext();
+      const ctx = previewCtxRef.current;
+      const now = ctx.currentTime;
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.05);
+      gain.gain.setValueAtTime(0.08, now + 0.35);
+      gain.gain.linearRampToValueAtTime(0, now + 0.4);
+      gain.gain.setValueAtTime(0, now + 0.6);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.65);
+      gain.gain.setValueAtTime(0.08, now + 0.95);
+      gain.gain.linearRampToValueAtTime(0, now + 1.0);
+      const o1 = ctx.createOscillator(); o1.type = 'sine'; o1.frequency.setValueAtTime(440, now); o1.connect(gain); o1.start(now); o1.stop(now + 1.0);
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(480, now); o2.connect(gain); o2.start(now); o2.stop(now + 1.0);
+      previewTimeoutRef.current = setTimeout(stopPreviewRingtone, 1500);
+    }
   };
 
   const handleFontSize = (size: string) => {
@@ -422,6 +476,38 @@ export default function Settings() {
                   </button>
                 </div>
 
+                {/* Call ringtone */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Call Ringtone</label>
+                      <p className="text-text-muted text-xs mt-1">Sound played for incoming DM calls</p>
+                    </div>
+                    <button
+                      onClick={previewRingtone}
+                      className="px-3 py-1.5 text-xs rounded bg-input text-text-secondary hover:text-text-primary hover:bg-white/10 transition-colors"
+                    >
+                      {previewingRingtone ? 'Stop' : 'Preview'}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    {[
+                      { id: 'classic', label: 'Classic' },
+                      { id: 'tone', label: 'Tone' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        onClick={() => handleRingtoneChange(opt.id)}
+                        className={`px-4 py-2 rounded text-sm ${
+                          ringtone === opt.id ? 'bg-primary text-white' : 'bg-input text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Push notifications (web only) */}
                 {isWeb && 'PushManager' in window && (
                   <div className="flex items-center justify-between">
@@ -471,6 +557,19 @@ export default function Settings() {
           {activeTab === 'devices' && (
             <DevicesTab />
           )}
+
+          {/* Build version + health link */}
+          <div className="mt-auto pt-8 pb-4 flex items-center justify-between text-text-muted text-xs">
+            <span>Jolkr v{__APP_VERSION__}</span>
+            <a
+              href="/health"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-text-secondary transition-colors"
+            >
+              Service Status
+            </a>
+          </div>
         </div>
       </div>
     </div>

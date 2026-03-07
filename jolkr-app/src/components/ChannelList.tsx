@@ -579,11 +579,11 @@ function ChannelGroup({
         const unread = unreadCounts[ch.id] ?? 0;
         const isMuted = mutedChannels.get(ch.id) ?? false;
         return (
-          <div key={ch.id} className="group flex items-center">
+          <div key={ch.id} className="group flex items-center min-w-0">
             <button
               onClick={() => { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
               onContextMenu={(e) => onChannelContextMenu(ch.id, e)}
-              className={`flex-1 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors ${
+              className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors ${
                 channelId === ch.id
                   ? 'bg-text-primary/10 text-text-primary'
                   : !isMuted && unread > 0
@@ -654,13 +654,13 @@ function VoiceChannelGroup({
         const channelParticipants = isActive ? voiceParticipants : [];
         return (
           <div key={ch.id}>
-            <div className="group flex items-center">
+            <div className="group flex items-center min-w-0">
               <button
                 onClick={() => {
                   navigate(`/servers/${serverId}/channels/${ch.id}`);
                   onChannelSelect?.();
                 }}
-                className={`flex-1 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors ${
+                className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors ${
                   isActive
                     ? 'bg-text-primary/10 text-text-primary'
                     : 'text-text-secondary hover:bg-text-primary/5 hover:text-text-primary'

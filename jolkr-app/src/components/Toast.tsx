@@ -4,27 +4,31 @@ import { create } from 'zustand';
 interface ToastState {
   message: string | null;
   kind: 'info' | 'success' | 'error';
-  show: (message: string, kind?: 'info' | 'success' | 'error') => void;
+  duration: number;
+  show: (message: string, kind?: 'info' | 'success' | 'error', duration?: number) => void;
   clear: () => void;
 }
 
 export const useToast = create<ToastState>((set) => ({
   message: null,
   kind: 'info',
-  show: (message, kind = 'info') => set({ message, kind }),
+  duration: 3000,
+  show: (message, kind = 'info', duration?: number) =>
+    set({ message, kind, duration: duration ?? (kind === 'error' ? 5000 : 3000) }),
   clear: () => set({ message: null }),
 }));
 
 export default function Toast() {
   const message = useToast((s) => s.message);
   const kind = useToast((s) => s.kind);
+  const duration = useToast((s) => s.duration);
   const clear = useToast((s) => s.clear);
 
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(clear, 3000);
+    const timer = setTimeout(clear, duration);
     return () => clearTimeout(timer);
-  }, [message, clear]);
+  }, [message, clear, duration]);
 
   if (!message) return null;
 

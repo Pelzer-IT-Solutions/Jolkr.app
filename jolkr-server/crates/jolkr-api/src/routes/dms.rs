@@ -524,10 +524,8 @@ pub async fn upload_dm_attachment(
             .unwrap_or(row.url);
 
         // Broadcast MessageUpdate so other clients see the new attachment
-        {
-            let mut dm_msg = DmMessageInfo::from(
-                DmRepo::get_message(&state.pool, message_id).await.unwrap(),
-            );
+        if let Ok(row) = DmRepo::get_message(&state.pool, message_id).await {
+            let mut dm_msg = DmMessageInfo::from(row);
             // Enrich with attachments
             let atts = DmRepo::list_attachments_for_messages(&state.pool, &[message_id])
                 .await
