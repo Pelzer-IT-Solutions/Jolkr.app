@@ -38,7 +38,9 @@ export default function ServerDiscovery({ onClose }: Props) {
       setServers((prev) => [...prev, ...more]);
       setOffset(newOffset);
       setHasMore(more.length >= 20);
-    } catch {}
+    } catch (e) {
+      setError((e as Error).message || 'Failed to load more servers');
+    }
   };
 
   const handleJoin = async (serverId: string) => {

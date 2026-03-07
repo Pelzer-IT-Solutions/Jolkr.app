@@ -331,6 +331,12 @@ impl DmService {
             return Err(JolkrError::Forbidden);
         }
 
+        // Validate message belongs to this DM channel
+        let msg = DmRepo::get_message(pool, message_id).await?;
+        if msg.dm_channel_id != dm_channel_id {
+            return Err(JolkrError::BadRequest("Message does not belong to this DM channel".into()));
+        }
+
         // Update last_read_message_id
         DmRepo::update_last_read(pool, dm_channel_id, user_id, message_id).await?;
 

@@ -489,7 +489,9 @@ export default function Settings() {
                       const newValue = !(user?.show_read_receipts ?? true);
                       try {
                         await updateProfile({ show_read_receipts: newValue });
-                      } catch { /* ignore */ }
+                      } catch (e) {
+                        setSaveError((e as Error).message || 'Failed to update read receipts');
+                      }
                     }}
                     className={`w-11 h-6 rounded-full transition-colors relative ${(user?.show_read_receipts ?? true) ? 'bg-primary' : 'bg-input'}`}
                   >

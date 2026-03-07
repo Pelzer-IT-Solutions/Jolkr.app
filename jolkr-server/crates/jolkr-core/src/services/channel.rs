@@ -427,6 +427,13 @@ impl ChannelService {
             Self::check_permission(pool, server_id, caller_id, Permissions::MANAGE_CHANNELS).await?;
         }
 
+        // Validate position values
+        for (_, position) in channel_positions {
+            if *position < 0 || *position > 1000 {
+                return Err(JolkrError::Validation("Channel position must be between 0 and 1000".into()));
+            }
+        }
+
         // Validate all channel IDs belong to this server
         let existing = ChannelRepo::list_for_server(pool, server_id).await?;
         let existing_ids: std::collections::HashSet<Uuid> = existing.iter().map(|c| c.id).collect();
