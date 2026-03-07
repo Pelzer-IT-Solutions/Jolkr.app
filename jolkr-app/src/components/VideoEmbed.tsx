@@ -166,8 +166,6 @@ function IframePlayer({ src, title }: { src: string; title: string }) {
         className="w-full h-full"
         allow="autoplay; fullscreen; encrypted-media"
         allowFullScreen
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
-        referrerPolicy="no-referrer"
       />
     </div>
   );
