@@ -15,7 +15,6 @@ import { isE2EEReady, getRecipientBundle } from '../../services/e2ee';
 import { useCallStore } from '../../stores/call';
 import { useVoiceStore } from '../../stores/voice';
 import { useMessagesStore } from '../../stores/messages';
-import { useDmReadsStore } from '../../stores/dm-reads';
 
 // Module-level DM cache — avoids re-fetching all DMs on every navigation
 let dmsCacheData: DmChannel[] | null = null;
