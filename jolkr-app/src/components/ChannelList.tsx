@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useServersStore } from '../stores/servers';
 import { useAuthStore } from '../stores/auth';
 import { useUnreadStore } from '../stores/unread';
@@ -625,11 +625,13 @@ function ChannelGroup({
     return (
       <SortableChannelItem key={ch.id} id={ch.id} disabled={!canDrag}>
         <div className="group flex items-center min-w-0">
-          <Link
-            to={`/servers/${serverId}/channels/${ch.id}`}
-            onClick={(e) => { e.preventDefault(); navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
+          <div
+            role="link"
+            tabIndex={0}
+            onClick={() => { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); } }}
             onContextMenu={(e) => onChannelContextMenu(ch.id, e)}
-            className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors no-underline ${
+            className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm cursor-pointer transition-colors ${
               channelId === ch.id
                 ? 'bg-text-primary/10 text-text-primary'
                 : !isMuted && unread > 0
@@ -650,7 +652,7 @@ function ChannelGroup({
                 <span className="text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>
               </span>
             )}
-          </Link>
+          </div>
           {canManage && (
             <button
               onClick={() => onEditChannel(ch)}
@@ -712,10 +714,12 @@ function VoiceChannelGroup({
         return (
           <div key={ch.id}>
             <div className="group flex items-center min-w-0">
-              <Link
-                to={`/servers/${serverId}/channels/${ch.id}`}
-                onClick={(e) => { e.preventDefault(); navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
-                className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors no-underline ${
+              <div
+                role="link"
+                tabIndex={0}
+                onClick={() => { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); } }}
+                className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm cursor-pointer transition-colors ${
                   isActive
                     ? 'bg-text-primary/10 text-text-primary'
                     : 'text-text-secondary hover:bg-text-primary/5 hover:text-text-primary'
@@ -725,7 +729,7 @@ function VoiceChannelGroup({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
                 <span className="truncate">{ch.name}</span>
-              </Link>
+              </div>
               {canManage && (
                 <button
                   onClick={() => onEditChannel(ch)}

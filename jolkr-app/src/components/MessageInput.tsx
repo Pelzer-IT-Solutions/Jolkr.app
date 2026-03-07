@@ -122,7 +122,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   useEffect(() => {
     if (droppedFiles && droppedFiles.length > 0 && canAttach) {
       setFiles((prev) => [...prev, ...droppedFiles]);
-      inputRef.current?.focus();
+      if (!isMobilePlatform()) inputRef.current?.focus();
     }
   }, [droppedFiles, canAttach]);
 
@@ -317,7 +317,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       sendErrorTimerRef.current = setTimeout(() => setSendError(null), 4000);
     }
     finally { setSending(false); }
-    inputRef.current?.focus();
+    if (!isMobilePlatform()) inputRef.current?.focus();
   };
 
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
