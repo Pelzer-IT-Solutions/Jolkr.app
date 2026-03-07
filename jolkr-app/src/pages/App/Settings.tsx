@@ -191,7 +191,7 @@ export default function Settings() {
     setPreviewingRingtone(true);
     const type = localStorage.getItem('jolkr_ringtone') ?? 'classic';
     if (type === 'classic') {
-      if (!previewAudioRef.current) previewAudioRef.current = new Audio('/ringtone.ogg');
+      if (!previewAudioRef.current) previewAudioRef.current = new Audio(`${import.meta.env.BASE_URL}ringtone.ogg`);
       previewAudioRef.current.currentTime = 0;
       previewAudioRef.current.play().catch(() => {});
       previewTimeoutRef.current = setTimeout(stopPreviewRingtone, 4000);

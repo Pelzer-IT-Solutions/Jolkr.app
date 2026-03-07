@@ -1,12 +1,20 @@
 import { create } from 'zustand';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
+import { useMessagesStore } from './messages';
+
+function persistLastSeen(data: Record<string, string>) {
+  try { localStorage.setItem('jolkr_last_seen', JSON.stringify(data)); }
+  catch { /* quota exceeded */ }
+}
 
 interface UnreadState {
   /** channelId → unread count */
   counts: Record<string, number>;
   /** The channel the user is currently viewing */
   activeChannel: string | null;
+  /** channelId → last seen message ID (for unread separator) */
+  lastSeenMessageId: Record<string, string>;
   /** Increment unread for a channel */
   increment: (channelId: string) => void;
   /** Mark a channel as read (reset count to 0) */
@@ -20,6 +28,11 @@ interface UnreadState {
 export const useUnreadStore = create<UnreadState>((set, get) => ({
   counts: {},
   activeChannel: null,
+  lastSeenMessageId: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('jolkr_last_seen') ?? '{}');
+    } catch { return {}; }
+  })(),
 
   increment: (channelId) => {
     // Don't increment if user is currently viewing this channel
@@ -38,6 +51,16 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
   },
 
   setActiveChannel: (channelId) => {
+    const prev = get().activeChannel;
+    // Save last seen message ID when leaving a channel
+    if (prev) {
+      const msgs = useMessagesStore.getState().messages[prev];
+      if (msgs?.length) {
+        const updated = { ...get().lastSeenMessageId, [prev]: msgs[msgs.length - 1].id };
+        set({ lastSeenMessageId: updated });
+        persistLastSeen(updated);
+      }
+    }
     set({ activeChannel: channelId });
     if (channelId) {
       get().markRead(channelId);

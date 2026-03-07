@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMessagesStore } from '../stores/messages';
 import { usePresenceStore } from '../stores/presence';
 import { useAuthStore } from '../stores/auth';
+import { useUnreadStore } from '../stores/unread';
 import { wsClient } from '../api/ws';
 import * as api from '../api/client';
 import type { Message, User } from '../api/types';
@@ -45,6 +46,14 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const [newMsgCount, setNewMsgCount] = useState(0);
   const isAtBottomRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
+  const lastSeenMsgId = useUnreadStore((s) => s.lastSeenMessageId[channelId]);
+
+  const unreadSepIndex = useMemo(() => {
+    if (!lastSeenMsgId) return -1;
+    const idx = msgs.findIndex((m) => m.id === lastSeenMsgId);
+    if (idx === -1 || idx === msgs.length - 1) return -1;
+    return idx + 1; // separator appears BEFORE this message
+  }, [lastSeenMsgId, msgs]);
 
   // Virtualizer — use message IDs as item keys so stale measurements from
   // a previous channel are never reused (different messages = different keys).
@@ -156,6 +165,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
 
   const isCompact = (i: number) => {
     if (i === 0) return false;
+    if (i === unreadSepIndex) return false;
     const prev = msgs[i - 1];
     const curr = msgs[i];
     if (prev.author_id !== curr.author_id) return false;
@@ -226,6 +236,13 @@ export default function MessageList({ channelId, search, searchResults, searchLo
                         {new Date(msg.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </span>
                       <div className="flex-1 h-px bg-divider" />
+                    </div>
+                  )}
+                  {i === unreadSepIndex && (
+                    <div className="flex items-center gap-3 px-4 my-3">
+                      <div className="flex-1 h-px bg-error" />
+                      <span className="text-[11px] text-error font-semibold">NEW</span>
+                      <div className="flex-1 h-px bg-error" />
                     </div>
                   )}
                   <MessageTile

@@ -29,7 +29,7 @@ function startRingSound() {
 function startClassicRing() {
   try {
     if (!ringAudio) {
-      ringAudio = new Audio('/ringtone.ogg');
+      ringAudio = new Audio(`${import.meta.env.BASE_URL}ringtone.ogg`);
       ringAudio.loop = true;
     }
     ringAudio.currentTime = 0;

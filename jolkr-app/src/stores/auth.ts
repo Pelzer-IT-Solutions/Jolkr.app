@@ -86,7 +86,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     usePresenceStore.getState().clearAll();
     useServersStore.setState({ servers: [], channels: {}, members: {}, categories: {}, roles: {}, permissions: {}, channelPermissions: {}, emojis: {}, loading: false });
     useMessagesStore.setState({ messages: {}, loading: {}, loadingOlder: {}, hasMore: {}, threadMessages: {}, threadLoading: {}, threadLoadingOlder: {}, threadHasMore: {}, threadListVersion: 0 });
-    useUnreadStore.setState({ counts: {}, activeChannel: null });
+    useUnreadStore.setState({ counts: {}, activeChannel: null, lastSeenMessageId: {} });
+    localStorage.removeItem('jolkr_last_seen');
     set({ user: null, loading: false, error: null });
   },
 }));
