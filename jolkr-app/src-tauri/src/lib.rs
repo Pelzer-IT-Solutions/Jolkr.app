@@ -6,6 +6,7 @@ use tauri::{
 };
 
 #[cfg(not(desktop))]
+#[allow(unused_imports)]
 use tauri::Manager;
 
 #[tauri::command]
@@ -57,7 +58,7 @@ pub fn run() {
     let builder = builder
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .setup(|app| {
+        .setup(|#[allow(unused)] app| {
             // --- Stronghold (encrypted token storage, desktop only) ---
             #[cfg(desktop)]
             {
