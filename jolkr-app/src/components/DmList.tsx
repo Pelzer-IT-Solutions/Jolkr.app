@@ -42,6 +42,7 @@ export default function DmList({ onDmSelect }: Props) {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const wsDebouncerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const fetchedUserIds = useRef(cachedFetchedIds);
 
   // Context menu state
@@ -125,12 +126,16 @@ export default function DmList({ onDmSelect }: Props) {
             (chs) => chs.some((c) => c.id === msgChannelId),
           );
           if (!isServerChannel) {
-            fetchDms();
+            if (wsDebouncerRef.current) clearTimeout(wsDebouncerRef.current);
+            wsDebouncerRef.current = setTimeout(() => fetchDms(), 500);
           }
         }
       }
     });
-    return unsub;
+    return () => {
+      unsub();
+      if (wsDebouncerRef.current) clearTimeout(wsDebouncerRef.current);
+    };
   }, [fetchDms]);
 
   // Debounced user search when typing in search bar

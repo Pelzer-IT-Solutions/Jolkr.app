@@ -30,7 +30,9 @@ function LayoutInner() {
           Connection lost. <button onClick={() => { setDisconnected(false); wsClient.connect(); }} className="underline font-medium ml-1">Reconnect</button>
         </div>
       )}
-      {(!isMobile || showSidebar) && <ServerSidebar />}
+      <div className={isMobile && !showSidebar ? 'hidden' : ''}>
+        <ServerSidebar />
+      </div>
       <Outlet />
       <Toast />
     </>
