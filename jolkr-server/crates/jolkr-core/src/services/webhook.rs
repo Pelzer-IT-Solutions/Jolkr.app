@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
 use jolkr_db::models::WebhookRow;
-use jolkr_db::repo::{ChannelRepo, MemberRepo, MessageRepo, RoleRepo, ServerRepo, WebhookRepo};
+use jolkr_db::repo::{ChannelRepo, MemberRepo, RoleRepo, ServerRepo, WebhookRepo};
 
 use crate::services::message::MessageInfo;
 

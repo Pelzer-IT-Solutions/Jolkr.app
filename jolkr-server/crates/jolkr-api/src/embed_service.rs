@@ -2,7 +2,7 @@ use reqwest::Client;
 use scraper::{Html, Selector};
 use serde::Serialize;
 use sqlx::PgPool;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use jolkr_db::repo::EmbedRepo;
@@ -20,7 +20,32 @@ pub struct EmbedMetadata {
 
 /// URL regex for extracting links from message content.
 static URL_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
-    regex::Regex::new(r"https?://[^\s<>\)\]]+").unwrap()
+    regex::Regex::new(r"https?://[^\s<>\)\]']+").unwrap()
+});
+
+/// YouTube URL patterns
+static YOUTUBE_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(r"(?:youtube\.com/(?:watch\?v=|shorts/|live/|embed/)|youtu\.be/)([a-zA-Z0-9_-]{11})").unwrap()
+});
+
+/// Vimeo URL pattern
+static VIMEO_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(r"vimeo\.com/(\d+)").unwrap()
+});
+
+/// Twitch URL patterns
+static TWITCH_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(r"twitch\.tv/(?:videos/(\d+)|([a-zA-Z0-9_]+))").unwrap()
+});
+
+/// TikTok URL pattern
+static TIKTOK_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(r"tiktok\.com/.*/video/(\d+)").unwrap()
+});
+
+/// Direct video file extensions
+static DIRECT_VIDEO_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(r"\.(mp4|webm|ogg|mov|m3u8)(\?.*)?$").unwrap()
 });
 
 /// Service for fetching link previews and storing them as embeds.
@@ -39,6 +64,73 @@ impl LinkEmbedService {
             .unwrap_or_else(|_| Client::new());
 
         Self { client }
+    }
+
+    /// Try to generate embed metadata for known video platforms without scraping.
+    fn try_video_embed(url: &str) -> Option<EmbedMetadata> {
+        // YouTube
+        if let Some(caps) = YOUTUBE_REGEX.captures(url) {
+            let video_id = caps.get(1)?.as_str();
+            return Some(EmbedMetadata {
+                url: url.to_string(),
+                title: Some("YouTube".to_string()),
+                description: None,
+                image_url: Some(format!("https://img.youtube.com/vi/{video_id}/mqdefault.jpg")),
+                site_name: Some("YouTube".to_string()),
+                color: Some("#FF0000".to_string()),
+            });
+        }
+
+        // Vimeo
+        if let Some(caps) = VIMEO_REGEX.captures(url) {
+            let _video_id = caps.get(1)?.as_str();
+            return Some(EmbedMetadata {
+                url: url.to_string(),
+                title: Some("Vimeo".to_string()),
+                description: None,
+                image_url: None,
+                site_name: Some("Vimeo".to_string()),
+                color: Some("#1AB7EA".to_string()),
+            });
+        }
+
+        // Twitch
+        if TWITCH_REGEX.is_match(url) {
+            return Some(EmbedMetadata {
+                url: url.to_string(),
+                title: Some("Twitch".to_string()),
+                description: None,
+                image_url: None,
+                site_name: Some("Twitch".to_string()),
+                color: Some("#9146FF".to_string()),
+            });
+        }
+
+        // TikTok
+        if TIKTOK_REGEX.is_match(url) {
+            return Some(EmbedMetadata {
+                url: url.to_string(),
+                title: Some("TikTok".to_string()),
+                description: None,
+                image_url: None,
+                site_name: Some("TikTok".to_string()),
+                color: Some("#EE1D52".to_string()),
+            });
+        }
+
+        // Direct video files
+        if DIRECT_VIDEO_REGEX.is_match(url) {
+            return Some(EmbedMetadata {
+                url: url.to_string(),
+                title: Some("Video".to_string()),
+                description: None,
+                image_url: None,
+                site_name: Some("Video".to_string()),
+                color: Some("#5865F2".to_string()),
+            });
+        }
+
+        None
     }
 
     /// Extract URLs from message content and fetch embeds for each.
@@ -61,51 +153,46 @@ impl LinkEmbedService {
         }
 
         for url in urls {
-            match self.fetch_metadata(&url).await {
-                Ok(Some(meta)) => {
-                    let id = Uuid::new_v4();
-                    let result = if is_dm {
-                        EmbedRepo::create_dm(
-                            pool,
-                            id,
-                            message_id,
-                            &meta.url,
-                            meta.title.as_deref(),
-                            meta.description.as_deref(),
-                            meta.image_url.as_deref(),
-                            meta.site_name.as_deref(),
-                            meta.color.as_deref(),
-                        )
-                        .await
-                        .map(|_| ())
-                    } else {
-                        EmbedRepo::create(
-                            pool,
-                            id,
-                            message_id,
-                            &meta.url,
-                            meta.title.as_deref(),
-                            meta.description.as_deref(),
-                            meta.image_url.as_deref(),
-                            meta.site_name.as_deref(),
-                            meta.color.as_deref(),
-                        )
-                        .await
-                        .map(|_| ())
-                    };
-
-                    if let Err(e) = result {
-                        warn!(message_id = %message_id, url = %url, error = %e, "Failed to store embed");
-                    } else {
-                        debug!(message_id = %message_id, url = %url, "Stored link embed");
+            // First try known video platforms (no scraping needed)
+            let meta = if let Some(video_meta) = Self::try_video_embed(&url) {
+                info!(url = %url, site = ?video_meta.site_name, "Generated video embed directly");
+                Some(video_meta)
+            } else {
+                // Fallback to OG scraping for other URLs
+                match self.fetch_metadata(&url).await {
+                    Ok(meta) => meta,
+                    Err(e) => {
+                        warn!(url = %url, error = %e, "Failed to fetch URL metadata");
+                        None
                     }
                 }
-                Ok(None) => {
-                    debug!(url = %url, "No metadata found for URL");
+            };
+
+            if let Some(meta) = meta {
+                let id = Uuid::new_v4();
+                let result = if is_dm {
+                    EmbedRepo::create_dm(
+                        pool, id, message_id, &meta.url,
+                        meta.title.as_deref(), meta.description.as_deref(),
+                        meta.image_url.as_deref(), meta.site_name.as_deref(),
+                        meta.color.as_deref(),
+                    ).await.map(|_| ())
+                } else {
+                    EmbedRepo::create(
+                        pool, id, message_id, &meta.url,
+                        meta.title.as_deref(), meta.description.as_deref(),
+                        meta.image_url.as_deref(), meta.site_name.as_deref(),
+                        meta.color.as_deref(),
+                    ).await.map(|_| ())
+                };
+
+                if let Err(e) = result {
+                    warn!(message_id = %message_id, url = %url, error = %e, "Failed to store embed");
+                } else {
+                    debug!(message_id = %message_id, url = %url, "Stored link embed");
                 }
-                Err(e) => {
-                    debug!(url = %url, error = %e, "Failed to fetch URL metadata");
-                }
+            } else {
+                info!(url = %url, "No metadata found for URL");
             }
         }
     }

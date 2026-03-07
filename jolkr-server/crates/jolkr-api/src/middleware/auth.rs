@@ -17,6 +17,7 @@ use crate::routes::AppState;
 #[derive(Debug, Clone)]
 pub struct AuthUser {
     pub user_id: Uuid,
+    #[allow(dead_code)]
     pub device_id: Option<Uuid>,
 }
 

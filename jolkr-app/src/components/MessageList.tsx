@@ -46,12 +46,14 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const isAtBottomRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
 
-  // Virtualizer
+  // Virtualizer — use message IDs as item keys so stale measurements from
+  // a previous channel are never reused (different messages = different keys).
   const virtualizer = useVirtualizer({
     count: msgs.length,
     getScrollElement: () => containerRef.current,
     estimateSize: () => 60,
     overscan: 10,
+    getItemKey: (index) => msgs[index]?.id ?? index,
   });
 
   useEffect(() => {

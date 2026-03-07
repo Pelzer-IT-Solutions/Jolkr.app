@@ -1,6 +1,6 @@
-import { useState, useRef, lazy, Suspense, memo } from 'react';
+import { useState, useRef, useMemo, lazy, Suspense, memo } from 'react';
 import { createPortal } from 'react-dom';
-import type { Message, User, Reaction } from '../api/types';
+import type { Message, User, Reaction, MessageEmbed } from '../api/types';
 import { useAuthStore } from '../stores/auth';
 import { useMessagesStore } from '../stores/messages';
 import { rewriteStorageUrl } from '../platform/config';
@@ -11,10 +11,14 @@ import MessageContent from './MessageContent';
 import ImageLightbox from './ImageLightbox';
 import UserProfileCard from './UserProfileCard';
 import LinkEmbed from './LinkEmbed';
+import VideoEmbed from './VideoEmbed';
+import { parseVideoUrl, getYouTubeThumbnail, getPlatformName, getPlatformColor } from '../utils/videoUrl';
 import PollDisplay from './PollDisplay';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import { useToast } from './Toast';
 import { useDecryptedContent } from '../hooks/useDecryptedContent';
+
+const URL_RE = /https?:\/\/[^\s<>)\]']+/g;
 
 const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
 
@@ -53,6 +57,35 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
     message.content, message.encrypted_content, message.nonce, isDm,
   );
   const hasText = !!displayContent && displayContent.trim().length > 0 && displayContent !== '\u200B';
+
+  // Client-side embed generation: extract URLs from displayed content and create
+  // video embeds for known platforms. This is essential for encrypted messages where
+  // the server cannot read the content to generate embeds.
+  const clientEmbeds = useMemo<MessageEmbed[]>(() => {
+    // If server already provided embeds, use those
+    if ((message.embeds ?? []).length > 0) return message.embeds!;
+    if (!displayContent) return [];
+    const urls = displayContent.match(URL_RE);
+    if (!urls) return [];
+    const seen = new Set<string>();
+    const embeds: MessageEmbed[] = [];
+    for (const url of urls.slice(0, 5)) {
+      if (seen.has(url)) continue;
+      seen.add(url);
+      const info = parseVideoUrl(url);
+      if (info) {
+        embeds.push({
+          url,
+          title: getPlatformName(info.platform),
+          description: null,
+          image_url: info.platform === 'youtube' && info.id ? getYouTubeThumbnail(info.id) : null,
+          site_name: getPlatformName(info.platform),
+          color: getPlatformColor(info.platform),
+        });
+      }
+    }
+    return embeds;
+  }, [displayContent, message.embeds]);
 
   // Use reactions directly from store (message.reactions)
   const reactions = message.reactions ?? [];
@@ -127,6 +160,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
   };
 
   const isImage = (ct: string) => ct.startsWith('image/') && ct !== 'image/svg+xml';
+  const isVideo = (ct: string) => ct.startsWith('video/');
 
   return (
     <div
@@ -230,6 +264,12 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                   alt={att.filename}
                   onOpen={() => setLightboxImage({ src: attUrl, alt: att.filename })}
                 />
+              ) : isVideo(att.content_type) ? (
+                <VideoEmbed
+                  key={att.id}
+                  embed={{ url: attUrl, title: att.filename, site_name: 'Attachment' }}
+                  videoInfo={{ platform: 'direct', src: attUrl }}
+                />
               ) : (
                 <a
                   key={att.id}
@@ -251,12 +291,17 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
           </div>
         )}
 
-        {/* Link Embeds */}
-        {(message.embeds ?? []).length > 0 && (
+        {/* Link Embeds (server-side or client-side generated) */}
+        {clientEmbeds.length > 0 && (
           <div className="mt-1 flex flex-col gap-1">
-            {(message.embeds ?? []).map((embed, i) => (
-              <LinkEmbed key={`${embed.url}-${i}`} embed={embed} />
-            ))}
+            {clientEmbeds.map((embed, i) => {
+              const videoInfo = parseVideoUrl(embed.url);
+              return videoInfo ? (
+                <VideoEmbed key={`${embed.url}-${i}`} embed={embed} videoInfo={videoInfo} />
+              ) : (
+                <LinkEmbed key={`${embed.url}-${i}`} embed={embed} />
+              );
+            })}
           </div>
         )}
 

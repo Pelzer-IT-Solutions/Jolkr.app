@@ -19,6 +19,7 @@ services:
       nats:
         condition: service_started
     environment:
+      DEBIAN_FRONTEND: noninteractive
       DATABASE_URL: "postgres://jolkr:jolkr_dev@postgres:5432/jolkr"
       REDIS_URL: "redis://redis:6379"
       MINIO_ENDPOINT: "http://minio:9000"
@@ -58,6 +59,7 @@ services:
       nats:
         condition: service_started
     environment:
+      DEBIAN_FRONTEND: noninteractive
       MEDIA_PORT: "8081"
       MEDIA_UDP_PORT: "10000"
       PUBLIC_IP: "${PUBLIC_IP:-127.0.0.1}"

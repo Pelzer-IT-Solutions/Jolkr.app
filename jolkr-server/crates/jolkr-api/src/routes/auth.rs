@@ -4,7 +4,6 @@ use tracing::info;
 
 use jolkr_core::{AuthService, TokenPair};
 
-use crate::email_service::EmailService;
 use crate::errors::AppError;
 use crate::routes::AppState;
 

@@ -11,7 +11,7 @@ use jolkr_core::services::dm::{
     EditDmRequest, SendDmRequest, UpdateGroupDmRequest,
 };
 use jolkr_core::services::message::{AttachmentInfo, MessageInfo};
-use jolkr_db::repo::{DmRepo, UserRepo};
+use jolkr_db::repo::{DmRepo, EmbedRepo, UserRepo};
 
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
@@ -149,9 +149,37 @@ pub async fn send_dm_message(
             let embed_content = content.clone();
             tokio::spawn(async move {
                 embed_svc.process_message(&embed_pool, embed_msg_id, &embed_content, true).await;
+                // Fetch embeds and broadcast MessageUpdate if any were created
+                match EmbedRepo::list_for_dm_messages(&embed_pool, &[embed_msg_id]).await {
+                    Ok(embeds) if !embeds.is_empty() => {
+                        match DmRepo::get_message(&embed_pool, embed_msg_id).await {
+                            Ok(row) => {
+                                use jolkr_core::services::message::EmbedInfo;
+                                let mut msg: DmMessageInfo = row.into();
+                                msg.embeds = embeds.into_iter().map(|e| EmbedInfo {
+                                    url: e.url,
+                                    title: e.title,
+                                    description: e.description,
+                                    image_url: e.image_url,
+                                    site_name: e.site_name,
+                                    color: e.color,
+                                }).collect();
+                                let event = crate::ws::events::GatewayEvent::MessageUpdate {
+                                    message: dm_to_message_info(&msg),
+                                };
+                                embed_nats.publish_to_channel(embed_dm_id, &event).await;
+                            }
+                            Err(e) => {
+                                tracing::warn!("DM embed enrichment failed for message {embed_msg_id}: {e}");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("DM embed fetch failed for message {embed_msg_id}: {e}");
+                    }
+                    _ => {}
+                }
             });
-            // Note: no MessageUpdate WS for DM embeds — they'll appear on next fetch
-            let _ = (embed_nats, embed_dm_id); // suppress unused warnings
         }
     }
 

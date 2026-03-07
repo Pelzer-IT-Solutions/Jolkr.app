@@ -73,6 +73,7 @@ function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
     reply_to_id: (m.reply_to_id as string) ?? null,
     attachments: (m.attachments as Message['attachments']) ?? [],
     reactions: (m.reactions as Reaction[]) ?? [],
+    embeds: (m.embeds as Message['embeds']) ?? [],
   }));
 }
 
@@ -350,6 +351,7 @@ function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
     thread_reply_count: (raw.thread_reply_count as number) ?? null,
     attachments: (raw.attachments as Message['attachments']) ?? [],
     reactions: (raw.reactions as Message['reactions']) ?? [],
+    embeds: (raw.embeds as Message['embeds']) ?? [],
   };
 }
 
