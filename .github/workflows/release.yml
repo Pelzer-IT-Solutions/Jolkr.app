@@ -125,6 +125,8 @@ jobs:
       - name: Upload signed APK to Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
+          name: 'Jolkr ${{ github.ref_name }}'
           draft: true
           files: ${{ steps.find-apk.outputs.apk_path }}
         env:
