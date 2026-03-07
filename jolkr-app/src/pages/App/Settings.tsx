@@ -476,6 +476,27 @@ export default function Settings() {
                   </button>
                 </div>
 
+                {/* Read Receipts */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Read Receipts</label>
+                    <p className="text-text-muted text-xs mt-1">When disabled, others won't see when you've read their messages</p>
+                  </div>
+                  <button
+                    role="switch"
+                    aria-checked={user?.show_read_receipts ?? true}
+                    onClick={async () => {
+                      const newValue = !(user?.show_read_receipts ?? true);
+                      try {
+                        await updateProfile({ show_read_receipts: newValue });
+                      } catch { /* ignore */ }
+                    }}
+                    className={`w-11 h-6 rounded-full transition-colors relative ${(user?.show_read_receipts ?? true) ? 'bg-primary' : 'bg-input'}`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${(user?.show_read_receipts ?? true) ? 'left-5' : 'left-0.5'}`} />
+                  </button>
+                </div>
+
                 {/* Call ringtone */}
                 <div>
                   <div className="flex items-center justify-between mb-2">

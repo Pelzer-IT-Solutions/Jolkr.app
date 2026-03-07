@@ -318,6 +318,27 @@ impl DmService {
         })
     }
 
+    /// Mark messages as read up to a given message ID.
+    /// Returns `true` if the read receipt should be broadcast (user has show_read_receipts enabled).
+    pub async fn mark_as_read(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        user_id: Uuid,
+        message_id: Uuid,
+    ) -> Result<bool, JolkrError> {
+        // Validate user is a member of the DM
+        if !DmRepo::is_member(pool, dm_channel_id, user_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+
+        // Update last_read_message_id
+        DmRepo::update_last_read(pool, dm_channel_id, user_id, message_id).await?;
+
+        // Check if user has show_read_receipts enabled
+        let user = UserRepo::get_by_id(pool, user_id).await?;
+        Ok(user.show_read_receipts)
+    }
+
     /// Send a message in a DM channel.
     pub async fn send_message(
         pool: &PgPool,
@@ -522,4 +543,5 @@ impl DmService {
 
         Ok(messages)
     }
+
 }

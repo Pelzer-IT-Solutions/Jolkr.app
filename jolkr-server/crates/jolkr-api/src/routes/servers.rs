@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     Json,
 };
 use chrono::{DateTime, Utc};
@@ -349,5 +349,45 @@ pub async fn set_nickname(
         SetNicknameRequest { nickname: body.nickname },
     )
     .await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+// ── Discovery Handlers ────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct DiscoverQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+/// GET /api/servers/discover — list public servers
+pub async fn discover_servers(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    Query(query): Query<DiscoverQuery>,
+) -> Result<Json<ServersResponse>, AppError> {
+    let limit = query.limit.unwrap_or(20);
+    let offset = query.offset.unwrap_or(0);
+    let mut servers = ServerService::discover_servers(&state.pool, limit, offset).await?;
+    for s in &mut servers {
+        presign_server_urls(&state, s).await;
+    }
+    Ok(Json(ServersResponse { servers }))
+}
+
+/// POST /api/servers/:id/join — join a public server
+pub async fn join_public_server(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(server_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    ServerService::join_public_server(&state.pool, server_id, auth.user_id).await?;
+
+    let event = crate::ws::events::GatewayEvent::MemberJoin {
+        server_id,
+        user_id: auth.user_id,
+    };
+    state.nats.publish_to_server(server_id, &event).await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

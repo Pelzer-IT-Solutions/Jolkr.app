@@ -190,6 +190,13 @@ pub enum GatewayEvent {
         user_id: Uuid,
     },
 
+    /// A user has read messages up to a specific message in a DM.
+    DmMessagesRead {
+        dm_id: Uuid,
+        user_id: Uuid,
+        message_id: Uuid,
+    },
+
     /// Generic error event.
     Error {
         message: String,

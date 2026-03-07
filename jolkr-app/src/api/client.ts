@@ -243,7 +243,7 @@ export async function resetPasswordConfirm(token: string, newPassword: string): 
 
 // Users
 export const getMe = () => request<User>('/users/@me', {}, 'user');
-export const updateMe = (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null }) =>
+export const updateMe = (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean }) =>
   request<User>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
 export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
 export const getUsersBatch = async (ids: string[]): Promise<User[]> => {
@@ -257,7 +257,7 @@ export const getServers = () => request<Server[]>('/servers', {}, 'servers');
 export const createServer = (body: { name: string; description?: string }) =>
   request<Server>('/servers', { method: 'POST', body: JSON.stringify(body) }, 'server');
 export const getServer = (id: string) => request<Server>(`/servers/${id}`, {}, 'server');
-export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string }) =>
+export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean }) =>
   request<Server>(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'server');
 export const deleteServer = (id: string) =>
   request<void>(`/servers/${id}`, { method: 'DELETE' });
@@ -265,6 +265,12 @@ export const getServerMembers = (serverId: string) =>
   request<Member[]>(`/servers/${serverId}/members`, {}, 'members');
 export const leaveServer = (serverId: string) =>
   request<void>(`/servers/${serverId}/members/@me`, { method: 'DELETE' });
+
+export const discoverServers = (limit = 20, offset = 0) =>
+  request<Server[]>(`/servers/discover?limit=${limit}&offset=${offset}`, {}, 'servers');
+
+export const joinPublicServer = (serverId: string) =>
+  request<void>(`/servers/${serverId}/join`, { method: 'POST' });
 
 // Server Moderation
 export const kickMember = (serverId: string, userId: string) =>
@@ -320,6 +326,11 @@ export const createChannel = (serverId: string, body: { name: string; kind: stri
 export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
 export const updateChannel = (id: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
+export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>
+  request<Channel[]>(`/servers/${serverId}/channels/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ channel_positions: positions }),
+  }, 'channels');
 export const deleteChannel = (id: string) =>
   request<void>(`/channels/${id}`, { method: 'DELETE' });
 
@@ -450,6 +461,13 @@ export const updateDm = (dmId: string, body: { name?: string }) =>
     method: 'PATCH',
     body: JSON.stringify(body),
   }, 'channel');
+
+// DM Read Receipts
+export const markDmRead = (dmId: string, messageId: string) =>
+  request<void>(`/dms/${dmId}/read`, {
+    method: 'POST',
+    body: JSON.stringify({ message_id: messageId }),
+  });
 
 // DM Voice Call Signaling
 export const initiateCall = (dmId: string) =>

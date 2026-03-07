@@ -7,6 +7,7 @@ export interface User {
   status?: string | null;
   bio?: string | null;
   is_online?: boolean;
+  show_read_receipts?: boolean;
   created_at?: string | null;
 }
 
@@ -17,6 +18,8 @@ export interface Server {
   banner_url?: string | null;
   owner_id: string;
   description?: string | null;
+  is_public?: boolean;
+  member_count?: number;
   created_at?: string | null;
 }
 

@@ -18,6 +18,7 @@ pub struct UserRow {
     pub bio: Option<String>,
     pub is_online: bool,
     pub last_seen_at: Option<DateTime<Utc>>,
+    pub show_read_receipts: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -53,6 +54,7 @@ pub struct ServerRow {
     pub icon_url: Option<String>,
     pub banner_url: Option<String>,
     pub owner_id: Uuid,
+    pub is_public: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -223,6 +225,7 @@ pub struct DmMemberRow {
     pub dm_channel_id: Uuid,
     pub user_id: Uuid,
     pub joined_at: DateTime<Utc>,
+    pub last_read_message_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

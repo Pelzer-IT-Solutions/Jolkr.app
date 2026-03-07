@@ -589,6 +589,42 @@ pub async fn upload_dm_attachment(
     )))
 }
 
+// ── Read Receipts ────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct MarkAsReadRequest {
+    pub message_id: Uuid,
+}
+
+/// POST /api/dms/:dm_id/read
+pub async fn mark_as_read(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(dm_id): Path<Uuid>,
+    Json(body): Json<MarkAsReadRequest>,
+) -> Result<axum::http::StatusCode, AppError> {
+    let should_broadcast =
+        DmService::mark_as_read(&state.pool, dm_id, auth.user_id, body.message_id).await?;
+
+    if should_broadcast {
+        // Broadcast DmMessagesRead to other DM members
+        let event = crate::ws::events::GatewayEvent::DmMessagesRead {
+            dm_id,
+            user_id: auth.user_id,
+            message_id: body.message_id,
+        };
+        if let Ok(members) = DmRepo::get_dm_members(&state.pool, dm_id).await {
+            for member in &members {
+                if member.user_id != auth.user_id {
+                    state.nats.publish_to_user(member.user_id, &event).await;
+                }
+            }
+        }
+    }
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
 // ── Group DM management ──────────────────────────────────────────────
 
 /// PATCH /api/dms/:dm_id — update group DM name.

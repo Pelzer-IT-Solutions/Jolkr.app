@@ -90,16 +90,18 @@ impl UserRepo {
         avatar_url: Option<&str>,
         status: Option<&str>,
         bio: Option<&str>,
+        show_read_receipts: Option<bool>,
     ) -> Result<UserRow, JolkrError> {
         let now = Utc::now();
         let user = sqlx::query_as::<_, UserRow>(
             r#"
             UPDATE users
-            SET display_name = COALESCE($2, display_name),
-                avatar_url   = COALESCE($3, avatar_url),
-                status       = COALESCE($4, status),
-                bio          = COALESCE($5, bio),
-                updated_at   = $6
+            SET display_name       = COALESCE($2, display_name),
+                avatar_url         = COALESCE($3, avatar_url),
+                status             = COALESCE($4, status),
+                bio                = COALESCE($5, bio),
+                show_read_receipts = COALESCE($6, show_read_receipts),
+                updated_at         = $7
             WHERE id = $1
             RETURNING *
             "#,
@@ -109,6 +111,7 @@ impl UserRepo {
         .bind(avatar_url)
         .bind(status)
         .bind(bio)
+        .bind(show_read_receipts)
         .bind(now)
         .fetch_optional(pool)
         .await?

@@ -218,6 +218,41 @@ impl DmRepo {
         Ok(count)
     }
 
+    // ── Read Receipts ─────────────────────────────────────────────────
+
+    /// Update the last read message ID for a user in a DM channel.
+    pub async fn update_last_read(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        user_id: Uuid,
+        message_id: Uuid,
+    ) -> Result<(), JolkrError> {
+        sqlx::query(
+            r#"UPDATE dm_members SET last_read_message_id = $3
+               WHERE dm_channel_id = $1 AND user_id = $2"#,
+        )
+        .bind(dm_channel_id)
+        .bind(user_id)
+        .bind(message_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Get read states (user_id, last_read_message_id) for all members of a DM channel.
+    pub async fn get_read_states(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+    ) -> Result<Vec<(Uuid, Option<Uuid>)>, JolkrError> {
+        let rows = sqlx::query_as::<_, (Uuid, Option<Uuid>)>(
+            r#"SELECT user_id, last_read_message_id FROM dm_members WHERE dm_channel_id = $1"#,
+        )
+        .bind(dm_channel_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
     // ── Messages ─────────────────────────────────────────────────────
 
     pub async fn send_message(

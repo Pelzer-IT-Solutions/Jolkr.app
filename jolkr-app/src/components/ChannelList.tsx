@@ -12,6 +12,25 @@ import EditChannelDialog from './dialogs/EditChannelDialog';
 import InviteDialog from './dialogs/InviteDialog';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import Avatar from './Avatar';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { DragEndEvent } from '@dnd-kit/core';
+
+function SortableChannelItem({ id, disabled, children }: { id: string; disabled: boolean; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  if (disabled) return <>{children}</>;
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
 
 interface Props {
   server: Server;
@@ -55,10 +74,25 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
   const updateCategory = useServersStore((s) => s.updateCategory);
   const deleteCategory = useServersStore((s) => s.deleteCategory);
   const leaveServer = useServersStore((s) => s.leaveServer);
+  const reorderChannels = useServersStore((s) => s.reorderChannels);
   const voiceChannelId = useVoiceStore((s) => s.channelId);
   const voiceParticipants = useVoiceStore((s) => s.participants);
   const userCacheRef = useRef<Record<string, User>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = useCallback((channelList: Channel[], event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = channelList.map((c) => c.id);
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(channelList, oldIndex, newIndex);
+    const positions = reordered.map((ch, i) => ({ id: ch.id, position: i }));
+    reorderChannels(server.id, positions);
+  }, [reorderChannels, server.id]);
 
   const loadChannels = useCallback(async () => {
     setLoading(true);
@@ -331,6 +365,9 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
             onEditChannel={setEditChannel}
             mutedChannels={mutedChannels}
             onChannelContextMenu={handleChannelContextMenu}
+            canDrag={canManageChannels}
+            onDragEnd={(event) => handleDragEnd(uncategorizedText, event)}
+            sensors={sensors}
           />
         )}
 
@@ -394,6 +431,9 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
                     onEditChannel={setEditChannel}
                     mutedChannels={mutedChannels}
                     onChannelContextMenu={handleChannelContextMenu}
+                    canDrag={canManageChannels}
+                    onDragEnd={(event) => handleDragEnd(text, event)}
+                    sensors={sensors}
                   />
                   <VoiceChannelGroup
                     channels={voice}
@@ -559,6 +599,9 @@ function ChannelGroup({
   onEditChannel,
   mutedChannels,
   onChannelContextMenu,
+  canDrag,
+  onDragEnd,
+  sensors,
 }: {
   channels: Channel[];
   channelId?: string;
@@ -569,60 +612,73 @@ function ChannelGroup({
   onEditChannel: (ch: Channel) => void;
   mutedChannels: Map<string, boolean>;
   onChannelContextMenu: (channelId: string, e: React.MouseEvent) => void;
+  canDrag?: boolean;
+  onDragEnd?: (event: DragEndEvent) => void;
+  sensors?: ReturnType<typeof useSensors>;
 }) {
   const navigate = useNavigate();
   if (channels.length === 0) return null;
 
-  return (
-    <>
-      {channels.map((ch) => {
-        const unread = unreadCounts[ch.id] ?? 0;
-        const isMuted = mutedChannels.get(ch.id) ?? false;
-        return (
-          <div key={ch.id} className="group flex items-center min-w-0">
-            <button
-              onClick={() => { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
-              onContextMenu={(e) => onChannelContextMenu(ch.id, e)}
-              className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors ${
-                channelId === ch.id
-                  ? 'bg-text-primary/10 text-text-primary'
-                  : !isMuted && unread > 0
-                    ? 'text-text-primary font-semibold'
-                    : 'text-text-secondary hover:bg-text-primary/5 hover:text-text-primary'
-              }`}
-            >
-              <span className="text-text-muted">#</span>
-              <span className="truncate flex-1">{ch.name}</span>
-              {isMuted && (
-                <svg className="w-3.5 h-3.5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-                </svg>
-              )}
-              {!isMuted && unread > 0 && channelId !== ch.id && (
-                <span className="min-w-[18px] h-[18px] bg-error rounded-full flex items-center justify-center px-1 shrink-0">
-                  <span className="text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>
-                </span>
-              )}
-            </button>
-            {canManage && (
-              <button
-                onClick={() => onEditChannel(ch)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-text-primary shrink-0"
-                title="Edit Channel"
-                aria-label="Edit Channel"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
+  const items = channels.map((ch) => {
+    const unread = unreadCounts[ch.id] ?? 0;
+    const isMuted = mutedChannels.get(ch.id) ?? false;
+    return (
+      <SortableChannelItem key={ch.id} id={ch.id} disabled={!canDrag}>
+        <div className="group flex items-center min-w-0">
+          <button
+            onClick={() => { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
+            onContextMenu={(e) => onChannelContextMenu(ch.id, e)}
+            className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm transition-colors ${
+              channelId === ch.id
+                ? 'bg-text-primary/10 text-text-primary'
+                : !isMuted && unread > 0
+                  ? 'text-text-primary font-semibold'
+                  : 'text-text-secondary hover:bg-text-primary/5 hover:text-text-primary'
+            }`}
+          >
+            <span className="text-text-muted">#</span>
+            <span className="truncate flex-1">{ch.name}</span>
+            {isMuted && (
+              <svg className="w-3.5 h-3.5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+              </svg>
             )}
-          </div>
-        );
-      })}
-    </>
-  );
+            {!isMuted && unread > 0 && channelId !== ch.id && (
+              <span className="min-w-[18px] h-[18px] bg-error rounded-full flex items-center justify-center px-1 shrink-0">
+                <span className="text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>
+              </span>
+            )}
+          </button>
+          {canManage && (
+            <button
+              onClick={() => onEditChannel(ch)}
+              className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-text-primary shrink-0"
+              title="Edit Channel"
+              aria-label="Edit Channel"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </SortableChannelItem>
+    );
+  });
+
+  if (canDrag && onDragEnd && sensors) {
+    return (
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={channels.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+          {items}
+        </SortableContext>
+      </DndContext>
+    );
+  }
+
+  return <>{items}</>;
 }
 
 function VoiceChannelGroup({

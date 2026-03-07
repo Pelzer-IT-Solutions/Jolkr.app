@@ -85,6 +85,51 @@ impl ServerRepo {
         Ok(servers)
     }
 
+    /// List public servers for discovery, ordered by member count descending.
+    pub async fn list_public(
+        pool: &PgPool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ServerRow>, JolkrError> {
+        let rows = sqlx::query_as::<_, ServerRow>(
+            r#"
+            SELECT s.*
+            FROM servers s
+            WHERE s.is_public = true
+            ORDER BY s.created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Count members for a server.
+    pub async fn count_members(pool: &PgPool, server_id: Uuid) -> Result<i64, JolkrError> {
+        let count: (i64,) = sqlx::query_as(
+            r#"SELECT COUNT(*) FROM members WHERE server_id = $1"#,
+        )
+        .bind(server_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(count.0)
+    }
+
+    /// Count members for multiple servers in one query.
+    pub async fn count_members_batch(pool: &PgPool, server_ids: &[Uuid]) -> Result<std::collections::HashMap<Uuid, i64>, JolkrError> {
+        let rows: Vec<(Uuid, i64)> = sqlx::query_as(
+            r#"SELECT server_id, COUNT(*) FROM members WHERE server_id = ANY($1) GROUP BY server_id"#,
+        )
+        .bind(server_ids)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows.into_iter().collect())
+    }
+
     /// Update a server's metadata.
     pub async fn update(
         pool: &PgPool,
@@ -93,6 +138,7 @@ impl ServerRepo {
         description: Option<&str>,
         icon_url: Option<&str>,
         banner_url: Option<&str>,
+        is_public: Option<bool>,
     ) -> Result<ServerRow, JolkrError> {
         let now = Utc::now();
         let server = sqlx::query_as::<_, ServerRow>(
@@ -102,7 +148,8 @@ impl ServerRepo {
                 description = COALESCE($3, description),
                 icon_url    = COALESCE($4, icon_url),
                 banner_url  = COALESCE($5, banner_url),
-                updated_at  = $6
+                is_public   = COALESCE($6, is_public),
+                updated_at  = $7
             WHERE id = $1
             RETURNING *
             "#,
@@ -112,6 +159,7 @@ impl ServerRepo {
         .bind(description)
         .bind(icon_url)
         .bind(banner_url)
+        .bind(is_public)
         .bind(now)
         .fetch_optional(pool)
         .await?

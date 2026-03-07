@@ -17,6 +17,7 @@ import PollDisplay from './PollDisplay';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import { useToast } from './Toast';
 import { useDecryptedContent } from '../hooks/useDecryptedContent';
+import { useDmReadsStore } from '../stores/dm-reads';
 
 const URL_RE = /https?:\/\/[^\s<>)\]']+/g;
 
@@ -128,6 +129,9 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
   };
 
   const isOwn = user?.id === message.author_id;
+  const readStates = useDmReadsStore((s) => isDm ? s.readStates[message.channel_id] : undefined);
+  const isReadByOther = isDm && isOwn && readStates &&
+    Object.values(readStates).some((msgId) => msgId === message.id);
   const time = new Date(message.created_at);
   const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const dateStr = time.toLocaleDateString();
@@ -341,6 +345,16 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
             </svg>
             <span>{message.thread_reply_count ?? 0} {(message.thread_reply_count ?? 0) === 1 ? 'reply' : 'replies'}</span>
           </button>
+        )}
+
+        {/* DM read receipt indicator */}
+        {isReadByOther && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <svg className="w-3 h-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-[10px] text-text-muted">Read</span>
+          </div>
         )}
       </div>
 

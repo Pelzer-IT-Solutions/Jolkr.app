@@ -27,6 +27,7 @@ interface ServersState {
   updateChannel: (id: string, serverId: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) => Promise<Channel>;
   deleteServer: (id: string) => Promise<void>;
   deleteChannel: (id: string, serverId: string) => Promise<void>;
+  reorderChannels: (serverId: string, positions: Array<{ id: string; position: number }>) => Promise<void>;
   leaveServer: (id: string) => Promise<void>;
   createCategory: (serverId: string, name: string) => Promise<Category>;
   updateCategory: (id: string, serverId: string, body: { name?: string; position?: number }) => Promise<Category>;
@@ -152,6 +153,21 @@ export const useServersStore = create<ServersState>((set, get) => ({
     await api.deleteChannel(id);
     const current = get().channels[serverId] ?? [];
     set({ channels: { ...get().channels, [serverId]: current.filter((c) => c.id !== id) } });
+  },
+
+  reorderChannels: async (serverId, positions) => {
+    // Optimistic update
+    const current = get().channels[serverId] ?? [];
+    const posMap = new Map(positions.map((p) => [p.id, p.position]));
+    const updated = current.map((ch) => posMap.has(ch.id) ? { ...ch, position: posMap.get(ch.id)! } : ch);
+    set({ channels: { ...get().channels, [serverId]: updated } });
+    try {
+      const channels = await api.reorderChannels(serverId, positions);
+      set({ channels: { ...get().channels, [serverId]: channels } });
+    } catch {
+      // Revert on failure
+      set({ channels: { ...get().channels, [serverId]: current } });
+    }
   },
 
   leaveServer: async (id) => {

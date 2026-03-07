@@ -41,7 +41,50 @@ pub struct OverwriteResponse {
     pub overwrite: ChannelOverwriteInfo,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ReorderChannelsRequest {
+    pub channel_positions: Vec<ChannelPositionEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChannelPositionEntry {
+    pub id: Uuid,
+    pub position: i32,
+}
+
 // ── Handlers ───────────────────────────────────────────────────────────
+
+/// PUT /api/servers/:server_id/channels/reorder
+pub async fn reorder_channels(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(server_id): Path<Uuid>,
+    Json(body): Json<ReorderChannelsRequest>,
+) -> Result<Json<ChannelsResponse>, AppError> {
+    let positions: Vec<(Uuid, i32)> = body
+        .channel_positions
+        .iter()
+        .map(|e| (e.id, e.position))
+        .collect();
+
+    let channels = ChannelService::reorder_channels(
+        &state.pool,
+        server_id,
+        auth.user_id,
+        &positions,
+    )
+    .await?;
+
+    // Broadcast each channel update to server members via WS
+    for channel in &channels {
+        let event = crate::ws::events::GatewayEvent::ChannelUpdate {
+            channel: channel.clone(),
+        };
+        state.nats.publish_to_server(server_id, &event).await;
+    }
+
+    Ok(Json(ChannelsResponse { channels }))
+}
 
 /// POST /api/servers/:server_id/channels
 pub async fn create_channel(

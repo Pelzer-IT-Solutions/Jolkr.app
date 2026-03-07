@@ -9,6 +9,7 @@ import CreateServerDialog from './dialogs/CreateServer';
 import JoinServerDialog from './dialogs/JoinServer';
 import ServerSettingsDialog from './dialogs/ServerSettingsDialog';
 import InviteDialog from './dialogs/InviteDialog';
+import ServerDiscovery from './dialogs/ServerDiscovery';
 
 export default function ServerSidebar() {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function ServerSidebar() {
   const [contextMenu, setContextMenu] = useState<{ serverId: string; x: number; y: number } | null>(null);
   const [settingsServer, setSettingsServer] = useState<string | null>(null);
   const [inviteServer, setInviteServer] = useState<string | null>(null);
+  const [showDiscover, setShowDiscover] = useState(false);
 
   useEffect(() => {
     fetchServers();
@@ -179,6 +181,15 @@ export default function ServerSidebar() {
                 </svg>
                 Join a Server
               </button>
+              <button
+                onClick={() => { setShowAddMenu(false); setShowDiscover(true); }}
+                className="w-full px-4 py-3 bg-input hover:bg-input/80 text-text-primary rounded-lg text-sm flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                Discover Public Servers
+              </button>
             </div>
           </div>
         </div>
@@ -188,6 +199,7 @@ export default function ServerSidebar() {
       {showJoin && <JoinServerDialog onClose={() => setShowJoin(false)} />}
       {settingsServerObj && <ServerSettingsDialog server={settingsServerObj} onClose={() => setSettingsServer(null)} />}
       {inviteServer && <InviteDialog serverId={inviteServer} onClose={() => setInviteServer(null)} />}
+      {showDiscover && <ServerDiscovery onClose={() => setShowDiscover(false)} />}
     </div>
   );
 }

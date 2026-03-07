@@ -17,6 +17,9 @@ pub struct ServerInfo {
     pub icon_url: Option<String>,
     pub banner_url: Option<String>,
     pub owner_id: Uuid,
+    pub is_public: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub member_count: Option<i64>,
 }
 
 impl From<ServerRow> for ServerInfo {
@@ -28,6 +31,8 @@ impl From<ServerRow> for ServerInfo {
             icon_url: row.icon_url,
             banner_url: row.banner_url,
             owner_id: row.owner_id,
+            is_public: row.is_public,
+            member_count: None,
         }
     }
 }
@@ -44,6 +49,7 @@ pub struct UpdateServerRequest {
     pub description: Option<String>,
     pub icon_url: Option<String>,
     pub banner_url: Option<String>,
+    pub is_public: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,6 +183,7 @@ impl ServerService {
             req.description.as_deref(),
             req.icon_url.as_deref(),
             req.banner_url.as_deref(),
+            req.is_public,
         )
         .await?;
 
@@ -434,6 +441,48 @@ impl ServerService {
 
         MemberRepo::set_timeout(pool, server_id, target_user_id, None).await?;
         info!(server_id = %server_id, target = %target_user_id, "Member timeout removed");
+        Ok(())
+    }
+
+    /// Discover public servers. Returns servers with member counts.
+    pub async fn discover_servers(
+        pool: &PgPool,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ServerInfo>, JolkrError> {
+        let limit = limit.min(50).max(1);
+        let offset = offset.max(0);
+        let rows = ServerRepo::list_public(pool, limit, offset).await?;
+        let server_ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
+        let counts = ServerRepo::count_members_batch(pool, &server_ids).await?;
+        let servers = rows
+            .into_iter()
+            .map(|row| {
+                let count = counts.get(&row.id).copied().unwrap_or(0);
+                let mut info = ServerInfo::from(row);
+                info.member_count = Some(count);
+                info
+            })
+            .collect();
+        Ok(servers)
+    }
+
+    /// Join a public server. Banned users cannot join.
+    pub async fn join_public_server(
+        pool: &PgPool,
+        server_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), JolkrError> {
+        let server = ServerRepo::get_by_id(pool, server_id).await?;
+        if !server.is_public {
+            return Err(JolkrError::Forbidden);
+        }
+        // Check if user is banned
+        if BanRepo::is_banned(pool, server_id, user_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+        MemberRepo::add_member(pool, server_id, user_id).await?;
+        info!(server_id = %server_id, user_id = %user_id, "User joined public server");
         Ok(())
     }
 

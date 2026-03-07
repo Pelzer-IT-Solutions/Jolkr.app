@@ -5,6 +5,9 @@ import { wsClient } from '../api/ws';
 import * as api from '../api/client';
 import { isE2EEReady, encryptDmMessage } from '../services/e2ee';
 import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../utils/emoji';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
 
@@ -30,6 +33,38 @@ interface Props {
   droppedFiles?: File[];
 }
 
+function SortableFileChip({ file, id, index, onRemove }: { file: File; id: string; index: number; onRemove: (i: number) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    cursor: 'grab',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}
+      className="flex items-center gap-2 bg-input rounded-lg px-3 py-1.5 text-sm"
+    >
+      <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+      </svg>
+      <span className="text-text-primary truncate max-w-[150px]">{file.name}</span>
+      <span className="text-text-muted text-[11px]">({formatFileSize(file.size)})</span>
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(index); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="text-text-muted hover:text-error"
+        aria-label={`Remove ${file.name}`}
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export default function MessageInput({ channelId, isDm, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles }: Props) {
   const [content, setContent] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
@@ -50,6 +85,16 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   const mentionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const emojiJustToggledRef = useRef(false);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const fileIds = useMemo(() => {
+    const seen = new Map<string, number>();
+    return files.map((f) => {
+      const base = `${f.name}-${f.size}`;
+      const count = seen.get(base) ?? 0;
+      seen.set(base, count + 1);
+      return count > 0 ? `${base}-${count}` : base;
+    });
+  }, [files]);
   // Clear slowmode cooldown + sendError timer on channel change or unmount
   useEffect(() => {
     setSlowmodeCooldown(0);
@@ -477,22 +522,26 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* File preview bar */}
       {files.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          {files.map((file, i) => (
-            <div key={i} className="flex items-center gap-2 bg-input rounded-lg px-3 py-1.5 text-sm">
-              <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-              <span className="text-text-primary truncate max-w-[150px]">{file.name}</span>
-              <span className="text-text-muted text-[11px]">({formatFileSize(file.size)})</span>
-              <button onClick={() => removeFile(i)} className="text-text-muted hover:text-error" aria-label={`Remove ${file.name}`}>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => {
+            const { active, over } = event;
+            if (over && active.id !== over.id) {
+              const oldIndex = fileIds.indexOf(active.id as string);
+              const newIndex = fileIds.indexOf(over.id as string);
+              setFiles((prev) => arrayMove(prev, oldIndex, newIndex));
+            }
+          }}
+        >
+          <SortableContext items={fileIds} strategy={horizontalListSortingStrategy}>
+            <div className="flex gap-2 flex-wrap">
+              {files.map((file, i) => (
+                <SortableFileChip key={fileIds[i]} file={file} id={fileIds[i]} index={i} onRemove={removeFile} />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Status area — only takes space when content is shown */}

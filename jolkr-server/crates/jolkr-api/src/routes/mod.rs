@@ -136,6 +136,7 @@ pub fn create_router(state: AppState) -> Router {
             "/api/dms/:dm_id/messages/:message_id/attachments",
             post(dms::upload_dm_attachment),
         )
+        .route("/api/dms/:dm_id/read", post(dms::mark_as_read))
         .route("/api/dms/:dm_id/e2ee/distribute", post(channel_encryption::dm_distribute_keys))
         .route("/api/dms/:dm_id/e2ee/my-key", get(channel_encryption::dm_get_my_key))
         .route("/api/dms/:dm_id/call", post(dms::initiate_call))
@@ -144,12 +145,14 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/dms/:dm_id/call/end", post(dms::end_call))
         // ── Servers ─────────────────────────────────────────────────
         .route("/api/servers", get(servers::list_servers).post(servers::create_server))
+        .route("/api/servers/discover", get(servers::discover_servers))
         .route(
             "/api/servers/:id",
             get(servers::get_server)
                 .patch(servers::update_server)
                 .delete(servers::delete_server),
         )
+        .route("/api/servers/:id/join", post(servers::join_public_server))
         .route("/api/servers/:id/members", get(servers::list_members))
         .route("/api/servers/:id/members/@me", delete(servers::leave_server))
         .route("/api/servers/:id/members/:user_id", delete(servers::kick_member))
@@ -213,6 +216,7 @@ pub fn create_router(state: AppState) -> Router {
             post(channels::create_channel),
         )
         .route("/api/servers/:server_id/channels/list", get(channels::list_channels))
+        .route("/api/servers/:server_id/channels/reorder", put(channels::reorder_channels))
         .route(
             "/api/channels/:id",
             get(channels::get_channel)

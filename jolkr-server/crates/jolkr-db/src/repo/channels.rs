@@ -135,6 +135,31 @@ impl ChannelRepo {
         Ok(channel)
     }
 
+    /// Bulk update channel positions in a single transaction.
+    pub async fn bulk_update_positions(
+        pool: &PgPool,
+        positions: &[(Uuid, i32)],
+    ) -> Result<(), JolkrError> {
+        let mut tx = pool.begin().await?;
+        let now = Utc::now();
+        for (channel_id, position) in positions {
+            sqlx::query(
+                r#"
+                UPDATE channels
+                SET position = $2, updated_at = $3
+                WHERE id = $1
+                "#,
+            )
+            .bind(channel_id)
+            .bind(position)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Delete a channel.
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
         let result = sqlx::query(r#"DELETE FROM channels WHERE id = $1"#)

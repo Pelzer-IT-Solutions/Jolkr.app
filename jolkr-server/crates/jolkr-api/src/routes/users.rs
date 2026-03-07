@@ -25,6 +25,7 @@ pub struct UpdateMeRequest {
     pub avatar_url: Option<String>,
     pub status: Option<String>,
     pub bio: Option<String>,
+    pub show_read_receipts: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -80,6 +81,7 @@ pub async fn update_me(
             avatar_url: body.avatar_url,
             status: body.status,
             bio: body.bio,
+            show_read_receipts: body.show_read_receipts,
         },
     )
     .await?;

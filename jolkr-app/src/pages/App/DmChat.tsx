@@ -14,6 +14,8 @@ import { useMobileNav } from '../../hooks/useMobileNav';
 import { isE2EEReady, getRecipientBundle } from '../../services/e2ee';
 import { useCallStore } from '../../stores/call';
 import { useVoiceStore } from '../../stores/voice';
+import { useMessagesStore } from '../../stores/messages';
+import { useDmReadsStore } from '../../stores/dm-reads';
 
 // Module-level DM cache — avoids re-fetching all DMs on every navigation
 let dmsCacheData: DmChannel[] | null = null;
@@ -170,6 +172,22 @@ export default function DmChat() {
       if (addMemberTimerRef.current) clearTimeout(addMemberTimerRef.current);
     };
   }, [dmId, setActiveChannel]);
+
+  // Auto mark-as-read with throttle
+  const lastMarkRef = useRef(0);
+  // Select raw value from store (undefined is stable), then fallback outside selector
+  // to avoid creating new [] references inside the selector (causes infinite re-renders)
+  const messagesForChannel = useMessagesStore((s) => s.messages[dmId ?? '']);
+  const lastMessage = messagesForChannel?.[messagesForChannel.length - 1];
+  const lastMsgId = lastMessage?.id;
+  const lastMsgAuthor = lastMessage?.author_id;
+  useEffect(() => {
+    if (!dmId || !lastMsgId || lastMsgAuthor === currentUser?.id) return;
+    const now = Date.now();
+    if (now - lastMarkRef.current < 3000) return;
+    lastMarkRef.current = now;
+    api.markDmRead(dmId, lastMsgId).catch(() => {});
+  }, [dmId, lastMsgId, lastMsgAuthor, currentUser?.id]);
 
   // Clear add member state when sidebar is hidden
   useEffect(() => {

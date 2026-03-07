@@ -414,6 +414,38 @@ impl ChannelService {
         Ok(())
     }
 
+    /// Reorder channels in a server. Requires MANAGE_CHANNELS or server owner.
+    pub async fn reorder_channels(
+        pool: &PgPool,
+        server_id: Uuid,
+        caller_id: Uuid,
+        channel_positions: &[(Uuid, i32)],
+    ) -> Result<Vec<ChannelInfo>, JolkrError> {
+        // Permission check
+        let server = ServerRepo::get_by_id(pool, server_id).await?;
+        if server.owner_id != caller_id {
+            Self::check_permission(pool, server_id, caller_id, Permissions::MANAGE_CHANNELS).await?;
+        }
+
+        // Validate all channel IDs belong to this server
+        let existing = ChannelRepo::list_for_server(pool, server_id).await?;
+        let existing_ids: std::collections::HashSet<Uuid> = existing.iter().map(|c| c.id).collect();
+        for (channel_id, _) in channel_positions {
+            if !existing_ids.contains(channel_id) {
+                return Err(JolkrError::Validation(
+                    format!("Channel {} does not belong to server {}", channel_id, server_id),
+                ));
+            }
+        }
+
+        // Bulk update positions
+        ChannelRepo::bulk_update_positions(pool, channel_positions).await?;
+
+        // Return updated channel list
+        let updated = ChannelRepo::list_for_server(pool, server_id).await?;
+        Ok(updated.into_iter().map(ChannelInfo::from).collect())
+    }
+
     /// Helper: check if a user has a specific permission in a server.
     async fn check_permission(
         pool: &PgPool,
