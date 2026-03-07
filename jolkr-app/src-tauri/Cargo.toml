@@ -1,6 +1,6 @@
 [package]
 name = "jolkr-app"
-version = "0.4.0"
+version = "0.3.2"
 description = "Jolkr - Privacy-first Discord replacement"
 authors = ["you"]
 edition = "2021"
@@ -16,7 +16,6 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-deep-link = "2"
-tauri-plugin-stronghold = "2"
 tauri-plugin-updater = { version = "2", features = [] }
 tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
@@ -25,11 +24,12 @@ serde_json = "1"
 # Pin url to avoid icu_locale_core (20MB data.rs that Windows Defender blocks)
 url = ">=2, <2.5.3"
 
-# Desktop-only dependencies (tray icon, single-instance, autostart)
+# Desktop-only dependencies (tray icon, single-instance, autostart, stronghold)
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-stronghold = "2"
 
 # Windows-only: WebView2 COM bindings (to enable browser context menu)
 [target.'cfg(target_os = "windows")'.dependencies]

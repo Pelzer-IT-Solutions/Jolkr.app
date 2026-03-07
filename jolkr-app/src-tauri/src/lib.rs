@@ -58,15 +58,18 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            // --- Stronghold (encrypted token storage) ---
-            let salt_path = app
-                .path()
-                .app_local_data_dir()
-                .expect("could not resolve app local data path")
-                .join("salt.txt");
-            app.handle().plugin(
-                tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build(),
-            )?;
+            // --- Stronghold (encrypted token storage, desktop only) ---
+            #[cfg(desktop)]
+            {
+                let salt_path = app
+                    .path()
+                    .app_local_data_dir()
+                    .expect("could not resolve app local data path")
+                    .join("salt.txt");
+                app.handle().plugin(
+                    tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build(),
+                )?;
+            }
 
             // Register deep-link protocol at runtime (needed for dev mode)
             #[cfg(any(windows, target_os = "linux"))]

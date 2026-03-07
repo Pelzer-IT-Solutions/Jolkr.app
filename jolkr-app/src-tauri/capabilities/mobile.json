@@ -8,7 +8,6 @@
     "core:default",
     "opener:default",
     "deep-link:default",
-    "stronghold:default",
     "updater:default",
     "process:allow-restart"
   ]

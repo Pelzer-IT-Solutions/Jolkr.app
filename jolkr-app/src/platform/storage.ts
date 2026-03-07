@@ -1,4 +1,4 @@
-import { isTauri, isMobile } from './detect';
+import { isTauri } from './detect';
 
 export interface SecureStorage {
   get(key: string): Promise<string | null>;
@@ -98,6 +98,12 @@ class TauriStorage implements SecureStorage {
   }
 }
 
-// On mobile, Stronghold/argon2 can hang indefinitely — use localStorage instead.
-// Mobile localStorage in a Tauri WebView is persistent and sandboxed, so it's safe for tokens.
-export const storage: SecureStorage = (isTauri && !isMobile()) ? new TauriStorage() : new WebStorage();
+// Desktop: Stronghold (encrypted). Android/iOS/Web: localStorage (Stronghold hangs on Android).
+// Detect mobile via user agent since __TAURI_ENV_PLATFORM__ may not be available at import time.
+function isDesktopTauri(): boolean {
+  if (!isTauri) return false;
+  const ua = navigator.userAgent.toLowerCase();
+  return !ua.includes('android') && !ua.includes('iphone') && !ua.includes('ipad');
+}
+
+export const storage: SecureStorage = isDesktopTauri() ? new TauriStorage() : new WebStorage();
