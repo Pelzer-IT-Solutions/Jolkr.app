@@ -10,7 +10,11 @@ interface Props {
 }
 
 export default function VideoEmbed({ embed, videoInfo }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  // Iframe platforms (YouTube, Vimeo, Twitch, TikTok) load the iframe directly
+  // so the user only needs one click (the platform's own play button).
+  // Direct/HLS videos use a thumbnail preview since NMPlayer auto-plays on expand.
+  const isIframePlatform = ['youtube', 'vimeo', 'twitch', 'tiktok'].includes(videoInfo.platform);
+  const [expanded, setExpanded] = useState(isIframePlatform);
   const borderColor = getPlatformColor(videoInfo.platform);
   const platformName = embed.site_name || getPlatformName(videoInfo.platform);
 
