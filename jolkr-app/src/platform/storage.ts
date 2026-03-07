@@ -1,4 +1,4 @@
-import { isTauri } from './detect';
+import { isTauri, isMobile } from './detect';
 
 export interface SecureStorage {
   get(key: string): Promise<string | null>;
@@ -98,4 +98,6 @@ class TauriStorage implements SecureStorage {
   }
 }
 
-export const storage: SecureStorage = isTauri ? new TauriStorage() : new WebStorage();
+// On mobile, Stronghold/argon2 can hang indefinitely — use localStorage instead.
+// Mobile localStorage in a Tauri WebView is persistent and sandboxed, so it's safe for tokens.
+export const storage: SecureStorage = (isTauri && !isMobile()) ? new TauriStorage() : new WebStorage();
