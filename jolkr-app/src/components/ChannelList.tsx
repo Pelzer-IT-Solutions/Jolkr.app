@@ -13,9 +13,22 @@ import InviteDialog from './dialogs/InviteDialog';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import Avatar from './Avatar';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
+
+// Global drag lock — blocks click events at document level after any drag
+let channelDragLock = false;
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    if (channelDragLock) {
+      e.stopPropagation();
+      e.preventDefault();
+      channelDragLock = false;
+    }
+  }, true);
+}
 
 function SortableChannelItem({ id, disabled, children }: { id: string; disabled: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
@@ -674,7 +687,7 @@ function ChannelGroup({
 
   if (canDrag && onDragEnd && sensors) {
     return (
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={(e) => { channelDragLock = true; onDragEnd(e); }}>
         <SortableContext items={channels.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {items}
         </SortableContext>

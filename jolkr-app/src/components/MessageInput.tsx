@@ -7,7 +7,8 @@ import { isE2EEReady, encryptDmMessage } from '../services/e2ee';
 import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../utils/emoji';
 import { isMobile as isMobilePlatform } from '../platform/detect';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { restrictToParentElement } from '@dnd-kit/modifiers';
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
@@ -532,6 +533,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          modifiers={[restrictToParentElement]}
           onDragEnd={(event) => {
             const { active, over } = event;
             if (over && active.id !== over.id) {
@@ -541,7 +543,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
             }
           }}
         >
-          <SortableContext items={fileIds} strategy={horizontalListSortingStrategy}>
+          <SortableContext items={fileIds} strategy={rectSortingStrategy}>
             <div className="flex gap-2 flex-wrap">
               {files.map((file, i) => (
                 <SortableFileChip key={fileIds[i]} file={file} id={fileIds[i]} index={i} onRemove={removeFile} />

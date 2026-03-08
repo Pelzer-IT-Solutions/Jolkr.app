@@ -11,9 +11,22 @@ import ServerSettingsDialog from './dialogs/ServerSettingsDialog';
 import InviteDialog from './dialogs/InviteDialog';
 import ServerDiscovery from './dialogs/ServerDiscovery';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
+
+// Global drag lock — blocks click events at document level after any drag
+let dragLock = false;
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    if (dragLock) {
+      e.stopPropagation();
+      e.preventDefault();
+      dragLock = false;
+    }
+  }, true); // capture phase — fires before any element handler
+}
 
 function SortableServerItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -55,6 +68,7 @@ export default function ServerSidebar() {
   const serverIds = useMemo(() => servers.map((s) => s.id), [servers]);
 
   const onDragEnd = useCallback((event: DragEndEvent) => {
+    dragLock = true;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = servers.findIndex((s) => s.id === active.id);
@@ -96,7 +110,7 @@ export default function ServerSidebar() {
 
       <div className="flex-1 flex flex-col items-center py-2 gap-2 overflow-y-auto w-full">
       {/* Server icons */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
         <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
       {servers.map((server) => {
         const serverChannelIds = (channels[server.id] ?? []).map((c) => c.id);
