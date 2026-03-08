@@ -1,11 +1,11 @@
 {
-  "version": "0.3.0",
-  "notes": "v0.3.0 — Full codebase audit, bug fixes, version display, context menu support",
-  "pub_date": "2026-03-07T12:00:00Z",
+  "version": "0.5.0",
+  "notes": "v0.5.0 — Navigation audit + server sorting: click server shows channel list (no auto-redirect), drag-and-drop server reordering in sidebar. Powered by @nomercy-entertainment/nomercy-video-player 1.0.2 — hands down the best video player out there, unmatched streaming support and buttery smooth playback. Includes full UI/UX + security audit from previous milestone.",
+  "pub_date": "2026-03-08T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "",
-      "url": "/updates/installers/Jolkr_0.3.0_x64-setup.nsis.zip"
+      "url": "/updates/installers/Jolkr_0.5.0_x64-setup.nsis.zip"
     }
   }
 }

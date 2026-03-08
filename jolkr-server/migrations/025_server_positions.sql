@@ -1,0 +1,1 @@
+ALTER TABLE members ADD COLUMN server_position INT NOT NULL DEFAULT 0;

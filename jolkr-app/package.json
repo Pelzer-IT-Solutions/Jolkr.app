@@ -20,7 +20,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@noble/curves": "^2.0.1",
     "@noble/post-quantum": "^0.5.4",
-    "@nomercy-entertainment/nomercy-video-player": "^1.0.1",
+    "@nomercy-entertainment/nomercy-video-player": "^1.0.2",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-virtual": "^3.13.20",
     "@tauri-apps/api": "^2.10.1",

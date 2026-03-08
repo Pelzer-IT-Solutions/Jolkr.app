@@ -352,6 +352,23 @@ pub async fn set_nickname(
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
+// ── Server Reordering ────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct ReorderServersRequest {
+    pub server_ids: Vec<Uuid>,
+}
+
+/// PUT /api/users/@me/servers/reorder
+pub async fn reorder_servers(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(body): Json<ReorderServersRequest>,
+) -> Result<axum::http::StatusCode, AppError> {
+    ServerService::reorder_servers(&state.pool, auth.user_id, &body.server_ids).await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
 // ── Discovery Handlers ────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]

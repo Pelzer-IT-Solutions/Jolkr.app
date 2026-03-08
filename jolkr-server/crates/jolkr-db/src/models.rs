@@ -92,6 +92,7 @@ pub struct MemberRow {
     pub nickname: Option<String>,
     pub joined_at: DateTime<Utc>,
     pub timeout_until: Option<DateTime<Utc>>,
+    pub server_position: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

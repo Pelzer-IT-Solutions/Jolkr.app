@@ -4,17 +4,36 @@ import { useAuthStore } from '../stores/auth';
 import { useUnreadStore } from '../stores/unread';
 import { rewriteStorageUrl } from '../platform/config';
 import { hasPermission, MANAGE_CHANNELS, MANAGE_ROLES } from '../utils/permissions';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import CreateServerDialog from './dialogs/CreateServer';
 import JoinServerDialog from './dialogs/JoinServer';
 import ServerSettingsDialog from './dialogs/ServerSettingsDialog';
 import InviteDialog from './dialogs/InviteDialog';
 import ServerDiscovery from './dialogs/ServerDiscovery';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { DragEndEvent } from '@dnd-kit/core';
+
+function SortableServerItem({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
 
 export default function ServerSidebar() {
   const { serverId } = useParams();
   const servers = useServersStore((s) => s.servers);
   const fetchServers = useServersStore((s) => s.fetchServers);
+  const reorderServers = useServersStore((s) => s.reorderServers);
   const channels = useServersStore((s) => s.channels);
   const myPerms = useServersStore((s) => s.permissions);
   const currentUser = useAuthStore((s) => s.user);
@@ -31,6 +50,19 @@ export default function ServerSidebar() {
   useEffect(() => {
     fetchServers();
   }, [fetchServers]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const serverIds = useMemo(() => servers.map((s) => s.id), [servers]);
+
+  const onDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = servers.findIndex((s) => s.id === active.id);
+    const newIndex = servers.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(servers, oldIndex, newIndex);
+    reorderServers(reordered.map((s) => s.id));
+  }, [servers, reorderServers]);
 
   const handleContextMenu = (e: React.MouseEvent, sId: string) => {
     e.preventDefault();
@@ -64,13 +96,15 @@ export default function ServerSidebar() {
 
       <div className="flex-1 flex flex-col items-center py-2 gap-2 overflow-y-auto w-full">
       {/* Server icons */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
       {servers.map((server) => {
         const serverChannelIds = (channels[server.id] ?? []).map((c) => c.id);
         const serverUnread = serverChannelIds.reduce((sum, id) => sum + (unreadCounts[id] ?? 0), 0);
 
         return (
+          <SortableServerItem key={server.id} id={server.id}>
           <Link
-            key={server.id}
             to={`/servers/${server.id}`}
             onContextMenu={(e) => handleContextMenu(e, server.id)}
             onMouseEnter={() => setHovered(server.id)}
@@ -101,8 +135,11 @@ export default function ServerSidebar() {
               </div>
             )}
           </Link>
+          </SortableServerItem>
         );
       })}
+        </SortableContext>
+      </DndContext>
 
       </div>
 

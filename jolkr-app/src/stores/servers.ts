@@ -28,6 +28,7 @@ interface ServersState {
   deleteServer: (id: string) => Promise<void>;
   deleteChannel: (id: string, serverId: string) => Promise<void>;
   reorderChannels: (serverId: string, positions: Array<{ id: string; position: number }>) => Promise<void>;
+  reorderServers: (serverIds: string[]) => Promise<void>;
   leaveServer: (id: string) => Promise<void>;
   createCategory: (serverId: string, name: string) => Promise<Category>;
   updateCategory: (id: string, serverId: string, body: { name?: string; position?: number }) => Promise<Category>;
@@ -167,6 +168,20 @@ export const useServersStore = create<ServersState>((set, get) => ({
     } catch {
       // Revert on failure
       set({ channels: { ...get().channels, [serverId]: current } });
+    }
+  },
+
+  reorderServers: async (serverIds) => {
+    // Optimistic update
+    const current = get().servers;
+    const idOrder = new Map(serverIds.map((id, i) => [id, i]));
+    const sorted = [...current].sort((a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999));
+    set({ servers: sorted });
+    try {
+      await api.reorderServers(serverIds);
+    } catch {
+      // Revert on failure
+      set({ servers: current });
     }
   },
 

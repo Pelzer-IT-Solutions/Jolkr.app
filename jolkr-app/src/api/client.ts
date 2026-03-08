@@ -266,6 +266,11 @@ export const getServerMembers = (serverId: string) =>
 export const leaveServer = (serverId: string) =>
   request<void>(`/servers/${serverId}/members/@me`, { method: 'DELETE' });
 
+export const reorderServers = (serverIds: string[]) =>
+  request<void>('/users/@me/servers/reorder', {
+    method: 'PUT',
+    body: JSON.stringify({ server_ids: serverIds }),
+  });
 export const discoverServers = (limit = 20, offset = 0) =>
   request<Server[]>(`/servers/discover?limit=${limit}&offset=${offset}`, {}, 'servers');
 

@@ -486,6 +486,37 @@ impl ServerService {
         Ok(())
     }
 
+    /// Reorder servers for a user. Accepts an ordered list of server_ids.
+    pub async fn reorder_servers(
+        pool: &PgPool,
+        user_id: Uuid,
+        server_ids: &[Uuid],
+    ) -> Result<(), JolkrError> {
+        // Get all server IDs the user is a member of
+        let member_server_ids = MemberRepo::list_server_ids_for_user(pool, user_id).await?;
+        let member_set: std::collections::HashSet<Uuid> = member_server_ids.into_iter().collect();
+
+        // Validate all submitted IDs are servers the user is in
+        for sid in server_ids {
+            if !member_set.contains(sid) {
+                return Err(JolkrError::Validation(
+                    format!("Server {} is not in your server list", sid),
+                ));
+            }
+        }
+
+        // Assign positions 0..N
+        let positions: Vec<(Uuid, i32)> = server_ids
+            .iter()
+            .enumerate()
+            .map(|(i, &sid)| (sid, i as i32))
+            .collect();
+
+        MemberRepo::update_server_positions(pool, user_id, &positions).await?;
+        info!(user_id = %user_id, "Servers reordered");
+        Ok(())
+    }
+
     /// Helper: check if a user has a specific permission in a server.
     async fn check_permission(
         pool: &PgPool,

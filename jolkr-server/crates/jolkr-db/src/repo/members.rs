@@ -159,6 +159,30 @@ impl MemberRepo {
         Ok(member)
     }
 
+    /// Bulk-update server positions for a user's servers.
+    pub async fn update_server_positions(
+        pool: &PgPool,
+        user_id: Uuid,
+        positions: &[(Uuid, i32)],
+    ) -> Result<(), JolkrError> {
+        let mut tx = pool.begin().await?;
+        for (server_id, position) in positions {
+            sqlx::query(
+                r#"
+                UPDATE members SET server_position = $3
+                WHERE user_id = $1 AND server_id = $2
+                "#,
+            )
+            .bind(user_id)
+            .bind(server_id)
+            .bind(position)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Check if a member is currently timed out.
     pub async fn is_timed_out(
         pool: &PgPool,

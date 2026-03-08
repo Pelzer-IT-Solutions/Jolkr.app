@@ -144,6 +144,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/dms/:dm_id/call/reject", post(dms::reject_call))
         .route("/api/dms/:dm_id/call/end", post(dms::end_call))
         // ── Servers ─────────────────────────────────────────────────
+        .route("/api/users/@me/servers/reorder", put(servers::reorder_servers))
         .route("/api/servers", get(servers::list_servers).post(servers::create_server))
         .route("/api/servers/discover", get(servers::discover_servers))
         .route(

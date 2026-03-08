@@ -75,7 +75,7 @@ impl ServerRepo {
             SELECT s.* FROM servers s
             INNER JOIN members m ON m.server_id = s.id
             WHERE m.user_id = $1
-            ORDER BY s.name ASC
+            ORDER BY m.server_position ASC, s.name ASC
             "#,
         )
         .bind(user_id)

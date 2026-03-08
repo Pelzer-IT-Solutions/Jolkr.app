@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useServersStore } from '../../stores/servers';
 import ChannelList from '../../components/ChannelList';
 import UserPanel from '../../components/UserPanel';
@@ -8,11 +8,8 @@ import { useMobileNav } from '../../hooks/useMobileNav';
 
 export default function ServerPage() {
   const { serverId } = useParams<{ serverId: string }>();
-  const navigate = useNavigate();
   const servers = useServersStore((s) => s.servers);
   const serversLoading = useServersStore((s) => s.loading);
-  const channels = useServersStore((s) => s.channels);
-  const fetchChannels = useServersStore((s) => s.fetchChannels);
   const server = servers.find((s) => s.id === serverId);
   const [showInvites, setShowInvites] = useState(false);
   const [fetchAttempted, setFetchAttempted] = useState(false);
@@ -22,20 +19,6 @@ export default function ServerPage() {
   useEffect(() => {
     if (isMobile) setShowSidebar(true);
   }, [serverId, isMobile, setShowSidebar]);
-
-  // Auto-navigate to first text channel
-  useEffect(() => {
-    if (!serverId || !server) return;
-    const serverChannels = channels[serverId];
-    if (!serverChannels) {
-      fetchChannels(serverId);
-      return;
-    }
-    const firstText = serverChannels.find((c) => c.kind === 'text');
-    if (firstText) {
-      navigate(`/servers/${serverId}/channels/${firstText.id}`, { replace: true });
-    }
-  }, [serverId, server, channels, fetchChannels, navigate]);
 
   useEffect(() => {
     if (!server && serverId && !fetchAttempted) {
