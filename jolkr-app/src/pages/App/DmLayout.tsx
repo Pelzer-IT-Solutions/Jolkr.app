@@ -15,7 +15,9 @@ export default function DmLayout() {
       </div>
 
       {/* Page content — rendered via Outlet */}
-      {(!isMobile || !showSidebar) && <Outlet />}
+      <div className={`flex-1 min-w-0 flex flex-col h-full${isMobile && showSidebar ? ' hidden' : ''}`}>
+        <Outlet />
+      </div>
     </div>
   );
 }

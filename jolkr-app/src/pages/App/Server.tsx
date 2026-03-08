@@ -68,8 +68,7 @@ export default function ServerPage() {
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Channel list sidebar */}
-      {(!isMobile || showSidebar) && (
-        <div className={`${isMobile ? 'w-full' : 'w-[240px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden`}>
+        <div className={`${isMobile ? 'w-full' : 'w-[240px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
           <ChannelList server={server} onChannelSelect={isMobile ? () => setShowSidebar(false) : undefined} />
 
           {/* Invite + User panel */}
@@ -87,11 +86,9 @@ export default function ServerPage() {
 
           <UserPanel />
         </div>
-      )}
 
       {/* Main content - no channel selected */}
-      {(!isMobile || !showSidebar) && (
-        <div className="flex-1 flex flex-col bg-bg min-h-0">
+        <div className={`flex-1 flex flex-col bg-bg min-h-0${isMobile && showSidebar ? ' hidden' : ''}`}>
           <div className="h-14 px-4 flex items-center border-b border-divider shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-3">
@@ -112,7 +109,6 @@ export default function ServerPage() {
             </div>
           </div>
         </div>
-      )}
 
       {showInvites && <InviteDialog serverId={server.id} onClose={() => setShowInvites(false)} />}
     </div>

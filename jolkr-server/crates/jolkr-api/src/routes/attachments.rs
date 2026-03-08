@@ -18,6 +18,21 @@ use crate::storage::MAX_FILE_SIZE;
 ///
 /// Extracts the basename (last component after any path separator), removes
 /// null bytes, and collapses `..` sequences to prevent path traversal.
+/// Allowed MIME types for file uploads. Blocks dangerous types like text/html
+/// and application/javascript while allowing common media and document types.
+const ALLOWED_MIME_TYPES: &[&str] = &[
+    "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+    "image/bmp", "image/tiff", "image/avif",
+    "video/mp4", "video/webm", "video/ogg", "video/quicktime",
+    "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm", "audio/aac", "audio/flac",
+    "application/pdf", "text/plain",
+    "application/octet-stream", // fallback for unknown types
+];
+
+pub fn is_allowed_content_type(ct: &str) -> bool {
+    ALLOWED_MIME_TYPES.iter().any(|allowed| ct.eq_ignore_ascii_case(allowed))
+}
+
 pub fn sanitize_filename(raw: &str) -> String {
     // Take only the final path component (basename) BEFORE stripping separators,
     // so that "../../etc/passwd" becomes "passwd".
@@ -116,6 +131,12 @@ pub async fn upload_attachment(
         .content_type()
         .unwrap_or("application/octet-stream")
         .to_string();
+
+    if !is_allowed_content_type(&content_type) {
+        return Err(AppError(jolkr_common::JolkrError::Validation(
+            format!("File type '{}' is not allowed", content_type),
+        )));
+    }
 
     let data = field
         .bytes()
@@ -269,6 +290,12 @@ pub async fn upload_file(
         .content_type()
         .unwrap_or("application/octet-stream")
         .to_string();
+
+    if !is_allowed_content_type(&content_type) {
+        return Err(AppError(jolkr_common::JolkrError::Validation(
+            format!("File type '{}' is not allowed", content_type),
+        )));
+    }
 
     let data = field
         .bytes()

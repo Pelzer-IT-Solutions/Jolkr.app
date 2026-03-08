@@ -126,7 +126,7 @@ pub async fn reset_password(
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<StatusCode, AppError> {
     let secret = admin_secret().ok_or_else(|| {
-        AppError(jolkr_common::JolkrError::Internal("ADMIN_SECRET not configured".into()))
+        AppError(jolkr_common::JolkrError::Unauthorized)
     })?;
     // Use constant-time comparison via SHA-256 hashes to prevent timing side-channel attacks.
     use sha2::{Sha256, Digest};

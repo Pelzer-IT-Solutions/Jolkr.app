@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Poll } from '../api/types';
 import * as api from '../api/client';
+import { useToast } from './Toast';
 
 interface Props {
   pollId: string;
@@ -11,6 +12,7 @@ export default function PollDisplay({ pollId, initialPoll }: Props) {
   const [poll, setPoll] = useState<Poll | null>(initialPoll ?? null);
   const [loading, setLoading] = useState(!initialPoll);
   const [voting, setVoting] = useState(false);
+  const showToast = useToast((s) => s.show);
 
   useEffect(() => {
     if (!initialPoll) {
@@ -33,7 +35,7 @@ export default function PollDisplay({ pollId, initialPoll }: Props) {
         : await api.votePoll(poll.id, optionId);
       setPoll(updated);
     } catch {
-      // silently fail
+      showToast('Failed to submit vote', 'error');
     } finally {
       setVoting(false);
     }

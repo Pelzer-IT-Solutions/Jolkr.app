@@ -476,6 +476,13 @@ pub async fn upload_dm_attachment(
             .content_type()
             .unwrap_or("application/octet-stream")
             .to_string();
+
+        if !crate::routes::attachments::is_allowed_content_type(&content_type) {
+            return Err(AppError(jolkr_common::JolkrError::Validation(
+                format!("File type '{}' is not allowed", content_type),
+            )));
+        }
+
         let data = field.bytes().await.map_err(|_| {
             AppError(jolkr_common::JolkrError::BadRequest("Failed to read file".into()))
         })?;

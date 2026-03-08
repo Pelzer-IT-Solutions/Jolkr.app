@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useServersStore } from '../stores/servers';
 import { useAuthStore } from '../stores/auth';
 import { useUnreadStore } from '../stores/unread';
@@ -187,14 +187,18 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
     setCategoryMenu({ categoryId, x: Math.min(e.clientX, maxX), y: Math.min(e.clientY, maxY) });
   };
 
+  const [editCategorySaving, setEditCategorySaving] = useState(false);
   const handleEditCategory = async () => {
-    if (!editCategoryId || !editCategoryName.trim()) return;
+    if (!editCategoryId || !editCategoryName.trim() || editCategorySaving) return;
+    setEditCategorySaving(true);
     try {
       await updateCategory(editCategoryId, server.id, { name: editCategoryName.trim() });
       setEditCategoryId(null);
     } catch (e) {
       console.warn('Failed to edit category:', e);
       setError((e as Error).message || 'Failed to edit category');
+    } finally {
+      setEditCategorySaving(false);
     }
   };
 
@@ -532,7 +536,7 @@ export default function ChannelList({ server, onChannelSelect }: Props) {
             />
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setEditCategoryId(null)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">Cancel</button>
-              <button onClick={handleEditCategory} className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded">Save</button>
+              <button onClick={handleEditCategory} disabled={editCategorySaving} className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded disabled:opacity-50">{editCategorySaving ? 'Saving...' : 'Save'}</button>
             </div>
           </div>
         </div>
@@ -616,7 +620,6 @@ function ChannelGroup({
   onDragEnd?: (event: DragEndEvent) => void;
   sensors?: ReturnType<typeof useSensors>;
 }) {
-  const navigate = useNavigate();
   if (channels.length === 0) return null;
 
   const items = channels.map((ch) => {
@@ -625,13 +628,11 @@ function ChannelGroup({
     return (
       <SortableChannelItem key={ch.id} id={ch.id} disabled={!canDrag}>
         <div className="group flex items-center min-w-0">
-          <div
-            role="link"
-            tabIndex={0}
-            onClick={() => { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); } }}
+          <Link
+            to={`/servers/${serverId}/channels/${ch.id}`}
+            onClick={() => onChannelSelect?.()}
             onContextMenu={(e) => onChannelContextMenu(ch.id, e)}
-            className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm cursor-pointer transition-colors ${
+            className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm cursor-pointer transition-colors no-underline ${
               channelId === ch.id
                 ? 'bg-text-primary/10 text-text-primary'
                 : !isMuted && unread > 0
@@ -652,7 +653,7 @@ function ChannelGroup({
                 <span className="text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>
               </span>
             )}
-          </div>
+          </Link>
           {canManage && (
             <button
               onClick={() => onEditChannel(ch)}
@@ -703,7 +704,6 @@ function VoiceChannelGroup({
   userCacheRef: React.RefObject<Record<string, User>>;
   onChannelSelect?: () => void;
 }) {
-  const navigate = useNavigate();
   if (channels.length === 0) return null;
 
   return (
@@ -714,12 +714,10 @@ function VoiceChannelGroup({
         return (
           <div key={ch.id}>
             <div className="group flex items-center min-w-0">
-              <div
-                role="link"
-                tabIndex={0}
-                onClick={() => { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { navigate(`/servers/${serverId}/channels/${ch.id}`); onChannelSelect?.(); } }}
-                className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm cursor-pointer transition-colors ${
+              <Link
+                to={`/servers/${serverId}/channels/${ch.id}`}
+                onClick={() => onChannelSelect?.()}
+                className={`flex-1 min-w-0 px-2 py-1.5 rounded text-left flex items-center gap-1.5 text-sm cursor-pointer transition-colors no-underline ${
                   isActive
                     ? 'bg-text-primary/10 text-text-primary'
                     : 'text-text-secondary hover:bg-text-primary/5 hover:text-text-primary'
@@ -729,7 +727,7 @@ function VoiceChannelGroup({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
                 <span className="truncate">{ch.name}</span>
-              </div>
+              </Link>
               {canManage && (
                 <button
                   onClick={() => onEditChannel(ch)}

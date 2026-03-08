@@ -12,6 +12,9 @@ import { CSS } from '@dnd-kit/utilities';
 
 const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
 
+const MAX_FILE_SIZE_MB = 25;
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 export interface MentionableUser {
   id: string;
   username: string;
@@ -130,7 +133,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     if (!canAttach) return;
     const pastedFiles = Array.from(e.clipboardData.files);
-    const valid = pastedFiles.filter((f) => f.size <= 25 * 1024 * 1024);
+    const valid = pastedFiles.filter((f) => f.size <= MAX_FILE_SIZE);
     if (valid.length > 0) {
       e.preventDefault();
       setFiles((prev) => [...prev, ...valid]);
@@ -320,12 +323,11 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     if (!isMobilePlatform()) inputRef.current?.focus();
   };
 
-  const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? []);
     const oversized = selected.filter((f) => f.size > MAX_FILE_SIZE);
     if (oversized.length > 0) {
-      setSendError(`File too large (max 25 MB): ${oversized.map((f) => f.name).join(', ')}`);
+      setSendError(`File too large (max ${MAX_FILE_SIZE_MB} MB): ${oversized.map((f) => f.name).join(', ')}`);
       if (sendErrorTimerRef.current) clearTimeout(sendErrorTimerRef.current);
       sendErrorTimerRef.current = setTimeout(() => setSendError(null), 5000);
     }
@@ -449,11 +451,13 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     <div className="px-4 pb-4 shrink-0 relative">
       {/* Mention autocomplete */}
       {mentionQuery !== null && mentionMatches.length > 0 && (
-        <div className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-lg shadow-lg py-1 max-h-[200px] overflow-y-auto z-50">
+        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-lg shadow-lg py-1 max-h-[200px] overflow-y-auto z-50">
           <div className="px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider">Members</div>
           {mentionMatches.map((u, i) => (
             <button
               key={u.id}
+              role="option"
+              aria-selected={i === mentionIndex}
               onClick={() => insertMention(u.username)}
               className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
                 i === mentionIndex ? 'bg-primary/20 text-text-primary' : 'text-text-secondary hover:bg-white/5'
@@ -468,11 +472,13 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* Emoji shortcode autocomplete */}
       {emojiQuery !== null && emojiMatches.length > 0 && (
-        <div className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-lg shadow-lg py-1 max-h-[280px] overflow-y-auto z-50">
+        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-lg shadow-lg py-1 max-h-[280px] overflow-y-auto z-50">
           <div className="px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
           {emojiMatches.map((entry, i) => (
             <button
               key={entry.name}
+              role="option"
+              aria-selected={i === emojiIndex}
               onClick={() => insertEmoji(entry.emoji)}
               className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
                 i === emojiIndex ? 'bg-primary/20 text-text-primary' : 'text-text-secondary hover:bg-white/5'

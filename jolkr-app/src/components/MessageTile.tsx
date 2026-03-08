@@ -125,6 +125,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
     } catch {
       // Revert to previous state on error
       updateReactions(message.channel_id, message.id, prev);
+      showToast('Failed to update reaction', 'error');
     }
   };
 
@@ -392,9 +393,11 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                   if (message.is_pinned) {
                     const updated = await api.unpinMessage(message.channel_id, message.id);
                     updateMessage(message.channel_id, { ...message, ...updated, is_pinned: false });
+                    showToast('Message unpinned', 'success');
                   } else {
                     const updated = await api.pinMessage(message.channel_id, message.id);
                     updateMessage(message.channel_id, { ...message, ...updated, is_pinned: true });
+                    showToast('Message pinned', 'success');
                   }
                 } catch (e) {
                   showToast((e as Error).message || 'Failed to pin/unpin', 'error');
@@ -418,7 +421,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               if (!showReactionPicker && reactionBtnRef.current) {
                 const rect = reactionBtnRef.current.getBoundingClientRect();
                 setPickerPos({
-                  top: Math.min(rect.bottom + 4, window.innerHeight - 366),
+                  top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 366)),
                   left: Math.min(rect.left, window.innerWidth - 316),
                 });
               }

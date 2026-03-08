@@ -37,6 +37,20 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent Android WebView tap highlight and sticky hover */
+a, button, [role="button"], [role="link"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Override hover styles on touch-only devices (Android WebView may report hover:hover incorrectly) */
+@media (pointer: coarse) and (hover: none) {
+  a:hover {
+    color: inherit;
+    background-color: inherit;
+  }
 }
 
 ::-webkit-scrollbar {

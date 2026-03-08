@@ -281,8 +281,7 @@ export default function ChannelPage() {
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Channel list sidebar */}
-      {(!isMobile || showSidebar) && (
-        <div className={`${isMobile ? 'w-full' : 'w-[240px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden`}>
+        <div className={`${isMobile ? 'w-full' : 'w-[240px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
           <ChannelList server={server} onChannelSelect={isMobile ? () => setShowSidebar(false) : undefined} />
 
           {/* Invite button */}
@@ -300,12 +299,10 @@ export default function ChannelPage() {
 
           <UserPanel />
         </div>
-      )}
 
       {/* Main chat area */}
-      {(!isMobile || !showSidebar) && (
         <div
-          className="flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition relative"
+          className={`flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition relative${isMobile && showSidebar ? ' hidden' : ''}`}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -547,7 +544,6 @@ export default function ChannelPage() {
             <VoiceChannelView channelId={channelId} channelName={channel.name} serverId={serverId} memberUsers={memberUsers} />
           )}
         </div>
-      )}
 
       {showInvites && serverId && <InviteDialog serverId={serverId} onClose={() => setShowInvites(false)} />}
       {showPollCreator && channelId && (

@@ -87,7 +87,17 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     let heartbeat_timeout = tokio::time::Duration::from_secs(90);
     while let Ok(Some(Ok(msg))) = tokio::time::timeout(heartbeat_timeout, ws_receiver.next()).await {
         let text = match msg {
-            Message::Text(t) => t.to_string(),
+            Message::Text(t) => {
+                let s = t.to_string();
+                if s.len() > 65_536 {
+                    warn!("WebSocket message too large: {} bytes", s.len());
+                    let _ = tx.try_send(GatewayEvent::Error {
+                        message: "Message too large".into(),
+                    });
+                    continue;
+                }
+                s
+            }
             Message::Close(_) => break,
             _ => continue, // ignore binary/ping/pong
         };

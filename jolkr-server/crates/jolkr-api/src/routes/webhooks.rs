@@ -2,7 +2,10 @@ use axum::{
     extract::{Path, State},
     Json,
 };
+use dashmap::DashMap;
 use serde::Serialize;
+use std::sync::Arc;
+use std::time::Instant;
 use uuid::Uuid;
 
 use jolkr_core::services::webhook::{
@@ -14,6 +17,26 @@ use jolkr_core::services::message::MessageInfo;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
+
+/// Simple per-webhook rate limiter: 5 requests per second.
+static WEBHOOK_RATE: std::sync::LazyLock<Arc<DashMap<Uuid, (Instant, u32)>>> =
+    std::sync::LazyLock::new(|| Arc::new(DashMap::new()));
+
+fn check_webhook_rate(webhook_id: Uuid) -> bool {
+    let now = Instant::now();
+    let mut entry = WEBHOOK_RATE.entry(webhook_id).or_insert((now, 0));
+    let (ref mut window_start, ref mut count) = *entry;
+    if now.duration_since(*window_start).as_secs() >= 1 {
+        *window_start = now;
+        *count = 1;
+        true
+    } else if *count < 5 {
+        *count += 1;
+        true
+    } else {
+        false
+    }
+}
 
 #[derive(Debug, Serialize)]
 pub struct WebhookResponse {
@@ -88,6 +111,12 @@ pub async fn execute_webhook(
     Path((webhook_id, token)): Path<(Uuid, String)>,
     Json(body): Json<ExecuteWebhookRequest>,
 ) -> Result<Json<WebhookMessageResponse>, AppError> {
+    if !check_webhook_rate(webhook_id) {
+        return Err(AppError(jolkr_common::JolkrError::Validation(
+            "Rate limited: max 5 requests per second per webhook".into(),
+        )));
+    }
+
     let message = WebhookService::execute_webhook(&state.pool, webhook_id, &token, body).await?;
 
     // Publish MessageCreate via NATS
