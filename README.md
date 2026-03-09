@@ -33,5 +33,5 @@ Privacy-first chat platform with end-to-end encryption, voice channels, and cros
 
 ## License
 
-This project is **not open-source**. All rights reserved by [Pelzer IT Solutions](https://pelzer-it.nl).
+This project is **not open-source**. All rights reserved by [Pelzer IT Solutions](https://phillippepelzer.me).
 The source code is publicly available for transparency only. See [LICENSE](LICENSE) for details.
