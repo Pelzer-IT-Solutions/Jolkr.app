@@ -387,6 +387,8 @@ export const getPinnedMessages = (channelId: string) =>
   request<Message[]>(`/channels/${channelId}/pins`, {}, 'messages');
 
 // Attachments
+export const getMessageAttachments = (messageId: string) =>
+  request<Attachment[]>(`/messages/${messageId}/attachments`, {}, 'attachments');
 export const uploadAttachment = async (channelId: string, messageId: string, file: File): Promise<Attachment> => {
   const form = new FormData();
   form.append('file', file);

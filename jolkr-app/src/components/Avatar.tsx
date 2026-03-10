@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { rewriteStorageUrl } from '../platform/config';
 
 interface AvatarProps {
@@ -9,6 +10,7 @@ interface AvatarProps {
 
 export default function Avatar({ url, name, size = 40, status }: AvatarProps) {
   const resolvedUrl = rewriteStorageUrl(url);
+  const [imgError, setImgError] = useState(false);
   const initials = (name.trim()
     .split(' ')
     .filter(Boolean)
@@ -24,9 +26,11 @@ export default function Avatar({ url, name, size = 40, status }: AvatarProps) {
     offline: 'bg-text-muted',
   };
 
+  const showImage = resolvedUrl && !imgError;
+
   return (
     <div className="relative inline-block shrink-0" style={{ width: size, height: size }}>
-      {resolvedUrl ? (
+      {showImage ? (
         <img
           src={resolvedUrl}
           alt={name}
@@ -35,6 +39,7 @@ export default function Avatar({ url, name, size = 40, status }: AvatarProps) {
           className="rounded-full object-cover"
           style={{ width: size, height: size }}
           loading="lazy"
+          onError={() => setImgError(true)}
         />
       ) : (
         <div

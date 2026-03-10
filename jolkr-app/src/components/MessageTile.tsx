@@ -293,6 +293,13 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                         grid={imgCount > 1}
                         spanFull={spanFull}
                         onOpen={() => setLightboxIndex(i)}
+                        onRefreshUrl={async () => {
+                          try {
+                            const fresh = await api.getMessageAttachments(message.id);
+                            const match = fresh.find((a) => a.id === att.id);
+                            return match ? rewriteStorageUrl(match.url) ?? match.url : undefined;
+                          } catch { return undefined; }
+                        }}
                       />
                     );
                   })}
@@ -560,9 +567,28 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 const MessageTile = memo(MessageTileInner);
 export default MessageTile;
 
-function AttachmentImage({ src, alt, onOpen, grid, spanFull }: { src: string; alt: string; onOpen: () => void; grid?: boolean; spanFull?: boolean }) {
+function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
+  src: string; alt: string; onOpen: () => void; grid?: boolean; spanFull?: boolean;
+  onRefreshUrl?: () => Promise<string | undefined>;
+}) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src);
+  const retriedRef = useRef(false);
+
+  const handleError = async () => {
+    if (!retriedRef.current && onRefreshUrl) {
+      retriedRef.current = true;
+      try {
+        const freshUrl = await onRefreshUrl();
+        if (freshUrl) {
+          setCurrentSrc(freshUrl);
+          return;
+        }
+      } catch { /* fall through to errored */ }
+    }
+    setErrored(true);
+  };
 
   if (errored) {
     return (
@@ -579,7 +605,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull }: { src: string; al
           <div className="absolute inset-0 bg-white/5 animate-pulse" />
         )}
         <img
-          src={src}
+          src={currentSrc}
           alt={alt}
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
@@ -587,7 +613,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull }: { src: string; al
           onClick={onOpen}
           loading="lazy"
           onLoad={() => setLoaded(true)}
-          onError={() => setErrored(true)}
+          onError={handleError}
         />
       </div>
     );
@@ -599,7 +625,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull }: { src: string; al
         <div className="absolute inset-0 bg-white/5 animate-pulse rounded-lg" />
       )}
       <img
-        src={src}
+        src={currentSrc}
         alt={alt}
         crossOrigin="anonymous"
         referrerPolicy="no-referrer"
@@ -607,7 +633,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull }: { src: string; al
         onClick={onOpen}
         loading="lazy"
         onLoad={() => setLoaded(true)}
-        onError={() => setErrored(true)}
+        onError={handleError}
       />
     </div>
   );
