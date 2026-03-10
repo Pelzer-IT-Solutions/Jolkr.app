@@ -1,14 +1,19 @@
+import { useRef } from 'react';
 import { useCallStore } from '../stores/call';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export default function OutgoingCallDialog() {
   const outgoingCall = useCallStore((s) => s.outgoingCall);
   const cancelOutgoing = useCallStore((s) => s.cancelOutgoing);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+
   if (!outgoingCall) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-sidebar rounded-xl p-6 w-[320px] flex flex-col items-center gap-4 shadow-2xl border border-divider">
+      <div ref={dialogRef} className="bg-sidebar rounded-2xl border border-divider shadow-popup p-6 w-[320px] flex flex-col items-center gap-4">
         {/* Avatar placeholder */}
         <div className="w-16 h-16 rounded-full bg-primary/30 flex items-center justify-center">
           <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -23,9 +28,9 @@ export default function OutgoingCallDialog() {
 
         {/* Pulsing animation */}
         <div className="flex gap-1.5 my-2">
-          <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
-          <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div className="w-2 h-2 rounded-full bg-primary animate-typing-dot" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 rounded-full bg-primary animate-typing-dot" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 rounded-full bg-primary animate-typing-dot" style={{ animationDelay: '300ms' }} />
         </div>
 
         {/* Cancel button */}

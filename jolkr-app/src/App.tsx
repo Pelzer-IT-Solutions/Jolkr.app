@@ -12,6 +12,7 @@ import { initE2EE } from './services/e2ee';
 import { checkForUpdate, type UpdateInfo } from './services/updater';
 import { onDeepLink, initDeepLinks } from './services/deepLink';
 import ErrorBoundary from './components/ErrorBoundary';
+import TextContextMenu from './components/TextContextMenu';
 import UpdateNotification from './components/UpdateNotification';
 import IncomingCallDialog from './components/IncomingCallDialog';
 import OutgoingCallDialog from './components/OutgoingCallDialog';
@@ -27,7 +28,7 @@ import ServerPage from './pages/App/Server';
 import ChannelPage from './pages/App/Channel';
 import DmChat from './pages/App/DmChat';
 import Friends from './pages/App/Friends';
-import Settings from './pages/App/Settings';
+import Settings from './pages/App/settings';
 import InviteAccept from './pages/InviteAccept';
 import ServerSetup from './pages/ServerSetup';
 
@@ -70,9 +71,17 @@ function AppInit({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
-  // Disable default browser context menu globally — custom menus handle their own
+  // Apply theme (dark/light) early so auth pages also get it
   useEffect(() => {
-    const handler = (e: MouseEvent) => e.preventDefault();
+    const theme = localStorage.getItem('jolkr_theme') ?? 'dark';
+    document.documentElement.dataset.theme = theme;
+  }, []);
+
+  // Disable default browser context menu globally — custom TextContextMenu handles input/textarea
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      e.preventDefault();
+    };
     document.addEventListener('contextmenu', handler);
     return () => document.removeEventListener('contextmenu', handler);
   }, []);
@@ -138,6 +147,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
     <>
       {updateInfo && <UpdateNotification update={updateInfo} />}
       <CallOverlays />
+      <TextContextMenu />
       {children}
     </>
   );

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Server, Channel, Member, Role, Category, ServerEmoji } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
+import { useAuthStore } from './auth';
 
 interface ServersState {
   servers: Server[];
@@ -39,6 +40,7 @@ interface ServersState {
   assignRole: (serverId: string, roleId: string, userId: string) => Promise<void>;
   removeRole: (serverId: string, roleId: string, userId: string) => Promise<void>;
   fetchEmojis: (serverId: string) => Promise<void>;
+  reset: () => void;
 }
 
 export const useServersStore = create<ServersState>((set, get) => ({
@@ -263,6 +265,10 @@ export const useServersStore = create<ServersState>((set, get) => ({
     get().fetchMembersWithRoles(serverId);
   },
 
+  reset: () => {
+    set({ servers: [], channels: {}, members: {}, categories: {}, roles: {}, permissions: {}, channelPermissions: {}, emojis: {}, loading: false });
+  },
+
   fetchEmojis: async (serverId) => {
     // Skip if already cached
     if (get().emojis[serverId]) return;
@@ -274,6 +280,21 @@ export const useServersStore = create<ServersState>((set, get) => ({
     }
   },
 }));
+
+const EMPTY_CHANNELS: Channel[] = [];
+const EMPTY_MEMBERS: Member[] = [];
+
+/** Selector: channels for a specific server */
+export const selectServerChannels = (serverId: string) =>
+  (s: { channels: Record<string, Channel[]> }) => s.channels[serverId] ?? EMPTY_CHANNELS;
+
+/** Selector: members for a specific server */
+export const selectServerMembers = (serverId: string) =>
+  (s: { members: Record<string, Member[]> }) => s.members[serverId] ?? EMPTY_MEMBERS;
+
+/** Selector: current user's permissions for a server */
+export const selectMyPermissions = (serverId: string) =>
+  (s: { permissions: Record<string, number> }) => s.permissions[serverId] ?? 0;
 
 // Wire up WebSocket events for server-level changes
 wsClient.on((op, d) => {
@@ -352,12 +373,17 @@ wsClient.on((op, d) => {
           ),
         },
       };
-      // Invalidate permission caches when roles change so UI recomputes permissions
+      // Only invalidate permission caches when the CURRENT user's roles change
       if ('role_ids' in d) {
-        const { [serverId]: _p, ...restPerms } = store.permissions;
-        const { [serverId]: _cp, ...restChanPerms } = store.channelPermissions;
-        stateUpdate.permissions = restPerms;
-        stateUpdate.channelPermissions = restChanPerms;
+        const currentUserId = useAuthStore.getState().user?.id;
+        if (userId === currentUserId) {
+          const { [serverId]: _p, ...restPerms } = store.permissions;
+          const channelIds = (store.channels[serverId] ?? []).map((c) => c.id);
+          const restChanPerms = { ...store.channelPermissions };
+          for (const cid of channelIds) delete restChanPerms[cid];
+          stateUpdate.permissions = restPerms;
+          stateUpdate.channelPermissions = restChanPerms;
+        }
       }
       useServersStore.setState(stateUpdate);
       break;

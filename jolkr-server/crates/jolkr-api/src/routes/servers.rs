@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_core::ServerService;
+use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::services::server::{
     BanInfo, BanMemberRequest, CreateServerRequest, ServerInfo,
     SetNicknameRequest, UpdateServerRequest,
@@ -57,7 +58,7 @@ async fn presign_server_urls(state: &AppState, server: &mut ServerInfo) {
     for url_opt in [&mut server.icon_url, &mut server.banner_url] {
         if let Some(ref key) = url_opt {
             if !key.starts_with("http") {
-                if let Ok(url) = state.storage.presign_get(key, 7 * 24 * 3600).await {
+                if let Ok(url) = state.storage.presign_get(key, PRESIGN_EXPIRY_SECS).await {
                     *url_opt = Some(url);
                 }
             }

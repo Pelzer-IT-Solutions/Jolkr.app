@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import type { Thread } from '../api/types';
 import * as api from '../api/client';
 import { useMessagesStore } from '../stores/messages';
 
-interface Props {
+export interface ThreadListPanelProps {
   channelId: string;
   onClose: () => void;
   onOpenThread: (threadId: string) => void;
 }
 
-export default function ThreadListPanel({ channelId, onClose, onOpenThread }: Props) {
+function ThreadListPanelInner({ channelId, onClose, onOpenThread }: ThreadListPanelProps) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -27,8 +27,8 @@ export default function ThreadListPanel({ channelId, onClose, onOpenThread }: Pr
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-0 z-50 w-full max-w-[360px] h-full bg-surface border-l border-divider flex flex-col shadow-xl">
-        <div className="h-14 px-4 flex items-center justify-between border-b border-divider shrink-0">
+      <div className="absolute right-0 top-0 z-50 w-full max-w-[360px] h-full bg-surface border-l border-divider flex flex-col shadow-popup">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-divider shrink-0">
           <h3 className="text-text-primary font-semibold text-sm">Threads</h3>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer">
@@ -65,7 +65,7 @@ export default function ThreadListPanel({ channelId, onClose, onOpenThread }: Pr
                 onOpenThread(thread.id);
                 onClose();
               }}
-              className="w-full text-left mb-2 p-3 bg-background rounded-lg border border-divider hover:border-primary/50 transition-colors"
+              className="w-full text-left mb-2 p-3 bg-background rounded-xl border border-divider hover:border-primary/50 transition-colors"
             >
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -91,6 +91,9 @@ export default function ThreadListPanel({ channelId, onClose, onOpenThread }: Pr
     </>
   );
 }
+
+const ThreadListPanel = memo(ThreadListPanelInner);
+export default ThreadListPanel;
 
 function formatRelativeTime(dateStr: string): string {
   const now = Date.now();

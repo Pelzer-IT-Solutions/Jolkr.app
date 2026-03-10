@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { isValidServerUrl } from '../platform/config';
 
-interface Props {
+export interface ServerSetupProps {
   onComplete: (url: string) => void;
 }
 
@@ -9,7 +10,7 @@ const PRESETS = [
   { label: 'Localhost (development)', url: 'http://localhost:8080' },
 ];
 
-export default function ServerSetup({ onComplete }: Props) {
+export default function ServerSetup({ onComplete }: ServerSetupProps) {
   const [selected, setSelected] = useState(PRESETS[0].url);
   const [custom, setCustom] = useState('');
   const [useCustom, setUseCustom] = useState(false);
@@ -21,6 +22,11 @@ export default function ServerSetup({ onComplete }: Props) {
   const handleConnect = async () => {
     if (!serverUrl) {
       setError('Enter a server URL');
+      return;
+    }
+
+    if (useCustom && !isValidServerUrl(serverUrl)) {
+      setError('URL must use HTTPS (or HTTP for localhost only)');
       return;
     }
 
@@ -124,7 +130,7 @@ export default function ServerSetup({ onComplete }: Props) {
         <button
           onClick={handleConnect}
           disabled={testing || (!useCustom ? !selected : !custom.trim())}
-          className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white font-medium rounded transition-colors disabled:opacity-50"
+          className="w-full py-2.5 btn-primary font-medium rounded-lg disabled:opacity-50"
         >
           {testing ? 'Connecting...' : 'Connect'}
         </button>

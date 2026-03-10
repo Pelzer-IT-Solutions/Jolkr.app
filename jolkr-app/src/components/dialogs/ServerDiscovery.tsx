@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import type { Server } from '../../api/types';
 import * as api from '../../api/client';
 import { useServersStore } from '../../stores/servers';
 import { useNavigate } from 'react-router-dom';
 import { rewriteStorageUrl } from '../../platform/config';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
-interface Props {
+export interface ServerDiscoveryProps {
   onClose: () => void;
 }
 
-export default function ServerDiscovery({ onClose }: Props) {
+export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState<string | null>(null);
@@ -19,6 +20,8 @@ export default function ServerDiscovery({ onClose }: Props) {
   const fetchServers = useServersStore((s) => s.fetchServers);
   const myServers = useServersStore((s) => s.servers);
   const navigate = useNavigate();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   useEffect(() => {
     setLoading(true);
@@ -61,9 +64,9 @@ export default function ServerDiscovery({ onClose }: Props) {
   const alreadyJoined = new Set(myServers.map((s) => s.id));
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div className="bg-surface rounded-lg w-[600px] max-w-[95vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-divider shrink-0">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div ref={dialogRef} className="bg-surface rounded-2xl border border-divider shadow-popup w-[600px] max-w-[95vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-8 pb-4 border-b border-divider shrink-0">
           <div>
             <h3 className="text-text-primary text-lg font-semibold">Discover Servers</h3>
             <p className="text-text-muted text-sm mt-0.5">Find and join public communities</p>
@@ -75,8 +78,8 @@ export default function ServerDiscovery({ onClose }: Props) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+        <div className="flex-1 overflow-y-auto p-8">
+          {error && <div className="bg-error/10 text-error text-sm p-3 rounded-lg mb-4">{error}</div>}
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -93,7 +96,7 @@ export default function ServerDiscovery({ onClose }: Props) {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {servers.map((server) => (
-                  <div key={server.id} className="bg-bg rounded-lg p-4 border border-divider hover:border-primary/30 transition-colors">
+                  <div key={server.id} className="bg-bg rounded-2xl p-4 border border-divider hover:border-primary/30 transition-colors">
                     <div className="flex items-start gap-3">
                       <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 overflow-hidden">
                         {server.icon_url ? (
@@ -108,7 +111,7 @@ export default function ServerDiscovery({ onClose }: Props) {
                           <p className="text-text-muted text-xs mt-0.5 line-clamp-2">{server.description}</p>
                         )}
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="text-[11px] text-text-muted flex items-center gap-1">
+                          <span className="text-xs text-text-muted flex items-center gap-1">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
@@ -124,7 +127,7 @@ export default function ServerDiscovery({ onClose }: Props) {
                         <button
                           onClick={() => handleJoin(server.id)}
                           disabled={joining === server.id}
-                          className="w-full px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-sm rounded disabled:opacity-50"
+                          className="btn-primary w-full px-4 py-2 text-sm rounded-lg disabled:opacity-50"
                         >
                           {joining === server.id ? 'Joining...' : 'Join Server'}
                         </button>

@@ -4,14 +4,15 @@ import { useAuthStore } from '../../stores/auth';
 import * as api from '../../api/client';
 import type { User } from '../../api/types';
 import Avatar from '../Avatar';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
-interface Props {
+export interface CreateGroupDmDialogProps {
   onClose: () => void;
 }
 
 const MAX_MEMBERS = 10;
 
-export default function CreateGroupDmDialog({ onClose }: Props) {
+export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProps) {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const [name, setName] = useState('');
@@ -22,6 +23,8 @@ export default function CreateGroupDmDialog({ onClose }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   const maxOthers = MAX_MEMBERS - 1; // minus the caller
 
@@ -87,15 +90,15 @@ export default function CreateGroupDmDialog({ onClose }: Props) {
   const totalMembers = selectedUsers.length + 1; // +1 for caller
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[480px] max-w-[90vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[480px] max-w-[90vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-1">Create Group DM</h3>
         <p className="text-text-muted text-xs mb-4">{totalMembers}/{MAX_MEMBERS} members</p>
 
-        {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
+        {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
 
         {/* Group name */}
-        <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
           Group Name (Optional)
         </label>
         <input
@@ -103,7 +106,7 @@ export default function CreateGroupDmDialog({ onClose }: Props) {
           onChange={(e) => setName(e.target.value)}
           placeholder="My Group Chat"
           maxLength={100}
-          className="w-full mt-1 mb-3 px-3 py-2 bg-input rounded text-text-primary text-sm outline-none"
+          className="w-full mt-1 mb-3 px-3 py-2 bg-input rounded-lg text-text-primary text-sm outline-none"
         />
 
         {/* Selected users as chips */}
@@ -129,14 +132,14 @@ export default function CreateGroupDmDialog({ onClose }: Props) {
         )}
 
         {/* User search */}
-        <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
           Add Members
         </label>
         <input
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Search users..."
-          className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm outline-none"
+          className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm outline-none"
           disabled={selectedUsers.length >= maxOthers}
         />
 
@@ -161,14 +164,14 @@ export default function CreateGroupDmDialog({ onClose }: Props) {
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-divider">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
+        <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-divider">
+          <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
             Cancel
           </button>
           <button
             onClick={handleCreate}
             disabled={loading || selectedUsers.length < 2}
-            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded disabled:opacity-50"
+            className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
           >
             {loading ? 'Creating...' : 'Create Group DM'}
           </button>

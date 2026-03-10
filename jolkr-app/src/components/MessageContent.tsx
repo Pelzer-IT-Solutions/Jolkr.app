@@ -29,7 +29,9 @@ marked.use({
     },
     link({ href, tokens }) {
       const body = this.parser.parseInline(tokens);
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${body}</a>`;
+      // Block dangerous protocols (javascript:, data:, vbscript:)
+      const safeHref = /^(https?:\/\/|mailto:|#)/i.test(href ?? '') ? href : '#';
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${body}</a>`;
     },
     strong({ tokens }) {
       const body = this.parser.parseInline(tokens);
@@ -104,7 +106,7 @@ function renderCustomEmojis(html: string, emojiMap?: Map<string, string>): strin
       if (name) {
         const url = emojiMap.get(name);
         if (url) {
-          return `<img src="${url}" alt=":${name}:" title=":${name}:" class="inline-block h-5 w-5 align-text-bottom" loading="lazy" />`;
+          return `<img src="${url}" alt=":${name}:" title=":${name}:" class="inline-block h-5 w-5 align-text-bottom" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
         }
       }
       return match;
@@ -112,7 +114,7 @@ function renderCustomEmojis(html: string, emojiMap?: Map<string, string>): strin
   );
 }
 
-interface Props {
+export interface MessageContentProps {
   content: string;
   className?: string;
   emojiMap?: Map<string, string>;
@@ -120,9 +122,9 @@ interface Props {
 }
 
 const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div'];
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', 'loading', 'style', 'draggable'];
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin'];
 
-export default memo(function MessageContent({ content, className, emojiMap, serverId }: Props) {
+export default memo(function MessageContent({ content, className, emojiMap, serverId }: MessageContentProps) {
   // Build emoji map from store if serverId is provided and no explicit emojiMap
   const storeEmojis = useServersStore((s) => serverId ? s.emojis[serverId] : undefined);
   const resolvedEmojiMap = useMemo(() => {

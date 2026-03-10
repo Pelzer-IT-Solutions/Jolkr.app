@@ -51,7 +51,7 @@ export default function ServerPage() {
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Channel list sidebar */}
-        <div className={`${isMobile ? 'w-full' : 'w-[240px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
+        <div className={`${isMobile ? 'w-full' : 'w-[260px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
           <ChannelList server={server} onChannelSelect={isMobile ? () => setShowSidebar(false) : undefined} />
 
           {/* Invite + User panel */}
@@ -72,7 +72,7 @@ export default function ServerPage() {
 
       {/* Main content - no channel selected */}
         <div className={`flex-1 flex flex-col bg-bg min-h-0${isMobile && showSidebar ? ' hidden' : ''}`}>
-          <div className="h-14 px-4 flex items-center border-b border-divider shrink-0">
+          <div className="h-16 px-4 flex items-center border-b border-divider shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-3">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 
 interface ToastState {
@@ -23,22 +23,48 @@ export default function Toast() {
   const kind = useToast((s) => s.kind);
   const duration = useToast((s) => s.duration);
   const clear = useToast((s) => s.clear);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(clear, duration);
+    setClosing(false);
+    const timer = setTimeout(() => setClosing(true), duration);
     return () => clearTimeout(timer);
-  }, [message, clear, duration]);
+  }, [message, duration]);
+
+  useEffect(() => {
+    if (!closing) return;
+    const timer = setTimeout(() => clear(), 200);
+    return () => clearTimeout(timer);
+  }, [closing, clear]);
 
   if (!message) return null;
 
   const bg = kind === 'error' ? 'bg-error' : kind === 'success' ? 'bg-online' : 'bg-primary';
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-      <div className={`${bg} text-white text-sm px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2`}>
+    <div role="status" aria-live="polite" className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] ${closing ? 'animate-toast-exit' : 'animate-toast-enter'}`}>
+      <div className={`${bg} text-white text-sm px-5 py-3 rounded-xl shadow-popup backdrop-blur-sm flex items-center gap-2.5 border border-white/10`}>
+        {kind === 'success' && (
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="rgba(0,0,0,0.1)" />
+            <path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+        {kind === 'error' && (
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="rgba(0,0,0,0.1)" />
+            <path d="M12 8v4m0 4h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+        {kind === 'info' && (
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="rgba(0,0,0,0.1)" />
+            <path d="M12 16v-4m0-4h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
         {message}
-        <button onClick={clear} className="ml-1 opacity-70 hover:opacity-100" aria-label="Dismiss">
+        <button onClick={() => setClosing(true)} className="ml-1 opacity-70 hover:opacity-100" aria-label="Dismiss">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>

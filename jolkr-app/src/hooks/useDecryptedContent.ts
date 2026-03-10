@@ -12,14 +12,20 @@ const DECRYPT_FAIL_MSG = '[Encrypted message — keys unavailable]';
 /**
  * Hook that decrypts encrypted message content when available.
  * Falls back to plaintext content if no encryption or decryption fails.
+ * Skips decryption for own messages (encrypted with recipient's key, not sender's).
  */
 export function useDecryptedContent(
   content: string,
   encryptedContent?: string | null,
   nonce?: string | null,
   isDm?: boolean,
+  isOwnMessage?: boolean,
 ): DecryptedState {
   const [state, setState] = useState<DecryptedState>(() => {
+    // Own messages: show plaintext, mark as encrypted (for lock icon) but don't attempt decrypt
+    if (isOwnMessage && encryptedContent && nonce && isDm) {
+      return { displayContent: content || '', isEncrypted: true, decrypting: false };
+    }
     if (encryptedContent && nonce && isDm) {
       return { displayContent: content || '', isEncrypted: true, decrypting: true };
     }
@@ -30,6 +36,12 @@ export function useDecryptedContent(
   useEffect(() => {
     if (!encryptedContent || !nonce || !isDm) {
       setState({ displayContent: content, isEncrypted: false, decrypting: false });
+      return;
+    }
+
+    // Skip decryption for own messages — they were encrypted for the recipient's key
+    if (isOwnMessage) {
+      setState({ displayContent: content || '', isEncrypted: true, decrypting: false });
       return;
     }
 
@@ -78,7 +90,7 @@ export function useDecryptedContent(
       cancelled = true;
       if (typeof cleanup === 'function') cleanup();
     };
-  }, [content, encryptedContent, nonce, isDm]);
+  }, [content, encryptedContent, nonce, isDm, isOwnMessage]);
 
   return state;
 }

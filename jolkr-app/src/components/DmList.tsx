@@ -11,31 +11,28 @@ import Avatar from './Avatar';
 import UserProfileCard from './UserProfileCard';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import CreateGroupDmDialog from './dialogs/CreateGroupDm';
+import DmItem, { getDmDisplay } from './DmItem';
+import DmContextMenu from './DmContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 
-// Module-level DM cache — survives component unmount/remount to prevent flash
-let cachedDms: DmChannel[] = [];
-let cachedUsers: Record<string, User> = {};
-let cachedFetchedIds = new Set<string>();
-
-/** Clamp context menu position to stay within viewport */
-function clampMenuPosition(x: number, y: number, menuWidth = 180, menuHeight = 160) {
-  const maxX = window.innerWidth - menuWidth - 8;
-  const maxY = window.innerHeight - menuHeight - 8;
-  return { x: Math.min(x, maxX), y: Math.min(y, maxY) };
-}
-
-interface Props {
+export interface DmListProps {
   onDmSelect?: () => void;
 }
 
-export default function DmList({ onDmSelect }: Props) {
+export default function DmList({ onDmSelect }: DmListProps) {
   const navigate = useNavigate();
   const { dmId } = useParams();
   const currentUser = useAuthStore((s) => s.user);
   const unreadCounts = useUnreadStore((s) => s.counts);
   const statuses = usePresenceStore((s) => s.statuses);
-  const [dms, setDms] = useState<DmChannel[]>(cachedDms);
-  const [users, setUsers] = useState<Record<string, User>>(cachedUsers);
+
+  // Refs replacing former module-level mutable state
+  const cachedDmsRef = useRef<DmChannel[]>([]);
+  const cachedUsersRef = useRef<Record<string, User>>({});
+  const fetchedUserIdsRef = useRef(new Set<string>());
+
+  const [dms, setDms] = useState<DmChannel[]>(cachedDmsRef.current);
+  const [users, setUsers] = useState<Record<string, User>>(cachedUsersRef.current);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
@@ -43,11 +40,9 @@ export default function DmList({ onDmSelect }: Props) {
   const [fetchError, setFetchError] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const wsDebouncerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const fetchedUserIds = useRef(cachedFetchedIds);
 
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ dm: DmChannel; x: number; y: number } | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
+  // Context menu via shared hook
+  const ctxMenu = useContextMenu<DmChannel>();
   const [friendships, setFriendships] = useState<Map<string, { id: string; status: string }>>(new Map());
   const [confirmAction, setConfirmAction] = useState<{ type: 'block' | 'leave' | 'close'; dm: DmChannel } | null>(null);
   const [profileTarget, setProfileTarget] = useState<{ userId: string; anchor: { x: number; y: number } } | null>(null);
@@ -57,7 +52,7 @@ export default function DmList({ onDmSelect }: Props) {
     api.getDms().then((channels) => {
       setFetchError(false);
       setDms(channels);
-      cachedDms = channels;
+      cachedDmsRef.current = channels;
       // Query presence for all DM partners
       const otherMemberIds = channels
         .filter((ch) => !ch.is_group)
@@ -71,8 +66,8 @@ export default function DmList({ onDmSelect }: Props) {
       // Batch fetch user info for DM participants
       const idsToFetch: string[] = [];
       channels.forEach((ch) => ch.members.forEach((id) => {
-        if (id !== currentUser?.id && !fetchedUserIds.current.has(id)) {
-          fetchedUserIds.current.add(id);
+        if (id !== currentUser?.id && !fetchedUserIdsRef.current.has(id)) {
+          fetchedUserIdsRef.current.add(id);
           idsToFetch.push(id);
         }
       }));
@@ -82,7 +77,7 @@ export default function DmList({ onDmSelect }: Props) {
           for (const u of fetchedUsers) map[u.id] = u;
           setUsers((prev) => {
             const next = { ...prev, ...map };
-            cachedUsers = next;
+            cachedUsersRef.current = next;
             return next;
           });
         }).catch(() => {
@@ -92,7 +87,7 @@ export default function DmList({ onDmSelect }: Props) {
             for (const u of results) if (u) map[u.id] = u;
             setUsers((prev) => {
               const next = { ...prev, ...map };
-              cachedUsers = next;
+              cachedUsersRef.current = next;
               return next;
             });
           });
@@ -117,7 +112,6 @@ export default function DmList({ onDmSelect }: Props) {
       if (op === 'DmCreate' || op === 'DmUpdate') {
         fetchDms();
       } else if (op === 'MessageCreate') {
-        // Refresh DM list if message is from a DM channel (not a server channel)
         const raw = d?.message as Record<string, unknown> | undefined;
         const msgChannelId = raw?.channel_id as string | undefined;
         if (msgChannelId) {
@@ -177,7 +171,6 @@ export default function DmList({ onDmSelect }: Props) {
       const map = new Map<string, { id: string; status: string }>();
       const all: Friendship[] = [...friends, ...pending];
       for (const f of all) {
-        // Map the OTHER user's ID to the friendship
         const otherId = f.requester_id === currentUser?.id ? f.addressee_id : f.requester_id;
         map.set(otherId, { id: f.id, status: f.status });
       }
@@ -185,74 +178,42 @@ export default function DmList({ onDmSelect }: Props) {
     }).catch(() => {});
   }, [currentUser?.id]);
 
-  // Context menu handler
+  // Context menu handler (wraps useContextMenu hook)
   const handleContextMenu = useCallback((dm: DmChannel, e: React.MouseEvent) => {
-    e.preventDefault();
-    const pos = clampMenuPosition(e.clientX, e.clientY);
-    setContextMenu({ dm, x: pos.x, y: pos.y });
-  }, []);
-
-  // Close context menu on click outside + keyboard navigation
-  useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
-    requestAnimationFrame(() => {
-      const items = contextMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]');
-      items?.[0]?.focus();
-    });
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { close(); return; }
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
-        e.preventDefault();
-        const items = contextMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]');
-        if (!items || items.length === 0) return;
-        const current = document.activeElement as HTMLElement;
-        const idx = Array.from(items).indexOf(current);
-        let next = 0;
-        if (e.key === 'ArrowDown') next = idx < items.length - 1 ? idx + 1 : 0;
-        else if (e.key === 'ArrowUp') next = idx > 0 ? idx - 1 : items.length - 1;
-        else if (e.key === 'Home') next = 0;
-        else if (e.key === 'End') next = items.length - 1;
-        items[next]?.focus();
-      }
-      if (e.key === 'Tab') { e.preventDefault(); close(); }
-    };
-    window.addEventListener('click', close);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('click', close);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [contextMenu]);
+    ctxMenu.open(e, dm);
+  }, [ctxMenu.open]);
 
   // Context menu action handlers
-  const handleViewProfile = (dm: DmChannel) => {
+  const handleViewProfile = useCallback((dm: DmChannel) => {
     const otherIds = dm.members.filter((id) => id !== currentUser?.id);
     if (otherIds.length > 0) {
-      setProfileTarget({ userId: otherIds[0], anchor: { x: contextMenu?.x ?? 300, y: contextMenu?.y ?? 300 } });
+      setProfileTarget({ userId: otherIds[0], anchor: { x: ctxMenu.position.x, y: ctxMenu.position.y } });
     }
-    setContextMenu(null);
-  };
+    ctxMenu.close();
+  }, [currentUser?.id, ctxMenu.position.x, ctxMenu.position.y, ctxMenu.close]);
 
-  const handleAddFriend = async (userId: string) => {
-    setContextMenu(null);
+  const refreshFriendships = useCallback(async () => {
+    const [friends, pending] = await Promise.all([api.getFriends(), api.getPendingFriends()]);
+    const map = new Map<string, { id: string; status: string }>();
+    for (const f of [...friends, ...pending]) {
+      const otherId = f.requester_id === currentUser?.id ? f.addressee_id : f.requester_id;
+      map.set(otherId, { id: f.id, status: f.status });
+    }
+    setFriendships(map);
+  }, [currentUser?.id]);
+
+  const handleAddFriend = useCallback(async (userId: string) => {
+    ctxMenu.close();
     try {
       await api.sendFriendRequest(userId);
-      // Refresh friendships
-      const [friends, pending] = await Promise.all([api.getFriends(), api.getPendingFriends()]);
-      const map = new Map<string, { id: string; status: string }>();
-      for (const f of [...friends, ...pending]) {
-        const otherId = f.requester_id === currentUser?.id ? f.addressee_id : f.requester_id;
-        map.set(otherId, { id: f.id, status: f.status });
-      }
-      setFriendships(map);
+      await refreshFriendships();
     } catch (e) {
       console.warn('Failed to send friend request:', e);
     }
-  };
+  }, [ctxMenu.close, refreshFriendships]);
 
-  const handleRemoveFriend = async (userId: string) => {
-    setContextMenu(null);
+  const handleRemoveFriend = useCallback(async (userId: string) => {
+    ctxMenu.close();
     const friendship = friendships.get(userId);
     if (!friendship) return;
     try {
@@ -265,7 +226,22 @@ export default function DmList({ onDmSelect }: Props) {
     } catch (e) {
       console.warn('Failed to remove friend:', e);
     }
-  };
+  }, [ctxMenu.close, friendships]);
+
+  const handleBlock = useCallback((dm: DmChannel) => {
+    setConfirmAction({ type: 'block', dm });
+    ctxMenu.close();
+  }, [ctxMenu.close]);
+
+  const handleCloseDm = useCallback((dm: DmChannel) => {
+    setConfirmAction({ type: 'close', dm });
+    ctxMenu.close();
+  }, [ctxMenu.close]);
+
+  const handleLeaveGroup = useCallback((dm: DmChannel) => {
+    setConfirmAction({ type: 'leave', dm });
+    ctxMenu.close();
+  }, [ctxMenu.close]);
 
   const handleConfirmAction = async () => {
     if (!confirmAction) return;
@@ -275,19 +251,17 @@ export default function DmList({ onDmSelect }: Props) {
         const otherIds = confirmAction.dm.members.filter((id) => id !== currentUser?.id);
         if (otherIds[0]) {
           await api.blockUser(otherIds[0]);
-          // Refresh friendships
-          const [friends, pending] = await Promise.all([api.getFriends(), api.getPendingFriends()]);
-          const map = new Map<string, { id: string; status: string }>();
-          for (const f of [...friends, ...pending]) {
-            const otherId = f.requester_id === currentUser?.id ? f.addressee_id : f.requester_id;
-            map.set(otherId, { id: f.id, status: f.status });
-          }
-          setFriendships(map);
+          await refreshFriendships();
         }
-      } else if (confirmAction.type === 'close' || confirmAction.type === 'leave') {
+      } else if (confirmAction.type === 'close') {
+        await api.closeDm(confirmAction.dm.id);
+        fetchDms();
+        if (dmId === confirmAction.dm.id) {
+          navigate('/friends');
+        }
+      } else if (confirmAction.type === 'leave') {
         await api.leaveDm(confirmAction.dm.id);
         fetchDms();
-        // Navigate away if we're viewing this DM
         if (dmId === confirmAction.dm.id) {
           navigate('/friends');
         }
@@ -300,31 +274,16 @@ export default function DmList({ onDmSelect }: Props) {
     }
   };
 
-  /** Get display info for a DM channel */
-  const getDmDisplay = (dm: DmChannel) => {
-    const otherIds = dm.members.filter((id) => id !== currentUser?.id);
-
-    if (dm.is_group) {
-      // Group DM
-      const memberNames = otherIds
-        .map((id) => users[id]?.username)
-        .filter(Boolean)
-        .join(', ');
-      const displayName = dm.name || memberNames || 'Group DM';
-      const subtitle = `${dm.members.length} members`;
-      return { displayName, subtitle, isGroup: true, otherIds };
-    }
-
-    // 1-on-1 DM
-    const otherId = otherIds.length > 0 ? otherIds[0] : null;
-    const otherUser = otherId ? users[otherId] : null;
-    const displayName = dm.name ?? otherUser?.username ?? 'Direct Message';
-    return { displayName, subtitle: null, isGroup: false, otherIds, otherId, otherUser };
-  };
+  // Derive the friendship for the context menu target
+  const ctxDm = ctxMenu.data;
+  const ctxOtherId = ctxDm && !ctxDm.is_group
+    ? ctxDm.members.find((id) => id !== currentUser?.id) ?? null
+    : null;
+  const ctxFriendship = ctxOtherId ? (friendships.get(ctxOtherId) ?? null) : null;
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="h-14 px-4 flex items-center border-b border-divider shrink-0">
+      <div className="h-16 px-4 flex items-center border-b border-divider shrink-0">
         <h2 className="text-text-primary font-semibold text-[15px]">Direct Messages</h2>
       </div>
 
@@ -334,11 +293,11 @@ export default function DmList({ onDmSelect }: Props) {
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Find or start a conversation"
-          className="w-full bg-input rounded px-3 py-1.5 text-[13px] text-text-primary placeholder:text-text-muted outline-none"
+          className="w-full bg-input rounded-xl px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted outline-none"
         />
       </div>
 
-      {/* User search results for starting new DMs — absolute to prevent layout shift */}
+      {/* User search results for starting new DMs */}
       <div className="relative">
         {search.trim().length >= 2 && searchResults.length > 0 && (
           <div className="absolute left-0 right-0 top-0 z-20 bg-sidebar border border-divider rounded-lg mx-2 mt-1 py-1 shadow-lg animate-dropdown-enter">
@@ -347,7 +306,7 @@ export default function DmList({ onDmSelect }: Props) {
               <button
                 key={u.id}
                 onClick={() => startDm(u.id)}
-                className="w-full px-3 py-1.5 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary"
+                className="w-full px-4 py-2 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary"
               >
                 <Avatar url={u.avatar_url} name={u.username} size={28} />
                 <span className="truncate">{u.username}</span>
@@ -368,7 +327,7 @@ export default function DmList({ onDmSelect }: Props) {
         to="/friends"
         onClick={() => onDmSelect?.()}
         aria-label="Friends"
-        className="mx-2 mt-2 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/5 hover:text-text-primary text-sm cursor-pointer no-underline"
+        className="mx-2 mt-2 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-sm cursor-pointer no-underline"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -380,7 +339,7 @@ export default function DmList({ onDmSelect }: Props) {
       <button
         onClick={() => setShowCreateGroup(true)}
         aria-label="New Group DM"
-        className="mx-2 mt-1 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/5 hover:text-text-primary text-sm"
+        className="mx-2 mt-1 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-sm"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -389,12 +348,12 @@ export default function DmList({ onDmSelect }: Props) {
       </button>
 
       <div className="px-2 pt-3">
-        <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider px-2 mb-1">
+        <div className="text-xs font-bold text-text-muted uppercase tracking-wider px-2 mb-1">
           Direct Messages
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 min-h-0">
+      <div className="flex-1 overflow-y-auto px-3 min-h-0">
         {fetchError && dms.length === 0 && (
           <div className="px-2 py-4 text-center">
             <p className="text-error text-sm mb-2">Failed to load conversations</p>
@@ -408,57 +367,25 @@ export default function DmList({ onDmSelect }: Props) {
         )}
         {dms.filter((dm) => {
           if (!search) return true;
-          const { displayName } = getDmDisplay(dm);
+          const { displayName } = getDmDisplay(dm, users, currentUser?.id ?? '');
           return displayName.toLowerCase().includes(search.toLowerCase());
         }).map((dm) => {
-          const { displayName, subtitle, isGroup, otherIds } = getDmDisplay(dm);
-          const otherId = !isGroup && otherIds.length > 0 ? otherIds[0] : null;
-          const otherUser = otherId ? users[otherId] : null;
+          const otherIds = dm.members.filter((id) => id !== currentUser?.id);
+          const otherId = !dm.is_group && otherIds.length > 0 ? otherIds[0] : null;
           const presenceStatus = otherId ? (statuses[otherId] ?? 'offline') : undefined;
 
-          const unread = unreadCounts[dm.id] ?? 0;
-
           return (
-            <Link
+            <DmItem
               key={dm.id}
-              to={`/dm/${dm.id}`}
-              onClick={() => onDmSelect?.()}
-              onContextMenu={(e) => handleContextMenu(dm, e)}
-              className={`w-full px-2 py-1.5 rounded flex items-center gap-2 text-sm text-left cursor-pointer transition-colors no-underline ${
-                dmId === dm.id
-                  ? 'bg-white/10 text-text-primary'
-                  : unread > 0
-                    ? 'text-text-primary font-semibold'
-                    : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'
-              }`}
-            >
-              {isGroup ? (
-                /* Group DM icon */
-                <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-              ) : (
-                <Avatar
-                  url={otherUser?.avatar_url}
-                  name={displayName}
-                  size={32}
-                  status={presenceStatus}
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <span className="truncate block">{displayName}</span>
-                {subtitle && (
-                  <span className="text-[11px] text-text-muted truncate block">{subtitle}</span>
-                )}
-              </div>
-              {unread > 0 && dmId !== dm.id && (
-                <span className="min-w-[18px] h-[18px] bg-error rounded-full flex items-center justify-center px-1 shrink-0">
-                  <span className="text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>
-                </span>
-              )}
-            </Link>
+              dm={dm}
+              users={users}
+              currentUserId={currentUser?.id ?? ''}
+              isActive={dmId === dm.id}
+              unreadCount={unreadCounts[dm.id] ?? 0}
+              status={presenceStatus}
+              onClick={onDmSelect}
+              onContextMenu={handleContextMenu}
+            />
           );
         })}
       </div>
@@ -468,80 +395,23 @@ export default function DmList({ onDmSelect }: Props) {
       )}
 
       {/* Context menu */}
-      {contextMenu && (() => {
-        const { dm } = contextMenu;
-        const otherIds = dm.members.filter((id) => id !== currentUser?.id);
-        const isGroup = dm.is_group;
-        const otherId = !isGroup && otherIds.length > 0 ? otherIds[0] : null;
-        const friendship = otherId ? friendships.get(otherId) : undefined;
-
-        return (
-          <div
-            ref={contextMenuRef}
-            role="menu"
-            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-[170px]"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {isGroup ? (
-              /* Group DM: only Leave Group */
-              <button
-                role="menuitem"
-                className="w-full px-3 py-1.5 text-sm text-error hover:bg-error/10 text-left outline-none focus:bg-white/5"
-                onClick={() => { setConfirmAction({ type: 'leave', dm }); setContextMenu(null); }}
-              >
-                Leave Group
-              </button>
-            ) : (
-              /* 1-on-1 DM */
-              <>
-                <button
-                  role="menuitem"
-                  className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary text-left outline-none focus:bg-white/5"
-                  onClick={() => handleViewProfile(dm)}
-                >
-                  View Profile
-                </button>
-
-                {friendship?.status === 'accepted' ? (
-                  <button
-                    role="menuitem"
-                    className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary text-left outline-none focus:bg-white/5"
-                    onClick={() => otherId && handleRemoveFriend(otherId)}
-                  >
-                    Remove Friend
-                  </button>
-                ) : !friendship ? (
-                  <button
-                    role="menuitem"
-                    className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary text-left outline-none focus:bg-white/5"
-                    onClick={() => otherId && handleAddFriend(otherId)}
-                  >
-                    Add Friend
-                  </button>
-                ) : null}
-
-                <div className="my-1 border-t border-divider" />
-
-                <button
-                  role="menuitem"
-                  className="w-full px-3 py-1.5 text-sm text-error hover:bg-error/10 text-left outline-none focus:bg-white/5"
-                  onClick={() => { setConfirmAction({ type: 'block', dm }); setContextMenu(null); }}
-                >
-                  Block User
-                </button>
-                <button
-                  role="menuitem"
-                  className="w-full px-3 py-1.5 text-sm text-error hover:bg-error/10 text-left outline-none focus:bg-white/5"
-                  onClick={() => { setConfirmAction({ type: 'close', dm }); setContextMenu(null); }}
-                >
-                  Close DM
-                </button>
-              </>
-            )}
-          </div>
-        );
-      })()}
+      {ctxMenu.isOpen && ctxDm && (
+        <DmContextMenu
+          dm={ctxDm}
+          users={users}
+          currentUserId={currentUser?.id ?? ''}
+          position={ctxMenu.position}
+          menuRef={ctxMenu.menuRef}
+          friendship={ctxFriendship}
+          onClose={ctxMenu.close}
+          onViewProfile={handleViewProfile}
+          onAddFriend={handleAddFriend}
+          onRemoveFriend={handleRemoveFriend}
+          onBlock={handleBlock}
+          onCloseDm={handleCloseDm}
+          onLeaveGroup={handleLeaveGroup}
+        />
+      )}
 
       {/* Confirm dialogs for block / close / leave */}
       {confirmAction?.type === 'block' && (() => {

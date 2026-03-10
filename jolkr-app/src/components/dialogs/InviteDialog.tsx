@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Invite } from '../../api/types';
 import * as api from '../../api/client';
 import { useToast } from '../Toast';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
-interface Props {
+export interface InviteDialogProps {
   serverId: string;
   onClose: () => void;
 }
@@ -28,7 +29,7 @@ const MAX_USES_OPTIONS = [
   { value: 100, label: '100 uses' },
 ];
 
-export default function InviteDialog({ serverId, onClose }: Props) {
+export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
@@ -37,6 +38,8 @@ export default function InviteDialog({ serverId, onClose }: Props) {
   const [copied, setCopied] = useState<string | null>(null);
   const [maxAgeSeconds, setMaxAgeSeconds] = useState(0);
   const [maxUses, setMaxUses] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   useEffect(() => {
     api.getInvites(serverId)
@@ -92,17 +95,17 @@ export default function InviteDialog({ serverId, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[500px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[500px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Server Invites</h3>
 
         <div className="flex gap-3 mb-3">
           <div className="flex-1">
-            <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Expire After</label>
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Expire After</label>
             <select
               value={maxAgeSeconds}
               onChange={(e) => setMaxAgeSeconds(Number(e.target.value))}
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+              className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
             >
               {EXPIRY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -110,11 +113,11 @@ export default function InviteDialog({ serverId, onClose }: Props) {
             </select>
           </div>
           <div className="flex-1">
-            <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Max Uses</label>
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Max Uses</label>
             <select
               value={maxUses}
               onChange={(e) => setMaxUses(Number(e.target.value))}
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+              className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
             >
               {MAX_USES_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -123,22 +126,22 @@ export default function InviteDialog({ serverId, onClose }: Props) {
           </div>
         </div>
 
-        {actionError && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{actionError}</div>}
+        {actionError && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{actionError}</div>}
 
         <button
           onClick={handleCreate}
           disabled={loading}
-          className="w-full px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded mb-4 disabled:opacity-50"
+          className="btn-primary w-full px-5 py-2.5 text-sm rounded-lg mb-4 disabled:opacity-50"
         >
           {loading ? 'Creating...' : 'Create Invite'}
         </button>
 
         <div className="max-h-[300px] overflow-y-auto space-y-2">
           {invites.map((inv) => (
-            <div key={inv.id} className="flex items-center gap-2 bg-input rounded px-3 py-2">
+            <div key={inv.id} className="flex items-center gap-2 bg-input rounded-lg px-3 py-2">
               <code className="flex-1 text-sm text-text-primary font-mono">{inv.code}</code>
               <div className="flex flex-col items-end shrink-0">
-                <span className="text-[11px] text-text-muted">
+                <span className="text-xs text-text-muted">
                   {inv.use_count}{inv.max_uses ? `/${inv.max_uses}` : ''} uses
                 </span>
                 {inv.expires_at && (
@@ -171,7 +174,7 @@ export default function InviteDialog({ serverId, onClose }: Props) {
         </div>
 
         <div className="flex justify-end mt-4">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
+          <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
             Close
           </button>
         </div>

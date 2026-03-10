@@ -37,3 +37,5 @@ sha2 = "0.10"
 reqwest = { workspace = true }
 scraper = { workspace = true }
 regex = "1"
+url = "2"
+rand = { workspace = true }

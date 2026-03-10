@@ -9,7 +9,7 @@ export default function DmLayout() {
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Shared DM sidebar — persists across Home, DmChat, Friends */}
-      <div className={`${isMobile ? 'w-full' : 'w-[240px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
+      <div className={`${isMobile ? 'w-full' : 'w-[260px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
         <DmList onDmSelect={isMobile ? () => setShowSidebar(false) : undefined} />
         <UserPanel />
       </div>

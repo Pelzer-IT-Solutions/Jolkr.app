@@ -318,6 +318,19 @@ impl DmService {
         })
     }
 
+    /// Close (hide) a DM channel for the caller.
+    pub async fn close_dm(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        caller_id: Uuid,
+    ) -> Result<(), JolkrError> {
+        if !DmRepo::is_member(pool, dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+        DmRepo::close_dm(pool, dm_channel_id, caller_id).await?;
+        Ok(())
+    }
+
     /// Mark messages as read up to a given message ID.
     /// Returns `true` if the read receipt should be broadcast (user has show_read_receipts enabled).
     pub async fn mark_as_read(
@@ -406,6 +419,9 @@ impl DmService {
             req.reply_to_id,
         )
         .await?;
+
+        // Reopen the DM for any members who closed it
+        DmRepo::reopen_dm(pool, dm_channel_id).await.ok();
 
         Ok(DmMessageInfo::from(row))
     }

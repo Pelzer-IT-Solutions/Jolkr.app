@@ -66,6 +66,10 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     let mut user_id: Option<Uuid> = None;
     let mut last_heartbeat = tokio::time::Instant::now();
 
+    // Per-connection message rate limiter (token bucket: 30 msgs/sec, burst 30)
+    let mut rate_tokens: f64 = 30.0;
+    let mut last_refill = tokio::time::Instant::now();
+
     // Spawn a task that forwards gateway events to the WebSocket sender
     let send_task = tokio::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -102,12 +106,25 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             _ => continue, // ignore binary/ping/pong
         };
 
+        // Per-connection rate limiting (30 msgs/sec)
+        let now_rl = tokio::time::Instant::now();
+        rate_tokens = (rate_tokens + now_rl.duration_since(last_refill).as_secs_f64() * 30.0).min(30.0);
+        last_refill = now_rl;
+        if rate_tokens < 1.0 {
+            warn!("WebSocket rate limit exceeded");
+            let _ = tx.try_send(GatewayEvent::Error {
+                message: "Rate limit exceeded".into(),
+            });
+            continue;
+        }
+        rate_tokens -= 1.0;
+
         let client_event: ClientEvent = match serde_json::from_str(&text) {
             Ok(e) => e,
             Err(e) => {
                 warn!("Invalid client event: {e}");
                 let err = GatewayEvent::Error {
-                    message: format!("Invalid event: {e}"),
+                    message: "Invalid event format".to_string(),
                 };
                 let _ = tx.try_send(err);
                 continue;
@@ -116,6 +133,13 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
         match client_event {
             ClientEvent::Identify { token } => {
+                // Reject re-identify on already authenticated connection
+                if session_id.is_some() {
+                    let _ = tx.try_send(GatewayEvent::Error {
+                        message: "Already identified".to_string(),
+                    });
+                    continue;
+                }
                 // Validate the JWT
                 match AuthService::validate_token(&state.jwt_secret, &token) {
                     Ok(claims) => {
@@ -150,8 +174,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         info!(user_id = %claims.sub, session_id = %sid, "WebSocket identified");
                     }
                     Err(e) => {
+                        warn!("WebSocket authentication failed: {e}");
                         let err = GatewayEvent::Error {
-                            message: format!("Authentication failed: {e}"),
+                            message: "Authentication failed".to_string(),
                         };
                         let _ = tx.try_send(err);
                     }

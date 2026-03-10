@@ -38,17 +38,17 @@ function RequestResetForm() {
 
   if (submitted) {
     return (
-      <div className="h-full flex items-center justify-center bg-bg">
-        <div className="bg-surface rounded-lg p-8 w-[420px] max-w-[90vw] text-center">
+      <div className="h-full flex items-center justify-center auth-gradient">
+        <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] text-center auth-card animate-modal-scale">
           <div className="text-4xl mb-4">&#9993;</div>
-          <h1 className="text-2xl font-bold text-text-primary mb-2">Check your email</h1>
+          <h1 className="text-3xl font-bold text-text-primary mb-2">Check your email</h1>
           <p className="text-text-secondary text-sm mb-6">
             If an account exists for <strong>{email}</strong>, we've sent a password reset link.
             Check your inbox (and spam folder).
           </p>
           <Link
             to="/login"
-            className="inline-block w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded font-medium text-sm text-center"
+            className="inline-block w-full py-3 btn-primary text-sm rounded-lg text-center"
           >
             Back to Login
           </Link>
@@ -58,14 +58,14 @@ function RequestResetForm() {
   }
 
   return (
-    <div className="h-full flex items-center justify-center bg-bg">
-      <div className="bg-surface rounded-lg p-8 w-[420px] max-w-[90vw]">
-        <h1 className="text-2xl font-bold text-text-primary text-center mb-2">Forgot your password?</h1>
+    <div className="h-full flex items-center justify-center auth-gradient">
+      <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] auth-card animate-modal-scale">
+        <h1 className="text-3xl font-bold text-text-primary text-center mb-2">Forgot your password?</h1>
         <p className="text-text-secondary text-center mb-6 text-sm">
           Enter your email address and we'll send you a link to reset your password.
         </p>
 
-        {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+        {error && <div role="alert" className="bg-error/10 text-error text-sm p-3 rounded-lg border border-error/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -80,13 +80,14 @@ function RequestResetForm() {
               required
               autoFocus
               placeholder="you@example.com"
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+              inputMode="email"
+              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded font-medium text-sm disabled:opacity-50"
+            className="w-full py-3 btn-primary text-sm rounded-lg"
           >
             {loading ? 'Sending...' : 'Send Reset Link'}
           </button>
@@ -133,16 +134,16 @@ function ResetPasswordForm({ token }: { token: string }) {
 
   if (success) {
     return (
-      <div className="h-full flex items-center justify-center bg-bg">
-        <div className="bg-surface rounded-lg p-8 w-[420px] max-w-[90vw] text-center">
+      <div className="h-full flex items-center justify-center auth-gradient">
+        <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] text-center auth-card animate-modal-scale">
           <div className="text-4xl mb-4">&#10003;</div>
-          <h1 className="text-2xl font-bold text-text-primary mb-2">Password Reset Successful</h1>
+          <h1 className="text-3xl font-bold text-text-primary mb-2">Password Reset Successful</h1>
           <p className="text-text-secondary text-sm mb-6">
             Your password has been updated. You can now log in with your new password.
           </p>
           <Link
             to="/login"
-            className="inline-block w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded font-medium text-sm text-center"
+            className="inline-block w-full py-3 btn-primary text-sm rounded-lg text-center"
           >
             Go to Login
           </Link>
@@ -152,14 +153,14 @@ function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <div className="h-full flex items-center justify-center bg-bg">
-      <div className="bg-surface rounded-lg p-8 w-[420px] max-w-[90vw]">
-        <h1 className="text-2xl font-bold text-text-primary text-center mb-2">Set New Password</h1>
+    <div className="h-full flex items-center justify-center auth-gradient">
+      <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] auth-card animate-modal-scale">
+        <h1 className="text-3xl font-bold text-text-primary text-center mb-2">Set New Password</h1>
         <p className="text-text-secondary text-center mb-6 text-sm">
           Enter your new password below.
         </p>
 
-        {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+        {error && <div role="alert" className="bg-error/10 text-error text-sm p-3 rounded-lg border border-error/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -175,7 +176,7 @@ function ResetPasswordForm({ token }: { token: string }) {
               minLength={8}
               autoFocus
               placeholder="Min. 8 characters"
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
             />
           </div>
           <div>
@@ -190,13 +191,13 @@ function ResetPasswordForm({ token }: { token: string }) {
               required
               minLength={8}
               placeholder="Repeat your new password"
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded font-medium text-sm disabled:opacity-50"
+            className="w-full py-3 btn-primary text-sm rounded-lg"
           >
             {loading ? 'Resetting...' : 'Reset Password'}
           </button>

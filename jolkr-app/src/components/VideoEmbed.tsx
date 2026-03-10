@@ -1,16 +1,16 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import type { MessageEmbed } from '../api/types';
 import type { VideoInfo } from '../utils/videoUrl';
 import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../utils/videoUrl';
 import { useNMPlayer } from '../hooks/useNMPlayer';
 import { isTauri } from '../platform/detect';
 
-interface Props {
+export interface VideoEmbedProps {
   embed: MessageEmbed;
   videoInfo: VideoInfo;
 }
 
-export default function VideoEmbed({ embed, videoInfo }: Props) {
+function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
   // Iframe platforms (YouTube, Vimeo, Twitch, TikTok) load the iframe directly
   // so the user only needs one click (the platform's own play button).
   // Direct/HLS videos use a thumbnail preview since NMPlayer auto-plays on expand.
@@ -59,6 +59,9 @@ export default function VideoEmbed({ embed, videoInfo }: Props) {
     </div>
   );
 }
+
+const VideoEmbed = memo(VideoEmbedInner);
+export default VideoEmbed;
 
 /* ── Thumbnail (collapsed state) ── */
 
@@ -195,6 +198,8 @@ function IframePlayer({ src, title }: { src: string; title: string }) {
         className="w-full h-full"
         allow="fullscreen; encrypted-media"
         allowFullScreen
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+        referrerPolicy="no-referrer"
       />
     </div>
   );
@@ -345,7 +350,7 @@ function VideoControls({
             className="h-full bg-white rounded-full relative"
             style={{ width: `${progress}%` }}
           >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full opacity-0 group-hover/seek:opacity-100 transition-opacity" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full opacity-0 group-hover/seek:opacity-100 group-focus-within/seek:opacity-100 transition-opacity" />
           </div>
         </div>
       )}

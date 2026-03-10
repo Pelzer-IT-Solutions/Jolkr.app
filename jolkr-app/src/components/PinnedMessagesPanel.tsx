@@ -1,15 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, memo } from 'react';
 import type { Message, User } from '../api/types';
 import * as api from '../api/client';
 import Avatar from './Avatar';
 import MessageContent from './MessageContent';
 
-interface Props {
+export interface PinnedMessagesPanelProps {
   channelId: string;
   onClose: () => void;
 }
 
-export default function PinnedMessagesPanel({ channelId, onClose }: Props) {
+function PinnedMessagesPanelInner({ channelId, onClose }: PinnedMessagesPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -41,8 +41,8 @@ export default function PinnedMessagesPanel({ channelId, onClose }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-0 z-50 w-[360px] h-full bg-surface border-l border-divider flex flex-col shadow-xl">
-        <div className="h-14 px-4 flex items-center justify-between border-b border-divider shrink-0">
+      <div className="absolute right-0 top-0 z-50 w-[360px] h-full bg-surface border-l border-divider flex flex-col shadow-popup">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-divider shrink-0">
           <h3 className="text-text-primary font-semibold text-sm">Pinned Messages</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close pinned messages">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -65,7 +65,7 @@ export default function PinnedMessagesPanel({ channelId, onClose }: Props) {
             const author = users[msg.author_id];
             const time = new Date(msg.created_at);
             return (
-              <div key={msg.id} className="mb-3 p-3 bg-background rounded-lg border border-divider">
+              <div key={msg.id} className="mb-3 p-3 bg-background rounded-xl border border-divider">
                 <div className="flex items-center gap-2 mb-1">
                   <Avatar url={author?.avatar_url} name={author?.username ?? '?'} size={20} />
                   <span className="text-sm font-medium text-text-primary">{author?.username ?? 'Unknown'}</span>
@@ -82,3 +82,6 @@ export default function PinnedMessagesPanel({ channelId, onClose }: Props) {
     </>
   );
 }
+
+const PinnedMessagesPanel = memo(PinnedMessagesPanelInner);
+export default PinnedMessagesPanel;

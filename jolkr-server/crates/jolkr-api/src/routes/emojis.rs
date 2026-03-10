@@ -6,6 +6,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use jolkr_core::EmojiService;
+use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::services::emoji::EmojiInfo;
 
 use crate::errors::AppError;
@@ -117,7 +118,7 @@ pub async fn upload_emoji(
     // Presign the URL for the response
     let image_url = state
         .storage
-        .presign_get(&row.image_key, 7 * 24 * 3600)
+        .presign_get(&row.image_key, PRESIGN_EXPIRY_SECS)
         .await
         .unwrap_or_default();
 
@@ -138,7 +139,7 @@ pub async fn list_emojis(
     for row in rows {
         let image_url = state
             .storage
-            .presign_get(&row.image_key, 7 * 24 * 3600)
+            .presign_get(&row.image_key, PRESIGN_EXPIRY_SECS)
             .await
             .unwrap_or_default();
         emojis.push(EmojiInfo::from_row(row, image_url));

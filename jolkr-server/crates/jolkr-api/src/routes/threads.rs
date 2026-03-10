@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_core::ThreadService;
+use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::services::message::{MessageInfo, SendMessageRequest};
 use jolkr_core::services::thread::{
     CreateThreadRequest, ThreadInfo, ThreadMessageQuery, UpdateThreadRequest,
@@ -131,7 +132,7 @@ pub async fn get_thread_messages(
     // Presign attachment URLs
     for msg in &mut messages {
         for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, 7 * 24 * 3600).await {
+            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
                 att.url = url;
             }
         }

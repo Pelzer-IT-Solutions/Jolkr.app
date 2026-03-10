@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
+use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::MessageService;
 use jolkr_core::services::message::{
     EditMessageRequest, MessageInfo, MessageQuery, SendMessageRequest,
@@ -155,7 +156,7 @@ pub async fn get_messages(
     // Presign attachment URLs so clients can download them
     for msg in &mut messages {
         for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, 7 * 24 * 3600).await {
+            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
                 att.url = url;
             }
         }
@@ -279,7 +280,7 @@ pub async fn search_messages(
 
     for msg in &mut messages {
         for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, 7 * 24 * 3600).await {
+            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
                 att.url = url;
             }
         }
@@ -332,7 +333,7 @@ pub async fn list_pins(
 
     for msg in &mut messages {
         for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, 7 * 24 * 3600).await {
+            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
                 att.url = url;
             }
         }

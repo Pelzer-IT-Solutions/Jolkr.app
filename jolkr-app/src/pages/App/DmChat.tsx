@@ -16,20 +16,6 @@ import { useCallStore } from '../../stores/call';
 import { useVoiceStore } from '../../stores/voice';
 import { useMessagesStore } from '../../stores/messages';
 
-// Module-level DM cache — avoids re-fetching all DMs on every navigation
-let dmsCacheData: DmChannel[] | null = null;
-
-async function getCachedDms(): Promise<DmChannel[]> {
-  if (dmsCacheData) return dmsCacheData;
-  const channels = await api.getDms();
-  dmsCacheData = channels;
-  return channels;
-}
-
-function invalidateDmsCache() {
-  dmsCacheData = null;
-}
-
 function CallButton({ dmId, recipientName, recipientUserId }: { dmId: string; recipientName: string; recipientUserId?: string }) {
   const startCall = useCallStore((s) => s.startCall);
   const activeCallDmId = useCallStore((s) => s.activeCallDmId);
@@ -60,6 +46,20 @@ export default function DmChat() {
   const currentUser = useAuthStore((s) => s.user);
   const statuses = usePresenceStore((s) => s.statuses);
   const setActiveChannel = useUnreadStore((s) => s.setActiveChannel);
+
+  // DM cache ref — replaces former module-level mutable state
+  const dmsCacheRef = useRef<DmChannel[] | null>(null);
+
+  const getCachedDms = useCallback(async (): Promise<DmChannel[]> => {
+    if (dmsCacheRef.current) return dmsCacheRef.current;
+    const channels = await api.getDms();
+    dmsCacheRef.current = channels;
+    return channels;
+  }, []);
+
+  const invalidateDmsCache = useCallback(() => {
+    dmsCacheRef.current = null;
+  }, []);
 
   const [dmChannel, setDmChannel] = useState<DmChannel | null>(null);
   const [memberUsers, setMemberUsers] = useState<Record<string, User>>({});
@@ -100,7 +100,7 @@ export default function DmChat() {
         });
       }
     }).catch(() => {});
-  }, [dmId, currentUser?.id]);
+  }, [dmId, currentUser?.id, getCachedDms]);
 
   useEffect(() => {
     fetchChannelInfo();
@@ -125,7 +125,7 @@ export default function DmChat() {
       }
     });
     return unsub;
-  }, [dmId, currentUser?.id]);
+  }, [dmId, currentUser?.id, invalidateDmsCache]);
 
   // Compute the "other user" for 1-on-1 DMs
   const otherUser = useMemo(() => {
@@ -341,7 +341,7 @@ export default function DmChat() {
             </div>
           )}
           {/* Header */}
-          <div className="h-14 px-4 flex items-center gap-3 border-b border-divider shrink-0">
+          <div className="h-16 px-4 flex items-center gap-3 border-b border-divider shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to conversations">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

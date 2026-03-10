@@ -29,6 +29,9 @@ const ALLOWED_MIME_TYPES: &[&str] = &[
     "application/octet-stream", // fallback for unknown types
 ];
 
+/// Presigned URL lifetime in seconds (4 hours).
+pub const PRESIGN_EXPIRY_SECS: u32 = 4 * 3600;
+
 pub fn is_allowed_content_type(ct: &str) -> bool {
     ALLOWED_MIME_TYPES.iter().any(|allowed| ct.eq_ignore_ascii_case(allowed))
 }
@@ -171,7 +174,7 @@ pub async fn upload_attachment(
     // Generate a presigned download URL (valid for 7 days)
     let download_url = state
         .storage
-        .presign_get(&object_key, 7 * 24 * 3600)
+        .presign_get(&object_key, PRESIGN_EXPIRY_SECS)
         .await
         .map_err(|e| {
             AppError(jolkr_common::JolkrError::Internal(format!(
@@ -195,7 +198,7 @@ pub async fn upload_attachment(
     // Broadcast MessageUpdate so other clients see the new attachment
     if let Ok(mut enriched) = MessageService::get_message_by_id(&state.pool, message_id).await {
         for att in &mut enriched.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, 7 * 24 * 3600).await {
+            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
                 att.url = url;
             }
         }
@@ -245,7 +248,7 @@ pub async fn list_attachments(
     for row in rows {
         let url = state
             .storage
-            .presign_get(&row.url, 7 * 24 * 3600)
+            .presign_get(&row.url, PRESIGN_EXPIRY_SECS)
             .await
             .unwrap_or_else(|_| row.url.clone());
 
@@ -327,7 +330,7 @@ pub async fn upload_file(
 
     let download_url = state
         .storage
-        .presign_get(&object_key, 7 * 24 * 3600)
+        .presign_get(&object_key, PRESIGN_EXPIRY_SECS)
         .await
         .map_err(|e| {
             AppError(jolkr_common::JolkrError::Internal(format!(

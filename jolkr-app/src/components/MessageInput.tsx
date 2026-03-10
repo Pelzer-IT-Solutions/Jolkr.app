@@ -1,4 +1,5 @@
 import { useRef, useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
+import DOMPurify from 'dompurify';
 import type { Message, User } from '../api/types';
 import { useMessagesStore } from '../stores/messages';
 import { wsClient } from '../api/ws';
@@ -21,7 +22,7 @@ export interface MentionableUser {
   username: string;
 }
 
-interface Props {
+export interface MessageInputProps {
   channelId: string;
   serverId?: string;
   isDm?: boolean;
@@ -49,7 +50,7 @@ function SortableFileChip({ file, id, index, onRemove }: { file: File; id: strin
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}
-      className="flex items-center gap-2 bg-input rounded-lg px-3 py-1.5 text-sm"
+      className="flex items-center gap-2 bg-input rounded-lg px-3 py-2 text-sm"
     >
       <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -70,7 +71,8 @@ function SortableFileChip({ file, id, index, onRemove }: { file: File; id: strin
   );
 }
 
-export default function MessageInput({ channelId, isDm, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles }: Props) {
+export default function MessageInput({ channelId, isDm, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles }: MessageInputProps) {
+  const [inputFocused, setInputFocused] = useState(false);
   const [content, setContent] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [sending, setSending] = useState(false);
@@ -436,7 +438,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   // Disabled state: no permission to send
   if (canSend === false) {
     return (
-      <div className="px-4 pb-4 shrink-0">
+      <div className="px-4 pb-5 shrink-0">
         <div className="h-6" />
         <div className="flex items-center bg-input rounded-lg px-4 py-3 opacity-60">
           <span className="text-text-muted text-sm">You do not have permission to send messages in this channel</span>
@@ -449,10 +451,10 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   // Don't show a skeleton — just render the real input. DMs never set canSend so it's always undefined there.
 
   return (
-    <div className="px-4 pb-4 shrink-0 relative">
+    <div className="px-4 pb-5 shrink-0 relative">
       {/* Mention autocomplete */}
       {mentionQuery !== null && mentionMatches.length > 0 && (
-        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-lg shadow-lg py-1 max-h-[200px] overflow-y-auto z-50">
+        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-[200px] overflow-y-auto z-50">
           <div className="px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider">Members</div>
           {mentionMatches.map((u, i) => (
             <button
@@ -473,7 +475,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* Emoji shortcode autocomplete */}
       {emojiQuery !== null && emojiMatches.length > 0 && (
-        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-lg shadow-lg py-1 max-h-[280px] overflow-y-auto z-50">
+        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-[280px] overflow-y-auto z-50">
           <div className="px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
           {emojiMatches.map((entry, i) => (
             <button
@@ -498,7 +500,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
           <div className="absolute bottom-full left-4 mb-2 z-50">
             <Suspense fallback={<div className="w-[350px] h-[400px] bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
               <LazyEmojiPicker
-                theme={"dark" as never}
+                theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
                 onEmojiClick={(emoji: { emoji: string }) => {
                   setContent((prev) => prev + emoji.emoji);
                   inputRef.current?.focus();
@@ -513,7 +515,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* Reply bar */}
       {replyTo && (
-        <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-primary rounded-t mb-1">
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-primary rounded-t-lg mb-1">
           <svg className="w-3.5 h-3.5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
           </svg>
@@ -580,28 +582,30 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       )}
 
       {/* Formatting toolbar */}
-      <div className="flex items-center gap-0.5 mb-0.5">
-        <button onClick={() => insertFormatting('**', '**')} className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-white/5" title="Bold (Ctrl+B)">
+      <div className="flex items-center gap-0.5 mb-1 px-1 py-0.5 rounded-lg bg-surface/50 border border-divider/50 w-fit">
+        <button onClick={() => insertFormatting('**', '**')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Bold (Ctrl+B)">
           <span className="text-xs font-bold w-5 h-5 flex items-center justify-center">B</span>
         </button>
-        <button onClick={() => insertFormatting('*', '*')} className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-white/5" title="Italic (Ctrl+I)">
+        <button onClick={() => insertFormatting('*', '*')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Italic (Ctrl+I)">
           <span className="text-xs italic w-5 h-5 flex items-center justify-center">I</span>
         </button>
-        <button onClick={() => insertFormatting('~~', '~~')} className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-white/5" title="Strikethrough">
+        <button onClick={() => insertFormatting('~~', '~~')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Strikethrough">
           <span className="text-xs line-through w-5 h-5 flex items-center justify-center">S</span>
         </button>
-        <button onClick={() => insertFormatting('`', '`')} className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-white/5" title="Inline Code">
+        <div className="w-px h-4 bg-divider/50 mx-0.5" />
+        <button onClick={() => insertFormatting('`', '`')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Inline Code">
           <span className="text-xs font-mono w-5 h-5 flex items-center justify-center">&lt;/&gt;</span>
         </button>
-        <button onClick={() => insertFormatting('```\n', '\n```')} className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-white/5" title="Code Block">
+        <button onClick={() => insertFormatting('```\n', '\n```')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Code Block">
           <span className="text-[10px] font-mono w-5 h-5 flex items-center justify-center">[/]</span>
         </button>
-        <button onClick={() => insertFormatting('> ', '')} className="p-1 text-text-muted hover:text-text-primary rounded hover:bg-white/5" title="Quote">
+        <div className="w-px h-4 bg-divider/50 mx-0.5" />
+        <button onClick={() => insertFormatting('> ', '')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Quote">
           <span className="text-xs w-5 h-5 flex items-center justify-center">"</span>
         </button>
       </div>
 
-      <div className="flex items-center gap-2 bg-input rounded-lg px-4 py-2">
+      <div className={`input-container flex items-center gap-2 bg-input rounded-xl px-4 py-2.5 border border-divider transition-all ${inputFocused ? 'border-primary/50 shadow-[0_0_0_3px_rgba(124,107,245,0.15)]' : 'hover:border-divider/80'}`} onFocus={() => setInputFocused(true)} onBlur={() => setInputFocused(false)}>
         {canAttach && (
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -683,7 +687,11 @@ function renderInputEmojis(text: string): string {
   html = html.replace(/\n/g, '<br>');
   // Unicode emojis → img tags
   html = renderUnicodeEmojis(html, 20);
-  return html;
+  // Sanitize to prevent XSS via dangerouslySetInnerHTML
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['img', 'br'],
+    ALLOWED_ATTR: ['src', 'alt', 'class', 'style', 'loading', 'draggable'],
+  });
 }
 
 function formatFileSize(bytes: number): string {

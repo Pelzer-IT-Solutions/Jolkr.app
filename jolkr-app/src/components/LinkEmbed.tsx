@@ -9,10 +9,11 @@ export default function LinkEmbed({ embed }: LinkEmbedProps) {
   const borderColor = embed.color || '#5865F2';
   const [imgErrored, setImgErrored] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const safeUrl = /^https?:\/\//i.test(embed.url) ? embed.url : '#';
 
   return (
     <a
-      href={embed.url}
+      href={safeUrl}
       target="_blank"
       rel="noopener noreferrer"
       className="block mt-1 max-w-[400px] rounded-md overflow-hidden bg-zinc-800/50 border-l-4 hover:bg-zinc-800/80 transition-colors"

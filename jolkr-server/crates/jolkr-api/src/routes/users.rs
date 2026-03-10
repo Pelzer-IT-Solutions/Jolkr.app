@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_core::UserService;
+use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::services::user::{UpdateProfileRequest, UserProfile};
 
 use crate::errors::AppError;
@@ -50,7 +51,7 @@ async fn presign_avatar(state: &AppState, profile: &mut UserProfile) {
     if let Some(ref avatar) = profile.avatar_url {
         // S3 keys start with "uploads/" or similar, not "http"
         if !avatar.starts_with("http") {
-            if let Ok(url) = state.storage.presign_get(avatar, 7 * 24 * 3600).await {
+            if let Ok(url) = state.storage.presign_get(avatar, PRESIGN_EXPIRY_SECS).await {
                 profile.avatar_url = Some(url);
             }
         }
@@ -87,6 +88,17 @@ pub async fn update_me(
     .await?;
 
     presign_avatar(&state, &mut profile).await;
+
+    // Broadcast profile update to all sessions of this user
+    let event = crate::ws::events::GatewayEvent::UserUpdate {
+        user_id: auth.user_id,
+        status: profile.status.clone(),
+        display_name: profile.display_name.clone(),
+        avatar_url: profile.avatar_url.clone(),
+        bio: profile.bio.clone(),
+    };
+    state.nats.publish_to_user(auth.user_id, &event).await;
+
     Ok(Json(UserResponse { user: profile }))
 }
 

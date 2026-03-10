@@ -1,0 +1,164 @@
+import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useServersStore } from '../../../stores/servers';
+import * as api from '../../../api/client';
+import { rewriteStorageUrl } from '../../../platform/config';
+import type { Server } from '../../../api/types';
+import ConfirmDialog from '../ConfirmDialog';
+
+export interface GeneralTabProps {
+  server: Server;
+  onClose: () => void;
+  isOwner: boolean;
+}
+
+export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps) {
+  const navigate = useNavigate();
+  const [name, setName] = useState(server.name);
+  const [description, setDescription] = useState(server.description ?? '');
+  const [iconUrl, setIconUrl] = useState(server.icon_url ?? '');
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const updateServer = useServersStore((s) => s.updateServer);
+  const deleteServer = useServersStore((s) => s.deleteServer);
+
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const result = await api.uploadFile(file);
+      setIconUrl(result.key);
+    } catch { setError('Failed to upload icon'); }
+    setUploading(false);
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setError('Server name is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateServer(server.id, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        icon_url: iconUrl || undefined,
+      });
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setShowDeleteConfirm(false);
+    try {
+      await deleteServer(server.id);
+      onClose();
+      navigate('/');
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  return (
+    <>
+      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+
+      {/* Server icon */}
+      <div className="flex items-center gap-4 mb-4">
+        <div
+          role="button"
+          tabIndex={0}
+          className="w-16 h-16 rounded-2xl bg-input flex items-center justify-center relative group cursor-pointer shrink-0 overflow-hidden"
+          onClick={() => fileInputRef.current?.click()}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); }}}
+          aria-label="Upload server icon"
+        >
+          {iconUrl ? (
+            <img src={rewriteStorageUrl(iconUrl) ?? iconUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-text-muted text-lg font-bold">{name.slice(0, 2).toUpperCase()}</span>
+          )}
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+            {uploading ? (
+              <span className="text-white text-[10px]">...</span>
+            ) : (
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            )}
+          </div>
+        </div>
+        <div className="text-xs text-text-muted">
+          Click to upload server icon<br />Recommended: 128x128px
+        </div>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIconUpload} />
+      </div>
+
+      <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Server Name</label>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
+        autoFocus
+      />
+
+      <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Description</label>
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm resize-none mb-4"
+        rows={3}
+        placeholder="What's this server about?"
+      />
+
+      <div className="flex justify-end gap-3 mb-6">
+        <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+
+      {/* Danger zone — only owner can delete */}
+      {isOwner && (
+        <div className="border border-error/30 rounded-lg p-4">
+          <h4 className="text-error font-semibold text-sm mb-1">Danger Zone</h4>
+          <p className="text-text-muted text-xs mb-3">
+            Deleting a server is permanent and cannot be undone. All channels and messages will be lost.
+          </p>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-5 py-2.5 bg-error hover:bg-error/80 text-white text-sm rounded-lg"
+          >
+            Delete Server
+          </button>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          title="Delete Server"
+          message={`Are you sure you want to delete "${server.name}"? This action is permanent and cannot be undone.`}
+          confirmLabel="Delete Server"
+          danger
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
+    </>
+  );
+}

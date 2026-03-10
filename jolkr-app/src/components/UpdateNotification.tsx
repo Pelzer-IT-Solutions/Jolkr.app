@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { type UpdateInfo, downloadAndInstallUpdate } from '../services/updater';
 
-interface Props {
+export interface UpdateNotificationProps {
   update: UpdateInfo;
 }
 
-export default function UpdateNotification({ update }: Props) {
+export default function UpdateNotification({ update }: UpdateNotificationProps) {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
@@ -46,7 +46,7 @@ export default function UpdateNotification({ update }: Props) {
         ) : (
           <button
             onClick={handleUpdate}
-            className="px-3 py-1 bg-primary hover:bg-primary-hover text-white text-xs rounded font-medium transition-colors"
+            className="px-3 py-1 btn-primary text-xs rounded-lg font-medium"
           >
             Update Now
           </button>

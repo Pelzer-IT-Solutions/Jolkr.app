@@ -55,6 +55,7 @@ interface MessagesState {
   updateThreadMessage: (threadId: string, message: Message) => void;
   removeThreadMessage: (threadId: string, messageId: string) => void;
   clearThreadMessages: (threadId: string) => void;
+  reset: () => void;
 }
 
 // Map DM message response to Message interface
@@ -328,6 +329,10 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       threadLoadingOlder: restLoadingOlder,
       threadHasMore: restHasMore,
     });
+  },
+
+  reset: () => {
+    set({ messages: {}, loading: {}, loadingOlder: {}, hasMore: {}, threadMessages: {}, threadLoading: {}, threadLoadingOlder: {}, threadHasMore: {}, threadListVersion: 0 });
   },
 }));
 

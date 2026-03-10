@@ -28,10 +28,14 @@ impl Config {
                 "postgres://jolkr:jolkr_dev@localhost:5432/jolkr",
             ),
             redis_url: env_or("REDIS_URL", "redis://localhost:6379"),
-            jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| {
-                eprintln!("WARNING: JWT_SECRET not set — using insecure default. DO NOT use in production!");
-                "jolkr-dev-secret-change-in-production".to_string()
-            }),
+            jwt_secret: {
+                let secret = std::env::var("JWT_SECRET")
+                    .expect("FATAL: JWT_SECRET must be set. Refusing to start without it.");
+                if secret.len() < 32 {
+                    panic!("FATAL: JWT_SECRET is too short ({} chars). Minimum 32 characters required.", secret.len());
+                }
+                secret
+            },
             server_port: env_or("SERVER_PORT", "8080")
                 .parse()
                 .expect("SERVER_PORT must be a valid u16"),

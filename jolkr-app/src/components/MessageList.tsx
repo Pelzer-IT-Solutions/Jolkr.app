@@ -12,7 +12,7 @@ import MessageTile from './MessageTile';
 const EMPTY_MSGS: Message[] = [];
 const EMPTY_TYPING: string[] = [];
 
-interface Props {
+export interface MessageListProps {
   channelId: string;
   search?: string;
   searchResults?: Message[] | null;
@@ -22,7 +22,7 @@ interface Props {
   onOpenThread?: (message: Message) => void;
 }
 
-export default function MessageList({ channelId, search, searchResults, searchLoading, isDm, onReply, onOpenThread }: Props) {
+export default function MessageList({ channelId, search, searchResults, searchLoading, isDm, onReply, onOpenThread }: MessageListProps) {
   const fetchMessages = useMessagesStore((s) => s.fetchMessages);
   const fetchOlder = useMessagesStore((s) => s.fetchOlder);
   const channelMessages = useMessagesStore((s) => s.messages[channelId]);
@@ -205,7 +205,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
           </div>
         ) : (
           <div
-            className="py-4 relative"
+            className="py-5 relative"
             style={{ height: virtualizer.getTotalSize(), width: '100%' }}
           >
             {isLoadingOlder && (
@@ -265,6 +265,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
       {newMsgCount > 0 && showScrollBtn && (
         <button
           onClick={scrollToBottom}
+          aria-live="polite"
           className="absolute bottom-16 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-accent hover:bg-accent/80 text-white text-sm font-medium rounded-full shadow-lg transition-colors z-10 flex items-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -277,7 +278,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
       {showScrollBtn && newMsgCount === 0 && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-16 right-4 w-9 h-9 bg-surface border border-divider rounded-full flex items-center justify-center shadow-lg hover:bg-white/10 transition-colors z-10"
+          className="absolute bottom-16 right-4 w-10 h-10 bg-surface border border-divider rounded-full flex items-center justify-center shadow-elevated hover:bg-white/10 transition-colors z-10"
           title="Scroll to bottom"
           aria-label="Scroll to bottom"
         >
@@ -287,13 +288,13 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         </button>
       )}
 
-      <div className={`px-4 h-6 text-[11px] text-text-muted shrink-0 transition-opacity duration-150 ${otherTyping.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div aria-live="polite" aria-atomic="true" className={`px-4 h-6 text-xs text-text-muted shrink-0 transition-opacity duration-150 ${otherTyping.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         {otherTyping.length > 0 && (
           <>
             <span className="inline-flex gap-0.5 mr-1">
-              <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
-              <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
-              <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+              <span className="animate-typing-dot" style={{ animationDelay: '0ms' }}>.</span>
+              <span className="animate-typing-dot" style={{ animationDelay: '150ms' }}>.</span>
+              <span className="animate-typing-dot" style={{ animationDelay: '300ms' }}>.</span>
             </span>
             {(() => {
               const names = otherTyping.map((id) => users[id]?.username ?? 'Someone');

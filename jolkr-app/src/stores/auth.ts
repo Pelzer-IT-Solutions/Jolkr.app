@@ -4,11 +4,8 @@ import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
 import { stopNotifications } from '../services/notifications';
-import { usePresenceStore } from './presence';
-import { useServersStore } from './servers';
-import { useMessagesStore } from './messages';
-import { useUnreadStore } from './unread';
 import { useVoiceStore } from './voice';
+import { resetAllStores } from './reset';
 
 interface AuthState {
   user: User | null;
@@ -18,6 +15,7 @@ interface AuthState {
   register: (email: string, username: string, password: string) => Promise<void>;
   loadUser: () => Promise<void>;
   updateProfile: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean }) => Promise<void>;
+  _applyUserUpdate: (data: Record<string, unknown>) => void;
   logout: () => Promise<void>;
 }
 
@@ -75,6 +73,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
 
+  _applyUserUpdate: (data: Record<string, unknown>) => {
+    set((state) => {
+      if (!state.user) return state;
+      return {
+        user: {
+          ...state.user,
+          ...(data.status !== undefined && { status: data.status as string | undefined }),
+          ...(data.display_name !== undefined && { display_name: data.display_name as string | undefined }),
+          ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url as string | undefined }),
+          ...(data.bio !== undefined && { bio: data.bio as string | undefined }),
+        },
+      };
+    });
+  },
+
   logout: async () => {
     // Leave voice channel before disconnecting
     try { await useVoiceStore.getState().leaveChannel(); } catch { /* ignore */ }
@@ -83,11 +96,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     try { await api.clearTokens(); } catch (e) { console.warn('clearTokens failed:', e); }
     resetE2EE().catch(console.warn);
     // Reset all stores to prevent stale data on re-login
-    usePresenceStore.getState().clearAll();
-    useServersStore.setState({ servers: [], channels: {}, members: {}, categories: {}, roles: {}, permissions: {}, channelPermissions: {}, emojis: {}, loading: false });
-    useMessagesStore.setState({ messages: {}, loading: {}, loadingOlder: {}, hasMore: {}, threadMessages: {}, threadLoading: {}, threadLoadingOlder: {}, threadHasMore: {}, threadListVersion: 0 });
-    useUnreadStore.setState({ counts: {}, activeChannel: null, lastSeenMessageId: {} });
-    localStorage.removeItem('jolkr_last_seen');
+    resetAllStores();
     set({ user: null, loading: false, error: null });
   },
 }));
+
+// Sync profile updates from other sessions
+wsClient.on((op, d) => {
+  if (op === 'UserUpdate') {
+    useAuthStore.getState()._applyUserUpdate(d as Record<string, unknown>);
+  }
+});

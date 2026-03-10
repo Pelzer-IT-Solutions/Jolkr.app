@@ -5,6 +5,7 @@ interface DmReadsState {
   // dmId -> userId -> lastReadMessageId
   readStates: Record<string, Record<string, string>>;
   setReadState: (dmId: string, userId: string, messageId: string) => void;
+  reset: () => void;
 }
 
 export const useDmReadsStore = create<DmReadsState>((set, get) => ({
@@ -17,6 +18,10 @@ export const useDmReadsStore = create<DmReadsState>((set, get) => ({
         [dmId]: { ...(current[dmId] ?? {}), [userId]: messageId },
       },
     });
+  },
+
+  reset: () => {
+    set({ readStates: {} });
   },
 }));
 

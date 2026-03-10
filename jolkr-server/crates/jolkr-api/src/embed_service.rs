@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use reqwest::Client;
 use scraper::{Html, Selector};
 use serde::Serialize;
@@ -47,6 +49,72 @@ static TIKTOK_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::ne
 static DIRECT_VIDEO_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
     regex::Regex::new(r"\.(mp4|webm|ogg|mov|m3u8)(\?.*)?$").unwrap()
 });
+
+/// Check if a URL is safe to fetch (not internal/private network).
+/// Blocks: private IPs, localhost, link-local, cloud metadata, Docker hostnames.
+/// Also resolves DNS to prevent rebinding attacks (hostname→private IP).
+fn is_safe_url(raw_url: &str) -> bool {
+    let parsed = match url::Url::parse(raw_url) {
+        Ok(u) => u,
+        Err(_) => return false,
+    };
+    match parsed.scheme() {
+        "http" | "https" => {}
+        _ => return false,
+    }
+    let host = match parsed.host_str() {
+        Some(h) => h.to_lowercase(),
+        None => return false,
+    };
+    let blocked = [
+        "localhost", "127.0.0.1", "::1", "[::1]", "0.0.0.0",
+        "jolkr-api", "jolkr-media", "postgres", "redis", "minio", "nats",
+        "mailhog", "jolkr_api", "jolkr_media",
+        "metadata.google.internal",
+    ];
+    if blocked.contains(&host.as_str()) {
+        return false;
+    }
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        return is_public_ip(ip);
+    }
+    // DNS resolution check: resolve hostname and verify all IPs are public
+    // This prevents DNS rebinding attacks where a hostname resolves to a private IP
+    let port = parsed.port_or_known_default().unwrap_or(80);
+    if let Ok(addrs) = std::net::ToSocketAddrs::to_socket_addrs(&(host.as_str(), port)) {
+        let addrs: Vec<_> = addrs.collect();
+        if addrs.is_empty() {
+            return false;
+        }
+        for addr in addrs {
+            if !is_public_ip(addr.ip()) {
+                return false;
+            }
+        }
+    }
+    // If DNS resolution fails, allow — reqwest will fail too
+    true
+}
+
+fn is_public_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            !v4.is_private()
+                && !v4.is_loopback()
+                && !v4.is_link_local()
+                && !v4.is_unspecified()
+                && !v4.is_broadcast()
+                && !v4.is_documentation()
+                && !(v4.octets()[0] == 100 && v4.octets()[1] >= 64 && v4.octets()[1] <= 127)
+        }
+        IpAddr::V6(v6) => {
+            !v6.is_loopback()
+                && !v6.is_unspecified()
+                && !(v6.segments()[0] & 0xfe00 == 0xfc00)
+                && !(v6.segments()[0] & 0xffc0 == 0xfe80)
+        }
+    }
+}
 
 /// Service for fetching link previews and storing them as embeds.
 #[derive(Clone)]
@@ -153,6 +221,12 @@ impl LinkEmbedService {
         }
 
         for url in urls {
+            // SSRF protection: skip private/internal URLs
+            if !is_safe_url(&url) {
+                warn!(url = %url, "Skipping unsafe URL (SSRF protection)");
+                continue;
+            }
+
             // First try known video platforms (no scraping needed)
             let meta = if let Some(video_meta) = Self::try_video_embed(&url) {
                 info!(url = %url, site = ?video_meta.site_name, "Generated video embed directly");
@@ -199,6 +273,11 @@ impl LinkEmbedService {
 
     /// Fetch metadata (OG tags) from a URL.
     async fn fetch_metadata(&self, url: &str) -> Result<Option<EmbedMetadata>, String> {
+        // Defense-in-depth: re-check URL safety
+        if !is_safe_url(url) {
+            return Err("URL targets internal network".to_string());
+        }
+
         let response = self
             .client
             .get(url)

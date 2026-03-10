@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_core::DmService;
+use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::services::dm::{
     AddMemberRequest, DmChannelInfo, DmMessageInfo, DmMessageQuery,
     EditDmRequest, SendDmRequest, UpdateGroupDmRequest,
@@ -225,7 +226,7 @@ pub async fn get_dm_messages(
     // Presign attachment URLs
     for msg in &mut messages {
         for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, 7 * 24 * 3600).await {
+            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
                 att.url = url;
             }
         }
@@ -460,10 +461,13 @@ pub async fn upload_dm_attachment(
         return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
 
-    // Verify message exists in this DM
+    // Verify message exists in this DM and belongs to the caller
     let msg = DmRepo::get_message(&state.pool, message_id).await?;
     if msg.dm_channel_id != dm_id {
         return Err(AppError(jolkr_common::JolkrError::NotFound));
+    }
+    if msg.author_id != auth.user_id {
+        return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
 
     while let Some(field) = multipart.next_field().await.map_err(|_| {
@@ -526,7 +530,7 @@ pub async fn upload_dm_attachment(
         // Presign the URL for the response
         let url = state
             .storage
-            .presign_get(&row.url, 7 * 24 * 3600)
+            .presign_get(&row.url, PRESIGN_EXPIRY_SECS)
             .await
             .unwrap_or(row.url);
 
@@ -540,7 +544,7 @@ pub async fn upload_dm_attachment(
             for att in atts {
                 let att_url = state
                     .storage
-                    .presign_get(&att.url, 7 * 24 * 3600)
+                    .presign_get(&att.url, PRESIGN_EXPIRY_SECS)
                     .await
                     .unwrap_or(att.url);
                 dm_msg.attachments.push(AttachmentInfo {
@@ -688,6 +692,16 @@ pub async fn leave_dm(
         state.nats.publish_to_user(member_id, &event).await;
     }
 
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// POST /api/dms/:dm_id/close — close (hide) a DM from the user's list.
+pub async fn close_dm(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(dm_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    DmService::close_dm(&state.pool, dm_id, auth.user_id).await?;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 

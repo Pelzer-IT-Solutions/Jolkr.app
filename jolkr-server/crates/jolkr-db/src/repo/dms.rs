@@ -61,13 +61,45 @@ impl DmRepo {
         let rows = sqlx::query_as::<_, DmChannelRow>(
             r#"SELECT dc.* FROM dm_channels dc
                JOIN dm_members m ON m.dm_channel_id = dc.id
-               WHERE m.user_id = $1
+               WHERE m.user_id = $1 AND m.closed_at IS NULL
                ORDER BY dc.updated_at DESC"#,
         )
         .bind(user_id)
         .fetch_all(pool)
         .await?;
         Ok(rows)
+    }
+
+    /// Close (hide) a DM channel for a specific user.
+    pub async fn close_dm(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), JolkrError> {
+        sqlx::query(
+            r#"UPDATE dm_members SET closed_at = NOW()
+               WHERE dm_channel_id = $1 AND user_id = $2"#,
+        )
+        .bind(dm_channel_id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Reopen a DM channel for all members (called when a new message arrives).
+    pub async fn reopen_dm(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+    ) -> Result<(), JolkrError> {
+        sqlx::query(
+            r#"UPDATE dm_members SET closed_at = NULL
+               WHERE dm_channel_id = $1 AND closed_at IS NOT NULL"#,
+        )
+        .bind(dm_channel_id)
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 
     pub async fn get_dm_members(

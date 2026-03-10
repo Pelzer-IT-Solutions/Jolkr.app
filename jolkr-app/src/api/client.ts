@@ -461,6 +461,9 @@ export const addDmMember = (dmId: string, userId: string) =>
 export const leaveDm = (dmId: string) =>
   request<void>(`/dms/${dmId}/members/@me`, { method: 'DELETE' });
 
+export const closeDm = (dmId: string) =>
+  request<void>(`/dms/${dmId}/close`, { method: 'POST' });
+
 export const updateDm = (dmId: string, body: { name?: string }) =>
   request<DmChannel>(`/dms/${dmId}`, {
     method: 'PATCH',

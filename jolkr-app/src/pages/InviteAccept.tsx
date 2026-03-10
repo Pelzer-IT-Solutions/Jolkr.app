@@ -49,7 +49,7 @@ export default function InviteAccept() {
         <div className="text-error text-lg">{error}</div>
         <button
           onClick={() => navigate('/', { replace: true })}
-          className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded text-sm"
+          className="px-4 py-2 btn-primary rounded-lg text-sm"
         >
           Go Home
         </button>

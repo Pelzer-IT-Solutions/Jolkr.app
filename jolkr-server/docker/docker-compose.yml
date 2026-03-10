@@ -20,15 +20,15 @@ services:
         condition: service_started
     environment:
       DEBIAN_FRONTEND: noninteractive
-      DATABASE_URL: "postgres://jolkr:jolkr_dev@postgres:5432/jolkr"
-      REDIS_URL: "redis://redis:6379"
+      DATABASE_URL: "postgres://jolkr:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/jolkr"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-jolkr_redis_dev}@redis:6379"
       MINIO_ENDPOINT: "http://minio:9000"
-      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-jolkr}"
-      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-jolkr_dev_secret}"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in .env}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in .env}"
       MINIO_BUCKET: "jolkr"
       NATS_URL: "nats://nats:4222"
-      JWT_SECRET: "${JWT_SECRET:-super_secret_dev_key_change_in_production}"
-      ADMIN_SECRET: "${ADMIN_SECRET:-jolkr_admin_dev}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
+      ADMIN_SECRET: "${ADMIN_SECRET:?ADMIN_SECRET must be set in .env}"
       VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
       VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
       VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@jolkr.app}"
@@ -37,6 +37,7 @@ services:
       SMTP_PORT: "1025"
       SMTP_FROM: "${SMTP_FROM:-noreply@jolkr.app}"
       APP_URL: "${APP_URL:-http://localhost/app}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost,http://localhost:1420,https://tauri.localhost,https://jolkr.app}"
       RUST_LOG: "${RUST_LOG:-info}"
     networks:
       - jolkr-net
@@ -64,7 +65,7 @@ services:
       MEDIA_UDP_PORT: "10000"
       PUBLIC_IP: "${PUBLIC_IP:-127.0.0.1}"
       LOCAL_IP: "${LOCAL_IP:-}"
-      JWT_SECRET: "${JWT_SECRET:-super_secret_dev_key_change_in_production}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
       RUST_LOG: "${RUST_LOG:-debug}"
     networks:
       - jolkr-net
@@ -77,10 +78,10 @@ services:
     image: postgres:16-alpine
     container_name: jolkr-postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: jolkr
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-jolkr_dev}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}"
       POSTGRES_DB: jolkr
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -101,12 +102,12 @@ services:
     image: redis:7-alpine
     container_name: jolkr-redis
     ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
+      - "127.0.0.1:6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-jolkr_redis_dev}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-jolkr_redis_dev}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -119,15 +120,15 @@ services:
   # MinIO — S3-compatible object storage (avatars, attachments, media)
   # =============================================================================
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: jolkr-minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-jolkr}"
-      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-jolkr_dev_secret}"
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in .env}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in .env}"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -147,8 +148,8 @@ services:
     image: nats:2-alpine
     container_name: jolkr-nats
     ports:
-      - "4222:4222"
-      - "8222:8222"
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
     command: --jetstream --store_dir /data
     volumes:
       - nats_data:/data
@@ -163,8 +164,8 @@ services:
     image: mailhog/mailhog:latest
     container_name: jolkr-mailhog
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
     networks:
       - jolkr-net
     restart: unless-stopped

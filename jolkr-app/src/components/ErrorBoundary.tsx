@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 
-interface Props {
+export interface ErrorBoundaryProps {
   children: ReactNode;
 }
 
@@ -13,8 +13,8 @@ interface State {
 
 const MAX_RETRIES = 3;
 
-export default class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+export default class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null, retryCount: 0 };
   }
@@ -41,7 +41,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             {canRetry ? (
               <button
                 onClick={() => this.setState((prev) => ({ hasError: false, error: null, retryCount: prev.retryCount + 1 }))}
-                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded"
+                className="px-4 py-2 btn-primary text-sm rounded-lg"
               >
                 Try Again
               </button>
@@ -50,7 +50,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             )}
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-input text-text-primary text-sm rounded hover:bg-input/80"
+              className="px-4 py-2 bg-input text-text-primary text-sm rounded-lg hover:bg-input/80"
             >
               Reload Page
             </button>

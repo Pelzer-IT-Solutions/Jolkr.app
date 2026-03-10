@@ -46,12 +46,17 @@ export default function Login() {
   };
 
   return (
-    <div className="h-full flex items-center justify-center bg-bg">
-      <div className="bg-surface rounded-lg p-8 w-[420px] max-w-[90vw]">
-        <h1 className="text-2xl font-bold text-text-primary text-center mb-2">Welcome back!</h1>
+    <div className="h-full flex items-center justify-center auth-gradient">
+      <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] auth-card animate-modal-scale">
+        <div className="flex justify-center mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" className="w-8 h-8" />
+          </div>
+        </div>
+        <h1 className="text-2xl font-bold text-text-primary text-center mb-1.5">Welcome back!</h1>
         <p className="text-text-secondary text-center mb-6 text-sm">We're so excited to see you again!</p>
 
-        {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+        {error && <div role="alert" className="bg-error/10 text-error text-sm p-3 rounded-lg border border-error/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -65,7 +70,8 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+              inputMode="email"
+              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
             />
           </div>
           <div>
@@ -78,7 +84,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
             />
             <Link to="/forgot-password" className="text-primary hover:underline text-xs mt-1 inline-block">
               Forgot your password?
@@ -87,7 +93,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded font-medium text-sm disabled:opacity-50"
+            className="w-full py-3 btn-primary text-sm rounded-lg"
           >
             {loading ? 'Logging in...' : 'Log In'}
           </button>

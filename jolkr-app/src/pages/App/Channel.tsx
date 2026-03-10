@@ -22,13 +22,16 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useVoiceStore } from '../../stores/voice';
 import Avatar from '../../components/Avatar';
 
+const EMPTY_CHANNELS: import('../../api/types').Channel[] = [];
+const EMPTY_MEMBERS: import('../../api/types').Member[] = [];
+
 export default function ChannelPage() {
   const { serverId, channelId } = useParams<{ serverId: string; channelId: string }>();
   const servers = useServersStore((s) => s.servers);
-  const channels = useServersStore((s) => s.channels);
+  const channels = useServersStore((s) => serverId ? (s.channels[serverId] ?? EMPTY_CHANNELS) : EMPTY_CHANNELS);
   const server = servers.find((s) => s.id === serverId);
-  const channel = serverId ? channels[serverId]?.find((c) => c.id === channelId) : undefined;
-  const members = useServersStore((s) => s.members);
+  const channel = channels.find((c) => c.id === channelId);
+  const members = useServersStore((s) => serverId ? (s.members[serverId] ?? EMPTY_MEMBERS) : EMPTY_MEMBERS);
   const fetchMembers = useServersStore((s) => s.fetchMembers);
   const setActiveChannel = useUnreadStore((s) => s.setActiveChannel);
   const channelPermissions = useServersStore((s) => s.channelPermissions);
@@ -86,13 +89,13 @@ export default function ChannelPage() {
 
   const mentionableUsers = useMemo(() => {
     if (!serverId) return [];
-    return (members[serverId] ?? [])
+    return members
       .map((m) => ({
         id: m.user_id,
         username: memberUsers[m.user_id]?.username ?? m.nickname ?? 'Unknown',
       }))
       .filter((u) => u.username !== 'Unknown');
-  }, [members, serverId, memberUsers]);
+  }, [members, memberUsers]);
 
   // Debounced server-side search
   const handleSearch = useCallback((value: string) => {
@@ -181,7 +184,7 @@ export default function ChannelPage() {
   // Check if user is timed out
   const isTimedOut = useMemo(() => {
     if (!serverId || !currentUserId) return false;
-    const myMember = (members[serverId] ?? []).find((m) => m.user_id === currentUserId);
+    const myMember = members.find((m) => m.user_id === currentUserId);
     if (!myMember?.timeout_until) return false;
     return new Date(myMember.timeout_until) > new Date();
   }, [serverId, currentUserId, members]);
@@ -281,7 +284,7 @@ export default function ChannelPage() {
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Channel list sidebar */}
-        <div className={`${isMobile ? 'w-full' : 'w-[240px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
+        <div className={`${isMobile ? 'w-full' : 'w-[260px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
           <ChannelList server={server} onChannelSelect={isMobile ? () => setShowSidebar(false) : undefined} />
 
           {/* Invite button */}
@@ -320,7 +323,7 @@ export default function ChannelPage() {
             </div>
           )}
           {/* Channel header */}
-          <div className="h-14 px-4 flex items-center gap-3 border-b border-divider shrink-0">
+          <div className="h-16 px-4 flex items-center gap-3 border-b border-divider shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to channels">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -508,7 +511,7 @@ export default function ChannelPage() {
                 <div className="fixed inset-0 z-50 flex">
                   <div className="flex-1" onClick={() => setShowMembers(false)} />
                   <div className="w-[280px] max-w-[80vw] bg-sidebar border-l border-divider h-full overflow-y-auto animate-slide-in-right">
-                    <div className="h-14 px-4 flex items-center border-b border-divider shrink-0">
+                    <div className="h-16 px-4 flex items-center border-b border-divider shrink-0">
                       <span className="text-text-primary font-semibold text-sm flex-1">Members</span>
                       <button onClick={() => setShowMembers(false)} className="text-text-secondary hover:text-text-primary" aria-label="Close members">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

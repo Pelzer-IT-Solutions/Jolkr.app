@@ -197,6 +197,15 @@ pub enum GatewayEvent {
         message_id: Uuid,
     },
 
+    /// A user's profile was updated (status, display name, etc).
+    UserUpdate {
+        user_id: Uuid,
+        status: Option<String>,
+        display_name: Option<String>,
+        avatar_url: Option<String>,
+        bio: Option<String>,
+    },
+
     /// Generic error event.
     Error {
         message: String,

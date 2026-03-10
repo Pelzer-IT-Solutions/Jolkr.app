@@ -42,7 +42,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://cdn.jsdelivr.net https://*.jolkr.app; media-src 'self' blob:; connect-src 'self' https://*.jolkr.app wss://*.jolkr.app https://jolkr.app wss://jolkr.app; frame-src https://www.youtube.com https://player.vimeo.com https://player.twitch.tv https://www.tiktok.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; base-uri 'self'"
     }
   },
   "bundle": {

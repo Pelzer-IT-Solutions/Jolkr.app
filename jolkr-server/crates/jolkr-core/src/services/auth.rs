@@ -251,7 +251,7 @@ impl AuthService {
     /// Validate an access token and return the embedded claims.
     pub fn validate_token(jwt_secret: &str, token: &str) -> Result<Claims, JolkrError> {
         let decoding_key = DecodingKey::from_secret(jwt_secret.as_bytes());
-        let mut validation = Validation::default();
+        let mut validation = Validation::new(jsonwebtoken::Algorithm::HS256);
         validation.validate_exp = true;
 
         let token_data = decode::<Claims>(token, &decoding_key, &validation)
@@ -360,11 +360,35 @@ impl AuthService {
         if email.is_empty() {
             return Err(JolkrError::Validation("Email is required".into()));
         }
-        if !email.contains('@') || !email.contains('.') {
-            return Err(JolkrError::Validation("Invalid email format".into()));
-        }
         if email.len() > 254 {
             return Err(JolkrError::Validation("Email too long".into()));
+        }
+        // Split on '@' — must have exactly one '@'
+        let parts: Vec<&str> = email.split('@').collect();
+        if parts.len() != 2 {
+            return Err(JolkrError::Validation("Invalid email format".into()));
+        }
+        let (local, domain) = (parts[0], parts[1]);
+        // Local part: non-empty, max 64 chars
+        if local.is_empty() || local.len() > 64 {
+            return Err(JolkrError::Validation("Invalid email format".into()));
+        }
+        // Domain: non-empty, must contain a dot, no leading/trailing dots or hyphens
+        if domain.is_empty() || !domain.contains('.') {
+            return Err(JolkrError::Validation("Invalid email format".into()));
+        }
+        if domain.starts_with('.') || domain.ends_with('.')
+            || domain.starts_with('-') || domain.ends_with('-')
+        {
+            return Err(JolkrError::Validation("Invalid email format".into()));
+        }
+        // Domain parts must each be non-empty
+        if domain.split('.').any(|p| p.is_empty()) {
+            return Err(JolkrError::Validation("Invalid email format".into()));
+        }
+        // TLD must be at least 2 chars
+        if domain.split('.').last().map_or(true, |tld| tld.len() < 2) {
+            return Err(JolkrError::Validation("Invalid email format".into()));
         }
         Ok(())
     }
@@ -400,6 +424,21 @@ impl AuthService {
         if password.len() > 128 {
             return Err(JolkrError::Validation(
                 "Password must be at most 128 characters".into(),
+            ));
+        }
+        if !password.chars().any(|c| c.is_uppercase()) {
+            return Err(JolkrError::Validation(
+                "Password must contain at least one uppercase letter".into(),
+            ));
+        }
+        if !password.chars().any(|c| c.is_lowercase()) {
+            return Err(JolkrError::Validation(
+                "Password must contain at least one lowercase letter".into(),
+            ));
+        }
+        if !password.chars().any(|c| c.is_ascii_digit()) {
+            return Err(JolkrError::Validation(
+                "Password must contain at least one digit".into(),
             ));
         }
         Ok(())

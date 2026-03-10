@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useServersStore } from '../../stores/servers';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { Channel, ChannelOverwrite, Role, Webhook } from '../../api/types';
 import * as api from '../../api/client';
 import { hasPermission, MANAGE_ROLES, MANAGE_WEBHOOKS, CHANNEL_PERMISSION_LABELS } from '../../utils/permissions';
 import ConfirmDialog from './ConfirmDialog';
 
-interface Props {
+export interface EditChannelDialogProps {
   channel: Channel;
   serverId: string;
   onClose: () => void;
@@ -14,7 +15,7 @@ interface Props {
 
 type TriState = 'inherit' | 'allow' | 'deny';
 
-export default function EditChannelDialog({ channel, serverId, onClose }: Props) {
+export default function EditChannelDialog({ channel, serverId, onClose }: EditChannelDialogProps) {
   const navigate = useNavigate();
   const [tab, setTab] = useState<'general' | 'permissions' | 'webhooks'>('general');
   const [name, setName] = useState(channel.name);
@@ -42,6 +43,8 @@ export default function EditChannelDialog({ channel, serverId, onClose }: Props)
   const [savingOverwrite, setSavingOverwrite] = useState<string | null>(null);
 
   const fetchRoles = useServersStore((s) => s.fetchRoles);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   const [overwriteError, setOverwriteError] = useState<string | null>(null);
 
@@ -144,8 +147,8 @@ export default function EditChannelDialog({ channel, serverId, onClose }: Props)
   );
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-surface rounded-lg p-6 w-[520px] max-w-[90vw] max-h-[85vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[520px] max-w-[90vw] max-h-[85vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Edit Channel</h3>
 
         {/* Tabs */}
@@ -180,7 +183,7 @@ export default function EditChannelDialog({ channel, serverId, onClose }: Props)
           )}
         </div>
 
-        {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
+        {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
 
         <div className="flex-1 overflow-y-auto min-h-0">
           {tab === 'general' && (
@@ -274,30 +277,30 @@ interface GeneralTabProps {
 function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId, isNsfw, setIsNsfw, slowmodeSeconds, setSlowmodeSeconds, serverCategories, saving, onSave, onClose, onDeleteClick }: GeneralTabProps) {
   return (
     <>
-      <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Channel Name</label>
+      <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Channel Name</label>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="channel-name"
-        className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm mb-4"
+        className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
         autoFocus
       />
 
-      <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Topic</label>
+      <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Topic</label>
       <input
         value={topic}
         onChange={(e) => setTopic(e.target.value)}
         placeholder="What's this channel about?"
-        className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm mb-4"
+        className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
       />
 
       {serverCategories.length > 0 && (
         <>
-          <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Category</label>
+          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Category</label>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm mb-4"
+            className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
           >
             <option value="">No Category</option>
             {serverCategories.map((cat) => (
@@ -307,11 +310,11 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
         </>
       )}
 
-      <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Slowmode</label>
+      <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Slowmode</label>
       <select
         value={slowmodeSeconds}
         onChange={(e) => setSlowmodeSeconds(Number(e.target.value))}
-        className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm mb-4"
+        className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
       >
         {SLOWMODE_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -329,14 +332,14 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
         <span className="text-xs text-text-muted">— Users must confirm they are 18+</span>
       </label>
 
-      <div className="flex justify-end gap-2 mb-6">
-        <button onClick={onClose} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
+      <div className="flex justify-end gap-3 mb-6">
+        <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
           Cancel
         </button>
         <button
           onClick={onSave}
           disabled={saving}
-          className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded disabled:opacity-50"
+          className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
@@ -350,7 +353,7 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
         </p>
         <button
           onClick={onDeleteClick}
-          className="px-4 py-2 bg-error hover:bg-error/80 text-white text-sm rounded"
+          className="px-5 py-2.5 bg-error hover:bg-error/80 text-white text-sm rounded-lg"
         >
           Delete Channel
         </button>
@@ -396,7 +399,7 @@ function PermissionsTab({
           <select
             value={selectedRoleId}
             onChange={(e) => setSelectedRoleId(e.target.value)}
-            className="flex-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+            className="flex-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
           >
             <option value="">Select a role...</option>
             {availableRoles.map((r) => (
@@ -406,7 +409,7 @@ function PermissionsTab({
           <button
             onClick={onAddRole}
             disabled={!selectedRoleId}
-            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded disabled:opacity-50"
+            className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
           >
             Add Role
           </button>
@@ -512,6 +515,7 @@ function OverwriteEditor({ overwrite, label, color, saving, onSave, onDelete }: 
         {categories.map((cat) => (
           <div key={cat}>
             <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">{cat}</div>
+
             {CHANNEL_PERMISSION_LABELS.filter((p) => p.category === cat).map((perm) => {
               const state = getState(perm.flag);
               return (
@@ -545,14 +549,14 @@ function OverwriteEditor({ overwrite, label, color, saving, onSave, onDelete }: 
               setAllow(overwrite.allow);
               setDeny(overwrite.deny);
             }}
-            className="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary mr-2"
+            className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary mr-2"
           >
             Reset
           </button>
           <button
             onClick={() => onSave(allow, deny)}
             disabled={saving}
-            className="px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-sm rounded disabled:opacity-50"
+            className="btn-primary px-4 py-2 text-sm rounded-lg disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save'}
           </button>
@@ -657,7 +661,7 @@ function WebhooksTab({ channelId }: { channelId: string }) {
 
   return (
     <div className="space-y-4">
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded">{error}</div>}
+      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg">{error}</div>}
 
       {/* Create webhook */}
       <div className="flex gap-2">
@@ -665,13 +669,13 @@ function WebhooksTab({ channelId }: { channelId: string }) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="Webhook name"
-          className="flex-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+          className="flex-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
         />
         <button
           onClick={handleCreate}
           disabled={creating || !newName.trim()}
-          className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded disabled:opacity-50"
+          className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
         >
           {creating ? 'Creating...' : 'Create'}
         </button>
@@ -733,27 +737,27 @@ function WebhooksTab({ channelId }: { channelId: string }) {
           {editingId === wh.id && (
             <div className="px-4 py-3 border-t border-divider space-y-2">
               <div>
-                <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Name</label>
+                <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Name</label>
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+                  className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Avatar URL</label>
+                <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Avatar URL</label>
                 <input
                   value={editAvatarUrl}
                   onChange={(e) => setEditAvatarUrl(e.target.value)}
                   placeholder="https://example.com/avatar.png"
-                  className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+                  className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
                 />
               </div>
               <div className="flex justify-end">
                 <button
                   onClick={() => handleSaveEdit(wh.id)}
                   disabled={savingId === wh.id}
-                  className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded disabled:opacity-50"
+                  className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
                 >
                   {savingId === wh.id ? 'Saving...' : 'Save'}
                 </button>
@@ -766,16 +770,16 @@ function WebhooksTab({ channelId }: { channelId: string }) {
               <p className="text-sm text-text-primary mb-2">
                 Delete webhook <strong>{wh.name}</strong>? This cannot be undone.
               </p>
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowDeleteConfirm(null)}
-                  className="px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary"
+                  className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleDelete(wh.id)}
-                  className="px-3 py-1.5 bg-error hover:bg-error/80 text-white text-sm rounded"
+                  className="px-4 py-2 bg-error hover:bg-error/80 text-white text-sm rounded-lg"
                 >
                   Delete
                 </button>

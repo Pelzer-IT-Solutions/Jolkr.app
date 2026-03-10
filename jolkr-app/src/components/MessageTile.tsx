@@ -23,7 +23,7 @@ const URL_RE = /https?:\/\/[^\s<>)\]']+/g;
 
 const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
 
-interface Props {
+export interface MessageTileProps {
   message: Message;
   compact?: boolean;
   author?: User;
@@ -35,7 +35,7 @@ interface Props {
   replyAuthor?: User;
 }
 
-function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThread, hideThreadButton, replyMessage, replyAuthor }: Props) {
+function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThread, hideThreadButton, replyMessage, replyAuthor }: MessageTileProps) {
   const user = useAuthStore((s) => s.user);
   const editMessage = useMessagesStore((s) => s.editMessage);
   const deleteMessage = useMessagesStore((s) => s.deleteMessage);
@@ -52,10 +52,11 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
   const [editError, setEditError] = useState('');
   const showToast = useToast((s) => s.show);
   const [profileAnchor, setProfileAnchor] = useState<{ x: number; y: number } | null>(null);
-  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const { displayContent, isEncrypted } = useDecryptedContent(
     message.content, message.encrypted_content, message.nonce, isDm,
+    user?.id === message.author_id,
   );
   const hasText = !!displayContent && displayContent.trim().length > 0 && displayContent !== '\u200B';
 
@@ -169,7 +170,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 
   return (
     <div
-      className={`group flex items-start gap-4 px-4 hover:bg-white/[0.02] relative ${compact ? 'py-0.5' : 'py-1.5 [.compact-mode_&]:py-0.5'}`}
+      className={`group flex items-start gap-4 px-4 hover:bg-white/[0.04] relative ${compact ? 'py-0.5' : 'py-2 [.compact-mode_&]:py-0.5'}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onFocusCapture={() => setShowActions(true)}
@@ -178,25 +179,25 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
     >
       {compact ? (
         <div className="w-10 shrink-0 flex justify-center">
-          <span className="text-[10px] text-text-muted opacity-0 group-hover:opacity-100">{timeStr}</span>
+          <span className="text-[11px] text-text-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">{timeStr}</span>
         </div>
       ) : message.webhook_id ? (
         <div className="shrink-0">
-          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={40} />
+          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={44} />
         </div>
       ) : (
         <button
           className="shrink-0 cursor-pointer"
           onClick={(e) => setProfileAnchor({ x: e.clientX, y: e.clientY })}
         >
-          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={40} />
+          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={44} />
         </button>
       )}
 
       <div className="flex-1 min-w-0">
         {/* Reply reference */}
         {message.reply_to_id && (
-          <div className="flex items-center gap-1.5 mb-0.5 text-[12px] text-text-muted">
+          <div className="flex items-center gap-1.5 mb-0.5 text-xs text-text-muted">
             <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
@@ -220,18 +221,18 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               </button>
             )}
             {message.webhook_id && (
-              <span className="px-1 py-0.5 text-[9px] bg-primary/20 text-primary rounded font-bold uppercase shrink-0">
+              <span className="px-1 py-0.5 text-[10px] bg-primary/20 text-primary rounded font-bold uppercase shrink-0">
                 BOT
               </span>
             )}
-            <span className="text-[11px] text-text-muted">{dateStr} {timeStr}</span>
+            <span className="text-xs text-text-muted">{dateStr} {timeStr}</span>
             {isEncrypted && (
               <svg className="w-3 h-3 text-green-400 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <title>End-to-end encrypted</title>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             )}
-            {message.is_edited && <span className="text-[10px] text-text-muted">(edited)</span>}
+            {message.is_edited && <span className="text-[11px] text-text-muted">(edited)</span>}
           </div>
         )}
 
@@ -258,43 +259,91 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         ) : null}
 
         {/* Attachments */}
-        {(message.attachments ?? []).length > 0 && (
-          <div className={`${hasText ? 'mt-2' : ''} flex flex-col gap-2`}>
-            {(message.attachments ?? []).map((att) => {
-              const attUrl = rewriteStorageUrl(att.url) ?? att.url;
-              return isImage(att.content_type) ? (
-                <AttachmentImage
-                  key={att.id}
-                  src={attUrl}
-                  alt={att.filename}
-                  onOpen={() => setLightboxImage({ src: attUrl, alt: att.filename })}
-                />
-              ) : isVideo(att.content_type) ? (
-                <VideoEmbed
-                  key={att.id}
-                  embed={{ url: attUrl, title: att.filename, site_name: 'Attachment' }}
-                  videoInfo={{ platform: 'direct', src: attUrl }}
-                />
-              ) : (
-                <a
-                  key={att.id}
-                  href={attUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 bg-input rounded-lg px-3 py-2 max-w-[300px] hover:bg-input/80"
+        {(message.attachments ?? []).length > 0 && (() => {
+          const atts = message.attachments ?? [];
+          const imageAtts = atts.filter((a) => isImage(a.content_type));
+          const videoAtts = atts.filter((a) => isVideo(a.content_type));
+          const fileAtts = atts.filter((a) => !isImage(a.content_type) && !isVideo(a.content_type));
+          const lightboxImages = imageAtts.map((a) => ({
+            src: rewriteStorageUrl(a.url) ?? a.url,
+            alt: a.filename,
+          }));
+          const imgCount = imageAtts.length;
+
+          return (
+            <div className={`${hasText ? 'mt-2' : ''} flex flex-col gap-2`}>
+              {/* Image grid */}
+              {imgCount > 0 && (
+                <div
+                  className={`grid gap-1 rounded-lg overflow-hidden max-w-[400px] ${
+                    imgCount === 1 ? 'grid-cols-1' :
+                    imgCount === 2 ? 'grid-cols-2' :
+                    imgCount === 3 ? 'grid-cols-2' :
+                    'grid-cols-2'
+                  }`}
                 >
-                  <svg className="w-5 h-5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  <div className="min-w-0">
-                    <div className="text-sm text-primary truncate">{att.filename}</div>
-                    <div className="text-[11px] text-text-muted">{formatBytes(att.size_bytes)}</div>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-        )}
+                  {imageAtts.map((att, i) => {
+                    const attUrl = rewriteStorageUrl(att.url) ?? att.url;
+                    const spanFull = imgCount === 3 && i === 0;
+                    return (
+                      <AttachmentImage
+                        key={att.id}
+                        src={attUrl}
+                        alt={att.filename}
+                        grid={imgCount > 1}
+                        spanFull={spanFull}
+                        onOpen={() => setLightboxIndex(i)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Video attachments */}
+              {videoAtts.map((att) => {
+                const attUrl = rewriteStorageUrl(att.url) ?? att.url;
+                return (
+                  <VideoEmbed
+                    key={att.id}
+                    embed={{ url: attUrl, title: att.filename, site_name: 'Attachment' }}
+                    videoInfo={{ platform: 'direct', src: attUrl }}
+                  />
+                );
+              })}
+
+              {/* File attachments */}
+              {fileAtts.map((att) => {
+                const attUrl = rewriteStorageUrl(att.url) ?? att.url;
+                return (
+                  <a
+                    key={att.id}
+                    href={attUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-input rounded-lg px-3 py-2 max-w-[300px] hover:bg-input/80"
+                  >
+                    <svg className="w-5 h-5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <div className="min-w-0">
+                      <div className="text-sm text-primary truncate">{att.filename}</div>
+                      <div className="text-[11px] text-text-muted">{formatBytes(att.size_bytes)}</div>
+                    </div>
+                  </a>
+                );
+              })}
+
+              {/* Lightbox for all images */}
+              {lightboxIndex !== null && lightboxImages.length > 0 && (
+                <ImageLightbox
+                  images={lightboxImages}
+                  initialIndex={lightboxIndex}
+                  onClose={() => setLightboxIndex(null)}
+                />
+              )}
+            </div>
+          );
+        })()}
 
         {/* Link Embeds (server-side or client-side generated) */}
         {clientEmbeds.length > 0 && (
@@ -317,12 +366,12 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 
         {/* Reactions */}
         {reactions.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
+          <div className="mt-1 flex flex-wrap gap-1.5">
             {reactions.map((r) => (
               <button
                 key={r.emoji}
                 onClick={() => handleReaction(r.emoji)}
-                className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 border ${
+                className={`px-2.5 py-1 rounded-full text-xs flex items-center gap-1 border ${
                   r.me
                     ? 'bg-primary/20 border-primary/50 text-text-primary'
                     : 'bg-input border-divider text-text-secondary hover:bg-input/80'
@@ -361,10 +410,10 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 
       {/* Action buttons */}
       {showActions && !editing && (
-        <div className="absolute right-4 -top-3 flex bg-surface border border-divider rounded shadow-lg">
+        <div className="absolute right-4 -top-3 flex bg-surface border border-divider rounded-lg shadow-elevated">
           <button
             onClick={() => onReply?.(message)}
-            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/5"
+            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
             title="Reply"
             aria-label="Reply"
           >
@@ -375,7 +424,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
           {!isDm && !hideThreadButton && (
             <button
               onClick={() => onOpenThread?.(message)}
-              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/5"
+              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
               title="Thread"
               aria-label="Thread"
             >
@@ -406,7 +455,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                 }
               }}
               disabled={pinning}
-              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/5 disabled:opacity-50"
+              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08] disabled:opacity-50"
               title={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
               aria-label={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
             >
@@ -427,7 +476,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               }
               setShowReactionPicker(!showReactionPicker);
             }}
-            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/5"
+            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
             title="Add Reaction"
             aria-label="Add Reaction"
           >
@@ -440,7 +489,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               {!isEncrypted && (
                 <button
                   onClick={() => { setEditing(true); setEditContent(displayContent || ''); }}
-                  className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/5"
+                  className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
                   title="Edit"
                   aria-label="Edit"
                 >
@@ -451,7 +500,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               )}
               <button
                 onClick={handleDelete}
-                className="px-2 py-1 text-text-secondary hover:text-error hover:bg-white/5"
+                className="px-2 py-1 text-text-secondary hover:text-error hover:bg-white/[0.08]"
                 title="Delete"
                 aria-label="Delete"
               >
@@ -471,7 +520,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
           <div className="fixed z-50" style={{ top: pickerPos.top, left: pickerPos.left }}>
             <Suspense fallback={<div className="w-[300px] h-[350px] bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
               <LazyEmojiPicker
-                theme={"dark" as never}
+                theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
                 onEmojiClick={(emoji: { emoji: string }) => handleReaction(emoji.emoji)}
                 width={300}
                 height={350}
@@ -504,14 +553,6 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         />
       )}
 
-      {/* Image lightbox */}
-      {lightboxImage && (
-        <ImageLightbox
-          src={lightboxImage.src}
-          alt={lightboxImage.alt}
-          onClose={() => setLightboxImage(null)}
-        />
-      )}
     </div>
   );
 }
@@ -519,14 +560,35 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 const MessageTile = memo(MessageTileInner);
 export default MessageTile;
 
-function AttachmentImage({ src, alt, onOpen }: { src: string; alt: string; onOpen: () => void }) {
+function AttachmentImage({ src, alt, onOpen, grid, spanFull }: { src: string; alt: string; onOpen: () => void; grid?: boolean; spanFull?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
 
   if (errored) {
     return (
-      <div className="bg-input rounded-lg px-3 py-2 text-text-muted text-sm max-w-[300px]">
+      <div className={`bg-input rounded-lg px-3 py-2 text-text-muted text-sm ${spanFull ? 'col-span-2' : ''}`}>
         Image expired: {alt}
+      </div>
+    );
+  }
+
+  if (grid) {
+    return (
+      <div className={`relative overflow-hidden ${spanFull ? 'col-span-2 h-[200px]' : 'h-[150px]'}`}>
+        {!loaded && (
+          <div className="absolute inset-0 bg-white/5 animate-pulse" />
+        )}
+        <img
+          src={src}
+          alt={alt}
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
+          className={`w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          onClick={onOpen}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          onError={() => setErrored(true)}
+        />
       </div>
     );
   }

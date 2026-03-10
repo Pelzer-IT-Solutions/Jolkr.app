@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { Poll } from '../api/types';
 import * as api from '../api/client';
 import { useToast } from './Toast';
 
-interface Props {
+export interface PollDisplayProps {
   pollId: string;
   initialPoll?: Poll;
 }
 
-export default function PollDisplay({ pollId, initialPoll }: Props) {
+function PollDisplayInner({ pollId, initialPoll }: PollDisplayProps) {
   const [poll, setPoll] = useState<Poll | null>(initialPoll ?? null);
   const [loading, setLoading] = useState(!initialPoll);
   const [voting, setVoting] = useState(false);
@@ -45,8 +45,8 @@ export default function PollDisplay({ pollId, initialPoll }: Props) {
     <div className="mt-2 bg-background/50 rounded-lg p-3 border border-divider max-w-[400px] animate-pulse">
       <div className="h-4 bg-white/5 rounded w-2/3 mb-2" />
       <div className="space-y-1.5">
-        <div className="rounded px-3 py-1.5 border border-divider h-8 bg-white/5" />
-        <div className="rounded px-3 py-1.5 border border-divider h-8 bg-white/5" />
+        <div className="rounded-lg px-4 py-2 border border-divider h-8 bg-white/5" />
+        <div className="rounded-lg px-4 py-2 border border-divider h-8 bg-white/5" />
       </div>
       <div className="h-3 bg-white/5 rounded w-1/4 mt-2" />
     </div>
@@ -62,7 +62,7 @@ export default function PollDisplay({ pollId, initialPoll }: Props) {
       <div className="flex items-center gap-2 mb-2">
         <span className="text-text-primary text-sm font-medium">{poll.question}</span>
         {isExpired && (
-          <span className="px-1.5 py-0.5 text-[9px] bg-text-muted/20 text-text-muted rounded font-bold uppercase">
+          <span className="px-1.5 py-0.5 text-[10px] bg-text-muted/20 text-text-muted rounded font-bold uppercase">
             Ended
           </span>
         )}
@@ -81,7 +81,7 @@ export default function PollDisplay({ pollId, initialPoll }: Props) {
               key={opt.id}
               onClick={() => !isExpired && handleVote(opt.id)}
               disabled={!!isExpired || voting}
-              className={`w-full relative rounded overflow-hidden text-left text-sm px-3 py-1.5 border transition-colors ${
+              className={`w-full relative rounded-lg overflow-hidden text-left text-sm px-4 py-2 border transition-colors ${
                 isMyVote
                   ? 'border-primary/50 bg-primary/10'
                   : 'border-divider bg-background hover:bg-white/5'
@@ -115,3 +115,6 @@ export default function PollDisplay({ pollId, initialPoll }: Props) {
     </div>
   );
 }
+
+const PollDisplay = memo(PollDisplayInner);
+export default PollDisplay;

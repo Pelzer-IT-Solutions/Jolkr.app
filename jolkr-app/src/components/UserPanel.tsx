@@ -68,18 +68,18 @@ export default function UserPanel() {
   return (
     <div className="shrink-0">
       <VoiceConnectionBar />
-    <div className="h-auto min-h-[60px] px-2 flex items-center gap-2 bg-serverbar border-t border-divider relative">
-      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} status={currentStatus} />
+    <div className="h-auto py-3 px-3 flex items-center gap-2 bg-serverbar border-t border-divider relative">
+      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={36} status={currentStatus} />
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] text-text-primary font-medium truncate">{user?.username ?? 'User'}</div>
+        <div className="text-sm text-text-primary font-medium truncate">{user?.username ?? 'User'}</div>
         <button
           onClick={() => setShowPicker(!showPicker)}
-          className="text-[11px] text-text-muted hover:text-text-secondary cursor-pointer"
+          className="text-xs text-text-muted hover:text-text-secondary cursor-pointer"
         >
           {statusLabel(currentStatus)}
         </button>
         {user?.status && (
-          <div className="text-[11px] text-text-muted truncate">{user.status}</div>
+          <div className="text-xs text-text-muted truncate">{user.status}</div>
         )}
       </div>
       <Link
@@ -105,10 +105,10 @@ export default function UserPanel() {
       {showPicker && !showCustomStatus && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
-          <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-lg shadow-lg py-1 w-48 z-50">
+          <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float py-1 w-48 z-50">
             <button
               onClick={() => { setCustomStatusText(user?.status ?? ''); setShowCustomStatus(true); }}
-              className="w-full px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-white/5 flex items-center gap-2 border-b border-divider mb-1"
+              className="w-full px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-white/[0.06] flex items-center gap-2 border-b border-divider mb-1"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -130,11 +130,11 @@ export default function UserPanel() {
               <button
                 key={opt.value}
                 onClick={() => handleStatusChange(opt.value)}
-                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/5 ${
+                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/[0.06] ${
                   currentStatus === opt.value ? 'text-text-primary' : 'text-text-secondary'
                 }`}
               >
-                <div className={`w-2.5 h-2.5 rounded-full ${opt.color}`} />
+                <div className={`w-3 h-3 rounded-full ${opt.color}`} />
                 {opt.label}
               </button>
             ))}
@@ -146,7 +146,7 @@ export default function UserPanel() {
       {showCustomStatus && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowCustomStatus(false)} />
-          <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-lg shadow-lg p-3 w-56 z-50">
+          <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float p-3 w-56 z-50">
             <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Custom Status</div>
             <input
               value={customStatusText}
@@ -161,7 +161,7 @@ export default function UserPanel() {
               <button onClick={() => setShowCustomStatus(false)} className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary">
                 Cancel
               </button>
-              <button onClick={handleSetCustomStatus} className="px-2 py-1 text-xs bg-primary hover:bg-primary-hover text-white rounded">
+              <button onClick={handleSetCustomStatus} className="px-2 py-1 text-xs btn-primary rounded-lg">
                 Save
               </button>
             </div>

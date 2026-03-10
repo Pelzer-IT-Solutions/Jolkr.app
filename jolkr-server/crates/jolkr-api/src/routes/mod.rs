@@ -30,7 +30,8 @@ use axum::{
     Router,
 };
 use sqlx::PgPool;
-use tower_http::cors::{Any, AllowOrigin, CorsLayer};
+use axum::http::{Method, HeaderName};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::embed_service::LinkEmbedService;
@@ -59,7 +60,7 @@ pub struct AppState {
 
 /// Build the complete Axum router with all route groups.
 pub fn create_router(state: AppState) -> Router {
-    // Read CORS origins from env var (comma-separated). Fall back to allow any for dev.
+    // Read CORS origins from env var (comma-separated). Fall back to localhost for dev.
     let cors_origin = match std::env::var("CORS_ORIGINS") {
         Ok(origins) if !origins.is_empty() => {
             let parsed: Vec<axum::http::HeaderValue> = origins
@@ -68,15 +69,29 @@ pub fn create_router(state: AppState) -> Router {
                 .collect();
             AllowOrigin::list(parsed)
         }
-        _ => AllowOrigin::any(),
+        _ => {
+            tracing::warn!("CORS_ORIGINS not set — defaulting to localhost dev origins");
+            AllowOrigin::list(vec![
+                "http://localhost:1420".parse().unwrap(),
+                "http://localhost".parse().unwrap(),
+                "https://tauri.localhost".parse().unwrap(),
+            ])
+        }
     };
     let cors = CorsLayer::new()
         .allow_origin(cors_origin)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_methods([
+            Method::GET, Method::POST, Method::PUT,
+            Method::PATCH, Method::DELETE, Method::OPTIONS,
+        ])
+        .allow_headers([
+            HeaderName::from_static("authorization"),
+            HeaderName::from_static("content-type"),
+            HeaderName::from_static("accept"),
+        ]);
 
-    // Rate limiters: auth = strict (5/s), API = standard (30/s), webhook = moderate (10/s)
-    let auth_limiter = RateLimiter::new(10, 5.0);
+    // Rate limiters: auth = strict (2/s), API = standard (30/s), webhook = moderate (10/s)
+    let auth_limiter = RateLimiter::new(5, 2.0);
     let api_limiter = RateLimiter::new(60, 30.0);
     let webhook_limiter = RateLimiter::new(20, 10.0);
 
@@ -116,6 +131,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/dms/:dm_id", patch(dms::update_dm))
         .route("/api/dms/:dm_id/members", put(dms::add_dm_member))
         .route("/api/dms/:dm_id/members/@me", delete(dms::leave_dm))
+        .route("/api/dms/:dm_id/close", post(dms::close_dm))
         .route(
             "/api/dms/:dm_id/messages",
             get(dms::get_dm_messages).post(dms::send_dm_message),

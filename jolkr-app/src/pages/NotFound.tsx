@@ -14,7 +14,7 @@ export default function NotFound() {
       </p>
       <button
         onClick={() => navigate(isLoggedIn ? '/' : '/login')}
-        className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm rounded"
+        className="px-4 py-2 btn-primary text-sm rounded-lg"
       >
         {isLoggedIn ? 'Go Home' : 'Log In'}
       </button>

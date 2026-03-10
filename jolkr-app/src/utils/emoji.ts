@@ -29,7 +29,8 @@ export function emojiToImgUrl(emoji: string): string {
  */
 export function emojiToImgHtml(emoji: string, size = 20): string {
   const url = emojiToImgUrl(emoji);
-  return `<img src="${url}" alt="${emoji}" class="inline-block align-text-bottom" style="width:${size}px;height:${size}px" loading="lazy" draggable="false" />`;
+  const escapedAlt = emoji.replace(/"/g, '&quot;');
+  return `<img src="${url}" alt="${escapedAlt}" class="inline-block align-text-bottom" style="width:${size}px;height:${size}px" loading="lazy" draggable="false" />`;
 }
 
 // Unicode emoji regex - matches compound emojis (ZWJ sequences, skin tones, flags, keycaps)

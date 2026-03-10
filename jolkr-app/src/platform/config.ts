@@ -20,9 +20,20 @@ export function getServerUrl(): string {
   if (!isTauri) return '';
   try {
     const saved = localStorage.getItem('jolkr_server_url');
-    if (saved) return saved;
+    if (saved && isValidServerUrl(saved)) return saved;
   } catch { /* ignore */ }
   return DEFAULT_SERVER;
+}
+
+/** Validate server URL: must be HTTPS (or localhost for dev) */
+export function isValidServerUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Allow HTTPS always, HTTP only for localhost/dev
+    if (parsed.protocol === 'https:') return true;
+    if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) return true;
+    return false;
+  } catch { return false; }
 }
 
 export function getApiBaseUrl(): string {

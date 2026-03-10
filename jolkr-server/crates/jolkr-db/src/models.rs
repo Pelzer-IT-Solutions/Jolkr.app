@@ -227,6 +227,7 @@ pub struct DmMemberRow {
     pub user_id: Uuid,
     pub joined_at: DateTime<Utc>,
     pub last_read_message_id: Option<Uuid>,
+    pub closed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

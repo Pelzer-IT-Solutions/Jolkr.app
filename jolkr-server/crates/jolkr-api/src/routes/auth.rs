@@ -136,7 +136,15 @@ pub async fn reset_password(
     if provided_hash.ct_eq(&expected_hash).unwrap_u8() != 1 {
         return Err(AppError(jolkr_common::JolkrError::Unauthorized));
     }
-    AuthService::reset_password(&state.pool, &body.email, &body.new_password).await?;
+    match AuthService::reset_password(&state.pool, &body.email, &body.new_password).await {
+        Ok(()) => {
+            info!(target_email = %body.email, "Admin password reset executed");
+        }
+        Err(e) => {
+            // Log but return 204 anyway to prevent email enumeration
+            info!(target_email = %body.email, error = %e, "Admin password reset failed (user may not exist)");
+        }
+    }
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -165,6 +173,11 @@ pub async fn forgot_password(
     } else {
         info!(email = %body.email, "Password reset requested for unknown email — ignoring silently");
     }
+
+    // Random delay to prevent timing-based email enumeration
+    use rand::Rng;
+    let jitter = rand::thread_rng().gen_range(50..200);
+    tokio::time::sleep(std::time::Duration::from_millis(jitter)).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

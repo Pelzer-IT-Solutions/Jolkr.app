@@ -1,16 +1,21 @@
+import { useRef } from 'react';
 import { useCallStore } from '../stores/call';
 import { stopRingSound } from '../hooks/useCallEvents';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export default function IncomingCallDialog() {
   const incomingCall = useCallStore((s) => s.incomingCall);
   const acceptIncoming = useCallStore((s) => s.acceptIncoming);
   const rejectIncoming = useCallStore((s) => s.rejectIncoming);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+
   if (!incomingCall) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-sidebar rounded-xl p-6 w-[320px] flex flex-col items-center gap-4 shadow-2xl border border-divider">
+      <div ref={dialogRef} className="bg-sidebar rounded-2xl border border-divider shadow-popup p-6 w-[320px] flex flex-col items-center gap-4">
         {/* Avatar placeholder */}
         <div className="w-16 h-16 rounded-full bg-primary/30 flex items-center justify-center animate-pulse">
           <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
