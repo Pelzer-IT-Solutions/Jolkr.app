@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { User } from '../../../api/types';
 import * as api from '../../../api/client';
 import Avatar from '../../../components/Avatar';
+import { rewriteStorageUrl } from '../../../platform/config';
 
 export interface AccountTabProps {
   user: User | null;
@@ -17,6 +18,8 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('');
+  const [avatarKey, setAvatarKey] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -28,7 +31,10 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
         username: username.trim(),
         display_name: displayName.trim() || undefined,
         bio: bio.trim(),
+        avatar_url: avatarKey || undefined,
       });
+      setAvatarKey('');
+      setAvatarPreviewUrl('');
       setSaved(true);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
@@ -43,14 +49,19 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
     if (!file) return;
     setAvatarUploading(true);
     try {
-      const result = await api.uploadFile(file);
-      // Store the S3 key (not the presigned URL) so the backend can re-presign on each fetch
-      await onProfileUpdate({ avatar_url: result.key });
+      const result = await api.uploadFile(file, 'avatar');
+      setAvatarKey(result.key);
+      setAvatarPreviewUrl(result.url);
     } catch (e) {
       setSaveError((e as Error).message || 'Failed to upload avatar');
     }
     setAvatarUploading(false);
   };
+
+  // Show preview from new upload, otherwise existing avatar
+  const displayAvatarUrl = avatarPreviewUrl
+    ? rewriteStorageUrl(avatarPreviewUrl)
+    : user?.avatar_url;
 
   return (
     <>
@@ -67,7 +78,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); }}}
             aria-label="Upload avatar"
           >
-            <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={80} status="online" />
+            <Avatar url={displayAvatarUrl} name={user?.username ?? '?'} size={80} status="online" />
             <div className={`absolute top-0 left-0 w-20 h-20 rounded-full bg-black/50 flex items-center justify-center transition-opacity ${avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}>
               {avatarUploading ? (
                 <div className="text-white text-xs font-medium animate-pulse">Uploading</div>

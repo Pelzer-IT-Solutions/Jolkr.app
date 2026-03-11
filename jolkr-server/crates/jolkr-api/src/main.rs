@@ -13,6 +13,7 @@ pub mod nats_bus;
 pub mod push_service;
 pub mod redis_store;
 mod routes;
+pub mod image_processing;
 pub mod storage;
 mod ws;
 

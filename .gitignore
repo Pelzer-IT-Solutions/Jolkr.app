@@ -81,23 +81,10 @@ audit-fase18-complete.md
 audit-fase20.md
 claude_mem.md
 CLAUDE.md
-plan-2026-03-04_production-ready.md
-plan-fase7-web-push.md
-plan-fase10-testing-polish.md
-plan-fase11-feature-completie.md
-plan-fase14-moderation.md
-plan-fase18-ux-voice-audit.md
-plan-fase19-custom-emojis-embeds-notifications.md
-plan-ui-audit-fixes.md
+plan-*.md
+info-*.md
 TESTS_2026-03-05_01.md
 todos.md
 keys/google-playstore-key.json
 Google Playstore Screenshots/*
-plan-code-uiux-health-audit.md
-plan-component-skeleton-loading-1772771256.md
-plan-quantum-e2ee.md
-plan-v0.2.0-UI_UX-1772767761 copy.md
-plan-v0.2.0-UI_UX-1772767761.md
-plan-v0.2.0-UI_UX-1772767762.md
-release-notes-v0.1.0.md
-release-notes-v0.3.0.md
+release-notes-*.md

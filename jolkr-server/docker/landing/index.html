@@ -7,8 +7,12 @@
   <title>Jolkr - Private Chat, No Jokes</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
-  <meta name="description" content="Privacy-first chat with quantum-proof end-to-end encryption. Hybrid X25519 + ML-KEM-768 protects your messages today and against future quantum computers.">
-  <meta name="theme-color" content="#7C3AED">
+  <meta name="description"
+    content="Privacy-first chat with quantum-proof end-to-end encryption. Hybrid X25519 + ML-KEM-768 protects your messages today and against future quantum computers.">
+  <meta name="theme-color" content="#0C0F17">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *,
     *::before,
@@ -19,118 +23,315 @@
     }
 
     :root {
-      --purple-500: #7C3AED;
-      --purple-900: #4C1D95;
-      --purple-400: #A78BFA;
-      --purple-300: #C4B5FD;
-      --amber-400: #F59E0B;
-      --gray-900: #0F0B1A;
-      --gray-800: #1A1425;
-      --gray-700: #2D2440;
-      --gray-300: #D1D5DB;
-      --gray-100: #F3F4F6;
-      --white: #FAFAFA;
+      --bg: #0C0F17;
+      --surface: #161B26;
+      --sidebar: #111620;
+      --input: #1A2030;
+      --divider: #232B3A;
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --primary: #7C6BF5;
+      --primary-hover: #6B5CE5;
+      --focus-ring: rgba(124, 107, 245, 0.4);
+      --online: #22C55E;
+      --error: #EF4444;
+    }
+
+    html {
+      scroll-behavior: smooth;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      background: var(--gray-900);
-      color: var(--gray-100);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-feature-settings: 'kern' 1, 'liga' 1, 'cv01' 1;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-color: var(--bg);
+      color: var(--text-primary);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
     }
 
-    /* Nav */
+    /* Scrollbar — match app */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--text-muted);
+      border-radius: 6px;
+      opacity: 0.5;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+
+    /* Focus-visible — match app */
+    *:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Button cursor */
+    button,
+    [role="button"] {
+      cursor: pointer;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* ─── Animations ─── */
+    @keyframes fade-up {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    @keyframes glow-pulse {
+      0%, 100% {
+        opacity: 0.4;
+      }
+
+      50% {
+        opacity: 0.8;
+      }
+    }
+
+    .animate-fade-up {
+      animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .animate-fade-in {
+      animation: fade-in 0.4s ease-out both;
+    }
+
+    .delay-1 {
+      animation-delay: 0.1s;
+    }
+
+    .delay-2 {
+      animation-delay: 0.2s;
+    }
+
+    .delay-3 {
+      animation-delay: 0.3s;
+    }
+
+    .delay-4 {
+      animation-delay: 0.4s;
+    }
+
+    .delay-5 {
+      animation-delay: 0.5s;
+    }
+
+    .delay-6 {
+      animation-delay: 0.6s;
+    }
+
+    /* ─── Nav ─── */
     nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 1rem 2rem;
-      background: var(--gray-800);
-      border-bottom: 1px solid var(--gray-700);
+      padding: 0 2rem;
+      height: 60px;
+      background: rgba(12, 15, 23, 0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--divider);
     }
 
     .nav-brand {
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      text-decoration: none;
-      color: var(--white);
     }
 
     .nav-brand img {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border-radius: 10px;
     }
 
     .nav-brand span {
-      font-size: 1.5rem;
+      font-size: 1.25rem;
       font-weight: 700;
       letter-spacing: -0.02em;
+      color: var(--text-primary);
     }
 
-    .nav-link {
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-link-ghost {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      transition: color 0.15s, background-color 0.15s;
+    }
+
+    .nav-link-ghost:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-link-primary {
       display: inline-flex;
       align-items: center;
-      padding: 0.6rem 1.5rem;
-      background: var(--purple-500);
-      color: var(--white);
-      text-decoration: none;
+      padding: 0.5rem 1.25rem;
+      background: var(--primary);
+      color: white;
       border-radius: 8px;
       font-weight: 600;
-      font-size: 0.95rem;
-      transition: background 0.2s;
+      font-size: 0.875rem;
+      box-shadow: 0 1px 3px rgba(124, 107, 245, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+      transition: all 0.15s ease;
     }
 
-    .nav-link:hover {
-      background: var(--purple-400);
+    .nav-link-primary:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 12px rgba(124, 107, 245, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
+      transform: translateY(-1px);
     }
 
-    /* Hero */
+    .nav-link-primary:active {
+      transform: translateY(0);
+    }
+
+    /* ─── Hero ─── */
     .hero {
-      flex: 1;
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 4rem 2rem;
-      background: linear-gradient(180deg, var(--gray-800) 0%, var(--gray-900) 100%);
+      padding: 6rem 2rem 5rem;
+      min-height: calc(100vh - 60px);
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124, 107, 245, 0.15), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 50%, rgba(99, 102, 241, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 20% 80%, rgba(124, 107, 245, 0.06), transparent),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    /* Decorative glow orbs */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 107, 245, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      animation: glow-pulse 6s ease-in-out infinite;
+    }
+
+    .hero-icon-wrap {
+      position: relative;
+      margin-bottom: 2.5rem;
+      animation: float 4s ease-in-out infinite;
     }
 
     .hero-icon {
-      width: 120px;
-      height: 120px;
-      border-radius: 28px;
-      margin-bottom: 2rem;
-      box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3);
+      width: 100px;
+      height: 100px;
+      border-radius: 24px;
+      box-shadow:
+        0 8px 32px rgba(124, 107, 245, 0.3),
+        0 0 64px rgba(124, 107, 245, 0.1);
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-icon-glow {
+      position: absolute;
+      inset: -20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 107, 245, 0.2) 0%, transparent 70%);
+      z-index: 0;
     }
 
     .hero h1 {
-      font-size: 3.5rem;
+      font-size: 3.75rem;
       font-weight: 800;
       letter-spacing: -0.03em;
-      margin-bottom: 1rem;
-      background: linear-gradient(135deg, var(--purple-300), var(--amber-400));
+      line-height: 1.1;
+      margin-bottom: 1.25rem;
+      max-width: 700px;
+      color: var(--text-primary);
+    }
+
+    .hero h1 .gradient-text {
+      background: linear-gradient(135deg, var(--primary), #A78BFA, #818CF8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
 
-    .hero p {
-      font-size: 1.25rem;
-      color: var(--gray-300);
-      max-width: 520px;
+    .hero-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      max-width: 540px;
       line-height: 1.7;
       margin-bottom: 2.5rem;
     }
 
-    /* Buttons */
+    /* ─── Buttons ─── */
     .btn-group {
       display: flex;
-      gap: 1rem;
+      gap: 0.75rem;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -139,150 +340,451 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.85rem 2rem;
+      padding: 0.75rem 1.75rem;
       border-radius: 10px;
-      font-size: 1.05rem;
+      font-size: 0.95rem;
       font-weight: 600;
-      text-decoration: none;
-      transition: transform 0.15s, box-shadow 0.15s;
-      cursor: pointer;
       border: none;
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--purple-500), var(--purple-900));
-      color: var(--white);
-    }
-
-    .btn-secondary {
-      background: var(--gray-700);
-      color: var(--gray-100);
-      border: 1px solid var(--gray-700);
-    }
-
-    .btn-secondary:hover {
-      border-color: var(--purple-500);
+      font-family: inherit;
+      transition: all 0.15s ease;
+      cursor: pointer;
     }
 
     .btn svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       fill: currentColor;
     }
 
+    /* Primary button — match app .btn-primary */
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 1px 3px rgba(124, 107, 245, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 12px rgba(124, 107, 245, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(124, 107, 245, 0.3);
+    }
+
+    /* Ghost button — match app .btn-ghost */
+    .btn-ghost {
+      background: var(--input);
+      color: var(--text-primary);
+      border: 1px solid var(--divider);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost:active {
+      transform: translateY(0);
+    }
+
     .btn-coming-soon {
-      opacity: 0.45;
+      opacity: 0.4;
       cursor: default;
       pointer-events: none;
     }
 
-    .btn-coming-soon:hover {
-      transform: none;
-      box-shadow: none;
+    /* ─── Stats bar ─── */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      padding: 2rem;
+      margin-top: 3rem;
+      position: relative;
+      z-index: 1;
     }
 
-    /* Features */
-    .features {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.5rem;
-      max-width: 900px;
-      width: 100%;
-      margin-top: 4rem;
-    }
-
-    .feature {
-      background: var(--gray-800);
-      border: 1px solid var(--gray-700);
-      border-radius: 12px;
-      padding: 1.5rem;
-      text-align: left;
-    }
-
-    .feature-icon {
-      font-size: 1.75rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .feature h3 {
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-      color: var(--white);
-    }
-
-    .feature p {
-      font-size: 0.9rem;
-      color: var(--gray-300);
-      line-height: 1.5;
-    }
-
-    /* Downloads */
-    .downloads {
-      padding: 4rem 2rem;
+    .stat {
       text-align: center;
-      background: var(--gray-800);
-      border-top: 1px solid var(--gray-700);
     }
 
-    .downloads h2 {
-      font-size: 2rem;
+    .stat-value {
+      font-size: 1.5rem;
       font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.25rem;
+    }
+
+    /* ─── Features ─── */
+    .features-section {
+      padding: 5rem 2rem;
+      background: var(--bg);
+      position: relative;
+    }
+
+    .features-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--divider), transparent);
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 100px;
+      background: rgba(124, 107, 245, 0.1);
+      border: 1px solid rgba(124, 107, 245, 0.2);
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: 2.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
       margin-bottom: 0.75rem;
     }
 
-    .downloads>p {
-      color: var(--gray-300);
-      margin-bottom: 2rem;
+    .section-subtitle {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--divider);
+      border-radius: 16px;
+      padding: 1.75rem;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(124, 107, 245, 0.25);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 10%, rgba(124, 107, 245, 0.3), transparent 90%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .feature-card:hover::after {
+      opacity: 1;
+    }
+
+    .feature-icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+    }
+
+    .feature-icon-wrap.purple {
+      background: rgba(124, 107, 245, 0.12);
+    }
+
+    .feature-icon-wrap.green {
+      background: rgba(34, 197, 94, 0.12);
+    }
+
+    .feature-icon-wrap.blue {
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    .feature-icon-wrap.amber {
+      background: rgba(245, 158, 11, 0.12);
+    }
+
+    .feature-icon-wrap.rose {
+      background: rgba(244, 63, 94, 0.12);
+    }
+
+    .feature-icon-wrap.indigo {
+      background: rgba(129, 140, 248, 0.12);
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .feature-card p {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ─── Download section ─── */
+    .downloads-section {
+      padding: 5rem 2rem;
+      text-align: center;
+      background: var(--surface);
+      position: relative;
+    }
+
+    .downloads-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--divider), transparent);
     }
 
     .download-grid {
       display: flex;
-      gap: 1rem;
+      gap: 0.75rem;
       justify-content: center;
       flex-wrap: wrap;
+      max-width: 700px;
+      margin: 0 auto;
     }
 
-    /* Footer */
-    footer {
-      padding: 1.5rem 2rem;
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      font-family: inherit;
+      background: var(--input);
+      color: var(--text-primary);
+      border: 1px solid var(--divider);
+      transition: all 0.15s ease;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .download-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .download-btn:active {
+      transform: translateY(0);
+    }
+
+    .download-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+      flex-shrink: 0;
+    }
+
+    .download-btn.disabled {
+      opacity: 0.35;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .download-platform {
+      font-weight: 600;
+    }
+
+    .download-ext {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    /* ─── Open Source CTA ─── */
+    .oss-section {
+      padding: 4rem 2rem;
       text-align: center;
-      color: var(--gray-300);
-      font-size: 0.85rem;
-      border-top: 1px solid var(--gray-700);
+      background: var(--bg);
+      position: relative;
+    }
+
+    .oss-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--divider), transparent);
+    }
+
+    .oss-card {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 2.5rem;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--divider);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .oss-card h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .oss-card p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      padding: 2rem;
+      text-align: center;
+      border-top: 1px solid var(--divider);
+      background: var(--sidebar);
+    }
+
+    footer p {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    footer .footer-links {
+      margin-top: 0.5rem;
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
     }
 
     footer a {
-      color: var(--purple-400);
-      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      transition: color 0.15s;
     }
 
-    /* Responsive */
-    @media (max-width: 640px) {
+    footer a:hover {
+      color: var(--primary);
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .hero {
+        padding: 4rem 1.5rem 3rem;
+        min-height: auto;
+      }
+
       .hero h1 {
         font-size: 2.25rem;
       }
 
-      .hero p {
-        font-size: 1.05rem;
+      .hero-subtitle {
+        font-size: 1rem;
       }
 
       .hero-icon {
-        width: 88px;
-        height: 88px;
-        border-radius: 22px;
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
       }
 
       nav {
-        padding: 0.75rem 1rem;
+        padding: 0 1rem;
       }
 
-      .features {
-        margin-top: 2.5rem;
+      .nav-link-ghost {
+        display: none;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .stats {
+        gap: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .section-title {
+        font-size: 1.75rem;
+      }
+
+      .download-grid {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .download-btn {
+        width: 100%;
+        max-width: 280px;
+        justify-content: center;
+      }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
       }
     }
   </style>
@@ -292,23 +794,34 @@
 
   <nav>
     <a href="/" class="nav-brand">
-      <img src="/icon.svg" alt="Jolkr">
+      <img src="/icon.svg" alt="Jolkr" width="36" height="36">
       <span>Jolkr</span>
     </a>
-    <a href="/app" class="nav-link">Open Jolkr</a>
+    <div class="nav-links">
+      <a href="#features" class="nav-link-ghost">Features</a>
+      <a href="#downloads" class="nav-link-ghost">Download</a>
+      <a href="https://github.com/Pelzer-IT-Solutions/Jolkr.app" target="_blank" rel="noopener"
+        class="nav-link-ghost">GitHub</a>
+      <a href="/app" class="nav-link-primary">Open Jolkr</a>
+    </div>
   </nav>
 
   <main class="hero">
-    <img src="/icon.svg" alt="Jolkr" class="hero-icon">
+    <div class="hero-icon-wrap animate-fade-up">
+      <div class="hero-icon-glow"></div>
+      <img src="/icon.svg" alt="Jolkr" class="hero-icon" width="100" height="100">
+    </div>
 
-    <h1>Chat freely. Stay private.</h1>
+    <h1 class="animate-fade-up delay-1">
+      Chat freely.<br><span class="gradient-text">Stay private.</span>
+    </h1>
 
-    <p>
-      Jolkr is a privacy-first chat platform with quantum-proof end-to-end encrypted DMs
-      and voice calls, and everything you need &mdash; without the surveillance.
+    <p class="hero-subtitle animate-fade-up delay-2">
+      Privacy-first chat with quantum-proof end-to-end encrypted DMs and voice calls.
+      Everything you need from a modern platform &mdash; without the surveillance.
     </p>
 
-    <div class="btn-group">
+    <div class="btn-group animate-fade-up delay-3">
       <a href="/app" class="btn btn-primary">
         <svg viewBox="0 0 24 24">
           <path
@@ -317,7 +830,7 @@
         </svg>
         Open in Browser
       </a>
-      <a href="#downloads" class="btn btn-secondary">
+      <a href="#downloads" class="btn btn-ghost">
         <svg viewBox="0 0 24 24">
           <path
             d="M12 2a1 1 0 0 1 1 1v10.59l2.3-2.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 1.4-1.42l2.3 2.3V3a1 1 0 0 1 1-1ZM5 17a1 1 0 0 1 1 1v1h12v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z" />
@@ -326,89 +839,164 @@
       </a>
     </div>
 
-    <div class="features">
-      <div class="feature">
-        <div class="feature-icon">&#x1F6E1;</div>
-        <h3>Quantum-Proof E2EE</h3>
-        <p>Hybrid X25519 + ML-KEM-768 key exchange with AES-256-GCM. Your DMs and voice calls are protected against both classical and future quantum attacks.</p>
+    <div class="stats animate-fade-up delay-4">
+      <div class="stat">
+        <div class="stat-value">E2EE</div>
+        <div class="stat-label">Quantum-proof</div>
       </div>
-      <div class="feature">
-        <div class="feature-icon">&#x1F3DB;</div>
-        <h3>Servers &amp; Channels</h3>
-        <p>Create servers with text and voice channels, roles, permissions, threads, and polls. Everything you expect from a modern chat platform.</p>
+      <div class="stat">
+        <div class="stat-value">Rust</div>
+        <div class="stat-label">Backend</div>
       </div>
-      <div class="feature">
-        <div class="feature-icon">&#x1F50D;</div>
-        <h3>Zero Data Collection</h3>
-        <p>No tracking, no ads, no data mining. Source-available for full transparency. You own your data, always.</p>
+      <div class="stat">
+        <div class="stat-value">5</div>
+        <div class="stat-label">Platforms</div>
       </div>
-      <div class="feature">
-        <div class="feature-icon">&#x2705;</div>
-        <h3>Key Verification</h3>
-        <p>Verify contacts with safety numbers. Compare fingerprints to ensure nobody is intercepting your messages.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">&#x26A1;</div>
-        <h3>Blazing Fast</h3>
-        <p>Built with Rust on the backend. Real-time messaging via WebSocket and NATS event bus.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">&#x1F4F1;</div>
-        <h3>Multi-Platform</h3>
-        <p>Windows, macOS, Linux, Android, and web. Your encrypted conversations sync across all your devices.</p>
+      <div class="stat">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Data collected</div>
       </div>
     </div>
   </main>
 
-  <section class="downloads" id="downloads">
-    <h2>Download Jolkr</h2>
-    <p>Available on all major platforms.</p>
+  <section class="features-section" id="features">
+    <div class="section-header">
+      <div class="section-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2"
+            fill="none" />
+        </svg>
+        Features
+      </div>
+      <h2 class="section-title">Built for privacy, designed for people</h2>
+      <p class="section-subtitle">Everything you love about modern chat, without compromising your data.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon-wrap purple">&#x1F6E1;</div>
+        <h3>Quantum-Proof E2EE</h3>
+        <p>Hybrid X25519 + ML-KEM-768 key exchange with AES-256-GCM. Your DMs and voice calls are protected against
+          both classical and future quantum attacks.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap blue">&#x1F3DB;</div>
+        <h3>Servers &amp; Channels</h3>
+        <p>Create servers with text and voice channels, roles, permissions, threads, and polls. Everything you expect
+          from a modern chat platform.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap green">&#x1F50D;</div>
+        <h3>Zero Data Collection</h3>
+        <p>No tracking, no ads, no data mining. Source-available for full transparency. You own your data, always.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap amber">&#x2705;</div>
+        <h3>Key Verification</h3>
+        <p>Verify contacts with safety numbers. Compare fingerprints to ensure nobody is intercepting your messages.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap rose">&#x26A1;</div>
+        <h3>Blazing Fast</h3>
+        <p>Built with Rust on the backend. Real-time messaging via WebSocket with NATS event bus for instant delivery.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap indigo">&#x1F4F1;</div>
+        <h3>Multi-Platform</h3>
+        <p>Windows, macOS, Linux, Android, and web. Your encrypted conversations sync across all your devices.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="downloads-section" id="downloads">
+    <div class="section-header">
+      <div class="section-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M12 2a1 1 0 0 1 1 1v10.59l2.3-2.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 1.4-1.42l2.3 2.3V3a1 1 0 0 1 1-1ZM5 17a1 1 0 0 1 1 1v1h12v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z" />
+        </svg>
+        Downloads
+      </div>
+      <h2 class="section-title">Get Jolkr</h2>
+      <p class="section-subtitle">Available on all major platforms. Download the desktop app or use it in your browser.
+      </p>
+    </div>
 
     <div class="download-grid">
-      <a href="#" class="btn btn-secondary" data-platform="windows" title="Download for Windows">
+      <a href="#" class="download-btn" data-platform="windows" title="Download for Windows">
         <svg viewBox="0 0 24 24">
-          <path
-            d="M3 2h8.462l.075.003.126.017.111.03.111.044.098.052.104.074.082.073 4 4a1 1 0 0 1 .083.094l.064.092.045.089.03.078.03.116.013.1.002.058V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h6V4H5v16h10V8h-3a1 1 0 0 1-1-1V4H5Z" />
+          <path d="M3 12V6.5l8-1.1V12H3zm0 .5V18l8 1.1V12.5H3zm9 0V5.3l9-1.3v8.5h-9zm0 .5v6.8l9 1.2V13h-9z" />
         </svg>
-        Windows (.exe)
+        <span><span class="download-platform">Windows</span> <span class="download-ext">.exe</span></span>
       </a>
-      <a href="#" class="btn btn-secondary" data-platform="macos" title="Download for macOS">
+      <a href="#" class="download-btn" data-platform="macos" title="Download for macOS">
         <svg viewBox="0 0 24 24">
           <path
-            d="M17.523 2c.157 1.4-.41 2.816-1.274 3.842-.875 1.04-2.305 1.842-3.698 1.736-.182-1.372.498-2.8 1.33-3.7C14.76 2.846 16.27 2.089 17.523 2ZM20.8 17.45c-.37.862-1.26 2.425-2.28 3.415-.92.89-1.873 1.136-2.85 1.136-.78 0-1.56-.27-2.33-.535-.73-.252-1.45-.5-2.32-.5-.92 0-1.68.262-2.43.52-.71.247-1.41.49-2.17.51-1.04.03-1.83-.27-2.73-1.16C2.28 19.41 1 16.26 1 13.29c0-4.44 2.87-6.79 5.7-6.79.99 0 1.84.33 2.56.61.55.22 1.04.42 1.44.42.35 0 .82-.19 1.38-.41.8-.32 1.79-.72 2.92-.72 1.61 0 3.37.68 4.5 2.09-1.29.83-2.76 2.28-2.57 4.78.17 2.24 1.76 3.64 2.87 4.17Z" />
+            d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83ZM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11Z" />
         </svg>
-        macOS (.dmg)
+        <span><span class="download-platform">macOS</span> <span class="download-ext">.dmg</span></span>
       </a>
-      <a href="#" class="btn btn-secondary" data-platform="linux" title="Download for Linux">
+      <a href="#" class="download-btn" data-platform="linux" title="Download for Linux">
         <svg viewBox="0 0 24 24">
           <path
-            d="M12.5 2c-1.54 0-2.89 1.52-2.89 3.26 0 .88.22 1.57.55 2.14-.63.28-1.2.68-1.6 1.2-.53.67-.85 1.5-.85 2.4 0 .33.04.65.12.96-1.38.5-2.36 1.36-2.98 2.39-.7 1.16-.93 2.54-.53 3.82.3.98.92 1.77 1.7 2.32.38.58.97 1.03 1.72 1.25.78.24 1.63.26 2.43.07.38.34.87.58 1.42.68.82.15 1.72.02 2.43-.44.65.37 1.44.52 2.18.42.52-.07.98-.26 1.35-.53.75.13 1.52.08 2.22-.16.74-.25 1.33-.72 1.71-1.31.73-.56 1.3-1.34 1.58-2.26.39-1.28.17-2.66-.53-3.82-.62-1.03-1.6-1.89-2.98-2.39.08-.31.12-.63.12-.96 0-.9-.32-1.73-.85-2.4-.4-.52-.97-.92-1.6-1.2.33-.57.55-1.26.55-2.14C15.39 3.52 14.04 2 12.5 2Z" />
+            d="M12.504 2c-.972 0-1.932.57-2.544 1.533-.408.642-.648 1.434-.648 2.283 0 .582.132 1.104.348 1.554a5.4 5.4 0 0 0-1.98 1.926c-.444.702-.684 1.524-.684 2.4 0 .252.024.498.06.738a7.14 7.14 0 0 0-2.484 2.01c-.588.876-.84 1.872-.624 2.868.168.768.552 1.41 1.08 1.908.252.372.612.678 1.044.87.468.21.984.264 1.5.12.228.252.528.438.876.522.516.126 1.08.042 1.548-.186a2.7 2.7 0 0 0 1.908.198c.348-.066.66-.21.924-.408.456.084.936.06 1.38-.096.468-.168.876-.48 1.164-.9.444-.372.816-.84 1.056-1.386.264-.6.348-1.254.192-1.878a7.14 7.14 0 0 0-2.484-2.01c.036-.24.06-.486.06-.738 0-.876-.24-1.698-.684-2.4a5.4 5.4 0 0 0-1.98-1.926c.216-.45.348-.972.348-1.554 0-.85-.24-1.641-.648-2.283C14.436 2.57 13.476 2 12.504 2z" />
         </svg>
-        Linux (.AppImage)
+        <span><span class="download-platform">Linux</span> <span class="download-ext">.AppImage</span></span>
       </a>
-      <a href="#" class="btn btn-secondary" data-platform="android" title="Download for Android">
+      <a href="#" class="download-btn" data-platform="android" title="Download for Android">
         <svg viewBox="0 0 24 24">
           <path
-            d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10ZM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8Zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5ZM15.53 2.16l1.3-1.3a.5.5 0 0 0-.7-.7l-1.51 1.5A5.59 5.59 0 0 0 12 1c-.96 0-1.86.23-2.66.7L7.87.16a.5.5 0 0 0-.7.7l1.31 1.31A5.56 5.56 0 0 0 6.05 6h11.9a5.56 5.56 0 0 0-2.42-3.84ZM10 5H9V4h1v1Zm5 0h-1V4h1v1Z" />
+            d="M17.532 15.106a1.003 1.003 0 1 1 .001-2.007 1.003 1.003 0 0 1-.001 2.007m-11.044 0a1.003 1.003 0 1 1 .001-2.007 1.003 1.003 0 0 1-.001 2.007m11.4-6.018 2.006-3.459a.413.413 0 1 0-.721-.407l-2.027 3.5a12.243 12.243 0 0 0-5.13-1.108c-1.85 0-3.58.398-5.11 1.108L4.88 5.222a.413.413 0 1 0-.722.407l2.007 3.46A11.18 11.18 0 0 0 1 18h22a11.18 11.18 0 0 0-5.112-8.912" />
         </svg>
-        Android (.apk)
+        <span><span class="download-platform">Android</span> <span class="download-ext">.apk</span></span>
       </a>
-      <span class="btn btn-secondary btn-coming-soon" title="iOS — Coming soon">
+      <span class="download-btn disabled" title="iOS — Coming soon">
         <svg viewBox="0 0 24 24">
           <path
-            d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83Z" />
+            d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83ZM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11Z" />
         </svg>
-        iOS — Coming soon
+        <span><span class="download-platform">iOS</span> <span class="download-ext">Coming soon</span></span>
       </span>
     </div>
   </section>
+
+  <section class="oss-section">
+    <div class="oss-card">
+      <h2>Open &amp; Transparent</h2>
+      <p>Jolkr is source-available on GitHub. Inspect the code, verify our security claims, or contribute to make
+        private communication better for everyone.</p>
+      <a href="https://github.com/Pelzer-IT-Solutions/Jolkr.app" target="_blank" rel="noopener"
+        class="btn btn-ghost">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z" />
+        </svg>
+        View on GitHub
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2025&ndash;2026 Pelzer IT Solutions. All rights reserved.</p>
+    <div class="footer-links">
+      <a href="https://github.com/Pelzer-IT-Solutions/Jolkr.app" target="_blank" rel="noopener">GitHub</a>
+      <a href="/health">Status</a>
+      <a href="/app">Open App</a>
+    </div>
+  </footer>
 
   <script>
     (function () {
       var REPO = 'Pelzer-IT-Solutions/Jolkr.app';
       var API_URL = 'https://api.github.com/repos/' + REPO + '/releases/latest';
 
-      // Map platform data-attribute to asset file extension matchers
       var PLATFORM_MATCHERS = {
         windows: function (name) { return /\.(exe|msi)$/i.test(name); },
         macos: function (name) { return /\.dmg$/i.test(name); },
@@ -437,18 +1025,15 @@
               btn.title = 'Download ' + asset.name + ' (' + formatSize(asset.size) + ')';
             } else {
               btn.title = 'Not available yet';
-              btn.style.opacity = '0.5';
-              btn.style.pointerEvents = 'none';
+              btn.classList.add('disabled');
             }
           });
         })
         .catch(function () {
-          // No release yet — buttons stay disabled gracefully
           var buttons = document.querySelectorAll('[data-platform]');
           buttons.forEach(function (btn) {
             btn.title = 'Coming soon';
-            btn.style.opacity = '0.5';
-            btn.style.pointerEvents = 'none';
+            btn.classList.add('disabled');
           });
         });
 
@@ -456,18 +1041,28 @@
         if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
         return (bytes / 1024).toFixed(0) + ' KB';
       }
+
+      /* Intersection Observer — animate feature cards on scroll */
+      if ('IntersectionObserver' in window) {
+        var cards = document.querySelectorAll('.feature-card');
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.style.animation = 'fade-up 0.5s cubic-bezier(0.16,1,0.3,1) both';
+              entry.target.style.animationDelay = (entry.target.dataset.i || 0) * 0.08 + 's';
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15 });
+
+        cards.forEach(function (card, i) {
+          card.dataset.i = i;
+          card.style.opacity = '0';
+          observer.observe(card);
+        });
+      }
     })();
   </script>
-  </section>
-
-  <footer>
-    <p>&copy; 2025–2026 Pelzer IT Solutions. All rights reserved.</p>
-    <p style="margin-top: 0.5rem;">
-      <a href="https://github.com/Pelzer-IT-Solutions/Jolkr.app" target="_blank" rel="noopener">GitHub</a>
-      &middot;
-      <a href="/health">Status</a>
-    </p>
-  </footer>
 
 </body>
 

@@ -1,8 +1,8 @@
 use axum::{
-    extract::{Multipart, Path, State},
+    extract::{Multipart, Path, Query, State},
     Json,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_common::Permissions;
@@ -10,6 +10,7 @@ use jolkr_core::services::message::MessageService;
 use jolkr_db::repo::{AttachmentRepo, ChannelRepo, MemberRepo, MessageRepo, RoleRepo};
 
 use crate::errors::AppError;
+use crate::image_processing::ImagePurpose;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
 use crate::storage::MAX_FILE_SIZE;
@@ -266,15 +267,32 @@ pub async fn list_attachments(
     Ok(Json(AttachmentsResponse { attachments }))
 }
 
+/// Query parameters for the upload endpoint.
+#[derive(Debug, Deserialize)]
+pub struct UploadQuery {
+    /// When set to "avatar" or "icon", the image is converted to WebP and resized.
+    pub purpose: Option<String>,
+}
+
 /// POST /api/upload
 ///
 /// General-purpose file upload (for avatars, server icons, etc.)
 /// Returns the object key and a presigned download URL.
+///
+/// Query params:
+///   - `?purpose=avatar` — convert to 256×256 WebP
+///   - `?purpose=icon`   — convert to 256×256 WebP
 pub async fn upload_file(
     State(state): State<AppState>,
     _auth: AuthUser,
+    Query(query): Query<UploadQuery>,
     mut multipart: Multipart,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    let purpose = query
+        .purpose
+        .as_deref()
+        .and_then(ImagePurpose::from_str);
+
     let field = multipart
         .next_field()
         .await
@@ -300,6 +318,13 @@ pub async fn upload_file(
         )));
     }
 
+    // When purpose is set, only image types are allowed
+    if purpose.is_some() && !content_type.starts_with("image/") {
+        return Err(AppError(jolkr_common::JolkrError::Validation(
+            "Only image files are allowed for avatars and server icons".into(),
+        )));
+    }
+
     let data = field
         .bytes()
         .await
@@ -317,10 +342,25 @@ pub async fn upload_file(
         )));
     }
 
+    // If purpose is avatar/icon, convert to WebP; otherwise store as-is
+    let (upload_data, upload_filename, upload_content_type) = if let Some(purpose) = purpose {
+        let webp_data = crate::image_processing::convert_to_webp(&data, &content_type, purpose)
+            .map_err(|e| {
+                AppError(jolkr_common::JolkrError::Validation(format!(
+                    "Image conversion failed: {e}"
+                )))
+            })?;
+        // Replace extension with .webp
+        let webp_filename = replace_extension(&filename, "webp");
+        (webp_data, webp_filename, "image/webp".to_string())
+    } else {
+        (data.to_vec(), filename.clone(), content_type.clone())
+    };
+
     let file_id = Uuid::new_v4();
     let object_key = state
         .storage
-        .upload("uploads", file_id, &filename, &content_type, &data)
+        .upload("uploads", file_id, &upload_filename, &upload_content_type, &upload_data)
         .await
         .map_err(|e| {
             AppError(jolkr_common::JolkrError::Internal(format!(
@@ -341,8 +381,16 @@ pub async fn upload_file(
     Ok(Json(serde_json::json!({
         "key": object_key,
         "url": download_url,
-        "filename": filename,
-        "content_type": content_type,
-        "size_bytes": data.len(),
+        "filename": upload_filename,
+        "content_type": upload_content_type,
+        "size_bytes": upload_data.len(),
     })))
+}
+
+/// Replace the file extension, preserving the stem.
+fn replace_extension(filename: &str, new_ext: &str) -> String {
+    match filename.rsplit_once('.') {
+        Some((stem, _)) => format!("{stem}.{new_ext}"),
+        None => format!("{filename}.{new_ext}"),
+    }
 }

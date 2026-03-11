@@ -17,6 +17,7 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
   const [name, setName] = useState(server.name);
   const [description, setDescription] = useState(server.description ?? '');
   const [iconUrl, setIconUrl] = useState(server.icon_url ?? '');
+  const [iconKey, setIconKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -30,8 +31,9 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
     if (!file) return;
     setUploading(true);
     try {
-      const result = await api.uploadFile(file);
-      setIconUrl(result.key);
+      const result = await api.uploadFile(file, 'icon');
+      setIconKey(result.key);
+      setIconUrl(result.url);
     } catch { setError('Failed to upload icon'); }
     setUploading(false);
   };
@@ -46,7 +48,7 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
       await updateServer(server.id, {
         name: name.trim(),
         description: description.trim() || undefined,
-        icon_url: iconUrl || undefined,
+        icon_url: iconKey || undefined,
       });
       onClose();
     } catch (e) {

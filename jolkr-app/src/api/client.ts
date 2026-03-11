@@ -562,10 +562,12 @@ export const blockUser = (userId: string) =>
   request<Friendship>('/friends/block', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'friendship');
 
 // General file upload (avatars, server icons, etc.)
-export const uploadFile = async (file: File): Promise<{ key: string; url: string }> => {
+// When purpose is 'avatar' or 'icon', the backend converts to WebP and resizes.
+export const uploadFile = async (file: File, purpose?: 'avatar' | 'icon'): Promise<{ key: string; url: string }> => {
   const form = new FormData();
   form.append('file', file);
-  return request<{ key: string; url: string }>('/upload', { method: 'POST', body: form });
+  const query = purpose ? `?purpose=${purpose}` : '';
+  return request<{ key: string; url: string }>(`/upload${query}`, { method: 'POST', body: form });
 };
 
 // Push / Devices
