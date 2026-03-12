@@ -97,7 +97,7 @@ export default function MembersTab({ server }: MembersTabProps) {
 
           return (
             <div key={m.id} className="flex items-center gap-2 p-2 rounded hover:bg-white/5">
-              <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} />
+              <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={m.user_id} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-text-primary truncate">
                   {m.nickname ?? user?.username ?? m.user_id.slice(0, 8)}

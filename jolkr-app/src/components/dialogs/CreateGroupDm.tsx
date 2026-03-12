@@ -157,7 +157,7 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
                 onClick={() => addUser(u)}
                 className="w-full px-2 py-1.5 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary"
               >
-                <Avatar url={u.avatar_url} name={u.username} size={28} />
+                <Avatar url={u.avatar_url} name={u.username} size={28} userId={u.id} />
                 <span className="truncate">{u.username}</span>
               </button>
             ))}

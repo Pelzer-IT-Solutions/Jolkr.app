@@ -41,7 +41,7 @@ function PinnedMessagesPanelInner({ channelId, onClose }: PinnedMessagesPanelPro
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-0 z-50 w-[360px] h-full bg-surface border-l border-divider flex flex-col shadow-popup">
+      <div className="absolute right-0 top-0 z-50 w-[360px] h-full glass flex flex-col shadow-popup">
         <div className="h-16 px-4 flex items-center justify-between border-b border-divider shrink-0">
           <h3 className="text-text-primary font-semibold text-sm">Pinned Messages</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close pinned messages">
@@ -67,7 +67,7 @@ function PinnedMessagesPanelInner({ channelId, onClose }: PinnedMessagesPanelPro
             return (
               <div key={msg.id} className="mb-3 p-3 bg-background rounded-xl border border-divider">
                 <div className="flex items-center gap-2 mb-1">
-                  <Avatar url={author?.avatar_url} name={author?.username ?? '?'} size={20} />
+                  <Avatar url={author?.avatar_url} name={author?.username ?? '?'} size={20} userId={msg.author_id} />
                   <span className="text-sm font-medium text-text-primary">{author?.username ?? 'Unknown'}</span>
                   <span className="text-[11px] text-text-muted">
                     {time.toLocaleDateString()} {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

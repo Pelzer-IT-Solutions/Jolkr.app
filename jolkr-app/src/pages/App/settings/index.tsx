@@ -55,8 +55,8 @@ export default function Settings() {
     <div className="flex flex-1 h-full overflow-hidden bg-bg">
       {/* Settings sidebar — hidden on mobile, replaced by horizontal tabs */}
       {!isMobile && (
-        <div className="w-[260px] bg-sidebar flex flex-col shrink-0 border-r border-divider h-full overflow-hidden">
-          <div className="h-16 px-4 flex items-center border-b border-divider shrink-0">
+        <div className="w-[260px] glass flex flex-col shrink-0 h-full overflow-hidden">
+          <div className="h-16 px-4 flex items-center glass-header shrink-0">
             <h2 className="text-text-primary font-semibold text-[15px]">User Settings</h2>
           </div>
           <div className="px-2 pt-2">

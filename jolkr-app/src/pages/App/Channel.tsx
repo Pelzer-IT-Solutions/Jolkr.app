@@ -19,6 +19,7 @@ import ThreadPanel from '../../components/ThreadPanel';
 import ThreadListPanel from '../../components/ThreadListPanel';
 import { useMobileNav } from '../../hooks/useMobileNav';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { usePresignRefresh } from '../../hooks/usePresignRefresh';
 import { useVoiceStore } from '../../stores/voice';
 import Avatar from '../../components/Avatar';
 
@@ -245,6 +246,9 @@ export default function ChannelPage() {
     }
   }, [canAttach]);
 
+  // Periodically refresh presigned S3 URLs (every 3h)
+  usePresignRefresh(channelId, false);
+
   // Global keyboard shortcuts
   useKeyboardShortcuts({
     toggleSearch: useCallback(() => setShowSearch((prev) => !prev), []),
@@ -284,7 +288,7 @@ export default function ChannelPage() {
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Channel list sidebar */}
-        <div className={`${isMobile ? 'w-full' : 'w-[260px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
+        <div className={`${isMobile ? 'w-full' : 'w-[260px]'} glass flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
           <ChannelList server={server} onChannelSelect={isMobile ? () => setShowSidebar(false) : undefined} />
 
           {/* Invite button */}
@@ -323,7 +327,7 @@ export default function ChannelPage() {
             </div>
           )}
           {/* Channel header */}
-          <div className="h-16 px-4 flex items-center gap-3 border-b border-divider shrink-0">
+          <div className="h-16 px-4 flex items-center gap-3 glass-header shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to channels">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -362,6 +366,7 @@ export default function ChannelPage() {
 
             {/* Search */}
             {showSearch ? (
+              <div className="input-container">
               <input
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -371,6 +376,7 @@ export default function ChannelPage() {
                 className={`px-3 py-1 bg-input rounded text-sm text-text-primary ${isMobile ? 'w-32' : 'w-48'}`}
                 autoFocus
               />
+              </div>
             ) : (
               <button
                 onClick={() => setShowSearch(true)}
@@ -510,7 +516,7 @@ export default function ChannelPage() {
               isMobile ? (
                 <div className="fixed inset-0 z-50 flex">
                   <div className="flex-1" onClick={() => setShowMembers(false)} />
-                  <div className="w-[280px] max-w-[80vw] bg-sidebar border-l border-divider h-full overflow-y-auto animate-slide-in-right">
+                  <div className="w-[280px] max-w-[80vw] glass h-full overflow-y-auto animate-slide-in-right">
                     <div className="h-16 px-4 flex items-center border-b border-divider shrink-0">
                       <span className="text-text-primary font-semibold text-sm flex-1">Members</span>
                       <button onClick={() => setShowMembers(false)} className="text-text-secondary hover:text-text-primary" aria-label="Close members">
@@ -618,7 +624,7 @@ function VoiceChannelView({
             return (
               <div key={p.userId} className="flex flex-col items-center gap-1.5">
                 <div className={`relative rounded-full ${p.isSpeaking ? 'ring-2 ring-green-400' : ''}`}>
-                  <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={56} />
+                  <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={56} userId={p.userId} />
                   {p.isMuted && (
                     <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-error rounded-full flex items-center justify-center">
                       <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

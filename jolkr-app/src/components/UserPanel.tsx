@@ -68,8 +68,8 @@ export default function UserPanel() {
   return (
     <div className="shrink-0">
       <VoiceConnectionBar />
-    <div className="h-auto py-3 px-3 flex items-center gap-2 bg-serverbar border-t border-divider relative">
-      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={36} status={currentStatus} />
+    <div className="h-auto py-3 px-3 flex items-center gap-2 bg-serverbar/80 backdrop-blur-sm border-t border-divider relative">
+      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={36} status={currentStatus} userId={user?.id} />
       <div className="flex-1 min-w-0">
         <div className="text-sm text-text-primary font-medium truncate">{user?.username ?? 'User'}</div>
         <button

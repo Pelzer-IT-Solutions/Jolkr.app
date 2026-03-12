@@ -1,16 +1,31 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { rewriteStorageUrl } from '../platform/config';
+import * as api from '../api/client';
 
 interface AvatarProps {
   url?: string | null;
   name: string;
   size?: number;
   status?: string | null;
+  /** User ID — enables auto-refresh of expired presigned avatar URLs */
+  userId?: string;
 }
 
-export default function Avatar({ url, name, size = 40, status }: AvatarProps) {
-  const resolvedUrl = rewriteStorageUrl(url);
+export default function Avatar({ url, name, size = 40, status, userId }: AvatarProps) {
+  const [resolvedUrl, setResolvedUrl] = useState(() => rewriteStorageUrl(url));
   const [imgError, setImgError] = useState(false);
+  const retriedRef = useRef(false);
+  const prevUrlRef = useRef(url);
+
+  // Reset state when the url prop changes (e.g. parent re-fetched)
+  if (url !== prevUrlRef.current) {
+    prevUrlRef.current = url;
+    const newResolved = rewriteStorageUrl(url);
+    setResolvedUrl(newResolved);
+    setImgError(false);
+    retriedRef.current = false;
+  }
+
   const initials = (name.trim()
     .split(' ')
     .filter(Boolean)
@@ -26,6 +41,21 @@ export default function Avatar({ url, name, size = 40, status }: AvatarProps) {
     offline: 'bg-text-muted',
   };
 
+  const handleError = async () => {
+    if (!retriedRef.current && userId) {
+      retriedRef.current = true;
+      try {
+        const freshUser = await api.getUser(userId);
+        const freshUrl = rewriteStorageUrl(freshUser.avatar_url);
+        if (freshUrl) {
+          setResolvedUrl(freshUrl);
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+    setImgError(true);
+  };
+
   const showImage = resolvedUrl && !imgError;
 
   return (
@@ -39,7 +69,7 @@ export default function Avatar({ url, name, size = 40, status }: AvatarProps) {
           className="rounded-full object-cover"
           style={{ width: size, height: size }}
           loading="lazy"
-          onError={() => setImgError(true)}
+          onError={handleError}
         />
       ) : (
         <div

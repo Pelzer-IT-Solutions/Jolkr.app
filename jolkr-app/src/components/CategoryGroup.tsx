@@ -166,7 +166,7 @@ function VoiceParticipantItem({
   return (
     <div className="flex items-center gap-1.5 px-1 py-0.5">
       <div className={`shrink-0 rounded-full ${participant.isSpeaking ? 'ring-2 ring-online' : ''}`}>
-        <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={20} />
+        <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={20} userId={user?.id} />
       </div>
       <span className="text-xs text-text-secondary truncate">{user?.username ?? '...'}</span>
       {participant.isMuted && (

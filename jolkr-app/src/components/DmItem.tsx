@@ -62,6 +62,7 @@ function DmItemInner({ dm, users, currentUserId, isActive, unreadCount, status, 
           name={displayName}
           size={32}
           status={status}
+          userId={otherUser?.id}
         />
       )}
       <div className="flex-1 min-w-0">

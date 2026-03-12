@@ -243,7 +243,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
           {/* Avatar */}
           <div className="px-4 -mt-8">
             <div className="border-[4px] border-surface rounded-full inline-block">
-              <Avatar url={user.avatar_url} name={user.username} size={64} status={status} />
+              <Avatar url={user.avatar_url} name={user.username} size={64} status={status} userId={user.id} />
             </div>
           </div>
 

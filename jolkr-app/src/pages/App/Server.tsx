@@ -51,7 +51,7 @@ export default function ServerPage() {
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Channel list sidebar */}
-        <div className={`${isMobile ? 'w-full' : 'w-[260px]'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
+        <div className={`${isMobile ? 'w-full' : 'w-[260px]'} glass flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
           <ChannelList server={server} onChannelSelect={isMobile ? () => setShowSidebar(false) : undefined} />
 
           {/* Invite + User panel */}

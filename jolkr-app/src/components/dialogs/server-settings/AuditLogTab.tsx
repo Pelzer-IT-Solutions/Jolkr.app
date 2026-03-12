@@ -139,7 +139,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
 
               return (
                 <div key={entry.id} className="flex items-start gap-3 p-2 rounded hover:bg-white/5">
-                  <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} />
+                  <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={entry.user_id} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-text-primary">
                       <span className="font-medium">{user?.username ?? entry.user_id.slice(0, 8)}</span>

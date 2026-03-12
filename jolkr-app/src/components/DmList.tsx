@@ -34,6 +34,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
   const [dms, setDms] = useState<DmChannel[]>(cachedDmsRef.current);
   const [users, setUsers] = useState<Record<string, User>>(cachedUsersRef.current);
   const [search, setSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -289,12 +290,18 @@ export default function DmList({ onDmSelect }: DmListProps) {
 
       {/* Search bar */}
       <div className="px-2 pt-2">
-        <input
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          placeholder="Find or start a conversation"
-          className="w-full bg-input rounded-xl px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted outline-none"
-        />
+        <div
+          className={`input-container flex items-center bg-input rounded-xl border border-divider transition-all ${searchFocused ? 'border-primary/50 shadow-[0_0_0_3px_rgba(0,206,209,0.15)]' : 'hover:border-divider/80'}`}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+        >
+          <input
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Find or start a conversation"
+            className="w-full bg-transparent rounded-xl px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted outline-none"
+          />
+        </div>
       </div>
 
       {/* User search results for starting new DMs */}
@@ -308,7 +315,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
                 onClick={() => startDm(u.id)}
                 className="w-full px-4 py-2 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary"
               >
-                <Avatar url={u.avatar_url} name={u.username} size={28} />
+                <Avatar url={u.avatar_url} name={u.username} size={28} userId={u.id} />
                 <span className="truncate">{u.username}</span>
               </button>
             ))}

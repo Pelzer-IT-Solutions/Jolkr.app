@@ -131,7 +131,7 @@ export default function Friends() {
     <>
       <div className="flex-1 flex flex-col bg-bg min-h-0">
           {/* Header with tabs */}
-          <div className="h-16 px-4 flex items-center gap-4 border-b border-divider shrink-0 overflow-x-auto">
+          <div className="h-16 px-4 flex items-center gap-4 glass-header shrink-0 overflow-x-auto">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary shrink-0">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -190,7 +190,7 @@ export default function Friends() {
                         className="cursor-pointer shrink-0"
                         onClick={(e) => setProfileTarget({ userId: friendId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
                       >
-                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={36} status={statuses[friendId] ?? 'offline'} />
+                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={36} status={statuses[friendId] ?? 'offline'} userId={friendId} />
                       </button>
                       <div className="flex-1 min-w-0">
                         <button
@@ -239,7 +239,7 @@ export default function Friends() {
                         className="cursor-pointer shrink-0"
                         onClick={(e) => setProfileTarget({ userId: pendingId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
                       >
-                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={36} />
+                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={36} userId={pendingId} />
                       </button>
                       <div className="flex-1 min-w-0">
                         <button
@@ -319,7 +319,7 @@ export default function Friends() {
                         className="cursor-pointer shrink-0"
                         onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
                       >
-                        <Avatar url={u.avatar_url} name={u.username} size={36} />
+                        <Avatar url={u.avatar_url} name={u.username} size={36} userId={u.id} />
                       </button>
                       <div className="flex-1">
                         <button

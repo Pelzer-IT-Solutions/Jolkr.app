@@ -165,7 +165,7 @@ export default function MemberList({ serverId, className }: MemberListProps) {
     : null;
 
   return (
-    <div className={className ?? "w-[260px] h-full bg-sidebar border-l border-divider overflow-y-auto shrink-0"}>
+    <div className={className ?? "w-[260px] h-full glass overflow-y-auto shrink-0"}>
       {loadError && (
         <div className="mx-4 mt-2 text-text-muted text-xs text-center py-4">Failed to load members</div>
       )}

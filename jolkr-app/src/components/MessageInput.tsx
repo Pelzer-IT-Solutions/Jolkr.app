@@ -438,8 +438,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   // Disabled state: no permission to send
   if (canSend === false) {
     return (
-      <div className="px-4 pb-5 shrink-0">
-        <div className="h-6" />
+      <div className="px-4 pb-5 pt-4 shrink-0 glass-footer">
         <div className="flex items-center bg-input rounded-lg px-4 py-3 opacity-60">
           <span className="text-text-muted text-sm">You do not have permission to send messages in this channel</span>
         </div>
@@ -451,7 +450,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   // Don't show a skeleton — just render the real input. DMs never set canSend so it's always undefined there.
 
   return (
-    <div className="px-4 pb-5 shrink-0 relative">
+    <div className="px-4 pb-5 pt-3 shrink-0 relative glass-footer">
       {/* Mention autocomplete */}
       {mentionQuery !== null && mentionMatches.length > 0 && (
         <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-[200px] overflow-y-auto z-50">
@@ -605,7 +604,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         </button>
       </div>
 
-      <div className={`input-container flex items-center gap-2 bg-input rounded-xl px-4 py-2.5 border border-divider transition-all ${inputFocused ? 'border-primary/50 shadow-[0_0_0_3px_rgba(124,107,245,0.15)]' : 'hover:border-divider/80'}`} onFocus={() => setInputFocused(true)} onBlur={() => setInputFocused(false)}>
+      <div className={`input-container flex items-center gap-2 bg-input rounded-xl px-4 py-2.5 border border-divider transition-all ${inputFocused ? 'border-primary/50 shadow-[0_0_0_3px_rgba(0,206,209,0.15)]' : 'hover:border-divider/80'}`} onFocus={() => setInputFocused(true)} onBlur={() => setInputFocused(false)}>
         {canAttach && (
           <button
             onClick={() => fileInputRef.current?.click()}

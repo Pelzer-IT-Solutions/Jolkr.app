@@ -5,6 +5,7 @@ import { useUnreadStore } from '../stores/unread';
 import { rewriteStorageUrl } from '../platform/config';
 import { hasPermission, MANAGE_CHANNELS, MANAGE_ROLES } from '../utils/permissions';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import * as api from '../api/client';
 import CreateServerDialog from './dialogs/CreateServer';
 import JoinServerDialog from './dialogs/JoinServer';
 import ServerSettingsDialog from './dialogs/ServerSettingsDialog';
@@ -15,6 +16,42 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
+
+/** Server icon with auto-retry on presigned URL expiry */
+function ServerIconImg({ serverId, url, name }: { serverId: string; url: string; name: string }) {
+  const [src, setSrc] = useState(() => rewriteStorageUrl(url) ?? url);
+  const retriedRef = useRef(false);
+  const [errored, setErrored] = useState(false);
+  const prevUrlRef = useRef(url);
+
+  if (url !== prevUrlRef.current) {
+    prevUrlRef.current = url;
+    setSrc(rewriteStorageUrl(url) ?? url);
+    setErrored(false);
+    retriedRef.current = false;
+  }
+
+  const handleError = async () => {
+    if (!retriedRef.current) {
+      retriedRef.current = true;
+      try {
+        const servers = await api.getServers();
+        const fresh = servers.find((s) => s.id === serverId);
+        if (fresh?.icon_url) {
+          setSrc(rewriteStorageUrl(fresh.icon_url) ?? fresh.icon_url);
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+    setErrored(true);
+  };
+
+  if (errored) {
+    return <span className="text-text-primary font-semibold text-sm">{name.slice(0, 2).toUpperCase()}</span>;
+  }
+
+  return <img src={src} alt={name} className="w-full h-full rounded-[inherit] object-cover" onError={handleError} />;
+}
 
 function SortableServerItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -126,7 +163,7 @@ export default function ServerSidebar() {
                       }`}
                   >
                     {server.icon_url ? (
-                      <img src={rewriteStorageUrl(server.icon_url) ?? server.icon_url} alt={server.name} className="w-full h-full rounded-[inherit] object-cover" />
+                      <ServerIconImg serverId={server.id} url={server.icon_url} name={server.name} />
                     ) : (
                       <span className={`${serverId === server.id || hovered === server.id ? 'text-white' : 'text-text-primary'} font-semibold text-sm`}>
                         {server.name.slice(0, 2).toUpperCase()}

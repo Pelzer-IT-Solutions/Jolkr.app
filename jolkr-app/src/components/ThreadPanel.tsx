@@ -162,7 +162,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-0 z-50 w-full max-w-[400px] h-full bg-surface border-l border-divider flex flex-col shadow-popup">
+      <div className="absolute right-0 top-0 z-50 w-full max-w-[400px] h-full glass flex flex-col shadow-popup">
         {/* Header */}
         <div className="h-16 px-4 flex items-center gap-2 border-b border-divider shrink-0">
           <svg className="w-5 h-5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -194,7 +194,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
           {starterMessage && (
             <div className="px-4 py-3 border-b border-divider bg-background/50">
               <div className="flex items-center gap-2 mb-1">
-                <Avatar url={users[starterMessage.author_id]?.avatar_url} name={users[starterMessage.author_id]?.username ?? '?'} size={24} />
+                <Avatar url={users[starterMessage.author_id]?.avatar_url} name={users[starterMessage.author_id]?.username ?? '?'} size={24} userId={starterMessage.author_id} />
                 <span className="text-sm font-medium text-text-primary">{users[starterMessage.author_id]?.username ?? 'Unknown'}</span>
                 <span className="text-[11px] text-text-muted">
                   {new Date(starterMessage.created_at).toLocaleString()}

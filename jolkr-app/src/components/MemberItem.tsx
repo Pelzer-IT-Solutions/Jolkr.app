@@ -45,6 +45,7 @@ function MemberItemInner({
         name={name}
         size={36}
         status={isOffline ? 'offline' : status}
+        userId={user?.id}
       />
       <div className="min-w-0">
         <div className="flex items-center gap-1 min-w-0 overflow-hidden">

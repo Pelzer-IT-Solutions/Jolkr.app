@@ -15,6 +15,7 @@ import { isE2EEReady, getRecipientBundle } from '../../services/e2ee';
 import { useCallStore } from '../../stores/call';
 import { useVoiceStore } from '../../stores/voice';
 import { useMessagesStore } from '../../stores/messages';
+import { usePresignRefresh } from '../../hooks/usePresignRefresh';
 
 function CallButton({ dmId, recipientName, recipientUserId }: { dmId: string; recipientName: string; recipientUserId?: string }) {
   const startCall = useCallStore((s) => s.startCall);
@@ -46,6 +47,9 @@ export default function DmChat() {
   const currentUser = useAuthStore((s) => s.user);
   const statuses = usePresenceStore((s) => s.statuses);
   const setActiveChannel = useUnreadStore((s) => s.setActiveChannel);
+
+  // Periodically refresh presigned S3 URLs (every 3h)
+  usePresignRefresh(dmId, true);
 
   // DM cache ref — replaces former module-level mutable state
   const dmsCacheRef = useRef<DmChannel[] | null>(null);
@@ -341,7 +345,7 @@ export default function DmChat() {
             </div>
           )}
           {/* Header */}
-          <div className="h-16 px-4 flex items-center gap-3 border-b border-divider shrink-0">
+          <div className="h-16 px-4 flex items-center gap-3 glass-header shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to conversations">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -376,7 +380,7 @@ export default function DmChat() {
             ) : (
               /* 1-on-1 DM header */
               <>
-                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.username} size={28} status={partnerStatus} />}
+                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.username} size={28} status={partnerStatus} userId={otherUser.id} />}
                 <span className="text-text-primary font-semibold">{otherUser?.username ?? 'Direct Message'}</span>
                 {e2eeAvailable && (
                   <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -415,7 +419,7 @@ export default function DmChat() {
                 isMobile
                   ? 'fixed inset-y-0 right-0 w-[80vw] max-w-[300px] z-40 shadow-xl animate-slide-in-right'
                   : 'w-[240px] shrink-0 h-full overflow-hidden animate-fade-in'
-              } bg-sidebar border-l border-divider flex flex-col`}>
+              } glass flex flex-col`}>
                 <div className="p-3 border-b border-divider">
                   <h3 className="text-text-primary text-sm font-semibold">
                     Members — {dmChannel?.members.length}
@@ -429,7 +433,7 @@ export default function DmChat() {
                     if (!user) return null;
                     return (
                       <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5">
-                        <Avatar url={user.avatar_url} name={user.username} size={28} status={status} />
+                        <Avatar url={user.avatar_url} name={user.username} size={28} status={status} userId={memberId} />
                         <span className="text-text-secondary text-sm truncate">
                           {user.username}
                           {memberId === currentUser?.id && <span className="text-text-muted text-xs ml-1">(you)</span>}
@@ -454,7 +458,7 @@ export default function DmChat() {
                       disabled={addingMember}
                       className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-white/5 hover:text-text-primary disabled:opacity-50"
                     >
-                      <Avatar url={u.avatar_url} name={u.username} size={20} />
+                      <Avatar url={u.avatar_url} name={u.username} size={20} userId={u.id} />
                       <span className="truncate">{u.username}</span>
                     </button>
                   ))}

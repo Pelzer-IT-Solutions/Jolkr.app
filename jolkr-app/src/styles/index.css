@@ -1,45 +1,45 @@
 @import "tailwindcss";
 
 @theme {
-  /* Dark mode — increased contrast between layers */
-  --color-bg: #0C0F17;
-  --color-surface: #161B26;
-  --color-sidebar: #111620;
-  --color-serverbar: #0A0E18;
-  --color-input: #1A2030;
-  --color-divider: #232B3A;
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #64748B;
-  --color-primary: #7C6BF5;
-  --color-primary-hover: #6B5CE5;
+  /* Dark mode — Cyan/Teal glassmorphism theme */
+  --color-bg: #0F2323;
+  --color-surface: #122A2A;
+  --color-sidebar: #0D1F1F;
+  --color-serverbar: #0A1919;
+  --color-input: #163333;
+  --color-divider: rgba(0, 206, 209, 0.10);
+  --color-text-primary: #E8F5F5;
+  --color-text-secondary: #8BBCBC;
+  --color-text-muted: #5A8A8A;
+  --color-primary: #00CED1;
+  --color-primary-hover: #00B8BB;
   --color-online: #22C55E;
   --color-idle: #F59E0B;
   --color-dnd: #EF4444;
   --color-error: #EF4444;
   --color-success: #34D399;
-  --color-focus-ring: rgba(124,107,245,0.4);
+  --color-focus-ring: rgba(0, 206, 209, 0.35);
 }
 
 /* Light mode overrides */
 html[data-theme="light"] {
-  --color-bg: #F8FAFC;
+  --color-bg: #F0FAFA;
   --color-surface: #FFFFFF;
-  --color-sidebar: #F1F5F9;
-  --color-serverbar: #E2E8F0;
-  --color-input: #E8ECF1;
-  --color-divider: #D1D5DB;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94A3B8;
-  --color-primary: #6B5CE5;
-  --color-primary-hover: #5B4CD5;
+  --color-sidebar: #E6F5F5;
+  --color-serverbar: #D4EDED;
+  --color-input: #DCF0F0;
+  --color-divider: rgba(0, 150, 153, 0.15);
+  --color-text-primary: #0A2626;
+  --color-text-secondary: #2D5E5E;
+  --color-text-muted: #6B9A9A;
+  --color-primary: #009B9E;
+  --color-primary-hover: #008588;
   --color-online: #16A34A;
   --color-idle: #D97706;
   --color-dnd: #DC2626;
   --color-error: #DC2626;
   --color-success: #16A34A;
-  --color-focus-ring: rgba(107,92,229,0.35);
+  --color-focus-ring: rgba(0, 155, 158, 0.3);
 }
 
 /* Light mode: darken white icons/spinners on light backgrounds */
@@ -126,10 +126,10 @@ a, button, [role="button"], [role="link"] {
   background: var(--color-text-secondary);
 }
 html[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #A8D4D4;
 }
 html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #6B9A9A;
 }
 
 input, textarea {
@@ -145,7 +145,7 @@ input, textarea, select {
 /* Input focus rings */
 input:focus, textarea:focus, select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-focus-ring), 0 0 12px rgba(124,107,245,0.15);
+  box-shadow: 0 0 0 3px var(--color-focus-ring), 0 0 12px rgba(0,206,209,0.12);
 }
 
 /* Global cursor fixes */
@@ -261,13 +261,13 @@ button:disabled, [role="button"][aria-disabled="true"] {
   100% { background-position: 200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #1A2030 25%, #232B3A 50%, #1A2030 75%);
+  background: linear-gradient(90deg, #163333 25%, #1E4040 50%, #163333 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
   border-radius: 6px;
 }
 html[data-theme="light"] .skeleton {
-  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+  background: linear-gradient(90deg, #D4EDED 25%, #E6F5F5 50%, #D4EDED 75%);
   background-size: 200% 100%;
 }
 
@@ -316,20 +316,20 @@ html[data-theme="light"] .shadow-popup { box-shadow: 0 8px 32px rgba(0,0,0,0.18)
 /* Primary button shadow + glow */
 .btn-primary {
   background-color: var(--color-primary);
-  color: white;
-  font-weight: 500;
+  color: #0A1919;
+  font-weight: 600;
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(124,107,245,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0,206,209,0.3), 0 1px 2px rgba(0,0,0,0.2);
   transition: all 0.15s ease;
 }
 .btn-primary:hover {
   background-color: var(--color-primary-hover);
-  box-shadow: 0 4px 12px rgba(124,107,245,0.4), 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0,206,209,0.4), 0 1px 3px rgba(0,0,0,0.2);
   transform: translateY(-1px);
 }
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(124,107,245,0.3);
+  box-shadow: 0 1px 2px rgba(0,206,209,0.3);
 }
 .btn-primary:disabled {
   opacity: 0.5;
@@ -337,10 +337,10 @@ html[data-theme="light"] .shadow-popup { box-shadow: 0 8px 32px rgba(0,0,0,0.18)
   box-shadow: none;
 }
 html[data-theme="light"] .btn-primary {
-  box-shadow: 0 1px 3px rgba(107,92,229,0.25), 0 1px 2px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,155,158,0.25), 0 1px 2px rgba(0,0,0,0.1);
 }
 html[data-theme="light"] .btn-primary:hover {
-  box-shadow: 0 4px 12px rgba(107,92,229,0.35), 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0,155,158,0.35), 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* Ghost/secondary button */
@@ -364,26 +364,26 @@ html[data-theme="light"] .btn-ghost:hover {
 /* Auth page gradient background */
 .auth-gradient {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,107,245,0.15), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(99,102,241,0.08), transparent),
-    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(124,107,245,0.06), transparent),
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,206,209,0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(0,180,183,0.06), transparent),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(0,206,209,0.04), transparent),
     var(--color-bg);
 }
 html[data-theme="light"] .auth-gradient {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(107,92,229,0.12), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(99,102,241,0.06), transparent),
-    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(107,92,229,0.04), transparent),
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,155,158,0.1), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(0,155,158,0.05), transparent),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(0,155,158,0.03), transparent),
     var(--color-bg);
 }
 
 /* Auth card */
 .auth-card {
   border: 1px solid var(--color-divider);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.3), 0 0 64px rgba(124,107,245,0.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), 0 0 64px rgba(0,206,209,0.06);
 }
 html[data-theme="light"] .auth-card {
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 0 48px rgba(107,92,229,0.06);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 0 48px rgba(0,155,158,0.05);
 }
 
 /* Smooth server icon border-radius transition */
@@ -391,20 +391,52 @@ html[data-theme="light"] .auth-card {
   transition: border-radius 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .server-icon:hover {
-  box-shadow: 0 2px 8px rgba(124,107,245,0.2);
+  box-shadow: 0 2px 8px rgba(0,206,209,0.2);
 }
 .server-icon.active {
-  box-shadow: 0 2px 12px rgba(124,107,245,0.3);
+  box-shadow: 0 2px 12px rgba(0,206,209,0.3);
 }
 
 /* Avatar placeholder blur-up */
 .avatar-placeholder {
-  background: #1A2030;
+  background: #163333;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
   background-size: 200% 100%;
 }
 html[data-theme="light"] .avatar-placeholder {
-  background: #E2E8F0;
+  background: #D4EDED;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(15, 35, 35, 0.70);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 206, 209, 0.10);
+}
+.glass-header {
+  background: rgba(15, 35, 35, 0.70);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 206, 209, 0.10);
+}
+.glass-footer {
+  background: rgba(15, 35, 35, 0.70);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0, 206, 209, 0.10);
+}
+html[data-theme="light"] .glass {
+  background: rgba(230, 245, 245, 0.70);
+  border-color: rgba(0, 155, 158, 0.12);
+}
+html[data-theme="light"] .glass-header {
+  background: rgba(230, 245, 245, 0.70);
+  border-bottom-color: rgba(0, 155, 158, 0.12);
+}
+html[data-theme="light"] .glass-footer {
+  background: rgba(230, 245, 245, 0.70);
+  border-top-color: rgba(0, 155, 158, 0.12);
 }
 
 /* Respect user's motion preferences (WCAG 2.1 AA) */
@@ -475,42 +507,42 @@ img[loading="lazy"] {
 
 /* Emoji picker theme override — match app color scheme (dark) */
 .EmojiPickerReact.epr-dark-theme {
-  --epr-dark-bg-color: #161B26;
-  --epr-dark-search-input-bg-color: #1A2030;
-  --epr-dark-search-input-bg-color-active: #0C0F17;
-  --epr-dark-hover-bg-color: #1A2030f6;
-  --epr-dark-hover-bg-color-reduced-opacity: #1A203080;
-  --epr-dark-focus-bg-color: #1A2030;
-  --epr-dark-category-label-bg-color: #161B26e6;
-  --epr-dark-picker-border-color: #111620;
-  --epr-dark-highlight-color: #F1F5F9;
-  --epr-dark-text-color: #94A3B8;
-  --epr-dark-category-icon-active-color: #7C6BF5;
-  --epr-dark-category-icon-color: #94A3B8;
-  --epr-highlight-color: #7C6BF5;
-  --epr-dark-reactions-bg-color: #161B2690;
-  --epr-dark-skin-tone-picker-menu-color: #161B2695;
-  --epr-dark-emoji-variation-picker-bg-color: #111620;
-  --epr-dark-emoji-variation-indicator-color: #1A2030;
-  --epr-dark-skin-tone-outer-border-color: #1A2030;
+  --epr-dark-bg-color: #122A2A;
+  --epr-dark-search-input-bg-color: #163333;
+  --epr-dark-search-input-bg-color-active: #0F2323;
+  --epr-dark-hover-bg-color: #163333f6;
+  --epr-dark-hover-bg-color-reduced-opacity: #16333380;
+  --epr-dark-focus-bg-color: #163333;
+  --epr-dark-category-label-bg-color: #122A2Ae6;
+  --epr-dark-picker-border-color: #0D1F1F;
+  --epr-dark-highlight-color: #E8F5F5;
+  --epr-dark-text-color: #8BBCBC;
+  --epr-dark-category-icon-active-color: #00CED1;
+  --epr-dark-category-icon-color: #8BBCBC;
+  --epr-highlight-color: #00CED1;
+  --epr-dark-reactions-bg-color: #122A2A90;
+  --epr-dark-skin-tone-picker-menu-color: #122A2A95;
+  --epr-dark-emoji-variation-picker-bg-color: #0D1F1F;
+  --epr-dark-emoji-variation-indicator-color: #163333;
+  --epr-dark-skin-tone-outer-border-color: #163333;
 }
 
 /* Emoji picker theme override — light mode */
 html[data-theme="light"] .EmojiPickerReact {
   --epr-bg-color: #FFFFFF;
-  --epr-search-input-bg-color: #E8ECF1;
-  --epr-search-input-bg-color-active: #D1D5DB;
-  --epr-hover-bg-color: #F1F5F9;
-  --epr-hover-bg-color-reduced-opacity: #F1F5F980;
-  --epr-focus-bg-color: #E8ECF1;
+  --epr-search-input-bg-color: #DCF0F0;
+  --epr-search-input-bg-color-active: #C8E4E4;
+  --epr-hover-bg-color: #E6F5F5;
+  --epr-hover-bg-color-reduced-opacity: #E6F5F580;
+  --epr-focus-bg-color: #DCF0F0;
   --epr-category-label-bg-color: #FFFFFFe6;
-  --epr-picker-border-color: #D1D5DB;
-  --epr-highlight-color: #0F172A;
-  --epr-text-color: #475569;
-  --epr-category-icon-active-color: #6B5CE5;
+  --epr-picker-border-color: rgba(0, 155, 158, 0.15);
+  --epr-highlight-color: #0A2626;
+  --epr-text-color: #2D5E5E;
+  --epr-category-icon-active-color: #009B9E;
   --epr-reactions-bg-color: #FFFFFF90;
   --epr-skin-tone-picker-menu-color: #FFFFFF95;
-  --epr-emoji-variation-picker-bg-color: #F8FAFC;
-  --epr-emoji-variation-indicator-color: #D1D5DB;
-  --epr-skin-tone-outer-border-color: #D1D5DB;
+  --epr-emoji-variation-picker-bg-color: #F0FAFA;
+  --epr-emoji-variation-indicator-color: rgba(0, 155, 158, 0.15);
+  --epr-skin-tone-outer-border-color: rgba(0, 155, 158, 0.15);
 }

@@ -183,14 +183,14 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         </div>
       ) : message.webhook_id ? (
         <div className="shrink-0">
-          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={44} />
+          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={44} userId={message.author_id} />
         </div>
       ) : (
         <button
           className="shrink-0 cursor-pointer"
           onClick={(e) => setProfileAnchor({ x: e.clientX, y: e.clientY })}
         >
-          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={44} />
+          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={44} userId={message.author_id} />
         </button>
       )}
 

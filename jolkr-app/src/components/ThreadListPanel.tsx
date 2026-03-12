@@ -27,7 +27,7 @@ function ThreadListPanelInner({ channelId, onClose, onOpenThread }: ThreadListPa
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-0 z-50 w-full max-w-[360px] h-full bg-surface border-l border-divider flex flex-col shadow-popup">
+      <div className="absolute right-0 top-0 z-50 w-full max-w-[360px] h-full glass flex flex-col shadow-popup">
         <div className="h-16 px-4 flex items-center justify-between border-b border-divider shrink-0">
           <h3 className="text-text-primary font-semibold text-sm">Threads</h3>
           <div className="flex items-center gap-2">
