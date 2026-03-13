@@ -493,7 +493,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         {showEmoji && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
-            <div className="absolute bottom-full left-3 mb-2 z-50">
+            <div className="absolute bottom-full right-3 mb-2 z-50">
               <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
                 <LazyEmojiPicker
                   theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
@@ -661,25 +661,6 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         </div>
       )}
 
-      {showEmoji && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
-          <div className="absolute bottom-full left-4 mb-2 z-50">
-            <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
-              <LazyEmojiPicker
-                theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
-                onEmojiClick={(emoji: { emoji: string }) => {
-                  setContent((prev) => prev + emoji.emoji);
-                  inputRef.current?.focus();
-                }}
-                width={350}
-                height={400}
-              />
-            </Suspense>
-          </div>
-        </>
-      )}
-
       {/* Reply bar */}
       {replyTo && (
         <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-primary rounded-t-lg mb-1">
@@ -810,15 +791,35 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
             />
           </div>
 
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
-            className="text-text-muted hover:text-text-primary shrink-0"
-            title="Emoji"
-            aria-label="Emoji"
-          >
-            <Smile className="size-5" />
-          </button>
+          <div className="relative shrink-0">
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
+              className="text-text-muted hover:text-text-primary"
+              title="Emoji"
+              aria-label="Emoji"
+            >
+              <Smile className="size-5" />
+            </button>
+            {showEmoji && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
+                <div className="absolute bottom-full right-0 mb-2 z-50">
+                  <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+                    <LazyEmojiPicker
+                      theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
+                      onEmojiClick={(emoji: { emoji: string }) => {
+                        setContent((prev) => prev + emoji.emoji);
+                        inputRef.current?.focus();
+                      }}
+                      width={350}
+                      height={400}
+                    />
+                  </Suspense>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <button

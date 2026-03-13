@@ -127,9 +127,9 @@ export default function ServerSidebar() {
           to="/"
           onMouseEnter={() => setHovered('home')}
           onMouseLeave={() => setHovered(null)}
-          className={`size-12 rounded-2xl bg-primary flex items-center justify-center transition-all duration-200 no-underline`}
+          className={`size-12 flex items-center justify-center transition-all duration-200 no-underline`}
         >
-          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Home" className={`w-7 h-7 rounded${serverId && hovered !== 'home' ? ' light-adapt-icon' : ''}`} />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Home" className={`w-full h-full ${serverId && hovered !== 'home' ? ' light-adapt-icon' : ''}`} />
         </Link>
       </div>
       <div className="w-8 h-0.5 bg-divider rounded-full shrink-0" />
