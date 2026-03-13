@@ -31,7 +31,7 @@ function CallButton({ dmId, recipientName, recipientUserId, iconClassName }: { d
     <button
       onClick={() => startCall(dmId, recipientName, recipientUserId)}
       disabled={inCall}
-      className="p-1.5 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+      className="p-1.5 rounded hover:bg-hover text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
       title={inCall ? 'Already in a call' : 'Start voice call'}
       aria-label="Start voice call"
     >
@@ -326,7 +326,7 @@ export default function DmChat() {
   return (
     <>
       <div
-        className="flex-1 flex flex-col bg-bg-tertiary min-w-0 min-h-0 page-transition relative"
+        className="flex-1 flex flex-col bg-panel min-w-0 min-h-0 page-transition relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -334,18 +334,18 @@ export default function DmChat() {
       >
           {/* Full-window drop overlay */}
           {isDragging && (
-            <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-50 bg-accent/10 border-2 border-dashed border-accent rounded-lg flex items-center justify-center pointer-events-none">
               <div className="flex flex-col items-center gap-2">
-                <Upload className="w-10 h-10 text-primary" />
-                <span className="text-primary font-semibold text-lg">Drop files to upload</span>
+                <Upload className="w-10 h-10 text-accent" />
+                <span className="text-accent font-semibold text-lg">Drop files to upload</span>
               </div>
             </div>
           )}
           {/* Header */}
           <div className={`flex items-center shrink-0 ${
             isMobile
-              ? 'bg-bg-tertiary px-4 py-2 gap-3 border-b border-border-subtle'
-              : 'bg-bg-tertiary px-5 py-3 gap-3 border-b border-border-subtle'
+              ? 'bg-panel px-4 py-2 gap-3 border-b border-border-subtle'
+              : 'bg-panel px-5 py-3 gap-3 border-b border-border-subtle'
           }`}>
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary" aria-label="Back to conversations">
@@ -356,16 +356,16 @@ export default function DmChat() {
             {isGroup ? (
               /* Group DM header */
               <>
-                <div className="size-8 rounded-full bg-primary/30 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4 text-primary" />
+                <div className="size-8 rounded-full bg-accent/30 flex items-center justify-center shrink-0">
+                  <Users className="w-4 h-4 text-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-base font-semibold text-text-primary truncate block">{groupDisplayName}</span>
-                  <span className="text-xs text-text-muted">{dmChannel?.members.length} members</span>
+                  <span className="text-xs text-text-tertiary">{dmChannel?.members.length} members</span>
                 </div>
                 <button
                   onClick={() => setShowMembers(!showMembers)}
-                  className={`p-1.5 rounded hover:bg-bg-hover ${showMembers ? 'text-text-primary' : 'text-text-secondary'}`}
+                  className={`p-1.5 rounded hover:bg-hover ${showMembers ? 'text-text-primary' : 'text-text-secondary'}`}
                   title="Toggle members"
                   aria-label="Toggle members"
                 >
@@ -375,7 +375,7 @@ export default function DmChat() {
             ) : (
               /* 1-on-1 DM header */
               <>
-                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.username} size={32} status={partnerStatus} userId={otherUser.id} />}
+                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.username} size="sm" status={partnerStatus} userId={otherUser.id} />}
                 <span className="text-base font-semibold text-text-primary">{otherUser?.username ?? 'Direct Message'}</span>
                 {e2eeAvailable && (
                   <span title="End-to-end encrypted"><Lock className="w-4 h-4 text-green-400" /></span>
@@ -424,7 +424,7 @@ export default function DmChat() {
             {isGroup && showMembers && (
               <div className={`${
                 isMobile
-                  ? 'fixed inset-y-0 right-0 w-[80vw] max-w-75 z-40 shadow-xl animate-slide-in-right'
+                  ? 'fixed inset-y-0 right-0 w-4/5 max-w-75 z-40 shadow-xl animate-slide-in-right'
                   : 'w-60 shrink-0 h-full overflow-hidden animate-fade-in'
               } bg-sidebar border border-divider flex flex-col`}>
                 <div className="p-3 border-b border-divider">
@@ -439,11 +439,11 @@ export default function DmChat() {
                     const status = statuses[memberId] ?? 'offline';
                     if (!user) return null;
                     return (
-                      <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-bg-hover">
+                      <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-hover">
                         <Avatar url={user.avatar_url} name={user.username} size={28} status={status} userId={memberId} />
                         <span className="text-text-secondary text-sm truncate">
                           {user.username}
-                          {memberId === currentUser?.id && <span className="text-text-muted text-xs ml-1">(you)</span>}
+                          {memberId === currentUser?.id && <span className="text-text-tertiary text-xs ml-1">(you)</span>}
                         </span>
                       </div>
                     );
@@ -456,27 +456,27 @@ export default function DmChat() {
                     value={addMemberSearch}
                     onChange={(e) => handleAddMemberSearch(e.target.value)}
                     placeholder="Add a member..."
-                    className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-muted outline-none mb-1"
+                    className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary outline-none mb-1"
                   />
                   {addMemberResults.slice(0, 5).map((u) => (
                     <button
                       key={u.id}
                       onClick={() => handleAddMember(u.id)}
                       disabled={addingMember}
-                      className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-50"
+                      className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-hover hover:text-text-primary disabled:opacity-50"
                     >
                       <Avatar url={u.avatar_url} name={u.username} size={20} userId={u.id} />
                       <span className="truncate">{u.username}</span>
                     </button>
                   ))}
-                  {actionError && <div className="text-xs text-error mt-1 px-1">{actionError}</div>}
+                  {actionError && <div className="text-xs text-danger mt-1 px-1">{actionError}</div>}
                 </div>
 
                 {/* Leave group */}
                 <div className="p-2 border-t border-divider">
                   <button
                     onClick={() => setShowLeaveConfirm(true)}
-                    className="w-full px-3 py-1.5 text-sm text-error hover:bg-error/10 rounded text-left"
+                    className="w-full px-3 py-1.5 text-sm text-danger hover:bg-danger/10 rounded text-left"
                   >
                     Leave Group
                   </button>

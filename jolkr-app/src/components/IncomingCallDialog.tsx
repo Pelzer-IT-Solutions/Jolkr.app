@@ -15,16 +15,16 @@ export default function IncomingCallDialog() {
   if (!incomingCall) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div ref={dialogRef} className="bg-sidebar rounded-2xl border border-divider shadow-popup p-6 w-80 flex flex-col items-center gap-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
+      <div ref={dialogRef} className="bg-sidebar rounded-3xl border border-divider shadow-popup p-6 w-80 flex flex-col items-center gap-4 animate-modal-scale">
         {/* Avatar placeholder */}
-        <div className="w-16 h-16 rounded-full bg-primary/30 flex items-center justify-center animate-pulse">
-          <User className="w-8 h-8 text-primary" />
+        <div className="w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center animate-pulse">
+          <User className="w-8 h-8 text-accent" />
         </div>
 
         <div className="text-center">
           <div className="text-text-primary font-semibold text-lg">{incomingCall.callerUsername}</div>
-          <div className="text-text-muted text-sm mt-1">is calling you...</div>
+          <div className="text-text-tertiary text-sm mt-1">is calling you...</div>
         </div>
 
         {/* Pulsing ring animation */}

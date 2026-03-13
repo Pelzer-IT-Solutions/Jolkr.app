@@ -38,7 +38,7 @@ function MemberItemInner({
     <button
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className={`w-full flex items-center gap-3 py-3 px-4 rounded-lg hover:bg-bg-hover cursor-pointer ${isOffline ? 'opacity-50' : ''}`}
+      className={`w-full flex items-center gap-3 py-3 px-4 rounded-lg hover:bg-hover cursor-pointer ${isOffline ? 'opacity-50' : ''}`}
     >
       <Avatar
         url={user?.avatar_url}
@@ -56,7 +56,7 @@ function MemberItemInner({
             {name}
           </div>
           {isOwner && (
-            <span className="px-1 py-0.5 text-2xs bg-accent-muted text-primary rounded font-bold uppercase shrink-0">
+            <span className="px-1 py-0.5 text-2xs bg-accent-muted text-accent rounded font-bold uppercase shrink-0">
               Owner
             </span>
           )}
@@ -77,7 +77,7 @@ function MemberItemInner({
           )}
         </div>
         {user?.status && (
-          <div className="text-xs text-text-muted truncate">{user.status}</div>
+          <div className="text-xs text-text-tertiary truncate">{user.status}</div>
         )}
       </div>
     </button>

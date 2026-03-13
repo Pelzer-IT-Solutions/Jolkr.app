@@ -62,7 +62,7 @@ export default function ServerSetup({ onComplete }: ServerSetupProps) {
           Choose which Jolkr server to connect to.
         </p>
 
-        {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+        {error && <div className="bg-danger/10 text-danger text-sm p-3 rounded mb-4">{error}</div>}
 
         <div className="space-y-2 mb-4">
           {PRESETS.map((preset) => (
@@ -70,8 +70,8 @@ export default function ServerSetup({ onComplete }: ServerSetupProps) {
               key={preset.url}
               className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                 !useCustom && selected === preset.url
-                  ? 'border-primary bg-primary/10'
-                  : 'border-divider hover:border-text-muted'
+                  ? 'border-accent bg-accent/10'
+                  : 'border-divider hover:border-text-tertiary'
               }`}
             >
               <input
@@ -83,11 +83,11 @@ export default function ServerSetup({ onComplete }: ServerSetupProps) {
                   setSelected(preset.url);
                   setError('');
                 }}
-                className="accent-primary"
+                className="accent-accent"
               />
               <div>
                 <div className="text-text-primary text-sm font-medium">{preset.label}</div>
-                <div className="text-text-muted text-xs">{preset.url}</div>
+                <div className="text-text-tertiary text-xs">{preset.url}</div>
               </div>
             </label>
           ))}
@@ -95,8 +95,8 @@ export default function ServerSetup({ onComplete }: ServerSetupProps) {
           <label
             className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
               useCustom
-                ? 'border-primary bg-primary/10'
-                : 'border-divider hover:border-text-muted'
+                ? 'border-accent bg-accent/10'
+                : 'border-divider hover:border-text-tertiary'
             }`}
           >
             <input
@@ -107,7 +107,7 @@ export default function ServerSetup({ onComplete }: ServerSetupProps) {
                 setUseCustom(true);
                 setError('');
               }}
-              className="accent-primary mt-1"
+              className="accent-accent mt-1"
             />
             <div className="flex-1">
               <div className="text-text-primary text-sm font-medium mb-1">Custom server</div>

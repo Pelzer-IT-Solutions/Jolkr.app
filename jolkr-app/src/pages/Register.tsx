@@ -42,12 +42,12 @@ export default function Register() {
         <h1 className="text-2xl font-bold text-text-primary text-center mb-1.5">Create an account</h1>
         <p className="text-text-secondary text-center mb-6 text-sm">Join Jolkr today</p>
 
-        {error && <div role="alert" className="bg-error/10 text-error text-sm p-3 rounded-lg border border-error/20 mb-4">{error}</div>}
+        {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="register-email" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Email <span className="text-error">*</span>
+            <label htmlFor="register-email" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Email <span className="text-danger">*</span>
             </label>
             <input
               id="register-email"
@@ -61,8 +61,8 @@ export default function Register() {
             />
           </div>
           <div>
-            <label htmlFor="register-username" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Username <span className="text-error">*</span>
+            <label htmlFor="register-username" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Username <span className="text-danger">*</span>
             </label>
             <input
               id="register-username"
@@ -74,8 +74,8 @@ export default function Register() {
             />
           </div>
           <div>
-            <label htmlFor="register-password" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Password <span className="text-error">*</span>
+            <label htmlFor="register-password" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Password <span className="text-danger">*</span>
             </label>
             <input
               id="register-password"
@@ -90,11 +90,11 @@ export default function Register() {
                 <div className="flex-1 flex gap-1">
                   {[1, 2, 3, 4].map((i) => {
                     const strength = (password.length >= 6 ? 1 : 0) + (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0);
-                    const color = strength >= i ? (strength <= 1 ? 'bg-error' : strength <= 2 ? 'bg-yellow-500' : strength <= 3 ? 'bg-primary' : 'bg-green-500') : 'bg-input';
+                    const color = strength >= i ? (strength <= 1 ? 'bg-danger' : strength <= 2 ? 'bg-yellow-500' : strength <= 3 ? 'bg-accent' : 'bg-green-500') : 'bg-input';
                     return <div key={i} className={`h-1 flex-1 rounded-full ${color}`} />;
                   })}
                 </div>
-                <span className="text-2xs text-text-muted">
+                <span className="text-2xs text-text-tertiary">
                   {password.length < 6 ? 'Too short' : (() => { const s = (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0); return s <= 0 ? 'Weak' : s <= 1 ? 'Fair' : s <= 2 ? 'Good' : 'Strong'; })()}
                 </span>
             </div>
@@ -108,9 +108,9 @@ export default function Register() {
           </button>
         </form>
 
-        <p className="text-sm text-text-muted mt-4">
+        <p className="text-sm text-text-tertiary mt-4">
           Already have an account?{' '}
-          <Link to="/login" className="text-primary hover:underline">Log In</Link>
+          <Link to="/login" className="text-accent hover:underline">Log In</Link>
         </p>
       </div>
     </div>

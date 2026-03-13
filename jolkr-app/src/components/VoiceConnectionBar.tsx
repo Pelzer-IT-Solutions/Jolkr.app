@@ -19,7 +19,7 @@ export default function VoiceConnectionBar() {
       {/* Status row */}
       <div className="flex items-center gap-2 mb-1.5">
         {error ? (
-          <div className="w-2 h-2 rounded-full bg-error shrink-0" />
+          <div className="w-2 h-2 rounded-full bg-danger shrink-0" />
         ) : connectionState === 'connected' ? (
           <div className="relative w-2 h-2 shrink-0">
             <div className="absolute inset-0 rounded-full bg-online animate-ping opacity-75" />
@@ -29,14 +29,14 @@ export default function VoiceConnectionBar() {
           <div className="w-2 h-2 rounded-full bg-idle shrink-0 animate-pulse" />
         )}
         {error ? (
-          <span className="text-sm text-error font-medium truncate">{error}</span>
+          <span className="text-sm text-danger font-medium truncate">{error}</span>
         ) : (
           <>
             <span className="text-sm text-online font-medium">
               {connectionState === 'connected' ? 'Voice Connected' : 'Connecting...'}
             </span>
             {channelName && (
-              <span className="text-xs text-text-muted truncate">/ {channelName}</span>
+              <span className="text-xs text-text-tertiary truncate">/ {channelName}</span>
             )}
           </>
         )}
@@ -47,8 +47,8 @@ export default function VoiceConnectionBar() {
         {/* Mic toggle */}
         <button
           onClick={toggleMute}
-          className={`p-1.5 rounded hover:bg-bg-hover transition-colors ${
-            isMuted ? 'text-error' : 'text-text-secondary hover:text-text-primary'
+          className={`p-1.5 rounded hover:bg-hover transition-colors ${
+            isMuted ? 'text-danger' : 'text-text-secondary hover:text-text-primary'
           }`}
           title={isMuted ? 'Unmute' : 'Mute'}
           aria-label={isMuted ? 'Unmute' : 'Mute'}
@@ -63,8 +63,8 @@ export default function VoiceConnectionBar() {
         {/* Headphone toggle */}
         <button
           onClick={toggleDeafen}
-          className={`p-1.5 rounded hover:bg-bg-hover transition-colors ${
-            isDeafened ? 'text-error' : 'text-text-secondary hover:text-text-primary'
+          className={`p-1.5 rounded hover:bg-hover transition-colors ${
+            isDeafened ? 'text-danger' : 'text-text-secondary hover:text-text-primary'
           }`}
           title={isDeafened ? 'Undeafen' : 'Deafen'}
           aria-label={isDeafened ? 'Undeafen' : 'Deafen'}
@@ -81,7 +81,7 @@ export default function VoiceConnectionBar() {
         {/* Disconnect / Dismiss */}
         <button
           onClick={connectionState === 'disconnected' ? clearError : leaveChannel}
-          className="p-1.5 rounded bg-error/20 text-error hover:bg-error/30 transition-colors"
+          className="p-1.5 rounded bg-danger/20 text-danger hover:bg-danger/30 transition-colors"
           title={connectionState === 'disconnected' ? 'Dismiss' : 'Disconnect'}
           aria-label={connectionState === 'disconnected' ? 'Dismiss' : 'Disconnect'}
         >

@@ -224,7 +224,7 @@ export default function MemberContextMenu({
           {canManageRoles && (
             <button
               role="menuitem"
-              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left"
+              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left"
               onClick={(e) => {
                 e.stopPropagation();
                 closeMenuAndOpen(setRolePopover);
@@ -236,7 +236,7 @@ export default function MemberContextMenu({
           {canManageNicknames && (
             <button
               role="menuitem"
-              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left"
+              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left"
               onClick={() => {
                 setNicknameValue(memberNickname ?? '');
                 closeMenuAndOpen(setShowNicknameDialog);
@@ -248,7 +248,7 @@ export default function MemberContextMenu({
           {canTimeout && (
             <button
               role="menuitem"
-              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left"
+              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left"
               onClick={() => closeMenuAndOpen(setShowTimeoutDialog)}
             >
               {isTimedOut ? 'Remove Timeout' : 'Timeout'}
@@ -266,7 +266,7 @@ export default function MemberContextMenu({
           {canBan && (
             <button
               role="menuitem"
-              className="w-full px-3 py-1.5 text-sm text-error hover:bg-error/10 text-left"
+              className="w-full px-3 py-1.5 text-sm text-danger hover:bg-danger/10 text-left"
               onClick={() => {
                 setBanReason('');
                 closeMenuAndOpen(setShowBanDialog);
@@ -295,7 +295,7 @@ export default function MemberContextMenu({
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { setShowBanDialog(false); onClose(); }}>
           <div ref={banDialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-100 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-text-primary text-lg font-semibold mb-1">Ban Member</h3>
-            <p className="text-text-muted text-sm mb-3">
+            <p className="text-text-tertiary text-sm mb-3">
               Ban <span className="text-text-primary font-medium">{username}</span> from the server? They will be removed and unable to rejoin.
             </p>
             <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
@@ -317,7 +317,7 @@ export default function MemberContextMenu({
               <button
                 onClick={handleBan}
                 disabled={actionLoading}
-                className="px-4 py-2 bg-error hover:bg-error/80 text-white text-sm rounded disabled:opacity-50"
+                className="px-4 py-2 bg-danger hover:bg-danger/80 text-white text-sm rounded disabled:opacity-50"
               >
                 {actionLoading ? 'Banning...' : 'Ban'}
               </button>
@@ -335,7 +335,7 @@ export default function MemberContextMenu({
             </h4>
             <div className="space-y-0.5 max-h-62 overflow-y-auto">
               {assignableRoles.length === 0 && (
-                <div className="text-text-muted text-xs py-2">No roles available</div>
+                <div className="text-text-tertiary text-xs py-2">No roles available</div>
               )}
               {assignableRoles.map((role) => {
                 const has = memberRoleIds.includes(role.id);
@@ -344,7 +344,7 @@ export default function MemberContextMenu({
                     key={role.id}
                     onClick={() => handleToggleRole(role.id, has)}
                     disabled={roleSaving}
-                    className="w-full px-2 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-bg-hover rounded disabled:opacity-50"
+                    className="w-full px-2 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-hover rounded disabled:opacity-50"
                   >
                     <input type="checkbox" checked={has} readOnly className="w-3.5 h-3.5 rounded accent-primary pointer-events-none" />
                     {role.color !== 0 && (
@@ -371,7 +371,7 @@ export default function MemberContextMenu({
             <h3 className="text-text-primary text-lg font-semibold mb-3">
               {isTimedOut ? 'Remove Timeout' : 'Timeout Member'}
             </h3>
-            <p className="text-text-muted text-sm mb-4">
+            <p className="text-text-tertiary text-sm mb-4">
               {isTimedOut
                 ? `${username} is timed out until ${new Date(memberTimeoutUntil!).toLocaleString()}`
                 : `Timeout ${username} — they won't be able to send messages or react.`
@@ -398,7 +398,7 @@ export default function MemberContextMenu({
                     key={seconds}
                     onClick={() => handleTimeout(seconds)}
                     disabled={actionLoading}
-                    className="w-full px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left rounded disabled:opacity-50"
+                    className="w-full px-3 py-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left rounded disabled:opacity-50"
                   >
                     {label}
                   </button>

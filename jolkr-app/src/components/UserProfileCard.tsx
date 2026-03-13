@@ -220,7 +220,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
       <>
         <div className="fixed inset-0 z-40" onClick={onClose} />
         <div ref={cardRef} className="fixed z-50 bg-surface border border-divider rounded-xl shadow-popup p-6 w-75">
-          <div className="text-text-muted text-sm text-center">
+          <div className="text-text-tertiary text-sm text-center">
             {fetchError ? 'Could not load user profile' : 'Loading...'}
           </div>
         </div>
@@ -239,7 +239,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
       <div ref={cardRef} className="fixed z-50 w-75" style={{ left: anchor.x, top: anchor.y }}>
         <div className="bg-surface border border-divider rounded-xl shadow-popup overflow-hidden">
           {/* Banner area */}
-          <div className="h-15 bg-primary/30" />
+          <div className="h-15 bg-accent/30" />
 
           {/* Avatar */}
           <div className="px-4 -mt-8">
@@ -258,10 +258,10 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
             {/* Status */}
             <div className="flex items-center gap-1.5 mt-1">
               <div className={`w-2 h-2 rounded-full ${statusColor(status)}`} />
-              <span className="text-text-muted text-xs">{statusLabel(status)}</span>
+              <span className="text-text-tertiary text-xs">{statusLabel(status)}</span>
             </div>
             {user.status && (
-              <div className="text-text-muted text-xs mt-0.5 italic">{user.status}</div>
+              <div className="text-text-tertiary text-xs mt-0.5 italic">{user.status}</div>
             )}
           </div>
 
@@ -272,13 +272,13 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
           <div className="px-4 py-3">
             {user.bio && (
               <div className="mb-3">
-                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">About Me</div>
+                <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-1">About Me</div>
                 <div className="text-text-secondary text-sm whitespace-pre-wrap break-words max-h-50 overflow-y-auto">{user.bio}</div>
               </div>
             )}
             {joinedDate && (
               <div>
-                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">Member Since</div>
+                <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-1">Member Since</div>
                 <div className="text-text-secondary text-sm">{joinedDate}</div>
               </div>
             )}
@@ -286,7 +286,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
               <div className="mt-3">
                 <button
                   onClick={() => setShowSafetyNumber((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-text-muted uppercase tracking-wider hover:text-text-secondary"
+                  className="flex items-center gap-1.5 text-xs font-bold text-text-tertiary uppercase tracking-wider hover:text-text-secondary"
                 >
                   <ShieldCheck className="w-3 h-3" />
                   Safety Number
@@ -305,7 +305,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
           {!isOwnProfile && (
             <div className="px-4 pb-4 flex flex-col gap-2">
               {actionError && (
-                <div className="text-xs text-error bg-error/10 px-2 py-1 rounded">{actionError}</div>
+                <div className="text-xs text-danger bg-danger/10 px-2 py-1 rounded">{actionError}</div>
               )}
               <button
                 onClick={handleSendMessage}
@@ -327,14 +327,14 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
               )}
 
               {friendStatus === 'pending' && (
-                <div className="text-center text-text-muted text-xs py-1">Friend request pending</div>
+                <div className="text-center text-text-tertiary text-xs py-1">Friend request pending</div>
               )}
 
               {friendStatus === 'accepted' && (
                 <button
                   onClick={handleRemoveFriend}
                   disabled={actionLoading}
-                  className="w-full px-3 py-2 text-error hover:bg-error/10 text-sm rounded flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full px-3 py-2 text-danger hover:bg-danger/10 text-sm rounded flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <UserMinus className="w-4 h-4" />
                   Remove Friend
@@ -342,18 +342,18 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
               )}
 
               {friendStatus === 'loading' && (
-                <div className="text-center text-text-muted text-xs py-1">...</div>
+                <div className="text-center text-text-tertiary text-xs py-1">...</div>
               )}
 
               {friendStatus === 'blocked' && (
-                <div className="text-center text-error text-xs py-1">User Blocked</div>
+                <div className="text-center text-danger text-xs py-1">User Blocked</div>
               )}
 
               {friendStatus !== 'blocked' && friendStatus !== 'loading' && (
                 <button
                   onClick={() => setShowBlockConfirm(true)}
                   disabled={actionLoading}
-                  className="w-full px-3 py-2 text-error/70 hover:bg-error/10 hover:text-error text-sm rounded flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full px-3 py-2 text-danger/70 hover:bg-danger/10 hover:text-danger text-sm rounded flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Ban className="w-4 h-4" />
                   Block
@@ -366,7 +366,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
             <div className="px-4 pb-4">
               <button
                 onClick={() => { onClose(); navigate('/settings'); }}
-                className="w-full px-3 py-2 bg-surface hover:bg-bg-hover text-text-primary text-sm rounded flex items-center justify-center gap-2"
+                className="w-full px-3 py-2 bg-surface hover:bg-hover text-text-primary text-sm rounded flex items-center justify-center gap-2"
               >
                 <Pencil className="w-4 h-4" />
                 Edit Profile

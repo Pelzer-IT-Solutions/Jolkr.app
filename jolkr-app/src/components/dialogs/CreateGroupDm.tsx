@@ -94,12 +94,12 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-sidebar rounded-3xl border border-divider shadow-popup p-8 w-120 max-w-[90vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-1">Create Group DM</h3>
-        <p className="text-text-muted text-xs mb-4">{totalMembers}/{MAX_MEMBERS} members</p>
+        <p className="text-text-tertiary text-xs mb-4">{totalMembers}/{MAX_MEMBERS} members</p>
 
-        {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+        {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
         {/* Group name */}
-        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
           Group Name (Optional)
         </label>
         <input
@@ -116,12 +116,12 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
             {selectedUsers.map((u) => (
               <span
                 key={u.id}
-                className="inline-flex items-center gap-1 bg-accent-muted text-primary rounded-full px-2.5 py-1 text-xs"
+                className="inline-flex items-center gap-1 bg-accent-muted text-accent rounded-full px-2.5 py-1 text-xs"
               >
                 {u.username}
                 <button
                   onClick={() => removeUser(u.id)}
-                  className="hover:text-error ml-0.5"
+                  className="hover:text-danger ml-0.5"
                 >
                   <X className="size-3" />
                 </button>
@@ -131,7 +131,7 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
         )}
 
         {/* User search */}
-        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
           Add Members
         </label>
         <input
@@ -145,7 +145,7 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
         {/* Search results */}
         <div className="flex-1 overflow-y-auto mt-2 max-h-50">
           {searching && (
-            <div className="text-text-muted text-xs px-2 py-1">Searching...</div>
+            <div className="text-text-tertiary text-xs px-2 py-1">Searching...</div>
           )}
           {searchResults
             .filter((u) => !selectedUsers.find((s) => s.id === u.id))
@@ -154,7 +154,7 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
               <button
                 key={u.id}
                 onClick={() => addUser(u)}
-                className="w-full px-2 py-1.5 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                className="w-full px-2 py-1.5 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary"
               >
                 <Avatar url={u.avatar_url} name={u.username} size={28} userId={u.id} />
                 <span className="truncate">{u.username}</span>

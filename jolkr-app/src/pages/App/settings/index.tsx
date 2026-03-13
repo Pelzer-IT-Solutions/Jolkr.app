@@ -10,7 +10,7 @@ const AppearanceTab = lazy(() => import('./AppearanceTab'));
 const NotificationsTab = lazy(() => import('./NotificationsTab'));
 const DevicesTab = lazy(() => import('./DevicesTab'));
 
-const TAB_FALLBACK = <div className="p-8 text-center text-text-muted">Loading...</div>;
+const TAB_FALLBACK = <div className="p-8 text-center text-text-tertiary">Loading...</div>;
 
 type Tab = 'account' | 'appearance' | 'notifications' | 'devices';
 
@@ -86,14 +86,14 @@ export default function Settings() {
           {/* Mobile: tab content view */}
           {mobileOpenTab ? (
             <>
-              {/* Header with back + tab name */}
-              <div className="px-4 pt-2 pb-4 shrink-0">
+              {/* Header with back + tab name — single row per Pencil */}
+              <div className="px-4 pt-2 pb-4 flex items-center gap-2 shrink-0">
                 <button
                   onClick={handleMobileBack}
-                  className="flex items-center gap-1 text-primary text-sm mb-2"
+                  className="text-text-secondary hover:text-text-primary shrink-0"
+                  aria-label="Back to Settings"
                 >
-                  <ChevronLeft className="size-5" />
-                  Settings
+                  <ChevronLeft className="size-5.5" />
                 </button>
                 <h1 className="text-2xl font-bold text-text-primary">
                   {MOBILE_TAB_LABELS[mobileOpenTab]}
@@ -116,13 +116,6 @@ export default function Settings() {
             <>
               {/* Header */}
               <div className="px-4 pt-2 pb-4 shrink-0">
-                <button
-                  onClick={handleMobileBack}
-                  className="flex items-center gap-1 text-primary text-sm mb-2"
-                >
-                  <ChevronLeft className="size-5" />
-                  Back
-                </button>
                 <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
               </div>
 
@@ -131,7 +124,7 @@ export default function Settings() {
                 {/* Profile card */}
                 <button
                   onClick={() => handleMobileTabOpen('account')}
-                  className="rounded-xl bg-bg-tertiary gap-3.5 p-4 flex items-center text-left"
+                  className="rounded-xl bg-panel gap-3.5 p-4 flex items-center text-left"
                 >
                   <Avatar
                     url={user?.avatar_url}
@@ -143,15 +136,15 @@ export default function Settings() {
                     <span className="text-lg font-bold text-text-primary truncate">
                       {user?.display_name || user?.username || 'Unknown'}
                     </span>
-                    <span className="text-sm text-primary truncate">
+                    <span className="text-sm text-accent truncate">
                       @{user?.username || 'unknown'}
                     </span>
                   </div>
-                  <ChevronRight className="size-5 text-text-muted shrink-0" />
+                  <ChevronRight className="size-5 text-text-tertiary shrink-0" />
                 </button>
 
                 {/* Settings groups */}
-                <div className="rounded-xl bg-bg-tertiary overflow-hidden">
+                <div className="rounded-xl bg-panel overflow-hidden">
                   {TABS.map((tab, i) => {
                     const Icon = TAB_ICONS[tab];
                     return (
@@ -166,25 +159,25 @@ export default function Settings() {
                         <span className="text-base font-medium text-text-primary flex-1">
                           {MOBILE_TAB_LABELS[tab]}
                         </span>
-                        <ChevronRight className="size-4.5 text-text-muted shrink-0" />
+                        <ChevronRight className="size-4.5 text-text-tertiary shrink-0" />
                       </button>
                     );
                   })}
                 </div>
 
                 {/* Logout group */}
-                <div className="rounded-xl bg-bg-tertiary overflow-hidden">
+                <div className="rounded-xl bg-panel overflow-hidden">
                   <button
                     onClick={handleLogout}
                     className="w-full px-4 py-3.5 flex items-center gap-3 text-left"
                   >
-                    <LogOut className="size-5 text-error shrink-0" />
-                    <span className="text-base font-medium text-error flex-1">Log Out</span>
+                    <LogOut className="size-5 text-danger shrink-0" />
+                    <span className="text-base font-medium text-danger flex-1">Log Out</span>
                   </button>
                 </div>
 
                 {/* Version */}
-                <div className="text-xs text-text-muted text-center pt-2">
+                <div className="text-xs text-text-tertiary text-center pt-2">
                   Jolkr v{__APP_VERSION__}
                 </div>
               </div>
@@ -209,8 +202,8 @@ export default function Settings() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`w-full text-left rounded-lg px-4 py-2.5 gap-2 flex items-center text-sm ${activeTab === tab
-                  ? 'bg-accent-muted text-primary font-semibold'
-                  : 'text-text-secondary font-medium hover:bg-bg-hover'
+                  ? 'bg-accent-muted text-accent font-semibold'
+                  : 'text-text-secondary font-medium hover:bg-hover'
                   }`}
               >
                 {TAB_LABELS[tab]}
@@ -230,7 +223,7 @@ export default function Settings() {
       </div>
 
       {/* Settings content — desktop */}
-      <div className="flex-1 bg-bg-tertiary flex flex-col overflow-y-auto">
+      <div className="flex-1 bg-panel flex flex-col overflow-y-auto">
         <div className="flex-1 flex flex-col gap-6 px-12 py-8">
           <Suspense fallback={TAB_FALLBACK}>
             {activeTab === 'account' && (
@@ -244,13 +237,13 @@ export default function Settings() {
           </Suspense>
 
           {/* Build version + health link */}
-          <div className="mt-auto pt-8 pb-4 flex items-center justify-between text-text-muted text-xs">
+          <div className="mt-auto pt-8 pb-4 flex items-center justify-between text-text-tertiary text-xs">
             <span>Jolkr v{__APP_VERSION__}</span>
             <a
               href="/health"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:text-primary-hover transition-colors"
+              className="text-accent hover:text-accent-hover transition-colors"
             >
               Service Status
             </a>

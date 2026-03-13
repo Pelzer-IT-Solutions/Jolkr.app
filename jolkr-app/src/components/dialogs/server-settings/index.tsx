@@ -20,7 +20,7 @@ interface Props {
 
 type Tab = 'general' | 'roles' | 'members' | 'bans' | 'emojis' | 'audit-log';
 
-const TabFallback = <div className="p-8 text-center text-text-muted">Loading...</div>;
+const TabFallback = <div className="p-8 text-center text-text-tertiary">Loading...</div>;
 
 export default function ServerSettingsDialog({ server, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('general');
@@ -67,17 +67,17 @@ export default function ServerSettingsDialog({ server, onClose }: Props) {
                 className={`capitalize transition-colors whitespace-nowrap shrink-0 ${
                   tab === t
                     ? 'flex flex-col gap-1'
-                    : 'text-sm font-medium text-text-muted hover:text-text-primary'
+                    : 'text-sm font-medium text-text-tertiary hover:text-text-primary'
                 }`}
               >
                 <span className={tab === t ? 'text-sm font-semibold text-text-primary' : ''}>
                   {t === 'audit-log' ? 'Audit Log' : t}
                 </span>
-                {tab === t && <span className="h-0.5 bg-primary rounded-full" />}
+                {tab === t && <span className="h-0.5 bg-accent rounded-full" />}
               </button>
             ))}
           </div>
-          <button onClick={onClose} aria-label="Close" className="size-5 text-text-muted hover:text-text-primary shrink-0">
+          <button onClick={onClose} aria-label="Close" className="size-5 text-text-tertiary hover:text-text-primary shrink-0">
             <X className="size-5" />
           </button>
         </div>

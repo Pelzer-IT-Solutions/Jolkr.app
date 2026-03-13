@@ -107,10 +107,10 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
 
   return (
     <div className="flex flex-col gap-5 min-h-full">
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg">{error}</div>}
+      {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg">{error}</div>}
 
       {/* Filter label */}
-      <div className="text-xs font-semibold text-text-muted tracking-wider uppercase shrink-0">Filter by action</div>
+      <div className="text-xs font-semibold text-text-tertiary tracking-wider uppercase shrink-0">Filter by action</div>
 
       {/* Filter dropdown */}
       <div className="relative shrink-0">
@@ -119,7 +119,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
           className="w-full rounded-lg bg-bg border border-divider px-3.5 py-2.5 flex justify-between items-center"
         >
           <span className="text-sm text-text-primary">{filterLabel}</span>
-          <ChevronDown className="size-4 text-text-muted" />
+          <ChevronDown className="size-4 text-text-tertiary" />
         </button>
         {filterOpen && (
           <>
@@ -127,7 +127,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
             <div className="absolute top-full left-0 right-0 mt-1 z-70 bg-surface border border-divider rounded-lg shadow-popup py-1 max-h-60 overflow-y-auto">
               <button
                 onClick={() => { setActionFilter(''); setFilterOpen(false); }}
-                className="w-full px-3.5 py-2 text-left text-sm flex items-center justify-between hover:bg-bg-hover"
+                className="w-full px-3.5 py-2 text-left text-sm flex items-center justify-between hover:bg-hover"
               >
                 <span className={actionFilter === '' ? 'text-text-primary' : 'text-text-secondary'}>All actions</span>
                 {actionFilter === '' && <Check className="size-4 text-online" />}
@@ -136,7 +136,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
                 <button
                   key={value}
                   onClick={() => { setActionFilter(value); setFilterOpen(false); }}
-                  className="w-full px-3.5 py-2 text-left text-sm flex items-center justify-between hover:bg-bg-hover"
+                  className="w-full px-3.5 py-2 text-left text-sm flex items-center justify-between hover:bg-hover"
                 >
                   <span className={actionFilter === value ? 'text-text-primary' : 'text-text-secondary'}>{label}</span>
                   {actionFilter === value && <Check className="size-4 text-online" />}
@@ -148,9 +148,9 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">Loading audit log...</div>
+        <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">Loading audit log...</div>
       ) : entries.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">No audit log entries found.</div>
+        <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">No audit log entries found.</div>
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0">
           {entries.map((entry) => {
@@ -175,9 +175,9 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
                     )}
                   </div>
                   {entry.reason && (
-                    <div className="text-text-muted text-xs mt-0.5">Reason: {entry.reason}</div>
+                    <div className="text-text-tertiary text-xs mt-0.5">Reason: {entry.reason}</div>
                   )}
-                  <div className="text-text-muted text-xs mt-0.5">
+                  <div className="text-text-tertiary text-xs mt-0.5">
                     {formatTimestamp(entry.created_at)}
                   </div>
                 </div>
@@ -191,7 +191,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="px-4 py-2 text-sm text-primary hover:text-primary-hover disabled:opacity-50"
+                className="px-4 py-2 text-sm text-accent hover:text-accent-hover disabled:opacity-50"
               >
                 {loadingMore ? 'Loading...' : 'Load More'}
               </button>

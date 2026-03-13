@@ -250,12 +250,12 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
           onClick={() => setShowDropdown(!showDropdown)}
           aria-expanded={showDropdown}
           aria-label={`${server.name} server menu`}
-          className="flex items-center justify-between gap-1 flex-1 min-w-0 hover:bg-bg-hover -mx-1 px-1 py-1 rounded-lg"
+          className="flex items-center justify-between gap-1 flex-1 min-w-0 hover:bg-hover -mx-1 px-1 py-1 rounded-lg"
         >
           <h2 className="text-text-primary font-semibold text-base truncate">
             {server.name}
           </h2>
-          <ChevronDown className={`size-4 text-text-muted shrink-0 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`size-4 text-text-tertiary shrink-0 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
         </button>
         {canManageChannels && (
           <button
@@ -277,7 +277,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
                 <button
                   role="menuitem"
                   onClick={() => { setShowDropdown(false); setShowSettings(true); }}
-                  className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
                 >
                   <Settings className="size-4" />
                   Server Settings
@@ -286,7 +286,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
               <button
                 role="menuitem"
                 onClick={() => { setShowDropdown(false); setShowInvite(true); }}
-                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
               >
                 <UserPlus className="size-4" />
                 Invite People
@@ -295,7 +295,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
                 <button
                   role="menuitem"
                   onClick={() => { setShowDropdown(false); setShowCreateCategory(true); }}
-                  className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
                 >
                   <FolderPlus className="size-4" />
                   Create Category
@@ -305,7 +305,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
                 <button
                   role="menuitem"
                   onClick={() => { setShowDropdown(false); setShowLeaveConfirm(true); }}
-                  className="w-full px-3 py-2 text-left text-sm text-error hover:bg-error/10 flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-danger hover:bg-danger/10 flex items-center gap-2"
                 >
                   <LogOut className="size-4" />
                   Leave Server
@@ -325,13 +325,13 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
 
         {error && (
           <div className="px-2 py-4 text-center">
-            <p className="text-error text-sm mb-2">{error}</p>
-            <button onClick={loadChannels} className="text-sm text-primary hover:text-primary-hover">Retry</button>
+            <p className="text-danger text-sm mb-2">{error}</p>
+            <button onClick={loadChannels} className="text-sm text-accent hover:text-accent-hover">Retry</button>
           </div>
         )}
 
         {!loading && !error && serverChannels.length === 0 && (
-          <div className="px-2 py-4 text-center text-text-muted text-sm">
+          <div className="px-2 py-4 text-center text-text-tertiary text-sm">
             No channels yet. Create one with the + button above.
           </div>
         )}
@@ -411,7 +411,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
             style={{ left: categoryMenu.x, top: categoryMenu.y }}
           >
             <button
-              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left"
+              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left"
               onClick={() => {
                 const cat = serverCategories.find((c) => c.id === categoryMenu.categoryId);
                 setEditCategoryName(cat?.name ?? '');
@@ -422,7 +422,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
               Edit Category
             </button>
             <button
-              className="w-full px-4 py-2 text-sm text-error hover:bg-error/10 text-left"
+              className="w-full px-4 py-2 text-sm text-danger hover:bg-danger/10 text-left"
               onClick={() => {
                 setDeleteCategoryId(categoryMenu.categoryId);
                 setCategoryMenu(null);
@@ -443,7 +443,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
             style={{ left: channelMenu.x, top: channelMenu.y }}
           >
             <button
-              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left flex items-center gap-2"
+              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left flex items-center gap-2"
               onClick={() => handleToggleMute(channelMenu.channelId)}
             >
               {mutedChannels.get(channelMenu.channelId) ? (
@@ -567,7 +567,7 @@ function CreateChannelDialog({ serverId, categories, defaultCategoryId, onClose 
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
       <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Channel</h3>
-        {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
+        {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded mb-3">{error}</div>}
 
         <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Channel Type</label>
         <div className="flex gap-2 mt-1 mb-4">
@@ -575,7 +575,7 @@ function CreateChannelDialog({ serverId, categories, defaultCategoryId, onClose 
             <button
               key={t}
               onClick={() => setKind(t)}
-              className={`px-4 py-2 rounded text-sm capitalize ${kind === t ? 'bg-primary text-white' : 'bg-surface text-text-secondary'
+              className={`px-4 py-2 rounded text-sm capitalize ${kind === t ? 'bg-accent text-white' : 'bg-surface text-text-secondary'
                 }`}
             >
               {t}
@@ -652,7 +652,7 @@ function CreateCategoryDialog({ serverId, onClose }: { serverId: string; onClose
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
       <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Category</h3>
-        {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
+        {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded mb-3">{error}</div>}
 
         <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Category Name</label>
         <input

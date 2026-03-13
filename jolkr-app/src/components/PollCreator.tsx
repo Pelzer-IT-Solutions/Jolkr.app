@@ -74,7 +74,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Poll</h3>
 
         {error && (
-          <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>
+          <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>
         )}
 
         <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
@@ -105,7 +105,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
               {options.length > 2 && (
                 <button
                   onClick={() => removeOption(opt.id)}
-                  className="text-text-muted hover:text-error text-sm px-1"
+                  className="text-text-tertiary hover:text-danger text-sm px-1"
                 >
                   x
                 </button>
@@ -115,7 +115,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
           {options.length < 10 && (
             <button
               onClick={addOption}
-              className="text-primary text-sm hover:underline"
+              className="text-accent text-sm hover:underline"
             >
               + Add option
             </button>

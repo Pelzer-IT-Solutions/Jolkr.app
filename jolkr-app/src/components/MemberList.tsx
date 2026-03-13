@@ -167,18 +167,18 @@ export default function MemberList({ serverId, className }: MemberListProps) {
   return (
     <div className={className ?? "w-65 h-full bg-sidebar border-l border-divider overflow-y-auto shrink-0"}>
       {loadError && (
-        <div className="mx-4 mt-2 text-text-muted text-xs text-center py-4">Failed to load members</div>
+        <div className="mx-4 mt-2 text-text-tertiary text-xs text-center py-4">Failed to load members</div>
       )}
       {actionError && (
-        <div className="mx-4 mt-2 bg-error/10 text-error text-xs p-2 rounded">
+        <div className="mx-4 mt-2 bg-danger/10 text-danger text-xs p-2 rounded">
           {actionError}
-          <button onClick={() => setActionError('')} className="ml-2 text-error/70 hover:text-error">×</button>
+          <button onClick={() => setActionError('')} className="ml-2 text-danger/70 hover:text-danger">×</button>
         </div>
       )}
 
       {online.length > 0 && (
         <div className="px-4 pt-4">
-          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+          <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
             Online — {online.length}
           </div>
           {online.map((m) => renderMember(m))}
@@ -187,7 +187,7 @@ export default function MemberList({ serverId, className }: MemberListProps) {
 
       {offline.length > 0 && (
         <div className="px-4 pt-4">
-          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+          <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
             Offline — {offline.length}
           </div>
           {offline.map((m) => renderMember(m, true))}

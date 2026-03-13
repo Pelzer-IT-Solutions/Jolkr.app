@@ -171,7 +171,7 @@ function VoiceParticipantItem({
       </div>
       <span className="text-xs text-text-secondary truncate">{user?.username ?? '...'}</span>
       {participant.isMuted && (
-        <MicOff className="size-3 text-error shrink-0" />
+        <MicOff className="size-3 text-danger shrink-0" />
       )}
     </div>
   );
@@ -233,7 +233,7 @@ const CategoryGroup = memo(function CategoryGroup({
         onContextMenu={(e) => onCategoryContextMenu(category.id, e)}
         aria-expanded={!collapsed}
         aria-label={`${category.name} category`}
-        className="w-full px-4 pt-3 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-0.5 hover:text-text-secondary group"
+        className="w-full px-4 pt-3 pb-1 text-xs font-semibold text-text-tertiary uppercase tracking-wider flex items-center gap-0.5 hover:text-text-secondary group"
       >
         <ChevronDown className={`size-3 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
         <span className="truncate flex-1 text-left">{category.name}</span>
@@ -243,7 +243,7 @@ const CategoryGroup = memo(function CategoryGroup({
             tabIndex={0}
             onClick={(e) => { e.stopPropagation(); onCreateInCategory(category.id); }}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); onCreateInCategory(category.id); } }}
-            className="opacity-0 group-hover:opacity-100 focus:opacity-100 focus-within:opacity-100 text-text-muted hover:text-text-primary"
+            className="opacity-0 group-hover:opacity-100 focus:opacity-100 focus-within:opacity-100 text-text-tertiary hover:text-text-primary"
             title="Create Channel"
             aria-label={`Create channel in ${category.name}`}
           >

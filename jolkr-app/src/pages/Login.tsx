@@ -56,12 +56,12 @@ export default function Login() {
         <h1 className="text-2xl font-bold text-text-primary text-center mb-1.5">Welcome back!</h1>
         <p className="text-text-secondary text-center mb-6 text-sm">We're so excited to see you again!</p>
 
-        {error && <div role="alert" className="bg-error/10 text-error text-sm p-3 rounded-lg border border-error/20 mb-4">{error}</div>}
+        {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="login-email" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Email <span className="text-error">*</span>
+            <label htmlFor="login-email" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Email <span className="text-danger">*</span>
             </label>
             <input
               id="login-email"
@@ -75,8 +75,8 @@ export default function Login() {
             />
           </div>
           <div>
-            <label htmlFor="login-password" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Password <span className="text-error">*</span>
+            <label htmlFor="login-password" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Password <span className="text-danger">*</span>
             </label>
             <input
               id="login-password"
@@ -86,7 +86,7 @@ export default function Login() {
               required
               className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
-            <Link to="/forgot-password" className="text-primary hover:underline text-xs mt-1 inline-block">
+            <Link to="/forgot-password" className="text-accent hover:underline text-xs mt-1 inline-block">
               Forgot your password?
             </Link>
           </div>
@@ -99,9 +99,9 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-sm text-text-muted mt-4">
+        <p className="text-sm text-text-tertiary mt-4">
           Need an account?{' '}
-          <Link to="/register" className="text-primary hover:underline">Register</Link>
+          <Link to="/register" className="text-accent hover:underline">Register</Link>
         </p>
       </div>
     </div>

@@ -32,7 +32,7 @@ function ThreadListPanelInner({ channelId, onClose, onOpenThread }: ThreadListPa
         <div className="px-5 py-3 flex items-center justify-between border-b border-divider shrink-0">
           <h3 className="text-text-primary font-semibold text-sm">Threads</h3>
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 text-xs text-text-muted cursor-pointer">
+            <label className="flex items-center gap-1.5 text-xs text-text-tertiary cursor-pointer">
               <input
                 type="checkbox"
                 checked={showArchived}
@@ -41,7 +41,7 @@ function ThreadListPanelInner({ channelId, onClose, onOpenThread }: ThreadListPa
               />
               Archived
             </label>
-            <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close threads">
+            <button onClick={onClose} className="text-text-tertiary hover:text-text-primary" aria-label="Close threads">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -49,13 +49,13 @@ function ThreadListPanelInner({ channelId, onClose, onOpenThread }: ThreadListPa
 
         <div className="flex-1 overflow-y-auto p-3 min-h-0">
           {loading && (
-            <div className="text-center text-text-muted text-sm py-8">Loading...</div>
+            <div className="text-center text-text-tertiary text-sm py-8">Loading...</div>
           )}
           {!loading && error && (
-            <div className="text-center text-error/70 text-sm py-8">Failed to load threads</div>
+            <div className="text-center text-danger/70 text-sm py-8">Failed to load threads</div>
           )}
           {!loading && !error && threads.length === 0 && (
-            <div className="text-center text-text-muted text-sm py-8">No threads yet.</div>
+            <div className="text-center text-text-tertiary text-sm py-8">No threads yet.</div>
           )}
           {threads.map((thread) => (
             <button
@@ -64,10 +64,10 @@ function ThreadListPanelInner({ channelId, onClose, onOpenThread }: ThreadListPa
                 onOpenThread(thread.id);
                 onClose();
               }}
-              className="w-full text-left mb-2 p-3 bg-bg-tertiary rounded-xl border border-divider hover:border-primary/50 transition-colors"
+              className="w-full text-left mb-2 p-3 bg-panel rounded-xl border border-divider hover:border-accent/50 transition-colors"
             >
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-text-muted shrink-0" />
+                <MessageSquare className="w-4 h-4 text-text-tertiary shrink-0" />
                 <span className="text-sm font-medium text-text-primary truncate flex-1">
                   {thread.name ?? 'Thread'}
                 </span>
@@ -77,7 +77,7 @@ function ThreadListPanelInner({ channelId, onClose, onOpenThread }: ThreadListPa
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
+              <div className="flex items-center gap-3 mt-1.5 text-xs text-text-tertiary">
                 <span>{thread.message_count} {thread.message_count === 1 ? 'reply' : 'replies'}</span>
                 <span>Last activity {formatRelativeTime(thread.updated_at)}</span>
               </div>

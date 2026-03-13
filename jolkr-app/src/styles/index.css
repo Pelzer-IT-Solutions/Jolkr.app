@@ -1,91 +1,65 @@
 @import "tailwindcss";
 
 @theme {
-  /* Dark mode — Blue-gray theme (Pencil design) */
-  --color-bg: #0D1117;
-  --color-surface: #212B3B;
-  --color-sidebar: #151B23;
-  --color-serverbar: #0D1117;
-  --color-input: #0D1117;
-  --color-divider: #30363D;
-  --color-text-primary: #F0F6FC;
-  --color-text-secondary: #8B949E;
-  --color-text-muted: #6E7681;
-  --color-primary: #2DD4BF;
-  --color-primary-hover: #5EEAD4;
-  --color-online: #3FB950;
-  --color-idle: #D29922;
-  --color-dnd: #F85149;
-  --color-error: #F85149;
-  --color-success: #3FB950;
-  --color-focus-ring: #2DD4BF40;
-  --color-bg-hover: #1E2A3A;
-  --color-bg-active: #253347;
-  --color-bg-elevated: #283448;
-  --color-bg-tertiary: #1C2333;
-  --color-border-subtle: #21262D;
-  --color-accent-muted: #2DD4BF20;
-  --color-accent-subtle: #2DD4BF10;
-  --color-danger-muted: #F8514920;
-  --color-offline: #6E7681;
-  --color-warning: #D29922;
+  /* ─── Surfaces ─── */
+  --color-bg: #0D1117;             /* bg-bg — main background */
+  --color-sidebar: #151B23;        /* bg-sidebar — sidebar, secondary panels */
+  --color-panel: #1C2333;          /* bg-panel — tertiary areas (channels, settings content) */
+  --color-surface: #212B3B;        /* bg-surface — cards, elevated surfaces */
+  --color-input: #0D1117;          /* bg-input — form input backgrounds */
+  --color-hover: #1E2A3A;          /* bg-hover — hover state backgrounds */
+  --color-active: #253347;         /* bg-active — active/pressed backgrounds */
+  --color-elevated: #283448;       /* bg-elevated — popups, tooltips */
+  --color-overlay: #00000080;      /* bg-overlay — modal/dialog backdrop */
 
-  /* Radius overrides (Pencil design spec) */
-  --radius-lg: 0.625rem;   /* 10px — buttons, inputs, items */
-  --radius-xl: 0.875rem;   /* 14px — cards */
-  --radius-3xl: 1.25rem;   /* 20px — modals */
+  /* ─── Accent ─── */
+  --color-accent: #2DD4BF;         /* bg-accent, text-accent — primary brand teal */
+  --color-accent-hover: #5EEAD4;   /* bg-accent-hover — accent hover state */
+  --color-accent-muted: #2DD4BF20; /* bg-accent-muted — subtle accent bg */
+  --color-accent-subtle: #2DD4BF10;/* bg-accent-subtle — very faint accent bg */
 
-  /* Extra font size for mobile tab labels */
+  /* ─── Text ─── */
+  --color-text-primary: #F0F6FC;   /* text-text-primary — main text */
+  --color-text-secondary: #8B949E; /* text-text-secondary — dimmed text */
+  --color-text-tertiary: #6E7681;  /* text-text-tertiary — faint/muted text */
+
+  /* ─── Semantic ─── */
+  --color-danger: #F85149;         /* bg-danger, text-danger — errors, destructive */
+  --color-danger-muted: #F8514920; /* bg-danger-muted — subtle danger bg */
+  --color-success: #3FB950;        /* text-success — positive feedback */
+  --color-warning: #D29922;        /* text-warning — caution */
+
+  /* ─── Status ─── */
+  --color-online: #3FB950;         /* bg-online — user online */
+  --color-idle: #D29922;           /* bg-idle — user idle */
+  --color-dnd: #F85149;            /* bg-dnd — do not disturb */
+  --color-offline: #6E7681;        /* bg-offline — user offline */
+
+  /* ─── Borders ─── */
+  --color-divider: #30363D;        /* border-divider — primary borders */
+  --color-border-subtle: #21262D;  /* border-border-subtle — subtle separators */
+  --color-border-accent: #2DD4BF40;/* border-border-accent — accent ring/focus */
+
+  /* ─── Radius (Pencil design spec) ─── */
+  --radius-lg: 0.625rem;           /* 10px — buttons, inputs, items */
+  --radius-xl: 0.875rem;           /* 14px — cards */
+  --radius-3xl: 1.25rem;           /* 20px — modals */
+
+  /* ─── Extra font size ─── */
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 1.5;
-}
-
-/* Light mode overrides */
-html[data-theme="light"] {
-  --color-bg: #F6F8FA;
-  --color-surface: #FFFFFF;
-  --color-sidebar: #F0F2F5;
-  --color-serverbar: #E8EBF0;
-  --color-input: #F6F8FA;
-  --color-divider: #D0D7DE;
-  --color-text-primary: #1F2328;
-  --color-text-secondary: #656D76;
-  --color-text-muted: #8C959F;
-  --color-primary: #0D9488;
-  --color-primary-hover: #0F766E;
-  --color-online: #1A7F37;
-  --color-idle: #9A6700;
-  --color-dnd: #CF222E;
-  --color-error: #CF222E;
-  --color-success: #1A7F37;
-  --color-focus-ring: rgba(13, 148, 136, 0.3);
-  --color-bg-hover: #E8EBF0;
-  --color-bg-active: #D8DEE4;
-  --color-bg-elevated: #FFFFFF;
-  --color-bg-tertiary: #F0F2F5;
-  --color-border-subtle: #E1E4E8;
-  --color-accent-muted: #0D948820;
-  --color-accent-subtle: #0D948810;
-  --color-danger-muted: #CF222E20;
-  --color-offline: #8C959F;
-  --color-warning: #9A6700;
-}
-
-/* Light mode: darken white icons/spinners on light backgrounds */
-html[data-theme="light"] .light-adapt-icon {
-  filter: brightness(0.2);
 }
 
 /* ─── Tailwind @utility blocks ─── */
 
 @utility btn-primary {
-  background-color: var(--color-primary);
+  background-color: var(--color-accent);
   color: #0D1117;
   font-weight: 600;
   border-radius: var(--radius-lg);
   padding: 0.625rem 1.25rem;
   transition: all 0.15s ease;
-  &:hover { background-color: var(--color-primary-hover); }
+  &:hover { background-color: var(--color-accent-hover); }
   &:active { transform: scale(0.97); }
   &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 }
@@ -98,11 +72,11 @@ html[data-theme="light"] .light-adapt-icon {
   padding: 0.625rem 1.25rem;
   border: 1px solid var(--color-divider);
   transition: all 0.15s ease;
-  &:hover { background-color: var(--color-bg-hover); }
+  &:hover { background-color: var(--color-hover); }
 }
 
 @utility btn-danger {
-  background-color: var(--color-error);
+  background-color: var(--color-danger);
   color: #FFFFFF;
   font-weight: 600;
   border-radius: var(--radius-lg);
@@ -120,14 +94,14 @@ html[data-theme="light"] .light-adapt-icon {
   padding: 0.625rem 1.25rem;
   border: 1px solid var(--color-divider);
   transition: all 0.15s ease;
-  &:hover { background-color: var(--color-bg-hover); }
+  &:hover { background-color: var(--color-hover); }
 }
 
 @utility skeleton {
-  background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-active) 50%, var(--color-bg-tertiary) 75%);
+  background: linear-gradient(90deg, var(--color-panel) 25%, var(--color-active) 50%, var(--color-panel) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 @utility shadow-elevated {
@@ -192,13 +166,11 @@ a, button, [role="button"], [role="link"] {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-text-muted);
+  background: var(--color-text-tertiary);
   border-radius: 6px;
   opacity: 0.5;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-secondary); }
-html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #C0C8D0; }
-html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #8C959F; }
 
 /* ─── Input resets ─── */
 
@@ -212,6 +184,7 @@ select {
   background-position: right 1rem top 50%;
   background-size: 0.65rem auto;
 }
+
 /* ─── Global cursor + interaction ─── */
 
 button, [role="button"] { cursor: pointer; }
@@ -228,7 +201,6 @@ button:disabled, [role="button"][aria-disabled="true"] { cursor: not-allowed; }
   outline: none;
 }
 
-/* Smooth hover transitions (only on devices with real hover support) */
 @media (hover: hover) {
   button, [role="button"], a {
     transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
@@ -313,20 +285,6 @@ button:disabled, [role="button"][aria-disabled="true"] { cursor: not-allowed; }
   }
 }
 
-/* ─── Mobile server / channel list overrides ─── */
-
-/* Hide ChannelList built-in server header when mobile-channel-list wrapper is used */
-.mobile-channel-list > div > div:first-child {
-  display: none;
-}
-
-/* Tighten channel list gap and padding on mobile */
-.mobile-channel-list > div > div:nth-child(2) {
-  padding-left: 0.5rem;   /* px-2 */
-  padding-right: 0.5rem;
-  padding-top: 0.75rem;   /* pt-3 */
-}
-
 /* ─── Misc overrides ─── */
 
 pre code.hljs { background: transparent; padding: 0; }
@@ -393,23 +351,4 @@ img[loading="lazy"] { transition: opacity 0.2s ease; }
   --epr-dark-emoji-variation-picker-bg-color: #0D1117;
   --epr-dark-emoji-variation-indicator-color: #1C2333;
   --epr-dark-skin-tone-outer-border-color: #30363D;
-}
-
-html[data-theme="light"] .EmojiPickerReact {
-  --epr-bg-color: #FFFFFF;
-  --epr-search-input-bg-color: #F6F8FA;
-  --epr-search-input-bg-color-active: #E8EBF0;
-  --epr-hover-bg-color: #F0F2F5;
-  --epr-hover-bg-color-reduced-opacity: #F0F2F580;
-  --epr-focus-bg-color: #E8EBF0;
-  --epr-category-label-bg-color: #FFFFFFe6;
-  --epr-picker-border-color: #D0D7DE;
-  --epr-highlight-color: #1F2328;
-  --epr-text-color: #656D76;
-  --epr-category-icon-active-color: #0D9488;
-  --epr-reactions-bg-color: #FFFFFF90;
-  --epr-skin-tone-picker-menu-color: #FFFFFF95;
-  --epr-emoji-variation-picker-bg-color: #F6F8FA;
-  --epr-emoji-variation-indicator-color: #D0D7DE;
-  --epr-skin-tone-outer-border-color: #D0D7DE;
 }

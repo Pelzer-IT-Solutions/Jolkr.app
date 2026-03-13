@@ -41,7 +41,7 @@ export default function RolesTab({ server }: RolesTabProps) {
 
   return (
     <div className="flex flex-1 min-h-0 h-full">
-      {error && <div className="absolute top-0 left-0 right-0 bg-error/10 text-error text-sm p-2 rounded-lg">{error}</div>}
+      {error && <div className="absolute top-0 left-0 right-0 bg-danger/10 text-danger text-sm p-2 rounded-lg">{error}</div>}
 
       {/* Roles sidebar */}
       <div className="w-40 shrink-0 border-r border-divider px-3 py-4 flex flex-col gap-1">
@@ -52,8 +52,8 @@ export default function RolesTab({ server }: RolesTabProps) {
               onClick={() => setSelectedRoleId(role.id)}
               className={`w-full rounded-md px-2.5 py-2 text-left text-sm flex items-center gap-2 ${
                 selectedRoleId === role.id
-                  ? 'bg-bg-active text-text-primary'
-                  : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                  ? 'bg-active text-text-primary'
+                  : 'text-text-secondary hover:bg-hover hover:text-text-primary'
               }`}
             >
               {role.color !== 0 && (
@@ -68,7 +68,7 @@ export default function RolesTab({ server }: RolesTabProps) {
         </div>
         <button
           onClick={() => setShowCreateRole(true)}
-          className="w-full mt-2 px-2.5 py-2 text-sm font-medium text-primary hover:text-primary-hover text-left flex items-center gap-1.5"
+          className="w-full mt-2 px-2.5 py-2 text-sm font-medium text-accent hover:text-accent-hover text-left flex items-center gap-1.5"
         >
           <Plus className="size-3.5" />
           Create Role
@@ -84,8 +84,8 @@ export default function RolesTab({ server }: RolesTabProps) {
               onKeyDown={(e) => e.key === 'Enter' && handleCreateRole()}
             />
             <div className="flex gap-1 mt-1">
-              <button onClick={handleCreateRole} className="text-xs text-primary">Create</button>
-              <button onClick={() => setShowCreateRole(false)} className="text-xs text-text-muted">Cancel</button>
+              <button onClick={handleCreateRole} className="text-xs text-accent">Create</button>
+              <button onClick={() => setShowCreateRole(false)} className="text-xs text-text-tertiary">Cancel</button>
             </div>
           </div>
         )}
@@ -103,7 +103,7 @@ export default function RolesTab({ server }: RolesTabProps) {
             onError={setError}
           />
         ) : (
-          <div className="text-text-muted text-sm py-4">Select a role to edit its permissions.</div>
+          <div className="text-text-tertiary text-sm py-4">Select a role to edit its permissions.</div>
         )}
       </div>
     </div>
@@ -172,7 +172,7 @@ function RoleEditor({
     <div>
       <div className="flex gap-3 mb-4">
         <div className="flex-1 flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Name</label>
+          <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -181,7 +181,7 @@ function RoleEditor({
           />
         </div>
         <div className="w-20 flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Color</label>
+          <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Color</label>
           <input
             type="color"
             value={color}
@@ -191,7 +191,7 @@ function RoleEditor({
         </div>
       </div>
 
-      <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Permissions</div>
+      <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">Permissions</div>
       <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-1">
         {Object.entries(permGroups).map(([category, items], idx) => (
           <div key={category}>
@@ -215,7 +215,7 @@ function RoleEditor({
         {!role.is_default && (
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="text-sm text-error hover:text-error/80"
+            className="text-sm text-danger hover:text-danger/80"
           >
             Delete Role
           </button>

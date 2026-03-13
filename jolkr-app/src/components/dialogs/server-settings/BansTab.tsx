@@ -63,16 +63,16 @@ export default function BansTab({ server }: BansTabProps) {
   });
 
   if (loading) {
-    return <div className="text-text-muted text-sm py-4">Loading bans...</div>;
+    return <div className="text-text-tertiary text-sm py-4">Loading bans...</div>;
   }
 
   return (
     <div>
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+      {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
       {/* Search */}
       <div className="rounded-lg bg-bg border border-divider px-3.5 py-2.5 gap-2 flex items-center mb-3">
-        <Search className="size-4 text-text-muted shrink-0" />
+        <Search className="size-4 text-text-tertiary shrink-0" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -82,7 +82,7 @@ export default function BansTab({ server }: BansTabProps) {
       </div>
 
       {filteredBans.length === 0 ? (
-        <div className="text-text-muted text-sm py-4">
+        <div className="text-text-tertiary text-sm py-4">
           {search ? 'No bans matching search.' : 'No banned users.'}
         </div>
       ) : (
@@ -97,7 +97,7 @@ export default function BansTab({ server }: BansTabProps) {
                   <div className="text-text-primary text-sm font-medium truncate">
                     {user?.username ?? ban.user_id.slice(0, 8)}
                   </div>
-                  <div className="text-text-muted text-xs">
+                  <div className="text-text-tertiary text-xs">
                     {ban.reason && <span className="text-text-secondary">{ban.reason} — </span>}
                     Banned by {bannedByUser?.username ?? 'unknown'} on{' '}
                     {new Date(ban.created_at).toLocaleDateString()}
@@ -106,7 +106,7 @@ export default function BansTab({ server }: BansTabProps) {
                 <button
                   onClick={() => handleUnban(ban.user_id)}
                   disabled={unbanning === ban.user_id}
-                  className="px-3 py-1 text-xs text-text-secondary hover:text-text-primary bg-bg-hover hover:bg-bg-active rounded shrink-0 disabled:opacity-50"
+                  className="px-3 py-1 text-xs text-text-secondary hover:text-text-primary bg-hover hover:bg-active rounded shrink-0 disabled:opacity-50"
                 >
                   {unbanning === ban.user_id ? '...' : 'Unban'}
                 </button>

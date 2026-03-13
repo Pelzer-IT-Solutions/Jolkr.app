@@ -39,16 +39,16 @@ export default function ServerPage() {
   if (!server) {
     if (serversLoading || !fetchAttempted) {
       return (
-        <div className="flex-1 flex items-center justify-center bg-bg-tertiary">
-          <p className="text-text-muted">Loading server...</p>
+        <div className="flex-1 flex items-center justify-center bg-panel">
+          <p className="text-text-tertiary">Loading server...</p>
         </div>
       );
     }
     return (
-      <div className="flex-1 flex items-center justify-center bg-bg-tertiary">
+      <div className="flex-1 flex items-center justify-center bg-panel">
         <div className="text-center">
-          <p className="text-text-muted text-lg mb-2">Server not found</p>
-          <p className="text-text-muted text-sm">This server may have been deleted, or you don't have access.</p>
+          <p className="text-text-tertiary text-lg mb-2">Server not found</p>
+          <p className="text-text-tertiary text-sm">This server may have been deleted, or you don't have access.</p>
         </div>
       </div>
     );
@@ -64,13 +64,13 @@ export default function ServerPage() {
         <div className={`w-full bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${!showSidebar ? ' hidden' : ''}`}>
           {/* Mobile server header — Pencil design */}
           <div className="px-4 py-3 flex items-center justify-between border-b border-border-subtle shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
               {/* Server icon: 36px, rounded 10px */}
-              <div className="size-9 rounded-lg overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center">
+              <div className="size-9 rounded-lg overflow-hidden shrink-0 bg-accent/20 flex items-center justify-center">
                 {serverIconUrl ? (
                   <img src={serverIconUrl} alt={server.name} className="size-9 object-cover" />
                 ) : (
-                  <span className="text-xs font-semibold text-primary">{serverInitials}</span>
+                  <span className="text-base font-bold text-accent">{serverInitials}</span>
                 )}
               </div>
               <div className="min-w-0">
@@ -90,7 +90,7 @@ export default function ServerPage() {
           </div>
 
           {/* Channel list with mobile overrides — hide ChannelList built-in header */}
-          <div className="flex-1 flex flex-col min-h-0 mobile-channel-list">
+          <div className="flex-1 flex flex-col min-h-0">
             <ChannelList server={server} onChannelSelect={() => setShowSidebar(false)} />
           </div>
 
@@ -98,7 +98,7 @@ export default function ServerPage() {
           <div className="border-t border-border-subtle">
             <button
               onClick={() => setShowInvites(true)}
-              className="w-full px-4 py-2 text-left text-sm text-primary hover:bg-bg-hover flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-accent hover:bg-hover flex items-center gap-2"
             >
               <UserPlus className="size-4" />
               Invite People
@@ -115,7 +115,7 @@ export default function ServerPage() {
           <div className="border-t border-border-subtle">
             <button
               onClick={() => setShowInvites(true)}
-              className="w-full px-4 py-2 text-left text-sm text-primary hover:bg-bg-hover flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-accent hover:bg-hover flex items-center gap-2"
             >
               <UserPlus className="size-4" />
               Invite People
@@ -127,7 +127,7 @@ export default function ServerPage() {
       )}
 
       {/* Main content - no channel selected */}
-        <div className={`flex-1 flex flex-col bg-bg-tertiary min-h-0${isMobile && showSidebar ? ' hidden' : ''}`}>
+        <div className={`flex-1 flex flex-col bg-panel min-h-0${isMobile && showSidebar ? ' hidden' : ''}`}>
           <div className="px-5 py-3 flex justify-between items-center border-b border-border-subtle shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-3">
@@ -138,7 +138,7 @@ export default function ServerPage() {
           </div>
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
             <div className="size-18 rounded-full bg-accent-muted flex items-center justify-center">
-              <Hash className="size-8 text-primary" />
+              <Hash className="size-8 text-accent" />
             </div>
             <h2 className="text-xl font-bold text-text-primary">Select a channel</h2>
             <p className="text-text-secondary text-sm">Pick a text channel from the sidebar to start chatting</p>

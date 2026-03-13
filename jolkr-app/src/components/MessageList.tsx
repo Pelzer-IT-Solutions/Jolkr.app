@@ -195,13 +195,13 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         {((isLoading || searchLoading) && msgs.length === 0) || (notYetFetched && !search && !searchResults) ? (
           <div className="flex items-center justify-center h-full">
             {searchLoading ? (
-              <span className="text-text-muted">Searching...</span>
+              <span className="text-text-tertiary">Searching...</span>
             ) : (
               <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
             )}
           </div>
         ) : msgs.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-text-muted">
+          <div className="flex items-center justify-center h-full text-text-tertiary">
             {search ? 'No messages match your search.' : 'No messages yet. Start the conversation!'}
           </div>
         ) : (
@@ -211,7 +211,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
             style={{ height: virtualizer.getTotalSize(), width: '100%' }}
           >
             {isLoadingOlder && (
-              <div className="text-center text-text-muted text-sm py-2 absolute top-0 left-0 right-0 z-10">Loading older messages...</div>
+              <div className="text-center text-text-tertiary text-sm py-2 absolute top-0 left-0 right-0 z-10">Loading older messages...</div>
             )}
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const i = virtualRow.index;
@@ -234,7 +234,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
                   {hasSep && (
                     <div className="flex items-center gap-3 px-4 py-2">
                       <div className="flex-1 h-px bg-border-subtle" />
-                      <span className="text-xs font-medium text-text-muted">
+                      <span className="text-xs font-medium text-text-tertiary">
                         {new Date(msg.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </span>
                       <div className="flex-1 h-px bg-border-subtle" />
@@ -242,9 +242,9 @@ export default function MessageList({ channelId, search, searchResults, searchLo
                   )}
                   {i === unreadSepIndex && (
                     <div className="flex items-center gap-3 px-4 my-3">
-                      <div className="flex-1 h-px bg-error" />
-                      <span className="text-xs text-error font-semibold">NEW</span>
-                      <div className="flex-1 h-px bg-error" />
+                      <div className="flex-1 h-px bg-danger" />
+                      <span className="text-xs text-danger font-semibold">NEW</span>
+                      <div className="flex-1 h-px bg-danger" />
                     </div>
                   )}
                   <MessageTile
@@ -279,7 +279,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
       {showScrollBtn && newMsgCount === 0 && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-16 right-4 size-10 bg-surface border border-divider rounded-full flex items-center justify-center shadow-elevated hover:bg-bg-hover transition-colors z-10"
+          className="absolute bottom-16 right-4 size-10 bg-surface border border-divider rounded-full flex items-center justify-center shadow-elevated hover:bg-hover transition-colors z-10"
           title="Scroll to bottom"
           aria-label="Scroll to bottom"
         >
@@ -287,7 +287,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         </button>
       )}
 
-      <div aria-live="polite" aria-atomic="true" className={`px-4 text-xs text-text-muted shrink-0 transition-all duration-150 overflow-hidden ${otherTyping.length > 0 ? 'h-6 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+      <div aria-live="polite" aria-atomic="true" className={`px-4 text-xs text-text-tertiary shrink-0 transition-all duration-150 overflow-hidden ${otherTyping.length > 0 ? 'h-6 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
         {otherTyping.length > 0 && (
           <>
             <span className="inline-flex gap-0.5 mr-1">

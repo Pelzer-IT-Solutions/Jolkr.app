@@ -2,26 +2,53 @@ import { useState, useRef } from 'react';
 import { rewriteStorageUrl } from '../platform/config';
 import * as api from '../api/client';
 
+export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+
 interface AvatarProps {
   url?: string | null;
   name: string;
-  size?: number;
+  size?: AvatarSize | number;
   status?: string | null;
-  /** User ID — enables auto-refresh of expired presigned avatar URLs */
   userId?: string;
+  className?: string;
 }
 
-export default function Avatar({ url, name, size = 40, status, userId }: AvatarProps) {
+/** Map legacy numeric sizes to named variants */
+function resolveSize(size: AvatarSize | number): AvatarSize {
+  if (typeof size === 'string') return size;
+  if (size <= 24) return 'xs';
+  if (size <= 32) return 'sm';
+  if (size <= 36) return 'md';
+  if (size <= 40) return 'lg';
+  if (size <= 48) return 'xl';
+  return '2xl';
+}
+
+const sizeMap: Record<AvatarSize, { container: string; font: string; status: string; statusBorder: string }> = {
+  xs:  { container: 'size-6',  font: 'text-2xs', status: 'size-2',   statusBorder: 'border' },
+  sm:  { container: 'size-8',  font: 'text-xs',  status: 'size-2.5', statusBorder: 'border-2' },
+  md:  { container: 'size-9',  font: 'text-sm',  status: 'size-3',   statusBorder: 'border-2' },
+  lg:  { container: 'size-10', font: 'text-base', status: 'size-3',   statusBorder: 'border-2' },
+  xl:  { container: 'size-12', font: 'text-lg',  status: 'size-3.5', statusBorder: 'border-2' },
+  '2xl': { container: 'size-14', font: 'text-xl',  status: 'size-4',   statusBorder: 'border-2' },
+};
+
+const statusColors: Record<string, string> = {
+  online: 'bg-online',
+  idle: 'bg-idle',
+  dnd: 'bg-dnd',
+  offline: 'bg-offline',
+};
+
+export default function Avatar({ url, name, size = 'lg', status, userId, className }: AvatarProps) {
   const [resolvedUrl, setResolvedUrl] = useState(() => rewriteStorageUrl(url));
   const [imgError, setImgError] = useState(false);
   const retriedRef = useRef(false);
   const prevUrlRef = useRef(url);
 
-  // Reset state when the url prop changes (e.g. parent re-fetched)
   if (url !== prevUrlRef.current) {
     prevUrlRef.current = url;
-    const newResolved = rewriteStorageUrl(url);
-    setResolvedUrl(newResolved);
+    setResolvedUrl(rewriteStorageUrl(url));
     setImgError(false);
     retriedRef.current = false;
   }
@@ -33,13 +60,6 @@ export default function Avatar({ url, name, size = 40, status, userId }: AvatarP
     .join('')
     .slice(0, 2)
     .toUpperCase()) || '?';
-
-  const statusColor: Record<string, string> = {
-    online: 'bg-online',
-    idle: 'bg-idle',
-    dnd: 'bg-dnd',
-    offline: 'bg-text-muted',
-  };
 
   const handleError = async () => {
     if (!retriedRef.current && userId) {
@@ -56,33 +76,28 @@ export default function Avatar({ url, name, size = 40, status, userId }: AvatarP
     setImgError(true);
   };
 
+  const resolved = resolveSize(size);
+  const s = sizeMap[resolved];
   const showImage = resolvedUrl && !imgError;
 
   return (
-    <div className="relative inline-block shrink-0" style={{ width: size, height: size }}>
+    <div className={`relative inline-block shrink-0 ${s.container} ${className ?? ''}`}>
       {showImage ? (
         <img
           src={resolvedUrl}
           alt={name}
-          width={size}
-          height={size}
-          className="rounded-full object-cover"
-          style={{ width: size, height: size }}
+          className={`${s.container} rounded-full object-cover`}
           loading="lazy"
           onError={handleError}
         />
       ) : (
-        <div
-          className="rounded-full bg-primary flex items-center justify-center text-bg font-semibold select-none"
-          style={{ width: size, height: size, fontSize: size * 0.4 }}
-        >
+        <div className={`${s.container} rounded-full bg-accent flex items-center justify-center text-bg font-semibold select-none ${s.font}`}>
           {initials}
         </div>
       )}
       {status && (
         <div
-          className={`absolute -bottom-0.5 -right-0.5 z-10 rounded-full border-2 border-bg ${statusColor[status] ?? 'bg-text-muted'}`}
-          style={{ width: size * 0.3, height: size * 0.3 }}
+          className={`absolute -bottom-0.5 -right-0.5 z-10 rounded-full ${s.statusBorder} border-sidebar ${s.status} ${statusColors[status] ?? 'bg-offline'}`}
         />
       )}
     </div>

@@ -81,11 +81,11 @@ export default function MembersTab({ server }: MembersTabProps) {
 
   return (
     <div>
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+      {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
       {/* Search */}
       <div className="rounded-lg bg-bg border border-divider px-3.5 py-2.5 gap-2 flex items-center mb-3">
-        <Search className="size-4 text-text-muted shrink-0" />
+        <Search className="size-4 text-text-tertiary shrink-0" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -112,7 +112,7 @@ export default function MembersTab({ server }: MembersTabProps) {
                     {memberRoles.map((r) => (
                       <span
                         key={r.id}
-                        className="text-xs font-medium text-text-muted"
+                        className="text-xs font-medium text-text-tertiary"
                       >
                         {r.name}
                       </span>
@@ -130,7 +130,7 @@ export default function MembersTab({ server }: MembersTabProps) {
                     setPopoverPos({ top, left: rect.right - 180 });
                     setRolePopover(m.user_id);
                   }}
-                  className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary bg-bg-hover hover:bg-bg-hover rounded"
+                  className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary bg-hover hover:bg-hover rounded"
                 >
                   Roles
                 </button>
@@ -142,7 +142,7 @@ export default function MembersTab({ server }: MembersTabProps) {
                       style={{ top: popoverPos.top, left: popoverPos.left }}
                     >
                       {assignableRoles.length === 0 && (
-                        <div className="px-3 py-2 text-xs text-text-muted">No roles to assign</div>
+                        <div className="px-3 py-2 text-xs text-text-tertiary">No roles to assign</div>
                       )}
                       {assignableRoles.map((role) => {
                         const has = (m.role_ids ?? []).includes(role.id);
@@ -151,7 +151,7 @@ export default function MembersTab({ server }: MembersTabProps) {
                             key={role.id}
                             onClick={() => handleToggleRole(m.user_id, role.id, has)}
                             disabled={saving}
-                            className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-bg-hover disabled:opacity-50"
+                            className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-hover disabled:opacity-50"
                           >
                             <input
                               type="checkbox"
@@ -178,7 +178,7 @@ export default function MembersTab({ server }: MembersTabProps) {
         })}
 
         {filteredMembers.length === 0 && (
-          <div className="text-text-muted text-sm py-4 text-center">
+          <div className="text-text-tertiary text-sm py-4 text-center">
             {search ? 'No members found' : 'No members'}
           </div>
         )}

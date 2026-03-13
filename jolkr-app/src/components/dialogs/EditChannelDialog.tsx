@@ -156,7 +156,7 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
           <button
             onClick={() => setTab('general')}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-              tab === 'general' ? 'border-primary text-text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
+              tab === 'general' ? 'border-accent text-text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
             }`}
           >
             General
@@ -165,7 +165,7 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
             <button
               onClick={() => setTab('permissions')}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-                tab === 'permissions' ? 'border-primary text-text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
+                tab === 'permissions' ? 'border-accent text-text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
               }`}
             >
               Permissions
@@ -175,7 +175,7 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
             <button
               onClick={() => setTab('webhooks')}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-                tab === 'webhooks' ? 'border-primary text-text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
+                tab === 'webhooks' ? 'border-accent text-text-primary' : 'border-transparent text-text-secondary hover:text-text-primary'
               }`}
             >
               Webhooks
@@ -183,7 +183,7 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
           )}
         </div>
 
-        {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+        {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
         <div className="flex-1 overflow-y-auto min-h-0">
           {tab === 'general' && (
@@ -277,7 +277,7 @@ interface GeneralTabProps {
 function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId, isNsfw, setIsNsfw, slowmodeSeconds, setSlowmodeSeconds, serverCategories, saving, onSave, onClose, onDeleteClick }: GeneralTabProps) {
   return (
     <>
-      <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Channel Name</label>
+      <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Channel Name</label>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -286,7 +286,7 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
         autoFocus
       />
 
-      <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Topic</label>
+      <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Topic</label>
       <input
         value={topic}
         onChange={(e) => setTopic(e.target.value)}
@@ -296,7 +296,7 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
 
       {serverCategories.length > 0 && (
         <>
-          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Category</label>
+          <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Category</label>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
@@ -310,7 +310,7 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
         </>
       )}
 
-      <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Slowmode</label>
+      <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Slowmode</label>
       <select
         value={slowmodeSeconds}
         onChange={(e) => setSlowmodeSeconds(Number(e.target.value))}
@@ -326,10 +326,10 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
           type="checkbox"
           checked={isNsfw}
           onChange={(e) => setIsNsfw(e.target.checked)}
-          className="w-4 h-4 rounded accent-primary"
+          className="w-4 h-4 rounded accent-accent"
         />
         <span className="text-sm text-text-primary">NSFW Channel</span>
-        <span className="text-xs text-text-muted">— Users must confirm they are 18+</span>
+        <span className="text-xs text-text-tertiary">— Users must confirm they are 18+</span>
       </label>
 
       <div className="flex justify-end gap-3 mb-6">
@@ -346,8 +346,8 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
       </div>
 
       {/* Danger zone */}
-      <div className="rounded-xl border border-error/20 p-5 gap-3 flex flex-col">
-        <h4 className="text-base font-bold text-error">Danger Zone</h4>
+      <div className="rounded-xl border border-danger/20 p-5 gap-3 flex flex-col">
+        <h4 className="text-base font-bold text-danger">Danger Zone</h4>
         <p className="text-sm text-text-secondary leading-relaxed">
           Deleting a channel is permanent. All messages in this channel will be lost.
         </p>
@@ -383,10 +383,10 @@ function PermissionsTab({
   onAddRole, onSaveOverwrite, onDeleteOverwrite, loading, savingId, error,
 }: PermissionsTabProps) {
   if (loading) {
-    return <div className="text-text-muted text-sm py-4">Loading permissions...</div>;
+    return <div className="text-text-tertiary text-sm py-4">Loading permissions...</div>;
   }
   if (error) {
-    return <div className="text-error text-sm py-4">{error}</div>;
+    return <div className="text-danger text-sm py-4">{error}</div>;
   }
 
   const roleOverwrites = overwrites.filter((o) => o.target_type === 'role');
@@ -417,7 +417,7 @@ function PermissionsTab({
       )}
 
       {roleOverwrites.length === 0 && (
-        <p className="text-text-muted text-sm">No permission overwrites set. All permissions are inherited from server roles.</p>
+        <p className="text-text-tertiary text-sm">No permission overwrites set. All permissions are inherited from server roles.</p>
       )}
 
       {roleOverwrites.map((ow) => {
@@ -503,7 +503,7 @@ function OverwriteEditor({ overwrite, label, color, saving, onSave, onDelete }: 
         <button
           onClick={onDelete}
           disabled={saving}
-          className="text-error/70 hover:text-error text-xs disabled:opacity-50"
+          className="text-danger/70 hover:text-danger text-xs disabled:opacity-50"
           title="Remove overwrite"
         >
           Remove
@@ -514,7 +514,7 @@ function OverwriteEditor({ overwrite, label, color, saving, onSave, onDelete }: 
       <div className="px-4 py-2 space-y-3">
         {categories.map((cat) => (
           <div key={cat}>
-            <div className="text-2xs text-text-muted uppercase tracking-wider mb-1">{cat}</div>
+            <div className="text-2xs text-text-tertiary uppercase tracking-wider mb-1">{cat}</div>
 
             {CHANNEL_PERMISSION_LABELS.filter((p) => p.category === cat).map((perm) => {
               const state = getState(perm.flag);
@@ -528,7 +528,7 @@ function OverwriteEditor({ overwrite, label, color, saving, onSave, onDelete }: 
                         ? 'bg-green-500/20 text-green-400'
                         : state === 'deny'
                         ? 'bg-red-500/20 text-red-400'
-                        : 'bg-bg-hover text-text-muted'
+                        : 'bg-hover text-text-tertiary'
                     }`}
                     title={state === 'inherit' ? 'Inherit' : state === 'allow' ? 'Allowed' : 'Denied'}
                   >
@@ -656,12 +656,12 @@ function WebhooksTab({ channelId }: { channelId: string }) {
   };
 
   if (loading) {
-    return <div className="text-text-muted text-sm py-4">Loading webhooks...</div>;
+    return <div className="text-text-tertiary text-sm py-4">Loading webhooks...</div>;
   }
 
   return (
     <div className="space-y-4">
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg">{error}</div>}
+      {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg">{error}</div>}
 
       {/* Create webhook */}
       <div className="flex gap-2">
@@ -682,24 +682,24 @@ function WebhooksTab({ channelId }: { channelId: string }) {
       </div>
 
       {webhooks.length === 0 && (
-        <p className="text-text-muted text-sm">No webhooks yet. Create one to let external services send messages to this channel.</p>
+        <p className="text-text-tertiary text-sm">No webhooks yet. Create one to let external services send messages to this channel.</p>
       )}
 
       {webhooks.map((wh) => (
         <div key={wh.id} className="border border-divider rounded-lg overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 bg-surface/50">
-            <div className="w-8 h-8 rounded-full bg-accent-muted flex items-center justify-center text-primary text-xs font-bold shrink-0">
+            <div className="w-8 h-8 rounded-full bg-accent-muted flex items-center justify-center text-accent text-xs font-bold shrink-0">
               {wh.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-text-primary text-sm font-medium truncate">{wh.name}</div>
-              <div className="text-text-muted text-xs truncate">ID: {wh.id}</div>
+              <div className="text-text-tertiary text-xs truncate">ID: {wh.id}</div>
             </div>
             <div className="flex gap-1 shrink-0 flex-wrap justify-end">
               {wh.token && (
                 <button
                   onClick={() => copyWebhookUrl(wh)}
-                  className="px-2 py-1 text-xs bg-bg-hover hover:bg-bg-hover text-text-secondary rounded"
+                  className="px-2 py-1 text-xs bg-hover hover:bg-hover text-text-secondary rounded"
                   title="Copy webhook URL"
                 >
                   {copiedId === wh.id ? 'Copied!' : 'Copy URL'}
@@ -711,14 +711,14 @@ function WebhooksTab({ channelId }: { channelId: string }) {
                   setEditName(wh.name);
                   setEditAvatarUrl(wh.avatar_url ?? '');
                 }}
-                className="px-2 py-1 text-xs bg-bg-hover hover:bg-bg-hover text-text-secondary rounded"
+                className="px-2 py-1 text-xs bg-hover hover:bg-hover text-text-secondary rounded"
               >
                 {editingId === wh.id ? 'Cancel' : 'Edit'}
               </button>
               <button
                 onClick={() => handleRegenerate(wh.id)}
                 disabled={savingId === wh.id}
-                className="px-2 py-1 text-xs bg-bg-hover hover:bg-bg-hover text-text-secondary rounded disabled:opacity-50"
+                className="px-2 py-1 text-xs bg-hover hover:bg-hover text-text-secondary rounded disabled:opacity-50"
                 title="Regenerate token"
               >
                 Regen
@@ -726,7 +726,7 @@ function WebhooksTab({ channelId }: { channelId: string }) {
               <button
                 onClick={() => setShowDeleteConfirm(wh.id)}
                 disabled={savingId === wh.id}
-                className="px-2 py-1 text-xs text-error/70 hover:text-error bg-bg-hover hover:bg-bg-hover rounded disabled:opacity-50"
+                className="px-2 py-1 text-xs text-danger/70 hover:text-danger bg-hover hover:bg-hover rounded disabled:opacity-50"
               >
                 Delete
               </button>
@@ -737,7 +737,7 @@ function WebhooksTab({ channelId }: { channelId: string }) {
           {editingId === wh.id && (
             <div className="px-4 py-3 border-t border-divider space-y-2">
               <div>
-                <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Name</label>
+                <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Name</label>
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
@@ -745,7 +745,7 @@ function WebhooksTab({ channelId }: { channelId: string }) {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Avatar URL</label>
+                <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Avatar URL</label>
                 <input
                   value={editAvatarUrl}
                   onChange={(e) => setEditAvatarUrl(e.target.value)}
@@ -766,7 +766,7 @@ function WebhooksTab({ channelId }: { channelId: string }) {
           )}
 
           {showDeleteConfirm === wh.id && (
-            <div className="px-4 py-3 border-t border-divider bg-error/5">
+            <div className="px-4 py-3 border-t border-divider bg-danger/5">
               <p className="text-sm text-text-primary mb-2">
                 Delete webhook <strong>{wh.name}</strong>? This cannot be undone.
               </p>

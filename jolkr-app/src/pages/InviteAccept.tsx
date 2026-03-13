@@ -38,7 +38,7 @@ export default function InviteAccept() {
   if (loading || joining) {
     return (
       <div className="h-full flex items-center justify-center bg-bg">
-        <div className="text-text-muted">Joining server...</div>
+        <div className="text-text-tertiary">Joining server...</div>
       </div>
     );
   }
@@ -46,7 +46,7 @@ export default function InviteAccept() {
   if (error) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-bg gap-4">
-        <div className="text-error text-lg">{error}</div>
+        <div className="text-danger text-lg">{error}</div>
         <button
           onClick={() => navigate('/', { replace: true })}
           className="px-4 py-2 btn-primary rounded-lg text-sm"

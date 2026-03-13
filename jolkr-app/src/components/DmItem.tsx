@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import type { DmChannel, User } from '../api/types';
 import Avatar from './Avatar';
+import { Badge } from './ui';
 import { Users } from 'lucide-react';
 
 export interface DmItemProps {
@@ -43,23 +44,25 @@ function DmItemInner({ dm, users, currentUserId, isActive, unreadCount, status, 
       to={`/dm/${dm.id}`}
       onClick={onClick}
       onContextMenu={(e) => onContextMenu(dm, e)}
-      className={`w-full rounded-lg px-3 py-2 gap-3 flex items-center text-left cursor-pointer transition-colors no-underline ${
-        isActive
-          ? 'bg-bg-active text-text-primary'
+      className={`
+        w-full rounded-lg px-4 py-3 md:px-3 md:py-2 gap-3 flex items-center text-left cursor-pointer transition-colors no-underline
+        ${isActive
+          ? 'bg-active text-text-primary'
           : unreadCount > 0
             ? 'text-text-primary font-semibold'
-            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-      }`}
+            : 'text-text-secondary hover:bg-hover hover:text-text-primary'
+        }
+      `}
     >
       {isGroup ? (
-        <div className="size-9 rounded-full bg-primary/30 flex items-center justify-center shrink-0">
-          <Users className="size-4 text-primary" />
+        <div className="size-9 rounded-full bg-accent/30 flex items-center justify-center shrink-0">
+          <Users className="size-4 text-accent" />
         </div>
       ) : (
         <Avatar
           url={otherUser?.avatar_url}
           name={displayName}
-          size={36}
+          size="md"
           status={status}
           userId={otherUser?.id}
         />
@@ -67,15 +70,13 @@ function DmItemInner({ dm, users, currentUserId, isActive, unreadCount, status, 
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         <span className="text-sm font-semibold text-text-primary truncate block">{displayName}</span>
         {subtitle ? (
-          <span className="text-xs text-text-muted truncate block">{subtitle}</span>
+          <span className="text-xs text-text-tertiary truncate block">{subtitle}</span>
         ) : status ? (
-          <span className="text-xs text-text-muted truncate block capitalize">{status}</span>
+          <span className="text-xs text-text-tertiary truncate block capitalize">{status}</span>
         ) : null}
       </div>
       {unreadCount > 0 && !isActive && (
-        <span className="min-w-4.5 h-4.5 bg-error rounded-full flex items-center justify-center px-1 shrink-0">
-          <span className="text-2xs font-bold text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>
-        </span>
+        <Badge count={unreadCount} />
       )}
     </Link>
   );
@@ -84,5 +85,4 @@ function DmItemInner({ dm, users, currentUserId, isActive, unreadCount, status, 
 const DmItem = React.memo(DmItemInner);
 export default DmItem;
 
-// Re-export the display helper for use in shell/context menu
 export { getDmDisplay };

@@ -40,7 +40,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-bg">
-        <div className="text-text-muted">Loading...</div>
+        <div className="text-text-tertiary">Loading...</div>
       </div>
     );
   }
@@ -58,7 +58,7 @@ function GuestGuard({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-bg">
-        <div className="text-text-muted">Loading...</div>
+        <div className="text-text-tertiary">Loading...</div>
       </div>
     );
   }
@@ -138,7 +138,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="h-full flex items-center justify-center bg-bg">
-        <div className="text-text-muted">Loading...</div>
+        <div className="text-text-tertiary">Loading...</div>
       </div>
     );
   }

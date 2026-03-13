@@ -53,13 +53,13 @@ function SortableFileChip({ file, id, index, onRemove }: { file: File; id: strin
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}
       className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 text-sm"
     >
-      <Paperclip className="size-4 text-text-muted shrink-0" />
+      <Paperclip className="size-4 text-text-tertiary shrink-0" />
       <span className="text-text-primary truncate max-w-37.5">{file.name}</span>
-      <span className="text-text-muted text-xs">({formatFileSize(file.size)})</span>
+      <span className="text-text-tertiary text-xs">({formatFileSize(file.size)})</span>
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(index); }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="text-text-muted hover:text-error"
+        className="text-text-tertiary hover:text-danger"
         aria-label={`Remove ${file.name}`}
       >
         <X className="size-4" />
@@ -436,7 +436,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     return (
       <div className="px-4 pb-5 pt-4 shrink-0">
         <div className="flex items-center bg-surface border border-divider rounded-lg px-4 py-3 opacity-60">
-          <span className="text-text-muted text-sm">You do not have permission to send messages in this channel</span>
+          <span className="text-text-tertiary text-sm">You do not have permission to send messages in this channel</span>
         </div>
       </div>
     );
@@ -451,7 +451,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         {/* Mention autocomplete (mobile) */}
         {mentionQuery !== null && mentionMatches.length > 0 && (
           <div role="listbox" className="absolute bottom-full left-3 right-3 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-50 overflow-y-auto z-50">
-            <div className="px-3 py-1 text-2xs text-text-muted uppercase tracking-wider">Members</div>
+            <div className="px-3 py-1 text-2xs text-text-tertiary uppercase tracking-wider">Members</div>
             {mentionMatches.map((u, i) => (
               <button
                 key={u.id}
@@ -459,10 +459,10 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
                 aria-selected={i === mentionIndex}
                 onClick={() => insertMention(u.username)}
                 className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                  i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
+                  i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
                 }`}
               >
-                <span className="text-primary font-medium">@</span>
+                <span className="text-accent font-medium">@</span>
                 <span>{u.username}</span>
               </button>
             ))}
@@ -472,7 +472,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         {/* Emoji shortcode autocomplete (mobile) */}
         {emojiQuery !== null && emojiMatches.length > 0 && (
           <div role="listbox" className="absolute bottom-full left-3 right-3 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-70 overflow-y-auto z-50">
-            <div className="px-3 py-1 text-2xs text-text-muted uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
+            <div className="px-3 py-1 text-2xs text-text-tertiary uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
             {emojiMatches.map((entry, i) => (
               <button
                 key={entry.name}
@@ -480,11 +480,11 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
                 aria-selected={i === emojiIndex}
                 onClick={() => insertEmoji(entry.emoji)}
                 className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                  i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
+                  i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
                 }`}
               >
                 <img src={emojiToImgUrl(entry.emoji)} alt={entry.emoji} className="w-5 h-5" loading="lazy" draggable={false} />
-                <span className="text-text-muted">:{entry.name}:</span>
+                <span className="text-text-tertiary">:{entry.name}:</span>
               </button>
             ))}
           </div>
@@ -494,7 +494,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
             <div className="absolute bottom-full right-3 mb-2 z-50">
-              <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+              <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
                 <LazyEmojiPicker
                   theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
                   onEmojiClick={(emoji: { emoji: string }) => {
@@ -511,12 +511,12 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
         {/* Reply bar (mobile) */}
         {replyTo && (
-          <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-primary mb-1 mx-3">
-            <Reply className="size-3.5 text-text-muted shrink-0" />
-            <span className="text-xs text-text-muted">Replying to</span>
+          <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-accent mb-1 mx-3">
+            <Reply className="size-3.5 text-text-tertiary shrink-0" />
+            <span className="text-xs text-text-tertiary">Replying to</span>
             <span className="text-xs text-text-primary font-medium">{replyAuthor?.username ?? 'Unknown'}</span>
-            <span className="text-xs text-text-muted truncate flex-1">{replyTo.content}</span>
-            <button onClick={onCancelReply} className="text-text-muted hover:text-text-primary shrink-0" aria-label="Cancel reply">
+            <span className="text-xs text-text-tertiary truncate flex-1">{replyTo.content}</span>
+            <button onClick={onCancelReply} className="text-text-tertiary hover:text-text-primary shrink-0" aria-label="Cancel reply">
               <X className="size-4" />
             </button>
           </div>
@@ -527,9 +527,9 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
           <div className="flex gap-2 flex-wrap px-3 pb-1">
             {files.map((file, i) => (
               <div key={i} className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 text-sm">
-                <Paperclip className="size-4 text-text-muted shrink-0" />
+                <Paperclip className="size-4 text-text-tertiary shrink-0" />
                 <span className="text-text-primary truncate max-w-37.5">{file.name}</span>
-                <button onClick={() => removeFile(i)} className="text-text-muted hover:text-error" aria-label={`Remove ${file.name}`}>
+                <button onClick={() => removeFile(i)} className="text-text-tertiary hover:text-danger" aria-label={`Remove ${file.name}`}>
                   <X className="size-4" />
                 </button>
               </div>
@@ -543,9 +543,9 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
             {slowmodeCooldown > 0 ? (
               <div className="text-xs text-warning flex items-center gap-1"><Clock className="size-3" /> Slowmode: {slowmodeCooldown}s</div>
             ) : sendError ? (
-              <div className="text-xs text-error">{sendError}</div>
+              <div className="text-xs text-danger">{sendError}</div>
             ) : uploading ? (
-              <div className="text-xs text-text-muted">Uploading files...</div>
+              <div className="text-xs text-text-tertiary">Uploading files...</div>
             ) : null}
           </div>
         )}
@@ -557,7 +557,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         {/* Mobile input bar — Pencil design: bg-sidebar, gap-2.5, px-3 py-2.5 */}
         <div className="flex items-center gap-2.5 bg-sidebar px-3 py-2.5">
           {canAttach && (
-            <button onClick={() => fileInputRef.current?.click()} className="text-text-muted shrink-0" title="Attach file" aria-label="Attach file">
+            <button onClick={() => fileInputRef.current?.click()} className="text-text-tertiary shrink-0" title="Attach file" aria-label="Attach file">
               <Plus className="size-5.5" />
             </button>
           )}
@@ -580,7 +580,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
                 onFocus={() => { if (!emojiJustToggledRef.current) setShowEmoji(false); }}
                 placeholder="Type a message..."
                 rows={1}
-                className="input-reset relative w-full bg-transparent text-transparent caret-text-primary text-sm resize-none max-h-30 placeholder:text-text-muted selection:bg-primary/30"
+                className="input-reset relative w-full bg-transparent text-transparent caret-text-accent text-sm resize-none max-h-30 placeholder:text-text-tertiary selection:bg-accent/30"
                 style={{ height: 'auto', minHeight: '20px' }}
                 onInput={(e) => {
                   const el = e.currentTarget;
@@ -596,7 +596,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
-              className="text-text-muted shrink-0"
+              className="text-text-tertiary shrink-0"
               title="Emoji"
               aria-label="Emoji"
             >
@@ -607,7 +607,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
           <button
             onClick={handleSend}
             disabled={(!content.trim() && files.length === 0) || sending || slowmodeCooldown > 0}
-            className="size-9 rounded-full bg-primary flex items-center justify-center disabled:opacity-50 shrink-0"
+            className="size-9 rounded-full bg-accent flex items-center justify-center disabled:opacity-50 shrink-0"
             aria-label="Send message"
           >
             <Send className="size-4 text-bg" />
@@ -622,7 +622,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       {/* Mention autocomplete */}
       {mentionQuery !== null && mentionMatches.length > 0 && (
         <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-50 overflow-y-auto z-50">
-          <div className="px-3 py-1 text-2xs text-text-muted uppercase tracking-wider">Members</div>
+          <div className="px-3 py-1 text-2xs text-text-tertiary uppercase tracking-wider">Members</div>
           {mentionMatches.map((u, i) => (
             <button
               key={u.id}
@@ -630,10 +630,10 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
               aria-selected={i === mentionIndex}
               onClick={() => insertMention(u.username)}
               className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
+                i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
               }`}
             >
-              <span className="text-primary font-medium">@</span>
+              <span className="text-accent font-medium">@</span>
               <span>{u.username}</span>
             </button>
           ))}
@@ -643,7 +643,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       {/* Emoji shortcode autocomplete */}
       {emojiQuery !== null && emojiMatches.length > 0 && (
         <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-70 overflow-y-auto z-50">
-          <div className="px-3 py-1 text-2xs text-text-muted uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
+          <div className="px-3 py-1 text-2xs text-text-tertiary uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
           {emojiMatches.map((entry, i) => (
             <button
               key={entry.name}
@@ -651,11 +651,11 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
               aria-selected={i === emojiIndex}
               onClick={() => insertEmoji(entry.emoji)}
               className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
+                i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
               }`}
             >
               <img src={emojiToImgUrl(entry.emoji)} alt={entry.emoji} className="w-5 h-5" loading="lazy" draggable={false} />
-              <span className="text-text-muted">:{entry.name}:</span>
+              <span className="text-text-tertiary">:{entry.name}:</span>
             </button>
           ))}
         </div>
@@ -663,12 +663,12 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* Reply bar */}
       {replyTo && (
-        <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-primary rounded-t-lg mb-1">
-          <Reply className="size-3.5 text-text-muted shrink-0" />
-          <span className="text-xs text-text-muted">Replying to</span>
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-accent rounded-t-lg mb-1">
+          <Reply className="size-3.5 text-text-tertiary shrink-0" />
+          <span className="text-xs text-text-tertiary">Replying to</span>
           <span className="text-xs text-text-primary font-medium">{replyAuthor?.username ?? 'Unknown'}</span>
-          <span className="text-xs text-text-muted truncate flex-1">{replyTo.content}</span>
-          <button onClick={onCancelReply} className="text-text-muted hover:text-text-primary shrink-0" aria-label="Cancel reply">
+          <span className="text-xs text-text-tertiary truncate flex-1">{replyTo.content}</span>
+          <button onClick={onCancelReply} className="text-text-tertiary hover:text-text-primary shrink-0" aria-label="Cancel reply">
             <X className="size-4" />
           </button>
         </div>
@@ -707,9 +707,9 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
             Slowmode: {slowmodeCooldown}s remaining
           </div>
         ) : sendError ? (
-          <div className="text-xs text-error">{sendError}</div>
+          <div className="text-xs text-danger">{sendError}</div>
         ) : uploading ? (
-          <div className="text-xs text-text-muted">Uploading files...</div>
+          <div className="text-xs text-text-tertiary">Uploading files...</div>
         ) : null}
       </div>
 
@@ -725,24 +725,24 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* Formatting toolbar */}
       <div className="flex items-center gap-0.5 mb-1 px-1 py-0.5 rounded-lg bg-surface/50 border border-divider/50 w-fit">
-        <button onClick={() => insertFormatting('**', '**')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Bold (Ctrl+B)">
+        <button onClick={() => insertFormatting('**', '**')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Bold (Ctrl+B)">
           <span className="text-xs font-bold w-5 h-5 flex items-center justify-center">B</span>
         </button>
-        <button onClick={() => insertFormatting('*', '*')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Italic (Ctrl+I)">
+        <button onClick={() => insertFormatting('*', '*')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Italic (Ctrl+I)">
           <span className="text-xs italic w-5 h-5 flex items-center justify-center">I</span>
         </button>
-        <button onClick={() => insertFormatting('~~', '~~')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Strikethrough">
+        <button onClick={() => insertFormatting('~~', '~~')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Strikethrough">
           <span className="text-xs line-through w-5 h-5 flex items-center justify-center">S</span>
         </button>
         <div className="w-px h-4 bg-divider/50 mx-0.5" />
-        <button onClick={() => insertFormatting('`', '`')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Inline Code">
+        <button onClick={() => insertFormatting('`', '`')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Inline Code">
           <span className="text-xs font-mono w-5 h-5 flex items-center justify-center">&lt;/&gt;</span>
         </button>
-        <button onClick={() => insertFormatting('```\n', '\n```')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Code Block">
+        <button onClick={() => insertFormatting('```\n', '\n```')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Code Block">
           <span className="text-2xs font-mono w-5 h-5 flex items-center justify-center">[/]</span>
         </button>
         <div className="w-px h-4 bg-divider/50 mx-0.5" />
-        <button onClick={() => insertFormatting('> ', '')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Quote">
+        <button onClick={() => insertFormatting('> ', '')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Quote">
           <span className="text-xs w-5 h-5 flex items-center justify-center">"</span>
         </button>
       </div>
@@ -752,7 +752,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
           {canAttach && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-text-muted hover:text-text-primary shrink-0"
+              className="text-text-tertiary hover:text-text-primary shrink-0"
               title="Attach file"
               aria-label="Attach file"
             >
@@ -778,7 +778,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
               onFocus={() => { if (!emojiJustToggledRef.current) setShowEmoji(false); }}
               placeholder="Type a message..."
               rows={1}
-              className="input-reset relative w-full bg-transparent text-transparent caret-text-primary text-sm resize-none max-h-30 py-1 placeholder:text-text-muted selection:bg-primary/30"
+              className="input-reset relative w-full bg-transparent text-transparent caret-text-accent text-sm resize-none max-h-30 py-1 placeholder:text-text-tertiary selection:bg-accent/30"
               style={{ height: 'auto', minHeight: '24px' }}
               onInput={(e) => {
                 const el = e.currentTarget;
@@ -795,7 +795,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
-              className="text-text-muted hover:text-text-primary"
+              className="text-text-tertiary hover:text-text-primary"
               title="Emoji"
               aria-label="Emoji"
             >
@@ -805,7 +805,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
                 <div className="absolute bottom-full right-0 mb-2 z-50">
-                  <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+                  <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
                     <LazyEmojiPicker
                       theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
                       onEmojiClick={(emoji: { emoji: string }) => {
@@ -825,7 +825,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         <button
           onClick={handleSend}
           disabled={(!content.trim() && files.length === 0) || sending || slowmodeCooldown > 0}
-          className="size-10 rounded-full bg-primary flex items-center justify-center disabled:opacity-50 shrink-0"
+          className="size-10 rounded-full bg-accent flex items-center justify-center disabled:opacity-50 shrink-0"
           title={slowmodeCooldown > 0 ? `Slowmode: ${slowmodeCooldown}s` : undefined}
           aria-label="Send message"
         >

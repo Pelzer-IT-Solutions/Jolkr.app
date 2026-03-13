@@ -39,9 +39,9 @@ export default function JoinServerDialog({ onClose }: JoinServerDialogProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-sidebar rounded-3xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Join a Server</h3>
-        {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+        {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
-        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Invite Code</label>
+        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Invite Code</label>
         <input
           value={code}
           onChange={(e) => setCode(e.target.value)}

@@ -72,14 +72,14 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
 
   return (
     <>
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+      {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
       {/* Server icon */}
       <div className="flex items-center gap-4 mb-4">
         <div
           role="button"
           tabIndex={0}
-          className="size-18 rounded-full bg-bg-tertiary border-2 border-divider flex items-center justify-center relative group cursor-pointer shrink-0 overflow-hidden"
+          className="size-18 rounded-full bg-panel border-2 border-divider flex items-center justify-center relative group cursor-pointer shrink-0 overflow-hidden"
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); }}}
           aria-label="Upload server icon"
@@ -87,24 +87,24 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
           {iconUrl ? (
             <img src={rewriteStorageUrl(iconUrl) ?? iconUrl} alt="" className="w-full h-full object-cover" />
           ) : (
-            <span className="text-text-muted text-lg font-bold">{name.slice(0, 2).toUpperCase()}</span>
+            <span className="text-text-tertiary text-lg font-bold">{name.slice(0, 2).toUpperCase()}</span>
           )}
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
             {uploading ? (
               <span className="text-white text-2xs">...</span>
             ) : (
-              <Camera className="size-6 text-text-muted" />
+              <Camera className="size-6 text-text-tertiary" />
             )}
           </div>
         </div>
-        <div className="text-xs text-text-muted">
+        <div className="text-xs text-text-tertiary">
           Click to upload server icon<br />Recommended: 128x128px
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIconUpload} />
       </div>
 
       <div className="flex flex-col gap-1.5 mb-4">
-        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Server Name</label>
+        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Server Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -114,7 +114,7 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
       </div>
 
       <div className="flex flex-col gap-1.5 mb-4">
-        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Description</label>
+        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Description</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -138,8 +138,8 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
 
       {/* Danger zone — only owner can delete */}
       {isOwner && (
-        <div className="rounded-xl border border-error/20 p-5 flex flex-col gap-3">
-          <h4 className="text-base font-bold text-error">Danger Zone</h4>
+        <div className="rounded-xl border border-danger/20 p-5 flex flex-col gap-3">
+          <h4 className="text-base font-bold text-danger">Danger Zone</h4>
           <p className="text-sm text-text-secondary leading-relaxed">
             Deleting a server is permanent and cannot be undone. All channels and messages will be lost.
           </p>

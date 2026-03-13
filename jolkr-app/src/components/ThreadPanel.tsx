@@ -166,19 +166,19 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
       <div className="absolute right-0 top-0 z-50 w-full max-w-100 h-full bg-sidebar border-l border-divider flex flex-col shadow-popup">
         {/* Header */}
         <div className="px-5 py-3 flex items-center gap-2 border-b border-divider shrink-0">
-          <MessageSquare className="w-5 h-5 text-text-muted shrink-0" />
+          <MessageSquare className="w-5 h-5 text-text-tertiary shrink-0" />
           <h3 className="text-text-primary font-semibold text-sm flex-1 truncate">{threadName}</h3>
           {thread && (
             <button
               onClick={handleArchive}
-              className="text-text-muted hover:text-text-primary"
+              className="text-text-tertiary hover:text-text-primary"
               title={thread.is_archived ? 'Unarchive Thread' : 'Archive Thread'}
               aria-label={thread.is_archived ? 'Unarchive Thread' : 'Archive Thread'}
             >
               <Archive className={`w-4 h-4 ${thread.is_archived ? 'text-yellow-500' : ''}`} />
             </button>
           )}
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close thread">
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary" aria-label="Close thread">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -187,11 +187,11 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
         <div ref={containerRef} className="flex-1 overflow-y-auto min-h-0" onScroll={handleScroll}>
           {/* Starter message */}
           {starterMessage && (
-            <div className="px-4 py-3 border-b border-divider bg-bg-tertiary">
+            <div className="px-4 py-3 border-b border-divider bg-panel">
               <div className="flex items-center gap-2 mb-1">
                 <Avatar url={users[starterMessage.author_id]?.avatar_url} name={users[starterMessage.author_id]?.username ?? '?'} size={24} userId={starterMessage.author_id} />
                 <span className="text-sm font-medium text-text-primary">{users[starterMessage.author_id]?.username ?? 'Unknown'}</span>
-                <span className="text-xs text-text-muted">
+                <span className="text-xs text-text-tertiary">
                   {new Date(starterMessage.created_at).toLocaleString()}
                 </span>
               </div>
@@ -201,11 +201,11 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
 
           {/* Thread error */}
           {threadError && !thread && (
-            <div className="flex flex-col items-center justify-center py-8 text-text-muted text-sm gap-2">
+            <div className="flex flex-col items-center justify-center py-8 text-text-tertiary text-sm gap-2">
               <span>Failed to load thread</span>
               <button
                 onClick={() => { setThreadError(false); api.getThread(threadId).then(setThread).catch(() => setThreadError(true)); }}
-                className="text-primary hover:underline text-xs"
+                className="text-accent hover:underline text-xs"
               >
                 Retry
               </button>
@@ -214,17 +214,17 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
 
           {/* Thread replies */}
           {isLoading && msgs.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-text-muted text-sm">
+            <div className="flex items-center justify-center h-32 text-text-tertiary text-sm">
               Loading thread messages...
             </div>
           ) : msgs.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-text-muted text-sm">
+            <div className="flex items-center justify-center h-32 text-text-tertiary text-sm">
               No replies yet. Start the conversation!
             </div>
           ) : (
             <div className="py-2">
               {isLoadingOlder && (
-                <div className="text-center text-text-muted text-sm py-2">Loading older messages...</div>
+                <div className="text-center text-text-tertiary text-sm py-2">Loading older messages...</div>
               )}
               {msgs.map((msg, i) => {
                 const { replyMessage, replyAuthor } = getReplyData(msg);
@@ -250,25 +250,25 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
         {thread?.is_archived ? (
           <div className="px-4 pb-4 pt-2 shrink-0">
             <div className="flex items-center bg-surface border border-divider rounded-lg px-4 py-3 opacity-60">
-              <span className="text-text-muted text-sm">This thread is archived</span>
+              <span className="text-text-tertiary text-sm">This thread is archived</span>
             </div>
           </div>
         ) : (
           <div className="px-4 pb-4 pt-2 shrink-0">
             {replyTo && (
-              <div className="flex items-center gap-2 px-4 py-1.5 bg-bg-tertiary border-l-2 border-primary rounded-t mb-1">
-                <span className="text-xs text-text-muted">Replying to</span>
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-panel border-l-2 border-accent rounded-t mb-1">
+                <span className="text-xs text-text-tertiary">Replying to</span>
                 <span className="text-xs text-text-primary font-medium">
                   {users[replyTo.author_id]?.username ?? 'Unknown'}
                 </span>
-                <span className="text-xs text-text-muted truncate flex-1">{replyTo.content}</span>
-                <button onClick={() => setReplyTo(null)} className="text-text-muted hover:text-text-primary shrink-0" aria-label="Cancel reply">
+                <span className="text-xs text-text-tertiary truncate flex-1">{replyTo.content}</span>
+                <button onClick={() => setReplyTo(null)} className="text-text-tertiary hover:text-text-primary shrink-0" aria-label="Cancel reply">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             )}
             {sendError && (
-              <div className="text-xs text-error mb-1">{sendError}</div>
+              <div className="text-xs text-danger mb-1">{sendError}</div>
             )}
             <div className="flex items-end gap-2 bg-surface border border-divider rounded-xl px-4 py-2">
               <textarea
@@ -283,7 +283,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
                 }}
                 placeholder="Reply in thread..."
                 rows={1}
-                className="flex-1 bg-transparent text-text-primary text-sm resize-none max-h-30 py-1 placeholder:text-text-muted"
+                className="flex-1 bg-transparent text-text-primary text-sm resize-none max-h-30 py-1 placeholder:text-text-tertiary"
                 style={{ height: 'auto', minHeight: '24px' }}
                 onInput={(e) => {
                   const el = e.currentTarget;
@@ -294,7 +294,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
               <button
                 onClick={handleSend}
                 disabled={!content.trim() || sending}
-                className="text-primary hover:text-primary-hover disabled:text-text-muted py-1"
+                className="text-accent hover:text-accent-hover disabled:text-text-tertiary py-1"
                 aria-label="Send reply"
               >
                 <Send className="w-5 h-5" />

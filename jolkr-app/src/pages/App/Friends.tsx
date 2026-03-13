@@ -7,7 +7,7 @@ import { usePresenceStore } from '../../stores/presence';
 import Avatar from '../../components/Avatar';
 import UserProfileCard from '../../components/UserProfileCard';
 import { useMobileNav } from '../../hooks/useMobileNav';
-import { Users, ChevronLeft, MessageCircle, Check, X, UserPlus } from 'lucide-react';
+import { Users, MessageCircle, Check, X, UserPlus } from 'lucide-react';
 
 type Tab = 'all' | 'pending' | 'add';
 
@@ -131,15 +131,10 @@ export default function Friends() {
   if (isMobile) {
     return (
       <>
-        <div className="flex-1 flex flex-col bg-bg-tertiary min-h-0">
+        <div className="flex-1 flex flex-col bg-panel min-h-0">
           {/* Mobile Header */}
           <div className="px-4 pt-2 pb-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary shrink-0">
-                <ChevronLeft className="size-5" />
-              </button>
-              <span className="text-2xl font-bold text-text-primary">Friends</span>
-            </div>
+            <span className="text-2xl font-bold text-text-primary">Friends</span>
           </div>
 
           {/* Mobile Tabs row */}
@@ -150,15 +145,13 @@ export default function Friends() {
                 onClick={() => setTab(t)}
                 className={`px-4 py-2.5 text-sm whitespace-nowrap ${
                   tab === t
-                    ? 'font-semibold text-text-primary border-b-2 border-primary'
-                    : t === 'add'
-                      ? 'font-medium text-primary'
-                      : 'font-medium text-text-muted'
+                    ? 'font-semibold text-text-primary border-b-2 border-accent'
+                    : 'font-medium text-text-tertiary'
                 }`}
               >
                 {t === 'add' ? 'Add Friend' : t === 'all' ? 'All' : 'Pending'}
                 {t === 'pending' && pending.length > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.5 bg-error rounded-full text-2xs text-white">
+                  <span className="ml-1.5 px-1.5 py-0.5 bg-danger rounded-full text-2xs text-white">
                     {pending.length}
                   </span>
                 )}
@@ -167,22 +160,22 @@ export default function Friends() {
           </div>
 
           <div className="flex flex-col flex-1 overflow-y-auto min-h-0">
-            {error && <div className="bg-error/10 text-error text-sm p-3 mx-4 mt-2 rounded">{error}</div>}
+            {error && <div className="bg-danger/10 text-danger text-sm p-3 mx-4 mt-2 rounded">{error}</div>}
             {friendsError && (
-              <div className="bg-error/10 text-error text-sm p-3 mx-4 mt-2 rounded flex items-center justify-between">
+              <div className="bg-danger/10 text-danger text-sm p-3 mx-4 mt-2 rounded flex items-center justify-between">
                 <span>{friendsError}</span>
-                <button onClick={fetchFriendsData} className="text-primary hover:text-primary-hover text-sm ml-2">Retry</button>
+                <button onClick={fetchFriendsData} className="text-accent hover:text-accent-hover text-sm ml-2">Retry</button>
               </div>
             )}
             {friendsLoading && friends.length === 0 && pending.length === 0 && (
               <div className="flex items-center justify-center py-8">
-                <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-muted animate-spin" />
+                <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-tertiary animate-spin" />
               </div>
             )}
 
             {tab === 'all' && (
               <div>
-                <div className="px-4 py-2 text-xs font-semibold text-text-muted tracking-wider uppercase">
+                <div className="px-4 py-2 text-xs font-semibold text-text-tertiary tracking-wider uppercase">
                   All Friends — {friends.length}
                 </div>
                 {friends.map((f, idx) => {
@@ -205,7 +198,7 @@ export default function Friends() {
                         >
                           {friendUser?.username ?? 'Unknown'}
                         </button>
-                        <div className={`text-xs capitalize ${friendStatus === 'online' ? 'text-online' : 'text-text-muted'}`}>
+                        <div className={`text-xs capitalize ${friendStatus === 'online' ? 'text-online' : 'text-text-tertiary'}`}>
                           {friendStatus}
                         </div>
                       </div>
@@ -225,14 +218,14 @@ export default function Friends() {
                   );
                 })}
                 {friends.length === 0 && (
-                  <div className="text-center text-text-muted py-8">No friends yet. Add some!</div>
+                  <div className="text-center text-text-tertiary py-8">No friends yet. Add some!</div>
                 )}
               </div>
             )}
 
             {tab === 'pending' && (
               <div>
-                <div className="px-4 py-2 text-xs font-semibold text-text-muted tracking-wider uppercase">
+                <div className="px-4 py-2 text-xs font-semibold text-text-tertiary tracking-wider uppercase">
                   Pending — {pending.length}
                 </div>
                 {pending.map((f, idx) => {
@@ -255,7 +248,7 @@ export default function Friends() {
                         >
                           {friendUser?.username ?? 'Unknown'}
                         </button>
-                        <div className="text-xs text-text-muted">
+                        <div className="text-xs text-text-tertiary">
                           {isIncoming ? 'Incoming Friend Request' : 'Outgoing Friend Request'}
                         </div>
                       </div>
@@ -264,7 +257,7 @@ export default function Friends() {
                           <button
                             onClick={() => handleAccept(f.id)}
                             disabled={actionLoading.has(f.id)}
-                            className="size-9 rounded-full bg-surface flex items-center justify-center text-online disabled:opacity-50 hover:bg-bg-hover"
+                            className="size-9 rounded-full bg-surface flex items-center justify-center text-online disabled:opacity-50 hover:bg-hover"
                             title="Accept"
                           >
                             <Check className="size-5" />
@@ -272,7 +265,7 @@ export default function Friends() {
                           <button
                             onClick={() => handleDecline(f.id)}
                             disabled={actionLoading.has(f.id)}
-                            className="size-9 rounded-full bg-surface flex items-center justify-center text-error disabled:opacity-50 hover:bg-bg-hover"
+                            className="size-9 rounded-full bg-surface flex items-center justify-center text-danger disabled:opacity-50 hover:bg-hover"
                             title="Decline"
                           >
                             <X className="size-5" />
@@ -281,7 +274,7 @@ export default function Friends() {
                       ) : (
                         <button
                           onClick={() => handleDecline(f.id)}
-                          className="size-9 rounded-full bg-surface flex items-center justify-center text-text-secondary hover:text-error hover:bg-bg-hover"
+                          className="size-9 rounded-full bg-surface flex items-center justify-center text-text-secondary hover:text-danger hover:bg-hover"
                           title="Cancel Request"
                         >
                           <X className="size-5" />
@@ -291,48 +284,42 @@ export default function Friends() {
                   );
                 })}
                 {pending.length === 0 && (
-                  <div className="text-center text-text-muted py-8">No pending requests</div>
+                  <div className="text-center text-text-tertiary py-8">No pending requests</div>
                 )}
               </div>
             )}
 
             {tab === 'add' && (
-              <div className="flex flex-col gap-4 flex-1 px-4 py-4">
-                <div className="flex flex-col gap-2">
-                  <div className="text-base font-bold text-text-primary">Add Friend</div>
-                  <p className="text-sm text-text-secondary">You can add friends with their Jolkr username.</p>
-                </div>
-                <div className="flex gap-3">
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="Enter a username#0000"
-                    className="flex-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-                  />
-                  <button
-                    onClick={handleSearch}
-                    className="btn-primary text-sm shrink-0"
-                  >
-                    Send Request
-                  </button>
-                </div>
-                <div className="h-px bg-border-subtle" />
+              <div className="flex flex-col gap-5 flex-1 px-4 py-5">
+                <p className="text-sm text-text-secondary">You can add friends by their username.</p>
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Enter a username..."
+                  className="w-full px-4 py-3.5 bg-panel border border-divider rounded-xl text-text-primary text-sm"
+                />
+                <button
+                  onClick={handleSearch}
+                  className="btn-primary text-sm w-full"
+                >
+                  Send Friend Request
+                </button>
                 {searchResults.length > 0 ? (
                   <div className="flex flex-col">
                     {searchResults.map((u, idx) => {
                       const isLast = idx === searchResults.length - 1;
                       return (
-                        <div key={u.id} className={`py-2.5 gap-3 flex items-center ${!isLast ? 'border-b border-border-subtle' : ''}`}>
-                          <button
-                            className="cursor-pointer shrink-0"
-                            onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
-                          >
-                            <Avatar url={u.avatar_url} name={u.username} size={40} userId={u.id} />
-                          </button>
-                          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <div key={u.id} className={`py-3 px-4 gap-3 flex items-center justify-between ${!isLast ? 'border-b border-border-subtle' : ''}`}>
+                          <div className="flex items-center gap-3 min-w-0">
                             <button
-                              className="text-base font-semibold text-text-primary text-left"
+                              className="cursor-pointer shrink-0"
+                              onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
+                            >
+                              <Avatar url={u.avatar_url} name={u.username} size={40} userId={u.id} />
+                            </button>
+                            <button
+                              className="text-sm font-semibold text-text-primary text-left truncate"
                               onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
                             >
                               {u.username}
@@ -341,7 +328,7 @@ export default function Friends() {
                           <button
                             onClick={() => handleSendRequest(u.id)}
                             disabled={actionLoading.has(u.id)}
-                            className="btn-primary text-sm shrink-0"
+                            className="text-sm font-semibold text-accent shrink-0 disabled:opacity-50"
                           >
                             Add
                           </button>
@@ -351,9 +338,9 @@ export default function Friends() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center flex-1 gap-4">
-                    <UserPlus className="size-16 text-text-muted opacity-40" />
+                    <UserPlus className="size-16 text-text-tertiary opacity-40" />
                     <span className="text-base font-semibold text-text-secondary">No one around to chat with?</span>
-                    <span className="text-sm text-text-muted">Send a friend request to start chatting!</span>
+                    <span className="text-sm text-text-tertiary">Send a friend request to start chatting!</span>
                   </div>
                 )}
               </div>
@@ -375,9 +362,9 @@ export default function Friends() {
 
   return (
     <>
-      <div className="flex-1 flex flex-col bg-bg-tertiary min-h-0">
+      <div className="flex-1 flex flex-col bg-panel min-h-0">
           {/* Header with tabs */}
-          <div className="bg-bg-tertiary px-5 py-3 gap-4 flex items-center border-b border-border-subtle shrink-0 overflow-x-auto">
+          <div className="bg-panel px-5 py-3 gap-4 flex items-center border-b border-border-subtle shrink-0 overflow-x-auto">
             <Users className="size-5 text-text-secondary shrink-0" />
             <span className="text-base font-bold text-text-primary shrink-0">Friends</span>
             <div className="w-px h-5 bg-divider shrink-0" />
@@ -387,15 +374,15 @@ export default function Friends() {
                 onClick={() => setTab(t)}
                 className={`px-3.5 py-1.5 rounded-lg text-sm capitalize whitespace-nowrap shrink-0 ${
                   tab === t
-                    ? 'bg-accent-muted font-semibold text-primary'
+                    ? 'bg-accent-muted font-semibold text-accent'
                     : t === 'add'
-                      ? 'font-medium text-primary hover:bg-bg-hover'
-                      : 'font-medium text-text-secondary hover:bg-bg-hover'
+                      ? 'font-medium text-accent hover:bg-hover'
+                      : 'font-medium text-text-secondary hover:bg-hover'
                 }`}
               >
                 {t === 'add' ? 'Add Friend' : t}
                 {t === 'pending' && pending.length > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.5 bg-error rounded-full text-2xs text-white">
+                  <span className="ml-1.5 px-1.5 py-0.5 bg-danger rounded-full text-2xs text-white">
                     {pending.length}
                   </span>
                 )}
@@ -404,29 +391,29 @@ export default function Friends() {
           </div>
 
           <div className="px-5 py-4 flex flex-col flex-1 overflow-y-auto min-h-0">
-            {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+            {error && <div className="bg-danger/10 text-danger text-sm p-3 rounded mb-4">{error}</div>}
             {friendsError && (
-              <div className="bg-error/10 text-error text-sm p-3 rounded mb-4 flex items-center justify-between">
+              <div className="bg-danger/10 text-danger text-sm p-3 rounded mb-4 flex items-center justify-between">
                 <span>{friendsError}</span>
-                <button onClick={fetchFriendsData} className="text-primary hover:text-primary-hover text-sm ml-2">Retry</button>
+                <button onClick={fetchFriendsData} className="text-accent hover:text-accent-hover text-sm ml-2">Retry</button>
               </div>
             )}
             {friendsLoading && friends.length === 0 && pending.length === 0 && (
               <div className="flex items-center justify-center py-8">
-                <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-muted animate-spin" />
+                <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-tertiary animate-spin" />
               </div>
             )}
 
             {tab === 'all' && (
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+                <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
                   All Friends — {friends.length}
                 </div>
                 {friends.map((f) => {
                   const friendUser = getFriendUser(f);
                   const friendId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
                   return (
-                    <div key={f.id} className="rounded-lg px-4 py-3 gap-3 flex items-center hover:bg-bg-hover">
+                    <div key={f.id} className="rounded-lg px-4 py-3 gap-3 flex items-center hover:bg-hover">
                       <button
                         className="cursor-pointer shrink-0"
                         onClick={(e) => setProfileTarget({ userId: friendId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
@@ -440,7 +427,7 @@ export default function Friends() {
                         >
                           {friendUser?.username ?? 'Unknown'}
                         </button>
-                        <div className="text-xs text-text-muted capitalize">{statuses[friendId] ?? 'offline'}</div>
+                        <div className="text-xs text-text-tertiary capitalize">{statuses[friendId] ?? 'offline'}</div>
                       </div>
                       <button
                         onClick={async () => {
@@ -458,14 +445,14 @@ export default function Friends() {
                   );
                 })}
                 {friends.length === 0 && (
-                  <div className="text-center text-text-muted py-8">No friends yet. Add some!</div>
+                  <div className="text-center text-text-tertiary py-8">No friends yet. Add some!</div>
                 )}
               </div>
             )}
 
             {tab === 'pending' && (
               <div className="space-y-0.5">
-                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
+                <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-3">
                   Pending — {pending.length}
                 </div>
                 {pending.map((f, idx) => {
@@ -497,7 +484,7 @@ export default function Friends() {
                           <button
                             onClick={() => handleAccept(f.id)}
                             disabled={actionLoading.has(f.id)}
-                            className="size-9 rounded-full bg-surface flex items-center justify-center text-online disabled:opacity-50 hover:bg-bg-hover"
+                            className="size-9 rounded-full bg-surface flex items-center justify-center text-online disabled:opacity-50 hover:bg-hover"
                             title="Accept"
                           >
                             <Check className="size-5" />
@@ -505,7 +492,7 @@ export default function Friends() {
                           <button
                             onClick={() => handleDecline(f.id)}
                             disabled={actionLoading.has(f.id)}
-                            className="size-9 rounded-full bg-surface flex items-center justify-center text-error disabled:opacity-50 hover:bg-bg-hover"
+                            className="size-9 rounded-full bg-surface flex items-center justify-center text-danger disabled:opacity-50 hover:bg-hover"
                             title="Decline"
                           >
                             <X className="size-5" />
@@ -514,7 +501,7 @@ export default function Friends() {
                       ) : (
                         <button
                           onClick={() => handleDecline(f.id)}
-                          className="size-9 rounded-full bg-surface flex items-center justify-center text-text-secondary hover:text-error hover:bg-bg-hover"
+                          className="size-9 rounded-full bg-surface flex items-center justify-center text-text-secondary hover:text-danger hover:bg-hover"
                           title="Cancel Request"
                         >
                           <X className="size-5" />
@@ -524,7 +511,7 @@ export default function Friends() {
                   );
                 })}
                 {pending.length === 0 && (
-                  <div className="text-center text-text-muted py-8">No pending requests</div>
+                  <div className="text-center text-text-tertiary py-8">No pending requests</div>
                 )}
               </div>
             )}
@@ -554,7 +541,7 @@ export default function Friends() {
                 {searchResults.length > 0 ? (
                   <div className="flex flex-col gap-0.5">
                     {searchResults.map((u) => (
-                      <div key={u.id} className="rounded-lg px-4 py-3 gap-3 flex items-center hover:bg-bg-hover">
+                      <div key={u.id} className="rounded-lg px-4 py-3 gap-3 flex items-center hover:bg-hover">
                         <button
                           className="cursor-pointer shrink-0"
                           onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
@@ -581,9 +568,9 @@ export default function Friends() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center flex-1 gap-4">
-                    <UserPlus className="size-16 text-text-muted opacity-40" />
+                    <UserPlus className="size-16 text-text-tertiary opacity-40" />
                     <span className="text-base font-semibold text-text-secondary">No one around to chat with?</span>
-                    <span className="text-sm text-text-muted">Send a friend request to start chatting!</span>
+                    <span className="text-sm text-text-tertiary">Send a friend request to start chatting!</span>
                   </div>
                 )}
               </div>

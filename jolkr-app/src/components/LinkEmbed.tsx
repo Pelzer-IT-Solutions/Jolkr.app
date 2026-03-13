@@ -37,7 +37,7 @@ export default function LinkEmbed({ embed }: LinkEmbedProps) {
       {embed.image_url && !imgErrored && (
         <div className="relative aspect-video max-h-50 overflow-hidden">
           {!imgLoaded && (
-            <div className="absolute inset-0 bg-bg-hover animate-pulse" />
+            <div className="absolute inset-0 bg-hover animate-pulse" />
           )}
           <img
             src={embed.image_url}

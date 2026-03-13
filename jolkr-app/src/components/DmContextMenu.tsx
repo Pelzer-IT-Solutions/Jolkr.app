@@ -44,7 +44,7 @@ export default function DmContextMenu({
       {isGroup ? (
         <button
           role="menuitem"
-          className="w-full px-4 py-2 text-sm text-error hover:bg-error/10 text-left outline-none focus:bg-bg-hover"
+          className="w-full px-4 py-2 text-sm text-danger hover:bg-danger/10 text-left outline-none focus:bg-hover"
           onClick={() => onLeaveGroup(dm)}
         >
           Leave Group
@@ -53,7 +53,7 @@ export default function DmContextMenu({
         <>
           <button
             role="menuitem"
-            className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left outline-none focus:bg-bg-hover"
+            className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left outline-none focus:bg-hover"
             onClick={() => onViewProfile(dm)}
           >
             View Profile
@@ -62,7 +62,7 @@ export default function DmContextMenu({
           {friendship?.status === 'accepted' ? (
             <button
               role="menuitem"
-              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left outline-none focus:bg-bg-hover"
+              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left outline-none focus:bg-hover"
               onClick={() => otherId && onRemoveFriend(otherId)}
             >
               Remove Friend
@@ -70,7 +70,7 @@ export default function DmContextMenu({
           ) : !friendship ? (
             <button
               role="menuitem"
-              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left outline-none focus:bg-bg-hover"
+              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left outline-none focus:bg-hover"
               onClick={() => otherId && onAddFriend(otherId)}
             >
               Add Friend
@@ -81,14 +81,14 @@ export default function DmContextMenu({
 
           <button
             role="menuitem"
-            className="w-full px-4 py-2 text-sm text-error hover:bg-error/10 text-left outline-none focus:bg-bg-hover"
+            className="w-full px-4 py-2 text-sm text-danger hover:bg-danger/10 text-left outline-none focus:bg-hover"
             onClick={() => onBlock(dm)}
           >
             Block User
           </button>
           <button
             role="menuitem"
-            className="w-full px-4 py-2 text-sm text-error hover:bg-error/10 text-left outline-none focus:bg-bg-hover"
+            className="w-full px-4 py-2 text-sm text-danger hover:bg-danger/10 text-left outline-none focus:bg-hover"
             onClick={() => onCloseDm(dm)}
           >
             Close DM

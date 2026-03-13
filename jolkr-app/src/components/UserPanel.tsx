@@ -11,7 +11,7 @@ const STATUS_OPTIONS = [
   { value: 'online', label: 'Online', color: 'bg-online' },
   { value: 'idle', label: 'Idle', color: 'bg-idle' },
   { value: 'dnd', label: 'Do Not Disturb', color: 'bg-dnd' },
-  { value: 'offline', label: 'Invisible', color: 'bg-text-muted' },
+  { value: 'offline', label: 'Invisible', color: 'bg-offline' },
 ] as const;
 
 function statusLabel(s: string): string {
@@ -70,22 +70,22 @@ export default function UserPanel() {
     <div className="shrink-0">
       <VoiceConnectionBar />
     <div className="bg-bg p-3 gap-2.5 flex items-center relative">
-      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} status={currentStatus} userId={user?.id} />
+      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size="sm" status={currentStatus} userId={user?.id} />
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold text-text-primary truncate">{user?.username ?? 'User'}</div>
         <button
           onClick={() => setShowPicker(!showPicker)}
-          className="text-xs text-text-muted hover:text-text-secondary cursor-pointer"
+          className="text-xs text-text-tertiary hover:text-text-secondary cursor-pointer"
         >
           {statusLabel(currentStatus)}
         </button>
         {user?.status && (
-          <div className="text-xs text-text-muted truncate">{user.status}</div>
+          <div className="text-xs text-text-tertiary truncate">{user.status}</div>
         )}
       </div>
       <Link
         to="/settings"
-        className="text-text-muted hover:text-text-primary p-1"
+        className="text-text-tertiary hover:text-text-primary p-1"
         title="Settings"
         aria-label="Settings"
       >
@@ -94,7 +94,7 @@ export default function UserPanel() {
 
       {/* Status error */}
       {statusError && (
-        <div className="absolute bottom-full left-2 mb-1 bg-error/10 text-error text-xs px-2 py-1 rounded z-50 max-w-50">
+        <div className="absolute bottom-full left-2 mb-1 bg-danger/10 text-danger text-xs px-2 py-1 rounded z-50 max-w-50">
           {statusError}
         </div>
       )}
@@ -106,7 +106,7 @@ export default function UserPanel() {
           <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float py-1 w-48 z-50">
             <button
               onClick={() => { setCustomStatusText(user?.status ?? ''); setShowCustomStatus(true); }}
-              className="w-full px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-bg-hover flex items-center gap-2 border-b border-divider mb-1"
+              className="w-full px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-hover flex items-center gap-2 border-b border-divider mb-1"
             >
               <Pencil className="w-3.5 h-3.5" />
               {user?.status ? 'Edit Custom Status' : 'Set Custom Status'}
@@ -114,7 +114,7 @@ export default function UserPanel() {
             {user?.status && (
               <button
                 onClick={handleClearCustomStatus}
-                className="w-full px-3 py-1.5 text-left text-sm text-error/70 hover:bg-error/10 hover:text-error flex items-center gap-2 border-b border-divider mb-1"
+                className="w-full px-3 py-1.5 text-left text-sm text-danger/70 hover:bg-danger/10 hover:text-danger flex items-center gap-2 border-b border-divider mb-1"
               >
                 <X className="w-3.5 h-3.5" />
                 Clear Custom Status
@@ -124,7 +124,7 @@ export default function UserPanel() {
               <button
                 key={opt.value}
                 onClick={() => handleStatusChange(opt.value)}
-                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-bg-hover ${
+                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-hover ${
                   currentStatus === opt.value ? 'text-text-primary' : 'text-text-secondary'
                 }`}
               >
@@ -141,7 +141,7 @@ export default function UserPanel() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowCustomStatus(false)} />
           <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float p-3 w-56 z-50">
-            <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Custom Status</div>
+            <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2">Custom Status</div>
             <input
               value={customStatusText}
               onChange={(e) => setCustomStatusText(e.target.value)}

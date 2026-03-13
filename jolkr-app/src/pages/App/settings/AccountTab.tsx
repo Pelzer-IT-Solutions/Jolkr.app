@@ -79,7 +79,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); }}}
             aria-label="Upload avatar"
           >
-            <Avatar url={displayAvatarUrl} name={user?.username ?? '?'} size={56} status="online" />
+            <Avatar url={displayAvatarUrl} name={user?.username ?? '?'} size="2xl" status="online" />
             <div className={`absolute inset-0 size-14 rounded-full bg-black/50 flex items-center justify-center transition-opacity ${avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}>
               {avatarUploading ? (
                 <div className="text-white text-xs font-medium animate-pulse">Uploading</div>
@@ -103,7 +103,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="settings-username" className="text-xs font-semibold text-text-muted uppercase tracking-wider">Username</label>
+            <label htmlFor="settings-username" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Username</label>
             <input
               id="settings-username"
               value={username}
@@ -112,7 +112,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="settings-displayname" className="text-xs font-semibold text-text-muted uppercase tracking-wider">Display Name</label>
+            <label htmlFor="settings-displayname" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Display Name</label>
             <input
               id="settings-displayname"
               value={displayName}
@@ -122,7 +122,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="settings-bio" className="text-xs font-semibold text-text-muted uppercase tracking-wider">Bio</label>
+            <label htmlFor="settings-bio" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Bio</label>
             <textarea
               id="settings-bio"
               value={bio}
@@ -131,7 +131,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
               placeholder="Tell us about yourself"
             />
           </div>
-          {saveError && <div className="bg-error/10 text-error text-sm p-2 rounded">{saveError}</div>}
+          {saveError && <div className="bg-danger/10 text-danger text-sm p-2 rounded">{saveError}</div>}
           <div>
             <button
               onClick={handleSave}
@@ -146,7 +146,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
 
       {/* Danger zone */}
       <div className="rounded-xl bg-surface border border-divider p-6 gap-3 flex flex-col">
-        <h3 className="text-base font-bold text-error">Log Out</h3>
+        <h3 className="text-base font-bold text-danger">Log Out</h3>
         <p className="text-sm text-text-secondary">This will disconnect you from all servers.</p>
         <div>
           <button

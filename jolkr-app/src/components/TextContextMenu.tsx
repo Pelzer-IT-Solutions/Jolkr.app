@@ -156,12 +156,12 @@ export default function TextContextMenu() {
               role="menuitem"
               disabled={item.disabled}
               onClick={item.onClick}
-              className="w-full px-3 py-1.5 text-sm text-left flex items-center gap-2.5 disabled:opacity-30 disabled:cursor-default text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:hover:bg-transparent disabled:hover:text-text-secondary transition-colors"
+              className="w-full px-3 py-1.5 text-sm text-left flex items-center gap-2.5 disabled:opacity-30 disabled:cursor-default text-text-secondary hover:bg-hover hover:text-text-primary disabled:hover:bg-transparent disabled:hover:text-text-secondary transition-colors"
             >
               <span className="shrink-0 opacity-70">{item.icon}</span>
               <span className="flex-1">{item.label}</span>
               {item.shortcut && (
-                <span className="text-xs text-text-muted ml-auto tracking-wide">{item.shortcut}</span>
+                <span className="text-xs text-text-tertiary ml-auto tracking-wide">{item.shortcut}</span>
               )}
             </button>
           )

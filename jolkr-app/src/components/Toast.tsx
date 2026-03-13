@@ -41,7 +41,7 @@ export default function Toast() {
 
   if (!message) return null;
 
-  const bg = kind === 'error' ? 'bg-error' : kind === 'success' ? 'bg-online' : 'bg-primary';
+  const bg = kind === 'error' ? 'bg-danger' : kind === 'success' ? 'bg-online' : 'bg-accent';
 
   return (
     <div role="status" aria-live="polite" className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] ${closing ? 'animate-toast-exit' : 'animate-toast-enter'}`}>

@@ -31,7 +31,7 @@ marked.use({
       const body = this.parser.parseInline(tokens);
       // Block dangerous protocols (javascript:, data:, vbscript:)
       const safeHref = /^(https?:\/\/|mailto:|#)/i.test(href ?? '') ? href : '#';
-      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${body}</a>`;
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">${body}</a>`;
     },
     strong({ tokens }) {
       const body = this.parser.parseInline(tokens);
@@ -56,7 +56,7 @@ marked.use({
       } else {
         highlighted = hljs.highlightAuto(raw).value;
       }
-      const langLabel = lang ? `<div class="text-xs text-text-muted">${lang}</div>` : '';
+      const langLabel = lang ? `<div class="text-xs text-text-tertiary">${lang}</div>` : '';
       return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-sm font-mono hljs !p-0">${highlighted}</code></pre>`;
     },
     heading({ tokens, depth }) {
@@ -90,7 +90,7 @@ function highlightMentions(html: string): string {
     /(<[^>]*>)|(@\w+)/g,
     (match, tag, mention) => {
       if (tag) return tag;
-      if (mention) return `<span class="px-0.5 rounded bg-primary/20 text-primary font-medium cursor-pointer hover:underline">${mention}</span>`;
+      if (mention) return `<span class="px-0.5 rounded bg-accent/20 text-accent font-medium cursor-pointer hover:underline">${mention}</span>`;
       return match;
     },
   );

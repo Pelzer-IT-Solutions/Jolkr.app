@@ -46,11 +46,11 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, State> 
                 Try Again
               </button>
             ) : (
-              <p className="text-text-muted text-xs">Too many retries.</p>
+              <p className="text-text-tertiary text-xs">Too many retries.</p>
             )}
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-surface text-text-primary text-sm rounded-lg hover:bg-bg-hover"
+              className="px-4 py-2 bg-surface text-text-primary text-sm rounded-lg hover:bg-hover"
             >
               Reload Page
             </button>

@@ -173,7 +173,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 
   return (
     <div
-      className={`group flex items-start gap-2.5 md:gap-3 px-4 py-1 md:py-1.5 hover:bg-bg-hover relative ${compact ? 'py-0.5' : '[.compact-mode_&]:py-0.5'}`}
+      className={`group flex items-start gap-2.5 md:gap-3 px-4 py-1 md:py-1.5 hover:bg-hover relative ${compact ? 'py-0.5' : '[.compact-mode_&]:py-0.5'}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onFocusCapture={() => setShowActions(true)}
@@ -182,7 +182,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
     >
       {compact ? (
         <div className="w-8 md:w-10 shrink-0 flex justify-center">
-          <span className="text-2xs md:text-xs text-text-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">{timeStr}</span>
+          <span className="text-2xs md:text-xs text-text-tertiary opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">{timeStr}</span>
         </div>
       ) : message.webhook_id ? (
         <div className="shrink-0">
@@ -200,7 +200,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
       <div className="flex-1 min-w-0">
         {/* Reply reference */}
         {message.reply_to_id && (
-          <div className="flex items-center gap-1.5 mb-0.5 text-xs text-text-muted">
+          <div className="flex items-center gap-1.5 mb-0.5 text-xs text-text-tertiary">
             <Reply className="size-3 shrink-0" />
             <span className="text-text-secondary font-medium">{replyAuthor?.username ?? 'Unknown'}</span>
             <span className="truncate max-w-75">{replyMessage?.content ?? '...'}</span>
@@ -215,22 +215,22 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               </span>
             ) : (
               <button
-                className="text-sm font-semibold text-primary hover:underline cursor-pointer truncate max-w-75"
+                className="text-sm font-semibold text-accent hover:underline cursor-pointer truncate max-w-75"
                 onClick={(e) => setProfileAnchor({ x: e.clientX, y: e.clientY })}
               >
                 {author?.username ?? 'Unknown'}
               </button>
             )}
             {message.webhook_id && (
-              <span className="px-1 py-0.5 text-2xs bg-accent-muted text-primary rounded font-bold uppercase shrink-0">
+              <span className="px-1 py-0.5 text-2xs bg-accent-muted text-accent rounded font-bold uppercase shrink-0">
                 BOT
               </span>
             )}
-            <span className="text-2xs md:text-xs text-text-muted">{mobile ? timeStr : `${dateStr} ${timeStr}`}</span>
+            <span className="text-2xs md:text-xs text-text-tertiary">{mobile ? timeStr : `${dateStr} ${timeStr}`}</span>
             {isEncrypted && (
               <span title="End-to-end encrypted"><Lock className="size-3 text-green-400 inline-block" /></span>
             )}
-            {message.is_edited && <span className="text-xs text-text-muted">(edited)</span>}
+            {message.is_edited && <span className="text-xs text-text-tertiary">(edited)</span>}
           </div>
         )}
 
@@ -247,8 +247,8 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               rows={Math.min(editContent.split('\n').length, 6)}
               autoFocus
             />
-            {editError && <div className="text-xs text-error mt-1">{editError}</div>}
-            <div className="text-xs text-text-muted mt-1">
+            {editError && <div className="text-xs text-danger mt-1">{editError}</div>}
+            <div className="text-xs text-text-tertiary mt-1">
               Enter to save &middot; Shift+Enter for new line &middot; Escape to cancel
             </div>
           </div>
@@ -325,12 +325,12 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                     href={attUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 max-w-75 hover:bg-bg-hover"
+                    className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 max-w-75 hover:bg-hover"
                   >
-                    <FileText className="size-5 text-text-muted shrink-0" />
+                    <FileText className="size-5 text-text-tertiary shrink-0" />
                     <div className="min-w-0">
-                      <div className="text-sm text-primary truncate">{att.filename}</div>
-                      <div className="text-xs text-text-muted">{formatBytes(att.size_bytes)}</div>
+                      <div className="text-sm text-accent truncate">{att.filename}</div>
+                      <div className="text-xs text-text-tertiary">{formatBytes(att.size_bytes)}</div>
                     </div>
                   </a>
                 );
@@ -376,8 +376,8 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                 onClick={() => handleReaction(r.emoji)}
                 className={`px-2.5 py-1 rounded-full text-xs flex items-center gap-1 border ${
                   r.me
-                    ? 'bg-accent-muted border-primary/50 text-text-primary'
-                    : 'bg-surface border-divider text-text-secondary hover:bg-bg-hover'
+                    ? 'bg-accent-muted border-accent/50 text-text-primary'
+                    : 'bg-surface border-divider text-text-secondary hover:bg-hover'
                 }`}
               >
                 <img src={emojiToImgUrl(r.emoji)} alt={r.emoji} className="inline-block w-4.5 h-4.5" loading="lazy" draggable={false} />
@@ -391,7 +391,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         {message.thread_id && (message.thread_reply_count ?? 0) > 0 && !hideThreadButton && (
           <button
             onClick={() => onOpenThread?.(message)}
-            className="mt-1 flex items-center gap-1.5 text-primary text-xs hover:underline cursor-pointer"
+            className="mt-1 flex items-center gap-1.5 text-accent text-xs hover:underline cursor-pointer"
           >
             <MessageSquare className="size-3.5" />
             <span>{message.thread_reply_count ?? 0} {(message.thread_reply_count ?? 0) === 1 ? 'reply' : 'replies'}</span>
@@ -401,8 +401,8 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         {/* DM read receipt indicator */}
         {isReadByOther && (
           <div className="flex items-center gap-1 mt-0.5">
-            <Check className="size-3 text-primary" />
-            <span className="text-2xs text-text-muted">Read</span>
+            <Check className="size-3 text-accent" />
+            <span className="text-2xs text-text-tertiary">Read</span>
           </div>
         )}
       </div>
@@ -412,7 +412,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         <div className="absolute right-4 -top-3 flex rounded-lg bg-surface border border-divider shadow-float">
           <button
             onClick={() => onReply?.(message)}
-            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-hover"
             title="Reply"
             aria-label="Reply"
           >
@@ -421,7 +421,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
           {!isDm && !hideThreadButton && (
             <button
               onClick={() => onOpenThread?.(message)}
-              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-hover"
               title="Thread"
               aria-label="Thread"
             >
@@ -450,11 +450,11 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                 }
               }}
               disabled={pinning}
-              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover disabled:opacity-50"
+              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-hover disabled:opacity-50"
               title={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
               aria-label={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
             >
-              <Bookmark className={`size-4 ${message.is_pinned ? 'text-primary' : ''}`} />
+              <Bookmark className={`size-4 ${message.is_pinned ? 'text-accent' : ''}`} />
             </button>
           )}
           <button
@@ -469,7 +469,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               }
               setShowReactionPicker(!showReactionPicker);
             }}
-            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-hover"
             title="Add Reaction"
             aria-label="Add Reaction"
           >
@@ -480,7 +480,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               {!isEncrypted && (
                 <button
                   onClick={() => { setEditing(true); setEditContent(displayContent || ''); }}
-                  className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+                  className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-hover"
                   title="Edit"
                   aria-label="Edit"
                 >
@@ -489,7 +489,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               )}
               <button
                 onClick={handleDelete}
-                className="px-2 py-1 text-text-secondary hover:text-error hover:bg-bg-hover"
+                className="px-2 py-1 text-text-secondary hover:text-danger hover:bg-hover"
                 title="Delete"
                 aria-label="Delete"
               >
@@ -505,7 +505,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowReactionPicker(false)} />
           <div className="fixed z-50" style={{ top: pickerPos.top, left: pickerPos.left }}>
-            <Suspense fallback={<div className="w-75 h-87.5 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+            <Suspense fallback={<div className="w-75 h-87.5 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
               <LazyEmojiPicker
                 theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
                 onEmojiClick={(emoji: { emoji: string }) => handleReaction(emoji.emoji)}
@@ -572,7 +572,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
 
   if (errored) {
     return (
-      <div className={`bg-surface border border-divider rounded-lg px-3 py-2 text-text-muted text-sm ${spanFull ? 'col-span-2' : ''}`}>
+      <div className={`bg-surface border border-divider rounded-lg px-3 py-2 text-text-tertiary text-sm ${spanFull ? 'col-span-2' : ''}`}>
         Image expired: {alt}
       </div>
     );
@@ -582,7 +582,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
     return (
       <div className={`relative overflow-hidden ${spanFull ? 'col-span-2 h-50' : 'h-37.5'}`}>
         {!loaded && (
-          <div className="absolute inset-0 bg-bg-hover animate-pulse" />
+          <div className="absolute inset-0 bg-hover animate-pulse" />
         )}
         <img
           src={currentSrc}
@@ -602,7 +602,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
   return (
     <div className="relative max-w-100 min-h-15 rounded-lg overflow-hidden">
       {!loaded && (
-        <div className="absolute inset-0 bg-bg-hover animate-pulse rounded-lg" />
+        <div className="absolute inset-0 bg-hover animate-pulse rounded-lg" />
       )}
       <img
         src={currentSrc}

@@ -124,18 +124,18 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 shrink-0">
           <h3 className="text-lg font-bold text-text-primary">Server Invites</h3>
-          <button onClick={onClose} aria-label="Close" className="size-5 text-text-muted hover:text-text-primary">
+          <button onClick={onClose} aria-label="Close" className="size-5 text-text-tertiary hover:text-text-primary">
             <X className="size-5" />
           </button>
         </div>
 
         {/* Create section */}
         <div className="px-6 pb-4 flex flex-col gap-3 border-b border-divider shrink-0">
-          {actionError && <div className="bg-error/10 text-error text-sm p-2 rounded-lg">{actionError}</div>}
+          {actionError && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg">{actionError}</div>}
 
           <div className="flex gap-2.5">
             <div className="flex-1 flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Expire After</label>
+              <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Expire After</label>
               <select
                 value={maxAgeSeconds}
                 onChange={(e) => setMaxAgeSeconds(Number(e.target.value))}
@@ -147,7 +147,7 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
               </select>
             </div>
             <div className="w-35 shrink-0 flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Max Uses</label>
+              <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Max Uses</label>
               <select
                 value={maxUses}
                 onChange={(e) => setMaxUses(Number(e.target.value))}
@@ -171,38 +171,38 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
 
         {/* Invite list */}
         <div className="flex-1 overflow-y-auto px-6 py-3 flex flex-col min-h-0">
-          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider shrink-0">
+          <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider shrink-0">
             Invites — {invites.length}
           </div>
 
           {fetchError && invites.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-error text-sm">Failed to load invites</div>
+            <div className="flex-1 flex items-center justify-center text-danger text-sm">Failed to load invites</div>
           ) : invites.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-text-muted text-sm">No invites yet</div>
+            <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">No invites yet</div>
           ) : (
             <div className="flex-1 min-h-0">
               {invites.map((inv) => (
                 <div key={inv.id} className="flex items-center gap-2.5 py-3 border-b border-divider">
                   <button
                     onClick={() => handleCopy(inv.code)}
-                    className="text-sm font-medium text-primary hover:text-primary-hover truncate text-left"
+                    className="text-sm font-medium text-accent hover:text-accent-hover truncate text-left"
                     title="Click to copy"
                   >
                     {copied === inv.code ? 'Copied!' : getInviteUrl(inv.code)}
                   </button>
                   <div className="flex items-center gap-4 justify-end flex-1 shrink-0">
-                    <span className="text-sm text-text-muted whitespace-nowrap">
+                    <span className="text-sm text-text-tertiary whitespace-nowrap">
                       {inv.use_count}{inv.max_uses ? `/${inv.max_uses}` : ''} uses
                     </span>
                     {inv.expires_at && (
-                      <span className="text-sm text-text-muted whitespace-nowrap">
+                      <span className="text-sm text-text-tertiary whitespace-nowrap">
                         {formatExpiry(inv.expires_at)}
                       </span>
                     )}
                     <button
                       onClick={() => handleDelete(inv.id)}
                       disabled={deletingId === inv.id}
-                      className="text-error hover:text-error/80 disabled:opacity-50 shrink-0"
+                      className="text-danger hover:text-danger/80 disabled:opacity-50 shrink-0"
                       aria-label="Delete invite"
                     >
                       <Trash2 className="size-4" />
@@ -216,7 +216,7 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
 
         {/* Close row */}
         <div className="flex justify-end px-6 py-3 shrink-0">
-          <button onClick={onClose} className="text-sm font-medium text-text-muted hover:text-text-primary">
+          <button onClick={onClose} className="text-sm font-medium text-text-tertiary hover:text-text-primary">
             Close
           </button>
         </div>

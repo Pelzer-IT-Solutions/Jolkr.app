@@ -296,7 +296,7 @@ export default function ChannelPage() {
           <div className="border-t border-border-subtle">
             <button
               onClick={() => setShowInvites(true)}
-              className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
             >
               <UserPlus className="size-4" />
               Invite People
@@ -308,7 +308,7 @@ export default function ChannelPage() {
 
       {/* Main chat area */}
         <div
-          className={`flex-1 flex flex-col bg-bg-tertiary min-w-0 min-h-0 page-transition relative${isMobile && showSidebar ? ' hidden' : ''}`}
+          className={`flex-1 flex flex-col bg-panel min-w-0 min-h-0 page-transition relative${isMobile && showSidebar ? ' hidden' : ''}`}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -316,28 +316,28 @@ export default function ChannelPage() {
         >
           {/* Full-window drop overlay */}
           {isDragging && (
-            <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-50 bg-accent/10 border-2 border-dashed border-accent rounded-lg flex items-center justify-center pointer-events-none">
               <div className="flex flex-col items-center gap-2">
-                <Upload className="size-10 text-primary" />
-                <span className="text-primary font-semibold text-lg">Drop files to upload</span>
+                <Upload className="size-10 text-accent" />
+                <span className="text-accent font-semibold text-lg">Drop files to upload</span>
               </div>
             </div>
           )}
           {/* Channel header */}
-          <div className="bg-bg-tertiary px-5 py-3 flex items-center gap-3 border-b border-border-subtle shrink-0">
+          <div className="bg-panel px-5 py-3 flex items-center gap-3 border-b border-border-subtle shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to channels">
                 <ChevronLeft className="size-5" />
               </button>
             )}
             {channel?.kind === 'voice' ? (
-              <Mic className="size-4 text-text-muted shrink-0" />
+              <Mic className="size-4 text-text-tertiary shrink-0" />
             ) : (
-              <span className="text-text-muted">#</span>
+              <span className="text-text-tertiary">#</span>
             )}
             <span className="text-base font-semibold text-text-primary">{channel?.name ?? 'channel'}</span>
             {channel?.is_nsfw && (
-              <span className="px-1.5 py-0.5 text-2xs bg-error/20 text-error rounded font-bold uppercase shrink-0">
+              <span className="px-1.5 py-0.5 text-2xs bg-danger/20 text-danger rounded font-bold uppercase shrink-0">
                 NSFW
               </span>
             )}
@@ -346,7 +346,7 @@ export default function ChannelPage() {
                 <div className="w-px h-6 bg-divider" />
                 <button
                   onClick={() => setShowTopicExpanded(!showTopicExpanded)}
-                  className="text-text-muted text-sm truncate hover:text-text-secondary cursor-pointer text-left"
+                  className="text-text-tertiary text-sm truncate hover:text-text-secondary cursor-pointer text-left"
                   title="Click to expand topic"
                   aria-label="Toggle channel topic"
                   aria-expanded={showTopicExpanded}
@@ -433,7 +433,7 @@ export default function ChannelPage() {
             <>
               <div className="fixed inset-0 z-30 animate-fade-in" onClick={() => setShowTopicExpanded(false)} />
               <div className="relative z-40 px-4 py-3 bg-surface border-b border-divider animate-fade-in-down">
-                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">Channel Topic</div>
+                <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-1">Channel Topic</div>
                 <div className="text-text-secondary text-sm whitespace-pre-wrap">{channel.topic}</div>
               </div>
             </>
@@ -445,7 +445,7 @@ export default function ChannelPage() {
               <div className="text-center max-w-sm">
                 <div className="text-4xl mb-3">🔞</div>
                 <h2 className="text-text-primary text-lg font-semibold mb-2">NSFW Channel</h2>
-                <p className="text-text-muted text-sm mb-4">
+                <p className="text-text-tertiary text-sm mb-4">
                   This channel is marked as age-restricted. You must be 18 years or older to view its content.
                 </p>
                 <div className="flex gap-3 justify-center">
@@ -460,7 +460,7 @@ export default function ChannelPage() {
                       setNsfwAcknowledged(true);
                       localStorage.setItem(`nsfw_ack_${channelId}`, 'true');
                     }}
-                    className="px-4 py-2 text-sm bg-error hover:bg-error/80 text-white rounded"
+                    className="px-4 py-2 text-sm bg-danger hover:bg-danger/80 text-white rounded"
                   >
                     I am 18 or older
                   </button>
@@ -574,13 +574,13 @@ function VoiceChannelView({
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6">
       {/* Voice icon */}
-      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-        <Mic className="size-10 text-primary" strokeWidth={1.5} />
+      <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center">
+        <Mic className="size-10 text-accent" strokeWidth={1.5} />
       </div>
 
       <div className="text-center">
         <h2 className="text-text-primary text-xl font-semibold mb-1">{channelName}</h2>
-        <p className="text-text-muted text-sm">
+        <p className="text-text-tertiary text-sm">
           {isConnected
             ? `Connected — ${participants.length} participant${participants.length !== 1 ? 's' : ''}`
             : isConnecting
@@ -590,7 +590,7 @@ function VoiceChannelView({
       </div>
 
       {error && (
-        <div className="bg-error/10 text-error text-sm px-4 py-2 rounded max-w-sm text-center">
+        <div className="bg-danger/10 text-danger text-sm px-4 py-2 rounded max-w-sm text-center">
           {error}
         </div>
       )}
@@ -605,7 +605,7 @@ function VoiceChannelView({
                 <div className={`relative rounded-full ${p.isSpeaking ? 'ring-2 ring-green-400' : ''}`}>
                   <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={56} userId={p.userId} />
                   {p.isMuted && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-error rounded-full flex items-center justify-center">
+                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-danger rounded-full flex items-center justify-center">
                       <VolumeX className="size-3 text-white" strokeWidth={2.5} />
                     </div>
                   )}
@@ -630,14 +630,14 @@ function VoiceChannelView({
       ) : isConnecting ? (
         <button
           onClick={() => leaveChannel()}
-          className="px-6 py-2.5 bg-surface hover:bg-bg-hover text-text-secondary rounded-full font-medium text-sm transition-colors"
+          className="px-6 py-2.5 bg-surface hover:bg-hover text-text-secondary rounded-full font-medium text-sm transition-colors"
         >
           Cancel
         </button>
       ) : (
         <button
           onClick={() => leaveChannel()}
-          className="px-6 py-2.5 bg-error hover:bg-error/80 text-white rounded-full font-medium text-sm transition-colors"
+          className="px-6 py-2.5 bg-danger hover:bg-danger/80 text-white rounded-full font-medium text-sm transition-colors"
         >
           Disconnect
         </button>

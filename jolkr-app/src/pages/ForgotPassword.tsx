@@ -65,12 +65,12 @@ function RequestResetForm() {
           Enter your email address and we'll send you a link to reset your password.
         </p>
 
-        {error && <div role="alert" className="bg-error/10 text-error text-sm p-3 rounded-lg border border-error/20 mb-4">{error}</div>}
+        {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="forgot-email" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Email <span className="text-error">*</span>
+            <label htmlFor="forgot-email" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Email <span className="text-danger">*</span>
             </label>
             <input
               id="forgot-email"
@@ -93,9 +93,9 @@ function RequestResetForm() {
           </button>
         </form>
 
-        <p className="text-sm text-text-muted mt-4">
+        <p className="text-sm text-text-tertiary mt-4">
           Remember your password?{' '}
-          <Link to="/login" className="text-primary hover:underline">Log In</Link>
+          <Link to="/login" className="text-accent hover:underline">Log In</Link>
         </p>
       </div>
     </div>
@@ -160,12 +160,12 @@ function ResetPasswordForm({ token }: { token: string }) {
           Enter your new password below.
         </p>
 
-        {error && <div role="alert" className="bg-error/10 text-error text-sm p-3 rounded-lg border border-error/20 mb-4">{error}</div>}
+        {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="reset-password" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              New Password <span className="text-error">*</span>
+            <label htmlFor="reset-password" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              New Password <span className="text-danger">*</span>
             </label>
             <input
               id="reset-password"
@@ -180,8 +180,8 @@ function ResetPasswordForm({ token }: { token: string }) {
             />
           </div>
           <div>
-            <label htmlFor="reset-confirm" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Confirm Password <span className="text-error">*</span>
+            <label htmlFor="reset-confirm" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Confirm Password <span className="text-danger">*</span>
             </label>
             <input
               id="reset-confirm"
@@ -203,8 +203,8 @@ function ResetPasswordForm({ token }: { token: string }) {
           </button>
         </form>
 
-        <p className="text-sm text-text-muted mt-4">
-          <Link to="/login" className="text-primary hover:underline">Back to Login</Link>
+        <p className="text-sm text-text-tertiary mt-4">
+          <Link to="/login" className="text-accent hover:underline">Back to Login</Link>
         </p>
       </div>
     </div>

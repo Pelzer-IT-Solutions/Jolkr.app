@@ -286,21 +286,21 @@ export default function DmList({ onDmSelect }: DmListProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="px-4 pt-4 pb-3 gap-3 flex flex-col shrink-0">
+      <div className="hidden md:flex px-4 pt-4 pb-3 gap-3 flex-col shrink-0">
         <h2 className="text-base font-bold text-text-primary">Direct Messages</h2>
       </div>
 
       {/* Search bar */}
       <div className="px-4">
         <div
-          className="rounded-lg bg-bg-tertiary px-3 py-2 gap-2 flex items-center"
+          className="rounded-xl md:rounded-lg bg-panel px-4 py-2.5 md:px-3 md:py-2 gap-2 flex items-center"
         >
-          <Search className="size-4 text-text-muted shrink-0" />
+          <Search className="size-4.5 md:size-4 text-text-tertiary shrink-0" />
           <input
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Find or start a conversation"
-            className="input-reset w-full bg-transparent text-sm text-text-muted outline-none"
+            placeholder="Search conversations"
+            className="input-reset w-full bg-transparent text-sm text-text-tertiary outline-none"
           />
         </div>
       </div>
@@ -309,12 +309,12 @@ export default function DmList({ onDmSelect }: DmListProps) {
       <div className="relative">
         {search.trim().length >= 2 && searchResults.length > 0 && (
           <div className="absolute left-0 right-0 top-0 z-20 bg-sidebar border border-divider rounded-lg mx-2 mt-1 py-1 shadow-lg animate-dropdown-enter">
-            <div className="text-2xs font-bold text-text-muted uppercase tracking-wider px-3 py-1">Start a conversation</div>
+            <div className="text-2xs font-bold text-text-tertiary uppercase tracking-wider px-3 py-1">Start a conversation</div>
             {searchResults.slice(0, 5).map((u) => (
               <button
                 key={u.id}
                 onClick={() => startDm(u.id)}
-                className="w-full px-4 py-2 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                className="w-full px-4 py-2 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary"
               >
                 <Avatar url={u.avatar_url} name={u.username} size={28} userId={u.id} />
                 <span className="truncate">{u.username}</span>
@@ -323,10 +323,10 @@ export default function DmList({ onDmSelect }: DmListProps) {
           </div>
         )}
         {search.trim().length >= 2 && searching && (
-          <div className="px-4 pt-2 text-xs text-text-muted">Searching users...</div>
+          <div className="px-4 pt-2 text-xs text-text-tertiary">Searching users...</div>
         )}
         {startDmError && (
-          <div className="mx-2 mt-1 px-3 py-1.5 bg-error/10 text-error text-xs rounded">{startDmError}</div>
+          <div className="mx-2 mt-1 px-3 py-1.5 bg-danger/10 text-danger text-xs rounded">{startDmError}</div>
         )}
       </div>
 
@@ -337,7 +337,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
           onClick={() => onDmSelect?.()}
           aria-label="Friends"
           className={`rounded-lg px-3 py-2.5 gap-2.5 flex items-center font-medium text-sm cursor-pointer no-underline ${
-            isOnFriends ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
+            isOnFriends ? 'bg-active text-text-primary' : 'text-text-secondary hover:bg-hover'
           }`}
         >
           <Users className="size-4.5" />
@@ -347,7 +347,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
         <button
           onClick={() => setShowCreateGroup(true)}
           aria-label="New Group DM"
-          className="rounded-lg px-3 py-2.5 gap-2.5 flex items-center text-text-secondary font-medium hover:bg-bg-hover text-sm"
+          className="rounded-lg px-3 py-2.5 gap-2.5 flex items-center text-text-secondary font-medium hover:bg-hover text-sm"
         >
           <UserPlus className="size-4.5" />
           New Group DM
@@ -355,7 +355,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
       </div>
 
       <div className="px-4 pt-3 pb-1">
-        <div className="text-xs font-semibold text-text-muted tracking-wider uppercase">
+        <div className="text-xs font-semibold text-text-tertiary tracking-wider uppercase">
           Direct Messages
         </div>
       </div>
@@ -363,12 +363,12 @@ export default function DmList({ onDmSelect }: DmListProps) {
       <div className="flex-1 overflow-y-auto px-2 gap-0.5 flex flex-col min-h-0">
         {fetchError && dms.length === 0 && (
           <div className="px-2 py-4 text-center">
-            <p className="text-error text-sm mb-2">Failed to load conversations</p>
-            <button onClick={fetchDms} className="text-sm text-primary hover:text-primary-hover">Retry</button>
+            <p className="text-danger text-sm mb-2">Failed to load conversations</p>
+            <button onClick={fetchDms} className="text-sm text-accent hover:text-accent-hover">Retry</button>
           </div>
         )}
         {!fetchError && dms.length === 0 && (
-          <div className="px-4 py-6 text-center text-text-muted text-sm">
+          <div className="px-4 py-6 text-center text-text-tertiary text-sm">
             No conversations yet. Search for a user to start chatting!
           </div>
         )}

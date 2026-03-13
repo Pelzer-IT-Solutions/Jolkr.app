@@ -17,7 +17,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       disabled={disabled}
-      className={`w-11 h-6 rounded-xl transition-colors relative shrink-0 ${checked ? 'bg-primary' : 'bg-surface border border-divider'} ${disabled ? 'opacity-50' : ''}`}
+      className={`w-11 h-6 rounded-xl transition-colors relative shrink-0 ${checked ? 'bg-accent' : 'bg-surface border border-divider'} ${disabled ? 'opacity-50' : ''}`}
     >
       <div className={`absolute top-0.5 size-4.5 rounded-full shadow transition-transform ${checked ? 'right-0.5 left-auto bg-white' : 'left-0.5 bg-text-secondary'}`} />
     </button>
@@ -169,7 +169,7 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
         {/* Desktop notifications */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Desktop Notifications</label>
+            <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Desktop Notifications</label>
             <p className="text-sm text-text-secondary">Show desktop notifications for new messages</p>
           </div>
           <Toggle checked={desktopNotif} onChange={handleDesktopNotif} />
@@ -178,7 +178,7 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
         {/* Sound */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Message Sounds</label>
+            <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Message Sounds</label>
             <p className="text-sm text-text-secondary">Play a sound when new messages arrive</p>
           </div>
           <Toggle checked={soundEnabled} onChange={handleSoundToggle} />
@@ -187,7 +187,7 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
         {/* Read Receipts */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Read Receipts</label>
+            <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Read Receipts</label>
             <p className="text-sm text-text-secondary">When disabled, others won't see when you've read their messages</p>
           </div>
           <Toggle
@@ -202,16 +202,16 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
           />
         </div>
 
-        {saveError && <div className="bg-error/10 text-error text-sm px-6 py-2">{saveError}</div>}
+        {saveError && <div className="bg-danger/10 text-danger text-sm px-6 py-2">{saveError}</div>}
 
         {/* Call ringtone */}
         <div className="flex flex-col gap-2.5 px-6 py-4 border-b border-border-subtle">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Call Ringtone</label>
+              <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Call Ringtone</label>
               <p className="text-sm text-text-secondary">Sound played for incoming DM calls</p>
             </div>
-            <button onClick={previewRingtone} className="text-sm font-medium text-primary hover:text-primary-hover transition-colors">
+            <button onClick={previewRingtone} className="text-sm font-medium text-accent hover:text-accent-hover transition-colors">
               {previewingRingtone ? 'Stop' : 'Preview'}
             </button>
           </div>
@@ -223,7 +223,7 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
               <button
                 key={opt.id}
                 onClick={() => handleRingtoneChange(opt.id)}
-                className={`py-2 px-5 text-sm transition-colors ${ringtone === opt.id ? 'bg-primary text-bg font-semibold' : 'text-text-secondary font-medium hover:text-text-primary'}`}
+                className={`py-2 px-5 text-sm transition-colors ${ringtone === opt.id ? 'bg-accent text-bg font-semibold' : 'text-text-secondary font-medium hover:text-text-primary'}`}
               >
                 {opt.label}
               </button>
@@ -235,7 +235,7 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
         {isWeb && 'PushManager' in window && (
           <div className={`flex items-center justify-between px-6 py-4 ${isTauri ? 'border-b border-border-subtle' : ''}`}>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Push Notifications</label>
+              <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Push Notifications</label>
               <p className="text-sm text-text-secondary">Receive notifications even when the tab is closed</p>
             </div>
             <Toggle checked={pushEnabled} onChange={handlePushToggle} disabled={pushLoading} />
@@ -246,7 +246,7 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
         {isTauri && (
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Start with Windows</label>
+              <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Start with Windows</label>
               <p className="text-sm text-text-secondary">Automatically start Jolkr when you log in</p>
             </div>
             <Toggle checked={autoStart} onChange={handleAutoStart} disabled={autoStartLoading} />
@@ -288,7 +288,7 @@ function ServerUrlSetting() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Server URL</label>
+        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Server URL</label>
         <p className="text-sm text-text-secondary">The Jolkr server this app connects to. Changing this will reload the app.</p>
       </div>
       <div className="flex gap-2">
@@ -297,7 +297,7 @@ function ServerUrlSetting() {
           onChange={(e) => { setUrl(e.target.value); setSaved(false); setUrlError(''); }}
           className="flex-1 rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
         />
-        {urlError && <span className="text-error text-xs self-center">{urlError}</span>}
+        {urlError && <span className="text-danger text-xs self-center">{urlError}</span>}
         {dirty && (
           <button onClick={handleSave} className="btn-primary">
             {saved ? 'Saved!' : 'Save'}

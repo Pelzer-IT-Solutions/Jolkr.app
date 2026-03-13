@@ -51,7 +51,7 @@ function ServerIconImg({ serverId, url, name }: { serverId: string; url: string;
     return <span className="text-text-primary font-semibold text-sm">{name.slice(0, 2).toUpperCase()}</span>;
   }
 
-  return <img src={src} alt={name} className="w-full h-full rounded-[inherit] object-cover" onError={handleError} />;
+  return <img src={src} alt={name} className="w-full h-full rounded-2xl object-cover" onError={handleError} />;
 }
 
 function SortableServerItem({ id, children }: { id: string; children: React.ReactNode }) {
@@ -129,7 +129,7 @@ export default function ServerSidebar() {
           onMouseLeave={() => setHovered(null)}
           className={`size-12 flex items-center justify-center transition-all duration-200 no-underline`}
         >
-          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Home" className={`w-full h-full ${serverId && hovered !== 'home' ? ' light-adapt-icon' : ''}`} />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Home" className="w-full h-full" />
         </Link>
       </div>
       <div className="w-8 h-0.5 bg-divider rounded-full shrink-0" />
@@ -152,10 +152,10 @@ export default function ServerSidebar() {
                     onMouseLeave={() => setHovered(null)}
                     title={server.name}
                     className={`size-12 rounded-2xl flex items-center justify-center transition-all duration-200 relative no-underline ${serverId === server.id
-                      ? 'bg-bg-elevated border-2 border-primary'
+                      ? 'bg-elevated border-2 border-accent'
                       : hovered === server.id
-                        ? 'bg-primary/80'
-                        : 'bg-bg-tertiary'
+                        ? 'bg-hover'
+                        : 'bg-panel'
                       }`}
                   >
                     {server.icon_url ? (
@@ -171,7 +171,7 @@ export default function ServerSidebar() {
                     )}
                     {/* Unread badge */}
                     {serverUnread > 0 && serverId !== server.id && (
-                      <div className="absolute -bottom-0.5 -right-0.5 min-w-4.5 h-4.5 bg-error rounded-full flex items-center justify-center px-1 border-2 border-bg">
+                      <div className="absolute -bottom-0.5 -right-0.5 min-w-4.5 h-4.5 bg-danger rounded-full flex items-center justify-center px-1 border-2 border-bg">
                         <span className="text-2xs font-bold text-white">{serverUnread > 99 ? '99+' : serverUnread}</span>
                       </div>
                     )}
@@ -194,7 +194,7 @@ export default function ServerSidebar() {
           className={`size-12 rounded-2xl border-2 border-dashed border-divider flex items-center justify-center transition-all duration-200 ${hovered === 'add' ? 'bg-online border-online' : ''
             }`}
         >
-          <Plus className={`size-5 ${hovered === 'add' ? 'text-white' : 'text-text-muted'}`} />
+          <Plus className={`size-5 ${hovered === 'add' ? 'text-white' : 'text-text-tertiary'}`} />
         </button>
       </div>
 
@@ -208,7 +208,7 @@ export default function ServerSidebar() {
           >
             <button
               onClick={() => { setContextMenu(null); setInviteServer(contextMenu.serverId); }}
-              className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
             >
               <UserPlus className="size-4" />
               Invite People
@@ -216,7 +216,7 @@ export default function ServerSidebar() {
             {canContextSettings && (
               <button
                 onClick={() => { setContextMenu(null); setSettingsServer(contextMenu.serverId); }}
-                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
               >
                 <Settings className="size-4" />
                 Server Settings
@@ -228,7 +228,7 @@ export default function ServerSidebar() {
 
       {/* Add server choice dialog */}
       {showAddMenu && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowAddMenu(false)}>
+        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50" onClick={() => setShowAddMenu(false)}>
           <div className="bg-surface rounded-2xl border border-divider shadow-popup p-6 animate-modal-scale w-100 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-text-primary text-lg font-semibold mb-2 text-center">Add a Server</h3>
             <p className="text-text-secondary text-sm mb-6 text-center">Create your own or join an existing one</p>
