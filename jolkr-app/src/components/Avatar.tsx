@@ -73,7 +73,7 @@ export default function Avatar({ url, name, size = 40, status, userId }: AvatarP
         />
       ) : (
         <div
-          className="rounded-full bg-primary flex items-center justify-center text-white font-semibold select-none"
+          className="rounded-full bg-primary flex items-center justify-center text-bg font-semibold select-none"
           style={{ width: size, height: size, fontSize: size * 0.4 }}
         >
           {initials}

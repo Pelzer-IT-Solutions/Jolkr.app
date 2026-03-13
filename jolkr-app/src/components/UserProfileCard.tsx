@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, ChevronDown, MessageCircle, UserPlus, UserMinus, Ban, Pencil } from 'lucide-react';
 import type { User } from '../api/types';
 import { useAuthStore } from '../stores/auth';
 import { usePresenceStore } from '../stores/presence';
@@ -218,7 +219,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
     return createPortal(
       <>
         <div className="fixed inset-0 z-40" onClick={onClose} />
-        <div ref={cardRef} className="fixed z-50 bg-surface rounded-lg shadow-xl border border-divider p-6 w-[300px]">
+        <div ref={cardRef} className="fixed z-50 bg-surface border border-divider rounded-xl shadow-popup p-6 w-75">
           <div className="text-text-muted text-sm text-center">
             {fetchError ? 'Could not load user profile' : 'Loading...'}
           </div>
@@ -235,14 +236,14 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
   return createPortal(
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div ref={cardRef} className="fixed z-50 w-[300px]" style={{ left: anchor.x, top: anchor.y }}>
-        <div className="bg-surface rounded-lg shadow-xl border border-divider overflow-hidden">
+      <div ref={cardRef} className="fixed z-50 w-75" style={{ left: anchor.x, top: anchor.y }}>
+        <div className="bg-surface border border-divider rounded-xl shadow-popup overflow-hidden">
           {/* Banner area */}
-          <div className="h-[60px] bg-primary/30" />
+          <div className="h-15 bg-primary/30" />
 
           {/* Avatar */}
           <div className="px-4 -mt-8">
-            <div className="border-[4px] border-surface rounded-full inline-block">
+            <div className="border-4 border-surface rounded-full inline-block">
               <Avatar url={user.avatar_url} name={user.username} size={64} status={status} userId={user.id} />
             </div>
           </div>
@@ -271,13 +272,13 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
           <div className="px-4 py-3">
             {user.bio && (
               <div className="mb-3">
-                <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">About Me</div>
-                <div className="text-text-secondary text-sm whitespace-pre-wrap break-words max-h-[200px] overflow-y-auto">{user.bio}</div>
+                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">About Me</div>
+                <div className="text-text-secondary text-sm whitespace-pre-wrap break-words max-h-50 overflow-y-auto">{user.bio}</div>
               </div>
             )}
             {joinedDate && (
               <div>
-                <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">Member Since</div>
+                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">Member Since</div>
                 <div className="text-text-secondary text-sm">{joinedDate}</div>
               </div>
             )}
@@ -285,18 +286,14 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
               <div className="mt-3">
                 <button
                   onClick={() => setShowSafetyNumber((v) => !v)}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-text-muted uppercase tracking-wider hover:text-text-secondary"
+                  className="flex items-center gap-1.5 text-xs font-bold text-text-muted uppercase tracking-wider hover:text-text-secondary"
                 >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
+                  <ShieldCheck className="w-3 h-3" />
                   Safety Number
-                  <svg className={`w-3 h-3 transition-transform ${showSafetyNumber ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showSafetyNumber ? 'rotate-180' : ''}`} />
                 </button>
                 {showSafetyNumber && (
-                  <div className="mt-2 p-2 bg-bg rounded text-[11px] font-mono text-text-secondary leading-relaxed tracking-widest select-all break-all">
+                  <div className="mt-2 p-2 bg-bg rounded text-xs font-mono text-text-secondary leading-relaxed tracking-widest select-all break-all">
                     {safetyNumber}
                   </div>
                 )}
@@ -308,15 +305,13 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
           {!isOwnProfile && (
             <div className="px-4 pb-4 flex flex-col gap-2">
               {actionError && (
-                <div className="text-[11px] text-error bg-error/10 px-2 py-1 rounded">{actionError}</div>
+                <div className="text-xs text-error bg-error/10 px-2 py-1 rounded">{actionError}</div>
               )}
               <button
                 onClick={handleSendMessage}
                 className="w-full px-3 py-2 btn-primary text-sm rounded-lg flex items-center justify-center gap-2"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
+                <MessageCircle className="w-4 h-4" />
                 Send Message
               </button>
 
@@ -326,9 +321,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
                   disabled={actionLoading}
                   className="w-full px-3 py-2 bg-online/20 hover:bg-online/30 text-online text-sm rounded flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                  </svg>
+                  <UserPlus className="w-4 h-4" />
                   Add Friend
                 </button>
               )}
@@ -343,9 +336,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
                   disabled={actionLoading}
                   className="w-full px-3 py-2 text-error hover:bg-error/10 text-sm rounded flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
-                  </svg>
+                  <UserMinus className="w-4 h-4" />
                   Remove Friend
                 </button>
               )}
@@ -364,9 +355,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
                   disabled={actionLoading}
                   className="w-full px-3 py-2 text-error/70 hover:bg-error/10 hover:text-error text-sm rounded flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                  </svg>
+                  <Ban className="w-4 h-4" />
                   Block
                 </button>
               )}
@@ -377,11 +366,9 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
             <div className="px-4 pb-4">
               <button
                 onClick={() => { onClose(); navigate('/settings'); }}
-                className="w-full px-3 py-2 bg-input hover:bg-input/80 text-text-primary text-sm rounded flex items-center justify-center gap-2"
+                className="w-full px-3 py-2 bg-surface hover:bg-bg-hover text-text-primary text-sm rounded flex items-center justify-center gap-2"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
+                <Pencil className="w-4 h-4" />
                 Edit Profile
               </button>
             </div>

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Camera } from 'lucide-react';
 import { useServersStore } from '../../../stores/servers';
 import * as api from '../../../api/client';
 import { rewriteStorageUrl } from '../../../platform/config';
@@ -78,7 +79,7 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
         <div
           role="button"
           tabIndex={0}
-          className="w-16 h-16 rounded-2xl bg-input flex items-center justify-center relative group cursor-pointer shrink-0 overflow-hidden"
+          className="size-18 rounded-full bg-bg-tertiary border-2 border-divider flex items-center justify-center relative group cursor-pointer shrink-0 overflow-hidden"
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); }}}
           aria-label="Upload server icon"
@@ -90,12 +91,9 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
           )}
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
             {uploading ? (
-              <span className="text-white text-[10px]">...</span>
+              <span className="text-white text-2xs">...</span>
             ) : (
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              <Camera className="size-6 text-text-muted" />
             )}
           </div>
         </div>
@@ -105,27 +103,30 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIconUpload} />
       </div>
 
-      <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Server Name</label>
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
-        autoFocus
-      />
+      <div className="flex flex-col gap-1.5 mb-4">
+        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Server Name</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
+          autoFocus
+        />
+      </div>
 
-      <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Description</label>
-      <textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm resize-none mb-4"
-        rows={3}
-        placeholder="What's this server about?"
-      />
+      <div className="flex flex-col gap-1.5 mb-4">
+        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary resize-none h-20"
+          placeholder="What's this server about?"
+        />
+      </div>
 
       <div className="flex justify-end gap-3 mb-6">
-        <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
+        <span onClick={onClose} className="text-sm font-medium text-text-secondary cursor-pointer flex items-center">
           Cancel
-        </button>
+        </span>
         <button
           onClick={handleSave}
           disabled={saving}
@@ -137,14 +138,14 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
 
       {/* Danger zone — only owner can delete */}
       {isOwner && (
-        <div className="border border-error/30 rounded-lg p-4">
-          <h4 className="text-error font-semibold text-sm mb-1">Danger Zone</h4>
-          <p className="text-text-muted text-xs mb-3">
+        <div className="rounded-xl border border-error/20 p-5 flex flex-col gap-3">
+          <h4 className="text-base font-bold text-error">Danger Zone</h4>
+          <p className="text-sm text-text-secondary leading-relaxed">
             Deleting a server is permanent and cannot be undone. All channels and messages will be lost.
           </p>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="px-5 py-2.5 bg-error hover:bg-error/80 text-white text-sm rounded-lg"
+            className="btn-danger self-start"
           >
             Delete Server
           </button>

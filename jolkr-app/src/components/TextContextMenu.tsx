@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Undo2, Redo2, Scissors, Copy, ClipboardPaste, Trash2, TextSelect } from 'lucide-react';
 
 interface MenuPosition {
   x: number;
@@ -7,48 +8,15 @@ interface MenuPosition {
   target: HTMLInputElement | HTMLTextAreaElement;
 }
 
-// Compact SVG icons (16x16, stroke-based, matching app style)
+// Lucide icon references for context menu items
 const icons = {
-  undo: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4" />
-    </svg>
-  ),
-  redo: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 10H11a5 5 0 00-5 5v2M21 10l-4-4M21 10l-4 4" />
-    </svg>
-  ),
-  cut: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
-      <path strokeLinecap="round" d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" />
-    </svg>
-  ),
-  copy: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path strokeLinecap="round" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-    </svg>
-  ),
-  paste: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 2h6l1 2H8L9 2z" />
-      <rect x="4" y="4" width="16" height="18" rx="2" />
-      <path strokeLinecap="round" d="M8 10h8M8 14h5" />
-    </svg>
-  ),
-  delete: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
-  ),
-  selectAll: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path strokeLinecap="round" d="M8 12h8M8 8h8M8 16h5" />
-    </svg>
-  ),
+  undo: <Undo2 className="w-4 h-4" />,
+  redo: <Redo2 className="w-4 h-4" />,
+  cut: <Scissors className="w-4 h-4" />,
+  copy: <Copy className="w-4 h-4" />,
+  paste: <ClipboardPaste className="w-4 h-4" />,
+  delete: <Trash2 className="w-4 h-4" />,
+  selectAll: <TextSelect className="w-4 h-4" />,
 };
 
 export default function TextContextMenu() {
@@ -188,12 +156,12 @@ export default function TextContextMenu() {
               role="menuitem"
               disabled={item.disabled}
               onClick={item.onClick}
-              className="w-full px-3 py-1.5 text-sm text-left flex items-center gap-2.5 disabled:opacity-30 disabled:cursor-default text-text-secondary hover:bg-white/5 hover:text-text-primary disabled:hover:bg-transparent disabled:hover:text-text-secondary transition-colors"
+              className="w-full px-3 py-1.5 text-sm text-left flex items-center gap-2.5 disabled:opacity-30 disabled:cursor-default text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:hover:bg-transparent disabled:hover:text-text-secondary transition-colors"
             >
               <span className="shrink-0 opacity-70">{item.icon}</span>
               <span className="flex-1">{item.label}</span>
               {item.shortcut && (
-                <span className="text-[11px] text-text-muted ml-auto tracking-wide">{item.shortcut}</span>
+                <span className="text-xs text-text-muted ml-auto tracking-wide">{item.shortcut}</span>
               )}
             </button>
           )

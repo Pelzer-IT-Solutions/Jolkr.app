@@ -27,7 +27,7 @@ export default function UpdateNotification({ update }: UpdateNotificationProps) 
         Update <strong>v{update.version}</strong> available
       </span>
       {update.notes && (
-        <span className="text-text-muted hidden sm:inline truncate max-w-[300px]">
+        <span className="text-text-muted hidden sm:inline truncate max-w-75">
           — {update.notes}
         </span>
       )}
@@ -35,7 +35,7 @@ export default function UpdateNotification({ update }: UpdateNotificationProps) 
         {error && <span className="text-red-400 text-xs">{error}</span>}
         {downloading ? (
           <div className="flex items-center gap-2">
-            <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
+            <div className="w-32 h-2 bg-bg-active rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}

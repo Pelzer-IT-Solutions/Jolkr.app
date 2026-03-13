@@ -68,7 +68,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[440px] max-w-[90vw] max-h-[90vh] overflow-y-auto"
+        className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Poll</h3>
@@ -84,7 +84,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask a question..."
-          className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-3"
+          className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-3"
           maxLength={500}
           autoFocus
         />
@@ -99,7 +99,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
                 value={opt.value}
                 onChange={(e) => updateOption(opt.id, e.target.value)}
                 placeholder={`Option ${i + 1}`}
-                className="flex-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
+                className="flex-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm"
                 maxLength={200}
               />
               {options.length > 2 && (
@@ -139,7 +139,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
         <select
           value={expiresIn}
           onChange={(e) => setExpiresIn(e.target.value)}
-          className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
+          className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
         >
           <option value="">Never</option>
           <option value="1">1 hour</option>

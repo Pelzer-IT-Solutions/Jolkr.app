@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useServersStore } from '../../../stores/servers';
 import type { Server, Role } from '../../../api/types';
 import { PERMISSION_LABELS } from '../../../utils/permissions';
@@ -39,73 +40,71 @@ export default function RolesTab({ server }: RolesTabProps) {
   };
 
   return (
-    <div>
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+    <div className="flex flex-1 min-h-0 h-full">
+      {error && <div className="absolute top-0 left-0 right-0 bg-error/10 text-error text-sm p-2 rounded-lg">{error}</div>}
 
-      <div className="flex gap-4">
-        {/* Role list */}
-        <div className="w-[160px] shrink-0">
-          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Roles</div>
-          <div className="space-y-0.5">
-            {serverRoles.map((role) => (
-              <button
-                key={role.id}
-                onClick={() => setSelectedRoleId(role.id)}
-                className={`w-full px-2 py-1.5 rounded text-left text-sm flex items-center gap-1.5 ${
-                  selectedRoleId === role.id
-                    ? 'bg-primary/10 text-text-primary'
-                    : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'
-                }`}
-              >
-                {role.color !== 0 && (
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: `#${role.color.toString(16).padStart(6, '0')}` }}
-                  />
-                )}
-                <span className="truncate">{role.name}</span>
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowCreateRole(true)}
-            className="w-full mt-2 px-2 py-1.5 text-sm text-primary hover:text-primary-hover text-left"
-          >
-            + Create Role
-          </button>
-          {showCreateRole && (
-            <div className="mt-1">
-              <input
-                value={newRoleName}
-                onChange={(e) => setNewRoleName(e.target.value)}
-                placeholder="Role name"
-                className="w-full px-2 py-1 bg-input rounded-lg text-text-primary text-sm"
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateRole()}
-              />
-              <div className="flex gap-1 mt-1">
-                <button onClick={handleCreateRole} className="text-xs text-primary">Create</button>
-                <button onClick={() => setShowCreateRole(false)} className="text-xs text-text-muted">Cancel</button>
-              </div>
-            </div>
-          )}
+      {/* Roles sidebar */}
+      <div className="w-40 shrink-0 border-r border-divider px-3 py-4 flex flex-col gap-1">
+        <div className="space-y-0.5">
+          {serverRoles.map((role) => (
+            <button
+              key={role.id}
+              onClick={() => setSelectedRoleId(role.id)}
+              className={`w-full rounded-md px-2.5 py-2 text-left text-sm flex items-center gap-2 ${
+                selectedRoleId === role.id
+                  ? 'bg-bg-active text-text-primary'
+                  : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+              }`}
+            >
+              {role.color !== 0 && (
+                <span
+                  className="size-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: `#${role.color.toString(16).padStart(6, '0')}` }}
+                />
+              )}
+              <span className="truncate">{role.name}</span>
+            </button>
+          ))}
         </div>
-
-        {/* Role editor */}
-        <div className="flex-1 min-w-0">
-          {selectedRole ? (
-            <RoleEditor
-              key={selectedRole.id}
-              role={selectedRole}
-              serverId={server.id}
-              onUpdate={updateRole}
-              onDelete={deleteRole}
-              onError={setError}
+        <button
+          onClick={() => setShowCreateRole(true)}
+          className="w-full mt-2 px-2.5 py-2 text-sm font-medium text-primary hover:text-primary-hover text-left flex items-center gap-1.5"
+        >
+          <Plus className="size-3.5" />
+          Create Role
+        </button>
+        {showCreateRole && (
+          <div className="mt-1">
+            <input
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              placeholder="Role name"
+              className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateRole()}
             />
-          ) : (
-            <div className="text-text-muted text-sm py-4">Select a role to edit its permissions.</div>
-          )}
-        </div>
+            <div className="flex gap-1 mt-1">
+              <button onClick={handleCreateRole} className="text-xs text-primary">Create</button>
+              <button onClick={() => setShowCreateRole(false)} className="text-xs text-text-muted">Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Role editor */}
+      <div className="flex-1 min-w-0 px-5 py-4 flex flex-col gap-4 overflow-y-auto">
+        {selectedRole ? (
+          <RoleEditor
+            key={selectedRole.id}
+            role={selectedRole}
+            serverId={server.id}
+            onUpdate={updateRole}
+            onDelete={deleteRole}
+            onError={setError}
+          />
+        ) : (
+          <div className="text-text-muted text-sm py-4">Select a role to edit its permissions.</div>
+        )}
       </div>
     </div>
   );
@@ -172,31 +171,31 @@ function RoleEditor({
   return (
     <div>
       <div className="flex gap-3 mb-4">
-        <div className="flex-1">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Name</label>
+        <div className="flex-1 flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
+            className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
             disabled={role.is_default}
           />
         </div>
-        <div className="w-20">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Color</label>
+        <div className="w-20 flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Color</label>
           <input
             type="color"
             value={color}
             onChange={(e) => setColor(e.target.value)}
-            className="w-full mt-1 h-[38px] bg-input rounded-lg cursor-pointer"
+            className="w-full h-11 bg-bg border border-divider rounded-lg cursor-pointer"
           />
         </div>
       </div>
 
-      <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Permissions</div>
-      <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-        {Object.entries(permGroups).map(([category, items]) => (
+      <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Permissions</div>
+      <div className="flex flex-col gap-1.5 flex-1 overflow-y-auto pr-1">
+        {Object.entries(permGroups).map(([category, items], idx) => (
           <div key={category}>
-            <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">{category}</div>
+            {idx > 0 && <div className="h-px bg-divider my-2" />}
             {items.map((p) => (
               <label key={p.key} className="flex items-center gap-2 py-1 cursor-pointer">
                 <input

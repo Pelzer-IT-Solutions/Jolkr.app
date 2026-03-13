@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { ArrowDown } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMessagesStore } from '../stores/messages';
 import { usePresenceStore } from '../stores/presence';
@@ -204,8 +205,9 @@ export default function MessageList({ channelId, search, searchResults, searchLo
             {search ? 'No messages match your search.' : 'No messages yet. Start the conversation!'}
           </div>
         ) : (
+          <div className="min-h-full flex flex-col justify-end">
           <div
-            className="py-5 relative"
+            className="py-4 relative"
             style={{ height: virtualizer.getTotalSize(), width: '100%' }}
           >
             {isLoadingOlder && (
@@ -230,18 +232,18 @@ export default function MessageList({ channelId, search, searchResults, searchLo
                   }}
                 >
                   {hasSep && (
-                    <div className="flex items-center gap-3 px-4 my-3">
-                      <div className="flex-1 h-px bg-divider" />
-                      <span className="text-[11px] text-text-muted font-medium">
+                    <div className="flex items-center gap-3 px-4 py-2">
+                      <div className="flex-1 h-px bg-border-subtle" />
+                      <span className="text-xs font-medium text-text-muted">
                         {new Date(msg.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </span>
-                      <div className="flex-1 h-px bg-divider" />
+                      <div className="flex-1 h-px bg-border-subtle" />
                     </div>
                   )}
                   {i === unreadSepIndex && (
                     <div className="flex items-center gap-3 px-4 my-3">
                       <div className="flex-1 h-px bg-error" />
-                      <span className="text-[11px] text-error font-semibold">NEW</span>
+                      <span className="text-xs text-error font-semibold">NEW</span>
                       <div className="flex-1 h-px bg-error" />
                     </div>
                   )}
@@ -259,6 +261,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
               );
             })}
           </div>
+          </div>
         )}
       </div>
 
@@ -268,9 +271,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
           aria-live="polite"
           className="absolute bottom-16 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-accent hover:bg-accent/80 text-white text-sm font-medium rounded-full shadow-lg transition-colors z-10 flex items-center gap-2"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
+          <ArrowDown className="w-4 h-4" />
           {newMsgCount === 1 ? '1 new message' : `${newMsgCount} new messages`}
         </button>
       )}
@@ -278,17 +279,15 @@ export default function MessageList({ channelId, search, searchResults, searchLo
       {showScrollBtn && newMsgCount === 0 && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-16 right-4 w-10 h-10 bg-surface border border-divider rounded-full flex items-center justify-center shadow-elevated hover:bg-white/10 transition-colors z-10"
+          className="absolute bottom-16 right-4 size-10 bg-surface border border-divider rounded-full flex items-center justify-center shadow-elevated hover:bg-bg-hover transition-colors z-10"
           title="Scroll to bottom"
           aria-label="Scroll to bottom"
         >
-          <svg className="w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
+          <ArrowDown className="w-4 h-4 text-text-secondary" />
         </button>
       )}
 
-      <div aria-live="polite" aria-atomic="true" className={`px-4 h-6 text-xs text-text-muted shrink-0 transition-opacity duration-150 ${otherTyping.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div aria-live="polite" aria-atomic="true" className={`px-4 text-xs text-text-muted shrink-0 transition-all duration-150 overflow-hidden ${otherTyping.length > 0 ? 'h-6 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
         {otherTyping.length > 0 && (
           <>
             <span className="inline-flex gap-0.5 mr-1">

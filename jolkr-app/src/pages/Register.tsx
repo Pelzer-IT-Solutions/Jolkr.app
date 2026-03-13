@@ -32,10 +32,10 @@ export default function Register() {
   };
 
   return (
-    <div className="h-full flex items-center justify-center auth-gradient">
-      <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] auth-card animate-modal-scale">
+    <div className="h-full flex items-center justify-center bg-bg">
+      <div className="bg-surface rounded-3xl p-8 w-105 max-w-[90vw] border border-divider shadow-popup animate-modal-scale">
         <div className="flex justify-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <div className="size-14 rounded-2xl bg-accent-muted flex items-center justify-center">
             <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" className="w-8 h-8" />
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function Register() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="register-email" className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label htmlFor="register-email" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               Email <span className="text-error">*</span>
             </label>
             <input
@@ -57,11 +57,11 @@ export default function Register() {
               required
               autoFocus
               inputMode="email"
-              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
           </div>
           <div>
-            <label htmlFor="register-username" className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label htmlFor="register-username" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               Username <span className="text-error">*</span>
             </label>
             <input
@@ -70,11 +70,11 @@ export default function Register() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
           </div>
           <div>
-            <label htmlFor="register-password" className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label htmlFor="register-password" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               Password <span className="text-error">*</span>
             </label>
             <input
@@ -84,7 +84,7 @@ export default function Register() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
             <div className={`mt-1.5 flex items-center gap-2 transition-opacity duration-150 ${password.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <div className="flex-1 flex gap-1">
@@ -94,7 +94,7 @@ export default function Register() {
                     return <div key={i} className={`h-1 flex-1 rounded-full ${color}`} />;
                   })}
                 </div>
-                <span className="text-[10px] text-text-muted">
+                <span className="text-2xs text-text-muted">
                   {password.length < 6 ? 'Too short' : (() => { const s = (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0); return s <= 0 ? 'Weak' : s <= 1 ? 'Fair' : s <= 2 ? 'Good' : 'Strong'; })()}
                 </span>
             </div>

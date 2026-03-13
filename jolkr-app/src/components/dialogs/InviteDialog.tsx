@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { X, Trash2 } from 'lucide-react';
 import type { Invite } from '../../api/types';
 import * as api from '../../api/client';
 import { useToast } from '../Toast';
@@ -29,6 +30,16 @@ const MAX_USES_OPTIONS = [
   { value: 100, label: '100 uses' },
 ];
 
+function formatExpiry(expiresAt: string): string {
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  if (diff <= 0) return 'Expired';
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor(diff / 3600000);
+  if (days > 0) return `${days} day${days !== 1 ? 's' : ''}`;
+  if (hours > 0) return `${hours} hour${hours !== 1 ? 's' : ''}`;
+  return '< 1 hour';
+}
+
 export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,6 +58,12 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
       .catch((e) => { console.warn('Failed to fetch invites:', e); setFetchError(true); });
   }, [serverId]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const handleCreate = async () => {
     setLoading(true);
     setActionError('');
@@ -58,8 +75,9 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
       setInvites((prev) => [invite, ...prev]);
     } catch (e) {
       setActionError((e as Error).message || 'Failed to create invite');
+    } finally {
+      setLoading(false);
     }
-    finally { setLoading(false); }
   };
 
   const toast = useToast((s) => s.show);
@@ -95,86 +113,110 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[500px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-text-primary text-lg font-semibold mb-4">Server Invites</h3>
-
-        <div className="flex gap-3 mb-3">
-          <div className="flex-1">
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Expire After</label>
-            <select
-              value={maxAgeSeconds}
-              onChange={(e) => setMaxAgeSeconds(Number(e.target.value))}
-              className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
-            >
-              {EXPIRY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1">
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Max Uses</label>
-            <select
-              value={maxUses}
-              onChange={(e) => setMaxUses(Number(e.target.value))}
-              className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
-            >
-              {MAX_USES_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        className="bg-sidebar rounded-3xl border border-divider shadow-popup w-140 h-130 max-w-[90vw] max-h-[85vh] flex flex-col animate-modal-scale"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 shrink-0">
+          <h3 className="text-lg font-bold text-text-primary">Server Invites</h3>
+          <button onClick={onClose} aria-label="Close" className="size-5 text-text-muted hover:text-text-primary">
+            <X className="size-5" />
+          </button>
         </div>
 
-        {actionError && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{actionError}</div>}
+        {/* Create section */}
+        <div className="px-6 pb-4 flex flex-col gap-3 border-b border-divider shrink-0">
+          {actionError && <div className="bg-error/10 text-error text-sm p-2 rounded-lg">{actionError}</div>}
 
-        <button
-          onClick={handleCreate}
-          disabled={loading}
-          className="btn-primary w-full px-5 py-2.5 text-sm rounded-lg mb-4 disabled:opacity-50"
-        >
-          {loading ? 'Creating...' : 'Create Invite'}
-        </button>
-
-        <div className="max-h-[300px] overflow-y-auto space-y-2">
-          {invites.map((inv) => (
-            <div key={inv.id} className="flex items-center gap-2 bg-input rounded-lg px-3 py-2">
-              <code className="flex-1 text-sm text-text-primary font-mono">{inv.code}</code>
-              <div className="flex flex-col items-end shrink-0">
-                <span className="text-xs text-text-muted">
-                  {inv.use_count}{inv.max_uses ? `/${inv.max_uses}` : ''} uses
-                </span>
-                {inv.expires_at && (
-                  <span className="text-[10px] text-text-muted">
-                    {new Date(inv.expires_at) > new Date() ? `Expires ${new Date(inv.expires_at).toLocaleDateString()}` : 'Expired'}
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => handleCopy(inv.code)}
-                className="text-xs text-primary hover:text-primary-hover"
+          <div className="flex gap-2.5">
+            <div className="flex-1 flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Expire After</label>
+              <select
+                value={maxAgeSeconds}
+                onChange={(e) => setMaxAgeSeconds(Number(e.target.value))}
+                className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
               >
-                {copied === inv.code ? 'Copied!' : 'Copy'}
-              </button>
-              <button
-                onClick={() => handleDelete(inv.id)}
-                disabled={deletingId === inv.id}
-                className="text-xs text-error hover:text-error/80 disabled:opacity-50"
-              >
-                {deletingId === inv.id ? 'Deleting...' : 'Delete'}
-              </button>
+                {EXPIRY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
-          ))}
-          {fetchError && invites.length === 0 && (
-            <div className="text-center text-error text-sm py-4">Failed to load invites</div>
-          )}
-          {!fetchError && invites.length === 0 && (
-            <div className="text-center text-text-muted text-sm py-4">No invites yet</div>
+            <div className="w-35 shrink-0 flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Max Uses</label>
+              <select
+                value={maxUses}
+                onChange={(e) => setMaxUses(Number(e.target.value))}
+                className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
+              >
+                {MAX_USES_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button
+            onClick={handleCreate}
+            disabled={loading}
+            className="btn-primary w-full"
+          >
+            {loading ? 'Creating...' : 'Create Invite'}
+          </button>
+        </div>
+
+        {/* Invite list */}
+        <div className="flex-1 overflow-y-auto px-6 py-3 flex flex-col min-h-0">
+          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider shrink-0">
+            Invites — {invites.length}
+          </div>
+
+          {fetchError && invites.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-error text-sm">Failed to load invites</div>
+          ) : invites.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-text-muted text-sm">No invites yet</div>
+          ) : (
+            <div className="flex-1 min-h-0">
+              {invites.map((inv) => (
+                <div key={inv.id} className="flex items-center gap-2.5 py-3 border-b border-divider">
+                  <button
+                    onClick={() => handleCopy(inv.code)}
+                    className="text-sm font-medium text-primary hover:text-primary-hover truncate text-left"
+                    title="Click to copy"
+                  >
+                    {copied === inv.code ? 'Copied!' : getInviteUrl(inv.code)}
+                  </button>
+                  <div className="flex items-center gap-4 justify-end flex-1 shrink-0">
+                    <span className="text-sm text-text-muted whitespace-nowrap">
+                      {inv.use_count}{inv.max_uses ? `/${inv.max_uses}` : ''} uses
+                    </span>
+                    {inv.expires_at && (
+                      <span className="text-sm text-text-muted whitespace-nowrap">
+                        {formatExpiry(inv.expires_at)}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleDelete(inv.id)}
+                      disabled={deletingId === inv.id}
+                      className="text-error hover:text-error/80 disabled:opacity-50 shrink-0"
+                      aria-label="Delete invite"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
-        <div className="flex justify-end mt-4">
-          <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
+        {/* Close row */}
+        <div className="flex justify-end px-6 py-3 shrink-0">
+          <button onClick={onClose} className="text-sm font-medium text-text-muted hover:text-text-primary">
             Close
           </button>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { Search } from 'lucide-react';
 import { useServersStore } from '../../../stores/servers';
 import * as api from '../../../api/client';
 import type { Server, Role, User } from '../../../api/types';
@@ -82,39 +83,41 @@ export default function MembersTab({ server }: MembersTabProps) {
     <div>
       {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
 
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search members..."
-        className="w-full px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-3"
-      />
+      {/* Search */}
+      <div className="rounded-lg bg-bg border border-divider px-3.5 py-2.5 gap-2 flex items-center mb-3">
+        <Search className="size-4 text-text-muted shrink-0" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search members..."
+          className="text-sm text-text-primary bg-transparent flex-1 outline-none border-none p-0"
+        />
+      </div>
 
-      <div className="space-y-1 max-h-[400px] overflow-y-auto">
+      <div className="space-y-0 max-h-100 overflow-y-auto">
         {filteredMembers.map((m) => {
           const user = users[m.user_id];
           const memberRoles = (m.role_ids ?? []).map((id) => roleMap[id]).filter((r): r is Role => !!r && !r.is_default);
           const isPopoverOpen = rolePopover === m.user_id;
 
           return (
-            <div key={m.id} className="flex items-center gap-2 p-2 rounded hover:bg-white/5">
-              <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={m.user_id} />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-text-primary truncate">
-                  {m.nickname ?? user?.username ?? m.user_id.slice(0, 8)}
-                </div>
-                <div className="flex gap-1 flex-wrap mt-0.5">
-                  {memberRoles.map((r) => (
-                    <span
-                      key={r.id}
-                      className="px-1.5 py-0.5 rounded text-[10px] font-medium"
-                      style={{
-                        backgroundColor: r.color ? `#${r.color.toString(16).padStart(6, '0')}20` : 'rgba(255,255,255,0.05)',
-                        color: r.color ? `#${r.color.toString(16).padStart(6, '0')}` : undefined,
-                      }}
-                    >
-                      {r.name}
-                    </span>
-                  ))}
+            <div key={m.id} className="px-1 py-3 flex justify-between items-center border-b border-border-subtle">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={m.user_id} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm text-text-primary truncate">
+                    {m.nickname ?? user?.username ?? m.user_id.slice(0, 8)}
+                  </div>
+                  <div className="flex gap-1 flex-wrap mt-0.5">
+                    {memberRoles.map((r) => (
+                      <span
+                        key={r.id}
+                        className="text-xs font-medium text-text-muted"
+                      >
+                        {r.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div>
@@ -127,7 +130,7 @@ export default function MembersTab({ server }: MembersTabProps) {
                     setPopoverPos({ top, left: rect.right - 180 });
                     setRolePopover(m.user_id);
                   }}
-                  className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary bg-white/5 hover:bg-white/10 rounded"
+                  className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary bg-bg-hover hover:bg-bg-hover rounded"
                 >
                   Roles
                 </button>
@@ -135,7 +138,7 @@ export default function MembersTab({ server }: MembersTabProps) {
                   <>
                     <div className="fixed inset-0 z-[60]" onClick={() => setRolePopover(null)} />
                     <div
-                      className="fixed z-[70] bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-[180px] max-h-[200px] overflow-y-auto"
+                      className="fixed z-[70] bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-45 max-h-50 overflow-y-auto"
                       style={{ top: popoverPos.top, left: popoverPos.left }}
                     >
                       {assignableRoles.length === 0 && (
@@ -148,7 +151,7 @@ export default function MembersTab({ server }: MembersTabProps) {
                             key={role.id}
                             onClick={() => handleToggleRole(m.user_id, role.id, has)}
                             disabled={saving}
-                            className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/5 disabled:opacity-50"
+                            className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-bg-hover disabled:opacity-50"
                           >
                             <input
                               type="checkbox"
@@ -158,7 +161,7 @@ export default function MembersTab({ server }: MembersTabProps) {
                             />
                             {role.color !== 0 && (
                               <span
-                                className="w-2 h-2 rounded-full shrink-0"
+                                className="size-2.5 rounded-full shrink-0"
                                 style={{ backgroundColor: `#${role.color.toString(16).padStart(6, '0')}` }}
                               />
                             )}

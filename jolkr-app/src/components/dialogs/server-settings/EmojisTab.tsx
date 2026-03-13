@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Trash2, ImageIcon } from 'lucide-react';
 import * as api from '../../../api/client';
 import { rewriteStorageUrl } from '../../../platform/config';
 import type { Server, ServerEmoji, User } from '../../../api/types';
@@ -94,55 +95,60 @@ export default function EmojisTab({ server }: EmojisTabProps) {
   }
 
   return (
-    <div>
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+    <div className="flex flex-col gap-5 min-h-full">
+      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg">{error}</div>}
 
-      <div className="text-text-secondary text-xs mb-3">
-        {emojis.length} / {MAX_EMOJIS} emojis
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-text-muted">{emojis.length} / {MAX_EMOJIS} emojis</span>
       </div>
 
       {/* Upload form */}
-      <div className="flex items-end gap-2 mb-4 p-3 bg-input rounded-lg">
-        <div className="flex-1">
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Emoji Name</label>
+      <div className="flex items-center gap-3 rounded-lg bg-bg-tertiary border border-divider px-4 py-3 shrink-0">
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Image</label>
+          <div className="flex items-center gap-2 rounded-lg bg-bg border border-divider px-3.5 py-2.5">
+            <ImageIcon className="size-4 text-text-muted shrink-0" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="text-sm text-text-muted flex-1 min-w-0 file:mr-2 file:py-0 file:px-0 file:border-0 file:text-sm file:bg-transparent file:text-text-muted file:cursor-pointer"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1 w-36 shrink-0">
+          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="my_emoji"
-            className="w-full mt-1 px-3 py-2 bg-surface rounded-lg text-text-primary text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Image</label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="w-full mt-1 text-text-primary text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-surface file:text-text-secondary file:cursor-pointer"
+            className="w-full rounded-lg bg-bg border border-divider px-3.5 py-2.5 text-sm text-text-primary"
           />
         </div>
         <button
           onClick={handleUpload}
           disabled={uploading || !name.trim()}
-          className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50 shrink-0"
+          className="btn-primary shrink-0 self-end"
         >
           {uploading ? 'Uploading...' : 'Upload'}
         </button>
       </div>
 
-      {/* Emoji list */}
+      {/* Emoji list / empty state */}
       {emojis.length === 0 ? (
-        <div className="text-text-muted text-sm py-4">No custom emojis yet.</div>
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-sm text-text-muted">No custom emojis yet</span>
+        </div>
       ) : (
-        <div className="space-y-1">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {emojis.map((emoji) => {
             const uploader = emojiUsers[emoji.uploader_id];
             return (
-              <div key={emoji.id} className="flex items-center gap-3 p-2 rounded hover:bg-white/5">
+              <div key={emoji.id} className="flex items-center gap-3 px-1 py-3 border-b border-border-subtle">
                 <img
                   src={rewriteStorageUrl(emoji.image_url) ?? emoji.image_url}
                   alt={emoji.name}
-                  className="w-8 h-8 object-contain shrink-0"
+                  className="size-8 object-contain shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-text-primary text-sm font-medium truncate">:{emoji.name}:</div>
@@ -153,9 +159,14 @@ export default function EmojisTab({ server }: EmojisTabProps) {
                 <button
                   onClick={() => handleDelete(emoji.id)}
                   disabled={deleting === emoji.id}
-                  className="px-3 py-1 text-xs text-error hover:text-error/80 bg-white/5 hover:bg-white/10 rounded shrink-0 disabled:opacity-50"
+                  className="p-1.5 text-text-muted hover:text-error rounded shrink-0 disabled:opacity-50 transition-colors"
+                  aria-label={`Delete :${emoji.name}: emoji`}
                 >
-                  {deleting === emoji.id ? '...' : 'Delete'}
+                  {deleting === emoji.id ? (
+                    <span className="text-xs">...</span>
+                  ) : (
+                    <Trash2 className="size-4" />
+                  )}
                 </button>
               </div>
             );

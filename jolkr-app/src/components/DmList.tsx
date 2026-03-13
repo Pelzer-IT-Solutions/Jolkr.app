@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { DmChannel, Friendship, User } from '../api/types';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
@@ -14,6 +14,7 @@ import CreateGroupDmDialog from './dialogs/CreateGroupDm';
 import DmItem, { getDmDisplay } from './DmItem';
 import DmContextMenu from './DmContextMenu';
 import { useContextMenu } from '../hooks/useContextMenu';
+import { Search, Users, UserPlus } from 'lucide-react';
 
 export interface DmListProps {
   onDmSelect?: () => void;
@@ -21,7 +22,9 @@ export interface DmListProps {
 
 export default function DmList({ onDmSelect }: DmListProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { dmId } = useParams();
+  const isOnFriends = location.pathname === '/friends';
   const currentUser = useAuthStore((s) => s.user);
   const unreadCounts = useUnreadStore((s) => s.counts);
   const statuses = usePresenceStore((s) => s.statuses);
@@ -34,7 +37,6 @@ export default function DmList({ onDmSelect }: DmListProps) {
   const [dms, setDms] = useState<DmChannel[]>(cachedDmsRef.current);
   const [users, setUsers] = useState<Record<string, User>>(cachedUsersRef.current);
   const [search, setSearch] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -284,22 +286,21 @@ export default function DmList({ onDmSelect }: DmListProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="h-16 px-4 flex items-center border-b border-divider shrink-0">
-        <h2 className="text-text-primary font-semibold text-[15px]">Direct Messages</h2>
+      <div className="px-4 pt-4 pb-3 gap-3 flex flex-col shrink-0">
+        <h2 className="text-base font-bold text-text-primary">Direct Messages</h2>
       </div>
 
       {/* Search bar */}
-      <div className="px-2 pt-2">
+      <div className="px-4">
         <div
-          className={`input-container flex items-center bg-input rounded-xl border border-divider transition-all ${searchFocused ? 'border-primary/50 shadow-[0_0_0_3px_rgba(0,206,209,0.15)]' : 'hover:border-divider/80'}`}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
+          className="rounded-lg bg-bg-tertiary px-3 py-2 gap-2 flex items-center"
         >
+          <Search className="size-4 text-text-muted shrink-0" />
           <input
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Find or start a conversation"
-            className="w-full bg-transparent rounded-xl px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted outline-none"
+            className="input-reset w-full bg-transparent text-sm text-text-muted outline-none"
           />
         </div>
       </div>
@@ -308,12 +309,12 @@ export default function DmList({ onDmSelect }: DmListProps) {
       <div className="relative">
         {search.trim().length >= 2 && searchResults.length > 0 && (
           <div className="absolute left-0 right-0 top-0 z-20 bg-sidebar border border-divider rounded-lg mx-2 mt-1 py-1 shadow-lg animate-dropdown-enter">
-            <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-3 py-1">Start a conversation</div>
+            <div className="text-2xs font-bold text-text-muted uppercase tracking-wider px-3 py-1">Start a conversation</div>
             {searchResults.slice(0, 5).map((u) => (
               <button
                 key={u.id}
                 onClick={() => startDm(u.id)}
-                className="w-full px-4 py-2 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary"
+                className="w-full px-4 py-2 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary"
               >
                 <Avatar url={u.avatar_url} name={u.username} size={28} userId={u.id} />
                 <span className="truncate">{u.username}</span>
@@ -322,45 +323,44 @@ export default function DmList({ onDmSelect }: DmListProps) {
           </div>
         )}
         {search.trim().length >= 2 && searching && (
-          <div className="px-4 pt-2 text-[11px] text-text-muted">Searching users...</div>
+          <div className="px-4 pt-2 text-xs text-text-muted">Searching users...</div>
         )}
         {startDmError && (
           <div className="mx-2 mt-1 px-3 py-1.5 bg-error/10 text-error text-xs rounded">{startDmError}</div>
         )}
       </div>
 
-      {/* Friends link */}
-      <Link
-        to="/friends"
-        onClick={() => onDmSelect?.()}
-        aria-label="Friends"
-        className="mx-2 mt-2 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-sm cursor-pointer no-underline"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        Friends
-      </Link>
+      {/* Nav section */}
+      <div className="px-2 py-1 gap-0.5 flex flex-col">
+        <Link
+          to="/friends"
+          onClick={() => onDmSelect?.()}
+          aria-label="Friends"
+          className={`rounded-lg px-3 py-2.5 gap-2.5 flex items-center font-medium text-sm cursor-pointer no-underline ${
+            isOnFriends ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
+          }`}
+        >
+          <Users className="size-4.5" />
+          Friends
+        </Link>
 
-      {/* New Group DM button */}
-      <button
-        onClick={() => setShowCreateGroup(true)}
-        aria-label="New Group DM"
-        className="mx-2 mt-1 px-3 py-2 rounded flex items-center gap-2 text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-sm"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-        </svg>
-        New Group DM
-      </button>
+        <button
+          onClick={() => setShowCreateGroup(true)}
+          aria-label="New Group DM"
+          className="rounded-lg px-3 py-2.5 gap-2.5 flex items-center text-text-secondary font-medium hover:bg-bg-hover text-sm"
+        >
+          <UserPlus className="size-4.5" />
+          New Group DM
+        </button>
+      </div>
 
-      <div className="px-2 pt-3">
-        <div className="text-xs font-bold text-text-muted uppercase tracking-wider px-2 mb-1">
+      <div className="px-4 pt-3 pb-1">
+        <div className="text-xs font-semibold text-text-muted tracking-wider uppercase">
           Direct Messages
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 min-h-0">
+      <div className="flex-1 overflow-y-auto px-2 gap-0.5 flex flex-col min-h-0">
         {fetchError && dms.length === 0 && (
           <div className="px-2 py-4 text-center">
             <p className="text-error text-sm mb-2">Failed to load conversations</p>

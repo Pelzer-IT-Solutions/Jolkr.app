@@ -16,8 +16,9 @@ import { useCallStore } from '../../stores/call';
 import { useVoiceStore } from '../../stores/voice';
 import { useMessagesStore } from '../../stores/messages';
 import { usePresignRefresh } from '../../hooks/usePresignRefresh';
+import { Phone, Upload, ChevronLeft, Users, Lock, MoreVertical } from 'lucide-react';
 
-function CallButton({ dmId, recipientName, recipientUserId }: { dmId: string; recipientName: string; recipientUserId?: string }) {
+function CallButton({ dmId, recipientName, recipientUserId, iconClassName }: { dmId: string; recipientName: string; recipientUserId?: string; iconClassName?: string }) {
   const startCall = useCallStore((s) => s.startCall);
   const activeCallDmId = useCallStore((s) => s.activeCallDmId);
   const outgoingCall = useCallStore((s) => s.outgoingCall);
@@ -30,13 +31,11 @@ function CallButton({ dmId, recipientName, recipientUserId }: { dmId: string; re
     <button
       onClick={() => startCall(dmId, recipientName, recipientUserId)}
       disabled={inCall}
-      className="p-1.5 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+      className="p-1.5 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
       title={inCall ? 'Already in a call' : 'Start voice call'}
       aria-label="Start voice call"
     >
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-      </svg>
+      <Phone className={iconClassName ?? "size-4.5"} />
     </button>
   );
 }
@@ -327,7 +326,7 @@ export default function DmChat() {
   return (
     <>
       <div
-        className="flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition relative"
+        className="flex-1 flex flex-col bg-bg-tertiary min-w-0 min-h-0 page-transition relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -337,59 +336,63 @@ export default function DmChat() {
           {isDragging && (
             <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
               <div className="flex flex-col items-center gap-2">
-                <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                </svg>
+                <Upload className="w-10 h-10 text-primary" />
                 <span className="text-primary font-semibold text-lg">Drop files to upload</span>
               </div>
             </div>
           )}
           {/* Header */}
-          <div className="h-16 px-4 flex items-center gap-3 glass-header shrink-0">
+          <div className={`flex items-center shrink-0 ${
+            isMobile
+              ? 'bg-bg-tertiary px-4 py-2 gap-3 border-b border-border-subtle'
+              : 'bg-bg-tertiary px-5 py-3 gap-3 border-b border-border-subtle'
+          }`}>
             {isMobile && (
-              <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to conversations">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
+              <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary" aria-label="Back to conversations">
+                <ChevronLeft className="size-5.5" />
               </button>
             )}
 
             {isGroup ? (
               /* Group DM header */
               <>
-                <div className="w-7 h-7 rounded-full bg-primary/30 flex items-center justify-center shrink-0">
-                  <svg className="w-3.5 h-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
+                <div className="size-8 rounded-full bg-primary/30 flex items-center justify-center shrink-0">
+                  <Users className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="text-text-primary font-semibold truncate block text-sm">{groupDisplayName}</span>
-                  <span className="text-[11px] text-text-muted">{dmChannel?.members.length} members</span>
+                  <span className="text-base font-semibold text-text-primary truncate block">{groupDisplayName}</span>
+                  <span className="text-xs text-text-muted">{dmChannel?.members.length} members</span>
                 </div>
                 <button
                   onClick={() => setShowMembers(!showMembers)}
-                  className={`p-1.5 rounded hover:bg-white/10 ${showMembers ? 'text-text-primary' : 'text-text-secondary'}`}
+                  className={`p-1.5 rounded hover:bg-bg-hover ${showMembers ? 'text-text-primary' : 'text-text-secondary'}`}
                   title="Toggle members"
                   aria-label="Toggle members"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+                  <Users className="size-4.5" />
                 </button>
               </>
             ) : (
               /* 1-on-1 DM header */
               <>
-                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.username} size={28} status={partnerStatus} userId={otherUser.id} />}
-                <span className="text-text-primary font-semibold">{otherUser?.username ?? 'Direct Message'}</span>
+                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.username} size={32} status={partnerStatus} userId={otherUser.id} />}
+                <span className="text-base font-semibold text-text-primary">{otherUser?.username ?? 'Direct Message'}</span>
                 {e2eeAvailable && (
-                  <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <title>End-to-end encrypted</title>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                  <span title="End-to-end encrypted"><Lock className="w-4 h-4 text-green-400" /></span>
                 )}
                 <div className="flex-1" />
-                <CallButton dmId={dmId!} recipientName={otherUser?.username ?? 'User'} recipientUserId={otherUser?.id} />
+                {isMobile ? (
+                  <div className="flex items-center gap-3">
+                    <CallButton dmId={dmId!} recipientName={otherUser?.username ?? 'User'} recipientUserId={otherUser?.id} iconClassName="size-5 text-text-secondary" />
+                    <button className="text-text-secondary hover:text-text-primary" aria-label="More options">
+                      <MoreVertical className="size-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="gap-4 flex ml-auto">
+                    <CallButton dmId={dmId!} recipientName={otherUser?.username ?? 'User'} recipientUserId={otherUser?.id} />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -397,29 +400,33 @@ export default function DmChat() {
           {/* Main content area */}
           <div className="flex-1 flex min-h-0">
             {/* Messages */}
-            <div className="flex-1 flex flex-col min-w-0">
-              <MessageList channelId={dmId} isDm onReply={setReplyTo} />
-              <MessageInput
-                channelId={dmId}
-                isDm
-                isGroupDm={isGroup}
-                dmMemberIds={isGroup ? dmChannel?.members : undefined}
-                recipientUserId={isGroup ? undefined : otherUser?.id}
-                replyTo={replyTo}
-                replyAuthor={replyAuthor}
-                onCancelReply={() => setReplyTo(null)}
-                mentionableUsers={mentionableUsers}
-                droppedFiles={droppedFiles}
-              />
+            <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? 'justify-end' : ''}`}>
+              <div className={isMobile ? 'py-3 gap-1 flex flex-col flex-1 min-h-0' : 'flex-1 flex flex-col min-h-0'}>
+                <MessageList channelId={dmId} isDm onReply={setReplyTo} />
+              </div>
+              <div>
+                <MessageInput
+                  channelId={dmId}
+                  isDm
+                  isGroupDm={isGroup}
+                  dmMemberIds={isGroup ? dmChannel?.members : undefined}
+                  recipientUserId={isGroup ? undefined : otherUser?.id}
+                  replyTo={replyTo}
+                  replyAuthor={replyAuthor}
+                  onCancelReply={() => setReplyTo(null)}
+                  mentionableUsers={mentionableUsers}
+                  droppedFiles={droppedFiles}
+                />
+              </div>
             </div>
 
             {/* Members sidebar (group DM only) — overlay on mobile */}
             {isGroup && showMembers && (
               <div className={`${
                 isMobile
-                  ? 'fixed inset-y-0 right-0 w-[80vw] max-w-[300px] z-40 shadow-xl animate-slide-in-right'
-                  : 'w-[240px] shrink-0 h-full overflow-hidden animate-fade-in'
-              } glass flex flex-col`}>
+                  ? 'fixed inset-y-0 right-0 w-[80vw] max-w-75 z-40 shadow-xl animate-slide-in-right'
+                  : 'w-60 shrink-0 h-full overflow-hidden animate-fade-in'
+              } bg-sidebar border border-divider flex flex-col`}>
                 <div className="p-3 border-b border-divider">
                   <h3 className="text-text-primary text-sm font-semibold">
                     Members — {dmChannel?.members.length}
@@ -432,7 +439,7 @@ export default function DmChat() {
                     const status = statuses[memberId] ?? 'offline';
                     if (!user) return null;
                     return (
-                      <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5">
+                      <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-bg-hover">
                         <Avatar url={user.avatar_url} name={user.username} size={28} status={status} userId={memberId} />
                         <span className="text-text-secondary text-sm truncate">
                           {user.username}
@@ -449,14 +456,14 @@ export default function DmChat() {
                     value={addMemberSearch}
                     onChange={(e) => handleAddMemberSearch(e.target.value)}
                     placeholder="Add a member..."
-                    className="w-full bg-input rounded px-2 py-1.5 text-[13px] text-text-primary placeholder:text-text-muted outline-none mb-1"
+                    className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-muted outline-none mb-1"
                   />
                   {addMemberResults.slice(0, 5).map((u) => (
                     <button
                       key={u.id}
                       onClick={() => handleAddMember(u.id)}
                       disabled={addingMember}
-                      className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-white/5 hover:text-text-primary disabled:opacity-50"
+                      className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-50"
                     >
                       <Avatar url={u.avatar_url} name={u.username} size={20} userId={u.id} />
                       <span className="truncate">{u.username}</span>

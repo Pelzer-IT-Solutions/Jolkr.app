@@ -7,6 +7,7 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { DragEndEvent } from '@dnd-kit/core';
 import * as api from '../api/client';
+import { MicOff, ChevronDown, Plus } from 'lucide-react';
 
 // ── Text Channel Group (with DnD support) ────────────────────────────────
 
@@ -170,10 +171,7 @@ function VoiceParticipantItem({
       </div>
       <span className="text-xs text-text-secondary truncate">{user?.username ?? '...'}</span>
       {participant.isMuted && (
-        <svg className="w-3 h-3 text-error shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-        </svg>
+        <MicOff className="size-3 text-error shrink-0" />
       )}
     </div>
   );
@@ -235,11 +233,9 @@ const CategoryGroup = memo(function CategoryGroup({
         onContextMenu={(e) => onCategoryContextMenu(category.id, e)}
         aria-expanded={!collapsed}
         aria-label={`${category.name} category`}
-        className="w-full px-1 py-1 text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-0.5 hover:text-text-secondary group"
+        className="w-full px-4 pt-3 pb-1 text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-0.5 hover:text-text-secondary group"
       >
-        <svg className={`w-3 h-3 transition-transform ${collapsed ? '-rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className={`size-3 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
         <span className="truncate flex-1 text-left">{category.name}</span>
         {canManage && (
           <span
@@ -251,9 +247,7 @@ const CategoryGroup = memo(function CategoryGroup({
             title="Create Channel"
             aria-label={`Create channel in ${category.name}`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="size-3.5" />
           </span>
         )}
       </button>

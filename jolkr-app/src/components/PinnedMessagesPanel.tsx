@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, memo } from 'react';
+import { X } from 'lucide-react';
 import type { Message, User } from '../api/types';
 import * as api from '../api/client';
 import Avatar from './Avatar';
@@ -41,13 +42,11 @@ function PinnedMessagesPanelInner({ channelId, onClose }: PinnedMessagesPanelPro
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-0 z-50 w-[360px] h-full glass flex flex-col shadow-popup">
-        <div className="h-16 px-4 flex items-center justify-between border-b border-divider shrink-0">
+      <div className="absolute right-0 top-0 z-50 w-90 h-full bg-sidebar border-l border-divider flex flex-col shadow-popup">
+        <div className="px-5 py-3 flex items-center justify-between border-b border-divider shrink-0">
           <h3 className="text-text-primary font-semibold text-sm">Pinned Messages</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close pinned messages">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -65,11 +64,11 @@ function PinnedMessagesPanelInner({ channelId, onClose }: PinnedMessagesPanelPro
             const author = users[msg.author_id];
             const time = new Date(msg.created_at);
             return (
-              <div key={msg.id} className="mb-3 p-3 bg-background rounded-xl border border-divider">
+              <div key={msg.id} className="mb-3 p-3 bg-bg-tertiary rounded-xl border border-divider">
                 <div className="flex items-center gap-2 mb-1">
                   <Avatar url={author?.avatar_url} name={author?.username ?? '?'} size={20} userId={msg.author_id} />
                   <span className="text-sm font-medium text-text-primary">{author?.username ?? 'Unknown'}</span>
-                  <span className="text-[11px] text-text-muted">
+                  <span className="text-xs text-text-muted">
                     {time.toLocaleDateString()} {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>

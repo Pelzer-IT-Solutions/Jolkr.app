@@ -42,13 +42,13 @@ function PollDisplayInner({ pollId, initialPoll }: PollDisplayProps) {
   }, [poll, voting]);
 
   if (loading) return (
-    <div className="mt-2 bg-background/50 rounded-lg p-3 border border-divider max-w-[400px] animate-pulse">
-      <div className="h-4 bg-white/5 rounded w-2/3 mb-2" />
+    <div className="mt-2 bg-bg-tertiary rounded-lg p-3 border border-divider max-w-100 animate-pulse">
+      <div className="h-4 bg-bg-hover rounded w-2/3 mb-2" />
       <div className="space-y-1.5">
-        <div className="rounded-lg px-4 py-2 border border-divider h-8 bg-white/5" />
-        <div className="rounded-lg px-4 py-2 border border-divider h-8 bg-white/5" />
+        <div className="rounded-lg px-4 py-2 border border-divider h-8 bg-bg-hover" />
+        <div className="rounded-lg px-4 py-2 border border-divider h-8 bg-bg-hover" />
       </div>
-      <div className="h-3 bg-white/5 rounded w-1/4 mt-2" />
+      <div className="h-3 bg-bg-hover rounded w-1/4 mt-2" />
     </div>
   );
   if (!poll) return null;
@@ -58,17 +58,17 @@ function PollDisplayInner({ pollId, initialPoll }: PollDisplayProps) {
   const total = poll.total_votes || 0;
 
   return (
-    <div className="mt-2 bg-background/50 rounded-lg p-3 border border-divider max-w-[400px]">
+    <div className="mt-2 bg-bg-tertiary rounded-lg p-3 border border-divider max-w-100">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-text-primary text-sm font-medium">{poll.question}</span>
         {isExpired && (
-          <span className="px-1.5 py-0.5 text-[10px] bg-text-muted/20 text-text-muted rounded font-bold uppercase">
+          <span className="px-1.5 py-0.5 text-2xs bg-text-muted/20 text-text-muted rounded font-bold uppercase">
             Ended
           </span>
         )}
       </div>
       {poll.multi_select && (
-        <div className="text-[10px] text-text-muted mb-1.5">Multiple choice</div>
+        <div className="text-2xs text-text-muted mb-1.5">Multiple choice</div>
       )}
       <div className="space-y-1.5">
         {poll.options.map((opt) => {
@@ -84,13 +84,13 @@ function PollDisplayInner({ pollId, initialPoll }: PollDisplayProps) {
               className={`w-full relative rounded-lg overflow-hidden text-left text-sm px-4 py-2 border transition-colors ${
                 isMyVote
                   ? 'border-primary/50 bg-primary/10'
-                  : 'border-divider bg-background hover:bg-white/5'
+                  : 'border-divider bg-bg-tertiary hover:bg-bg-hover'
               } disabled:cursor-default`}
             >
               {/* Progress bar */}
               <div
                 className={`absolute inset-y-0 left-0 transition-all duration-300 ${
-                  isMyVote ? 'bg-primary/20' : 'bg-white/5'
+                  isMyVote ? 'bg-accent-muted' : 'bg-bg-hover'
                 }`}
                 style={{ width: `${pct}%` }}
               />
@@ -106,7 +106,7 @@ function PollDisplayInner({ pollId, initialPoll }: PollDisplayProps) {
           );
         })}
       </div>
-      <div className="text-[10px] text-text-muted mt-2">
+      <div className="text-2xs text-text-muted mt-2">
         {total} vote{total !== 1 ? 's' : ''}
         {poll.expires_at && !isExpired && (
           <span> · Ends {new Date(poll.expires_at).toLocaleDateString()}</span>

@@ -16,6 +16,7 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
+import { Plus, UserPlus, Settings, LogIn, Search } from 'lucide-react';
 
 /** Server icon with auto-retry on presigned URL expiry */
 function ServerIconImg({ serverId, url, name }: { serverId: string; url: string; name: string }) {
@@ -119,24 +120,19 @@ export default function ServerSidebar() {
   const settingsServerObj = settingsServer ? servers.find((s) => s.id === settingsServer) : null;
 
   return (
-    <div className="w-[76px] h-full bg-serverbar flex flex-col items-center shrink-0">
+    <div className="w-18 h-full bg-bg py-3 gap-2 flex flex-col items-center shrink-0">
       {/* Home button header */}
-      <div className="h-16 w-full flex items-center justify-center shrink-0 relative">
+      <div className="w-full flex items-center justify-center shrink-0 relative">
         <Link
           to="/"
           onMouseEnter={() => setHovered('home')}
           onMouseLeave={() => setHovered(null)}
-          className={`w-12 h-12 flex items-center justify-center server-icon no-underline ${!serverId
-            ? 'bg-primary rounded-2xl active'
-            : hovered === 'home'
-              ? 'bg-primary rounded-2xl'
-              : 'bg-surface rounded-xl'
-            }`}
+          className={`size-12 rounded-2xl bg-primary flex items-center justify-center transition-all duration-200 no-underline`}
         >
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Home" className={`w-7 h-7 rounded${serverId && hovered !== 'home' ? ' light-adapt-icon' : ''}`} />
         </Link>
-        <div className="border-b border-divider/50 absolute bottom-0 left-1/2 -translate-x-1/2 w-8"></div>
       </div>
+      <div className="w-8 h-0.5 bg-divider rounded-full shrink-0" />
 
       <div className="flex-1 flex flex-col items-center py-2 gap-2 overflow-y-auto w-full">
         {/* Server icons */}
@@ -155,28 +151,28 @@ export default function ServerSidebar() {
                     onMouseEnter={() => setHovered(server.id)}
                     onMouseLeave={() => setHovered(null)}
                     title={server.name}
-                    className={`w-12 h-12 flex items-center justify-center server-icon relative no-underline ${serverId === server.id
-                      ? 'bg-primary rounded-2xl active'
+                    className={`size-12 rounded-2xl flex items-center justify-center transition-all duration-200 relative no-underline ${serverId === server.id
+                      ? 'bg-bg-elevated border-2 border-primary'
                       : hovered === server.id
-                        ? 'bg-primary/80 rounded-2xl'
-                        : 'bg-surface rounded-xl'
+                        ? 'bg-primary/80'
+                        : 'bg-bg-tertiary'
                       }`}
                   >
                     {server.icon_url ? (
                       <ServerIconImg serverId={server.id} url={server.icon_url} name={server.name} />
                     ) : (
-                      <span className={`${serverId === server.id || hovered === server.id ? 'text-white' : 'text-text-primary'} font-semibold text-sm`}>
+                      <span className={`${serverId === server.id || hovered === server.id ? 'text-white' : 'text-text-primary'} font-bold text-lg`}>
                         {server.name.slice(0, 2).toUpperCase()}
                       </span>
                     )}
                     {/* Active indicator */}
                     {serverId === server.id && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[22px] w-1 h-8 bg-text-primary rounded-r-full" />
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5.5 w-1 h-8 bg-text-primary rounded-r-full" />
                     )}
                     {/* Unread badge */}
                     {serverUnread > 0 && serverId !== server.id && (
-                      <div className="absolute -bottom-0.5 -right-0.5 min-w-[18px] h-[18px] bg-error rounded-full flex items-center justify-center px-1 border-2 border-serverbar">
-                        <span className="text-[10px] font-bold text-white">{serverUnread > 99 ? '99+' : serverUnread}</span>
+                      <div className="absolute -bottom-0.5 -right-0.5 min-w-4.5 h-4.5 bg-error rounded-full flex items-center justify-center px-1 border-2 border-bg">
+                        <span className="text-2xs font-bold text-white">{serverUnread > 99 ? '99+' : serverUnread}</span>
                       </div>
                     )}
                   </Link>
@@ -195,12 +191,10 @@ export default function ServerSidebar() {
           onMouseEnter={() => setHovered('add')}
           onMouseLeave={() => setHovered(null)}
           aria-label="Add a server"
-          className={`w-11 h-11 flex items-center justify-center server-icon ${hovered === 'add' ? 'bg-online rounded-2xl' : 'bg-surface rounded-xl'
+          className={`size-12 rounded-2xl border-2 border-dashed border-divider flex items-center justify-center transition-all duration-200 ${hovered === 'add' ? 'bg-online border-online' : ''
             }`}
         >
-          <svg className={`w-5 h-5 ${hovered === 'add' ? 'text-white' : 'text-online'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
+          <Plus className={`size-5 ${hovered === 'add' ? 'text-white' : 'text-text-muted'}`} />
         </button>
       </div>
 
@@ -209,27 +203,22 @@ export default function ServerSidebar() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
           <div
-            className="fixed z-50 bg-surface border border-divider rounded-xl shadow-float py-1 w-[180px]"
+            className="fixed z-50 bg-surface border border-divider rounded-xl shadow-float py-1 w-45"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <button
               onClick={() => { setContextMenu(null); setInviteServer(contextMenu.serverId); }}
-              className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
+              <UserPlus className="size-4" />
               Invite People
             </button>
             {canContextSettings && (
               <button
                 onClick={() => { setContextMenu(null); setSettingsServer(contextMenu.serverId); }}
-                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                <Settings className="size-4" />
                 Server Settings
               </button>
             )}
@@ -240,7 +229,7 @@ export default function ServerSidebar() {
       {/* Add server choice dialog */}
       {showAddMenu && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowAddMenu(false)}>
-          <div className="bg-surface rounded-2xl border border-divider shadow-popup p-6 animate-modal-scale w-[400px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface rounded-2xl border border-divider shadow-popup p-6 animate-modal-scale w-100 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-text-primary text-lg font-semibold mb-2 text-center">Add a Server</h3>
             <p className="text-text-secondary text-sm mb-6 text-center">Create your own or join an existing one</p>
             <div className="flex flex-col gap-3">
@@ -248,27 +237,21 @@ export default function ServerSidebar() {
                 onClick={() => { setShowAddMenu(false); setShowCreate(true); }}
                 className="w-full px-4 py-3 btn-primary text-sm rounded-lg flex items-center justify-center gap-2"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
+                <Plus className="size-5" />
                 Create a Server
               </button>
               <button
                 onClick={() => { setShowAddMenu(false); setShowJoin(true); }}
                 className="w-full px-4 py-3 btn-ghost text-sm rounded-lg flex items-center justify-center gap-2"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                </svg>
+                <LogIn className="size-5" />
                 Join a Server
               </button>
               <button
                 onClick={() => { setShowAddMenu(false); setShowDiscover(true); }}
                 className="w-full px-4 py-3 btn-ghost text-sm rounded-lg flex items-center justify-center gap-2"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
+                <Search className="size-5" />
                 Discover Public Servers
               </button>
             </div>

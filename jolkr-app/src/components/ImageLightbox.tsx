@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface LightboxImage {
   src: string;
@@ -68,9 +69,7 @@ export default function ImageLightbox({ images, initialIndex = 0, onClose }: Ima
         onClick={(e) => { e.stopPropagation(); onClose(); }}
         aria-label="Close"
       >
-        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <X className="w-8 h-8" />
       </button>
 
       {/* Previous button */}
@@ -80,9 +79,7 @@ export default function ImageLightbox({ images, initialIndex = 0, onClose }: Ima
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
           aria-label="Previous image"
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
+          <ChevronLeft className="w-6 h-6" />
         </button>
       )}
 
@@ -93,9 +90,7 @@ export default function ImageLightbox({ images, initialIndex = 0, onClose }: Ima
           onClick={(e) => { e.stopPropagation(); goNext(); }}
           aria-label="Next image"
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
+          <ChevronRight className="w-6 h-6" />
         </button>
       )}
 

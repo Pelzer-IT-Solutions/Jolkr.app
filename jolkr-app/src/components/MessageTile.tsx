@@ -18,6 +18,8 @@ import ConfirmDialog from './dialogs/ConfirmDialog';
 import { useToast } from './Toast';
 import { useDecryptedContent } from '../hooks/useDecryptedContent';
 import { useDmReadsStore } from '../stores/dm-reads';
+import { useMobileView } from '../hooks/useMobileView';
+import { Reply, Lock, FileText, MessageSquare, Check, Bookmark, Smile, Pencil, Trash2 } from 'lucide-react';
 
 const URL_RE = /https?:\/\/[^\s<>)\]']+/g;
 
@@ -41,6 +43,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
   const deleteMessage = useMessagesStore((s) => s.deleteMessage);
   const updateMessage = useMessagesStore((s) => s.updateMessage);
   const updateReactions = useMessagesStore((s) => s.updateReactions);
+  const mobile = useMobileView();
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
@@ -170,7 +173,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 
   return (
     <div
-      className={`group flex items-start gap-4 px-4 hover:bg-white/[0.04] relative ${compact ? 'py-0.5' : 'py-2 [.compact-mode_&]:py-0.5'}`}
+      className={`group flex items-start gap-2.5 md:gap-3 px-4 py-1 md:py-1.5 hover:bg-bg-hover relative ${compact ? 'py-0.5' : '[.compact-mode_&]:py-0.5'}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onFocusCapture={() => setShowActions(true)}
@@ -178,19 +181,19 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
       onTouchStart={() => setShowActions(true)}
     >
       {compact ? (
-        <div className="w-10 shrink-0 flex justify-center">
-          <span className="text-[11px] text-text-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">{timeStr}</span>
+        <div className="w-8 md:w-10 shrink-0 flex justify-center">
+          <span className="text-2xs md:text-xs text-text-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">{timeStr}</span>
         </div>
       ) : message.webhook_id ? (
         <div className="shrink-0">
-          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={44} userId={message.author_id} />
+          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={mobile ? 32 : 40} userId={message.author_id} />
         </div>
       ) : (
         <button
           className="shrink-0 cursor-pointer"
           onClick={(e) => setProfileAnchor({ x: e.clientX, y: e.clientY })}
         >
-          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={44} userId={message.author_id} />
+          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={mobile ? 32 : 40} userId={message.author_id} />
         </button>
       )}
 
@@ -198,41 +201,36 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         {/* Reply reference */}
         {message.reply_to_id && (
           <div className="flex items-center gap-1.5 mb-0.5 text-xs text-text-muted">
-            <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
+            <Reply className="size-3 shrink-0" />
             <span className="text-text-secondary font-medium">{replyAuthor?.username ?? 'Unknown'}</span>
-            <span className="truncate max-w-[300px]">{replyMessage?.content ?? '...'}</span>
+            <span className="truncate max-w-75">{replyMessage?.content ?? '...'}</span>
           </div>
         )}
 
         {!compact && (
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-center gap-2">
             {message.webhook_id ? (
-              <span className="font-medium text-sm text-text-primary truncate max-w-[300px]">
+              <span className="text-sm font-semibold text-text-primary truncate max-w-75">
                 {message.webhook_name ?? 'Webhook'}
               </span>
             ) : (
               <button
-                className="font-medium text-sm text-text-primary hover:underline cursor-pointer truncate max-w-[300px]"
+                className="text-sm font-semibold text-primary hover:underline cursor-pointer truncate max-w-75"
                 onClick={(e) => setProfileAnchor({ x: e.clientX, y: e.clientY })}
               >
                 {author?.username ?? 'Unknown'}
               </button>
             )}
             {message.webhook_id && (
-              <span className="px-1 py-0.5 text-[10px] bg-primary/20 text-primary rounded font-bold uppercase shrink-0">
+              <span className="px-1 py-0.5 text-2xs bg-accent-muted text-primary rounded font-bold uppercase shrink-0">
                 BOT
               </span>
             )}
-            <span className="text-xs text-text-muted">{dateStr} {timeStr}</span>
+            <span className="text-2xs md:text-xs text-text-muted">{mobile ? timeStr : `${dateStr} ${timeStr}`}</span>
             {isEncrypted && (
-              <svg className="w-3 h-3 text-green-400 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <title>End-to-end encrypted</title>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+              <span title="End-to-end encrypted"><Lock className="size-3 text-green-400 inline-block" /></span>
             )}
-            {message.is_edited && <span className="text-[11px] text-text-muted">(edited)</span>}
+            {message.is_edited && <span className="text-xs text-text-muted">(edited)</span>}
           </div>
         )}
 
@@ -245,17 +243,17 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); }
                 if (e.key === 'Escape') setEditing(false);
               }}
-              className="w-full px-3 py-1.5 bg-input rounded text-text-primary text-sm resize-none"
+              className="w-full px-3 py-1.5 bg-bg border border-divider rounded-lg text-text-primary text-sm resize-none"
               rows={Math.min(editContent.split('\n').length, 6)}
               autoFocus
             />
             {editError && <div className="text-xs text-error mt-1">{editError}</div>}
-            <div className="text-[11px] text-text-muted mt-1">
+            <div className="text-xs text-text-muted mt-1">
               Enter to save &middot; Shift+Enter for new line &middot; Escape to cancel
             </div>
           </div>
         ) : hasText ? (
-          <MessageContent content={displayContent} className="text-sm text-text-primary/90 break-words" />
+          <MessageContent content={displayContent} className="text-sm text-text-primary leading-relaxed break-words" />
         ) : null}
 
         {/* Attachments */}
@@ -275,7 +273,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               {/* Image grid */}
               {imgCount > 0 && (
                 <div
-                  className={`grid gap-1 rounded-lg overflow-hidden max-w-[400px] ${
+                  className={`grid gap-1 rounded-lg overflow-hidden max-w-100 ${
                     imgCount === 1 ? 'grid-cols-1' :
                     imgCount === 2 ? 'grid-cols-2' :
                     imgCount === 3 ? 'grid-cols-2' :
@@ -327,14 +325,12 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                     href={attUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 bg-input rounded-lg px-3 py-2 max-w-[300px] hover:bg-input/80"
+                    className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 max-w-75 hover:bg-bg-hover"
                   >
-                    <svg className="w-5 h-5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
+                    <FileText className="size-5 text-text-muted shrink-0" />
                     <div className="min-w-0">
                       <div className="text-sm text-primary truncate">{att.filename}</div>
-                      <div className="text-[11px] text-text-muted">{formatBytes(att.size_bytes)}</div>
+                      <div className="text-xs text-text-muted">{formatBytes(att.size_bytes)}</div>
                     </div>
                   </a>
                 );
@@ -380,11 +376,11 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                 onClick={() => handleReaction(r.emoji)}
                 className={`px-2.5 py-1 rounded-full text-xs flex items-center gap-1 border ${
                   r.me
-                    ? 'bg-primary/20 border-primary/50 text-text-primary'
-                    : 'bg-input border-divider text-text-secondary hover:bg-input/80'
+                    ? 'bg-accent-muted border-primary/50 text-text-primary'
+                    : 'bg-surface border-divider text-text-secondary hover:bg-bg-hover'
                 }`}
               >
-                <img src={emojiToImgUrl(r.emoji)} alt={r.emoji} className="inline-block w-[18px] h-[18px]" loading="lazy" draggable={false} />
+                <img src={emojiToImgUrl(r.emoji)} alt={r.emoji} className="inline-block w-4.5 h-4.5" loading="lazy" draggable={false} />
                 <span>{r.count}</span>
               </button>
             ))}
@@ -397,9 +393,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
             onClick={() => onOpenThread?.(message)}
             className="mt-1 flex items-center gap-1.5 text-primary text-xs hover:underline cursor-pointer"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-            </svg>
+            <MessageSquare className="size-3.5" />
             <span>{message.thread_reply_count ?? 0} {(message.thread_reply_count ?? 0) === 1 ? 'reply' : 'replies'}</span>
           </button>
         )}
@@ -407,37 +401,31 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         {/* DM read receipt indicator */}
         {isReadByOther && (
           <div className="flex items-center gap-1 mt-0.5">
-            <svg className="w-3 h-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-[10px] text-text-muted">Read</span>
+            <Check className="size-3 text-primary" />
+            <span className="text-2xs text-text-muted">Read</span>
           </div>
         )}
       </div>
 
       {/* Action buttons */}
       {showActions && !editing && (
-        <div className="absolute right-4 -top-3 flex bg-surface border border-divider rounded-lg shadow-elevated">
+        <div className="absolute right-4 -top-3 flex rounded-lg bg-surface border border-divider shadow-float">
           <button
             onClick={() => onReply?.(message)}
-            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
+            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover"
             title="Reply"
             aria-label="Reply"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
+            <Reply className="size-4" />
           </button>
           {!isDm && !hideThreadButton && (
             <button
               onClick={() => onOpenThread?.(message)}
-              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
+              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover"
               title="Thread"
               aria-label="Thread"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-              </svg>
+              <MessageSquare className="size-4" />
             </button>
           )}
           {!isDm && (
@@ -462,13 +450,11 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                 }
               }}
               disabled={pinning}
-              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08] disabled:opacity-50"
+              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover disabled:opacity-50"
               title={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
               aria-label={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
             >
-              <svg className={`w-4 h-4 ${message.is_pinned ? 'text-primary' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
+              <Bookmark className={`size-4 ${message.is_pinned ? 'text-primary' : ''}`} />
             </button>
           )}
           <button
@@ -483,37 +469,31 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
               }
               setShowReactionPicker(!showReactionPicker);
             }}
-            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
+            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover"
             title="Add Reaction"
             aria-label="Add Reaction"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <Smile className="size-4" />
           </button>
           {isOwn && (
             <>
               {!isEncrypted && (
                 <button
                   onClick={() => { setEditing(true); setEditContent(displayContent || ''); }}
-                  className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-white/[0.08]"
+                  className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-bg-hover"
                   title="Edit"
                   aria-label="Edit"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
+                  <Pencil className="size-4" />
                 </button>
               )}
               <button
                 onClick={handleDelete}
-                className="px-2 py-1 text-text-secondary hover:text-error hover:bg-white/[0.08]"
+                className="px-2 py-1 text-text-secondary hover:text-error hover:bg-bg-hover"
                 title="Delete"
                 aria-label="Delete"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+                <Trash2 className="size-4" />
               </button>
             </>
           )}
@@ -525,7 +505,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowReactionPicker(false)} />
           <div className="fixed z-50" style={{ top: pickerPos.top, left: pickerPos.left }}>
-            <Suspense fallback={<div className="w-[300px] h-[350px] bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+            <Suspense fallback={<div className="w-75 h-87.5 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
               <LazyEmojiPicker
                 theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
                 onEmojiClick={(emoji: { emoji: string }) => handleReaction(emoji.emoji)}
@@ -592,7 +572,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
 
   if (errored) {
     return (
-      <div className={`bg-input rounded-lg px-3 py-2 text-text-muted text-sm ${spanFull ? 'col-span-2' : ''}`}>
+      <div className={`bg-surface border border-divider rounded-lg px-3 py-2 text-text-muted text-sm ${spanFull ? 'col-span-2' : ''}`}>
         Image expired: {alt}
       </div>
     );
@@ -600,9 +580,9 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
 
   if (grid) {
     return (
-      <div className={`relative overflow-hidden ${spanFull ? 'col-span-2 h-[200px]' : 'h-[150px]'}`}>
+      <div className={`relative overflow-hidden ${spanFull ? 'col-span-2 h-50' : 'h-37.5'}`}>
         {!loaded && (
-          <div className="absolute inset-0 bg-white/5 animate-pulse" />
+          <div className="absolute inset-0 bg-bg-hover animate-pulse" />
         )}
         <img
           src={currentSrc}
@@ -620,16 +600,16 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
   }
 
   return (
-    <div className="relative max-w-[400px] min-h-[60px] rounded-lg overflow-hidden">
+    <div className="relative max-w-100 min-h-15 rounded-lg overflow-hidden">
       {!loaded && (
-        <div className="absolute inset-0 bg-white/5 animate-pulse rounded-lg" />
+        <div className="absolute inset-0 bg-bg-hover animate-pulse rounded-lg" />
       )}
       <img
         src={currentSrc}
         alt={alt}
         crossOrigin="anonymous"
         referrerPolicy="no-referrer"
-        className={`max-w-[400px] max-h-[300px] rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`max-w-100 max-h-75 rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         onClick={onOpen}
         loading="lazy"
         onLoad={() => setLoaded(true)}

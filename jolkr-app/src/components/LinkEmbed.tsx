@@ -16,7 +16,7 @@ export default function LinkEmbed({ embed }: LinkEmbedProps) {
       href={safeUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="block mt-1 max-w-[400px] rounded-md overflow-hidden bg-zinc-800/50 border-l-4 hover:bg-zinc-800/80 transition-colors"
+      className="block mt-1 max-w-100 rounded-md overflow-hidden bg-zinc-800/50 border-l-4 hover:bg-zinc-800/80 transition-colors"
       style={{ borderLeftColor: borderColor }}
     >
       <div className="p-3">
@@ -35,9 +35,9 @@ export default function LinkEmbed({ embed }: LinkEmbedProps) {
         )}
       </div>
       {embed.image_url && !imgErrored && (
-        <div className="relative aspect-video max-h-[200px] overflow-hidden">
+        <div className="relative aspect-video max-h-50 overflow-hidden">
           {!imgLoaded && (
-            <div className="absolute inset-0 bg-white/5 animate-pulse" />
+            <div className="absolute inset-0 bg-bg-hover animate-pulse" />
           )}
           <img
             src={embed.image_url}

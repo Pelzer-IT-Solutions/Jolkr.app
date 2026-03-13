@@ -38,7 +38,7 @@ function MemberItemInner({
     <button
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className={`w-full flex items-center gap-2 py-2 px-2 rounded hover:bg-white/[0.06] cursor-pointer ${isOffline ? 'opacity-50' : ''}`}
+      className={`w-full flex items-center gap-3 py-3 px-4 rounded-lg hover:bg-bg-hover cursor-pointer ${isOffline ? 'opacity-50' : ''}`}
     >
       <Avatar
         url={user?.avatar_url}
@@ -50,19 +50,19 @@ function MemberItemInner({
       <div className="min-w-0">
         <div className="flex items-center gap-1 min-w-0 overflow-hidden">
           <div
-            className="text-sm truncate min-w-0"
+            className="text-sm font-semibold text-text-primary truncate min-w-0"
             style={roleColor ? { color: roleColor } : undefined}
           >
             {name}
           </div>
           {isOwner && (
-            <span className="px-1 py-0.5 text-[10px] bg-primary/20 text-primary rounded font-bold uppercase shrink-0">
+            <span className="px-1 py-0.5 text-2xs bg-accent-muted text-primary rounded font-bold uppercase shrink-0">
               Owner
             </span>
           )}
           {isTimedOut && (
             <span
-              className="px-1 py-0.5 text-[10px] bg-warning/20 text-warning rounded font-bold uppercase shrink-0"
+              className="px-1 py-0.5 text-2xs bg-warning/20 text-warning rounded font-bold uppercase shrink-0"
               title={timeoutUntil ? `Timed out until ${new Date(timeoutUntil).toLocaleString()}` : undefined}
             >
               Timed out
@@ -77,7 +77,7 @@ function MemberItemInner({
           )}
         </div>
         {user?.status && (
-          <div className="text-[11px] text-text-muted truncate">{user.status}</div>
+          <div className="text-xs text-text-muted truncate">{user.status}</div>
         )}
       </div>
     </button>

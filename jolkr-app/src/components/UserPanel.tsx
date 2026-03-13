@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Settings, Pencil, X } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 import { usePresenceStore } from '../stores/presence';
 import { wsClient } from '../api/ws';
@@ -68,10 +69,10 @@ export default function UserPanel() {
   return (
     <div className="shrink-0">
       <VoiceConnectionBar />
-    <div className="h-auto py-3 px-3 flex items-center gap-2 bg-serverbar/80 backdrop-blur-sm border-t border-divider relative">
-      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={36} status={currentStatus} userId={user?.id} />
+    <div className="bg-bg p-3 gap-2.5 flex items-center relative">
+      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} status={currentStatus} userId={user?.id} />
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-text-primary font-medium truncate">{user?.username ?? 'User'}</div>
+        <div className="text-sm font-semibold text-text-primary truncate">{user?.username ?? 'User'}</div>
         <button
           onClick={() => setShowPicker(!showPicker)}
           className="text-xs text-text-muted hover:text-text-secondary cursor-pointer"
@@ -84,19 +85,16 @@ export default function UserPanel() {
       </div>
       <Link
         to="/settings"
-        className="text-text-secondary hover:text-text-primary p-1"
+        className="text-text-muted hover:text-text-primary p-1"
         title="Settings"
         aria-label="Settings"
       >
-        <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
+        <Settings className="size-4.5" />
       </Link>
 
       {/* Status error */}
       {statusError && (
-        <div className="absolute bottom-full left-2 mb-1 bg-error/10 text-error text-[11px] px-2 py-1 rounded z-50 max-w-[200px]">
+        <div className="absolute bottom-full left-2 mb-1 bg-error/10 text-error text-xs px-2 py-1 rounded z-50 max-w-50">
           {statusError}
         </div>
       )}
@@ -108,11 +106,9 @@ export default function UserPanel() {
           <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float py-1 w-48 z-50">
             <button
               onClick={() => { setCustomStatusText(user?.status ?? ''); setShowCustomStatus(true); }}
-              className="w-full px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-white/[0.06] flex items-center gap-2 border-b border-divider mb-1"
+              className="w-full px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-bg-hover flex items-center gap-2 border-b border-divider mb-1"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
+              <Pencil className="w-3.5 h-3.5" />
               {user?.status ? 'Edit Custom Status' : 'Set Custom Status'}
             </button>
             {user?.status && (
@@ -120,9 +116,7 @@ export default function UserPanel() {
                 onClick={handleClearCustomStatus}
                 className="w-full px-3 py-1.5 text-left text-sm text-error/70 hover:bg-error/10 hover:text-error flex items-center gap-2 border-b border-divider mb-1"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-3.5 h-3.5" />
                 Clear Custom Status
               </button>
             )}
@@ -130,7 +124,7 @@ export default function UserPanel() {
               <button
                 key={opt.value}
                 onClick={() => handleStatusChange(opt.value)}
-                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/[0.06] ${
+                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-bg-hover ${
                   currentStatus === opt.value ? 'text-text-primary' : 'text-text-secondary'
                 }`}
               >
@@ -152,7 +146,7 @@ export default function UserPanel() {
               value={customStatusText}
               onChange={(e) => setCustomStatusText(e.target.value)}
               placeholder="What are you up to?"
-              className="w-full px-2 py-1.5 bg-input rounded text-text-primary text-sm mb-2"
+              className="w-full px-2 py-1.5 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-2"
               maxLength={128}
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleSetCustomStatus()}

@@ -46,10 +46,10 @@ export default function Login() {
   };
 
   return (
-    <div className="h-full flex items-center justify-center auth-gradient">
-      <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] auth-card animate-modal-scale">
+    <div className="h-full flex items-center justify-center bg-bg">
+      <div className="bg-surface rounded-3xl p-8 w-105 max-w-[90vw] border border-divider shadow-popup animate-modal-scale">
         <div className="flex justify-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <div className="size-14 rounded-2xl bg-accent-muted flex items-center justify-center">
             <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" className="w-8 h-8" />
           </div>
         </div>
@@ -60,7 +60,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="login-email" className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label htmlFor="login-email" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               Email <span className="text-error">*</span>
             </label>
             <input
@@ -71,11 +71,11 @@ export default function Login() {
               required
               autoFocus
               inputMode="email"
-              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
           </div>
           <div>
-            <label htmlFor="login-password" className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label htmlFor="login-password" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               Password <span className="text-error">*</span>
             </label>
             <input
@@ -84,7 +84,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
             <Link to="/forgot-password" className="text-primary hover:underline text-xs mt-1 inline-block">
               Forgot your password?

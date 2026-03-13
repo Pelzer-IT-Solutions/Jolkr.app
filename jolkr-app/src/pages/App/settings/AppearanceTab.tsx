@@ -26,54 +26,57 @@ export default function AppearanceTab() {
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-text-primary mb-6">Appearance</h2>
-      <div className="bg-surface rounded-xl p-8 space-y-6">
+      <h2 className="text-2xl font-bold text-text-primary">Appearance</h2>
+      <div className="rounded-xl bg-surface border border-divider p-6 gap-6 flex flex-col">
         {/* Theme */}
-        <div>
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Theme</label>
-          <div className="mt-2 flex gap-2">
-            {['dark', 'light'].map((t) => (
-              <button
-                key={t}
-                onClick={() => handleTheme(t)}
-                className={`px-4 py-2 rounded text-sm capitalize ${theme === t ? 'bg-primary text-white' : 'bg-input text-text-secondary hover:text-text-primary'}`}
-              >
-                {t === 'dark' ? 'Dark' : 'Light'}
-              </button>
-            ))}
+        <div className="flex flex-col gap-2.5">
+          <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Theme</label>
+          <div className="flex">
+            <div className="flex rounded-lg border border-divider overflow-hidden">
+              {(['dark', 'light'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => handleTheme(t)}
+                  className={`flex-1 py-2.5 px-6 text-sm transition-colors ${theme === t ? 'bg-primary text-bg font-semibold' : 'text-text-secondary font-medium hover:text-text-primary'}`}
+                >
+                  {t === 'dark' ? 'Dark' : 'Light'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Font size */}
-        <div>
-          <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Message Font Size</label>
-          <div className="mt-2 flex gap-2">
-            {['small', 'normal', 'large'].map((size) => (
-              <button
-                key={size}
-                onClick={() => handleFontSize(size)}
-                className={`px-4 py-2 rounded text-sm capitalize ${fontSize === size ? 'bg-primary text-white' : 'bg-input text-text-secondary hover:text-text-primary'
-                  }`}
-              >
-                {size}
-              </button>
-            ))}
+        <div className="flex flex-col gap-2.5">
+          <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Message Font Size</label>
+          <div className="flex">
+            <div className="flex rounded-lg border border-divider overflow-hidden">
+              {(['small', 'normal', 'large'] as const).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => handleFontSize(size)}
+                  className={`flex-1 py-2.5 px-6 text-sm capitalize transition-colors ${fontSize === size ? 'bg-primary text-bg font-semibold' : 'text-text-secondary font-medium hover:text-text-primary'}`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Compact mode */}
         <div className="flex items-center justify-between">
-          <div>
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Compact Mode</label>
-            <p className="text-text-muted text-xs mt-1">Reduce spacing between messages</p>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Compact Mode</label>
+            <p className="text-sm text-text-secondary">Reduce spacing between messages</p>
           </div>
           <button
             role="switch"
             aria-checked={compactMode}
             onClick={() => handleCompactMode(!compactMode)}
-            className={`w-11 h-6 rounded-full transition-colors relative ${compactMode ? 'bg-primary' : 'bg-input'}`}
+            className={`w-11 h-6 rounded-xl transition-colors relative ${compactMode ? 'bg-primary' : 'bg-surface border border-divider'}`}
           >
-            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${compactMode ? 'left-5' : 'left-0.5'}`} />
+            <div className={`absolute top-0.5 size-4.5 rounded-full shadow transition-transform ${compactMode ? 'right-0.5 left-auto bg-white' : 'left-0.5 bg-text-secondary'}`} />
           </button>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { usePresenceStore } from '../../stores/presence';
 import Avatar from '../../components/Avatar';
 import UserProfileCard from '../../components/UserProfileCard';
 import { useMobileNav } from '../../hooks/useMobileNav';
+import { Users, ChevronLeft, MessageCircle, Check, X, UserPlus } from 'lucide-react';
 
 type Tab = 'all' | 'pending' | 'add';
 
@@ -127,34 +128,37 @@ export default function Friends() {
     return userCache[otherId];
   };
 
-  return (
-    <>
-      <div className="flex-1 flex flex-col bg-bg min-h-0">
-          {/* Header with tabs */}
-          <div className="h-16 px-4 flex items-center gap-4 glass-header shrink-0 overflow-x-auto">
-            {isMobile && (
+  if (isMobile) {
+    return (
+      <>
+        <div className="flex-1 flex flex-col bg-bg-tertiary min-h-0">
+          {/* Mobile Header */}
+          <div className="px-4 pt-2 pb-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary shrink-0">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
+                <ChevronLeft className="size-5" />
               </button>
-            )}
-            <svg className="w-5 h-5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span className="text-text-primary font-semibold shrink-0">Friends</span>
-            <div className="w-px h-6 bg-divider shrink-0" />
+              <span className="text-2xl font-bold text-text-primary">Friends</span>
+            </div>
+          </div>
+
+          {/* Mobile Tabs row */}
+          <div className="flex border-b border-border-subtle shrink-0">
             {(['all', 'pending', 'add'] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`px-3 py-1 rounded text-sm capitalize whitespace-nowrap shrink-0 ${
-                  tab === t ? 'bg-white/10 text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                className={`px-4 py-2.5 text-sm whitespace-nowrap ${
+                  tab === t
+                    ? 'font-semibold text-text-primary border-b-2 border-primary'
+                    : t === 'add'
+                      ? 'font-medium text-primary'
+                      : 'font-medium text-text-muted'
                 }`}
               >
-                {t === 'add' ? 'Add Friend' : t}
+                {t === 'add' ? 'Add Friend' : t === 'all' ? 'All' : 'Pending'}
                 {t === 'pending' && pending.length > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.5 bg-error rounded-full text-[10px] text-white">
+                  <span className="ml-1.5 px-1.5 py-0.5 bg-error rounded-full text-2xs text-white">
                     {pending.length}
                   </span>
                 )}
@@ -162,44 +166,48 @@ export default function Friends() {
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 min-h-0">
-            {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+          <div className="flex flex-col flex-1 overflow-y-auto min-h-0">
+            {error && <div className="bg-error/10 text-error text-sm p-3 mx-4 mt-2 rounded">{error}</div>}
             {friendsError && (
-              <div className="bg-error/10 text-error text-sm p-3 rounded mb-4 flex items-center justify-between">
+              <div className="bg-error/10 text-error text-sm p-3 mx-4 mt-2 rounded flex items-center justify-between">
                 <span>{friendsError}</span>
                 <button onClick={fetchFriendsData} className="text-primary hover:text-primary-hover text-sm ml-2">Retry</button>
               </div>
             )}
             {friendsLoading && friends.length === 0 && pending.length === 0 && (
               <div className="flex items-center justify-center py-8">
-                <div className="w-5 h-5 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
+                <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-muted animate-spin" />
               </div>
             )}
 
             {tab === 'all' && (
-              <div className="space-y-1">
-                <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2">
+              <div>
+                <div className="px-4 py-2 text-xs font-semibold text-text-muted tracking-wider uppercase">
                   All Friends — {friends.length}
                 </div>
-                {friends.map((f) => {
+                {friends.map((f, idx) => {
                   const friendUser = getFriendUser(f);
                   const friendId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
+                  const isLast = idx === friends.length - 1;
+                  const friendStatus = statuses[friendId] ?? 'offline';
                   return (
-                    <div key={f.id} className="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5">
+                    <div key={f.id} className={`px-4 py-2.5 gap-3 flex items-center ${!isLast ? 'border-b border-border-subtle' : ''}`}>
                       <button
                         className="cursor-pointer shrink-0"
                         onClick={(e) => setProfileTarget({ userId: friendId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
                       >
-                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={36} status={statuses[friendId] ?? 'offline'} userId={friendId} />
+                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={40} status={friendStatus} userId={friendId} />
                       </button>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                         <button
-                          className="text-sm text-text-primary hover:underline cursor-pointer"
+                          className="text-base font-semibold text-text-primary text-left"
                           onClick={(e) => setProfileTarget({ userId: friendId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
                         >
                           {friendUser?.username ?? 'Unknown'}
                         </button>
-                        <div className="text-[11px] text-text-muted capitalize">{statuses[friendId] ?? 'offline'}</div>
+                        <div className={`text-xs capitalize ${friendStatus === 'online' ? 'text-online' : 'text-text-muted'}`}>
+                          {friendStatus}
+                        </div>
                       </div>
                       <button
                         onClick={async () => {
@@ -208,12 +216,10 @@ export default function Friends() {
                             navigate(`/dm/${dm.id}`);
                           }
                         }}
-                        className="text-text-secondary hover:text-text-primary p-2 rounded hover:bg-white/10"
+                        className="ml-auto text-text-secondary"
                         title="Message"
                       >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
+                        <MessageCircle className="size-5" />
                       </button>
                     </div>
                   );
@@ -225,63 +231,60 @@ export default function Friends() {
             )}
 
             {tab === 'pending' && (
-              <div className="space-y-1">
-                <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2">
+              <div>
+                <div className="px-4 py-2 text-xs font-semibold text-text-muted tracking-wider uppercase">
                   Pending — {pending.length}
                 </div>
-                {pending.map((f) => {
+                {pending.map((f, idx) => {
                   const friendUser = getFriendUser(f);
                   const isIncoming = f.addressee_id === user?.id;
                   const pendingId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
+                  const isLast = idx === pending.length - 1;
                   return (
-                    <div key={f.id} className="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5">
+                    <div key={f.id} className={`px-4 py-2.5 gap-3 flex items-center ${!isLast ? 'border-b border-border-subtle' : ''}`}>
                       <button
                         className="cursor-pointer shrink-0"
                         onClick={(e) => setProfileTarget({ userId: pendingId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
                       >
-                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={36} userId={pendingId} />
+                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={40} userId={pendingId} />
                       </button>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                         <button
-                          className="text-sm text-text-primary hover:underline cursor-pointer"
+                          className="text-base font-semibold text-text-primary text-left"
                           onClick={(e) => setProfileTarget({ userId: pendingId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
                         >
                           {friendUser?.username ?? 'Unknown'}
                         </button>
-                        <div className="text-[11px] text-text-muted">
-                          {isIncoming ? 'Incoming request' : 'Outgoing request'}
+                        <div className="text-xs text-text-muted">
+                          {isIncoming ? 'Incoming Friend Request' : 'Outgoing Friend Request'}
                         </div>
                       </div>
                       {isIncoming ? (
-                        <div className="flex gap-1">
+                        <div className="flex gap-2">
                           <button
                             onClick={() => handleAccept(f.id)}
                             disabled={actionLoading.has(f.id)}
-                            className="p-2 rounded-full hover:bg-online/20 text-online disabled:opacity-50"
+                            className="size-9 rounded-full bg-surface flex items-center justify-center text-online disabled:opacity-50 hover:bg-bg-hover"
                             title="Accept"
                           >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                            <Check className="size-5" />
                           </button>
                           <button
                             onClick={() => handleDecline(f.id)}
                             disabled={actionLoading.has(f.id)}
-                            className="p-2 rounded-full hover:bg-error/20 text-error disabled:opacity-50"
+                            className="size-9 rounded-full bg-surface flex items-center justify-center text-error disabled:opacity-50 hover:bg-bg-hover"
                             title="Decline"
                           >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <X className="size-5" />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => handleDecline(f.id)}
-                          className="px-3 py-1 text-xs text-text-secondary hover:text-error hover:bg-error/10 rounded"
+                          className="size-9 rounded-full bg-surface flex items-center justify-center text-text-secondary hover:text-error hover:bg-bg-hover"
                           title="Cancel Request"
                         >
-                          Cancel
+                          <X className="size-5" />
                         </button>
                       )}
                     </div>
@@ -294,50 +297,295 @@ export default function Friends() {
             )}
 
             {tab === 'add' && (
-              <div>
-                <div className="text-text-primary font-semibold mb-2">Add Friend</div>
-                <p className="text-text-secondary text-sm mb-4">Search for a user by username</p>
-                <div className="flex gap-2 mb-4">
+              <div className="flex flex-col gap-4 flex-1 px-4 py-4">
+                <div className="flex flex-col gap-2">
+                  <div className="text-base font-bold text-text-primary">Add Friend</div>
+                  <p className="text-sm text-text-secondary">You can add friends with their Jolkr username.</p>
+                </div>
+                <div className="flex gap-3">
                   <input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="Enter a username"
-                    className="flex-1 px-3 py-2 bg-input rounded text-text-primary text-sm"
+                    placeholder="Enter a username#0000"
+                    className="flex-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
                   />
                   <button
                     onClick={handleSearch}
-                    className="px-4 py-2 btn-primary text-sm rounded-lg"
+                    className="btn-primary text-sm shrink-0"
                   >
-                    Search
+                    Send Request
                   </button>
                 </div>
-                <div className="space-y-1">
-                  {searchResults.map((u) => (
-                    <div key={u.id} className="flex items-center gap-3 px-3 py-2 rounded hover:bg-white/5">
+                <div className="h-px bg-border-subtle" />
+                {searchResults.length > 0 ? (
+                  <div className="flex flex-col">
+                    {searchResults.map((u, idx) => {
+                      const isLast = idx === searchResults.length - 1;
+                      return (
+                        <div key={u.id} className={`py-2.5 gap-3 flex items-center ${!isLast ? 'border-b border-border-subtle' : ''}`}>
+                          <button
+                            className="cursor-pointer shrink-0"
+                            onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
+                          >
+                            <Avatar url={u.avatar_url} name={u.username} size={40} userId={u.id} />
+                          </button>
+                          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                            <button
+                              className="text-base font-semibold text-text-primary text-left"
+                              onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
+                            >
+                              {u.username}
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => handleSendRequest(u.id)}
+                            disabled={actionLoading.has(u.id)}
+                            className="btn-primary text-sm shrink-0"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-4">
+                    <UserPlus className="size-16 text-text-muted opacity-40" />
+                    <span className="text-base font-semibold text-text-secondary">No one around to chat with?</span>
+                    <span className="text-sm text-text-muted">Send a friend request to start chatting!</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {profileTarget && (
+          <UserProfileCard
+            userId={profileTarget.userId}
+            user={profileTarget.user}
+            anchor={profileTarget.anchor}
+            onClose={() => setProfileTarget(null)}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex-1 flex flex-col bg-bg-tertiary min-h-0">
+          {/* Header with tabs */}
+          <div className="bg-bg-tertiary px-5 py-3 gap-4 flex items-center border-b border-border-subtle shrink-0 overflow-x-auto">
+            <Users className="size-5 text-text-secondary shrink-0" />
+            <span className="text-base font-bold text-text-primary shrink-0">Friends</span>
+            <div className="w-px h-5 bg-divider shrink-0" />
+            {(['all', 'pending', 'add'] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3.5 py-1.5 rounded-lg text-sm capitalize whitespace-nowrap shrink-0 ${
+                  tab === t
+                    ? 'bg-accent-muted font-semibold text-primary'
+                    : t === 'add'
+                      ? 'font-medium text-primary hover:bg-bg-hover'
+                      : 'font-medium text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                {t === 'add' ? 'Add Friend' : t}
+                {t === 'pending' && pending.length > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.5 bg-error rounded-full text-2xs text-white">
+                    {pending.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="px-5 py-4 flex flex-col flex-1 overflow-y-auto min-h-0">
+            {error && <div className="bg-error/10 text-error text-sm p-3 rounded mb-4">{error}</div>}
+            {friendsError && (
+              <div className="bg-error/10 text-error text-sm p-3 rounded mb-4 flex items-center justify-between">
+                <span>{friendsError}</span>
+                <button onClick={fetchFriendsData} className="text-primary hover:text-primary-hover text-sm ml-2">Retry</button>
+              </div>
+            )}
+            {friendsLoading && friends.length === 0 && pending.length === 0 && (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-muted animate-spin" />
+              </div>
+            )}
+
+            {tab === 'all' && (
+              <div className="space-y-1">
+                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+                  All Friends — {friends.length}
+                </div>
+                {friends.map((f) => {
+                  const friendUser = getFriendUser(f);
+                  const friendId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
+                  return (
+                    <div key={f.id} className="rounded-lg px-4 py-3 gap-3 flex items-center hover:bg-bg-hover">
                       <button
                         className="cursor-pointer shrink-0"
-                        onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
+                        onClick={(e) => setProfileTarget({ userId: friendId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
                       >
-                        <Avatar url={u.avatar_url} name={u.username} size={36} userId={u.id} />
+                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={40} status={statuses[friendId] ?? 'offline'} userId={friendId} />
                       </button>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                         <button
-                          className="text-sm text-text-primary hover:underline cursor-pointer"
-                          onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
+                          className="text-sm font-semibold text-text-primary hover:underline cursor-pointer text-left"
+                          onClick={(e) => setProfileTarget({ userId: friendId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
                         >
-                          {u.username}
+                          {friendUser?.username ?? 'Unknown'}
                         </button>
+                        <div className="text-xs text-text-muted capitalize">{statuses[friendId] ?? 'offline'}</div>
                       </div>
                       <button
-                        onClick={() => handleSendRequest(u.id)}
-                        className="px-3 py-1 btn-primary text-xs rounded-lg"
+                        onClick={async () => {
+                          if (friendUser) {
+                            const dm = await api.openDm(friendUser.id);
+                            navigate(`/dm/${dm.id}`);
+                          }
+                        }}
+                        className="p-2 rounded-full bg-surface flex items-center justify-center text-text-secondary"
+                        title="Message"
                       >
-                        Send Request
+                        <MessageCircle className="size-5" />
                       </button>
                     </div>
-                  ))}
+                  );
+                })}
+                {friends.length === 0 && (
+                  <div className="text-center text-text-muted py-8">No friends yet. Add some!</div>
+                )}
+              </div>
+            )}
+
+            {tab === 'pending' && (
+              <div className="space-y-0.5">
+                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
+                  Pending — {pending.length}
                 </div>
+                {pending.map((f, idx) => {
+                  const friendUser = getFriendUser(f);
+                  const isIncoming = f.addressee_id === user?.id;
+                  const pendingId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
+                  const isLast = idx === pending.length - 1;
+                  return (
+                    <div key={f.id} className={`py-3 gap-3 flex items-center ${!isLast ? 'border-b border-border-subtle' : ''}`}>
+                      <button
+                        className="cursor-pointer shrink-0"
+                        onClick={(e) => setProfileTarget({ userId: pendingId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
+                      >
+                        <Avatar url={friendUser?.avatar_url} name={friendUser?.username ?? '?'} size={40} userId={pendingId} />
+                      </button>
+                      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <button
+                          className="text-sm font-semibold text-text-primary hover:underline cursor-pointer text-left"
+                          onClick={(e) => setProfileTarget({ userId: pendingId, user: friendUser, anchor: { x: e.clientX, y: e.clientY } })}
+                        >
+                          {friendUser?.username ?? 'Unknown'}
+                        </button>
+                        <div className="text-xs text-text-secondary">
+                          {isIncoming ? 'Incoming Friend Request' : 'Outgoing Friend Request'}
+                        </div>
+                      </div>
+                      {isIncoming ? (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAccept(f.id)}
+                            disabled={actionLoading.has(f.id)}
+                            className="size-9 rounded-full bg-surface flex items-center justify-center text-online disabled:opacity-50 hover:bg-bg-hover"
+                            title="Accept"
+                          >
+                            <Check className="size-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDecline(f.id)}
+                            disabled={actionLoading.has(f.id)}
+                            className="size-9 rounded-full bg-surface flex items-center justify-center text-error disabled:opacity-50 hover:bg-bg-hover"
+                            title="Decline"
+                          >
+                            <X className="size-5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleDecline(f.id)}
+                          className="size-9 rounded-full bg-surface flex items-center justify-center text-text-secondary hover:text-error hover:bg-bg-hover"
+                          title="Cancel Request"
+                        >
+                          <X className="size-5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {pending.length === 0 && (
+                  <div className="text-center text-text-muted py-8">No pending requests</div>
+                )}
+              </div>
+            )}
+
+            {tab === 'add' && (
+              <div className="flex flex-col gap-4 flex-1">
+                <div className="flex flex-col gap-2">
+                  <div className="text-base font-bold text-text-primary">Add Friend</div>
+                  <p className="text-sm text-text-secondary">You can add friends with their Jolkr username.</p>
+                </div>
+                <div className="flex gap-3">
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    placeholder="Enter a username#0000"
+                    className="flex-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
+                  />
+                  <button
+                    onClick={handleSearch}
+                    className="btn-primary text-sm shrink-0"
+                  >
+                    Send Request
+                  </button>
+                </div>
+                <div className="h-px bg-border-subtle" />
+                {searchResults.length > 0 ? (
+                  <div className="flex flex-col gap-0.5">
+                    {searchResults.map((u) => (
+                      <div key={u.id} className="rounded-lg px-4 py-3 gap-3 flex items-center hover:bg-bg-hover">
+                        <button
+                          className="cursor-pointer shrink-0"
+                          onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
+                        >
+                          <Avatar url={u.avatar_url} name={u.username} size={40} userId={u.id} />
+                        </button>
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                          <button
+                            className="text-sm font-semibold text-text-primary hover:underline cursor-pointer text-left"
+                            onClick={(e) => setProfileTarget({ userId: u.id, user: u, anchor: { x: e.clientX, y: e.clientY } })}
+                          >
+                            {u.username}
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => handleSendRequest(u.id)}
+                          disabled={actionLoading.has(u.id)}
+                          className="btn-primary text-sm shrink-0"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-4">
+                    <UserPlus className="size-16 text-text-muted opacity-40" />
+                    <span className="text-base font-semibold text-text-secondary">No one around to chat with?</span>
+                    <span className="text-sm text-text-muted">Send a friend request to start chatting!</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

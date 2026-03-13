@@ -217,14 +217,14 @@ export default function MemberContextMenu({
         <div
           ref={menuRef}
           role="menu"
-          className="fixed z-50 bg-surface border border-divider rounded-lg shadow-float py-1 min-w-[160px]"
+          className="fixed z-50 bg-surface border border-divider rounded-lg shadow-float py-1 min-w-40"
           style={{ left: position.x, top: position.y }}
           onClick={(e) => e.stopPropagation()}
         >
           {canManageRoles && (
             <button
               role="menuitem"
-              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-left"
+              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left"
               onClick={(e) => {
                 e.stopPropagation();
                 closeMenuAndOpen(setRolePopover);
@@ -236,7 +236,7 @@ export default function MemberContextMenu({
           {canManageNicknames && (
             <button
               role="menuitem"
-              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-left"
+              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left"
               onClick={() => {
                 setNicknameValue(memberNickname ?? '');
                 closeMenuAndOpen(setShowNicknameDialog);
@@ -248,7 +248,7 @@ export default function MemberContextMenu({
           {canTimeout && (
             <button
               role="menuitem"
-              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-left"
+              className="w-full px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left"
               onClick={() => closeMenuAndOpen(setShowTimeoutDialog)}
             >
               {isTimedOut ? 'Remove Timeout' : 'Timeout'}
@@ -293,19 +293,19 @@ export default function MemberContextMenu({
       {/* Ban dialog */}
       {showBanDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { setShowBanDialog(false); onClose(); }}>
-          <div ref={banDialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-[400px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+          <div ref={banDialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-100 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-text-primary text-lg font-semibold mb-1">Ban Member</h3>
             <p className="text-text-muted text-sm mb-3">
               Ban <span className="text-text-primary font-medium">{username}</span> from the server? They will be removed and unable to rejoin.
             </p>
-            <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
               Reason (Optional)
             </label>
             <textarea
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
               placeholder="Reason for ban..."
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm resize-none mb-4"
+              className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm resize-none mb-4"
               rows={2}
               maxLength={512}
               autoFocus
@@ -329,11 +329,11 @@ export default function MemberContextMenu({
       {/* Role popover */}
       {rolePopover && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { setRolePopover(false); onClose(); }}>
-          <div role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-4 w-[280px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-4 w-70 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
             <h4 className="text-text-primary text-sm font-semibold mb-2">
               Manage Roles — {username}
             </h4>
-            <div className="space-y-0.5 max-h-[250px] overflow-y-auto">
+            <div className="space-y-0.5 max-h-62 overflow-y-auto">
               {assignableRoles.length === 0 && (
                 <div className="text-text-muted text-xs py-2">No roles available</div>
               )}
@@ -344,7 +344,7 @@ export default function MemberContextMenu({
                     key={role.id}
                     onClick={() => handleToggleRole(role.id, has)}
                     disabled={roleSaving}
-                    className="w-full px-2 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/[0.06] rounded disabled:opacity-50"
+                    className="w-full px-2 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-bg-hover rounded disabled:opacity-50"
                   >
                     <input type="checkbox" checked={has} readOnly className="w-3.5 h-3.5 rounded accent-primary pointer-events-none" />
                     {role.color !== 0 && (
@@ -367,7 +367,7 @@ export default function MemberContextMenu({
       {/* Timeout dialog */}
       {showTimeoutDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { setShowTimeoutDialog(false); onClose(); }}>
-          <div role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-[320px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-80 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-text-primary text-lg font-semibold mb-3">
               {isTimedOut ? 'Remove Timeout' : 'Timeout Member'}
             </h3>
@@ -398,7 +398,7 @@ export default function MemberContextMenu({
                     key={seconds}
                     onClick={() => handleTimeout(seconds)}
                     disabled={actionLoading}
-                    className="w-full px-3 py-2 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-left rounded disabled:opacity-50"
+                    className="w-full px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left rounded disabled:opacity-50"
                   >
                     {label}
                   </button>
@@ -415,16 +415,16 @@ export default function MemberContextMenu({
       {/* Nickname dialog */}
       {showNicknameDialog && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => { setShowNicknameDialog(false); onClose(); }}>
-          <div ref={nicknameDialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-[400px] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+          <div ref={nicknameDialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-100 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-text-primary text-lg font-semibold mb-3">Change Nickname</h3>
-            <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
               Nickname
             </label>
             <input
               value={nicknameValue}
               onChange={(e) => setNicknameValue(e.target.value)}
               placeholder="Leave empty to reset"
-              className="w-full mt-1 px-3 py-2 bg-input rounded text-text-primary text-sm mb-4"
+              className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
               maxLength={32}
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && !actionLoading && handleSetNickname()}

@@ -46,7 +46,7 @@ marked.use({
       return `<del class="line-through">${body}</del>`;
     },
     codespan({ text }) {
-      return `<code class="px-1 py-0.5 bg-black/30 rounded text-[13px] text-pink-300 font-mono">${text}</code>`;
+      return `<code class="px-1 py-0.5 bg-black/30 rounded text-sm text-pink-300 font-mono">${text}</code>`;
     },
     code({ text, lang }) {
       const raw = unescapeHtml(text);
@@ -56,8 +56,8 @@ marked.use({
       } else {
         highlighted = hljs.highlightAuto(raw).value;
       }
-      const langLabel = lang ? `<div class="text-[11px] text-text-muted">${lang}</div>` : '';
-      return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-[13px] font-mono hljs !p-0">${highlighted}</code></pre>`;
+      const langLabel = lang ? `<div class="text-xs text-text-muted">${lang}</div>` : '';
+      return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-sm font-mono hljs !p-0">${highlighted}</code></pre>`;
     },
     heading({ tokens, depth }) {
       const body = this.parser.parseInline(tokens);
@@ -148,7 +148,7 @@ export default memo(function MessageContent({ content, className, emojiMap, serv
     // Highlight @mentions, then render custom emojis, then unicode emojis as images
     const withMentions = highlightMentions(sanitized);
     const withCustomEmojis = renderCustomEmojis(withMentions, resolvedEmojiMap);
-    const withUnicodeEmojis = renderUnicodeEmojis(withCustomEmojis, emojiOnly ? 32 : 20);
+    const withUnicodeEmojis = renderUnicodeEmojis(withCustomEmojis, emojiOnly ? 48 : 20);
     // Re-sanitize to ensure all injected HTML is safe
     return DOMPurify.sanitize(withUnicodeEmojis, { ALLOWED_TAGS, ALLOWED_ATTR });
   }, [content, resolvedEmojiMap, emojiOnly]);

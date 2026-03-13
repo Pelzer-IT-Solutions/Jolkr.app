@@ -38,8 +38,8 @@ function RequestResetForm() {
 
   if (submitted) {
     return (
-      <div className="h-full flex items-center justify-center auth-gradient">
-        <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] text-center auth-card animate-modal-scale">
+      <div className="h-full flex items-center justify-center bg-bg">
+        <div className="bg-surface rounded-3xl p-8 w-105 max-w-[90vw] text-center border border-divider shadow-popup animate-modal-scale">
           <div className="text-4xl mb-4">&#9993;</div>
           <h1 className="text-3xl font-bold text-text-primary mb-2">Check your email</h1>
           <p className="text-text-secondary text-sm mb-6">
@@ -58,8 +58,8 @@ function RequestResetForm() {
   }
 
   return (
-    <div className="h-full flex items-center justify-center auth-gradient">
-      <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] auth-card animate-modal-scale">
+    <div className="h-full flex items-center justify-center bg-bg">
+      <div className="bg-surface rounded-3xl p-8 w-105 max-w-[90vw] border border-divider shadow-popup animate-modal-scale">
         <h1 className="text-3xl font-bold text-text-primary text-center mb-2">Forgot your password?</h1>
         <p className="text-text-secondary text-center mb-6 text-sm">
           Enter your email address and we'll send you a link to reset your password.
@@ -69,7 +69,7 @@ function RequestResetForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="forgot-email" className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label htmlFor="forgot-email" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               Email <span className="text-error">*</span>
             </label>
             <input
@@ -81,7 +81,7 @@ function RequestResetForm() {
               autoFocus
               placeholder="you@example.com"
               inputMode="email"
-              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
           </div>
           <button
@@ -134,8 +134,8 @@ function ResetPasswordForm({ token }: { token: string }) {
 
   if (success) {
     return (
-      <div className="h-full flex items-center justify-center auth-gradient">
-        <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] text-center auth-card animate-modal-scale">
+      <div className="h-full flex items-center justify-center bg-bg">
+        <div className="bg-surface rounded-3xl p-8 w-105 max-w-[90vw] text-center border border-divider shadow-popup animate-modal-scale">
           <div className="text-4xl mb-4">&#10003;</div>
           <h1 className="text-3xl font-bold text-text-primary mb-2">Password Reset Successful</h1>
           <p className="text-text-secondary text-sm mb-6">
@@ -153,8 +153,8 @@ function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <div className="h-full flex items-center justify-center auth-gradient">
-      <div className="bg-surface rounded-2xl p-10 w-[420px] max-w-[90vw] auth-card animate-modal-scale">
+    <div className="h-full flex items-center justify-center bg-bg">
+      <div className="bg-surface rounded-3xl p-8 w-105 max-w-[90vw] border border-divider shadow-popup animate-modal-scale">
         <h1 className="text-3xl font-bold text-text-primary text-center mb-2">Set New Password</h1>
         <p className="text-text-secondary text-center mb-6 text-sm">
           Enter your new password below.
@@ -164,7 +164,7 @@ function ResetPasswordForm({ token }: { token: string }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="reset-password" className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label htmlFor="reset-password" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               New Password <span className="text-error">*</span>
             </label>
             <input
@@ -176,11 +176,11 @@ function ResetPasswordForm({ token }: { token: string }) {
               minLength={8}
               autoFocus
               placeholder="Min. 8 characters"
-              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
           </div>
           <div>
-            <label htmlFor="reset-confirm" className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+            <label htmlFor="reset-confirm" className="text-xs font-semibold text-text-muted uppercase tracking-wider">
               Confirm Password <span className="text-error">*</span>
             </label>
             <input
@@ -191,7 +191,7 @@ function ResetPasswordForm({ token }: { token: string }) {
               required
               minLength={8}
               placeholder="Repeat your new password"
-              className="w-full mt-1 px-3 py-2.5 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
           </div>
           <button

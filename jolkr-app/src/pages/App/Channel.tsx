@@ -22,6 +22,7 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { usePresignRefresh } from '../../hooks/usePresignRefresh';
 import { useVoiceStore } from '../../stores/voice';
 import Avatar from '../../components/Avatar';
+import { UserPlus, Upload, ChevronLeft, Mic, Search, BarChart3, MessageSquare, Bookmark, Users, X, VolumeX } from 'lucide-react';
 
 const EMPTY_CHANNELS: import('../../api/types').Channel[] = [];
 const EMPTY_MEMBERS: import('../../api/types').Member[] = [];
@@ -288,18 +289,16 @@ export default function ChannelPage() {
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Channel list sidebar */}
-        <div className={`${isMobile ? 'w-full' : 'w-[260px]'} glass flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
+        <div className={`${isMobile ? 'w-full' : 'w-65'} bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
           <ChannelList server={server} onChannelSelect={isMobile ? () => setShowSidebar(false) : undefined} />
 
           {/* Invite button */}
-          <div className="border-t border-divider">
+          <div className="border-t border-border-subtle">
             <button
               onClick={() => setShowInvites(true)}
-              className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
+              <UserPlus className="size-4" />
               Invite People
             </button>
           </div>
@@ -309,7 +308,7 @@ export default function ChannelPage() {
 
       {/* Main chat area */}
         <div
-          className={`flex-1 flex flex-col bg-bg min-w-0 min-h-0 page-transition relative${isMobile && showSidebar ? ' hidden' : ''}`}
+          className={`flex-1 flex flex-col bg-bg-tertiary min-w-0 min-h-0 page-transition relative${isMobile && showSidebar ? ' hidden' : ''}`}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -319,32 +318,26 @@ export default function ChannelPage() {
           {isDragging && (
             <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
               <div className="flex flex-col items-center gap-2">
-                <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                </svg>
+                <Upload className="size-10 text-primary" />
                 <span className="text-primary font-semibold text-lg">Drop files to upload</span>
               </div>
             </div>
           )}
           {/* Channel header */}
-          <div className="h-16 px-4 flex items-center gap-3 glass-header shrink-0">
+          <div className="bg-bg-tertiary px-5 py-3 flex items-center gap-3 border-b border-border-subtle shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to channels">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
+                <ChevronLeft className="size-5" />
               </button>
             )}
             {channel?.kind === 'voice' ? (
-              <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
+              <Mic className="size-4 text-text-muted shrink-0" />
             ) : (
               <span className="text-text-muted">#</span>
             )}
-            <span className="text-text-primary font-semibold">{channel?.name ?? 'channel'}</span>
+            <span className="text-base font-semibold text-text-primary">{channel?.name ?? 'channel'}</span>
             {channel?.is_nsfw && (
-              <span className="px-1.5 py-0.5 text-[10px] bg-error/20 text-error rounded font-bold uppercase shrink-0">
+              <span className="px-1.5 py-0.5 text-2xs bg-error/20 text-error rounded font-bold uppercase shrink-0">
                 NSFW
               </span>
             )}
@@ -366,14 +359,14 @@ export default function ChannelPage() {
 
             {/* Search */}
             {showSearch ? (
-              <div className="input-container">
+              <div>
               <input
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
                 onBlur={() => { if (!search) setShowSearch(false); }}
                 onKeyDown={(e) => { if (e.key === 'Escape') { setShowSearch(false); setSearch(''); setSearchResults(null); } }}
                 placeholder="Search messages..."
-                className={`px-3 py-1 bg-input rounded text-sm text-text-primary ${isMobile ? 'w-32' : 'w-48'}`}
+                className={`input-reset px-3 py-1 bg-bg border border-divider rounded-lg text-sm text-text-primary ${isMobile ? 'w-32' : 'w-48'}`}
                 autoFocus
               />
               </div>
@@ -383,9 +376,7 @@ export default function ChannelPage() {
                 className="text-text-secondary hover:text-text-primary"
                 aria-label="Search messages"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <Search className="size-5" />
               </button>
             )}
 
@@ -396,9 +387,7 @@ export default function ChannelPage() {
               title="Create Poll"
               aria-label="Create Poll"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
+              <BarChart3 className="size-5" />
             </button>
 
             {/* Toggle threads list */}
@@ -412,9 +401,7 @@ export default function ChannelPage() {
               title="Threads"
               aria-label="Threads"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-              </svg>
+              <MessageSquare className="size-5" />
             </button>
 
             {/* Toggle pinned messages */}
@@ -428,9 +415,7 @@ export default function ChannelPage() {
               title="Pinned Messages"
               aria-label="Pinned Messages"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
+              <Bookmark className="size-5" />
             </button>
 
             {/* Toggle member list */}
@@ -439,9 +424,7 @@ export default function ChannelPage() {
               className={`${showMembers ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
               aria-label="Toggle members"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+              <Users className="size-5" />
             </button>
           </div>
 
@@ -450,7 +433,7 @@ export default function ChannelPage() {
             <>
               <div className="fixed inset-0 z-30 animate-fade-in" onClick={() => setShowTopicExpanded(false)} />
               <div className="relative z-40 px-4 py-3 bg-surface border-b border-divider animate-fade-in-down">
-                <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">Channel Topic</div>
+                <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1">Channel Topic</div>
                 <div className="text-text-secondary text-sm whitespace-pre-wrap">{channel.topic}</div>
               </div>
             </>
@@ -468,7 +451,7 @@ export default function ChannelPage() {
                 <div className="flex gap-3 justify-center">
                   <button
                     onClick={() => window.history.back()}
-                    className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary bg-input rounded"
+                    className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary bg-surface rounded"
                   >
                     Go Back
                   </button>
@@ -516,13 +499,11 @@ export default function ChannelPage() {
               isMobile ? (
                 <div className="fixed inset-0 z-50 flex">
                   <div className="flex-1" onClick={() => setShowMembers(false)} />
-                  <div className="w-[280px] max-w-[80vw] glass h-full overflow-y-auto animate-slide-in-right">
-                    <div className="h-16 px-4 flex items-center border-b border-divider shrink-0">
+                  <div className="w-70 max-w-[80vw] bg-sidebar border-l border-divider h-full overflow-y-auto animate-slide-in-right">
+                    <div className="px-5 py-3 flex items-center border-b border-divider shrink-0">
                       <span className="text-text-primary font-semibold text-sm flex-1">Members</span>
                       <button onClick={() => setShowMembers(false)} className="text-text-secondary hover:text-text-primary" aria-label="Close members">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <X className="size-5" />
                       </button>
                     </div>
                     <MemberList serverId={serverId} className="flex-1 overflow-y-auto" />
@@ -594,9 +575,7 @@ function VoiceChannelView({
     <div className="flex-1 flex flex-col items-center justify-center gap-6">
       {/* Voice icon */}
       <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-        <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-        </svg>
+        <Mic className="size-10 text-primary" strokeWidth={1.5} />
       </div>
 
       <div className="text-center">
@@ -627,14 +606,11 @@ function VoiceChannelView({
                   <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={56} userId={p.userId} />
                   {p.isMuted && (
                     <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-error rounded-full flex items-center justify-center">
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                      </svg>
+                      <VolumeX className="size-3 text-white" strokeWidth={2.5} />
                     </div>
                   )}
                 </div>
-                <span className="text-text-secondary text-xs truncate max-w-[80px]">
+                <span className="text-text-secondary text-xs truncate max-w-20">
                   {user?.username ?? 'User'}
                 </span>
               </div>
@@ -654,7 +630,7 @@ function VoiceChannelView({
       ) : isConnecting ? (
         <button
           onClick={() => leaveChannel()}
-          className="px-6 py-2.5 bg-input hover:bg-white/10 text-text-secondary rounded-full font-medium text-sm transition-colors"
+          className="px-6 py-2.5 bg-surface hover:bg-bg-hover text-text-secondary rounded-full font-medium text-sm transition-colors"
         >
           Cancel
         </button>

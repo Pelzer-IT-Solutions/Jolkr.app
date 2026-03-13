@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { MessageSquare, Archive, X, Send } from 'lucide-react';
 import type { Message, User, Thread } from '../api/types';
 import { useMessagesStore } from '../stores/messages';
 import * as api from '../api/client';
@@ -162,12 +163,10 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-0 z-50 w-full max-w-[400px] h-full glass flex flex-col shadow-popup">
+      <div className="absolute right-0 top-0 z-50 w-full max-w-100 h-full bg-sidebar border-l border-divider flex flex-col shadow-popup">
         {/* Header */}
-        <div className="h-16 px-4 flex items-center gap-2 border-b border-divider shrink-0">
-          <svg className="w-5 h-5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-          </svg>
+        <div className="px-5 py-3 flex items-center gap-2 border-b border-divider shrink-0">
+          <MessageSquare className="w-5 h-5 text-text-muted shrink-0" />
           <h3 className="text-text-primary font-semibold text-sm flex-1 truncate">{threadName}</h3>
           {thread && (
             <button
@@ -176,15 +175,11 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
               title={thread.is_archived ? 'Unarchive Thread' : 'Archive Thread'}
               aria-label={thread.is_archived ? 'Unarchive Thread' : 'Archive Thread'}
             >
-              <svg className={`w-4 h-4 ${thread.is_archived ? 'text-yellow-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
+              <Archive className={`w-4 h-4 ${thread.is_archived ? 'text-yellow-500' : ''}`} />
             </button>
           )}
           <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close thread">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -192,11 +187,11 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
         <div ref={containerRef} className="flex-1 overflow-y-auto min-h-0" onScroll={handleScroll}>
           {/* Starter message */}
           {starterMessage && (
-            <div className="px-4 py-3 border-b border-divider bg-background/50">
+            <div className="px-4 py-3 border-b border-divider bg-bg-tertiary">
               <div className="flex items-center gap-2 mb-1">
                 <Avatar url={users[starterMessage.author_id]?.avatar_url} name={users[starterMessage.author_id]?.username ?? '?'} size={24} userId={starterMessage.author_id} />
                 <span className="text-sm font-medium text-text-primary">{users[starterMessage.author_id]?.username ?? 'Unknown'}</span>
-                <span className="text-[11px] text-text-muted">
+                <span className="text-xs text-text-muted">
                   {new Date(starterMessage.created_at).toLocaleString()}
                 </span>
               </div>
@@ -254,30 +249,28 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
         {/* Input area */}
         {thread?.is_archived ? (
           <div className="px-4 pb-4 pt-2 shrink-0">
-            <div className="flex items-center bg-input rounded-lg px-4 py-3 opacity-60">
+            <div className="flex items-center bg-surface border border-divider rounded-lg px-4 py-3 opacity-60">
               <span className="text-text-muted text-sm">This thread is archived</span>
             </div>
           </div>
         ) : (
           <div className="px-4 pb-4 pt-2 shrink-0">
             {replyTo && (
-              <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-primary rounded-t mb-1">
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-bg-tertiary border-l-2 border-primary rounded-t mb-1">
                 <span className="text-xs text-text-muted">Replying to</span>
                 <span className="text-xs text-text-primary font-medium">
                   {users[replyTo.author_id]?.username ?? 'Unknown'}
                 </span>
                 <span className="text-xs text-text-muted truncate flex-1">{replyTo.content}</span>
                 <button onClick={() => setReplyTo(null)} className="text-text-muted hover:text-text-primary shrink-0" aria-label="Cancel reply">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             )}
             {sendError && (
-              <div className="text-[11px] text-error mb-1">{sendError}</div>
+              <div className="text-xs text-error mb-1">{sendError}</div>
             )}
-            <div className="flex items-end gap-2 bg-input rounded-xl px-4 py-2">
+            <div className="flex items-end gap-2 bg-surface border border-divider rounded-xl px-4 py-2">
               <textarea
                 ref={inputRef}
                 value={content}
@@ -290,7 +283,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
                 }}
                 placeholder="Reply in thread..."
                 rows={1}
-                className="flex-1 bg-transparent text-text-primary text-sm resize-none max-h-[120px] py-1 placeholder:text-text-muted"
+                className="flex-1 bg-transparent text-text-primary text-sm resize-none max-h-30 py-1 placeholder:text-text-muted"
                 style={{ height: 'auto', minHeight: '24px' }}
                 onInput={(e) => {
                   const el = e.currentTarget;
@@ -304,9 +297,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
                 className="text-primary hover:text-primary-hover disabled:text-text-muted py-1"
                 aria-label="Send reply"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                </svg>
+                <Send className="w-5 h-5" />
               </button>
             </div>
           </div>

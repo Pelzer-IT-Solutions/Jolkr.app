@@ -15,6 +15,7 @@ import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { DragEndEvent } from '@dnd-kit/core';
 import CategoryGroup, { TextChannelGroup, VoiceChannelGroup } from './CategoryGroup';
+import { ChevronDown, Plus, Settings, UserPlus, FolderPlus, LogOut, Bell, BellOff } from 'lucide-react';
 
 export interface ChannelListProps {
   server: Server;
@@ -111,7 +112,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
         }
       }
       setMutedChannels(map);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const handleToggleMute = async (chId: string) => {
@@ -244,19 +245,17 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Server header with dropdown */}
-      <div className="h-16 px-4 flex items-center border-b border-divider shrink-0 relative">
+      <div className="h-16 px-4 gap-2 flex items-center border-b border-divider shrink-0 relative">
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           aria-expanded={showDropdown}
           aria-label={`${server.name} server menu`}
-          className="flex items-center gap-1 flex-1 min-w-0 hover:bg-white/[0.06] -mx-1 px-1 py-1 rounded-lg"
+          className="flex items-center justify-between gap-1 flex-1 min-w-0 hover:bg-bg-hover -mx-1 px-1 py-1 rounded-lg"
         >
-          <h2 className="text-text-primary font-semibold text-[15px] truncate">
+          <h2 className="text-text-primary font-semibold text-base truncate">
             {server.name}
           </h2>
-          <svg className={`w-4 h-4 text-text-muted shrink-0 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDown className={`size-4 text-text-muted shrink-0 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
         </button>
         {canManageChannels && (
           <button
@@ -265,9 +264,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
             title="Create Channel"
             aria-label="Create Channel"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="size-5" />
           </button>
         )}
 
@@ -280,34 +277,27 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
                 <button
                   role="menuitem"
                   onClick={() => { setShowDropdown(false); setShowSettings(true); }}
-                  className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+                  <Settings className="size-4" />
                   Server Settings
                 </button>
               )}
               <button
                 role="menuitem"
                 onClick={() => { setShowDropdown(false); setShowInvite(true); }}
-                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
+                <UserPlus className="size-4" />
                 Invite People
               </button>
               {canManageChannels && (
                 <button
                   role="menuitem"
                   onClick={() => { setShowDropdown(false); setShowCreateCategory(true); }}
-                  className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
+                  <FolderPlus className="size-4" />
                   Create Category
                 </button>
               )}
@@ -317,9 +307,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
                   onClick={() => { setShowDropdown(false); setShowLeaveConfirm(true); }}
                   className="w-full px-3 py-2 text-left text-sm text-error hover:bg-error/10 flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
+                  <LogOut className="size-4" />
                   Leave Server
                 </button>
               )}
@@ -419,11 +407,11 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
         <>
           <div className="fixed inset-0 z-40" onClick={() => setCategoryMenu(null)} />
           <div
-            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-float py-1 min-w-[160px] animate-dropdown-enter"
+            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-float py-1 min-w-40 animate-dropdown-enter"
             style={{ left: categoryMenu.x, top: categoryMenu.y }}
           >
             <button
-              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-left"
+              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left"
               onClick={() => {
                 const cat = serverCategories.find((c) => c.id === categoryMenu.categoryId);
                 setEditCategoryName(cat?.name ?? '');
@@ -451,26 +439,21 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
         <>
           <div className="fixed inset-0 z-40" onClick={() => setChannelMenu(null)} />
           <div
-            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-float py-1 min-w-[160px] animate-dropdown-enter"
+            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-float py-1 min-w-40 animate-dropdown-enter"
             style={{ left: channelMenu.x, top: channelMenu.y }}
           >
             <button
-              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-white/[0.06] hover:text-text-primary text-left flex items-center gap-2"
+              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary text-left flex items-center gap-2"
               onClick={() => handleToggleMute(channelMenu.channelId)}
             >
               {mutedChannels.get(channelMenu.channelId) ? (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
+                  <Bell className="size-4" />
                   Unmute Channel
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-                  </svg>
+                  <BellOff className="size-4" />
                   Mute Channel
                 </>
               )}
@@ -482,13 +465,13 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
       {/* Edit category dialog */}
       {editCategoryId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditCategoryId(null)}>
-          <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[400px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-100 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-text-primary text-lg font-semibold mb-4">Edit Category</h3>
-            <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Category Name</label>
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Category Name</label>
             <input
               value={editCategoryName}
               onChange={(e) => setEditCategoryName(e.target.value)}
-              className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
+              className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleEditCategory()}
             />
@@ -582,42 +565,41 @@ function CreateChannelDialog({ serverId, categories, defaultCategoryId, onClose 
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[440px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Channel</h3>
         {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
 
-        <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Channel Type</label>
+        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Channel Type</label>
         <div className="flex gap-2 mt-1 mb-4">
           {['text', 'voice'].map((t) => (
             <button
               key={t}
               onClick={() => setKind(t)}
-              className={`px-4 py-2 rounded text-sm capitalize ${
-                kind === t ? 'bg-primary text-white' : 'bg-input text-text-secondary'
-              }`}
+              className={`px-4 py-2 rounded text-sm capitalize ${kind === t ? 'bg-primary text-white' : 'bg-surface text-text-secondary'
+                }`}
             >
               {t}
             </button>
           ))}
         </div>
 
-        <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Channel Name</label>
+        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Channel Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="new-channel"
-          className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
+          className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
           autoFocus
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
         />
 
         {categories.length > 0 && (
           <>
-            <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Category</label>
+            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Category</label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm mb-4"
+              className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
             >
               <option value="">No Category</option>
               {categories.map((cat) => (
@@ -668,16 +650,16 @@ function CreateCategoryDialog({ serverId, onClose }: { serverId: string; onClose
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[440px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Category</h3>
         {error && <div className="bg-error/10 text-error text-sm p-2 rounded mb-3">{error}</div>}
 
-        <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">Category Name</label>
+        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Category Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="General"
-          className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
+          className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm"
           autoFocus
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
         />

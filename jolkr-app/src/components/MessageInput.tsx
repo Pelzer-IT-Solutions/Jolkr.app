@@ -1,4 +1,5 @@
 import { useRef, useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
+import { Paperclip, X, Reply, Clock, Plus, Smile, Send } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import type { Message, User } from '../api/types';
 import { useMessagesStore } from '../stores/messages';
@@ -50,29 +51,24 @@ function SortableFileChip({ file, id, index, onRemove }: { file: File; id: strin
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}
-      className="flex items-center gap-2 bg-input rounded-lg px-3 py-2 text-sm"
+      className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 text-sm"
     >
-      <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-      </svg>
-      <span className="text-text-primary truncate max-w-[150px]">{file.name}</span>
-      <span className="text-text-muted text-[11px]">({formatFileSize(file.size)})</span>
+      <Paperclip className="size-4 text-text-muted shrink-0" />
+      <span className="text-text-primary truncate max-w-37.5">{file.name}</span>
+      <span className="text-text-muted text-xs">({formatFileSize(file.size)})</span>
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(index); }}
         onPointerDown={(e) => e.stopPropagation()}
         className="text-text-muted hover:text-error"
         aria-label={`Remove ${file.name}`}
       >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <X className="size-4" />
       </button>
     </div>
   );
 }
 
 export default function MessageInput({ channelId, isDm, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles }: MessageInputProps) {
-  const [inputFocused, setInputFocused] = useState(false);
   const [content, setContent] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [sending, setSending] = useState(false);
@@ -438,8 +434,8 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   // Disabled state: no permission to send
   if (canSend === false) {
     return (
-      <div className="px-4 pb-5 pt-4 shrink-0 glass-footer">
-        <div className="flex items-center bg-input rounded-lg px-4 py-3 opacity-60">
+      <div className="px-4 pb-5 pt-4 shrink-0">
+        <div className="flex items-center bg-surface border border-divider rounded-lg px-4 py-3 opacity-60">
           <span className="text-text-muted text-sm">You do not have permission to send messages in this channel</span>
         </div>
       </div>
@@ -449,12 +445,184 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
   // canSend === undefined means permissions are still loading (server channels only).
   // Don't show a skeleton — just render the real input. DMs never set canSend so it's always undefined there.
 
+  if (isMobilePlatform()) {
+    return (
+      <div className="shrink-0 relative">
+        {/* Mention autocomplete (mobile) */}
+        {mentionQuery !== null && mentionMatches.length > 0 && (
+          <div role="listbox" className="absolute bottom-full left-3 right-3 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-50 overflow-y-auto z-50">
+            <div className="px-3 py-1 text-2xs text-text-muted uppercase tracking-wider">Members</div>
+            {mentionMatches.map((u, i) => (
+              <button
+                key={u.id}
+                role="option"
+                aria-selected={i === mentionIndex}
+                onClick={() => insertMention(u.username)}
+                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
+                  i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <span className="text-primary font-medium">@</span>
+                <span>{u.username}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Emoji shortcode autocomplete (mobile) */}
+        {emojiQuery !== null && emojiMatches.length > 0 && (
+          <div role="listbox" className="absolute bottom-full left-3 right-3 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-70 overflow-y-auto z-50">
+            <div className="px-3 py-1 text-2xs text-text-muted uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
+            {emojiMatches.map((entry, i) => (
+              <button
+                key={entry.name}
+                role="option"
+                aria-selected={i === emojiIndex}
+                onClick={() => insertEmoji(entry.emoji)}
+                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
+                  i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <img src={emojiToImgUrl(entry.emoji)} alt={entry.emoji} className="w-5 h-5" loading="lazy" draggable={false} />
+                <span className="text-text-muted">:{entry.name}:</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showEmoji && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
+            <div className="absolute bottom-full left-3 mb-2 z-50">
+              <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+                <LazyEmojiPicker
+                  theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
+                  onEmojiClick={(emoji: { emoji: string }) => {
+                    setContent((prev) => prev + emoji.emoji);
+                    inputRef.current?.focus();
+                  }}
+                  width={320}
+                  height={360}
+                />
+              </Suspense>
+            </div>
+          </>
+        )}
+
+        {/* Reply bar (mobile) */}
+        {replyTo && (
+          <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-primary mb-1 mx-3">
+            <Reply className="size-3.5 text-text-muted shrink-0" />
+            <span className="text-xs text-text-muted">Replying to</span>
+            <span className="text-xs text-text-primary font-medium">{replyAuthor?.username ?? 'Unknown'}</span>
+            <span className="text-xs text-text-muted truncate flex-1">{replyTo.content}</span>
+            <button onClick={onCancelReply} className="text-text-muted hover:text-text-primary shrink-0" aria-label="Cancel reply">
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
+
+        {/* File preview (mobile) */}
+        {files.length > 0 && (
+          <div className="flex gap-2 flex-wrap px-3 pb-1">
+            {files.map((file, i) => (
+              <div key={i} className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 text-sm">
+                <Paperclip className="size-4 text-text-muted shrink-0" />
+                <span className="text-text-primary truncate max-w-37.5">{file.name}</span>
+                <button onClick={() => removeFile(i)} className="text-text-muted hover:text-error" aria-label={`Remove ${file.name}`}>
+                  <X className="size-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Status area */}
+        {(slowmodeCooldown > 0 || sendError || uploading) && (
+          <div className="flex items-center px-3 pb-1">
+            {slowmodeCooldown > 0 ? (
+              <div className="text-xs text-warning flex items-center gap-1"><Clock className="size-3" /> Slowmode: {slowmodeCooldown}s</div>
+            ) : sendError ? (
+              <div className="text-xs text-error">{sendError}</div>
+            ) : uploading ? (
+              <div className="text-xs text-text-muted">Uploading files...</div>
+            ) : null}
+          </div>
+        )}
+
+        {canAttach && (
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
+        )}
+
+        {/* Mobile input bar — Pencil design: bg-sidebar, gap-2.5, px-3 py-2.5 */}
+        <div className="flex items-center gap-2.5 bg-sidebar px-3 py-2.5">
+          {canAttach && (
+            <button onClick={() => fileInputRef.current?.click()} className="text-text-muted shrink-0" title="Attach file" aria-label="Attach file">
+              <Plus className="size-5.5" />
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 rounded-full bg-bg border border-divider px-3.5 py-2.5 flex-1">
+            <div className="relative flex flex-1 self-center">
+              {content && (
+                <div
+                  ref={overlayRef}
+                  className="absolute inset-0 text-text-primary text-sm whitespace-pre-wrap break-words overflow-hidden pointer-events-none"
+                  dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
+                />
+              )}
+              <textarea
+                ref={inputRef}
+                value={content}
+                onChange={(e) => handleInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                onFocus={() => { if (!emojiJustToggledRef.current) setShowEmoji(false); }}
+                placeholder="Type a message..."
+                rows={1}
+                className="input-reset relative w-full bg-transparent text-transparent caret-text-primary text-sm resize-none max-h-30 placeholder:text-text-muted selection:bg-primary/30"
+                style={{ height: 'auto', minHeight: '20px' }}
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = 'auto';
+                  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+                }}
+                onScroll={(e) => {
+                  if (overlayRef.current) overlayRef.current.scrollTop = e.currentTarget.scrollTop;
+                }}
+              />
+            </div>
+
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
+              className="text-text-muted shrink-0"
+              title="Emoji"
+              aria-label="Emoji"
+            >
+              <Smile className="size-5" />
+            </button>
+          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={(!content.trim() && files.length === 0) || sending || slowmodeCooldown > 0}
+            className="size-9 rounded-full bg-primary flex items-center justify-center disabled:opacity-50 shrink-0"
+            aria-label="Send message"
+          >
+            <Send className="size-4 text-bg" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="px-4 pb-5 pt-3 shrink-0 relative glass-footer">
+    <div className="px-4 pb-3 pt-3 shrink-0 relative">
       {/* Mention autocomplete */}
       {mentionQuery !== null && mentionMatches.length > 0 && (
-        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-[200px] overflow-y-auto z-50">
-          <div className="px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider">Members</div>
+        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-50 overflow-y-auto z-50">
+          <div className="px-3 py-1 text-2xs text-text-muted uppercase tracking-wider">Members</div>
           {mentionMatches.map((u, i) => (
             <button
               key={u.id}
@@ -462,7 +630,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
               aria-selected={i === mentionIndex}
               onClick={() => insertMention(u.username)}
               className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                i === mentionIndex ? 'bg-primary/20 text-text-primary' : 'text-text-secondary hover:bg-white/5'
+                i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
               }`}
             >
               <span className="text-primary font-medium">@</span>
@@ -474,8 +642,8 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* Emoji shortcode autocomplete */}
       {emojiQuery !== null && emojiMatches.length > 0 && (
-        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-[280px] overflow-y-auto z-50">
-          <div className="px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
+        <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-70 overflow-y-auto z-50">
+          <div className="px-3 py-1 text-2xs text-text-muted uppercase tracking-wider">Emoji matching :{emojiQuery}</div>
           {emojiMatches.map((entry, i) => (
             <button
               key={entry.name}
@@ -483,7 +651,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
               aria-selected={i === emojiIndex}
               onClick={() => insertEmoji(entry.emoji)}
               className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                i === emojiIndex ? 'bg-primary/20 text-text-primary' : 'text-text-secondary hover:bg-white/5'
+                i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-hover'
               }`}
             >
               <img src={emojiToImgUrl(entry.emoji)} alt={entry.emoji} className="w-5 h-5" loading="lazy" draggable={false} />
@@ -497,7 +665,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
           <div className="absolute bottom-full left-4 mb-2 z-50">
-            <Suspense fallback={<div className="w-[350px] h-[400px] bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
+            <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-muted text-sm">Loading...</div>}>
               <LazyEmojiPicker
                 theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
                 onEmojiClick={(emoji: { emoji: string }) => {
@@ -515,16 +683,12 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       {/* Reply bar */}
       {replyTo && (
         <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/50 border-l-2 border-primary rounded-t-lg mb-1">
-          <svg className="w-3.5 h-3.5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-          </svg>
+          <Reply className="size-3.5 text-text-muted shrink-0" />
           <span className="text-xs text-text-muted">Replying to</span>
           <span className="text-xs text-text-primary font-medium">{replyAuthor?.username ?? 'Unknown'}</span>
           <span className="text-xs text-text-muted truncate flex-1">{replyTo.content}</span>
           <button onClick={onCancelReply} className="text-text-muted hover:text-text-primary shrink-0" aria-label="Cancel reply">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="size-4" />
           </button>
         </div>
       )}
@@ -557,16 +721,14 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       {/* Status area — only takes space when content is shown */}
       <div className="flex items-center min-h-0">
         {slowmodeCooldown > 0 ? (
-          <div className="text-[11px] text-warning flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          <div className="text-xs text-warning flex items-center gap-1">
+            <Clock className="size-3" />
             Slowmode: {slowmodeCooldown}s remaining
           </div>
         ) : sendError ? (
-          <div className="text-[11px] text-error">{sendError}</div>
+          <div className="text-xs text-error">{sendError}</div>
         ) : uploading ? (
-          <div className="text-[11px] text-text-muted">Uploading files...</div>
+          <div className="text-xs text-text-muted">Uploading files...</div>
         ) : null}
       </div>
 
@@ -582,95 +744,91 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
       {/* Formatting toolbar */}
       <div className="flex items-center gap-0.5 mb-1 px-1 py-0.5 rounded-lg bg-surface/50 border border-divider/50 w-fit">
-        <button onClick={() => insertFormatting('**', '**')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Bold (Ctrl+B)">
+        <button onClick={() => insertFormatting('**', '**')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Bold (Ctrl+B)">
           <span className="text-xs font-bold w-5 h-5 flex items-center justify-center">B</span>
         </button>
-        <button onClick={() => insertFormatting('*', '*')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Italic (Ctrl+I)">
+        <button onClick={() => insertFormatting('*', '*')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Italic (Ctrl+I)">
           <span className="text-xs italic w-5 h-5 flex items-center justify-center">I</span>
         </button>
-        <button onClick={() => insertFormatting('~~', '~~')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Strikethrough">
+        <button onClick={() => insertFormatting('~~', '~~')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Strikethrough">
           <span className="text-xs line-through w-5 h-5 flex items-center justify-center">S</span>
         </button>
         <div className="w-px h-4 bg-divider/50 mx-0.5" />
-        <button onClick={() => insertFormatting('`', '`')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Inline Code">
+        <button onClick={() => insertFormatting('`', '`')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Inline Code">
           <span className="text-xs font-mono w-5 h-5 flex items-center justify-center">&lt;/&gt;</span>
         </button>
-        <button onClick={() => insertFormatting('```\n', '\n```')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Code Block">
-          <span className="text-[10px] font-mono w-5 h-5 flex items-center justify-center">[/]</span>
+        <button onClick={() => insertFormatting('```\n', '\n```')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Code Block">
+          <span className="text-2xs font-mono w-5 h-5 flex items-center justify-center">[/]</span>
         </button>
         <div className="w-px h-4 bg-divider/50 mx-0.5" />
-        <button onClick={() => insertFormatting('> ', '')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-white/[0.08] transition-colors" title="Quote">
+        <button onClick={() => insertFormatting('> ', '')} className="p-1.5 text-text-muted hover:text-text-primary rounded-md hover:bg-bg-hover transition-colors" title="Quote">
           <span className="text-xs w-5 h-5 flex items-center justify-center">"</span>
         </button>
       </div>
 
-      <div className={`input-container flex items-center gap-2 bg-input rounded-xl px-4 py-2.5 border border-divider transition-all ${inputFocused ? 'border-primary/50 shadow-[0_0_0_3px_rgba(0,206,209,0.15)]' : 'hover:border-divider/80'}`} onFocus={() => setInputFocused(true)} onBlur={() => setInputFocused(false)}>
-        {canAttach && (
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-text-muted hover:text-text-primary py-1"
-            title="Attach file"
-            aria-label="Attach file"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        )}
-
-        <button
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
-          className="text-text-muted hover:text-text-primary py-1"
-          title="Emoji"
-          aria-label="Emoji"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-
-        <div className="relative flex flex-1 self-center">
-          {/* Emoji image overlay — shows rendered content with pretty emoji images */}
-          {content && (
-            <div
-              ref={overlayRef}
-              className="absolute inset-0 text-text-primary text-sm py-1 whitespace-pre-wrap break-words overflow-hidden pointer-events-none"
-              dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
-            />
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 rounded-xl bg-surface border border-divider px-4 py-3 flex-1">
+          {canAttach && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-text-muted hover:text-text-primary shrink-0"
+              title="Attach file"
+              aria-label="Attach file"
+            >
+              <Plus className="size-5" />
+            </button>
           )}
-          <textarea
-            ref={inputRef}
-            value={content}
-            onChange={(e) => handleInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            onFocus={() => { if (!emojiJustToggledRef.current) setShowEmoji(false); }}
-            placeholder="Type a message..."
-            rows={1}
-            className="relative w-full bg-transparent text-transparent caret-text-primary text-sm resize-none max-h-[120px] py-1 placeholder:text-text-muted selection:bg-primary/30"
-            style={{ height: 'auto', minHeight: '24px' }}
-            onInput={(e) => {
-              const el = e.currentTarget;
-              el.style.height = 'auto';
-              el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-            }}
-            onScroll={(e) => {
-              if (overlayRef.current) overlayRef.current.scrollTop = e.currentTarget.scrollTop;
-            }}
-          />
+
+          <div className="relative flex flex-1 self-center">
+            {/* Emoji image overlay — shows rendered content with pretty emoji images */}
+            {content && (
+              <div
+                ref={overlayRef}
+                className="absolute inset-0 text-text-primary text-sm py-1 whitespace-pre-wrap break-words overflow-hidden pointer-events-none"
+                dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
+              />
+            )}
+            <textarea
+              ref={inputRef}
+              value={content}
+              onChange={(e) => handleInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              onFocus={() => { if (!emojiJustToggledRef.current) setShowEmoji(false); }}
+              placeholder="Type a message..."
+              rows={1}
+              className="input-reset relative w-full bg-transparent text-transparent caret-text-primary text-sm resize-none max-h-30 py-1 placeholder:text-text-muted selection:bg-primary/30"
+              style={{ height: 'auto', minHeight: '24px' }}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = 'auto';
+                el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+              }}
+              onScroll={(e) => {
+                if (overlayRef.current) overlayRef.current.scrollTop = e.currentTarget.scrollTop;
+              }}
+            />
+          </div>
+
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
+            className="text-text-muted hover:text-text-primary shrink-0"
+            title="Emoji"
+            aria-label="Emoji"
+          >
+            <Smile className="size-5" />
+          </button>
         </div>
 
         <button
           onClick={handleSend}
           disabled={(!content.trim() && files.length === 0) || sending || slowmodeCooldown > 0}
-          className="text-primary hover:text-primary-hover disabled:text-text-muted py-1"
+          className="size-10 rounded-full bg-primary flex items-center justify-center disabled:opacity-50 shrink-0"
           title={slowmodeCooldown > 0 ? `Slowmode: ${slowmodeCooldown}s` : undefined}
           aria-label="Send message"
         >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-          </svg>
+          <Send className="size-4.5 text-bg" />
         </button>
       </div>
     </div>

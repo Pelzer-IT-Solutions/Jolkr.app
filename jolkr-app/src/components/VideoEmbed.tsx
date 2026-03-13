@@ -4,6 +4,7 @@ import type { VideoInfo } from '../utils/videoUrl';
 import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../utils/videoUrl';
 import { useNMPlayer } from '../hooks/useNMPlayer';
 import { isTauri } from '../platform/detect';
+import { Play, Pause, Volume2, VolumeX, Maximize, Video } from 'lucide-react';
 
 export interface VideoEmbedProps {
   embed: MessageEmbed;
@@ -27,7 +28,7 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
 
   return (
     <div
-      className="mt-1 max-w-[400px] rounded-md overflow-hidden bg-zinc-800/50 border-l-4"
+      className="mt-1 max-w-100 rounded-md overflow-hidden bg-zinc-800/50 border-l-4"
       style={{ borderLeftColor: borderColor }}
     >
       {/* Header */}
@@ -95,9 +96,7 @@ function Thumbnail({
       {/* Play overlay */}
       <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/thumb:bg-black/40 transition-colors">
         <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover/thumb:scale-110 transition-transform">
-          <svg className="w-7 h-7 text-black ml-1" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z" />
-          </svg>
+          <Play className="w-7 h-7 text-black ml-1" fill="currentColor" />
         </div>
       </div>
     </button>
@@ -107,9 +106,7 @@ function Thumbnail({
 function VideoPlaceholder({ platform }: { platform: string }) {
   return (
     <div className="flex flex-col items-center gap-2 text-zinc-500">
-      <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-      </svg>
+      <Video className="w-10 h-10" strokeWidth={1.5} />
       <span className="text-xs">{platform}</span>
     </div>
   );
@@ -274,7 +271,7 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
 
       {/* Live badge */}
       {isLive && (
-        <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+        <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-2xs font-bold px-1.5 py-0.5 rounded">
           <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
           LIVE
         </div>
@@ -361,18 +358,14 @@ function VideoControls({
           aria-label={playing ? 'Pause' : 'Play'}
         >
           {playing ? (
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
-            </svg>
+            <Pause className="w-4 h-4" fill="currentColor" />
           ) : (
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            <Play className="w-4 h-4" fill="currentColor" />
           )}
         </button>
 
         {/* Time */}
-        <span className="text-[11px] text-white/80 tabular-nums min-w-0">
+        <span className="text-xs text-white/80 tabular-nums min-w-0">
           {isLive ? 'LIVE' : `${formatTime(currentTime)} / ${formatTime(duration)}`}
         </span>
 
@@ -386,16 +379,9 @@ function VideoControls({
             aria-label={muted ? 'Unmute' : 'Mute'}
           >
             {muted || volume === 0 ? (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                <path d="M14 4l-5 4H5v8h4l5 4V4z" fill="currentColor" />
-                <path d="M17 9l4 4m0-4l-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+              <VolumeX className="w-4 h-4" />
             ) : (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M14 4l-5 4H5v8h4l5 4V4z" />
-                {volume > 0.5 && <path d="M18.5 5.5a10 10 0 010 13" stroke="currentColor" strokeWidth="2" fill="none" />}
-                <path d="M15.5 8.5a5 5 0 010 7" stroke="currentColor" strokeWidth="2" fill="none" />
-              </svg>
+              <Volume2 className="w-4 h-4" />
             )}
           </button>
           <input
@@ -416,9 +402,7 @@ function VideoControls({
           className="text-white p-1 hover:text-white/80"
           aria-label="Fullscreen"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-          </svg>
+          <Maximize className="w-4 h-4" />
         </button>
       </div>
     </div>

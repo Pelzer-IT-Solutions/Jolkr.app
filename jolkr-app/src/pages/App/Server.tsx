@@ -4,16 +4,22 @@ import { useServersStore } from '../../stores/servers';
 import ChannelList from '../../components/ChannelList';
 import UserPanel from '../../components/UserPanel';
 import InviteDialog from '../../components/dialogs/InviteDialog';
+import ServerSettingsDialog from '../../components/dialogs/ServerSettingsDialog';
 import { useMobileNav } from '../../hooks/useMobileNav';
+import { rewriteStorageUrl } from '../../platform/config';
+import { UserPlus, ChevronLeft, Hash, Settings } from 'lucide-react';
 
 export default function ServerPage() {
   const { serverId } = useParams<{ serverId: string }>();
   const servers = useServersStore((s) => s.servers);
   const serversLoading = useServersStore((s) => s.loading);
   const server = servers.find((s) => s.id === serverId);
+  const members = useServersStore((s) => s.members);
   const [showInvites, setShowInvites] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const { showSidebar, setShowSidebar, isMobile } = useMobileNav();
+  const memberCount = server ? (server.member_count ?? members[server.id]?.length ?? 0) : 0;
 
   // On mobile, server landing = show sidebar (channel list)
   useEffect(() => {
@@ -33,13 +39,13 @@ export default function ServerPage() {
   if (!server) {
     if (serversLoading || !fetchAttempted) {
       return (
-        <div className="flex-1 flex items-center justify-center bg-bg">
+        <div className="flex-1 flex items-center justify-center bg-bg-tertiary">
           <p className="text-text-muted">Loading server...</p>
         </div>
       );
     }
     return (
-      <div className="flex-1 flex items-center justify-center bg-bg">
+      <div className="flex-1 flex items-center justify-center bg-bg-tertiary">
         <div className="text-center">
           <p className="text-text-muted text-lg mb-2">Server not found</p>
           <p className="text-text-muted text-sm">This server may have been deleted, or you don't have access.</p>
@@ -48,52 +54,99 @@ export default function ServerPage() {
     );
   }
 
+  const serverIconUrl = rewriteStorageUrl(server.icon_url);
+  const serverInitials = server.name.trim().split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+
   return (
     <div className="flex flex-1 h-full overflow-hidden">
       {/* Channel list sidebar */}
-        <div className={`${isMobile ? 'w-full' : 'w-[260px]'} glass flex flex-col shrink-0 h-full overflow-hidden${isMobile && !showSidebar ? ' hidden' : ''}`}>
-          <ChannelList server={server} onChannelSelect={isMobile ? () => setShowSidebar(false) : undefined} />
+      {isMobile ? (
+        <div className={`w-full bg-sidebar flex flex-col shrink-0 h-full overflow-hidden${!showSidebar ? ' hidden' : ''}`}>
+          {/* Mobile server header — Pencil design */}
+          <div className="px-4 py-3 flex items-center justify-between border-b border-border-subtle shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Server icon: 36px, rounded 10px */}
+              <div className="size-9 rounded-lg overflow-hidden shrink-0 bg-primary/20 flex items-center justify-center">
+                {serverIconUrl ? (
+                  <img src={serverIconUrl} alt={server.name} className="size-9 object-cover" />
+                ) : (
+                  <span className="text-xs font-semibold text-primary">{serverInitials}</span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-text-primary truncate">{server.name}</h2>
+                {memberCount > 0 && (
+                  <p className="text-xs text-text-secondary">{memberCount} {memberCount === 1 ? 'member' : 'members'}</p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="shrink-0 p-1"
+              aria-label="Server settings"
+            >
+              <Settings className="size-5 text-text-secondary" />
+            </button>
+          </div>
+
+          {/* Channel list with mobile overrides — hide ChannelList built-in header */}
+          <div className="flex-1 flex flex-col min-h-0 mobile-channel-list">
+            <ChannelList server={server} onChannelSelect={() => setShowSidebar(false)} />
+          </div>
 
           {/* Invite + User panel */}
-          <div className="border-t border-divider">
+          <div className="border-t border-border-subtle">
             <button
               onClick={() => setShowInvites(true)}
-              className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-primary hover:bg-bg-hover flex items-center gap-2"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
+              <UserPlus className="size-4" />
               Invite People
             </button>
           </div>
 
           <UserPanel />
         </div>
+      ) : (
+        <div className="w-65 bg-sidebar flex flex-col shrink-0 h-full overflow-hidden">
+          <ChannelList server={server} />
+
+          {/* Invite + User panel */}
+          <div className="border-t border-border-subtle">
+            <button
+              onClick={() => setShowInvites(true)}
+              className="w-full px-4 py-2 text-left text-sm text-primary hover:bg-bg-hover flex items-center gap-2"
+            >
+              <UserPlus className="size-4" />
+              Invite People
+            </button>
+          </div>
+
+          <UserPanel />
+        </div>
+      )}
 
       {/* Main content - no channel selected */}
-        <div className={`flex-1 flex flex-col bg-bg min-h-0${isMobile && showSidebar ? ' hidden' : ''}`}>
-          <div className="h-16 px-4 flex items-center border-b border-divider shrink-0">
+        <div className={`flex-1 flex flex-col bg-bg-tertiary min-h-0${isMobile && showSidebar ? ' hidden' : ''}`}>
+          <div className="px-5 py-3 flex justify-between items-center border-b border-border-subtle shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-3">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
+                <ChevronLeft className="size-5" />
               </button>
             )}
-            <span className="text-text-primary font-semibold">{server.name}</span>
+            <span className="text-base font-semibold text-text-primary">{server.name}</span>
           </div>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/15 flex items-center justify-center">
-                <span className="text-primary text-2xl font-bold">#</span>
-              </div>
-              <h2 className="text-xl font-semibold text-text-primary mb-2">Select a channel</h2>
-              <p className="text-text-secondary text-sm">Pick a text channel from the sidebar to start chatting</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <div className="size-18 rounded-full bg-accent-muted flex items-center justify-center">
+              <Hash className="size-8 text-primary" />
             </div>
+            <h2 className="text-xl font-bold text-text-primary">Select a channel</h2>
+            <p className="text-text-secondary text-sm">Pick a text channel from the sidebar to start chatting</p>
           </div>
         </div>
 
       {showInvites && <InviteDialog serverId={server.id} onClose={() => setShowInvites(false)} />}
+      {showSettings && <ServerSettingsDialog server={server} onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

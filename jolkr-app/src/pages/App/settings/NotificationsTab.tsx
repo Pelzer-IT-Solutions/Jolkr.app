@@ -10,6 +10,20 @@ export interface NotificationsTabProps {
   onProfileUpdate: (body: { show_read_receipts?: boolean }) => Promise<void>;
 }
 
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      disabled={disabled}
+      className={`w-11 h-6 rounded-xl transition-colors relative shrink-0 ${checked ? 'bg-primary' : 'bg-surface border border-divider'} ${disabled ? 'opacity-50' : ''}`}
+    >
+      <div className={`absolute top-0.5 size-4.5 rounded-full shadow transition-transform ${checked ? 'right-0.5 left-auto bg-white' : 'left-0.5 bg-text-secondary'}`} />
+    </button>
+  );
+}
+
 export default function NotificationsTab({ user, onProfileUpdate }: NotificationsTabProps) {
   const [desktopNotif, setDesktopNotif] = useState(() => localStorage.getItem('jolkr_desktop_notif') !== 'false');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('jolkr_sound') !== 'false');
@@ -150,80 +164,58 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-text-primary mb-6">Notifications</h2>
-      <div className="bg-surface rounded-xl p-8 space-y-6">
+      <h2 className="text-2xl font-bold text-text-primary">Notifications</h2>
+      <div className="rounded-xl bg-surface border border-divider flex flex-col">
         {/* Desktop notifications */}
-        <div className="flex items-center justify-between">
-          <div>
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Desktop Notifications</label>
-            <p className="text-text-muted text-xs mt-1">Show desktop notifications for new messages</p>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Desktop Notifications</label>
+            <p className="text-sm text-text-secondary">Show desktop notifications for new messages</p>
           </div>
-          <button
-            role="switch"
-            aria-checked={desktopNotif}
-            onClick={() => handleDesktopNotif(!desktopNotif)}
-            className={`w-11 h-6 rounded-full transition-colors relative ${desktopNotif ? 'bg-primary' : 'bg-input'}`}
-          >
-            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${desktopNotif ? 'left-5' : 'left-0.5'}`} />
-          </button>
+          <Toggle checked={desktopNotif} onChange={handleDesktopNotif} />
         </div>
 
         {/* Sound */}
-        <div className="flex items-center justify-between">
-          <div>
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Message Sounds</label>
-            <p className="text-text-muted text-xs mt-1">Play a sound when new messages arrive</p>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Message Sounds</label>
+            <p className="text-sm text-text-secondary">Play a sound when new messages arrive</p>
           </div>
-          <button
-            role="switch"
-            aria-checked={soundEnabled}
-            onClick={() => handleSoundToggle(!soundEnabled)}
-            className={`w-11 h-6 rounded-full transition-colors relative ${soundEnabled ? 'bg-primary' : 'bg-input'}`}
-          >
-            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${soundEnabled ? 'left-5' : 'left-0.5'}`} />
-          </button>
+          <Toggle checked={soundEnabled} onChange={handleSoundToggle} />
         </div>
 
         {/* Read Receipts */}
-        <div className="flex items-center justify-between">
-          <div>
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Read Receipts</label>
-            <p className="text-text-muted text-xs mt-1">When disabled, others won't see when you've read their messages</p>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Read Receipts</label>
+            <p className="text-sm text-text-secondary">When disabled, others won't see when you've read their messages</p>
           </div>
-          <button
-            role="switch"
-            aria-checked={user?.show_read_receipts ?? true}
-            onClick={async () => {
-              const newValue = !(user?.show_read_receipts ?? true);
+          <Toggle
+            checked={user?.show_read_receipts ?? true}
+            onChange={async (v) => {
               try {
-                await onProfileUpdate({ show_read_receipts: newValue });
+                await onProfileUpdate({ show_read_receipts: v });
               } catch (e) {
                 setSaveError((e as Error).message || 'Failed to update read receipts');
               }
             }}
-            className={`w-11 h-6 rounded-full transition-colors relative ${(user?.show_read_receipts ?? true) ? 'bg-primary' : 'bg-input'}`}
-          >
-            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${(user?.show_read_receipts ?? true) ? 'left-5' : 'left-0.5'}`} />
-          </button>
+          />
         </div>
 
-        {saveError && <div className="bg-error/10 text-error text-sm p-2 rounded">{saveError}</div>}
+        {saveError && <div className="bg-error/10 text-error text-sm px-6 py-2">{saveError}</div>}
 
         {/* Call ringtone */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Call Ringtone</label>
-              <p className="text-text-muted text-xs mt-1">Sound played for incoming DM calls</p>
+        <div className="flex flex-col gap-2.5 px-6 py-4 border-b border-border-subtle">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Call Ringtone</label>
+              <p className="text-sm text-text-secondary">Sound played for incoming DM calls</p>
             </div>
-            <button
-              onClick={previewRingtone}
-              className="px-3 py-1.5 text-xs rounded bg-input text-text-secondary hover:text-text-primary hover:bg-white/10 transition-colors"
-            >
+            <button onClick={previewRingtone} className="text-sm font-medium text-primary hover:text-primary-hover transition-colors">
               {previewingRingtone ? 'Stop' : 'Preview'}
             </button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex rounded-lg border border-divider overflow-hidden w-fit">
             {[
               { id: 'classic', label: 'Classic' },
               { id: 'tone', label: 'Tone' },
@@ -231,8 +223,7 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
               <button
                 key={opt.id}
                 onClick={() => handleRingtoneChange(opt.id)}
-                className={`px-4 py-2 rounded text-sm ${ringtone === opt.id ? 'bg-primary text-white' : 'bg-input text-text-secondary hover:text-text-primary'
-                  }`}
+                className={`py-2 px-5 text-sm transition-colors ${ringtone === opt.id ? 'bg-primary text-bg font-semibold' : 'text-text-secondary font-medium hover:text-text-primary'}`}
               >
                 {opt.label}
               </button>
@@ -242,45 +233,31 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
 
         {/* Push notifications (web only) */}
         {isWeb && 'PushManager' in window && (
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Push Notifications</label>
-              <p className="text-text-muted text-xs mt-1">Receive notifications even when the tab is closed</p>
+          <div className={`flex items-center justify-between px-6 py-4 ${isTauri ? 'border-b border-border-subtle' : ''}`}>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Push Notifications</label>
+              <p className="text-sm text-text-secondary">Receive notifications even when the tab is closed</p>
             </div>
-            <button
-              role="switch"
-              aria-checked={pushEnabled}
-              onClick={() => handlePushToggle(!pushEnabled)}
-              disabled={pushLoading}
-              className={`w-11 h-6 rounded-full transition-colors relative ${pushEnabled ? 'bg-primary' : 'bg-input'} ${pushLoading ? 'opacity-50' : ''}`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${pushEnabled ? 'left-5' : 'left-0.5'}`} />
-            </button>
+            <Toggle checked={pushEnabled} onChange={handlePushToggle} disabled={pushLoading} />
           </div>
         )}
 
         {/* Auto-start (Tauri desktop only) */}
         {isTauri && (
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Start with Windows</label>
-              <p className="text-text-muted text-xs mt-1">Automatically start Jolkr when you log in</p>
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Start with Windows</label>
+              <p className="text-sm text-text-secondary">Automatically start Jolkr when you log in</p>
             </div>
-            <button
-              role="switch"
-              aria-checked={autoStart}
-              onClick={() => handleAutoStart(!autoStart)}
-              disabled={autoStartLoading}
-              className={`w-11 h-6 rounded-full transition-colors relative ${autoStart ? 'bg-primary' : 'bg-input'} ${autoStartLoading ? 'opacity-50' : ''}`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${autoStart ? 'left-5' : 'left-0.5'}`} />
-            </button>
+            <Toggle checked={autoStart} onChange={handleAutoStart} disabled={autoStartLoading} />
           </div>
         )}
 
         {/* Server URL (dev machine only) */}
         {isTauri && isDevMachine && (
-          <ServerUrlSetting />
+          <div className="px-6 py-4 border-t border-border-subtle">
+            <ServerUrlSetting />
+          </div>
         )}
       </div>
     </>
@@ -309,21 +286,20 @@ function ServerUrlSetting() {
   };
 
   return (
-    <div>
-      <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Server URL</label>
-      <p className="text-text-muted text-xs mt-1 mb-2">The Jolkr server this app connects to. Changing this will reload the app.</p>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-text-muted uppercase tracking-widest">Server URL</label>
+        <p className="text-sm text-text-secondary">The Jolkr server this app connects to. Changing this will reload the app.</p>
+      </div>
       <div className="flex gap-2">
         <input
           value={url}
           onChange={(e) => { setUrl(e.target.value); setSaved(false); setUrlError(''); }}
-          className="flex-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
+          className="flex-1 rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
         />
         {urlError && <span className="text-error text-xs self-center">{urlError}</span>}
         {dirty && (
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 btn-primary text-sm rounded-lg"
-          >
+          <button onClick={handleSave} className="btn-primary">
             {saved ? 'Saved!' : 'Save'}
           </button>
         )}

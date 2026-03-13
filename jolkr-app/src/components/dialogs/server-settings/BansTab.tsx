@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Search } from 'lucide-react';
 import * as api from '../../../api/client';
 import type { Server, Ban, User } from '../../../api/types';
+import Avatar from '../../Avatar';
 
 export interface BansTabProps {
   server: Server;
@@ -12,6 +14,7 @@ export default function BansTab({ server }: BansTabProps) {
   const [loading, setLoading] = useState(true);
   const [unbanning, setUnbanning] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +55,13 @@ export default function BansTab({ server }: BansTabProps) {
     }
   };
 
+  const filteredBans = bans.filter((ban) => {
+    if (!search.trim()) return true;
+    const user = banUsers[ban.user_id];
+    const name = user?.username ?? '';
+    return name.toLowerCase().includes(search.toLowerCase()) || (ban.reason ?? '').toLowerCase().includes(search.toLowerCase());
+  });
+
   if (loading) {
     return <div className="text-text-muted text-sm py-4">Loading bans...</div>;
   }
@@ -60,20 +70,29 @@ export default function BansTab({ server }: BansTabProps) {
     <div>
       {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
 
-      {bans.length === 0 ? (
-        <div className="text-text-muted text-sm py-4">No banned users.</div>
+      {/* Search */}
+      <div className="rounded-lg bg-bg border border-divider px-3.5 py-2.5 gap-2 flex items-center mb-3">
+        <Search className="size-4 text-text-muted shrink-0" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search bans..."
+          className="text-sm text-text-primary bg-transparent flex-1 outline-none border-none p-0"
+        />
+      </div>
+
+      {filteredBans.length === 0 ? (
+        <div className="text-text-muted text-sm py-4">
+          {search ? 'No bans matching search.' : 'No banned users.'}
+        </div>
       ) : (
-        <div className="space-y-2">
-          {bans.map((ban) => {
+        <div className="space-y-0">
+          {filteredBans.map((ban) => {
             const user = banUsers[ban.user_id];
             const bannedByUser = ban.banned_by ? banUsers[ban.banned_by] : null;
             return (
-              <div key={ban.id} className="flex items-center gap-3 p-3 bg-input rounded-lg">
-                <div className="w-8 h-8 rounded-full bg-error/20 flex items-center justify-center shrink-0">
-                  <span className="text-error text-xs font-bold">
-                    {(user?.username ?? '?').charAt(0).toUpperCase()}
-                  </span>
-                </div>
+              <div key={ban.id} className="px-1 py-3 flex items-center gap-3 border-b border-border-subtle">
+                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={ban.user_id} />
                 <div className="flex-1 min-w-0">
                   <div className="text-text-primary text-sm font-medium truncate">
                     {user?.username ?? ban.user_id.slice(0, 8)}
@@ -87,7 +106,7 @@ export default function BansTab({ server }: BansTabProps) {
                 <button
                   onClick={() => handleUnban(ban.user_id)}
                   disabled={unbanning === ban.user_id}
-                  className="px-3 py-1 text-xs text-text-secondary hover:text-text-primary bg-white/5 hover:bg-white/10 rounded shrink-0 disabled:opacity-50"
+                  className="px-3 py-1 text-xs text-text-secondary hover:text-text-primary bg-bg-hover hover:bg-bg-active rounded shrink-0 disabled:opacity-50"
                 >
                   {unbanning === ban.user_id ? '...' : 'Unban'}
                 </button>

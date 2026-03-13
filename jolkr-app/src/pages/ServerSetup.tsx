@@ -56,7 +56,7 @@ export default function ServerSetup({ onComplete }: ServerSetupProps) {
 
   return (
     <div className="h-full flex items-center justify-center bg-bg">
-      <div className="bg-surface rounded-lg p-8 w-[420px] max-w-[90vw]">
+      <div className="bg-surface rounded-lg p-8 w-105 max-w-[90vw]">
         <h1 className="text-2xl font-bold text-text-primary text-center mb-2">Connect to Server</h1>
         <p className="text-text-secondary text-center mb-6 text-sm">
           Choose which Jolkr server to connect to.
@@ -119,7 +119,7 @@ export default function ServerSetup({ onComplete }: ServerSetupProps) {
                     setError('');
                   }}
                   placeholder="https://your-server.com"
-                  className="w-full px-3 py-2 bg-input rounded text-text-primary text-sm"
+                  className="w-full px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm"
                   autoFocus
                 />
               )}

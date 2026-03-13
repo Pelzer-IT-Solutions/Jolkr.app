@@ -165,7 +165,7 @@ export default function MemberList({ serverId, className }: MemberListProps) {
     : null;
 
   return (
-    <div className={className ?? "w-[260px] h-full glass overflow-y-auto shrink-0"}>
+    <div className={className ?? "w-65 h-full bg-sidebar border-l border-divider overflow-y-auto shrink-0"}>
       {loadError && (
         <div className="mx-4 mt-2 text-text-muted text-xs text-center py-4">Failed to load members</div>
       )}
@@ -178,7 +178,7 @@ export default function MemberList({ serverId, className }: MemberListProps) {
 
       {online.length > 0 && (
         <div className="px-4 pt-4">
-          <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">
+          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
             Online — {online.length}
           </div>
           {online.map((m) => renderMember(m))}
@@ -187,7 +187,7 @@ export default function MemberList({ serverId, className }: MemberListProps) {
 
       {offline.length > 0 && (
         <div className="px-4 pt-4">
-          <div className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">
+          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
             Offline — {offline.length}
           </div>
           {offline.map((m) => renderMember(m, true))}
@@ -196,7 +196,7 @@ export default function MemberList({ serverId, className }: MemberListProps) {
 
       {!loadError && online.length === 0 && offline.length === 0 && (
         <div className="flex items-center justify-center py-8">
-          <div className="w-5 h-5 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
+          <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-muted animate-spin" />
         </div>
       )}
 

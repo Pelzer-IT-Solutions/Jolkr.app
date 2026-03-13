@@ -5,6 +5,7 @@ import { useServersStore } from '../../stores/servers';
 import { useNavigate } from 'react-router-dom';
 import { rewriteStorageUrl } from '../../platform/config';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { X, Users, Search } from 'lucide-react';
 
 export interface ServerDiscoveryProps {
   onClose: () => void;
@@ -64,17 +65,15 @@ export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
   const alreadyJoined = new Set(myServers.map((s) => s.id));
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div ref={dialogRef} className="bg-surface rounded-2xl border border-divider shadow-popup w-[600px] max-w-[95vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div ref={dialogRef} className="bg-sidebar rounded-3xl border border-divider shadow-popup w-150 max-w-[95vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-8 pb-4 border-b border-divider shrink-0">
           <div>
             <h3 className="text-text-primary text-lg font-semibold">Discover Servers</h3>
             <p className="text-text-muted text-sm mt-0.5">Find and join public communities</p>
           </div>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary" aria-label="Close">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="size-5" />
           </button>
         </div>
 
@@ -83,13 +82,11 @@ export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
+              <div className="w-6 h-6 rounded-full border-2 border-divider border-t-text-muted animate-spin" />
             </div>
           ) : servers.length === 0 ? (
             <div className="text-center py-12 text-text-muted">
-              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
+              <Search className="size-12 mx-auto mb-3 opacity-50" />
               <p className="text-sm">No public servers found</p>
             </div>
           ) : (
@@ -112,9 +109,7 @@ export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
                         )}
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs text-text-muted flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
+                            <Users className="size-3" />
                             {server.member_count ?? 0} members
                           </span>
                         </div>

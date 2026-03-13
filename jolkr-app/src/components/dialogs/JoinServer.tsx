@@ -36,17 +36,17 @@ export default function JoinServerDialog({ onClose }: JoinServerDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-[440px] max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-sidebar rounded-3xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-text-primary text-lg font-semibold mb-4">Join a Server</h3>
         {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
 
-        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Invite Code</label>
+        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Invite Code</label>
         <input
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Enter an invite code"
-          className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
+          className="w-full mt-1.5 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
           autoFocus
           onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
         />

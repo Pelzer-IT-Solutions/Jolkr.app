@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { ChevronDown, Check, CircleCheck } from 'lucide-react';
 import * as api from '../../../api/client';
 import type { Server, AuditLogEntry, User } from '../../../api/types';
 import Avatar from '../../Avatar';
@@ -27,6 +28,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [actionFilter, setActionFilter] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [error, setError] = useState('');
   const fetchedIdsRef = useRef(new Set<string>());
 
@@ -101,68 +103,88 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
     });
   };
 
-  return (
-    <div>
-      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg mb-3">{error}</div>}
+  const filterLabel = actionFilter ? (AUDIT_ACTION_LABELS[actionFilter] ?? actionFilter) : 'All actions';
 
-      {/* Filter */}
-      <div className="mb-3">
-        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Filter by action</label>
-        <select
-          value={actionFilter}
-          onChange={(e) => setActionFilter(e.target.value)}
-          className="w-full mt-1 px-3 py-2 bg-input rounded-lg text-text-primary text-sm"
+  return (
+    <div className="flex flex-col gap-5 min-h-full">
+      {error && <div className="bg-error/10 text-error text-sm p-2 rounded-lg">{error}</div>}
+
+      {/* Filter label */}
+      <div className="text-xs font-semibold text-text-muted tracking-wider uppercase shrink-0">Filter by action</div>
+
+      {/* Filter dropdown */}
+      <div className="relative shrink-0">
+        <button
+          onClick={() => setFilterOpen(!filterOpen)}
+          className="w-full rounded-lg bg-bg border border-divider px-3.5 py-2.5 flex justify-between items-center"
         >
-          <option value="">All actions</option>
-          {Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+          <span className="text-sm text-text-primary">{filterLabel}</span>
+          <ChevronDown className="size-4 text-text-muted" />
+        </button>
+        {filterOpen && (
+          <>
+            <div className="fixed inset-0 z-60" onClick={() => setFilterOpen(false)} />
+            <div className="absolute top-full left-0 right-0 mt-1 z-70 bg-surface border border-divider rounded-lg shadow-popup py-1 max-h-60 overflow-y-auto">
+              <button
+                onClick={() => { setActionFilter(''); setFilterOpen(false); }}
+                className="w-full px-3.5 py-2 text-left text-sm flex items-center justify-between hover:bg-bg-hover"
+              >
+                <span className={actionFilter === '' ? 'text-text-primary' : 'text-text-secondary'}>All actions</span>
+                {actionFilter === '' && <Check className="size-4 text-online" />}
+              </button>
+              {Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => { setActionFilter(value); setFilterOpen(false); }}
+                  className="w-full px-3.5 py-2 text-left text-sm flex items-center justify-between hover:bg-bg-hover"
+                >
+                  <span className={actionFilter === value ? 'text-text-primary' : 'text-text-secondary'}>{label}</span>
+                  {actionFilter === value && <Check className="size-4 text-online" />}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {loading ? (
-        <div className="text-text-muted text-sm py-4">Loading audit log...</div>
+        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">Loading audit log...</div>
       ) : entries.length === 0 ? (
-        <div className="text-text-muted text-sm py-4">No audit log entries found.</div>
+        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">No audit log entries found.</div>
       ) : (
-        <>
-          <div className="space-y-1">
-            {entries.map((entry) => {
-              const user = users[entry.user_id];
-              const targetUser = entry.target_id && entry.target_type === 'user' ? users[entry.target_id] : null;
-              const actionLabel = AUDIT_ACTION_LABELS[entry.action_type] ?? entry.action_type;
-              const targetDisplay = targetUser
-                ? targetUser.username
-                : entry.target_id
-                  ? entry.target_id.slice(0, 8)
-                  : null;
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {entries.map((entry) => {
+            const user = users[entry.user_id];
+            const targetUser = entry.target_id && entry.target_type === 'user' ? users[entry.target_id] : null;
+            const actionLabel = AUDIT_ACTION_LABELS[entry.action_type] ?? entry.action_type;
+            const targetDisplay = targetUser
+              ? targetUser.username
+              : entry.target_id
+                ? entry.target_id.slice(0, 8)
+                : null;
 
-              return (
-                <div key={entry.id} className="flex items-start gap-3 p-2 rounded hover:bg-white/5">
-                  <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={entry.user_id} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-text-primary">
-                      <span className="font-medium">{user?.username ?? entry.user_id.slice(0, 8)}</span>
-                      {' '}
-                      <span className="text-text-secondary">{actionLabel}</span>
-                      {targetDisplay && (
-                        <>
-                          {' '}
-                          <span className="font-medium">{targetDisplay}</span>
-                        </>
-                      )}
-                    </div>
-                    {entry.reason && (
-                      <div className="text-text-muted text-xs mt-0.5">Reason: {entry.reason}</div>
+            return (
+              <div key={entry.id} className="py-3 gap-3 flex items-center border-b border-border-subtle">
+                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={entry.user_id} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1 text-sm">
+                    <span className="font-medium text-text-primary">{user?.username ?? entry.user_id.slice(0, 8)}</span>
+                    <span className="text-text-secondary">{actionLabel}</span>
+                    {targetDisplay && (
+                      <span className="font-medium text-text-primary">{targetDisplay}</span>
                     )}
-                    <div className="text-text-muted text-xs mt-0.5">
-                      {formatTimestamp(entry.created_at)}
-                    </div>
+                  </div>
+                  {entry.reason && (
+                    <div className="text-text-muted text-xs mt-0.5">Reason: {entry.reason}</div>
+                  )}
+                  <div className="text-text-muted text-xs mt-0.5">
+                    {formatTimestamp(entry.created_at)}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+                <CircleCheck className="size-4 text-success shrink-0" />
+              </div>
+            );
+          })}
 
           {hasMore && (
             <div className="mt-3 text-center">
@@ -175,7 +197,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
               </button>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

@@ -2,6 +2,8 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/auth';
 import { useMobileNav } from '../../../hooks/useMobileNav';
+import Avatar from '../../../components/Avatar';
+import { ArrowLeft, ChevronLeft, ChevronRight, User, Palette, Bell, Monitor, LogOut } from 'lucide-react';
 
 const AccountTab = lazy(() => import('./AccountTab'));
 const AppearanceTab = lazy(() => import('./AppearanceTab'));
@@ -28,6 +30,13 @@ const MOBILE_TAB_LABELS: Record<Tab, string> = {
 
 const TABS: Tab[] = ['account', 'appearance', 'notifications', 'devices'];
 
+const TAB_ICONS: Record<Tab, typeof User> = {
+  account: User,
+  appearance: Palette,
+  notifications: Bell,
+  devices: Monitor,
+};
+
 export default function Settings() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -51,86 +60,187 @@ export default function Settings() {
     }
   };
 
+  // Mobile: track which tab is "open" (null = show settings menu, non-null = show tab content)
+  const [mobileOpenTab, setMobileOpenTab] = useState<Tab | null>(null);
+
+  const handleMobileTabOpen = (tab: Tab) => {
+    setActiveTab(tab);
+    setMobileOpenTab(tab);
+  };
+
+  const handleMobileBack = () => {
+    if (mobileOpenTab) {
+      // Go back from tab content to settings menu
+      setMobileOpenTab(null);
+    } else {
+      // Go back from settings to previous page
+      setShowSidebar(true);
+      navigate(-1);
+    }
+  };
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-1 h-full overflow-hidden bg-bg">
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          {/* Mobile: tab content view */}
+          {mobileOpenTab ? (
+            <>
+              {/* Header with back + tab name */}
+              <div className="px-4 pt-2 pb-4 shrink-0">
+                <button
+                  onClick={handleMobileBack}
+                  className="flex items-center gap-1 text-primary text-sm mb-2"
+                >
+                  <ChevronLeft className="size-5" />
+                  Settings
+                </button>
+                <h1 className="text-2xl font-bold text-text-primary">
+                  {MOBILE_TAB_LABELS[mobileOpenTab]}
+                </h1>
+              </div>
+              <div className="flex-1 flex flex-col gap-5 px-4 pb-4">
+                <Suspense fallback={TAB_FALLBACK}>
+                  {mobileOpenTab === 'account' && (
+                    <AccountTab user={user} onProfileUpdate={updateProfile} onLogout={handleLogout} />
+                  )}
+                  {mobileOpenTab === 'appearance' && <AppearanceTab />}
+                  {mobileOpenTab === 'notifications' && (
+                    <NotificationsTab user={user} onProfileUpdate={updateProfile} />
+                  )}
+                  {mobileOpenTab === 'devices' && <DevicesTab />}
+                </Suspense>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="px-4 pt-2 pb-4 shrink-0">
+                <button
+                  onClick={handleMobileBack}
+                  className="flex items-center gap-1 text-primary text-sm mb-2"
+                >
+                  <ChevronLeft className="size-5" />
+                  Back
+                </button>
+                <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 flex flex-col gap-5 px-4 pb-4">
+                {/* Profile card */}
+                <button
+                  onClick={() => handleMobileTabOpen('account')}
+                  className="rounded-xl bg-bg-tertiary gap-3.5 p-4 flex items-center text-left"
+                >
+                  <Avatar
+                    url={user?.avatar_url}
+                    name={user?.display_name || user?.username || '?'}
+                    size={52}
+                    userId={user?.id}
+                  />
+                  <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+                    <span className="text-lg font-bold text-text-primary truncate">
+                      {user?.display_name || user?.username || 'Unknown'}
+                    </span>
+                    <span className="text-sm text-primary truncate">
+                      @{user?.username || 'unknown'}
+                    </span>
+                  </div>
+                  <ChevronRight className="size-5 text-text-muted shrink-0" />
+                </button>
+
+                {/* Settings groups */}
+                <div className="rounded-xl bg-bg-tertiary overflow-hidden">
+                  {TABS.map((tab, i) => {
+                    const Icon = TAB_ICONS[tab];
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => handleMobileTabOpen(tab)}
+                        className={`w-full px-4 py-3.5 flex items-center gap-3 text-left ${
+                          i < TABS.length - 1 ? 'border-b border-border-subtle' : ''
+                        }`}
+                      >
+                        <Icon className="size-5 text-text-secondary shrink-0" />
+                        <span className="text-base font-medium text-text-primary flex-1">
+                          {MOBILE_TAB_LABELS[tab]}
+                        </span>
+                        <ChevronRight className="size-4.5 text-text-muted shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Logout group */}
+                <div className="rounded-xl bg-bg-tertiary overflow-hidden">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-3.5 flex items-center gap-3 text-left"
+                  >
+                    <LogOut className="size-5 text-error shrink-0" />
+                    <span className="text-base font-medium text-error flex-1">Log Out</span>
+                  </button>
+                </div>
+
+                {/* Version */}
+                <div className="text-xs text-text-muted text-center pt-2">
+                  Jolkr v{__APP_VERSION__}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 h-full overflow-hidden bg-bg">
-      {/* Settings sidebar — hidden on mobile, replaced by horizontal tabs */}
-      {!isMobile && (
-        <div className="w-[260px] glass flex flex-col shrink-0 h-full overflow-hidden">
-          <div className="h-16 px-4 flex items-center glass-header shrink-0">
-            <h2 className="text-text-primary font-semibold text-[15px]">User Settings</h2>
-          </div>
-          <div className="px-2 pt-2">
-            <div className="space-y-0.5">
-              {TABS.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`w-full text-left px-4 py-2 rounded text-sm ${activeTab === tab
-                    ? 'bg-white/10 text-text-primary'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
-                    }`}
-                >
-                  {TAB_LABELS[tab]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="mt-auto p-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded border border-divider text-text-secondary hover:text-text-primary text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Go Back
-            </button>
-          </div>
+      {/* Settings sidebar — desktop only */}
+      <div className="w-65 bg-sidebar flex flex-col shrink-0 h-full overflow-hidden">
+        <div className="p-5 flex items-center">
+          <h2 className="text-base font-bold text-text-primary">User Settings</h2>
         </div>
-      )}
-
-      {/* Settings content */}
-      <div className="flex-1 flex flex-col overflow-y-auto">
-        {/* Mobile: horizontal tabs + back button */}
-        {isMobile && (
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-divider shrink-0 overflow-x-auto">
-            <button
-              onClick={() => { setShowSidebar(true); navigate(-1); }}
-              className="text-text-secondary hover:text-text-primary shrink-0 mr-1"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+        <div className="px-3 py-2">
+          <div className="space-y-0.5">
             {TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap shrink-0 ${activeTab === tab
-                  ? 'bg-primary text-white'
-                  : 'bg-surface text-text-secondary hover:text-text-primary'
+                className={`w-full text-left rounded-lg px-4 py-2.5 gap-2 flex items-center text-sm ${activeTab === tab
+                  ? 'bg-accent-muted text-primary font-semibold'
+                  : 'text-text-secondary font-medium hover:bg-bg-hover'
                   }`}
               >
-                {MOBILE_TAB_LABELS[tab]}
+                {TAB_LABELS[tab]}
               </button>
             ))}
           </div>
-        )}
+        </div>
+        <div className="bg-bg px-5 py-3.5 gap-2 flex items-center mt-auto">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full flex items-center gap-2 text-text-secondary hover:text-text-primary text-sm font-medium"
+          >
+            <ArrowLeft className="size-4" />
+            Go Back
+          </button>
+        </div>
+      </div>
 
-        <div className={`flex-1 ${isMobile ? 'p-4' : 'p-8 max-w-[740px]'}`}>
+      {/* Settings content — desktop */}
+      <div className="flex-1 bg-bg-tertiary flex flex-col overflow-y-auto">
+        <div className="flex-1 flex flex-col gap-6 px-12 py-8">
           <Suspense fallback={TAB_FALLBACK}>
             {activeTab === 'account' && (
               <AccountTab user={user} onProfileUpdate={updateProfile} onLogout={handleLogout} />
             )}
-            {activeTab === 'appearance' && (
-              <AppearanceTab />
-            )}
+            {activeTab === 'appearance' && <AppearanceTab />}
             {activeTab === 'notifications' && (
               <NotificationsTab user={user} onProfileUpdate={updateProfile} />
             )}
-            {activeTab === 'devices' && (
-              <DevicesTab />
-            )}
+            {activeTab === 'devices' && <DevicesTab />}
           </Suspense>
 
           {/* Build version + health link */}
@@ -140,7 +250,7 @@ export default function Settings() {
               href="/health"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-text-secondary transition-colors"
+              className="text-primary hover:text-primary-hover transition-colors"
             >
               Service Status
             </a>

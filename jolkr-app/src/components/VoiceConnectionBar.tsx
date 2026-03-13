@@ -1,3 +1,4 @@
+import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff } from 'lucide-react';
 import { useVoiceStore } from '../stores/voice';
 
 export default function VoiceConnectionBar() {
@@ -28,14 +29,14 @@ export default function VoiceConnectionBar() {
           <div className="w-2 h-2 rounded-full bg-idle shrink-0 animate-pulse" />
         )}
         {error ? (
-          <span className="text-[13px] text-error font-medium truncate">{error}</span>
+          <span className="text-sm text-error font-medium truncate">{error}</span>
         ) : (
           <>
-            <span className="text-[13px] text-online font-medium">
+            <span className="text-sm text-online font-medium">
               {connectionState === 'connected' ? 'Voice Connected' : 'Connecting...'}
             </span>
             {channelName && (
-              <span className="text-[11px] text-text-muted truncate">/ {channelName}</span>
+              <span className="text-xs text-text-muted truncate">/ {channelName}</span>
             )}
           </>
         )}
@@ -46,42 +47,32 @@ export default function VoiceConnectionBar() {
         {/* Mic toggle */}
         <button
           onClick={toggleMute}
-          className={`p-1.5 rounded hover:bg-white/10 transition-colors ${
+          className={`p-1.5 rounded hover:bg-bg-hover transition-colors ${
             isMuted ? 'text-error' : 'text-text-secondary hover:text-text-primary'
           }`}
           title={isMuted ? 'Unmute' : 'Mute'}
           aria-label={isMuted ? 'Unmute' : 'Mute'}
         >
           {isMuted ? (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-            </svg>
+            <MicOff className="w-4 h-4" />
           ) : (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
+            <Mic className="w-4 h-4" />
           )}
         </button>
 
         {/* Headphone toggle */}
         <button
           onClick={toggleDeafen}
-          className={`p-1.5 rounded hover:bg-white/10 transition-colors ${
+          className={`p-1.5 rounded hover:bg-bg-hover transition-colors ${
             isDeafened ? 'text-error' : 'text-text-secondary hover:text-text-primary'
           }`}
           title={isDeafened ? 'Undeafen' : 'Deafen'}
           aria-label={isDeafened ? 'Undeafen' : 'Deafen'}
         >
           {isDeafened ? (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M9 9a3 3 0 100 6h1V9H9zm6 0v6h1a3 3 0 100-6h-1z" />
-              <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-            </svg>
+            <HeadphoneOff className="w-4 h-4" />
           ) : (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728M9 9a3 3 0 100 6h1V9H9zm6 0v6h1a3 3 0 100-6h-1z" />
-            </svg>
+            <Headphones className="w-4 h-4" />
           )}
         </button>
 
@@ -94,9 +85,7 @@ export default function VoiceConnectionBar() {
           title={connectionState === 'disconnected' ? 'Dismiss' : 'Disconnect'}
           aria-label={connectionState === 'disconnected' ? 'Dismiss' : 'Disconnect'}
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z" />
-          </svg>
+          <PhoneOff className="w-4 h-4" />
         </button>
       </div>
     </div>
