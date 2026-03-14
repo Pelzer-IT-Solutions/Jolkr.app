@@ -338,8 +338,16 @@ wsClient.on((op, d) => {
     }
     case 'MemberJoin': {
       const serverId = d.server_id as string;
+      const userId = d.user_id as string;
       if (!serverId) break;
-      if (!store.servers.some((s) => s.id === serverId)) break;
+      if (!store.servers.some((s) => s.id === serverId)) {
+        // Server not in store yet — if WE just joined, refresh the server list
+        const currentUserId = useAuthStore.getState().user?.id;
+        if (userId === currentUserId) {
+          useServersStore.getState().fetchServers();
+        }
+        break;
+      }
       store.fetchMembers(serverId).catch(() => {});
       break;
     }

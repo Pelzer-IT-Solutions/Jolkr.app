@@ -141,6 +141,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
 
   const sendMessage = useMessagesStore((s) => s.sendMessage);
   const sendDmMessage = useMessagesStore((s) => s.sendDmMessage);
+  const addMessage = useMessagesStore((s) => s.addMessage);
   const fetchMessages = useMessagesStore((s) => s.fetchMessages);
 
   const mentionMatches = useMemo(() => {
@@ -270,6 +271,8 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       } else {
         msg = await sendMessage(channelId, msgContent, replyTo?.id);
       }
+      // Optimistic: add message to store immediately (dedup handles WS duplicate)
+      if (msg) addMessage(channelId, msg);
       setContent('');
       onCancelReply?.();
       // Reset textarea height
@@ -562,7 +565,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
             </button>
           )}
 
-          <div className="flex items-center gap-2 rounded-full bg-bg border border-divider px-3.5 py-2.5 flex-1">
+          <div className="flex items-center gap-2 rounded-full bg-bg border border-divider focus-within:border-border-accent transition-colors px-3.5 py-2.5 flex-1">
             <div className="relative flex flex-1 self-center">
               {content && (
                 <div
@@ -748,7 +751,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-3 rounded-xl bg-surface border border-divider px-4 py-3 flex-1">
+        <div className="flex items-center gap-3 rounded-xl bg-surface border border-divider focus-within:border-border-accent transition-colors px-4 py-3 flex-1">
           {canAttach && (
             <button
               onClick={() => fileInputRef.current?.click()}

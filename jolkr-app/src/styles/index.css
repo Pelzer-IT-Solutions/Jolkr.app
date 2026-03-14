@@ -174,7 +174,16 @@ a, button, [role="button"], [role="link"] {
 
 /* ─── Input resets ─── */
 
-input, textarea, select { outline: none; }
+input, textarea, select {
+  outline: none;
+  caret-color: var(--color-accent);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--color-border-accent);
+}
 select {
   -webkit-appearance: none;
   -moz-appearance: none;

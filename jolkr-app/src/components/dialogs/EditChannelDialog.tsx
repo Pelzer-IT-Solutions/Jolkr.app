@@ -649,7 +649,7 @@ function WebhooksTab({ channelId }: { channelId: string }) {
   };
 
   const copyWebhookUrl = (wh: Webhook) => {
-    const url = `${window.location.origin}/api/webhooks/${wh.id}/${wh.token ?? ''}`;
+    const url = `https://jolkr.app/api/webhooks/${wh.id}/${wh.token ?? ''}`;
     navigator.clipboard.writeText(url);
     setCopiedId(wh.id);
     setTimeout(() => setCopiedId(null), 2000);

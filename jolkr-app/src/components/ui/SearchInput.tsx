@@ -8,7 +8,7 @@ interface SearchInputProps extends InputHTMLAttributes<HTMLInputElement> {
 const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   ({ compact, className, ...props }, ref) => {
     return (
-      <div className="relative">
+      <div className="relative rounded-lg ring-1 ring-transparent focus-within:ring-border-accent transition-shadow">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary size-4" />
         <input
           ref={ref}

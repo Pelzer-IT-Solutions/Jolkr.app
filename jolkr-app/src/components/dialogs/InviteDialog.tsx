@@ -83,9 +83,7 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
   const toast = useToast((s) => s.show);
 
   const getInviteUrl = (code: string) => {
-    const origin = window.location.origin;
-    const base = window.location.pathname.startsWith('/app') ? '/app' : '';
-    return `${origin}${base}/invite/${code}`;
+    return `https://jolkr.app/app/invite/${code}`;
   };
 
   const handleCopy = async (code: string) => {

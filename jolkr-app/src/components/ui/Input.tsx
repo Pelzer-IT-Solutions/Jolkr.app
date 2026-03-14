@@ -16,7 +16,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <div className="relative">
+        <div className={`relative rounded-lg border bg-input focus-within:border-border-accent transition-colors ${error ? 'border-danger' : 'border-divider'}`}>
           {icon && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">
               {icon}
@@ -25,12 +25,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             className={`
-              w-full bg-input text-text-primary text-sm rounded-lg border border-divider
+              w-full bg-transparent text-text-primary text-sm rounded-lg
               py-3 px-4 placeholder:text-text-tertiary
-              focus:border-border-accent focus:outline-none
+              focus:outline-none
               disabled:opacity-50 disabled:cursor-not-allowed
               ${icon ? 'pl-10' : ''}
-              ${error ? 'border-danger' : ''}
               ${className ?? ''}
             `.trim()}
             {...props}
