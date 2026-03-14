@@ -293,8 +293,10 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
                         onOpen={() => setLightboxIndex(i)}
                         onRefreshUrl={async () => {
                           try {
-                            const fresh = await api.getMessageAttachments(message.id);
-                            const match = fresh.find((a) => a.id === att.id);
+                            await useMessagesStore.getState().fetchMessages(message.channel_id, !!isDm);
+                            const msgs = useMessagesStore.getState().messages[message.channel_id] ?? [];
+                            const freshMsg = msgs.find((m) => m.id === message.id);
+                            const match = freshMsg?.attachments?.find((a) => a.id === att.id);
                             return match ? rewriteStorageUrl(match.url) ?? match.url : undefined;
                           } catch { return undefined; }
                         }}
@@ -555,6 +557,16 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
   const [errored, setErrored] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(src);
   const retriedRef = useRef(false);
+  const prevSrcRef = useRef(src);
+
+  // Pick up fresh URL from parent (e.g. after message refetch)
+  if (src !== prevSrcRef.current) {
+    prevSrcRef.current = src;
+    setCurrentSrc(src);
+    setErrored(false);
+    setLoaded(false);
+    retriedRef.current = false;
+  }
 
   const handleError = async () => {
     if (!retriedRef.current && onRefreshUrl) {
