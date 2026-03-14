@@ -89,7 +89,7 @@ export default function DmChat() {
 
   // Remember last opened DM for home button navigation
   useEffect(() => {
-    if (dmId) localStorage.setItem('jolkr_last_dm', dmId);
+    if (dmId) sessionStorage.setItem('jolkr_last_dm', dmId);
   }, [dmId]);
 
   // Fetch DM channel info + member users (uses cached DMs list)

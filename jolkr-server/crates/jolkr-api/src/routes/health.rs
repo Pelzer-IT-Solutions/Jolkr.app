@@ -201,9 +201,9 @@ fn format_uptime(seconds: u64) -> String {
 
 fn service_row(name: &str, s: &ServiceStatus) -> String {
     let (dot, color, status_text) = if s.status == "up" {
-        ("●", "#22c55e", "Operational")
+        ("●", "#3FB950", "Operational")
     } else {
-        ("●", "#ef4444", "Down")
+        ("●", "#F85149", "Down")
     };
 
     let latency = s
@@ -214,18 +214,18 @@ fn service_row(name: &str, s: &ServiceStatus) -> String {
     let error_html = s
         .error
         .as_ref()
-        .map(|e| format!(r#"<span style="color:#94a3b8;font-size:12px;margin-left:8px">({e})</span>"#))
+        .map(|e| format!(r#"<span style="color:#8B949E;font-size:12px;margin-left:8px">({e})</span>"#))
         .unwrap_or_default();
 
     format!(
-        r#"<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1e1b2e;border-radius:8px;margin-bottom:8px">
+        r#"<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#1C2333;border:1px solid #30363D;border-radius:12px;margin-bottom:8px">
   <div style="display:flex;align-items:center;gap:10px">
     <span style="color:{color};font-size:18px">{dot}</span>
     <span style="font-weight:500">{name}</span>
     {error_html}
   </div>
   <div style="display:flex;align-items:center;gap:12px">
-    <span style="color:#94a3b8;font-size:13px">{latency}</span>
+    <span style="color:#8B949E;font-size:13px">{latency}</span>
     <span style="color:{color};font-size:13px;font-weight:500">{status_text}</span>
   </div>
 </div>"#
@@ -234,9 +234,9 @@ fn service_row(name: &str, s: &ServiceStatus) -> String {
 
 fn render_html(overall: &str, uptime: u64, services: &Services) -> String {
     let (badge_color, badge_bg) = match overall {
-        "healthy" => ("#22c55e", "rgba(34,197,94,0.12)"),
-        "degraded" => ("#eab308", "rgba(234,179,8,0.12)"),
-        _ => ("#ef4444", "rgba(239,68,68,0.12)"),
+        "healthy" => ("#3FB950", "rgba(63,185,80,0.12)"),
+        "degraded" => ("#E3B341", "rgba(227,179,65,0.12)"),
+        _ => ("#F85149", "rgba(248,81,73,0.12)"),
     };
 
     let badge_text = match overall {
@@ -266,15 +266,16 @@ fn render_html(overall: &str, uptime: u64, services: &Services) -> String {
 <title>Jolkr — Service Status</title>
 <style>
   *{{margin:0;padding:0;box-sizing:border-box}}
-  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0d1a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 16px}}
-  a{{color:#a78bfa;text-decoration:none}}
+  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D1117;color:#F0F6FC;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 16px}}
+  a{{color:#2DD4BF;text-decoration:none}}
+  a:hover{{color:#5EEAD4}}
   .container{{max-width:600px;width:100%}}
   .header{{text-align:center;margin-bottom:32px}}
   .header h1{{font-size:28px;font-weight:700;margin-bottom:4px}}
-  .header h1 span{{color:#a78bfa}}
+  .header h1 span{{color:#2DD4BF}}
   .badge{{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:14px;font-weight:500;margin-top:12px}}
-  .meta{{display:flex;justify-content:space-between;font-size:13px;color:#94a3b8;margin-bottom:16px;padding:0 4px}}
-  .footer{{text-align:center;margin-top:32px;font-size:12px;color:#64748b}}
+  .meta{{display:flex;justify-content:space-between;font-size:13px;color:#8B949E;margin-bottom:16px;padding:0 4px}}
+  .footer{{text-align:center;margin-top:32px;font-size:12px;color:#8B949E}}
 </style>
 </head>
 <body>

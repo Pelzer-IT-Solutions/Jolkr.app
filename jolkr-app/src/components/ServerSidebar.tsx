@@ -124,7 +124,7 @@ export default function ServerSidebar() {
       {/* Home button header */}
       <div className="w-full flex items-center justify-center shrink-0 relative">
         <Link
-          to={localStorage.getItem('jolkr_last_dm') ? `/dm/${localStorage.getItem('jolkr_last_dm')}` : '/'}
+          to={sessionStorage.getItem('jolkr_last_dm') ? `/dm/${sessionStorage.getItem('jolkr_last_dm')}` : '/'}
           onMouseEnter={() => setHovered('home')}
           onMouseLeave={() => setHovered(null)}
           className={`size-12 flex items-center justify-center transition-all duration-200 no-underline`}
