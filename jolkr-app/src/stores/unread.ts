@@ -96,4 +96,12 @@ wsClient.on((op, d) => {
     if ((raw?.author_id as string) === currentUserId) return;
     useUnreadStore.getState().increment(channelId);
   }
+
+  // Sync read state across sessions: when current user reads on another device
+  if (op === 'DmMessagesRead') {
+    const currentUserId = useAuthStore.getState().user?.id;
+    if ((d.user_id as string) === currentUserId) {
+      useUnreadStore.getState().markRead(d.dm_id as string);
+    }
+  }
 });

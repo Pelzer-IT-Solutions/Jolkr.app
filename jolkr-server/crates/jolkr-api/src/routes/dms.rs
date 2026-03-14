@@ -618,7 +618,7 @@ pub async fn mark_as_read(
         DmService::mark_as_read(&state.pool, dm_id, auth.user_id, body.message_id).await?;
 
     if should_broadcast {
-        // Broadcast DmMessagesRead to other DM members
+        // Broadcast DmMessagesRead to ALL DM members (including reader's other sessions)
         let event = crate::ws::events::GatewayEvent::DmMessagesRead {
             dm_id,
             user_id: auth.user_id,
@@ -626,9 +626,7 @@ pub async fn mark_as_read(
         };
         if let Ok(members) = DmRepo::get_dm_members(&state.pool, dm_id).await {
             for member in &members {
-                if member.user_id != auth.user_id {
-                    state.nats.publish_to_user(member.user_id, &event).await;
-                }
+                state.nats.publish_to_user(member.user_id, &event).await;
             }
         }
     }
@@ -759,7 +757,9 @@ pub async fn accept_call(
         dm_id,
         user_id: auth.user_id,
     };
+    // Broadcast to both users so all sessions sync
     state.nats.publish_to_user(other_id, &event).await;
+    state.nats.publish_to_user(auth.user_id, &event).await;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
@@ -774,7 +774,9 @@ pub async fn reject_call(
         dm_id,
         user_id: auth.user_id,
     };
+    // Broadcast to both users so all sessions sync
     state.nats.publish_to_user(other_id, &event).await;
+    state.nats.publish_to_user(auth.user_id, &event).await;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
@@ -789,6 +791,8 @@ pub async fn end_call(
         dm_id,
         user_id: auth.user_id,
     };
+    // Broadcast to both users so all sessions sync
     state.nats.publish_to_user(other_id, &event).await;
+    state.nats.publish_to_user(auth.user_id, &event).await;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

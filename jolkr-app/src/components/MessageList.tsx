@@ -49,12 +49,16 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const initialScrollDoneRef = useRef(false);
   const lastSeenMsgId = useUnreadStore((s) => s.lastSeenMessageId[channelId]);
 
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const unreadSepIndex = useMemo(() => {
     if (!lastSeenMsgId) return -1;
     const idx = msgs.findIndex((m) => m.id === lastSeenMsgId);
     if (idx === -1 || idx === msgs.length - 1) return -1;
-    return idx + 1; // separator appears BEFORE this message
-  }, [lastSeenMsgId, msgs]);
+    // Don't show separator if all messages after it are from the current user
+    const hasOtherMessages = msgs.slice(idx + 1).some((m) => m.author_id !== currentUserId);
+    if (!hasOtherMessages) return -1;
+    return idx + 1;
+  }, [lastSeenMsgId, msgs, currentUserId]);
 
   // Virtualizer — use message IDs as item keys so stale measurements from
   // a previous channel are never reused (different messages = different keys).

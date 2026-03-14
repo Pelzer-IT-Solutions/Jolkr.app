@@ -87,6 +87,11 @@ export default function DmChat() {
     if (isMobile && dmId) setShowSidebar(false);
   }, [dmId, isMobile, setShowSidebar]);
 
+  // Remember last opened DM for home button navigation
+  useEffect(() => {
+    if (dmId) localStorage.setItem('jolkr_last_dm', dmId);
+  }, [dmId]);
+
   // Fetch DM channel info + member users (uses cached DMs list)
   const fetchChannelInfo = useCallback(() => {
     if (!dmId) return;

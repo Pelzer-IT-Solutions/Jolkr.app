@@ -155,7 +155,16 @@ export const useCallStore = create<CallState>((set, get) => ({
   },
 
   handleAccepted: (dmId) => {
-    const { outgoingCall } = get();
+    const { outgoingCall, incomingCall } = get();
+
+    // Another session accepted our incoming call — dismiss the ring dialog
+    if (incomingCall?.dmId === dmId) {
+      clearRingTimer();
+      stopRingSound();
+      set({ incomingCall: null });
+      return;
+    }
+
     if (!outgoingCall || outgoingCall.dmId !== dmId) return;
 
     clearRingTimer();
@@ -170,7 +179,16 @@ export const useCallStore = create<CallState>((set, get) => ({
   },
 
   handleRejected: (dmId) => {
-    const { outgoingCall } = get();
+    const { outgoingCall, incomingCall } = get();
+
+    // Another session rejected our incoming call — dismiss the ring dialog
+    if (incomingCall?.dmId === dmId) {
+      clearRingTimer();
+      stopRingSound();
+      set({ incomingCall: null });
+      return;
+    }
+
     if (!outgoingCall || outgoingCall.dmId !== dmId) return;
 
     clearRingTimer();
