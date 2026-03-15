@@ -260,6 +260,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
                     compact={!hasSep && isCompact(i)}
                     author={users[msg.author_id]}
                     isDm={isDm}
+                    channelId={channelId}
                     onReply={onReply}
                     onOpenThread={onOpenThread}
                     replyMessage={replyMessage}

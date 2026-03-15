@@ -30,6 +30,7 @@ export interface MessageTileProps {
   compact?: boolean;
   author?: User;
   isDm?: boolean;
+  channelId?: string;
   onReply?: (message: Message) => void;
   onOpenThread?: (message: Message) => void;
   hideThreadButton?: boolean;
@@ -37,7 +38,7 @@ export interface MessageTileProps {
   replyAuthor?: User;
 }
 
-function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThread, hideThreadButton, replyMessage, replyAuthor }: MessageTileProps) {
+function MessageTileInner({ message, compact, author, isDm, channelId, onReply, onOpenThread, hideThreadButton, replyMessage, replyAuthor }: MessageTileProps) {
   const user = useAuthStore((s) => s.user);
   const editMessage = useMessagesStore((s) => s.editMessage);
   const deleteMessage = useMessagesStore((s) => s.deleteMessage);
@@ -59,7 +60,7 @@ function MessageTileInner({ message, compact, author, isDm, onReply, onOpenThrea
 
   const { displayContent, isEncrypted } = useDecryptedContent(
     message.content, message.encrypted_content, message.nonce, isDm,
-    user?.id === message.author_id,
+    user?.id === message.author_id, channelId,
   );
   const hasText = !!displayContent && displayContent.trim().length > 0 && displayContent !== '\u200B';
 

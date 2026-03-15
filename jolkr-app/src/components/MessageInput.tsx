@@ -5,7 +5,9 @@ import type { Message, User } from '../api/types';
 import { useMessagesStore } from '../stores/messages';
 import { wsClient } from '../api/ws';
 import * as api from '../api/client';
-import { isE2EEReady, encryptDmMessage } from '../services/e2ee';
+import { useAuthStore } from '../stores/auth';
+import { isE2EEReady, getLocalKeys } from '../services/e2ee';
+import { encryptChannelMessage } from '../crypto/channelKeys';
 import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../utils/emoji';
 import { isMobile as isMobilePlatform } from '../platform/detect';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -68,7 +70,7 @@ function SortableFileChip({ file, id, index, onRemove }: { file: File; id: strin
   );
 }
 
-export default function MessageInput({ channelId, isDm, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles }: MessageInputProps) {
+export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [sending, setSending] = useState(false);
@@ -139,6 +141,7 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
     }
   }, [canAttach]);
 
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const sendMessage = useMessagesStore((s) => s.sendMessage);
   const sendDmMessage = useMessagesStore((s) => s.sendDmMessage);
   const addMessage = useMessagesStore((s) => s.addMessage);
@@ -259,10 +262,18 @@ export default function MessageInput({ channelId, isDm, recipientUserId, replyTo
       let msg;
       const msgContent = text || (files.length > 0 ? '\u200B' : '');
       if (!msgContent) return;
-      if (isDm && isE2EEReady() && recipientUserId) {
-        const encrypted = await encryptDmMessage(recipientUserId, msgContent);
-        if (encrypted) {
-          msg = await sendDmMessage(channelId, msgContent, replyTo?.id, encrypted.encryptedContent, encrypted.nonce);
+      if (isDm && isE2EEReady()) {
+        const keys = getLocalKeys();
+        const otherIds = dmMemberIds ?? (recipientUserId ? [recipientUserId] : []);
+        const memberIds = currentUserId ? [...new Set([currentUserId, ...otherIds])] : otherIds;
+        if (keys && memberIds.length > 0) {
+          const getMemberIds = async () => memberIds;
+          const encrypted = await encryptChannelMessage(channelId, keys, msgContent, getMemberIds, true);
+          if (encrypted) {
+            msg = await sendDmMessage(channelId, null, replyTo?.id, encrypted.encryptedContent, encrypted.nonce);
+          } else {
+            msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
+          }
         } else {
           msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
         }
