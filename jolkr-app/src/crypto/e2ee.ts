@@ -173,12 +173,22 @@ export function generateKeySet(): LocalKeySet {
 }
 
 /**
- * Derive a deterministic E2EE seed from the user's password.
- * All devices with the same password produce the same seed → same keys.
+ * Derive a deterministic E2EE seed from the user's password using PBKDF2.
+ * Uses 210,000 iterations with the user's ID as salt to prevent:
+ * - Brute-force attacks (work factor makes GPU attacks ~210k× slower)
+ * - Rainbow tables (salt makes each user's seed unique)
+ * All devices with the same password + userId produce the same seed → same keys.
  */
-export async function deriveE2EESeed(password: string): Promise<Uint8Array> {
-  const input = new TextEncoder().encode(password + 'jolkr-e2ee-seed-v1');
-  return new Uint8Array(await crypto.subtle.digest('SHA-256', input));
+export async function deriveE2EESeed(password: string, userId: string): Promise<Uint8Array> {
+  const salt = new TextEncoder().encode('jolkr-e2ee-v2:' + userId);
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 210_000, hash: 'SHA-256' },
+    keyMaterial, 256,
+  );
+  return new Uint8Array(bits);
 }
 
 /**

@@ -18,14 +18,17 @@ export default function Register() {
     try {
       await register(email, username, password);
 
-      // Init E2EE with deterministic keys derived from password
-      const seed = await deriveE2EESeed(password);
-      let deviceId = localStorage.getItem('jolkr_e2ee_device_id');
-      if (!deviceId) {
-        deviceId = crypto.randomUUID();
-        localStorage.setItem('jolkr_e2ee_device_id', deviceId);
+      // Init E2EE with deterministic keys derived from password + userId (PBKDF2)
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        const seed = await deriveE2EESeed(password, userId);
+        let deviceId = localStorage.getItem('jolkr_e2ee_device_id');
+        if (!deviceId) {
+          deviceId = crypto.randomUUID();
+          localStorage.setItem('jolkr_e2ee_device_id', deviceId);
+        }
+        initE2EE(deviceId, seed).catch(console.warn);
       }
-      initE2EE(deviceId, seed).catch(console.warn);
 
       navigate('/');
     } catch { /* error is in store */ }
