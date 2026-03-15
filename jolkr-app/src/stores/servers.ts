@@ -55,7 +55,8 @@ export const useServersStore = create<ServersState>((set, get) => ({
   loading: false,
 
   fetchServers: async () => {
-    set({ loading: true });
+    // Only show loading spinner on initial fetch — refetches update silently
+    if (!get().servers.length) set({ loading: true });
     try {
       const servers = await api.getServers();
       set({ servers, loading: false });

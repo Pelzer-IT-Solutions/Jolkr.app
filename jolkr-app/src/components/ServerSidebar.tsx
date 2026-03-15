@@ -58,7 +58,7 @@ function SortableServerItem({ id, children }: { id: string; children: React.Reac
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: 'none',
     opacity: isDragging ? 0.5 : 1,
   };
   return (
@@ -97,16 +97,34 @@ export default function ServerSidebar() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const serverIds = useMemo(() => servers.map((s) => s.id), [servers]);
 
+  // Native document-level click interceptor — fires before React's event system
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dragLockRef.current) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        dragLockRef.current = false;
+      }
+    };
+    document.addEventListener('click', handler, true); // capture phase
+    return () => document.removeEventListener('click', handler, true);
+  }, []);
+
   const onDragEnd = useCallback((event: DragEndEvent) => {
     dragLockRef.current = true;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = servers.findIndex((s) => s.id === active.id);
-    const newIndex = servers.findIndex((s) => s.id === over.id);
+    const current = useServersStore.getState().servers;
+    const oldIndex = current.findIndex((s) => s.id === active.id);
+    const newIndex = current.findIndex((s) => s.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
-    const reordered = arrayMove(servers, oldIndex, newIndex);
+    const reordered = arrayMove(current, oldIndex, newIndex);
     reorderServers(reordered.map((s) => s.id));
-  }, [servers, reorderServers]);
+  }, [reorderServers]);
+
+  const onDragCancel = useCallback(() => {
+    dragLockRef.current = true;
+  }, []);
 
   const handleContextMenu = (e: React.MouseEvent, sId: string) => {
     e.preventDefault();
@@ -137,7 +155,7 @@ export default function ServerSidebar() {
 
       <div className="flex-1 flex flex-col items-center py-2 gap-2 overflow-y-auto w-full">
         {/* Server icons */}
-        <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
           <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
             {servers.map((server) => {
               const serverChannelIds = (channels[server.id] ?? []).map((c) => c.id);

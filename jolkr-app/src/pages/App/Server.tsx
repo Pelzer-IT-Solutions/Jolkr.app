@@ -37,7 +37,7 @@ export default function ServerPage() {
   useEffect(() => { setFetchAttempted(false); }, [serverId]);
 
   if (!server) {
-    if (serversLoading || !fetchAttempted) {
+    if (!fetchAttempted || (serversLoading && servers.length === 0)) {
       return (
         <div className="flex-1 flex items-center justify-center bg-panel">
           <p className="text-text-tertiary">Loading server...</p>
