@@ -99,7 +99,7 @@ impl ChannelEncryptionService {
         user_id: Uuid,
     ) -> Result<bool, JolkrError> {
         let row = sqlx::query_as::<_, (i64,)>(
-            "SELECT COUNT(*) FROM dm_members WHERE dm_id = $1 AND user_id = $2",
+            "SELECT COUNT(*) FROM dm_members WHERE dm_channel_id = $1 AND user_id = $2",
         )
         .bind(dm_id)
         .bind(user_id)
