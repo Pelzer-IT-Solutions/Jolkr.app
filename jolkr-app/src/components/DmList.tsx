@@ -316,8 +316,8 @@ export default function DmList({ onDmSelect }: DmListProps) {
                 onClick={() => startDm(u.id)}
                 className="w-full px-4 py-2 rounded flex items-center gap-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary"
               >
-                <Avatar url={u.avatar_url} name={u.username} size={28} userId={u.id} />
-                <span className="truncate">{u.username}</span>
+                <Avatar url={u.avatar_url} name={u.display_name || u.username} size={28} userId={u.id} />
+                <span className="truncate">{u.display_name || u.username}</span>
               </button>
             ))}
           </div>
@@ -424,7 +424,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
       {confirmAction?.type === 'block' && (() => {
         const otherIds = confirmAction.dm.members.filter((id) => id !== currentUser?.id);
         const otherUser = otherIds[0] ? users[otherIds[0]] : null;
-        const name = otherUser?.username ?? 'this user';
+        const name = (otherUser?.display_name || otherUser?.username) ?? 'this user';
         return (
           <ConfirmDialog
             title="Block User"

@@ -276,7 +276,7 @@ export default function DmChat() {
     if (dmChannel.name) return dmChannel.name;
     const names = dmChannel.members
       .filter((id) => id !== currentUser?.id)
-      .map((id) => memberUsers[id]?.username)
+      .map((id) => { const u = memberUsers[id]; return u?.display_name || u?.username; })
       .filter(Boolean);
     return names.join(', ') || 'Group DM';
   }, [isGroup, dmChannel, currentUser?.id, memberUsers]);
@@ -382,22 +382,22 @@ export default function DmChat() {
             ) : (
               /* 1-on-1 DM header */
               <>
-                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.username} size="sm" status={partnerStatus} userId={otherUser.id} />}
-                <span className="text-base font-semibold text-text-primary">{otherUser?.username ?? 'Direct Message'}</span>
+                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.display_name || otherUser.username} size="sm" status={partnerStatus} userId={otherUser.id} />}
+                <span className="text-base font-semibold text-text-primary">{(otherUser?.display_name || otherUser?.username) ?? 'Direct Message'}</span>
                 {e2eeAvailable && (
                   <span title="End-to-end encrypted"><Lock className="w-4 h-4 text-green-400" /></span>
                 )}
                 <div className="flex-1" />
                 {isMobile ? (
                   <div className="flex items-center gap-3">
-                    <CallButton dmId={dmId!} recipientName={otherUser?.username ?? 'User'} recipientUserId={otherUser?.id} iconClassName="size-5 text-text-secondary" />
+                    <CallButton dmId={dmId!} recipientName={(otherUser?.display_name || otherUser?.username) ?? 'User'} recipientUserId={otherUser?.id} iconClassName="size-5 text-text-secondary" />
                     <button className="text-text-secondary hover:text-text-primary" aria-label="More options">
                       <MoreVertical className="size-5" />
                     </button>
                   </div>
                 ) : (
                   <div className="gap-4 flex ml-auto">
-                    <CallButton dmId={dmId!} recipientName={otherUser?.username ?? 'User'} recipientUserId={otherUser?.id} />
+                    <CallButton dmId={dmId!} recipientName={(otherUser?.display_name || otherUser?.username) ?? 'User'} recipientUserId={otherUser?.id} />
                   </div>
                 )}
               </>
@@ -447,9 +447,9 @@ export default function DmChat() {
                     if (!user) return null;
                     return (
                       <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-hover">
-                        <Avatar url={user.avatar_url} name={user.username} size={28} status={status} userId={memberId} />
+                        <Avatar url={user.avatar_url} name={user.display_name || user.username} size={28} status={status} userId={memberId} />
                         <span className="text-text-secondary text-sm truncate">
-                          {user.username}
+                          {user.display_name || user.username}
                           {memberId === currentUser?.id && <span className="text-text-tertiary text-xs ml-1">(you)</span>}
                         </span>
                       </div>
@@ -472,8 +472,8 @@ export default function DmChat() {
                       disabled={addingMember}
                       className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-hover hover:text-text-primary disabled:opacity-50"
                     >
-                      <Avatar url={u.avatar_url} name={u.username} size={20} userId={u.id} />
-                      <span className="truncate">{u.username}</span>
+                      <Avatar url={u.avatar_url} name={u.display_name || u.username} size={20} userId={u.id} />
+                      <span className="truncate">{u.display_name || u.username}</span>
                     </button>
                   ))}
                   {actionError && <div className="text-xs text-danger mt-1 px-1">{actionError}</div>}

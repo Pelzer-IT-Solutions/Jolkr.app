@@ -187,14 +187,14 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
         </div>
       ) : message.webhook_id ? (
         <div className="shrink-0">
-          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={mobile ? 32 : 40} userId={message.author_id} />
+          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? (author?.display_name || author?.username) ?? '?'} size={mobile ? 32 : 40} userId={message.author_id} />
         </div>
       ) : (
         <button
           className="shrink-0 cursor-pointer"
           onClick={(e) => setProfileAnchor({ x: e.clientX, y: e.clientY })}
         >
-          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? author?.username ?? '?'} size={mobile ? 32 : 40} userId={message.author_id} />
+          <Avatar url={message.webhook_avatar ?? author?.avatar_url} name={message.webhook_name ?? (author?.display_name || author?.username) ?? '?'} size={mobile ? 32 : 40} userId={message.author_id} />
         </button>
       )}
 
@@ -219,7 +219,7 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
                 className="text-sm font-semibold text-accent hover:underline cursor-pointer truncate max-w-75"
                 onClick={(e) => setProfileAnchor({ x: e.clientX, y: e.clientY })}
               >
-                {author?.username ?? 'Unknown'}
+                {(author?.display_name || author?.username) ?? 'Unknown'}
               </button>
             )}
             {message.webhook_id && (

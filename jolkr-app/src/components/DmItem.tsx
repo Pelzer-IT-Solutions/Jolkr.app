@@ -22,7 +22,7 @@ function getDmDisplay(dm: DmChannel, users: Record<string, User>, currentUserId:
 
   if (dm.is_group) {
     const memberNames = otherIds
-      .map((id) => users[id]?.username)
+      .map((id) => { const u = users[id]; return u?.display_name || u?.username; })
       .filter(Boolean)
       .join(', ');
     const displayName = dm.name || memberNames || 'Group DM';
@@ -32,7 +32,7 @@ function getDmDisplay(dm: DmChannel, users: Record<string, User>, currentUserId:
 
   const otherId = otherIds.length > 0 ? otherIds[0] : null;
   const otherUser = otherId ? users[otherId] : null;
-  const displayName = dm.name ?? otherUser?.username ?? 'Direct Message';
+  const displayName = dm.name ?? (otherUser?.display_name || otherUser?.username) ?? 'Direct Message';
   return { displayName, subtitle: null, isGroup: false, otherIds, otherId, otherUser };
 }
 
