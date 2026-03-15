@@ -262,23 +262,22 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
       let msg;
       const msgContent = text || (files.length > 0 ? '\u200B' : '');
       if (!msgContent) return;
-      if (isDm && isE2EEReady()) {
+      if (isDm) {
+        if (!isE2EEReady()) {
+          throw new Error('Encryption keys not loaded. Please log out and log in again.');
+        }
         const keys = getLocalKeys();
+        if (!keys) {
+          throw new Error('Encryption keys not available. Please log out and log in again.');
+        }
         const otherIds = dmMemberIds ?? (recipientUserId ? [recipientUserId] : []);
         const memberIds = currentUserId ? [...new Set([currentUserId, ...otherIds])] : otherIds;
-        if (keys && memberIds.length > 0) {
-          const getMemberIds = async () => memberIds;
-          const encrypted = await encryptChannelMessage(channelId, keys, msgContent, getMemberIds, true);
-          if (encrypted) {
-            msg = await sendDmMessage(channelId, null, replyTo?.id, encrypted.encryptedContent, encrypted.nonce);
-          } else {
-            msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
-          }
-        } else {
-          msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
+        const getMemberIds = async () => memberIds;
+        const encrypted = await encryptChannelMessage(channelId, keys, msgContent, getMemberIds, true);
+        if (!encrypted) {
+          throw new Error('Could not encrypt message. The recipient may need to log in first to set up encryption keys.');
         }
-      } else if (isDm) {
-        msg = await sendDmMessage(channelId, msgContent, replyTo?.id);
+        msg = await sendDmMessage(channelId, null, replyTo?.id, encrypted.encryptedContent, encrypted.nonce);
       } else {
         msg = await sendMessage(channelId, msgContent, replyTo?.id);
       }
