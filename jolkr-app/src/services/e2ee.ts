@@ -15,8 +15,10 @@ import type { PreKeyBundleResponse } from '../api/types';
 
 let localKeys: LocalKeySet | null = null;
 
-/** Cache TTL: 5 minutes. Stale bundles cause undecryptable messages. */
+/** Cache TTL for successful bundles: 5 minutes. */
 const BUNDLE_CACHE_TTL = 5 * 60 * 1000;
+/** Cache TTL for failed/null bundles: 10 seconds (recipient may log in soon). */
+const BUNDLE_NULL_CACHE_TTL = 10 * 1000;
 interface CachedBundle { bundle: PreKeyBundle | null; fetchedAt: number; }
 const bundleCache = new Map<string, CachedBundle>();
 
@@ -98,10 +100,13 @@ export function getLocalKeys(): LocalKeySet | null {
  * Fetch and cache a recipient's prekey bundle. Returns null if no keys available.
  */
 export async function getRecipientBundle(userId: string): Promise<PreKeyBundle | null> {
-  // Check cache with TTL
+  // Check cache with TTL (shorter TTL for null results so we retry quickly)
   const cached = bundleCache.get(userId);
-  if (cached && Date.now() - cached.fetchedAt < BUNDLE_CACHE_TTL) {
-    return cached.bundle;
+  if (cached) {
+    const ttl = cached.bundle ? BUNDLE_CACHE_TTL : BUNDLE_NULL_CACHE_TTL;
+    if (Date.now() - cached.fetchedAt < ttl) {
+      return cached.bundle;
+    }
   }
 
   try {
