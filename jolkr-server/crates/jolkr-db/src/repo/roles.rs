@@ -294,7 +294,7 @@ impl RoleRepo {
     /// Avoids N+1 queries when checking permissions for many members on the same channel.
     pub async fn compute_channel_permissions_with_cache(
         pool: &PgPool,
-        server_id: Uuid,
+        _server_id: Uuid,
         member_id: Uuid,
         overwrites: &[ChannelOverwriteRow],
         everyone_role: Option<&RoleRow>,
