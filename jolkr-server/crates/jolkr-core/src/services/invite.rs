@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
 use jolkr_db::models::InviteRow;
-use jolkr_db::repo::{BanRepo, InviteRepo, MemberRepo, RoleRepo, ServerRepo};
+use jolkr_db::repo::{InviteRepo, MemberRepo, RoleRepo, ServerRepo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InviteInfo {
@@ -89,28 +89,58 @@ impl InviteService {
     ) -> Result<InviteInfo, JolkrError> {
         let invite = InviteRepo::get_by_code(pool, code).await?;
 
+        // Use a transaction so ban check + invite use + member add are atomic.
+        // If any step fails, everything rolls back (no consumed invite slots on failure).
+        let mut tx = pool.begin().await.map_err(|e| JolkrError::Internal(e.to_string()))?;
+
         // Check if user is banned from this server
-        if BanRepo::is_banned(pool, invite.server_id, user_id).await? {
+        let is_banned: bool = sqlx::query_scalar(
+            r#"SELECT EXISTS(SELECT 1 FROM server_bans WHERE server_id = $1 AND user_id = $2)"#,
+        )
+        .bind(invite.server_id)
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| JolkrError::Internal(e.to_string()))?;
+        if is_banned {
             return Err(JolkrError::Forbidden);
         }
 
         // Atomically increment use count — returns false if invite is exhausted/expired
-        let incremented = InviteRepo::use_invite(pool, invite.id).await?;
-        if !incremented {
+        let result = sqlx::query(
+            r#"UPDATE invites SET use_count = use_count + 1
+               WHERE id = $1
+                 AND (max_uses IS NULL OR use_count < max_uses)
+                 AND (expires_at IS NULL OR expires_at > NOW())"#,
+        )
+        .bind(invite.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| JolkrError::Internal(e.to_string()))?;
+        if result.rows_affected() == 0 {
             return Err(JolkrError::BadRequest(
                 "This invite has expired or reached its maximum number of uses".into(),
             ));
         }
 
-        // Add user as member (ON CONFLICT handles race condition)
-        MemberRepo::add_member(pool, invite.server_id, user_id)
-            .await
-            .map_err(|e| {
-                if let JolkrError::Conflict(_) = e {
-                    return JolkrError::Conflict("Already a member of this server".into());
-                }
-                e
-            })?;
+        // Add user as member
+        let member_result = sqlx::query(
+            r#"INSERT INTO members (id, server_id, user_id, joined_at)
+               VALUES ($1, $2, $3, NOW())
+               ON CONFLICT (server_id, user_id) DO NOTHING"#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(invite.server_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| JolkrError::Internal(e.to_string()))?;
+        if member_result.rows_affected() == 0 {
+            // Already a member — rollback the invite use_count increment
+            return Err(JolkrError::Conflict("Already a member of this server".into()));
+        }
+
+        tx.commit().await.map_err(|e| JolkrError::Internal(e.to_string()))?;
 
         Ok(InviteInfo::from(invite))
     }
