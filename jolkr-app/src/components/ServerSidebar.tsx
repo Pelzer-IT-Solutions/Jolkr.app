@@ -55,7 +55,7 @@ function ServerIconImg({ serverId, url, name }: { serverId: string; url: string;
 }
 
 function SortableServerItem({ id, children }: { id: string; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: 'none',
@@ -126,10 +126,12 @@ export default function ServerSidebar() {
     dragLockRef.current = true;
   }, []);
 
-  const handleContextMenu = (e: React.MouseEvent, sId: string) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent, sId: string) => {
     e.preventDefault();
-    setContextMenu({ serverId: sId, x: e.clientX, y: e.clientY });
-  };
+    const maxX = window.innerWidth - 200;
+    const maxY = window.innerHeight - 100;
+    setContextMenu({ serverId: sId, x: Math.min(e.clientX, maxX), y: Math.min(e.clientY, maxY) });
+  }, []);
 
   const contextServer = contextMenu ? servers.find((s) => s.id === contextMenu.serverId) : null;
   const isContextOwner = contextServer && currentUser?.id === contextServer.owner_id;
@@ -160,6 +162,9 @@ export default function ServerSidebar() {
             {servers.map((server) => {
               const serverChannelIds = (channels[server.id] ?? []).map((c) => c.id);
               const serverUnread = serverChannelIds.reduce((sum, id) => sum + (unreadCounts[id] ?? 0), 0);
+              const isActive = serverId === server.id;
+              const isHovered = hovered === server.id;
+              const bgClass = isActive ? 'bg-elevated border-2 border-accent' : isHovered ? 'bg-hover' : 'bg-panel';
 
               return (
                 <SortableServerItem key={server.id} id={server.id}>
@@ -170,26 +175,21 @@ export default function ServerSidebar() {
                     onMouseEnter={() => setHovered(server.id)}
                     onMouseLeave={() => setHovered(null)}
                     title={server.name}
-                    className={`size-12 rounded-2xl flex items-center justify-center transition-all duration-200 relative no-underline ${serverId === server.id
-                      ? 'bg-elevated border-2 border-accent'
-                      : hovered === server.id
-                        ? 'bg-hover'
-                        : 'bg-panel'
-                      }`}
+                    className={`size-12 rounded-2xl flex items-center justify-center transition-all duration-200 relative no-underline ${bgClass}`}
                   >
                     {server.icon_url ? (
                       <ServerIconImg serverId={server.id} url={server.icon_url} name={server.name} />
                     ) : (
-                      <span className={`${serverId === server.id || hovered === server.id ? 'text-white' : 'text-text-primary'} font-bold text-lg`}>
+                      <span className={`${isActive || isHovered ? 'text-white' : 'text-text-primary'} font-bold text-lg`}>
                         {server.name.slice(0, 2).toUpperCase()}
                       </span>
                     )}
                     {/* Active indicator */}
-                    {serverId === server.id && (
+                    {isActive && (
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5.5 w-1 h-8 bg-text-primary rounded-r-full" />
                     )}
                     {/* Unread badge */}
-                    {serverUnread > 0 && serverId !== server.id && (
+                    {serverUnread > 0 && !isActive && (
                       <div className="absolute -bottom-0.5 -right-0.5 min-w-4.5 h-4.5 bg-danger rounded-full flex items-center justify-center px-1 border-2 border-bg">
                         <span className="text-2xs font-bold text-white">{serverUnread > 99 ? '99+' : serverUnread}</span>
                       </div>

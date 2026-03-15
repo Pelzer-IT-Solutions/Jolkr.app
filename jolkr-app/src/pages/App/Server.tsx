@@ -9,17 +9,19 @@ import { useMobileNav } from '../../hooks/useMobileNav';
 import { rewriteStorageUrl } from '../../platform/config';
 import { UserPlus, ChevronLeft, Hash, Settings } from 'lucide-react';
 
+const EMPTY_MEMBERS: import('../../api/types').Member[] = [];
+
 export default function ServerPage() {
   const { serverId } = useParams<{ serverId: string }>();
   const servers = useServersStore((s) => s.servers);
   const serversLoading = useServersStore((s) => s.loading);
   const server = servers.find((s) => s.id === serverId);
-  const members = useServersStore((s) => s.members);
+  const members = useServersStore((s) => serverId ? (s.members[serverId] ?? EMPTY_MEMBERS) : EMPTY_MEMBERS);
   const [showInvites, setShowInvites] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const { showSidebar, setShowSidebar, isMobile } = useMobileNav();
-  const memberCount = server ? (server.member_count ?? members[server.id]?.length ?? 0) : 0;
+  const memberCount = server ? (server.member_count ?? members.length ?? 0) : 0;
 
   // On mobile, server landing = show sidebar (channel list)
   useEffect(() => {

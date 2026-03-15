@@ -43,6 +43,29 @@ interface ServersState {
   reset: () => void;
 }
 
+/** Remove all cached state for a server (channels, members, categories, roles, permissions, emojis). */
+function removeServerState(serverId: string, state: ServersState) {
+  const channelIds = (state.channels[serverId] ?? []).map((c) => c.id);
+  const { [serverId]: _ch, ...restChannels } = state.channels;
+  const { [serverId]: _mem, ...restMembers } = state.members;
+  const { [serverId]: _cat, ...restCategories } = state.categories;
+  const { [serverId]: _rol, ...restRoles } = state.roles;
+  const { [serverId]: _perm, ...restPermissions } = state.permissions;
+  const { [serverId]: _emo, ...restEmojis } = state.emojis;
+  const chPerms = { ...state.channelPermissions };
+  for (const cid of channelIds) delete chPerms[cid];
+  return {
+    servers: state.servers.filter((s) => s.id !== serverId),
+    channels: restChannels,
+    members: restMembers,
+    categories: restCategories,
+    roles: restRoles,
+    permissions: restPermissions,
+    channelPermissions: chPerms,
+    emojis: restEmojis,
+  };
+}
+
 export const useServersStore = create<ServersState>((set, get) => ({
   servers: [],
   channels: {},
@@ -190,25 +213,7 @@ export const useServersStore = create<ServersState>((set, get) => ({
 
   leaveServer: async (id) => {
     await api.leaveServer(id);
-    // Clean up all state for this server
-    const channelIds = (get().channels[id] ?? []).map((c) => c.id);
-    const { [id]: _ch, ...restChannels } = get().channels;
-    const { [id]: _mem, ...restMembers } = get().members;
-    const { [id]: _cat, ...restCategories } = get().categories;
-    const { [id]: _rol, ...restRoles } = get().roles;
-    const { [id]: _perm, ...restPermissions } = get().permissions;
-    // Remove channel permissions for this server's channels
-    const chPerms = { ...get().channelPermissions };
-    for (const cid of channelIds) delete chPerms[cid];
-    set({
-      servers: get().servers.filter((s) => s.id !== id),
-      channels: restChannels,
-      members: restMembers,
-      categories: restCategories,
-      roles: restRoles,
-      permissions: restPermissions,
-      channelPermissions: chPerms,
-    });
+    set(removeServerState(id, get()));
   },
 
   // Categories
@@ -408,24 +413,7 @@ wsClient.on((op, d) => {
     case 'ServerDelete': {
       const serverId = d.server_id as string;
       if (!serverId) break;
-      // Remove server and all related state
-      const channelIds = (store.channels[serverId] ?? []).map((c) => c.id);
-      const { [serverId]: _ch, ...restChannels } = store.channels;
-      const { [serverId]: _mem, ...restMembers } = store.members;
-      const { [serverId]: _cat, ...restCategories } = store.categories;
-      const { [serverId]: _rol, ...restRoles } = store.roles;
-      const { [serverId]: _perm, ...restPermissions } = store.permissions;
-      const chPerms = { ...store.channelPermissions };
-      for (const cid of channelIds) delete chPerms[cid];
-      useServersStore.setState({
-        servers: store.servers.filter((s) => s.id !== serverId),
-        channels: restChannels,
-        members: restMembers,
-        categories: restCategories,
-        roles: restRoles,
-        permissions: restPermissions,
-        channelPermissions: chPerms,
-      });
+      useServersStore.setState(removeServerState(serverId, store));
       break;
     }
   }
