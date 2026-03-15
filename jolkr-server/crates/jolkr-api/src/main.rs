@@ -51,10 +51,15 @@ async fn main() {
         .await
         .expect("Failed to connect to Redis");
 
-    // Connect to NATS
-    let nats = nats_bus::NatsBus::connect(&config.nats_url)
-        .await
-        .expect("Failed to connect to NATS");
+    // Connect to NATS (with auth + HMAC signing)
+    let nats = nats_bus::NatsBus::connect(
+        &config.nats_url,
+        &config.nats_hmac_secret,
+        config.nats_user.as_deref(),
+        config.nats_password.as_deref(),
+    )
+    .await
+    .expect("Failed to connect to NATS");
 
     // Connect to S3 / MinIO
     let storage = storage::Storage::new(

@@ -10,6 +10,9 @@ pub struct Config {
     pub minio_secret_key: String,
     pub minio_bucket: String,
     pub nats_url: String,
+    pub nats_user: Option<String>,
+    pub nats_password: Option<String>,
+    pub nats_hmac_secret: String,
     pub vapid_private_key: Option<String>,
     pub vapid_public_key: Option<String>,
     pub vapid_subject: String,
@@ -44,6 +47,16 @@ impl Config {
             minio_secret_key: env_or("MINIO_SECRET_KEY", "jolkr_dev_secret"),
             minio_bucket: env_or("MINIO_BUCKET", "jolkr"),
             nats_url: env_or("NATS_URL", "nats://localhost:4222"),
+            nats_user: std::env::var("NATS_USER").ok(),
+            nats_password: std::env::var("NATS_PASSWORD").ok(),
+            nats_hmac_secret: {
+                let secret = std::env::var("NATS_HMAC_SECRET")
+                    .expect("FATAL: NATS_HMAC_SECRET must be set. Refusing to start without it.");
+                if secret.len() < 32 {
+                    panic!("FATAL: NATS_HMAC_SECRET is too short ({} chars). Minimum 32 characters required.", secret.len());
+                }
+                secret
+            },
             vapid_private_key: std::env::var("VAPID_PRIVATE_KEY").ok(),
             vapid_public_key: std::env::var("VAPID_PUBLIC_KEY").ok(),
             vapid_subject: env_or("VAPID_SUBJECT", "mailto:admin@jolkr.app"),

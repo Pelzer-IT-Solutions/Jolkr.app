@@ -34,6 +34,7 @@ web-push = { workspace = true }
 lettre = "0.11"
 subtle = "2"
 sha2 = "0.10"
+hmac = "0.12"
 reqwest = { workspace = true }
 scraper = { workspace = true }
 regex = "1"

@@ -155,8 +155,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                             state.gateway.subscribe_servers(&sid, server_ids);
                         }
 
-                        // Set presence to online in Redis
+                        // Set presence to online in Redis + register session
                         state.redis.set_presence(claims.sub, "online").await;
+                        state.redis.add_session(claims.sub, sid).await;
 
                         // Publish presence update via NATS → all instances
                         let presence_event = GatewayEvent::PresenceUpdate {
@@ -185,9 +186,10 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
             ClientEvent::Heartbeat { seq } => {
                 last_heartbeat = tokio::time::Instant::now();
-                // Refresh presence TTL on heartbeat
+                // Refresh presence + session TTLs on heartbeat
                 if let Some(uid) = user_id {
                     state.redis.refresh_presence(uid).await;
+                    state.redis.refresh_sessions(uid).await;
                 }
                 let _ = tx.try_send(GatewayEvent::HeartbeatAck { seq });
             }
@@ -255,12 +257,13 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     // Client disconnected — cleanup
     if let Some(uid) = user_id {
-        // Only set offline if this was the user's last connection on this instance
-        let has_other_sessions = state.gateway.clients.iter().any(|entry| {
-            let c = entry.value();
-            c.user_id == uid && Some(c.session_id) != session_id
-        });
-        if !has_other_sessions {
+        // Remove this session from the cross-instance Redis session set
+        if let Some(sid) = session_id {
+            state.redis.remove_session(uid, sid).await;
+        }
+        // Only broadcast offline if no sessions remain (across ALL instances)
+        let remaining = state.redis.count_sessions(uid).await;
+        if remaining == 0 {
             state.redis.remove_presence(uid).await;
             let event = GatewayEvent::PresenceUpdate {
                 user_id: uid,

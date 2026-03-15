@@ -6,6 +6,9 @@ use uuid::Uuid;
 /// Redis key prefix for user presence.
 const PRESENCE_PREFIX: &str = "presence:";
 
+/// Redis key prefix for active WebSocket session tracking (cross-instance).
+const SESSIONS_PREFIX: &str = "sessions:";
+
 /// Default presence TTL (5 minutes). Heartbeats refresh it.
 const PRESENCE_TTL_SECS: u64 = 300;
 
@@ -75,6 +78,45 @@ impl RedisStore {
             .await
             .map(|_| ())
             .map_err(|e| e.to_string())
+    }
+
+    // ── Session tracking (multi-instance safe) ──────────────────────────
+
+    /// Register a WebSocket session in a shared Redis SET (for multi-instance presence).
+    pub async fn add_session(&self, user_id: Uuid, session_id: Uuid) {
+        let key = format!("{SESSIONS_PREFIX}{user_id}");
+        let mut conn = self.conn.clone();
+        if let Err(e) = conn.sadd::<_, _, ()>(&key, session_id.to_string()).await {
+            error!(user_id = %user_id, error = %e, "Failed to add session to Redis");
+        }
+        if let Err(e) = conn.expire::<_, ()>(&key, PRESENCE_TTL_SECS as i64).await {
+            error!(user_id = %user_id, error = %e, "Failed to set session TTL");
+        }
+    }
+
+    /// Remove a WebSocket session from the shared Redis SET.
+    pub async fn remove_session(&self, user_id: Uuid, session_id: Uuid) {
+        let key = format!("{SESSIONS_PREFIX}{user_id}");
+        let mut conn = self.conn.clone();
+        if let Err(e) = conn.srem::<_, _, ()>(&key, session_id.to_string()).await {
+            error!(user_id = %user_id, error = %e, "Failed to remove session from Redis");
+        }
+    }
+
+    /// Count active sessions for a user across all instances.
+    pub async fn count_sessions(&self, user_id: Uuid) -> u64 {
+        let key = format!("{SESSIONS_PREFIX}{user_id}");
+        let mut conn = self.conn.clone();
+        conn.scard::<_, u64>(&key).await.unwrap_or(0)
+    }
+
+    /// Refresh TTL on the sessions SET (called on heartbeat).
+    pub async fn refresh_sessions(&self, user_id: Uuid) {
+        let key = format!("{SESSIONS_PREFIX}{user_id}");
+        let mut conn = self.conn.clone();
+        if let Err(e) = conn.expire::<_, ()>(&key, PRESENCE_TTL_SECS as i64).await {
+            error!(user_id = %user_id, error = %e, "Failed to refresh sessions TTL");
+        }
     }
 
     /// Get presence for multiple users at once.

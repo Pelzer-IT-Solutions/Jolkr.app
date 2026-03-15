@@ -27,6 +27,9 @@ services:
       MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in .env}"
       MINIO_BUCKET: "jolkr"
       NATS_URL: "nats://nats:4222"
+      NATS_USER: "${NATS_USER:-}"
+      NATS_PASSWORD: "${NATS_PASSWORD:-}"
+      NATS_HMAC_SECRET: "${NATS_HMAC_SECRET:?NATS_HMAC_SECRET must be set in .env}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
       ADMIN_SECRET: "${ADMIN_SECRET:?ADMIN_SECRET must be set in .env}"
       VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
@@ -150,7 +153,11 @@ services:
     ports:
       - "127.0.0.1:4222:4222"
       - "127.0.0.1:8222:8222"
-    command: --jetstream --store_dir /data
+    command: >
+      --jetstream
+      --store_dir /data
+      --user ${NATS_USER}
+      --pass ${NATS_PASSWORD}
     volumes:
       - nats_data:/data
     networks:
