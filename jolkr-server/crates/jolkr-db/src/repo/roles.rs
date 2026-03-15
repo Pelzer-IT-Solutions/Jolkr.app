@@ -290,6 +290,35 @@ impl RoleRepo {
         Ok(base)
     }
 
+    /// Compute channel-level permissions using pre-fetched shared data.
+    /// Avoids N+1 queries when checking permissions for many members on the same channel.
+    pub async fn compute_channel_permissions_with_cache(
+        pool: &PgPool,
+        server_id: Uuid,
+        member_id: Uuid,
+        overwrites: &[ChannelOverwriteRow],
+        everyone_role: Option<&RoleRow>,
+    ) -> Result<i64, JolkrError> {
+        // Compute server-level permissions (still per-member: @everyone + assigned roles)
+        let everyone_perms = everyone_role.map(|r| r.permissions).unwrap_or(Permissions::DEFAULT as i64);
+        let roles = Self::get_member_roles(pool, member_id).await?;
+        let mut base = everyone_perms;
+        for role in &roles {
+            base |= role.permissions;
+        }
+
+        // ADMINISTRATOR bypasses everything
+        if base as u64 & Permissions::ADMINISTRATOR != 0 {
+            return Ok(Permissions::ALL as i64);
+        }
+
+        let member_role_ids = Self::get_member_role_ids(pool, member_id).await?;
+        let everyone_role_id = everyone_role.map(|r| r.id);
+
+        base = Self::apply_overwrites(base, overwrites, &member_role_ids, everyone_role_id, member_id);
+        Ok(base)
+    }
+
     /// Batch compute channel permissions for all channels in a server.
     /// Takes pre-fetched overwrites to avoid N+1 queries.
     pub fn compute_channel_permissions_batch(

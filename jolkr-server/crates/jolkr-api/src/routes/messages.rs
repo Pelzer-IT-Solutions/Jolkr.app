@@ -11,7 +11,7 @@ use jolkr_core::MessageService;
 use jolkr_core::services::message::{
     EditMessageRequest, MessageInfo, MessageQuery, SendMessageRequest,
 };
-use jolkr_db::repo::{ChannelRepo, MemberRepo, RoleRepo, ServerRepo, UserRepo};
+use jolkr_db::repo::{ChannelRepo, ChannelOverwriteRepo, MemberRepo, RoleRepo, ServerRepo, UserRepo};
 use chrono;
 
 use crate::errors::AppError;
@@ -99,14 +99,17 @@ pub async fn send_message(
             Ok(m) => m,
             Err(e) => { tracing::warn!("Push: failed to list members: {e}"); return; }
         };
+        // Pre-fetch shared data once (instead of per-member) to avoid N+1 queries
+        let overwrites = ChannelOverwriteRepo::list_for_channel(&pool, channel_id).await.unwrap_or_default();
+        let everyone_role = RoleRepo::get_default(&pool, channel.server_id).await.ok();
         for member in members {
             if member.user_id == author_id {
                 continue;
             }
             // Server owner bypasses permission checks
             if server.owner_id != member.user_id {
-                if let Ok(perms) = RoleRepo::compute_channel_permissions(
-                    &pool, channel.server_id, channel_id, member.id,
+                if let Ok(perms) = RoleRepo::compute_channel_permissions_with_cache(
+                    &pool, channel.server_id, member.id, &overwrites, everyone_role.as_ref(),
                 ).await {
                     if !Permissions::from(perms).has(Permissions::VIEW_CHANNELS) {
                         continue;
