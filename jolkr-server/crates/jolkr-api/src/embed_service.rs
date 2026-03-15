@@ -92,8 +92,9 @@ fn is_safe_url(raw_url: &str) -> bool {
             }
         }
     }
-    // If DNS resolution fails, allow — reqwest will fail too
-    true
+    // If DNS resolution fails, block — allowing would let attackers bypass
+    // the SSRF check by causing a temporary DNS failure before rebinding.
+    false
 }
 
 fn is_public_ip(ip: IpAddr) -> bool {
@@ -357,9 +358,12 @@ impl LinkEmbedService {
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
+    if s.chars().count() <= max {
         s.to_string()
     } else {
-        format!("{}…", &s[..max - 1])
+        let end = s.char_indices()
+            .nth(max.saturating_sub(1))
+            .map_or(s.len(), |(i, _)| i);
+        format!("{}…", &s[..end])
     }
 }

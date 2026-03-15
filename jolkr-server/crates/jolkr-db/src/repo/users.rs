@@ -56,10 +56,10 @@ impl UserRepo {
         Ok(user)
     }
 
-    /// Find a user by email address.
+    /// Find a user by email address (case-insensitive).
     pub async fn get_by_email(pool: &PgPool, email: &str) -> Result<UserRow, JolkrError> {
         let user = sqlx::query_as::<_, UserRow>(
-            r#"SELECT * FROM users WHERE email = $1"#,
+            r#"SELECT * FROM users WHERE LOWER(email) = LOWER($1)"#,
         )
         .bind(email)
         .fetch_optional(pool)

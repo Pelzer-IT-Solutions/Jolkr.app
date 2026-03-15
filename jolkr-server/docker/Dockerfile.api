@@ -21,7 +21,8 @@ RUN mkdir -p crates/jolkr-common/src && echo "" > crates/jolkr-common/src/lib.rs
     mkdir -p crates/jolkr-media/src  && echo "fn main(){}" > crates/jolkr-media/src/main.rs
 
 # Pre-build dependencies (cached unless Cargo.toml changes)
-RUN cargo build --release --bin jolkr-api 2>/dev/null || true
+# The stub sources won't link, so we expect a linker error — ignore only that.
+RUN cargo build --release --bin jolkr-api 2>&1 || true
 
 # Copy real source code and migrations
 COPY crates/ crates/

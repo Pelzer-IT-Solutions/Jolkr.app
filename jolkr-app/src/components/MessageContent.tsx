@@ -56,7 +56,8 @@ marked.use({
       } else {
         highlighted = hljs.highlightAuto(raw).value;
       }
-      const langLabel = lang ? `<div class="text-xs text-text-tertiary">${lang}</div>` : '';
+      const safeLang = lang ? lang.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : '';
+      const langLabel = safeLang ? `<div class="text-xs text-text-tertiary">${safeLang}</div>` : '';
       return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-sm font-mono hljs !p-0">${highlighted}</code></pre>`;
     },
     heading({ tokens, depth }) {

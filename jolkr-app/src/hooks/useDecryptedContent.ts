@@ -32,6 +32,7 @@ export function useDecryptedContent(
     return { displayContent: content, isEncrypted: false, decrypting: false };
   });
   const retryRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!encryptedContent || !nonce || !isDm) {
@@ -52,8 +53,8 @@ export function useDecryptedContent(
         // E2EE keys not yet loaded — retry a few times (init may still be running)
         if (retryRef.current < 3) {
           retryRef.current++;
-          const timer = setTimeout(attempt, 1000);
-          return () => clearTimeout(timer);
+          retryTimerRef.current = setTimeout(attempt, 1000);
+          return;
         }
         // Give up — show plaintext fallback or error
         setState({
@@ -84,11 +85,11 @@ export function useDecryptedContent(
         });
     };
 
-    const cleanup = attempt();
+    attempt();
 
     return () => {
       cancelled = true;
-      if (typeof cleanup === 'function') cleanup();
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
   }, [content, encryptedContent, nonce, isDm, isOwnMessage]);
 

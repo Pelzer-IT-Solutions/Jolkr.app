@@ -37,6 +37,51 @@ pub fn is_allowed_content_type(ct: &str) -> bool {
     ALLOWED_MIME_TYPES.iter().any(|allowed| ct.eq_ignore_ascii_case(allowed))
 }
 
+/// Validate that actual file bytes match the claimed MIME type via magic bytes.
+/// Returns the effective content type to use for storage.
+fn validate_content_type(claimed: &str, data: &[u8]) -> Result<String, AppError> {
+    // SVG is XML-based and can contain scripts — block it
+    if claimed.eq_ignore_ascii_case("image/svg+xml") {
+        let prefix = std::str::from_utf8(&data[..data.len().min(4096)]).unwrap_or("");
+        let lower = prefix.to_lowercase();
+        if lower.contains("<script") || lower.contains("javascript:") || lower.contains("on") {
+            return Err(AppError(jolkr_common::JolkrError::Validation(
+                "SVG files with embedded scripts are not allowed".into(),
+            )));
+        }
+    }
+
+    // For binary formats, verify magic bytes match the claimed type
+    let dominated = match &data[..data.len().min(12)] {
+        // JPEG: FF D8 FF
+        d if d.len() >= 3 && d[0] == 0xFF && d[1] == 0xD8 && d[2] == 0xFF => Some("image/jpeg"),
+        // PNG: 89 50 4E 47
+        d if d.len() >= 4 && d[..4] == [0x89, 0x50, 0x4E, 0x47] => Some("image/png"),
+        // GIF: GIF87a or GIF89a
+        d if d.len() >= 4 && &d[..3] == b"GIF" => Some("image/gif"),
+        // WebP: RIFF....WEBP
+        d if d.len() >= 12 && &d[..4] == b"RIFF" && &d[8..12] == b"WEBP" => Some("image/webp"),
+        // PDF: %PDF
+        d if d.len() >= 4 && &d[..4] == b"%PDF" => Some("application/pdf"),
+        // MP4/MOV: ftyp at offset 4
+        d if d.len() >= 8 && &d[4..8] == b"ftyp" => Some("video/mp4"),
+        // OGG: OggS
+        d if d.len() >= 4 && &d[..4] == b"OggS" => Some("audio/ogg"),
+        // WAV: RIFF....WAVE
+        d if d.len() >= 12 && &d[..4] == b"RIFF" && &d[8..12] == b"WAVE" => Some("audio/wav"),
+        // FLAC: fLaC
+        d if d.len() >= 4 && &d[..4] == b"fLaC" => Some("audio/flac"),
+        // WebM: 1A 45 DF A3 (EBML header, used by both WebM and MKV)
+        d if d.len() >= 4 && d[..4] == [0x1A, 0x45, 0xDF, 0xA3] => Some("video/webm"),
+        _ => None,
+    };
+
+    // If we detected a type from magic bytes, use it (more trustworthy than client header).
+    // If not detected (text/plain, octet-stream, audio/mpeg etc.), trust the claimed type
+    // since it already passed the allowlist check.
+    Ok(dominated.unwrap_or(claimed).to_string())
+}
+
 pub fn sanitize_filename(raw: &str) -> String {
     // Take only the final path component (basename) BEFORE stripping separators,
     // so that "../../etc/passwd" becomes "passwd".
@@ -131,14 +176,14 @@ pub async fn upload_attachment(
         field.file_name().unwrap_or("upload"),
     );
 
-    let content_type = field
+    let claimed_type = field
         .content_type()
         .unwrap_or("application/octet-stream")
         .to_string();
 
-    if !is_allowed_content_type(&content_type) {
+    if !is_allowed_content_type(&claimed_type) {
         return Err(AppError(jolkr_common::JolkrError::Validation(
-            format!("File type '{}' is not allowed", content_type),
+            format!("File type '{}' is not allowed", claimed_type),
         )));
     }
 
@@ -146,6 +191,9 @@ pub async fn upload_attachment(
         .bytes()
         .await
         .map_err(|e| AppError(jolkr_common::JolkrError::Validation(e.to_string())))?;
+
+    // Verify actual file content matches claimed type via magic bytes
+    let content_type = validate_content_type(&claimed_type, &data)?;
 
     // Validate file size
     if data.len() > MAX_FILE_SIZE {

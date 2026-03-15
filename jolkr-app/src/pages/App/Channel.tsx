@@ -244,6 +244,8 @@ export default function ChannelPage() {
     const valid = dropped.filter((f) => f.size <= 25 * 1024 * 1024);
     if (valid.length > 0) {
       setDroppedFiles(valid);
+      // Reset after one render cycle so the effect doesn't re-fire on canAttach changes
+      requestAnimationFrame(() => setDroppedFiles([]));
     }
   }, [canAttach]);
 

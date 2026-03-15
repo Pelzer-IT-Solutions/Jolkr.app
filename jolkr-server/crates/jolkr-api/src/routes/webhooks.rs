@@ -20,7 +20,22 @@ use crate::routes::AppState;
 
 /// Simple per-webhook rate limiter: 5 requests per second.
 static WEBHOOK_RATE: std::sync::LazyLock<Arc<DashMap<Uuid, (Instant, u32)>>> =
-    std::sync::LazyLock::new(|| Arc::new(DashMap::new()));
+    std::sync::LazyLock::new(|| {
+        let map = Arc::new(DashMap::new());
+        // Cleanup stale entries every 60 seconds to prevent unbounded growth
+        let map_clone = Arc::clone(&map);
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+            loop {
+                interval.tick().await;
+                let now = Instant::now();
+                map_clone.retain(|_, (window_start, _)| {
+                    now.duration_since(*window_start).as_secs() < 60
+                });
+            }
+        });
+        map
+    });
 
 fn check_webhook_rate(webhook_id: Uuid) -> bool {
     let now = Instant::now();

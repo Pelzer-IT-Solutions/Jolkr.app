@@ -43,6 +43,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const prevLenRef = useRef(0);
   const [users, setUsers] = useState<Record<string, User>>({});
   const fetchedIdsRef = useRef(new Set<string>());
+  const failedIdsRef = useRef(new Set<string>());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [newMsgCount, setNewMsgCount] = useState(0);
   const isAtBottomRef = useRef(true);
@@ -73,6 +74,8 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   useEffect(() => {
     prevLenRef.current = 0;
     initialScrollDoneRef.current = false;
+    fetchedIdsRef.current.clear();
+    failedIdsRef.current.clear();
     // Reset scroll position to prevent old channel's offset leaking into new channel
     containerRef.current?.scrollTo(0, 0);
     fetchMessages(channelId, isDm);
@@ -84,12 +87,13 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   useEffect(() => {
     const uniqueIds = [...new Set(allMsgs.map((m) => m.author_id))];
     uniqueIds.forEach((id) => {
-      if (!fetchedIdsRef.current.has(id)) {
+      if (!fetchedIdsRef.current.has(id) && !failedIdsRef.current.has(id)) {
         fetchedIdsRef.current.add(id);
         api.getUser(id).then((u) => {
           setUsers((prev) => ({ ...prev, [u.id]: u }));
         }).catch(() => {
           fetchedIdsRef.current.delete(id);
+          failedIdsRef.current.add(id);
         });
       }
     });

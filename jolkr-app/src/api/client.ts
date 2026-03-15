@@ -173,6 +173,7 @@ async function request<T>(
       }
     } else {
       await new Promise<void>((resolve) => refreshQueue.push(resolve));
+      if (!accessToken) throw new ApiError(401, 'Session expired');
       headers['Authorization'] = `Bearer ${accessToken}`;
       res = await fetch(`${apiBase}${path}`, { ...options, headers });
     }
