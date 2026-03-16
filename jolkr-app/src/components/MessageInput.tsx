@@ -476,9 +476,8 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
                 role="option"
                 aria-selected={i === mentionIndex}
                 onClick={() => insertMention(u.username)}
-                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                  i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
-                }`}
+                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
+                  }`}
               >
                 <span className="text-accent font-medium">@</span>
                 <span>{u.username}</span>
@@ -497,9 +496,8 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
                 role="option"
                 aria-selected={i === emojiIndex}
                 onClick={() => insertEmoji(entry.emoji)}
-                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                  i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
-                }`}
+                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
+                  }`}
               >
                 <img src={emojiToImgUrl(entry.emoji)} alt={entry.emoji} className="w-5 h-5" loading="lazy" draggable={false} />
                 <span className="text-text-tertiary">:{entry.name}:</span>
@@ -647,9 +645,8 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
               role="option"
               aria-selected={i === mentionIndex}
               onClick={() => insertMention(u.username)}
-              className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
-              }`}
+              className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${i === mentionIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
+                }`}
             >
               <span className="text-accent font-medium">@</span>
               <span>{u.username}</span>
@@ -668,9 +665,8 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
               role="option"
               aria-selected={i === emojiIndex}
               onClick={() => insertEmoji(entry.emoji)}
-              className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${
-                i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
-              }`}
+              className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 ${i === emojiIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-hover'
+                }`}
             >
               <img src={emojiToImgUrl(entry.emoji)} alt={entry.emoji} className="w-5 h-5" loading="lazy" draggable={false} />
               <span className="text-text-tertiary">:{entry.name}:</span>
@@ -809,7 +805,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
             />
           </div>
 
-          <div className="relative shrink-0">
+          <div className="flex items-center relative shrink-0">
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}

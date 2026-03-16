@@ -298,7 +298,7 @@ export default function ChannelPage() {
           <div className="border-t border-border-subtle">
             <button
               onClick={() => setShowInvites(true)}
-              className="w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-accent hover:bg-hover flex items-center gap-2"
             >
               <UserPlus className="size-4" />
               Invite People
@@ -358,7 +358,7 @@ export default function ChannelPage() {
               </>
             )}
             <div className="flex-1" />
-
+            <div className="flex items-center gap-1">
             {/* Search */}
             {showSearch ? (
               <div>
@@ -375,7 +375,8 @@ export default function ChannelPage() {
             ) : (
               <button
                 onClick={() => setShowSearch(true)}
-                className="text-text-secondary hover:text-text-primary"
+                className="p-1.5 rounded hover:bg-hover text-text-secondary hover:text-text-primary"
+                title="Search messages"
                 aria-label="Search messages"
               >
                 <Search className="size-5" />
@@ -385,7 +386,7 @@ export default function ChannelPage() {
             {/* Create Poll */}
             <button
               onClick={() => setShowPollCreator(true)}
-              className="text-text-secondary hover:text-text-primary"
+              className="p-1.5 rounded hover:bg-hover text-text-secondary hover:text-text-primary"
               title="Create Poll"
               aria-label="Create Poll"
             >
@@ -399,7 +400,7 @@ export default function ChannelPage() {
                 setShowThreads(next);
                 if (next) { setShowPins(false); setOpenThreadId(null); }
               }}
-              className={`${showThreads ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              className={`p-1.5 rounded ${showThreads ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
               title="Threads"
               aria-label="Threads"
             >
@@ -413,7 +414,7 @@ export default function ChannelPage() {
                 setShowPins(next);
                 if (next) { setShowThreads(false); setOpenThreadId(null); }
               }}
-              className={`${showPins ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              className={`p-1.5 rounded ${showPins ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
               title="Pinned Messages"
               aria-label="Pinned Messages"
             >
@@ -423,11 +424,12 @@ export default function ChannelPage() {
             {/* Toggle member list */}
             <button
               onClick={() => setShowMembers(!showMembers)}
-              className={`${showMembers ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              className={`p-1.5 rounded ${showMembers ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
               aria-label="Toggle members"
             >
               <Users className="size-5" />
             </button>
+            </div>
           </div>
 
           {/* Expanded topic panel */}
@@ -496,24 +498,20 @@ export default function ChannelPage() {
                 droppedFiles={droppedFiles}
               />
             </div>
-            {/* MemberList: overlay on mobile, inline on desktop */}
-            {showMembers && serverId && (
-              isMobile ? (
-                <div className="fixed inset-0 z-50 flex">
-                  <div className="flex-1" onClick={() => setShowMembers(false)} />
-                  <div className="w-70 max-w-[80vw] bg-sidebar border-l border-divider h-full overflow-y-auto animate-slide-in-right">
-                    <div className="px-5 py-3 flex items-center border-b border-divider shrink-0">
-                      <span className="text-text-primary font-semibold text-sm flex-1">Members</span>
-                      <button onClick={() => setShowMembers(false)} className="text-text-secondary hover:text-text-primary" aria-label="Close members">
-                        <X className="size-5" />
-                      </button>
-                    </div>
-                    <MemberList serverId={serverId} className="flex-1 overflow-y-auto" />
+            {/* MemberList: overlay on mobile */}
+            {showMembers && serverId && isMobile && (
+              <div className="fixed inset-0 z-50 flex">
+                <div className="flex-1" onClick={() => setShowMembers(false)} />
+                <div className="w-70 max-w-[80vw] bg-sidebar border-l border-divider h-full overflow-y-auto animate-slide-in-right">
+                  <div className="px-5 py-3 flex items-center border-b border-divider shrink-0">
+                    <span className="text-text-primary font-semibold text-sm flex-1">Members</span>
+                    <button onClick={() => setShowMembers(false)} className="text-text-secondary hover:text-text-primary" aria-label="Close members">
+                      <X className="size-5" />
+                    </button>
                   </div>
+                  <MemberList serverId={serverId} className="flex-1 overflow-y-auto" />
                 </div>
-              ) : (
-                <MemberList serverId={serverId} />
-              )
+              </div>
             )}
             {showPins && channelId && (
               <PinnedMessagesPanel channelId={channelId} onClose={() => setShowPins(false)} />
@@ -536,6 +534,11 @@ export default function ChannelPage() {
             <VoiceChannelView channelId={channelId} channelName={channel.name} serverId={serverId} memberUsers={memberUsers} />
           )}
         </div>
+
+      {/* MemberList: full height on desktop */}
+      {showMembers && serverId && !isMobile && (
+        <MemberList serverId={serverId} />
+      )}
 
       {showInvites && serverId && <InviteDialog serverId={serverId} onClose={() => setShowInvites(false)} />}
       {showPollCreator && channelId && (

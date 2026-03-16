@@ -8,9 +8,10 @@ import MessageContent from './MessageContent';
 export interface PinnedMessagesPanelProps {
   channelId: string;
   onClose: () => void;
+  isDm?: boolean;
 }
 
-function PinnedMessagesPanelInner({ channelId, onClose }: PinnedMessagesPanelProps) {
+function PinnedMessagesPanelInner({ channelId, onClose, isDm }: PinnedMessagesPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -19,7 +20,7 @@ function PinnedMessagesPanelInner({ channelId, onClose }: PinnedMessagesPanelPro
 
   useEffect(() => {
     setLoading(true);
-    api.getPinnedMessages(channelId)
+    (isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId))
       .then(async (msgs) => {
         setMessages(msgs);
         // Fetch authors

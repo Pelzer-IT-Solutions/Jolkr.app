@@ -426,6 +426,15 @@ export const editDmMessage = (messageId: string, content: string) =>
   }, 'message');
 export const deleteDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}`, { method: 'DELETE' });
+
+// DM Pins
+export const pinDmMessage = (dmId: string, messageId: string) =>
+  request<Message>(`/dms/${dmId}/pins/${messageId}`, { method: 'POST' }, 'message');
+export const unpinDmMessage = (dmId: string, messageId: string) =>
+  request<Message>(`/dms/${dmId}/pins/${messageId}`, { method: 'DELETE' }, 'message');
+export const getDmPinnedMessages = (dmId: string) =>
+  request<Message[]>(`/dms/${dmId}/pins`, {}, 'messages');
+
 export const addDmReaction = (messageId: string, emoji: string) =>
   request<void>(`/dms/messages/${messageId}/reactions`, {
     method: 'POST',

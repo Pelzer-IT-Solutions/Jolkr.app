@@ -29,6 +29,7 @@ pub struct DmMessageInfo {
     pub encrypted_content: Option<String>,
     pub nonce: Option<String>,
     pub is_edited: bool,
+    pub is_pinned: bool,
     pub reply_to_id: Option<Uuid>,
     pub attachments: Vec<AttachmentInfo>,
     #[serde(default)]
@@ -51,6 +52,7 @@ impl From<DmMessageRow> for DmMessageInfo {
             encrypted_content: row.encrypted_content.map(|b| engine.encode(&b)),
             nonce: row.nonce.map(|b| engine.encode(&b)),
             is_edited: row.is_edited,
+            is_pinned: row.is_pinned,
             reply_to_id: row.reply_to_id,
             attachments: Vec::new(),
             reactions: Vec::new(),
@@ -582,4 +584,96 @@ impl DmService {
         Ok(messages)
     }
 
+    // ── Pins ─────────────────────────────────────────────────────────
+
+    /// Pin a message in a DM channel.
+    pub async fn pin_message(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        message_id: Uuid,
+        caller_id: Uuid,
+    ) -> Result<DmMessageInfo, JolkrError> {
+        if !DmRepo::is_member(pool, dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+        let msg = DmRepo::get_message(pool, message_id).await?;
+        if msg.dm_channel_id != dm_channel_id {
+            return Err(JolkrError::BadRequest("Message does not belong to this DM channel".into()));
+        }
+
+        DmRepo::pin_message(pool, dm_channel_id, message_id, caller_id).await?;
+
+        // Re-fetch to get updated is_pinned flag
+        let row = DmRepo::get_message(pool, message_id).await?;
+        Ok(DmMessageInfo::from(row))
+    }
+
+    /// Unpin a message in a DM channel.
+    pub async fn unpin_message(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        message_id: Uuid,
+        caller_id: Uuid,
+    ) -> Result<DmMessageInfo, JolkrError> {
+        if !DmRepo::is_member(pool, dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+
+        DmRepo::unpin_message(pool, dm_channel_id, message_id).await?;
+
+        let row = DmRepo::get_message(pool, message_id).await?;
+        Ok(DmMessageInfo::from(row))
+    }
+
+    /// List pinned messages in a DM channel (enriched with attachments, reactions, embeds).
+    pub async fn list_pinned(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        caller_id: Uuid,
+    ) -> Result<Vec<DmMessageInfo>, JolkrError> {
+        if !DmRepo::is_member(pool, dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+
+        let rows = DmRepo::list_pinned(pool, dm_channel_id).await?;
+        let mut messages: Vec<DmMessageInfo> = rows.into_iter().map(DmMessageInfo::from).collect();
+
+        // Enrich with attachments, reactions, embeds (same pattern as get_messages)
+        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
+
+        let all_atts = DmRepo::list_attachments_for_messages(pool, &msg_ids).await.unwrap_or_default();
+        for att in all_atts {
+            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
+                msg.attachments.push(AttachmentInfo {
+                    id: att.id,
+                    filename: att.filename,
+                    content_type: att.content_type,
+                    size_bytes: att.size_bytes,
+                    url: att.url,
+                });
+            }
+        }
+
+        let all_reactions = DmRepo::list_reactions_for_messages(pool, &msg_ids).await.unwrap_or_default();
+        {
+            use std::collections::HashMap;
+            let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
+            for r in all_reactions {
+                let entry = by_msg.entry(r.dm_message_id).or_default();
+                let emoji_entry = entry.entry(r.emoji).or_insert((0, Vec::new()));
+                emoji_entry.0 += 1;
+                emoji_entry.1.push(r.user_id);
+            }
+            for msg in messages.iter_mut() {
+                if let Some(emojis) = by_msg.remove(&msg.id) {
+                    msg.reactions = emojis
+                        .into_iter()
+                        .map(|(emoji, (count, user_ids))| ReactionInfo { emoji, count, user_ids })
+                        .collect();
+                }
+            }
+        }
+
+        Ok(messages)
+    }
 }

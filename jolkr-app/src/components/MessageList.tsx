@@ -46,7 +46,6 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const fetchedIdsRef = useRef(new Set<string>());
   const failedIdsRef = useRef(new Set<string>());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [newMsgCount, setNewMsgCount] = useState(0);
   const isAtBottomRef = useRef(true);
   const initialScrollDoneRef = useRef(false);
   const lastSeenMsgId = useUnreadStore((s) => s.lastSeenMessageId[channelId]);
@@ -69,6 +68,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     getScrollElement: () => containerRef.current,
     estimateSize: () => 60,
     overscan: 10,
+    gap: 4,
     getItemKey: (index) => msgs[index]?.id ?? index,
   });
 
@@ -100,10 +100,8 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     });
   }, [allMsgs]);
 
-  // Reset new message count on channel switch
-  useEffect(() => {
-    setNewMsgCount(0);
-  }, [channelId]);
+  // Reset state on channel switch
+  useEffect(() => {}, [channelId]);
 
   // Auto-scroll logic — use raw DOM scroll to guarantee true bottom
   useEffect(() => {
@@ -148,8 +146,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         };
         requestAnimationFrame(keepScrolling);
       } else if (!isAtBottomRef.current && initialScrollDoneRef.current) {
-        // Scrolled up — show "new messages" indicator
-        setNewMsgCount((c) => c + added);
+        // Scrolled up — new messages arrived while not at bottom
       }
     }
     prevLenRef.current = allMsgs.length;
@@ -161,7 +158,6 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     isAtBottomRef.current = distFromBottom < 150;
     setShowScrollBtn(distFromBottom > 300);
-    if (distFromBottom < 150) setNewMsgCount(0);
     if (canLoadMore && !isLoadingOlder && el.scrollTop < 100) {
       fetchOlder(channelId, isDm);
     }
@@ -170,7 +166,6 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const scrollToBottom = () => {
     const el = containerRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    setNewMsgCount(0);
   };
 
   const isCompact = (i: number) => {
@@ -276,18 +271,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
         )}
       </div>
 
-      {newMsgCount > 0 && showScrollBtn && (
-        <button
-          onClick={scrollToBottom}
-          aria-live="polite"
-          className="absolute bottom-16 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-accent hover:bg-accent/80 text-white text-sm font-medium rounded-full shadow-lg transition-colors z-10 flex items-center gap-2"
-        >
-          <ArrowDown className="w-4 h-4" />
-          {newMsgCount === 1 ? '1 new message' : `${newMsgCount} new messages`}
-        </button>
-      )}
-
-      {showScrollBtn && newMsgCount === 0 && (
+      {showScrollBtn && (
         <button
           onClick={scrollToBottom}
           className="absolute bottom-16 right-4 size-10 bg-surface border border-divider rounded-full flex items-center justify-center shadow-elevated hover:bg-hover transition-colors z-10"

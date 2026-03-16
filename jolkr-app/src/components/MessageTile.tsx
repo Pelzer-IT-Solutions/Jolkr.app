@@ -230,8 +230,8 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
               </span>
             )}
             <span className="text-2xs md:text-xs text-text-tertiary">{mobile ? timeStr : `${dateStr} ${timeStr}`}</span>
-            {isEncrypted && (
-              <span title="End-to-end encrypted"><Lock className="size-3 text-green-400 inline-block" /></span>
+            {isEncrypted && !isDm && (
+              <span title="End-to-end encrypted"><Lock className="size-3 text-green-700/60 hover:text-green-700 inline-block" /></span>
             )}
             {message.is_edited && <span className="text-xs text-text-tertiary">(edited)</span>}
           </div>
@@ -424,35 +424,37 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
               <MessageSquare className="size-4" />
             </button>
           )}
-          {!isDm && (
-            <button
-              onClick={async () => {
-                if (pinning) return;
-                setPinning(true);
-                try {
-                  if (message.is_pinned) {
-                    const updated = await api.unpinMessage(message.channel_id, message.id);
-                    updateMessage(message.channel_id, { ...message, ...updated, is_pinned: false });
-                    showToast('Message unpinned', 'success');
-                  } else {
-                    const updated = await api.pinMessage(message.channel_id, message.id);
-                    updateMessage(message.channel_id, { ...message, ...updated, is_pinned: true });
-                    showToast('Message pinned', 'success');
-                  }
-                } catch (e) {
-                  showToast((e as Error).message || 'Failed to pin/unpin', 'error');
-                } finally {
-                  setPinning(false);
+          <button
+            onClick={async () => {
+              if (pinning) return;
+              setPinning(true);
+              try {
+                if (message.is_pinned) {
+                  const updated = isDm
+                    ? await api.unpinDmMessage(message.channel_id, message.id)
+                    : await api.unpinMessage(message.channel_id, message.id);
+                  updateMessage(message.channel_id, { ...message, ...updated, is_pinned: false });
+                  showToast('Message unpinned', 'success');
+                } else {
+                  const updated = isDm
+                    ? await api.pinDmMessage(message.channel_id, message.id)
+                    : await api.pinMessage(message.channel_id, message.id);
+                  updateMessage(message.channel_id, { ...message, ...updated, is_pinned: true });
+                  showToast('Message pinned', 'success');
                 }
-              }}
-              disabled={pinning}
-              className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-hover disabled:opacity-50"
-              title={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
-              aria-label={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
-            >
-              <Bookmark className={`size-4 ${message.is_pinned ? 'text-accent' : ''}`} />
-            </button>
-          )}
+              } catch (e) {
+                showToast((e as Error).message || 'Failed to pin/unpin', 'error');
+              } finally {
+                setPinning(false);
+              }
+            }}
+            disabled={pinning}
+            className="px-2 py-1 text-text-secondary hover:text-text-primary hover:bg-hover disabled:opacity-50"
+            title={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
+            aria-label={message.is_pinned ? 'Unpin Message' : 'Pin Message'}
+          >
+            <Bookmark className={`size-4 ${message.is_pinned ? 'text-accent' : ''}`} />
+          </button>
           <button
             ref={reactionBtnRef}
             onClick={() => {

@@ -240,9 +240,19 @@ pub struct DmMessageRow {
     pub encrypted_content: Option<Vec<u8>>,
     pub nonce: Option<Vec<u8>>,
     pub is_edited: bool,
+    pub is_pinned: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub reply_to_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct DmPinRow {
+    pub id: Uuid,
+    pub dm_channel_id: Uuid,
+    pub message_id: Uuid,
+    pub pinned_by: Uuid,
+    pub pinned_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

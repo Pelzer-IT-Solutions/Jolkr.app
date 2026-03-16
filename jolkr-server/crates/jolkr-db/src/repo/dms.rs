@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::{DmAttachmentRow, DmChannelRow, DmMemberRow, DmMessageRow, DmReactionRow};
+use crate::models::{DmAttachmentRow, DmChannelRow, DmMemberRow, DmMessageRow, DmPinRow, DmReactionRow};
 use jolkr_common::JolkrError;
 
 pub struct DmRepo;
@@ -533,6 +533,86 @@ impl DmRepo {
                ORDER BY created_at ASC"#,
         )
         .bind(message_ids)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
+    // ── Pins ─────────────────────────────────────────────────────────
+
+    /// Pin a DM message.
+    pub async fn pin_message(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        message_id: Uuid,
+        pinned_by: Uuid,
+    ) -> Result<DmPinRow, JolkrError> {
+        let row = sqlx::query_as::<_, DmPinRow>(
+            r#"INSERT INTO dm_pins (dm_channel_id, message_id, pinned_by)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (dm_channel_id, message_id) DO NOTHING
+               RETURNING *"#,
+        )
+        .bind(dm_channel_id)
+        .bind(message_id)
+        .bind(pinned_by)
+        .fetch_optional(pool)
+        .await?;
+
+        // Update the is_pinned flag on the message
+        sqlx::query("UPDATE dm_messages SET is_pinned = true WHERE id = $1")
+            .bind(message_id)
+            .execute(pool)
+            .await?;
+
+        // If ON CONFLICT hit, fetch the existing pin
+        match row {
+            Some(r) => Ok(r),
+            None => {
+                let existing = sqlx::query_as::<_, DmPinRow>(
+                    "SELECT * FROM dm_pins WHERE dm_channel_id = $1 AND message_id = $2",
+                )
+                .bind(dm_channel_id)
+                .bind(message_id)
+                .fetch_one(pool)
+                .await?;
+                Ok(existing)
+            }
+        }
+    }
+
+    /// Unpin a DM message.
+    pub async fn unpin_message(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        message_id: Uuid,
+    ) -> Result<(), JolkrError> {
+        sqlx::query("DELETE FROM dm_pins WHERE dm_channel_id = $1 AND message_id = $2")
+            .bind(dm_channel_id)
+            .bind(message_id)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("UPDATE dm_messages SET is_pinned = false WHERE id = $1")
+            .bind(message_id)
+            .execute(pool)
+            .await?;
+
+        Ok(())
+    }
+
+    /// List pinned messages for a DM channel, ordered by pin time descending.
+    pub async fn list_pinned(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+    ) -> Result<Vec<DmMessageRow>, JolkrError> {
+        let rows = sqlx::query_as::<_, DmMessageRow>(
+            r#"SELECT m.* FROM dm_messages m
+               INNER JOIN dm_pins p ON p.message_id = m.id
+               WHERE p.dm_channel_id = $1
+               ORDER BY p.pinned_at DESC"#,
+        )
+        .bind(dm_channel_id)
         .fetch_all(pool)
         .await?;
         Ok(rows)

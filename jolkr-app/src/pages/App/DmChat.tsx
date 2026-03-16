@@ -16,7 +16,8 @@ import { useCallStore } from '../../stores/call';
 import { useVoiceStore } from '../../stores/voice';
 import { useMessagesStore } from '../../stores/messages';
 import { usePresignRefresh } from '../../hooks/usePresignRefresh';
-import { Phone, Upload, ChevronLeft, Users, Lock, MoreVertical } from 'lucide-react';
+import { Phone, Upload, ChevronLeft, Users, Lock, MoreVertical, Search, Bookmark } from 'lucide-react';
+import PinnedMessagesPanel from '../../components/PinnedMessagesPanel';
 
 function CallButton({ dmId, recipientName, recipientUserId, iconClassName }: { dmId: string; recipientName: string; recipientUserId?: string; iconClassName?: string }) {
   const startCall = useCallStore((s) => s.startCall);
@@ -74,6 +75,10 @@ export default function DmChat() {
   const [addingMember, setAddingMember] = useState(false);
   const [actionError, setActionError] = useState('');
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showPins, setShowPins] = useState(false);
+  const [search, setSearch] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchResults, setSearchResults] = useState<Message[] | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const dragCounterRef = useRef(0);
@@ -103,11 +108,11 @@ export default function DmChat() {
           if (id !== currentUser?.id) {
             api.getUser(id).then((u) => {
               setMemberUsers((prev) => ({ ...prev, [u.id]: u }));
-            }).catch(() => {});
+            }).catch(() => { });
           }
         });
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, [dmId, currentUser?.id, getCachedDms]);
 
   useEffect(() => {
@@ -126,7 +131,7 @@ export default function DmChat() {
             if (id !== currentUser?.id) {
               api.getUser(id).then((u) => {
                 setMemberUsers((prev) => ({ ...prev, [u.id]: u }));
-              }).catch(() => {});
+              }).catch(() => { });
             }
           });
         }
@@ -142,9 +147,17 @@ export default function DmChat() {
     return otherId ? memberUsers[otherId] ?? null : null;
   }, [dmChannel, isGroup, currentUser?.id, memberUsers]);
 
-  // Check E2EE availability (only for 1-on-1)
+  // Check E2EE availability (skip system users)
   useEffect(() => {
-    if (isGroup) {
+    if (otherUser?.is_system) {
+      setE2eeAvailable(false);
+      return;
+    }
+    // For group DMs, check all other members; for 1-on-1, check the single other user
+    const otherIds = isGroup
+      ? dmChannel?.members.filter((id) => id !== currentUser?.id) ?? []
+      : otherUser ? [otherUser.id] : [];
+    if (otherIds.length === 0) {
       setE2eeAvailable(false);
       return;
     }
@@ -153,24 +166,28 @@ export default function DmChat() {
     let retries = 0;
     const MAX_RETRIES = 5;
     const checkE2EE = () => {
-      if (!otherUser || cancelled) return;
+      if (cancelled) return;
       if (!isE2EEReady()) {
         if (retries++ >= MAX_RETRIES) return;
         timer = setTimeout(checkE2EE, 2000);
         return;
       }
-      getRecipientBundle(otherUser.id).then((bundle) => {
-        if (!cancelled) setE2eeAvailable(bundle !== null);
+      Promise.all(otherIds.map((id) => getRecipientBundle(id))).then((bundles) => {
+        if (!cancelled) setE2eeAvailable(bundles.every((b) => b !== null));
       });
     };
     checkE2EE();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [otherUser, isGroup]);
+  }, [otherUser, isGroup, dmChannel?.members, currentUser?.id]);
 
   // Reset reply when DM channel changes + mark as read
   useEffect(() => {
     setReplyTo(null);
     setShowMembers(false);
+    setShowPins(false);
+    setSearch('');
+    setSearchResults(null);
+    setShowSearch(false);
     setAddMemberSearch('');
     setAddMemberResults([]);
     if (dmId) setActiveChannel(dmId);
@@ -193,7 +210,7 @@ export default function DmChat() {
     const now = Date.now();
     if (now - lastMarkRef.current < 3000) return;
     lastMarkRef.current = now;
-    api.markDmRead(dmId, lastMsgId).catch(() => {});
+    api.markDmRead(dmId, lastMsgId).catch(() => { });
   }, [dmId, lastMsgId, lastMsgAuthor, currentUser?.id]);
 
   // Clear add member state when sidebar is hidden
@@ -281,6 +298,21 @@ export default function DmChat() {
     return names.join(', ') || 'Group DM';
   }, [isGroup, dmChannel, currentUser?.id, memberUsers]);
 
+  // Client-side search (messages are E2EE — backend has no plaintext)
+  const handleSearch = useCallback((value: string) => {
+    setSearch(value);
+    if (value.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    const allMessages = useMessagesStore.getState().messages[dmId ?? ''] ?? [];
+    const query = value.trim().toLowerCase();
+    const results = allMessages.filter((m) =>
+      m.content?.toLowerCase().includes(query),
+    );
+    setSearchResults(results);
+  }, [dmId]);
+
   // Drag-and-drop handlers for the full DM chat area
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -326,12 +358,13 @@ export default function DmChat() {
   // Determine reply author for the reply bar
   const replyAuthor = replyTo
     ? (replyTo.author_id === currentUser?.id
-        ? currentUser as User
-        : memberUsers[replyTo.author_id] ?? otherUser)
+      ? currentUser as User
+      : memberUsers[replyTo.author_id] ?? otherUser)
     : null;
 
   return (
     <>
+      <div className="flex-1 flex min-w-0 min-h-0">
       <div
         className="flex-1 flex flex-col bg-panel min-w-0 min-h-0 page-transition relative"
         onDragEnter={handleDragEnter}
@@ -339,161 +372,280 @@ export default function DmChat() {
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-          {/* Full-window drop overlay */}
-          {isDragging && (
-            <div className="absolute inset-0 z-50 bg-accent/10 border-2 border-dashed border-accent rounded-lg flex items-center justify-center pointer-events-none">
-              <div className="flex flex-col items-center gap-2">
-                <Upload className="w-10 h-10 text-accent" />
-                <span className="text-accent font-semibold text-lg">Drop files to upload</span>
-              </div>
+        {/* Full-window drop overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 z-50 bg-accent/10 border-2 border-dashed border-accent rounded-lg flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center gap-2">
+              <Upload className="w-10 h-10 text-accent" />
+              <span className="text-accent font-semibold text-lg">Drop files to upload</span>
             </div>
-          )}
-          {/* Header */}
-          <div className={`flex items-center shrink-0 ${
-            isMobile
-              ? 'bg-panel px-4 py-2 gap-3 border-b border-border-subtle'
-              : 'bg-panel px-5 py-3 gap-3 border-b border-border-subtle'
+          </div>
+        )}
+        {/* Header */}
+        <div className={`flex items-center shrink-0 ${isMobile
+            ? 'bg-panel px-4 py-2 gap-3 border-b border-border-subtle'
+            : 'bg-panel px-5 py-3 gap-3 border-b border-border-subtle'
           }`}>
-            {isMobile && (
-              <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary" aria-label="Back to conversations">
-                <ChevronLeft className="size-5.5" />
-              </button>
-            )}
+          {isMobile && (
+            <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary" aria-label="Back to conversations">
+              <ChevronLeft className="size-5.5" />
+            </button>
+          )}
 
-            {isGroup ? (
-              /* Group DM header */
-              <>
-                <div className="size-8 rounded-full bg-accent/30 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4 text-accent" />
+          {isGroup ? (
+            /* Group DM header */
+            <>
+              <div className="size-8 rounded-full bg-accent/30 flex items-center justify-center shrink-0">
+                <Users className="w-4 h-4 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base font-semibold text-text-primary truncate">{groupDisplayName}</span>
+                  {e2eeAvailable && (
+                    <span title="End-to-end encrypted"><Lock className="w-4 h-4 text-green-700/60 hover:text-green-700 shrink-0" /></span>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-base font-semibold text-text-primary truncate block">{groupDisplayName}</span>
-                  <span className="text-xs text-text-tertiary">{dmChannel?.members.length} members</span>
-                </div>
+                <span className="text-xs text-text-tertiary">{dmChannel?.members.length} members</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {showSearch ? (
+                  <input
+                    value={search}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    onBlur={() => { if (!search) setShowSearch(false); }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { setShowSearch(false); setSearch(''); setSearchResults(null); } }}
+                    placeholder="Search messages..."
+                    className={`input-reset px-3 py-1 bg-bg border border-divider rounded-lg text-sm text-text-primary ${isMobile ? 'w-32' : 'w-48'}`}
+                    autoFocus
+                  />
+                ) : (
+                  <button
+                    onClick={() => setShowSearch(true)}
+                    className="p-1.5 rounded hover:bg-hover text-text-secondary hover:text-text-primary"
+                    title="Search messages"
+                    aria-label="Search messages"
+                  >
+                    <Search className="size-4.5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowPins(!showPins)}
+                  className={`p-1.5 rounded hover:bg-hover ${showPins ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                  title="Pinned Messages"
+                  aria-label="Pinned Messages"
+                >
+                  <Bookmark className="size-4.5" />
+                </button>
                 <button
                   onClick={() => setShowMembers(!showMembers)}
-                  className={`p-1.5 rounded hover:bg-hover ${showMembers ? 'text-text-primary' : 'text-text-secondary'}`}
+                  className={`p-1.5 rounded hover:bg-hover ${showMembers ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
                   title="Toggle members"
                   aria-label="Toggle members"
                 >
                   <Users className="size-4.5" />
                 </button>
-              </>
-            ) : (
-              /* 1-on-1 DM header */
-              <>
-                {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.display_name || otherUser.username} size="sm" status={partnerStatus} userId={otherUser.id} />}
-                <span className="text-base font-semibold text-text-primary">{(otherUser?.display_name || otherUser?.username) ?? 'Direct Message'}</span>
-                {e2eeAvailable && (
-                  <span title="End-to-end encrypted"><Lock className="w-4 h-4 text-green-400" /></span>
-                )}
-                <div className="flex-1" />
-                {isMobile ? (
-                  <div className="flex items-center gap-3">
-                    <CallButton dmId={dmId!} recipientName={(otherUser?.display_name || otherUser?.username) ?? 'User'} recipientUserId={otherUser?.id} iconClassName="size-5 text-text-secondary" />
-                    <button className="text-text-secondary hover:text-text-primary" aria-label="More options">
-                      <MoreVertical className="size-5" />
-                    </button>
-                  </div>
+              </div>
+            </>
+          ) : (
+            /* 1-on-1 DM header */
+            <>
+              {otherUser && <Avatar url={otherUser.avatar_url} name={otherUser.display_name || otherUser.username} size="sm" status={partnerStatus} userId={otherUser.id} />}
+              <span className="text-base font-semibold text-text-primary">{(otherUser?.display_name || otherUser?.username) ?? 'Direct Message'}</span>
+              {e2eeAvailable && (
+                <span title="End-to-end encrypted"><Lock className="w-4 h-4 text-green-700/60 hover:text-green-700" /></span>
+              )}
+              <div className="flex-1" />
+              <div className={`flex items-center ${isMobile ? 'gap-3' : 'gap-1'}`}>
+                {showSearch ? (
+                  <input
+                    value={search}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    onBlur={() => { if (!search) setShowSearch(false); }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { setShowSearch(false); setSearch(''); setSearchResults(null); } }}
+                    placeholder="Search messages..."
+                    className={`input-reset px-3 py-1 bg-bg border border-divider rounded-lg text-sm text-text-primary ${isMobile ? 'w-32' : 'w-48'}`}
+                    autoFocus
+                  />
                 ) : (
-                  <div className="gap-4 flex ml-auto">
-                    <CallButton dmId={dmId!} recipientName={(otherUser?.display_name || otherUser?.username) ?? 'User'} recipientUserId={otherUser?.id} />
-                  </div>
+                  <button
+                    onClick={() => setShowSearch(true)}
+                    className="p-1.5 rounded hover:bg-hover text-text-secondary hover:text-text-primary"
+                    title="Search messages"
+                    aria-label="Search messages"
+                  >
+                    <Search className={isMobile ? 'size-5' : 'size-4.5'} />
+                  </button>
                 )}
-              </>
-            )}
+                <button
+                  onClick={() => setShowPins(!showPins)}
+                  className={`p-1.5 rounded hover:bg-hover ${showPins ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                  title="Pinned Messages"
+                  aria-label="Pinned Messages"
+                >
+                  <Bookmark className={isMobile ? 'size-5' : 'size-4.5'} />
+                </button>
+                <CallButton dmId={dmId!} recipientName={(otherUser?.display_name || otherUser?.username) ?? 'User'} recipientUserId={otherUser?.id} iconClassName={isMobile ? 'size-5 text-text-secondary' : undefined} />
+                {isMobile && (
+                  <button className="text-text-secondary hover:text-text-primary" aria-label="More options">
+                    <MoreVertical className="size-5" />
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Main content area */}
+        <div className="flex-1 flex min-h-0 relative">
+          {showPins && (
+            <PinnedMessagesPanel channelId={dmId} isDm onClose={() => setShowPins(false)} />
+          )}
+          {/* Messages */}
+          <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? 'justify-end' : ''}`}>
+            <div className={isMobile ? 'py-3 gap-1 flex flex-col flex-1 min-h-0' : 'flex-1 flex flex-col min-h-0'}>
+              <MessageList channelId={dmId} isDm hideActions={otherUser?.is_system === true} onReply={setReplyTo} search={search} searchResults={searchResults} searchLoading={false} />
+            </div>
+            <div>
+              <MessageInput
+                channelId={dmId}
+                isDm
+                isGroupDm={isGroup}
+                dmMemberIds={isGroup ? dmChannel?.members : undefined}
+                recipientUserId={isGroup ? undefined : otherUser?.id}
+                replyTo={replyTo}
+                replyAuthor={replyAuthor}
+                onCancelReply={() => setReplyTo(null)}
+                mentionableUsers={mentionableUsers}
+                droppedFiles={droppedFiles}
+                canSend={otherUser?.is_system ? false : undefined}
+                isAnnouncement={otherUser?.is_system === true}
+              />
+            </div>
           </div>
 
-          {/* Main content area */}
-          <div className="flex-1 flex min-h-0">
-            {/* Messages */}
-            <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? 'justify-end' : ''}`}>
-              <div className={isMobile ? 'py-3 gap-1 flex flex-col flex-1 min-h-0' : 'flex-1 flex flex-col min-h-0'}>
-                <MessageList channelId={dmId} isDm hideActions={otherUser?.is_system === true} onReply={setReplyTo} />
-              </div>
-              <div>
-                <MessageInput
-                  channelId={dmId}
-                  isDm
-                  isGroupDm={isGroup}
-                  dmMemberIds={isGroup ? dmChannel?.members : undefined}
-                  recipientUserId={isGroup ? undefined : otherUser?.id}
-                  replyTo={replyTo}
-                  replyAuthor={replyAuthor}
-                  onCancelReply={() => setReplyTo(null)}
-                  mentionableUsers={mentionableUsers}
-                  droppedFiles={droppedFiles}
-                  canSend={otherUser?.is_system ? false : undefined}
-                  isAnnouncement={otherUser?.is_system === true}
-                />
-              </div>
-            </div>
+        </div>
+      </div>
 
-            {/* Members sidebar (group DM only) — overlay on mobile */}
-            {isGroup && showMembers && (
-              <div className={`${
-                isMobile
-                  ? 'fixed inset-y-0 right-0 w-4/5 max-w-75 z-40 shadow-xl animate-slide-in-right'
-                  : 'w-60 shrink-0 h-full overflow-hidden animate-fade-in'
-              } bg-sidebar border border-divider flex flex-col`}>
-                <div className="p-3 border-b border-divider">
-                  <h3 className="text-text-primary text-sm font-semibold">
-                    Members — {dmChannel?.members.length}
-                  </h3>
-                </div>
+      {/* Members sidebar (group DM only) — full height, outside inner panel */}
+      {isGroup && showMembers && !isMobile && (
+        <div className="w-60 shrink-0 h-full overflow-hidden animate-fade-in bg-sidebar border-l border-divider flex flex-col">
+          <div className="p-3 border-b border-divider">
+            <h3 className="text-text-primary text-sm font-semibold">
+              Members — {dmChannel?.members.length}
+            </h3>
+          </div>
 
-                <div className="flex-1 overflow-y-auto p-2">
-                  {dmChannel?.members.map((memberId) => {
-                    const user = memberId === currentUser?.id ? currentUser : memberUsers[memberId];
-                    const status = statuses[memberId] ?? 'offline';
-                    if (!user) return null;
-                    return (
-                      <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-hover">
-                        <Avatar url={user.avatar_url} name={user.display_name || user.username} size={28} status={status} userId={memberId} />
-                        <span className="text-text-secondary text-sm truncate">
-                          {user.display_name || user.username}
-                          {memberId === currentUser?.id && <span className="text-text-tertiary text-xs ml-1">(you)</span>}
-                        </span>
-                      </div>
-                    );
-                  })}
+          <div className="flex-1 overflow-y-auto p-2">
+            {dmChannel?.members.map((memberId) => {
+              const user = memberId === currentUser?.id ? currentUser : memberUsers[memberId];
+              const status = statuses[memberId] ?? 'offline';
+              if (!user) return null;
+              return (
+                <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-hover">
+                  <Avatar url={user.avatar_url} name={user.display_name || user.username} size={28} status={status} userId={memberId} />
+                  <span className="text-text-secondary text-sm truncate">
+                    {user.display_name || user.username}
+                    {memberId === currentUser?.id && <span className="text-text-tertiary text-xs ml-1">(you)</span>}
+                  </span>
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Add member */}
-                <div className="p-2 border-t border-divider">
-                  <input
-                    value={addMemberSearch}
-                    onChange={(e) => handleAddMemberSearch(e.target.value)}
-                    placeholder="Add a member..."
-                    className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary outline-none mb-1"
-                  />
-                  {addMemberResults.slice(0, 5).map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => handleAddMember(u.id)}
-                      disabled={addingMember}
-                      className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-hover hover:text-text-primary disabled:opacity-50"
-                    >
-                      <Avatar url={u.avatar_url} name={u.display_name || u.username} size={20} userId={u.id} />
-                      <span className="truncate">{u.display_name || u.username}</span>
-                    </button>
-                  ))}
-                  {actionError && <div className="text-xs text-danger mt-1 px-1">{actionError}</div>}
-                </div>
+          {/* Add member */}
+          <div className="p-2 border-t border-divider">
+            <input
+              value={addMemberSearch}
+              onChange={(e) => handleAddMemberSearch(e.target.value)}
+              placeholder="Add a member..."
+              className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary outline-none mb-1"
+            />
+            {addMemberResults.slice(0, 5).map((u) => (
+              <button
+                key={u.id}
+                onClick={() => handleAddMember(u.id)}
+                disabled={addingMember}
+                className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-hover hover:text-text-primary disabled:opacity-50"
+              >
+                <Avatar url={u.avatar_url} name={u.display_name || u.username} size={20} userId={u.id} />
+                <span className="truncate">{u.display_name || u.username}</span>
+              </button>
+            ))}
+            {actionError && <div className="text-xs text-danger mt-1 px-1">{actionError}</div>}
+          </div>
 
-                {/* Leave group */}
-                <div className="p-2 border-t border-divider">
-                  <button
-                    onClick={() => setShowLeaveConfirm(true)}
-                    className="w-full px-3 py-1.5 text-sm text-danger hover:bg-danger/10 rounded text-left"
-                  >
-                    Leave Group
-                  </button>
-                </div>
-              </div>
-            )}
+          {/* Leave group */}
+          <div className="p-2 border-t border-divider">
+            <button
+              onClick={() => setShowLeaveConfirm(true)}
+              className="w-full px-3 py-1.5 text-sm text-danger hover:bg-danger/10 rounded text-left"
+            >
+              Leave Group
+            </button>
           </div>
         </div>
+      )}
+
+      {/* Mobile members overlay */}
+      {isGroup && showMembers && isMobile && (
+        <div className="fixed inset-y-0 right-0 w-4/5 max-w-75 z-40 shadow-xl animate-slide-in-right bg-sidebar border-l border-divider flex flex-col">
+          <div className="p-3 border-b border-divider">
+            <h3 className="text-text-primary text-sm font-semibold">
+              Members — {dmChannel?.members.length}
+            </h3>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2">
+            {dmChannel?.members.map((memberId) => {
+              const user = memberId === currentUser?.id ? currentUser : memberUsers[memberId];
+              const status = statuses[memberId] ?? 'offline';
+              if (!user) return null;
+              return (
+                <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-hover">
+                  <Avatar url={user.avatar_url} name={user.display_name || user.username} size={28} status={status} userId={memberId} />
+                  <span className="text-text-secondary text-sm truncate">
+                    {user.display_name || user.username}
+                    {memberId === currentUser?.id && <span className="text-text-tertiary text-xs ml-1">(you)</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add member */}
+          <div className="p-2 border-t border-divider">
+            <input
+              value={addMemberSearch}
+              onChange={(e) => handleAddMemberSearch(e.target.value)}
+              placeholder="Add a member..."
+              className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary outline-none mb-1"
+            />
+            {addMemberResults.slice(0, 5).map((u) => (
+              <button
+                key={u.id}
+                onClick={() => handleAddMember(u.id)}
+                disabled={addingMember}
+                className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-hover hover:text-text-primary disabled:opacity-50"
+              >
+                <Avatar url={u.avatar_url} name={u.display_name || u.username} size={20} userId={u.id} />
+                <span className="truncate">{u.display_name || u.username}</span>
+              </button>
+            ))}
+            {actionError && <div className="text-xs text-danger mt-1 px-1">{actionError}</div>}
+          </div>
+
+          {/* Leave group */}
+          <div className="p-2 border-t border-divider">
+            <button
+              onClick={() => setShowLeaveConfirm(true)}
+              className="w-full px-3 py-1.5 text-sm text-danger hover:bg-danger/10 rounded text-left"
+            >
+              Leave Group
+            </button>
+          </div>
+        </div>
+      )}
+      </div>
 
       {showLeaveConfirm && (
         <ConfirmDialog

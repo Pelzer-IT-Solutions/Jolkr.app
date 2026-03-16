@@ -153,6 +153,11 @@ pub fn create_router(state: AppState) -> Router {
             post(dms::upload_dm_attachment),
         )
         .route("/api/dms/:dm_id/read", post(dms::mark_as_read))
+        .route(
+            "/api/dms/:dm_id/pins/:message_id",
+            post(dms::pin_dm_message).delete(dms::unpin_dm_message),
+        )
+        .route("/api/dms/:dm_id/pins", get(dms::list_dm_pins))
         .route("/api/dms/:dm_id/e2ee/distribute", post(channel_encryption::dm_distribute_keys))
         .route("/api/dms/:dm_id/e2ee/my-key", get(channel_encryption::dm_get_my_key))
         .route("/api/dms/:dm_id/call", post(dms::initiate_call))
