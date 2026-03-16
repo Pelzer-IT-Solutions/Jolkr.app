@@ -40,6 +40,7 @@ export interface MessageInputProps {
   canAttach?: boolean; // false = hide file button, ignore paste/drop
   slowmodeSeconds?: number;
   droppedFiles?: File[];
+  isAnnouncement?: boolean;
 }
 
 function SortableFileChip({ file, id, index, onRemove }: { file: File; id: string; index: number; onRemove: (i: number) => void }) {
@@ -70,7 +71,7 @@ function SortableFileChip({ file, id, index, onRemove }: { file: File; id: strin
   );
 }
 
-export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles }: MessageInputProps) {
+export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles, isAnnouncement }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [sending, setSending] = useState(false);
@@ -449,7 +450,11 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
     return (
       <div className="px-4 pb-5 pt-4 shrink-0">
         <div className="flex items-center bg-surface border border-divider rounded-lg px-4 py-3 opacity-60">
-          <span className="text-text-tertiary text-sm">You do not have permission to send messages in this channel</span>
+          <span className="text-text-tertiary text-sm">
+            {isAnnouncement
+              ? 'This is an announcement channel'
+              : 'You do not have permission to send messages in this channel'}
+          </span>
         </div>
       </div>
     );

@@ -44,6 +44,7 @@ pub struct AuthUser {
     pub username: String,
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
+    pub is_system: bool,
 }
 
 impl From<UserRow> for AuthUser {
@@ -54,6 +55,7 @@ impl From<UserRow> for AuthUser {
             username: row.username,
             display_name: row.display_name,
             avatar_url: row.avatar_url,
+            is_system: row.is_system,
         }
     }
 }

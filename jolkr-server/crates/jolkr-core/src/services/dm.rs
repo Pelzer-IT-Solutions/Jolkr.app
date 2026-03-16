@@ -386,6 +386,22 @@ impl DmService {
             return Err(JolkrError::Forbidden);
         }
 
+        // Block messages to system users (announcement-only DMs)
+        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let other_member_ids: Vec<Uuid> = members
+            .iter()
+            .filter(|m| m.user_id != author_id)
+            .map(|m| m.user_id)
+            .collect();
+        if !other_member_ids.is_empty() {
+            let other_users = UserRepo::get_by_ids(pool, &other_member_ids).await?;
+            if other_users.iter().any(|u| u.is_system) {
+                return Err(JolkrError::BadRequest(
+                    "Cannot reply to announcement messages".into(),
+                ));
+            }
+        }
+
         // Validate reply_to_id belongs to the same DM channel
         if let Some(reply_id) = req.reply_to_id {
             let reply_msg = DmRepo::get_message(pool, reply_id).await?;

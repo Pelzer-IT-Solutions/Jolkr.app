@@ -19,6 +19,7 @@ pub struct UserRow {
     pub is_online: bool,
     pub last_seen_at: Option<DateTime<Utc>>,
     pub show_read_receipts: bool,
+    pub is_system: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

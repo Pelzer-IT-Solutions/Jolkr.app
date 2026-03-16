@@ -409,7 +409,7 @@ export default function DmChat() {
             {/* Messages */}
             <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? 'justify-end' : ''}`}>
               <div className={isMobile ? 'py-3 gap-1 flex flex-col flex-1 min-h-0' : 'flex-1 flex flex-col min-h-0'}>
-                <MessageList channelId={dmId} isDm onReply={setReplyTo} />
+                <MessageList channelId={dmId} isDm hideActions={otherUser?.is_system === true} onReply={setReplyTo} />
               </div>
               <div>
                 <MessageInput
@@ -423,6 +423,8 @@ export default function DmChat() {
                   onCancelReply={() => setReplyTo(null)}
                   mentionableUsers={mentionableUsers}
                   droppedFiles={droppedFiles}
+                  canSend={otherUser?.is_system ? false : undefined}
+                  isAnnouncement={otherUser?.is_system === true}
                 />
               </div>
             </div>

@@ -17,6 +17,7 @@ pub struct UserProfile {
     pub bio: Option<String>,
     pub is_online: bool,
     pub show_read_receipts: bool,
+    pub is_system: bool,
 }
 
 impl From<UserRow> for UserProfile {
@@ -30,6 +31,7 @@ impl From<UserRow> for UserProfile {
             bio: row.bio,
             is_online: row.is_online,
             show_read_receipts: row.show_read_receipts,
+            is_system: row.is_system,
         }
     }
 }

@@ -35,11 +35,12 @@ export interface MessageTileProps {
   onReply?: (message: Message) => void;
   onOpenThread?: (message: Message) => void;
   hideThreadButton?: boolean;
+  hideActions?: boolean;
   replyMessage?: Message;
   replyAuthor?: User;
 }
 
-function MessageTileInner({ message, compact, author, isDm, channelId, onReply, onOpenThread, hideThreadButton, replyMessage, replyAuthor }: MessageTileProps) {
+function MessageTileInner({ message, compact, author, isDm, channelId, onReply, onOpenThread, hideThreadButton, hideActions, replyMessage, replyAuthor }: MessageTileProps) {
   const user = useAuthStore((s) => s.user);
   const editMessage = useMessagesStore((s) => s.editMessage);
   const deleteMessage = useMessagesStore((s) => s.deleteMessage);
@@ -403,7 +404,7 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
       </div>
 
       {/* Action buttons */}
-      {showActions && !editing && (
+      {showActions && !editing && !hideActions && (
         <div className="absolute right-4 -top-3 flex rounded-lg bg-surface border border-divider shadow-float">
           <button
             onClick={() => onReply?.(message)}

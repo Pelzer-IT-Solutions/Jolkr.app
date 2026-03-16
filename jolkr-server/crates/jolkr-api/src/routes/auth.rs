@@ -64,6 +64,7 @@ pub struct UserDto {
     pub username: String,
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
+    pub is_system: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -94,6 +95,7 @@ pub async fn register(
             username: user.username,
             display_name: user.display_name,
             avatar_url: user.avatar_url,
+            is_system: user.is_system,
         },
         tokens,
     }))
@@ -114,6 +116,7 @@ pub async fn login(
             username: user.username,
             display_name: user.display_name,
             avatar_url: user.avatar_url,
+            is_system: user.is_system,
         },
         tokens,
     }))

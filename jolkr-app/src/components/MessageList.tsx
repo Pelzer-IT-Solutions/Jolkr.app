@@ -19,11 +19,12 @@ export interface MessageListProps {
   searchResults?: Message[] | null;
   searchLoading?: boolean;
   isDm?: boolean;
+  hideActions?: boolean;
   onReply?: (message: Message) => void;
   onOpenThread?: (message: Message) => void;
 }
 
-export default function MessageList({ channelId, search, searchResults, searchLoading, isDm, onReply, onOpenThread }: MessageListProps) {
+export default function MessageList({ channelId, search, searchResults, searchLoading, isDm, hideActions, onReply, onOpenThread }: MessageListProps) {
   const fetchMessages = useMessagesStore((s) => s.fetchMessages);
   const fetchOlder = useMessagesStore((s) => s.fetchOlder);
   const channelMessages = useMessagesStore((s) => s.messages[channelId]);
@@ -263,6 +264,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
                     channelId={channelId}
                     onReply={onReply}
                     onOpenThread={onOpenThread}
+                    hideActions={hideActions}
                     replyMessage={replyMessage}
                     replyAuthor={replyAuthor}
                   />

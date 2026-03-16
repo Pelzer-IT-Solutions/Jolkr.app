@@ -8,6 +8,7 @@ export interface User {
   bio?: string | null;
   is_online?: boolean;
   show_read_receipts?: boolean;
+  is_system?: boolean;
   created_at?: string | null;
 }
 
