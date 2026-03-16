@@ -16,7 +16,8 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { Plus, UserPlus, Settings, LogIn, Search } from 'lucide-react';
+import { Plus, LogIn, Search } from 'lucide-react';
+import { useContextMenuStore } from '../stores/context-menu';
 
 /** Server icon with auto-retry on presigned URL expiry */
 function ServerIconImg({ serverId, url, name }: { serverId: string; url: string; name: string }) {
@@ -85,7 +86,6 @@ export default function ServerSidebar() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ serverId: string; x: number; y: number } | null>(null);
   const [settingsServer, setSettingsServer] = useState<string | null>(null);
   const [inviteServer, setInviteServer] = useState<string | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
@@ -128,15 +128,21 @@ export default function ServerSidebar() {
 
   const handleContextMenu = useCallback((e: React.MouseEvent, sId: string) => {
     e.preventDefault();
-    const maxX = window.innerWidth - 200;
-    const maxY = window.innerHeight - 100;
-    setContextMenu({ serverId: sId, x: Math.min(e.clientX, maxX), y: Math.min(e.clientY, maxY) });
-  }, []);
+    const server = servers.find((s) => s.id === sId);
+    if (!server) return;
+    const isOwner = currentUser?.id === server.owner_id;
+    const perms = myPerms[sId] ?? 0;
+    const canSettings = isOwner || hasPermission(perms, MANAGE_CHANNELS) || hasPermission(perms, MANAGE_ROLES);
 
-  const contextServer = contextMenu ? servers.find((s) => s.id === contextMenu.serverId) : null;
-  const isContextOwner = contextServer && currentUser?.id === contextServer.owner_id;
-  const contextPerms = contextMenu ? (myPerms[contextMenu.serverId] ?? 0) : 0;
-  const canContextSettings = isContextOwner || hasPermission(contextPerms, MANAGE_CHANNELS) || hasPermission(contextPerms, MANAGE_ROLES);
+    const items: import('../stores/context-menu').ContextMenuEntry[] = [
+      { label: 'Invite People', icon: 'UserPlus', onClick: () => setInviteServer(sId) },
+    ];
+    if (canSettings) {
+      items.push({ label: 'Server Settings', icon: 'Settings', onClick: () => setSettingsServer(sId) });
+    }
+    useContextMenuStore.getState().open(e.clientX, e.clientY, items);
+  }, [servers, currentUser?.id, myPerms]);
+
   const settingsServerObj = settingsServer ? servers.find((s) => s.id === settingsServer) : null;
 
   return (
@@ -216,34 +222,6 @@ export default function ServerSidebar() {
           <Plus className={`size-5 ${hovered === 'add' ? 'text-white' : 'text-text-tertiary'}`} />
         </button>
       </div>
-
-      {/* Context menu for server icons */}
-      {contextMenu && contextServer && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
-          <div
-            className="fixed z-50 bg-surface border border-divider rounded-xl shadow-float py-1 w-45"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-          >
-            <button
-              onClick={() => { setContextMenu(null); setInviteServer(contextMenu.serverId); }}
-              className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
-            >
-              <UserPlus className="size-4" />
-              Invite People
-            </button>
-            {canContextSettings && (
-              <button
-                onClick={() => { setContextMenu(null); setSettingsServer(contextMenu.serverId); }}
-                className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
-              >
-                <Settings className="size-4" />
-                Server Settings
-              </button>
-            )}
-          </div>
-        </>
-      )}
 
       {/* Add server choice dialog */}
       {showAddMenu && (

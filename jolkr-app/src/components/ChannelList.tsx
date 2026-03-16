@@ -15,7 +15,8 @@ import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { DragEndEvent } from '@dnd-kit/core';
 import CategoryGroup, { TextChannelGroup, VoiceChannelGroup } from './CategoryGroup';
-import { ChevronDown, Plus, Settings, UserPlus, FolderPlus, LogOut, Bell, BellOff } from 'lucide-react';
+import { ChevronDown, Plus, Settings, UserPlus, FolderPlus, LogOut } from 'lucide-react';
+import { useContextMenuStore } from '../stores/context-menu';
 
 export interface ChannelListProps {
   server: Server;
@@ -49,13 +50,11 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  const [categoryMenu, setCategoryMenu] = useState<{ categoryId: string; x: number; y: number } | null>(null);
   const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
   const [editCategoryName, setEditCategoryName] = useState('');
   const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
   const [createInCategory, setCreateInCategory] = useState<string | null>(null);
   const [mutedChannels, setMutedChannels] = useState<Map<string, boolean>>(new Map());
-  const [channelMenu, setChannelMenu] = useState<{ channelId: string; x: number; y: number } | null>(null);
   const updateCategory = useServersStore((s) => s.updateCategory);
   const deleteCategory = useServersStore((s) => s.deleteCategory);
   const leaveServer = useServersStore((s) => s.leaveServer);
@@ -115,7 +114,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
     }).catch(() => { });
   }, []);
 
-  const handleToggleMute = async (chId: string) => {
+  const handleToggleMute = useCallback(async (chId: string) => {
     const currentlyMuted = mutedChannels.get(chId) ?? false;
     const newMuted = !currentlyMuted;
     // Optimistic update
@@ -125,7 +124,6 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
       else next.delete(chId);
       return next;
     });
-    setChannelMenu(null);
     try {
       await api.updateNotificationSetting('channel', chId, { muted: newMuted });
     } catch {
@@ -137,14 +135,19 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
         return next;
       });
     }
-  };
+  }, [mutedChannels]);
 
   const handleChannelContextMenu = useCallback((chId: string, e: React.MouseEvent) => {
     e.preventDefault();
-    const maxX = window.innerWidth - 180;
-    const maxY = window.innerHeight - 100;
-    setChannelMenu({ channelId: chId, x: Math.min(e.clientX, maxX), y: Math.min(e.clientY, maxY) });
-  }, []);
+    const isMuted = mutedChannels.get(chId) ?? false;
+    useContextMenuStore.getState().open(e.clientX, e.clientY, [
+      {
+        label: isMuted ? 'Unmute Channel' : 'Mute Channel',
+        icon: isMuted ? 'Bell' : 'BellOff',
+        onClick: () => handleToggleMute(chId),
+      },
+    ]);
+  }, [mutedChannels, handleToggleMute]);
 
   // Group channels by category
   const { categorizedGroups, uncategorizedText, uncategorizedVoice } = useMemo(() => {
@@ -170,10 +173,21 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
   const handleCategoryContextMenu = useCallback((categoryId: string, e: React.MouseEvent) => {
     e.preventDefault();
     if (!canManageChannels) return;
-    const maxX = window.innerWidth - 180;
-    const maxY = window.innerHeight - 100;
-    setCategoryMenu({ categoryId, x: Math.min(e.clientX, maxX), y: Math.min(e.clientY, maxY) });
-  }, [canManageChannels]);
+    useContextMenuStore.getState().open(e.clientX, e.clientY, [
+      {
+        label: 'Edit Category', icon: 'Pencil', onClick: () => {
+          const cat = (useServersStore.getState().categories[server.id] ?? []).find((c) => c.id === categoryId);
+          setEditCategoryName(cat?.name ?? '');
+          setEditCategoryId(categoryId);
+        },
+      },
+      {
+        label: 'Delete Category', icon: 'Trash2', variant: 'danger', onClick: () => {
+          setDeleteCategoryId(categoryId);
+        },
+      },
+    ]);
+  }, [canManageChannels, server.id]);
 
   const [editCategorySaving, setEditCategorySaving] = useState(false);
   const handleEditCategory = async () => {
@@ -401,66 +415,6 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
           );
         })}
       </div>
-
-      {/* Category context menu */}
-      {categoryMenu && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setCategoryMenu(null)} />
-          <div
-            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-float py-1 min-w-40 animate-dropdown-enter"
-            style={{ left: categoryMenu.x, top: categoryMenu.y }}
-          >
-            <button
-              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left"
-              onClick={() => {
-                const cat = serverCategories.find((c) => c.id === categoryMenu.categoryId);
-                setEditCategoryName(cat?.name ?? '');
-                setEditCategoryId(categoryMenu.categoryId);
-                setCategoryMenu(null);
-              }}
-            >
-              Edit Category
-            </button>
-            <button
-              className="w-full px-4 py-2 text-sm text-danger hover:bg-danger/10 text-left"
-              onClick={() => {
-                setDeleteCategoryId(categoryMenu.categoryId);
-                setCategoryMenu(null);
-              }}
-            >
-              Delete Category
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Channel context menu (mute/unmute) */}
-      {channelMenu && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setChannelMenu(null)} />
-          <div
-            className="fixed z-50 bg-surface border border-divider rounded-lg shadow-float py-1 min-w-40 animate-dropdown-enter"
-            style={{ left: channelMenu.x, top: channelMenu.y }}
-          >
-            <button
-              className="w-full px-4 py-2 text-sm text-text-secondary hover:bg-hover hover:text-text-primary text-left flex items-center gap-2"
-              onClick={() => handleToggleMute(channelMenu.channelId)}
-            >
-              {mutedChannels.get(channelMenu.channelId) ? (
-                <>
-                  <Bell className="size-4" />
-                  Unmute Channel
-                </>
-              ) : (
-                <>
-                  <BellOff className="size-4" />
-                  Mute Channel
-                </>
-              )}
-            </button>
-          </div>
-        </>
-      )}
 
       {/* Edit category dialog */}
       {editCategoryId && (

@@ -12,8 +12,8 @@ import UserProfileCard from './UserProfileCard';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import CreateGroupDmDialog from './dialogs/CreateGroupDm';
 import DmItem, { getDmDisplay } from './DmItem';
-import DmContextMenu from './DmContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { useContextMenuStore } from '../stores/context-menu';
+import type { ContextMenuEntry } from '../stores/context-menu';
 import { Search, Users, UserPlus } from 'lucide-react';
 
 export interface DmListProps {
@@ -44,8 +44,6 @@ export default function DmList({ onDmSelect }: DmListProps) {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const wsDebouncerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Context menu via shared hook
-  const ctxMenu = useContextMenu<DmChannel>();
   const [friendships, setFriendships] = useState<Map<string, { id: string; status: string }>>(new Map());
   const [confirmAction, setConfirmAction] = useState<{ type: 'block' | 'leave' | 'close'; dm: DmChannel } | null>(null);
   const [profileTarget, setProfileTarget] = useState<{ userId: string; anchor: { x: number; y: number } } | null>(null);
@@ -181,20 +179,6 @@ export default function DmList({ onDmSelect }: DmListProps) {
     }).catch(() => {});
   }, [currentUser?.id]);
 
-  // Context menu handler (wraps useContextMenu hook)
-  const handleContextMenu = useCallback((dm: DmChannel, e: React.MouseEvent) => {
-    ctxMenu.open(e, dm);
-  }, [ctxMenu.open]);
-
-  // Context menu action handlers
-  const handleViewProfile = useCallback((dm: DmChannel) => {
-    const otherIds = dm.members.filter((id) => id !== currentUser?.id);
-    if (otherIds.length > 0) {
-      setProfileTarget({ userId: otherIds[0], anchor: { x: ctxMenu.position.x, y: ctxMenu.position.y } });
-    }
-    ctxMenu.close();
-  }, [currentUser?.id, ctxMenu.position.x, ctxMenu.position.y, ctxMenu.close]);
-
   const refreshFriendships = useCallback(async () => {
     const [friends, pending] = await Promise.all([api.getFriends(), api.getPendingFriends()]);
     const map = new Map<string, { id: string; status: string }>();
@@ -205,46 +189,70 @@ export default function DmList({ onDmSelect }: DmListProps) {
     setFriendships(map);
   }, [currentUser?.id]);
 
-  const handleAddFriend = useCallback(async (userId: string) => {
-    ctxMenu.close();
-    try {
-      await api.sendFriendRequest(userId);
-      await refreshFriendships();
-    } catch (e) {
-      console.warn('Failed to send friend request:', e);
-    }
-  }, [ctxMenu.close, refreshFriendships]);
+  // Context menu handler — builds items and opens the singleton context menu
+  const handleContextMenu = useCallback((dm: DmChannel, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const otherIds = dm.members.filter((id) => id !== currentUser?.id);
+    const otherId = !dm.is_group && otherIds.length > 0 ? otherIds[0] : null;
+    const friendship = otherId ? (friendships.get(otherId) ?? null) : null;
 
-  const handleRemoveFriend = useCallback(async (userId: string) => {
-    ctxMenu.close();
-    const friendship = friendships.get(userId);
-    if (!friendship) return;
-    try {
-      await api.declineFriend(friendship.id);
-      setFriendships((prev) => {
-        const next = new Map(prev);
-        next.delete(userId);
-        return next;
+    const items: ContextMenuEntry[] = [];
+
+    if (dm.is_group) {
+      items.push({
+        label: 'Leave Group', icon: 'LogOut', variant: 'danger',
+        onClick: () => setConfirmAction({ type: 'leave', dm }),
       });
-    } catch (e) {
-      console.warn('Failed to remove friend:', e);
+    } else {
+      items.push({
+        label: 'View Profile', icon: 'User',
+        onClick: () => {
+          if (otherId) {
+            setProfileTarget({ userId: otherId, anchor: { x: e.clientX, y: e.clientY } });
+          }
+        },
+      });
+
+      if (friendship?.status === 'accepted') {
+        items.push({
+          label: 'Remove Friend', icon: 'UserMinus',
+          onClick: async () => {
+            if (!otherId) return;
+            const f = friendships.get(otherId);
+            if (!f) return;
+            try {
+              await api.declineFriend(f.id);
+              setFriendships((prev) => { const next = new Map(prev); next.delete(otherId); return next; });
+            } catch (err) { console.warn('Failed to remove friend:', err); }
+          },
+        });
+      } else if (!friendship) {
+        items.push({
+          label: 'Add Friend', icon: 'UserPlus',
+          onClick: async () => {
+            if (!otherId) return;
+            try {
+              await api.sendFriendRequest(otherId);
+              await refreshFriendships();
+            } catch (err) { console.warn('Failed to send friend request:', err); }
+          },
+        });
+      }
+
+      items.push({ divider: true });
+      items.push({
+        label: 'Block User', icon: 'Ban', variant: 'danger',
+        onClick: () => setConfirmAction({ type: 'block', dm }),
+      });
+      items.push({
+        label: 'Close DM', icon: 'X', variant: 'danger',
+        onClick: () => setConfirmAction({ type: 'close', dm }),
+      });
     }
-  }, [ctxMenu.close, friendships]);
 
-  const handleBlock = useCallback((dm: DmChannel) => {
-    setConfirmAction({ type: 'block', dm });
-    ctxMenu.close();
-  }, [ctxMenu.close]);
-
-  const handleCloseDm = useCallback((dm: DmChannel) => {
-    setConfirmAction({ type: 'close', dm });
-    ctxMenu.close();
-  }, [ctxMenu.close]);
-
-  const handleLeaveGroup = useCallback((dm: DmChannel) => {
-    setConfirmAction({ type: 'leave', dm });
-    ctxMenu.close();
-  }, [ctxMenu.close]);
+    useContextMenuStore.getState().open(e.clientX, e.clientY, items);
+  }, [currentUser?.id, friendships, refreshFriendships]);
 
   const handleConfirmAction = async () => {
     if (!confirmAction) return;
@@ -276,13 +284,6 @@ export default function DmList({ onDmSelect }: DmListProps) {
       setConfirmAction(null);
     }
   };
-
-  // Derive the friendship for the context menu target
-  const ctxDm = ctxMenu.data;
-  const ctxOtherId = ctxDm && !ctxDm.is_group
-    ? ctxDm.members.find((id) => id !== currentUser?.id) ?? null
-    : null;
-  const ctxFriendship = ctxOtherId ? (friendships.get(ctxOtherId) ?? null) : null;
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -399,25 +400,6 @@ export default function DmList({ onDmSelect }: DmListProps) {
 
       {showCreateGroup && (
         <CreateGroupDmDialog onClose={() => setShowCreateGroup(false)} />
-      )}
-
-      {/* Context menu */}
-      {ctxMenu.isOpen && ctxDm && (
-        <DmContextMenu
-          dm={ctxDm}
-          users={users}
-          currentUserId={currentUser?.id ?? ''}
-          position={ctxMenu.position}
-          menuRef={ctxMenu.menuRef}
-          friendship={ctxFriendship}
-          onClose={ctxMenu.close}
-          onViewProfile={handleViewProfile}
-          onAddFriend={handleAddFriend}
-          onRemoveFriend={handleRemoveFriend}
-          onBlock={handleBlock}
-          onCloseDm={handleCloseDm}
-          onLeaveGroup={handleLeaveGroup}
-        />
       )}
 
       {/* Confirm dialogs for block / close / leave */}

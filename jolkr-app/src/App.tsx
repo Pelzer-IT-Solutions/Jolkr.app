@@ -13,6 +13,7 @@ import { checkForUpdate, type UpdateInfo } from './services/updater';
 import { onDeepLink, initDeepLinks } from './services/deepLink';
 import ErrorBoundary from './components/ErrorBoundary';
 import TextContextMenu from './components/TextContextMenu';
+import ContextMenu from './components/ContextMenu';
 import UpdateNotification from './components/UpdateNotification';
 import IncomingCallDialog from './components/IncomingCallDialog';
 import OutgoingCallDialog from './components/OutgoingCallDialog';
@@ -148,6 +149,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
       {updateInfo && <UpdateNotification update={updateInfo} />}
       <CallOverlays />
       <TextContextMenu />
+      <ContextMenu />
       {children}
     </>
   );

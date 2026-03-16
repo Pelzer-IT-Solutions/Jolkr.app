@@ -20,6 +20,7 @@ import { useDecryptedContent } from '../hooks/useDecryptedContent';
 import { useDmReadsStore } from '../stores/dm-reads';
 import { useMobileView } from '../hooks/useMobileView';
 import { Reply, Lock, FileText, MessageSquare, Check, Bookmark, Smile, Pencil, Trash2 } from 'lucide-react';
+import { useContextMenuStore } from '../stores/context-menu';
 
 const URL_RE = /https?:\/\/[^\s<>)\]']+/g;
 
@@ -266,6 +267,9 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
           const lightboxImages = imageAtts.map((a) => ({
             src: rewriteStorageUrl(a.url) ?? a.url,
             alt: a.filename,
+            filename: a.filename,
+            sizeBytes: a.size_bytes,
+            contentType: a.content_type,
           }));
           const imgCount = imageAtts.length;
 
@@ -323,19 +327,7 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
               {fileAtts.map((att) => {
                 const attUrl = rewriteStorageUrl(att.url) ?? att.url;
                 return (
-                  <a
-                    key={att.id}
-                    href={attUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 max-w-75 hover:bg-hover"
-                  >
-                    <FileText className="size-5 text-text-tertiary shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-sm text-accent truncate">{att.filename}</div>
-                      <div className="text-xs text-text-tertiary">{formatBytes(att.size_bytes)}</div>
-                    </div>
-                  </a>
+                  <FileAttachment key={att.id} url={attUrl} filename={att.filename} sizeBytes={att.size_bytes} />
                 );
               })}
 
@@ -550,6 +542,51 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
 const MessageTile = memo(MessageTileInner);
 export default MessageTile;
 
+function FileAttachment({ url, filename, sizeBytes }: { url: string; filename: string; sizeBytes: number }) {
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    useContextMenuStore.getState().open(e.clientX, e.clientY, [
+      {
+        label: 'Download', icon: 'Download', onClick: async () => {
+          try {
+            const response = await fetch(url, { mode: 'cors' });
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(blobUrl);
+          } catch {
+            window.open(url, '_blank');
+          }
+        },
+      },
+      {
+        label: 'Open in New Tab', icon: 'ExternalLink', onClick: () => {
+          window.open(url, '_blank', 'noopener');
+        },
+      },
+    ]);
+  };
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onContextMenu={handleContextMenu}
+      className="flex items-center gap-2 bg-surface border border-divider rounded-lg px-3 py-2 max-w-75 hover:bg-hover"
+    >
+      <FileText className="size-5 text-text-tertiary shrink-0" />
+      <div className="min-w-0">
+        <div className="text-sm text-accent truncate">{filename}</div>
+        <div className="text-xs text-text-tertiary">{formatBytes(sizeBytes)}</div>
+      </div>
+    </a>
+  );
+}
+
 function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
   src: string; alt: string; onOpen: () => void; grid?: boolean; spanFull?: boolean;
   onRefreshUrl?: () => Promise<string | undefined>;
@@ -591,6 +628,35 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
     );
   }
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const imgSrc = currentSrc;
+    useContextMenuStore.getState().open(e.clientX, e.clientY, [
+      { label: 'Show', icon: 'Search', onClick: () => onOpen() },
+      {
+        label: 'Download', icon: 'Download', onClick: async () => {
+          try {
+            const response = await fetch(imgSrc, { mode: 'cors' });
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = alt;
+            a.click();
+            URL.revokeObjectURL(blobUrl);
+          } catch {
+            window.open(imgSrc, '_blank');
+          }
+        },
+      },
+      {
+        label: 'Open in New Tab', icon: 'ExternalLink', onClick: () => {
+          window.open(imgSrc, '_blank', 'noopener');
+        },
+      },
+    ]);
+  };
+
   if (grid) {
     return (
       <div className={`relative overflow-hidden ${spanFull ? 'col-span-2 h-50' : 'h-37.5'}`}>
@@ -604,6 +670,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
           referrerPolicy="no-referrer"
           className={`w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           onClick={onOpen}
+          onContextMenu={handleContextMenu}
           loading="lazy"
           onLoad={() => setLoaded(true)}
           onError={handleError}
@@ -624,6 +691,7 @@ function AttachmentImage({ src, alt, onOpen, grid, spanFull, onRefreshUrl }: {
         referrerPolicy="no-referrer"
         className={`max-w-100 max-h-75 rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         onClick={onOpen}
+        onContextMenu={handleContextMenu}
         loading="lazy"
         onLoad={() => setLoaded(true)}
         onError={handleError}
