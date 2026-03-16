@@ -20,6 +20,12 @@ export interface DmListProps {
   onDmSelect?: () => void;
 }
 
+// Module-level cache — survives component unmount/remount so the list
+// doesn't flash empty when navigating back from a server view.
+let dmCache: DmChannel[] = [];
+let userCache: Record<string, User> = {};
+let fetchedUserIds = new Set<string>();
+
 export default function DmList({ onDmSelect }: DmListProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,13 +35,8 @@ export default function DmList({ onDmSelect }: DmListProps) {
   const unreadCounts = useUnreadStore((s) => s.counts);
   const statuses = usePresenceStore((s) => s.statuses);
 
-  // Refs replacing former module-level mutable state
-  const cachedDmsRef = useRef<DmChannel[]>([]);
-  const cachedUsersRef = useRef<Record<string, User>>({});
-  const fetchedUserIdsRef = useRef(new Set<string>());
-
-  const [dms, setDms] = useState<DmChannel[]>(cachedDmsRef.current);
-  const [users, setUsers] = useState<Record<string, User>>(cachedUsersRef.current);
+  const [dms, setDms] = useState<DmChannel[]>(dmCache);
+  const [users, setUsers] = useState<Record<string, User>>(userCache);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
@@ -52,8 +53,19 @@ export default function DmList({ onDmSelect }: DmListProps) {
   const fetchDms = useCallback(() => {
     api.getDms().then((channels) => {
       setFetchError(false);
-      setDms(channels);
-      cachedDmsRef.current = channels;
+      // Only update state if the DM list actually changed (order, members, name)
+      const changed = channels.length !== dmCache.length ||
+        channels.some((ch, i) => {
+          const cached = dmCache[i];
+          if (!cached) return true;
+          return ch.id !== cached.id || ch.name !== cached.name ||
+            ch.members.length !== cached.members.length ||
+            ch.members.some((m, j) => m !== cached.members[j]);
+        });
+      if (changed) {
+        dmCache = channels;
+        setDms(channels);
+      }
       // Query presence for all DM partners
       const otherMemberIds = channels
         .filter((ch) => !ch.is_group)
@@ -67,8 +79,8 @@ export default function DmList({ onDmSelect }: DmListProps) {
       // Batch fetch user info for DM participants
       const idsToFetch: string[] = [];
       channels.forEach((ch) => ch.members.forEach((id) => {
-        if (id !== currentUser?.id && !fetchedUserIdsRef.current.has(id)) {
-          fetchedUserIdsRef.current.add(id);
+        if (id !== currentUser?.id && !fetchedUserIds.has(id)) {
+          fetchedUserIds.add(id);
           idsToFetch.push(id);
         }
       }));
@@ -78,7 +90,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
           for (const u of fetchedUsers) map[u.id] = u;
           setUsers((prev) => {
             const next = { ...prev, ...map };
-            cachedUsersRef.current = next;
+            userCache = next;
             return next;
           });
         }).catch(() => {
@@ -88,7 +100,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
             for (const u of results) if (u) map[u.id] = u;
             setUsers((prev) => {
               const next = { ...prev, ...map };
-              cachedUsersRef.current = next;
+              userCache = next;
               return next;
             });
           });

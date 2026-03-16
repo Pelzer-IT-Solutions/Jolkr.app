@@ -2457,7 +2457,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-api"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -2466,6 +2466,7 @@ dependencies = [
  "chrono",
  "dashmap",
  "futures-util",
+ "hmac",
  "image",
  "jolkr-common",
  "jolkr-core",
@@ -2496,7 +2497,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-common"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "chrono",
  "serde",
@@ -2508,7 +2509,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-core"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2535,7 +2536,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-db"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "chrono",
  "jolkr-common",
@@ -2548,7 +2549,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-media"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "axum",
  "futures-util",

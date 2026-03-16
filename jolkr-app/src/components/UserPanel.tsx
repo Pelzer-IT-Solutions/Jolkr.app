@@ -69,7 +69,7 @@ export default function UserPanel() {
   return (
     <div className="shrink-0">
       <VoiceConnectionBar />
-    <div className="bg-bg p-3 gap-2.5 flex items-center relative">
+    <div className="bg-bg p-3.5 gap-2.5 flex items-center relative min-h-16">
       <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size="sm" status={currentStatus} userId={user?.id} />
       <div className="flex-1 min-w-0 flex flex-col justify-center gap-0">
         <div className="text-sm font-semibold text-text-primary truncate">{user?.username ?? 'User'}</div>

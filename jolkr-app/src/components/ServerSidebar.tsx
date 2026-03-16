@@ -161,7 +161,7 @@ export default function ServerSidebar() {
       </div>
       <div className="w-8 h-0.5 bg-divider rounded-full shrink-0" />
 
-      <div className="flex-1 flex flex-col items-center py-2 gap-2 overflow-y-auto w-full">
+      <div className="flex-1 flex flex-col items-center gap-2 overflow-y-auto w-full">
         {/* Server icons */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
           <SortableContext items={serverIds} strategy={verticalListSortingStrategy}>
@@ -210,7 +210,7 @@ export default function ServerSidebar() {
       </div>
 
       {/* Add server button — matches UserPanel height */}
-      <div className="py-4 w-full flex items-center justify-center shrink-0">
+      <div className="pt-4 w-full flex items-center justify-center shrink-0">
         <button
           onClick={() => setShowAddMenu(true)}
           onMouseEnter={() => setHovered('add')}
