@@ -45,30 +45,78 @@ export async function initTokens() {
 }
 
 let proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let periodicRefreshInterval: ReturnType<typeof setInterval> | null = null;
+
+/** Check if the access token is expired or within 5 minutes of expiry. */
+function isAccessTokenExpiredOrNearExpiry(): boolean {
+  if (!accessToken) return true;
+  try {
+    const payload = JSON.parse(atob(accessToken.split('.')[1]));
+    const expiresAt = payload.exp * 1000;
+    const margin = 5 * 60 * 1000; // 5 minutes
+    return Date.now() > expiresAt - margin;
+  } catch {
+    return true;
+  }
+}
 
 export async function setTokens(tokens: TokenPair) {
   if (loggedOut || checkLogoutFlag()) return; // Block token writes after logout
+  // Set in-memory FIRST so even if storage fails, current session works
   accessToken = tokens.access_token;
   refreshToken = tokens.refresh_token;
-  await storage.set('access_token', tokens.access_token);
-  await storage.set('refresh_token', tokens.refresh_token);
-  // Schedule proactive refresh 5 minutes before access token expires
-  scheduleProactiveRefresh(tokens.expires_in ?? 3600);
+  try {
+    await storage.set('access_token', tokens.access_token);
+    await storage.set('refresh_token', tokens.refresh_token);
+  } catch (e) {
+    console.warn('[setTokens] Storage write failed, retrying once:', e);
+    try {
+      await storage.set('access_token', tokens.access_token);
+      await storage.set('refresh_token', tokens.refresh_token);
+    } catch {
+      console.error('[setTokens] Storage write failed on retry — tokens only in memory');
+    }
+  }
+  scheduleProactiveRefresh(tokens.expires_in ?? 86400);
+  startPeriodicRefresh();
 }
 
 function scheduleProactiveRefresh(expiresInSecs: number) {
   if (proactiveRefreshTimer) clearTimeout(proactiveRefreshTimer);
-  // Refresh 5 minutes before expiry (minimum 30s from now)
-  const refreshInMs = Math.max(30_000, (expiresInSecs - 300) * 1000);
+  // Refresh 30 minutes before expiry (minimum 60s from now)
+  const refreshInMs = Math.max(60_000, (expiresInSecs - 1800) * 1000);
   proactiveRefreshTimer = setTimeout(async () => {
     if (loggedOut || !refreshToken) return;
     await refreshAccessToken();
   }, refreshInMs);
 }
 
+/** Periodic backup: every 30 min check if token is near expiry (catches lost setTimeout). */
+function startPeriodicRefresh() {
+  if (periodicRefreshInterval) clearInterval(periodicRefreshInterval);
+  periodicRefreshInterval = setInterval(async () => {
+    if (loggedOut || !refreshToken) return;
+    if (isAccessTokenExpiredOrNearExpiry()) {
+      await refreshAccessToken();
+    }
+  }, 30 * 60 * 1000);
+}
+
+// Refresh token when app/tab becomes visible again (handles sleep/background).
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && refreshToken && !loggedOut) {
+      if (isAccessTokenExpiredOrNearExpiry()) {
+        await refreshAccessToken();
+      }
+    }
+  });
+}
+
 export async function clearTokens() {
   setLogoutFlag(); // Sync — survives page refresh
   if (proactiveRefreshTimer) { clearTimeout(proactiveRefreshTimer); proactiveRefreshTimer = null; }
+  if (periodicRefreshInterval) { clearInterval(periodicRefreshInterval); periodicRefreshInterval = null; }
   accessToken = null;
   refreshToken = null;
   // Clear from secure storage (Stronghold on Tauri, localStorage on web)

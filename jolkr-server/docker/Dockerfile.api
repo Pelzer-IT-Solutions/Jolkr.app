@@ -35,7 +35,8 @@ RUN touch crates/*/src/*.rs crates/*/src/**/*.rs 2>/dev/null; \
 # ─── Stage 2: Runtime ───────────────────────────────────────────────────
 FROM debian:trixie-slim AS runtime
 
-RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
 RUN groupadd -r jolkr && useradd -r -g jolkr jolkr

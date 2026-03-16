@@ -73,4 +73,27 @@ impl SessionRepo {
             .await?;
         Ok(())
     }
+
+    /// Set a session to expire after a grace period instead of deleting it immediately.
+    /// This allows the old refresh token to remain valid briefly in case the client
+    /// didn't receive the new token pair (network hiccup, app backgrounded, etc.).
+    pub async fn expire_session(pool: &PgPool, id: Uuid, grace_seconds: i64) -> Result<(), JolkrError> {
+        sqlx::query(
+            r#"UPDATE sessions SET expires_at = NOW() + make_interval(secs => $2) WHERE id = $1"#,
+        )
+        .bind(id)
+        .bind(grace_seconds as f64)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Delete all expired sessions for a user to prevent session accumulation.
+    pub async fn cleanup_expired(pool: &PgPool, user_id: Uuid) -> Result<(), JolkrError> {
+        sqlx::query(r#"DELETE FROM sessions WHERE user_id = $1 AND expires_at < NOW()"#)
+            .bind(user_id)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
 }

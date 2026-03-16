@@ -155,8 +155,13 @@ impl AuthService {
         let token_hash = Self::hash_refresh_token(refresh_token);
         let session = SessionRepo::get_by_token(pool, &token_hash).await?;
 
-        // Invalidate old session (rotate tokens)
-        SessionRepo::delete_session(pool, session.id).await?;
+        // Grace period: keep old session alive for 2 minutes instead of deleting.
+        // If the client doesn't receive the new tokens (network hiccup, app backgrounded),
+        // it can retry with the old refresh token within this window.
+        SessionRepo::expire_session(pool, session.id, 120).await?;
+
+        // Clean up any already-expired sessions to prevent accumulation
+        SessionRepo::cleanup_expired(pool, session.user_id).await?;
 
         // Issue fresh pair
         let token_pair =
@@ -294,7 +299,7 @@ impl AuthService {
         device_id: Option<Uuid>,
     ) -> Result<TokenPair, JolkrError> {
         let now = Utc::now();
-        let access_exp = now + Duration::hours(1);
+        let access_exp = now + Duration::hours(24);
         let refresh_exp = now + Duration::days(30);
 
         // Build access token
@@ -320,7 +325,7 @@ impl AuthService {
         Ok(TokenPair {
             access_token,
             refresh_token,
-            expires_in: 3600, // 1 hour in seconds
+            expires_in: 86400, // 24 hours in seconds
         })
     }
 
