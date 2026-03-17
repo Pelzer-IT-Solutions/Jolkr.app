@@ -187,6 +187,26 @@ impl AuthService {
         Ok(())
     }
 
+    // ── Authenticated password change ─────────────────────────────────
+
+    /// Change password for an authenticated user: verify current, set new.
+    pub async fn change_password(
+        pool: &PgPool,
+        user_id: Uuid,
+        current_password: &str,
+        new_password: &str,
+    ) -> Result<(), JolkrError> {
+        Self::validate_password(new_password)?;
+
+        let user = UserRepo::get_by_id(pool, user_id).await?;
+        Self::verify_password(current_password, &user.password_hash)?;
+
+        let new_hash = Self::hash_password(new_password)?;
+        UserRepo::update_password(pool, user_id, &new_hash).await?;
+        info!(user_id = %user_id, "User changed their own password");
+        Ok(())
+    }
+
     // ── User-facing password reset ────────────────────────────────────
 
     /// Generate a password reset token for the given email.

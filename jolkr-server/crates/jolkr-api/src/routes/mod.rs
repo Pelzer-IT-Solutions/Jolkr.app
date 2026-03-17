@@ -115,6 +115,8 @@ pub fn create_router(state: AppState) -> Router {
 
     // All other API routes with standard rate limiting
     let api_routes = Router::new()
+        // ── Auth (authenticated) ──────────────────────────────────
+        .route("/api/auth/change-password", post(auth::change_password))
         // ── Users ───────────────────────────────────────────────────
         .route("/api/users/@me", get(users::get_me).patch(users::update_me))
         .route("/api/users/batch", post(users::get_users_batch))

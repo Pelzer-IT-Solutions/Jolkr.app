@@ -90,7 +90,7 @@ export default function UserPanel() {
             title="Settings"
             aria-label="Settings"
           >
-            <Settings className="size-4.5" />
+            <Settings className="size-5" />
           </Link>
         </div>
 

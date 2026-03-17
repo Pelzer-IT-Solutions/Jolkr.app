@@ -5,6 +5,7 @@ use tracing::info;
 use jolkr_core::{AuthService, TokenPair};
 
 use crate::errors::AppError;
+use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
 // Admin secret for password reset (cached via OnceLock, read from env once)
@@ -48,6 +49,12 @@ pub struct ForgotPasswordRequest {
 #[derive(Debug, Deserialize)]
 pub struct ResetPasswordConfirmRequest {
     pub token: String,
+    pub new_password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
     pub new_password: String,
 }
 
@@ -192,5 +199,23 @@ pub async fn reset_password_confirm(
     Json(body): Json<ResetPasswordConfirmRequest>,
 ) -> Result<StatusCode, AppError> {
     AuthService::confirm_password_reset(&state.pool, &body.token, &body.new_password).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/auth/change-password
+/// Authenticated endpoint: user changes their own password by providing current + new.
+pub async fn change_password(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    Json(body): Json<ChangePasswordRequest>,
+) -> Result<StatusCode, AppError> {
+    AuthService::change_password(
+        &state.pool,
+        auth.user_id,
+        &body.current_password,
+        &body.new_password,
+    )
+    .await?;
+    info!(user_id = %auth.user_id, "User changed their password");
     Ok(StatusCode::NO_CONTENT)
 }

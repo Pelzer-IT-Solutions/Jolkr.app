@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { useServersStore } from '../../../stores/servers';
+import { useServersStore, selectMyPermissions } from '../../../stores/servers';
 import { useAuthStore } from '../../../stores/auth';
 import type { Server } from '../../../api/types';
 import { hasPermission, BAN_MEMBERS, MANAGE_ROLES, MANAGE_SERVER } from '../../../utils/permissions';
@@ -26,8 +26,7 @@ export default function ServerSettingsDialog({ server, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('general');
   const currentUser = useAuthStore((s) => s.user);
   const isOwner = currentUser?.id === server.owner_id;
-  const myPermsRaw = useServersStore((s) => s.permissions[server.id]);
-  const myPerms = myPermsRaw ?? 0;
+  const myPerms = useServersStore(selectMyPermissions(server.id));
   const fetchPermissions = useServersStore((s) => s.fetchPermissions);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);

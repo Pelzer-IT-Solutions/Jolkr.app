@@ -11,6 +11,92 @@ export interface AccountTabProps {
   onLogout: () => void;
 }
 
+function ChangePasswordBlock() {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const canSave = currentPassword.length > 0 && newPassword.length >= 8 && newPassword === confirmPassword && !saving;
+
+  const handleSave = async () => {
+    setError('');
+    setSuccess(false);
+    setSaving(true);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (e) {
+      const msg = (e as Error).message || 'Failed to change password';
+      setError(msg.includes('Unauthorized') ? 'Current password is incorrect' : msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl bg-surface border border-divider p-6 gap-4 flex flex-col">
+      <h3 className="text-base font-bold text-text-primary">Password</h3>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="settings-current-pw" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Current Password</label>
+          <input
+            id="settings-current-pw"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
+            autoComplete="current-password"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="settings-new-pw" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">New Password</label>
+          <input
+            id="settings-new-pw"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
+            autoComplete="new-password"
+            placeholder="Min. 8 characters, uppercase, lowercase, digit"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="settings-confirm-pw" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Confirm New Password</label>
+          <input
+            id="settings-confirm-pw"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
+            autoComplete="new-password"
+          />
+          {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+            <span className="text-xs text-danger">Passwords do not match</span>
+          )}
+        </div>
+        {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded">{error}</div>}
+        {success && <div className="bg-accent/10 text-accent text-sm p-2 rounded">Password changed successfully!</div>}
+        <div>
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            className="btn-primary disabled:opacity-50"
+          >
+            {saving ? 'Changing...' : 'Change Password'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountTabProps) {
   const [username, setUsername] = useState(user?.username ?? '');
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
@@ -143,6 +229,9 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
           </div>
         </div>
       </div>
+
+      {/* Change Password */}
+      <ChangePasswordBlock />
 
       {/* Danger zone */}
       <div className="rounded-xl bg-surface border border-divider p-6 gap-3 flex flex-col">

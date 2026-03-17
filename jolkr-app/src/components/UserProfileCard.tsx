@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/auth';
 import { usePresenceStore } from '../stores/presence';
 import * as api from '../api/client';
 import Avatar from './Avatar';
+import { statusLabel } from './StatusDot';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import { getLocalKeys, getRecipientBundle } from '../services/e2ee';
 import { generateSafetyNumber } from '../crypto';
@@ -43,16 +44,6 @@ export interface UserProfileCardProps {
   /** Position anchor — the card will render near this point */
   anchor: { x: number; y: number };
   onClose: () => void;
-}
-
-function statusLabel(s: string): string {
-  switch (s) {
-    case 'online': return 'Online';
-    case 'idle': return 'Idle';
-    case 'dnd': return 'Do Not Disturb';
-    case 'offline': return 'Offline';
-    default: return s;
-  }
 }
 
 function statusColor(s: string): string {
@@ -258,7 +249,7 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
             {/* Status */}
             <div className="flex items-center gap-1.5 mt-1">
               <div className={`w-2 h-2 rounded-full ${statusColor(status)}`} />
-              <span className="text-text-tertiary text-xs">{statusLabel(status)}</span>
+              <span className="text-text-tertiary text-xs">{statusLabel[status as keyof typeof statusLabel] ?? status}</span>
             </div>
             {user.status && (
               <div className="text-text-tertiary text-xs mt-0.5 italic">{user.status}</div>

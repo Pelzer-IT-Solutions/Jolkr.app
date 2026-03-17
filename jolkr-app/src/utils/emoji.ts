@@ -6,7 +6,7 @@ const CDN_BASE = 'https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/
  * Convert a Unicode emoji string to its "unified" hex representation.
  * e.g. "😀" → "1f600", "👨‍👩‍👧" → "1f468-200d-1f469-200d-1f467"
  */
-export function unicodeToUnified(emoji: string): string {
+function unicodeToUnified(emoji: string): string {
   const codepoints: string[] = [];
   for (const char of emoji) {
     const cp = char.codePointAt(0);
@@ -27,7 +27,7 @@ export function emojiToImgUrl(emoji: string): string {
 /**
  * Create an <img> HTML tag for a Unicode emoji.
  */
-export function emojiToImgHtml(emoji: string, size = 20): string {
+function emojiToImgHtml(emoji: string, size = 20): string {
   const url = emojiToImgUrl(emoji);
   const escapedAlt = emoji.replace(/"/g, '&quot;');
   // Use CSS classes instead of inline style — DOMPurify strips style attributes

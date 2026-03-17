@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useServersStore } from '../../stores/servers';
+import { useServersStore, selectServerMembers } from '../../stores/servers';
 import ChannelList from '../../components/ChannelList';
 import UserPanel from '../../components/UserPanel';
 import InviteDialog from '../../components/dialogs/InviteDialog';
@@ -9,14 +9,12 @@ import { useMobileNav } from '../../hooks/useMobileNav';
 import { rewriteStorageUrl } from '../../platform/config';
 import { UserPlus, ChevronLeft, Hash, Settings } from 'lucide-react';
 
-const EMPTY_MEMBERS: import('../../api/types').Member[] = [];
-
 export default function ServerPage() {
   const { serverId } = useParams<{ serverId: string }>();
   const servers = useServersStore((s) => s.servers);
   const serversLoading = useServersStore((s) => s.loading);
   const server = servers.find((s) => s.id === serverId);
-  const members = useServersStore((s) => serverId ? (s.members[serverId] ?? EMPTY_MEMBERS) : EMPTY_MEMBERS);
+  const members = useServersStore(selectServerMembers(serverId ?? ''));
   const [showInvites, setShowInvites] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [fetchAttempted, setFetchAttempted] = useState(false);

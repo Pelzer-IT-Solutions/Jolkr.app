@@ -353,7 +353,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
             isOnFriends ? 'bg-active text-text-primary' : 'text-text-secondary hover:bg-hover'
           }`}
         >
-          <Users className="size-4.5" />
+          <Users className="size-5" />
           Friends
         </Link>
 
@@ -362,7 +362,7 @@ export default function DmList({ onDmSelect }: DmListProps) {
           aria-label="New Group DM"
           className="rounded-lg px-3 py-2.5 gap-2.5 flex items-center text-text-secondary font-medium hover:bg-hover text-sm"
         >
-          <UserPlus className="size-4.5" />
+          <UserPlus className="size-5" />
           New Group DM
         </button>
       </div>

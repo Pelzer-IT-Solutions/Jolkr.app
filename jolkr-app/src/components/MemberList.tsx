@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { useServersStore } from '../stores/servers';
+import { useServersStore, selectMyPermissions } from '../stores/servers';
 import { usePresenceStore } from '../stores/presence';
 import { useAuthStore } from '../stores/auth';
 import * as api from '../api/client';
@@ -27,7 +27,7 @@ export default function MemberList({ serverId, className }: MemberListProps) {
   const fetchMembersWithRoles = useServersStore((s) => s.fetchMembersWithRoles);
   const roles = useServersStore((s) => s.roles);
   const fetchRoles = useServersStore((s) => s.fetchRoles);
-  const myPerms = useServersStore((s) => s.permissions[serverId] ?? 0);
+  const myPerms = useServersStore(selectMyPermissions(serverId));
   const fetchPermissions = useServersStore((s) => s.fetchPermissions);
   const ownerId = useServersStore((s) => s.servers.find((srv) => srv.id === serverId)?.owner_id);
   const statuses = usePresenceStore((s) => s.statuses);

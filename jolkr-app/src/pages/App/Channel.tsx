@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useServersStore } from '../../stores/servers';
+import { useServersStore, selectServerChannels, selectServerMembers } from '../../stores/servers';
 import { useUnreadStore } from '../../stores/unread';
 import { useMessagesStore } from '../../stores/messages';
 import * as api from '../../api/client';
@@ -24,16 +24,13 @@ import { useVoiceStore } from '../../stores/voice';
 import Avatar from '../../components/Avatar';
 import { UserPlus, Upload, ChevronLeft, Mic, Search, BarChart3, MessageSquare, Bookmark, Users, X, VolumeX } from 'lucide-react';
 
-const EMPTY_CHANNELS: import('../../api/types').Channel[] = [];
-const EMPTY_MEMBERS: import('../../api/types').Member[] = [];
-
 export default function ChannelPage() {
   const { serverId, channelId } = useParams<{ serverId: string; channelId: string }>();
   const servers = useServersStore((s) => s.servers);
-  const channels = useServersStore((s) => serverId ? (s.channels[serverId] ?? EMPTY_CHANNELS) : EMPTY_CHANNELS);
+  const channels = useServersStore(selectServerChannels(serverId ?? ''));
   const server = servers.find((s) => s.id === serverId);
   const channel = channels.find((c) => c.id === channelId);
-  const members = useServersStore((s) => serverId ? (s.members[serverId] ?? EMPTY_MEMBERS) : EMPTY_MEMBERS);
+  const members = useServersStore(selectServerMembers(serverId ?? ''));
   const fetchMembers = useServersStore((s) => s.fetchMembers);
   const setActiveChannel = useUnreadStore((s) => s.setActiveChannel);
   const channelPermissions = useServersStore((s) => s.channelPermissions);

@@ -290,6 +290,13 @@ export async function resetPasswordConfirm(token: string, newPassword: string): 
   });
 }
 
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await request<void>('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+}
+
 // Users
 export const getMe = () => request<User>('/users/@me', {}, 'user');
 export const updateMe = (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean }) =>

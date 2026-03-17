@@ -407,7 +407,7 @@ export default function DmChat() {
                 </div>
                 <span className="text-xs text-text-tertiary">{dmChannel?.members.length} members</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-3">
                 {showSearch ? (
                   <input
                     value={search}
@@ -425,7 +425,7 @@ export default function DmChat() {
                     title="Search messages"
                     aria-label="Search messages"
                   >
-                    <Search className="size-4.5" />
+                    <Search className="size-5" />
                   </button>
                 )}
                 <button
@@ -434,7 +434,7 @@ export default function DmChat() {
                   title="Pinned Messages"
                   aria-label="Pinned Messages"
                 >
-                  <Bookmark className="size-4.5" />
+                  <Bookmark className="size-5" />
                 </button>
                 <button
                   onClick={() => setShowMembers(!showMembers)}
@@ -442,7 +442,7 @@ export default function DmChat() {
                   title="Toggle members"
                   aria-label="Toggle members"
                 >
-                  <Users className="size-4.5" />
+                  <Users className="size-5" />
                 </button>
               </div>
             </>
