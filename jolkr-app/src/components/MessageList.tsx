@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { ArrowDown } from 'lucide-react';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMessagesStore } from '../stores/messages';
 import { usePresenceStore } from '../stores/presence';
 import { useAuthStore } from '../stores/auth';
@@ -12,6 +11,12 @@ import MessageTile from './MessageTile';
 
 const EMPTY_MSGS: Message[] = [];
 const EMPTY_TYPING: string[] = [];
+
+// Module-level caches — persist across channel switches
+let userCache: Record<string, User> = {};
+let fetchedUserIds = new Set<string>();
+let failedUserIds = new Set<string>();
+const scrollPositionCache = new Map<string, number>();
 
 export interface MessageListProps {
   channelId: string;
@@ -41,13 +46,10 @@ export default function MessageList({ channelId, search, searchResults, searchLo
       ? allMsgs.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
       : allMsgs;
   const containerRef = useRef<HTMLDivElement>(null);
-  const prevLenRef = useRef(0);
-  const [users, setUsers] = useState<Record<string, User>>({});
-  const fetchedIdsRef = useRef(new Set<string>());
-  const failedIdsRef = useRef(new Set<string>());
+  const prevChannelIdRef = useRef(channelId);
+  const [users, setUsers] = useState<Record<string, User>>(userCache);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const isAtBottomRef = useRef(true);
-  const initialScrollDoneRef = useRef(false);
   const lastSeenMsgId = useUnreadStore((s) => s.lastSeenMessageId[channelId]);
 
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -55,118 +57,81 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     if (!lastSeenMsgId) return -1;
     const idx = msgs.findIndex((m) => m.id === lastSeenMsgId);
     if (idx === -1 || idx === msgs.length - 1) return -1;
-    // Don't show separator if all messages after it are from the current user
     const hasOtherMessages = msgs.slice(idx + 1).some((m) => m.author_id !== currentUserId);
     if (!hasOtherMessages) return -1;
     return idx + 1;
   }, [lastSeenMsgId, msgs, currentUserId]);
 
-  // Virtualizer — use message IDs as item keys so stale measurements from
-  // a previous channel are never reused (different messages = different keys).
-  const virtualizer = useVirtualizer({
-    count: msgs.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => 60,
-    overscan: 10,
-    gap: 4,
-    getItemKey: (index) => msgs[index]?.id ?? index,
-  });
-
+  // Channel switch: save position, subscribe, fetch, restore
   useEffect(() => {
-    prevLenRef.current = 0;
-    initialScrollDoneRef.current = false;
-    fetchedIdsRef.current.clear();
-    failedIdsRef.current.clear();
-    // Reset scroll position to prevent old channel's offset leaking into new channel
-    containerRef.current?.scrollTo(0, 0);
+    const el = containerRef.current;
+    if (prevChannelIdRef.current !== channelId && el) {
+      scrollPositionCache.set(prevChannelIdRef.current, el.scrollTop);
+    }
+    prevChannelIdRef.current = channelId;
+
     fetchMessages(channelId, isDm);
     wsClient.subscribe(channelId);
-    return () => { wsClient.unsubscribe(channelId); };
+    return () => {
+      if (containerRef.current) {
+        scrollPositionCache.set(channelId, containerRef.current.scrollTop);
+      }
+      wsClient.unsubscribe(channelId);
+    };
   }, [channelId, isDm, fetchMessages]);
 
-  // Fetch user info for message authors
+  // Restore saved scroll position when messages arrive for a cached channel
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || msgs.length === 0) return;
+    const savedPos = scrollPositionCache.get(channelId);
+    if (savedPos !== undefined) {
+      el.scrollTop = savedPos;
+      scrollPositionCache.delete(channelId);
+    }
+  }, [msgs.length > 0, channelId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch user info for message authors (uses module-level cache)
   useEffect(() => {
     const uniqueIds = [...new Set(allMsgs.map((m) => m.author_id))];
     uniqueIds.forEach((id) => {
-      if (!fetchedIdsRef.current.has(id) && !failedIdsRef.current.has(id)) {
-        fetchedIdsRef.current.add(id);
+      if (!fetchedUserIds.has(id) && !failedUserIds.has(id)) {
+        fetchedUserIds.add(id);
         api.getUser(id).then((u) => {
-          setUsers((prev) => ({ ...prev, [u.id]: u }));
+          setUsers((prev) => {
+            const next = { ...prev, [u.id]: u };
+            userCache = next;
+            return next;
+          });
         }).catch(() => {
-          fetchedIdsRef.current.delete(id);
-          failedIdsRef.current.add(id);
+          fetchedUserIds.delete(id);
+          failedUserIds.add(id);
         });
       }
     });
   }, [allMsgs]);
 
-  // Reset state on channel switch
-  useEffect(() => {}, [channelId]);
-
-  // Auto-scroll logic — use raw DOM scroll to guarantee true bottom
-  useEffect(() => {
-    const added = allMsgs.length - prevLenRef.current;
-    if (added > 0) {
-      const el = containerRef.current;
-      const wasInitialLoad = prevLenRef.current === 0;
-      if (wasInitialLoad) {
-        // Keep scrolling to bottom until container height stabilizes.
-        let lastHeight = 0;
-        let settled = 0;
-        const keepScrolling = () => {
-          if (!el) { initialScrollDoneRef.current = true; return; }
-          el.scrollTop = el.scrollHeight;
-          if (el.scrollHeight === lastHeight) {
-            settled++;
-          } else {
-            settled = 0;
-            lastHeight = el.scrollHeight;
-          }
-          if (settled < 20) {
-            requestAnimationFrame(keepScrolling);
-          } else {
-            initialScrollDoneRef.current = true;
-          }
-        };
-        requestAnimationFrame(keepScrolling);
-      } else if (isAtBottomRef.current && el) {
-        // New message while at bottom — scroll with stabilization
-        let lastHeight = 0;
-        let settled = 0;
-        const keepScrolling = () => {
-          if (!el) return;
-          el.scrollTop = el.scrollHeight;
-          if (el.scrollHeight === lastHeight) {
-            settled++;
-          } else {
-            settled = 0;
-            lastHeight = el.scrollHeight;
-          }
-          if (settled < 8) requestAnimationFrame(keepScrolling);
-        };
-        requestAnimationFrame(keepScrolling);
-      } else if (!isAtBottomRef.current && initialScrollDoneRef.current) {
-        // Scrolled up — new messages arrived while not at bottom
-      }
-    }
-    prevLenRef.current = allMsgs.length;
-  }, [allMsgs.length, msgs.length, virtualizer, channelId]);
-
+  // In column-reverse: scrollTop=0 is the bottom, |scrollTop| is distance from bottom
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const distFromBottom = Math.abs(el.scrollTop);
     isAtBottomRef.current = distFromBottom < 150;
     setShowScrollBtn(distFromBottom > 300);
-    if (canLoadMore && !isLoadingOlder && el.scrollTop < 100) {
+    // Load older messages when scrolled near the top (oldest content)
+    const distFromTop = el.scrollHeight - el.clientHeight - distFromBottom;
+    if (canLoadMore && !isLoadingOlder && distFromTop < 200) {
       fetchOlder(channelId, isDm);
     }
   }, [canLoadMore, isLoadingOlder, channelId, isDm, fetchOlder]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     const el = containerRef.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  };
+    if (!el) return;
+    el.scrollTo({ top: 0, behavior: 'smooth' });
+    isAtBottomRef.current = true;
+    setShowScrollBtn(false);
+  }, []);
 
   const isCompact = (i: number) => {
     if (i === 0) return false;
@@ -195,46 +160,31 @@ export default function MessageList({ channelId, search, searchResults, searchLo
 
   return (
     <div className="flex flex-col h-full relative min-h-0">
-      <div ref={containerRef} className="flex-1 overflow-y-auto min-h-0" onScroll={handleScroll}>
-        {((isLoading || searchLoading) && msgs.length === 0) || (notYetFetched && !search && !searchResults) ? (
-          <div className="flex items-center justify-center h-full">
-            {searchLoading ? (
-              <span className="text-text-tertiary">Searching...</span>
-            ) : (
-              <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
-            )}
-          </div>
-        ) : msgs.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-text-tertiary">
-            {search ? 'No messages match your search.' : 'No messages yet. Start the conversation!'}
-          </div>
-        ) : (
-          <div className="min-h-full flex flex-col justify-end">
-          <div
-            className="py-4 relative"
-            style={{ height: virtualizer.getTotalSize(), width: '100%' }}
-          >
+      {/* column-reverse: browser natively starts scroll at bottom, no JS hacks needed */}
+      <div ref={containerRef} className="flex-1 flex flex-col-reverse overflow-y-auto min-h-0" onScroll={handleScroll}>
+        <div className="py-4">
+          {((isLoading || searchLoading) && msgs.length === 0) || (notYetFetched && !search && !searchResults) ? (
+            <div className="flex items-center justify-center py-20">
+              {searchLoading ? (
+                <span className="text-text-tertiary">Searching...</span>
+              ) : (
+                <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
+              )}
+            </div>
+          ) : msgs.length === 0 ? (
+            <div className="flex items-center justify-center py-20 text-text-tertiary">
+              {search ? 'No messages match your search.' : 'No messages yet. Start the conversation!'}
+            </div>
+          ) : (
+            <>
             {isLoadingOlder && (
-              <div className="text-center text-text-tertiary text-sm py-2 absolute top-0 left-0 right-0 z-10">Loading older messages...</div>
+              <div className="text-center text-text-tertiary text-sm py-2">Loading older messages...</div>
             )}
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const i = virtualRow.index;
-              const msg = msgs[i];
+            {msgs.map((msg, i) => {
               const { replyMessage, replyAuthor } = getReplyData(msg);
               const hasSep = showDateSep(i);
               return (
-                <div
-                  key={msg.id}
-                  data-index={i}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                >
+                <div key={msg.id}>
                   {hasSep && (
                     <div className="flex items-center gap-3 px-4 py-2">
                       <div className="flex-1 h-px bg-border-subtle" />
@@ -266,9 +216,9 @@ export default function MessageList({ channelId, search, searchResults, searchLo
                 </div>
               );
             })}
-          </div>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {showScrollBtn && (
