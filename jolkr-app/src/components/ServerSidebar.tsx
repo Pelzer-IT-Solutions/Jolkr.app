@@ -210,7 +210,7 @@ export default function ServerSidebar() {
       </div>
 
       {/* Add server button — matches UserPanel height */}
-      <div className="pt-4 w-full flex items-center justify-center shrink-0">
+      <div className="w-full flex items-center justify-center shrink-0">
         <button
           onClick={() => setShowAddMenu(true)}
           onMouseEnter={() => setHovered('add')}

@@ -382,9 +382,9 @@ export default function DmChat() {
           </div>
         )}
         {/* Header */}
-        <div className={`flex items-center shrink-0 ${isMobile
+        <div className={`flex items-center shrink-0 min-h-16 ${isMobile
             ? 'bg-panel px-4 py-2 gap-3 border-b border-border-subtle'
-            : 'bg-panel px-5 py-3 gap-3 border-b border-border-subtle'
+            : 'bg-panel px-4 py-3 gap-3 border-b border-border-subtle'
           }`}>
           {isMobile && (
             <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary" aria-label="Back to conversations">
@@ -398,7 +398,7 @@ export default function DmChat() {
               <div className="size-8 rounded-full bg-accent/30 flex items-center justify-center shrink-0">
                 <Users className="w-4 h-4 text-accent" />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="text-base font-semibold text-text-primary truncate">{groupDisplayName}</span>
                   {e2eeAvailable && (

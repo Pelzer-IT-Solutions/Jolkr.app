@@ -259,12 +259,12 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Server header with dropdown */}
-      <div className="h-16 px-4 gap-2 flex items-center border-b border-divider shrink-0 relative">
+      <div className="h-17 px-4 gap-2 flex items-center border-b border-divider shrink-0 relative">
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           aria-expanded={showDropdown}
           aria-label={`${server.name} server menu`}
-          className="flex items-center justify-between gap-1 flex-1 min-w-0 hover:bg-hover -mx-1 px-1 py-1 rounded-lg"
+          className="flex items-center justify-between gap-1 flex-1 min-w-0 hover:bg-hover -mx-1 px-3 py-2 rounded-lg"
         >
           <h2 className="text-text-primary font-semibold text-base truncate">
             {server.name}

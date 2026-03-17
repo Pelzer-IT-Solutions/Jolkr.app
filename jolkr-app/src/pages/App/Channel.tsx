@@ -326,7 +326,7 @@ export default function ChannelPage() {
             </div>
           )}
           {/* Channel header */}
-          <div className="bg-panel px-5 py-3 flex items-center gap-3 border-b border-border-subtle shrink-0">
+          <div className="bg-panel px-4 py-3 flex items-center gap-3 border-b border-border-subtle shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to channels">
                 <ChevronLeft className="size-5" />
@@ -503,7 +503,7 @@ export default function ChannelPage() {
               <div className="fixed inset-0 z-50 flex">
                 <div className="flex-1" onClick={() => setShowMembers(false)} />
                 <div className="w-70 max-w-[80vw] bg-sidebar border-l border-divider h-full overflow-y-auto animate-slide-in-right">
-                  <div className="px-5 py-3 flex items-center border-b border-divider shrink-0">
+                  <div className="px-4 py-3 flex items-center border-b border-divider shrink-0">
                     <span className="text-text-primary font-semibold text-sm flex-1">Members</span>
                     <button onClick={() => setShowMembers(false)} className="text-text-secondary hover:text-text-primary" aria-label="Close members">
                       <X className="size-5" />

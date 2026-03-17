@@ -69,100 +69,101 @@ export default function UserPanel() {
   return (
     <div className="shrink-0">
       <VoiceConnectionBar />
-    <div className="bg-bg p-3.5 gap-2.5 flex items-center relative min-h-16">
-      <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size="sm" status={currentStatus} userId={user?.id} />
-      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0">
-        <div className="text-sm font-semibold text-text-primary truncate">{user?.username ?? 'User'}</div>
-        <button
-          onClick={() => setShowPicker(!showPicker)}
-          className="text-xs text-left text-text-tertiary hover:text-text-secondary cursor-pointer"
-        >
-          {statusLabel(currentStatus)}
-        </button>
-        {user?.status && (
-          <div className="text-xs text-left text-text-tertiary truncate">{user.status}</div>
-        )}
-      </div>
-      <Link
-        to="/settings"
-        className="text-text-tertiary hover:text-text-primary p-1"
-        title="Settings"
-        aria-label="Settings"
-      >
-        <Settings className="size-4.5" />
-      </Link>
-
-      {/* Status error */}
-      {statusError && (
-        <div className="absolute bottom-full left-2 mb-1 bg-danger/10 text-danger text-xs px-2 py-1 rounded z-50 max-w-50">
-          {statusError}
-        </div>
-      )}
-
-      {/* Status picker dropdown */}
-      {showPicker && !showCustomStatus && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
-          <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float py-1 w-48 z-50">
+      <div className="bg-bg px-4 py-3 relative">
+        <div className='min-h-12 gap-2.5 flex items-center shrink-0'>
+          <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size="sm" status={currentStatus} userId={user?.id} />
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0">
+            <div className="text-sm font-semibold text-text-primary truncate">{user?.username ?? 'User'}</div>
             <button
-              onClick={() => { setCustomStatusText(user?.status ?? ''); setShowCustomStatus(true); }}
-              className="w-full px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-hover flex items-center gap-2 border-b border-divider mb-1"
+              onClick={() => setShowPicker(!showPicker)}
+              className="text-xs text-left text-text-tertiary hover:text-text-secondary cursor-pointer"
             >
-              <Pencil className="w-3.5 h-3.5" />
-              {user?.status ? 'Edit Custom Status' : 'Set Custom Status'}
+              {statusLabel(currentStatus)}
             </button>
             {user?.status && (
-              <button
-                onClick={handleClearCustomStatus}
-                className="w-full px-3 py-1.5 text-left text-sm text-danger/70 hover:bg-danger/10 hover:text-danger flex items-center gap-2 border-b border-divider mb-1"
-              >
-                <X className="w-3.5 h-3.5" />
-                Clear Custom Status
-              </button>
+              <div className="text-xs text-left text-text-tertiary truncate">{user.status}</div>
             )}
-            {STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => handleStatusChange(opt.value)}
-                className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-hover ${
-                  currentStatus === opt.value ? 'text-text-primary' : 'text-text-secondary'
-                }`}
-              >
-                <div className={`w-3 h-3 rounded-full ${opt.color}`} />
-                {opt.label}
-              </button>
-            ))}
           </div>
-        </>
-      )}
+          <Link
+            to="/settings"
+            className="text-text-tertiary hover:text-text-primary p-1"
+            title="Settings"
+            aria-label="Settings"
+          >
+            <Settings className="size-4.5" />
+          </Link>
+        </div>
 
-      {/* Custom status input popup */}
-      {showCustomStatus && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowCustomStatus(false)} />
-          <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float p-3 w-56 z-50">
-            <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2">Custom Status</div>
-            <input
-              value={customStatusText}
-              onChange={(e) => setCustomStatusText(e.target.value)}
-              placeholder="What are you up to?"
-              className="w-full px-2 py-1.5 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-2"
-              maxLength={128}
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleSetCustomStatus()}
-            />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowCustomStatus(false)} className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary">
-                Cancel
-              </button>
-              <button onClick={handleSetCustomStatus} className="px-2 py-1 text-xs btn-primary rounded-lg">
-                Save
-              </button>
-            </div>
+        {/* Status error */}
+        {statusError && (
+          <div className="absolute bottom-full left-2 mb-1 bg-danger/10 text-danger text-xs px-2 py-1 rounded z-50 max-w-50">
+            {statusError}
           </div>
-        </>
-      )}
-    </div>
+        )}
+
+        {/* Status picker dropdown */}
+        {showPicker && !showCustomStatus && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
+            <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float py-1 w-48 z-50">
+              <button
+                onClick={() => { setCustomStatusText(user?.status ?? ''); setShowCustomStatus(true); }}
+                className="w-full px-3 py-1.5 text-left text-sm text-text-secondary hover:bg-hover flex items-center gap-2 border-b border-divider mb-1"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                {user?.status ? 'Edit Custom Status' : 'Set Custom Status'}
+              </button>
+              {user?.status && (
+                <button
+                  onClick={handleClearCustomStatus}
+                  className="w-full px-3 py-1.5 text-left text-sm text-danger/70 hover:bg-danger/10 hover:text-danger flex items-center gap-2 border-b border-divider mb-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Clear Custom Status
+                </button>
+              )}
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleStatusChange(opt.value)}
+                  className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-hover ${currentStatus === opt.value ? 'text-text-primary' : 'text-text-secondary'
+                    }`}
+                >
+                  <div className={`w-3 h-3 rounded-full ${opt.color}`} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Custom status input popup */}
+        {showCustomStatus && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowCustomStatus(false)} />
+            <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float p-3 w-56 z-50">
+              <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2">Custom Status</div>
+              <input
+                value={customStatusText}
+                onChange={(e) => setCustomStatusText(e.target.value)}
+                placeholder="What are you up to?"
+                className="w-full px-2 py-1.5 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-2"
+                maxLength={128}
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleSetCustomStatus()}
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setShowCustomStatus(false)} className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary">
+                  Cancel
+                </button>
+                <button onClick={handleSetCustomStatus} className="px-2 py-1 text-xs btn-primary rounded-lg">
+                  Save
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

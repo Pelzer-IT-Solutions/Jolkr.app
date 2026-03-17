@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
-import { Paperclip, X, Reply, Clock, Plus, Smile, Send } from 'lucide-react';
+import { Paperclip, X, Reply, Clock, Plus, Smile, Send, Type } from 'lucide-react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import DOMPurify from 'dompurify';
 import type { Message, User } from '../api/types';
 import { useMessagesStore } from '../stores/messages';
@@ -74,6 +75,7 @@ function SortableFileChip({ file, id, index, onRemove }: { file: File; id: strin
 export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUserId, replyTo, replyAuthor, onCancelReply, mentionableUsers = [], canSend, canAttach = true, slowmodeSeconds, droppedFiles, isAnnouncement }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showTextFormat, setShowTextFormat] = useState(false);
   const [sending, setSending] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -89,6 +91,9 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingRef = useRef(0);
   const mentionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const mobileEmojiRef = useClickOutside<HTMLDivElement>(() => setShowEmoji(false), showEmoji);
+  const textFormatRef = useClickOutside<HTMLDivElement>(() => setShowTextFormat(false), showTextFormat);
+  const desktopEmojiRef = useClickOutside<HTMLDivElement>(() => setShowEmoji(false), showEmoji);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const emojiJustToggledRef = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -448,7 +453,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
   // Disabled state: no permission to send
   if (canSend === false) {
     return (
-      <div className="px-4 pb-5 pt-4 shrink-0">
+      <div className="px-4 py-3 shrink-0">
         <div className="flex items-center bg-surface border border-divider rounded-lg px-4 py-3 opacity-60">
           <span className="text-text-tertiary text-sm">
             {isAnnouncement
@@ -507,22 +512,19 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
         )}
 
         {showEmoji && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
-            <div className="absolute bottom-full right-3 mb-2 z-50">
-              <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
-                <LazyEmojiPicker
-                  theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
-                  onEmojiClick={(emoji: { emoji: string }) => {
-                    setContent((prev) => prev + emoji.emoji);
-                    inputRef.current?.focus();
-                  }}
-                  width={320}
-                  height={360}
-                />
-              </Suspense>
-            </div>
-          </>
+          <div ref={mobileEmojiRef} className="absolute bottom-full right-3 mb-2 z-50">
+            <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
+              <LazyEmojiPicker
+                theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
+                onEmojiClick={(emoji: { emoji: string }) => {
+                  setContent((prev) => prev + emoji.emoji);
+                  inputRef.current?.focus();
+                }}
+                width={320}
+                height={360}
+              />
+            </Suspense>
+          </div>
         )}
 
         {/* Reply bar (mobile) */}
@@ -583,7 +585,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
               {content && (
                 <div
                   ref={overlayRef}
-                  className="absolute inset-0 text-text-primary text-sm whitespace-pre-wrap break-words overflow-hidden pointer-events-none"
+                  className="absolute inset-0 text-text-primary text-sm whitespace-pre-wrap wrap-break-word overflow-hidden pointer-events-none"
                   dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
                 />
               )}
@@ -634,7 +636,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
   }
 
   return (
-    <div className="px-4 pb-3 pt-3 shrink-0 relative">
+    <div className="px-4 py-3 shrink-0 relative">
       {/* Mention autocomplete */}
       {mentionQuery !== null && mentionMatches.length > 0 && (
         <div role="listbox" className="absolute bottom-full left-4 right-4 mb-1 bg-surface border border-divider rounded-xl shadow-float py-1 max-h-50 overflow-y-auto z-50">
@@ -737,32 +739,8 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
         />
       )}
 
-      {/* Formatting toolbar */}
-      <div className="flex items-center gap-0.5 mb-1 px-1 py-0.5 rounded-lg bg-surface/50 border border-divider/50 w-fit">
-        <button onClick={() => insertFormatting('**', '**')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Bold (Ctrl+B)">
-          <span className="text-xs font-bold w-5 h-5 flex items-center justify-center">B</span>
-        </button>
-        <button onClick={() => insertFormatting('*', '*')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Italic (Ctrl+I)">
-          <span className="text-xs italic w-5 h-5 flex items-center justify-center">I</span>
-        </button>
-        <button onClick={() => insertFormatting('~~', '~~')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Strikethrough">
-          <span className="text-xs line-through w-5 h-5 flex items-center justify-center">S</span>
-        </button>
-        <div className="w-px h-4 bg-divider/50 mx-0.5" />
-        <button onClick={() => insertFormatting('`', '`')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Inline Code">
-          <span className="text-xs font-mono w-5 h-5 flex items-center justify-center">&lt;/&gt;</span>
-        </button>
-        <button onClick={() => insertFormatting('```\n', '\n```')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Code Block">
-          <span className="text-2xs font-mono w-5 h-5 flex items-center justify-center">[/]</span>
-        </button>
-        <div className="w-px h-4 bg-divider/50 mx-0.5" />
-        <button onClick={() => insertFormatting('> ', '')} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Quote">
-          <span className="text-xs w-5 h-5 flex items-center justify-center">"</span>
-        </button>
-      </div>
-
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-3 rounded-xl bg-surface border border-divider focus-within:border-border-accent transition-colors px-4 py-3 flex-1">
+        <div className="flex items-center gap-3 rounded-xl bg-surface border border-divider focus-within:border-border-accent transition-colors px-4 py-3 flex-1 h-12">
           {canAttach && (
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -779,7 +757,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
             {content && (
               <div
                 ref={overlayRef}
-                className="absolute inset-0 text-text-primary text-sm py-1 whitespace-pre-wrap break-words overflow-hidden pointer-events-none"
+                className="absolute inset-0 text-text-primary text-sm py-1 whitespace-pre-wrap wrap-break-word overflow-hidden pointer-events-none"
                 dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
               />
             )}
@@ -792,7 +770,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
               onFocus={() => { if (!emojiJustToggledRef.current) setShowEmoji(false); }}
               placeholder="Type a message..."
               rows={1}
-              className="input-reset relative w-full bg-transparent text-transparent caret-text-accent text-sm resize-none max-h-30 py-1 placeholder:text-text-tertiary selection:bg-accent/30"
+              className="input-reset relative w-full bg-transparent text-transparent caret-text-accent text-sm resize-none max-h-30 placeholder:text-text-tertiary selection:bg-accent/30"
               style={{ height: 'auto', minHeight: '24px' }}
               onInput={(e) => {
                 const el = e.currentTarget;
@@ -808,6 +786,48 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
           <div className="flex items-center relative shrink-0">
             <button
               onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setShowTextFormat(!showTextFormat) }}
+              className="text-text-tertiary hover:text-text-primary"
+              title="Formatting"
+              aria-label="Formatting"
+            >
+              <Type className="size-5" />
+            </button>
+            {showTextFormat && (
+              <>
+                {/* Formatting toolbar */}
+                <div ref={textFormatRef} className="absolute bottom-full right-0 mb-2 z-50">
+                  <div
+                    className="flex justify-self-end-safe items-center gap-0.5 mb-1 px-1 py-0.5 rounded-lg bg-surface/50 border border-divider/50 w-fit">
+                    <button onClick={() => { insertFormatting('**', '**'); setShowTextFormat(false); }} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Bold (Ctrl+B)">
+                      <span className="text-xs font-bold w-5 h-5 flex items-center justify-center">B</span>
+                    </button>
+                    <button onClick={() => { insertFormatting('*', '*'); setShowTextFormat(false); }} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Italic (Ctrl+I)">
+                      <span className="text-xs italic w-5 h-5 flex items-center justify-center">I</span>
+                    </button>
+                    <button onClick={() => { insertFormatting('~~', '~~'); setShowTextFormat(false); }} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Strikethrough">
+                      <span className="text-xs line-through w-5 h-5 flex items-center justify-center">S</span>
+                    </button>
+                    <div className="w-px h-4 bg-divider/50 mx-0.5" />
+                    <button onClick={() => { insertFormatting('`', '`'); setShowTextFormat(false); }} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Inline Code">
+                      <span className="text-xs font-mono w-5 h-5 flex items-center justify-center">&lt;/&gt;</span>
+                    </button>
+                    <button onClick={() => { insertFormatting('```\n', '\n```'); setShowTextFormat(false); }} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Code Block">
+                      <span className="text-2xs font-mono w-5 h-5 flex items-center justify-center">[/]</span>
+                    </button>
+                    <div className="w-px h-4 bg-divider/50 mx-0.5" />
+                    <button onClick={() => { insertFormatting('> ', ''); setShowTextFormat(false); }} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Quote">
+                      <span className="text-xs w-5 h-5 flex items-center justify-center">"</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center relative shrink-0">
+            <button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
               className="text-text-tertiary hover:text-text-primary"
               title="Emoji"
@@ -817,8 +837,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
             </button>
             {showEmoji && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
-                <div className="absolute bottom-full right-0 mb-2 z-50">
+                <div ref={desktopEmojiRef} className="absolute bottom-full right-0 mb-2 z-50">
                   <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
                     <LazyEmojiPicker
                       theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
