@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageSquare, Archive, X, Send } from 'lucide-react';
+import EmptyState from './ui/EmptyState';
 import type { Message, User, Thread } from '../api/types';
 import { useMessagesStore } from '../stores/messages';
 import * as api from '../api/client';
@@ -218,9 +219,7 @@ export default function ThreadPanel({ threadId, channelId, onClose }: ThreadPane
               Loading thread messages...
             </div>
           ) : msgs.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-text-tertiary text-sm">
-              No replies yet. Start the conversation!
-            </div>
+            <EmptyState icon={<MessageSquare className="size-8" />} title="No replies yet." description="Start the conversation!" />
           ) : (
             <div className="py-2">
               {isLoadingOlder && (

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import SearchInput from '../../ui/SearchInput';
+import EmptyState from '../../ui/EmptyState';
+import { ShieldCheck } from 'lucide-react';
 import * as api from '../../../api/client';
 import type { Server, Ban, User } from '../../../api/types';
 import Avatar from '../../Avatar';
@@ -71,20 +73,15 @@ export default function BansTab({ server }: BansTabProps) {
       {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
       {/* Search */}
-      <div className="rounded-lg bg-bg border border-divider px-3.5 py-2.5 gap-2 flex items-center mb-3">
-        <Search className="size-4 text-text-tertiary shrink-0" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search bans..."
-          className="text-sm text-text-primary bg-transparent flex-1 outline-none border-none p-0"
-        />
-      </div>
+      <SearchInput
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search bans..."
+        className="mb-3"
+      />
 
       {filteredBans.length === 0 ? (
-        <div className="text-text-tertiary text-sm py-4">
-          {search ? 'No bans matching search.' : 'No banned users.'}
-        </div>
+        <EmptyState icon={<ShieldCheck className="size-8" />} title={search ? 'No bans matching search.' : 'No banned users.'} />
       ) : (
         <div className="space-y-0">
           {filteredBans.map((ban) => {

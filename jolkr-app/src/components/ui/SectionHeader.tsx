@@ -1,15 +1,16 @@
 interface SectionHeaderProps {
   children: string;
   count?: number;
+  className?: string;
 }
 
-export default function SectionHeader({ children, count }: SectionHeaderProps) {
+export default function SectionHeader({ children, count, className }: SectionHeaderProps) {
   return (
-    <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider px-2 py-1.5">
+    <div className={`text-xs font-semibold text-text-tertiary uppercase tracking-wider ${className ?? ''}`}>
       {children}
       {count !== undefined && (
         <span className="ml-1">&mdash; {count}</span>
       )}
-    </h3>
+    </div>
   );
 }

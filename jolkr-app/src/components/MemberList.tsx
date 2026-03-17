@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useServersStore, selectMyPermissions } from '../stores/servers';
+import SectionHeader from './ui/SectionHeader';
+import Spinner from './ui/Spinner';
+import Button from './ui/Button';
+import Modal from './ui/Modal';
+import Input from './ui/Input';
 import { usePresenceStore } from '../stores/presence';
 import { useAuthStore } from '../stores/auth';
 import * as api from '../api/client';
@@ -325,28 +330,32 @@ export default function MemberList({ serverId, className }: MemberListProps) {
           <button onClick={() => setActionError('')} className="ml-2 text-danger/70 hover:text-danger">&times;</button>
         </div>
       )}
+      
+      {!loadError && !actionError && (
+        <div className="min-h-17 p-3 border-b border-divider flex items-center">
+          <h3 className="text-text-primary text-sm font-semibold">
+            Members — {online.length + offline.length}
+          </h3>
+        </div>
+      )}
 
       {online.length > 0 && (
         <div className="px-4 pt-4">
-          <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
-            Online —{online.length}
-          </div>
+          <SectionHeader className="mb-2" count={online.length}>Online</SectionHeader>
           {online.map((m) => renderMember(m))}
         </div>
       )}
 
       {offline.length > 0 && (
         <div className="px-4 pt-4">
-          <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
-            Offline —{offline.length}
-          </div>
+          <SectionHeader className="mb-2" count={offline.length}>Offline</SectionHeader>
           {offline.map((m) => renderMember(m, true))}
         </div>
       )}
 
       {!loadError && online.length === 0 && offline.length === 0 && (
         <div className="flex items-center justify-center py-8">
-          <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-muted animate-spin" />
+          <Spinner colors="border-divider border-t-text-muted" />
         </div>
       )}
 
@@ -373,8 +382,7 @@ export default function MemberList({ serverId, className }: MemberListProps) {
 
       {/* Ban dialog */}
       {banTarget && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setBanTarget(null)}>
-          <div role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-100 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+        <Modal open onClose={() => setBanTarget(null)} className="p-6 w-100 max-w-[90vw]">
             <h3 className="text-text-primary text-lg font-semibold mb-1">Ban Member</h3>
             <p className="text-text-tertiary text-sm mb-3">
               Ban <span className="text-text-primary font-medium">{banTarget.username}</span> from the server? They will be removed and unable to rejoin.
@@ -395,22 +403,16 @@ export default function MemberList({ serverId, className }: MemberListProps) {
               <button onClick={() => setBanTarget(null)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
                 Cancel
               </button>
-              <button
-                onClick={handleBan}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-danger hover:bg-danger/80 text-white text-sm rounded disabled:opacity-50"
-              >
+              <Button variant="danger" onClick={handleBan} disabled={actionLoading}>
                 {actionLoading ? 'Banning...' : 'Ban'}
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Role popover */}
       {roleTarget && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setRoleTarget(null)}>
-          <div role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-4 w-70 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+        <Modal open onClose={() => setRoleTarget(null)} className="p-4 w-70 max-w-[90vw]">
             <h4 className="text-text-primary text-sm font-semibold mb-2">
               Manage Roles —{roleTarget.username}
             </h4>
@@ -441,14 +443,12 @@ export default function MemberList({ serverId, className }: MemberListProps) {
                 Done
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Timeout dialog */}
       {timeoutTarget && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setTimeoutTarget(null)}>
-          <div role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-80 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+        <Modal open onClose={() => setTimeoutTarget(null)} className="p-6 w-80 max-w-[90vw]">
             <h3 className="text-text-primary text-lg font-semibold mb-3">
               {timeoutTarget.isTimedOut ? 'Remove Timeout' : 'Timeout Member'}
             </h3>
@@ -461,9 +461,9 @@ export default function MemberList({ serverId, className }: MemberListProps) {
             {timeoutTarget.isTimedOut ? (
               <div className="flex justify-end gap-2">
                 <button onClick={() => setTimeoutTarget(null)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">Cancel</button>
-                <button onClick={handleRemoveTimeout} disabled={actionLoading} className="px-4 py-2 btn-primary text-sm rounded-lg disabled:opacity-50">
+                <Button onClick={handleRemoveTimeout} disabled={actionLoading}>
                   Remove Timeout
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="space-y-1">
@@ -489,41 +489,31 @@ export default function MemberList({ serverId, className }: MemberListProps) {
                 </div>
               </div>
             )}
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Nickname dialog */}
       {nicknameTarget && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setNicknameTarget(null)}>
-          <div role="dialog" aria-modal="true" className="bg-surface rounded-2xl border border-divider shadow-popup p-6 w-100 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+        <Modal open onClose={() => setNicknameTarget(null)} className="p-6 w-100 max-w-[90vw]">
             <h3 className="text-text-primary text-lg font-semibold mb-3">Change Nickname</h3>
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-              Nickname
-            </label>
-            <input
+            <Input
+              label="Nickname"
               value={nicknameValue}
               onChange={(e) => setNicknameValue(e.target.value)}
               placeholder="Leave empty to reset"
-              className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
               maxLength={32}
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && !actionLoading && handleSetNickname()}
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setNicknameTarget(null)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
                 Cancel
               </button>
-              <button
-                onClick={handleSetNickname}
-                disabled={actionLoading}
-                className="px-4 py-2 btn-primary text-sm rounded-lg disabled:opacity-50"
-              >
+              <Button onClick={handleSetNickname} disabled={actionLoading}>
                 {actionLoading ? 'Saving...' : 'Save'}
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

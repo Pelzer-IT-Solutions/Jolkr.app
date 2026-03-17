@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import type { Friendship, User } from '../../api/types';
 import * as api from '../../api/client';
 import { useAuthStore } from '../../stores/auth';
+import SectionHeader from '../../components/ui/SectionHeader';
+import Spinner from '../../components/ui/Spinner';
+import Button from '../../components/ui/Button';
+import EmptyState from '../../components/ui/EmptyState';
 import { usePresenceStore } from '../../stores/presence';
 import Avatar from '../../components/Avatar';
 import UserProfileCard from '../../components/UserProfileCard';
@@ -169,15 +173,13 @@ export default function Friends() {
             )}
             {friendsLoading && friends.length === 0 && pending.length === 0 && (
               <div className="flex items-center justify-center py-8">
-                <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-tertiary animate-spin" />
+                <Spinner colors="border-divider border-t-text-tertiary" />
               </div>
             )}
 
             {tab === 'all' && (
               <div>
-                <div className="px-4 py-2 text-xs font-semibold text-text-tertiary tracking-wider uppercase">
-                  All Friends — {friends.length}
-                </div>
+                <SectionHeader className="px-4 py-2" count={friends.length}>All Friends</SectionHeader>
                 {friends.map((f, idx) => {
                   const friendUser = getFriendUser(f);
                   const friendId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
@@ -218,16 +220,14 @@ export default function Friends() {
                   );
                 })}
                 {friends.length === 0 && (
-                  <div className="text-center text-text-tertiary py-8">No friends yet. Add some!</div>
+                  <EmptyState icon={<Users className="size-8" />} title="No friends yet." description="Add some!" />
                 )}
               </div>
             )}
 
             {tab === 'pending' && (
               <div>
-                <div className="px-4 py-2 text-xs font-semibold text-text-tertiary tracking-wider uppercase">
-                  Pending — {pending.length}
-                </div>
+                <SectionHeader className="px-4 py-2" count={pending.length}>Pending</SectionHeader>
                 {pending.map((f, idx) => {
                   const friendUser = getFriendUser(f);
                   const isIncoming = f.addressee_id === user?.id;
@@ -284,7 +284,7 @@ export default function Friends() {
                   );
                 })}
                 {pending.length === 0 && (
-                  <div className="text-center text-text-tertiary py-8">No pending requests</div>
+                  <EmptyState icon={<UserPlus className="size-8" />} title="No pending requests" />
                 )}
               </div>
             )}
@@ -299,12 +299,9 @@ export default function Friends() {
                   placeholder="Enter a username..."
                   className="w-full px-4 py-3.5 bg-panel border border-divider rounded-xl text-text-primary text-sm"
                 />
-                <button
-                  onClick={handleSearch}
-                  className="btn-primary text-sm w-full"
-                >
+                <Button onClick={handleSearch} fullWidth>
                   Send Friend Request
-                </button>
+                </Button>
                 {searchResults.length > 0 ? (
                   <div className="flex flex-col">
                     {searchResults.map((u, idx) => {
@@ -337,11 +334,7 @@ export default function Friends() {
                     })}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center flex-1 gap-4">
-                    <UserPlus className="size-16 text-text-tertiary opacity-40" />
-                    <span className="text-base font-semibold text-text-secondary">No one around to chat with?</span>
-                    <span className="text-sm text-text-tertiary">Send a friend request to start chatting!</span>
-                  </div>
+                  <EmptyState icon={<UserPlus className="size-8" />} title="No one around to chat with?" description="Send a friend request to start chatting!" />
                 )}
               </div>
             )}
@@ -400,15 +393,13 @@ export default function Friends() {
             )}
             {friendsLoading && friends.length === 0 && pending.length === 0 && (
               <div className="flex items-center justify-center py-8">
-                <div className="w-5 h-5 rounded-full border-2 border-divider border-t-text-tertiary animate-spin" />
+                <Spinner colors="border-divider border-t-text-tertiary" />
               </div>
             )}
 
             {tab === 'all' && (
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-2">
-                  All Friends — {friends.length}
-                </div>
+                <SectionHeader className="mb-2" count={friends.length}>All Friends</SectionHeader>
                 {friends.map((f) => {
                   const friendUser = getFriendUser(f);
                   const friendId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
@@ -445,16 +436,14 @@ export default function Friends() {
                   );
                 })}
                 {friends.length === 0 && (
-                  <div className="text-center text-text-tertiary py-8">No friends yet. Add some!</div>
+                  <EmptyState icon={<Users className="size-8" />} title="No friends yet." description="Add some!" />
                 )}
               </div>
             )}
 
             {tab === 'pending' && (
               <div className="space-y-0.5">
-                <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-3">
-                  Pending — {pending.length}
-                </div>
+                <SectionHeader className="mb-3" count={pending.length}>Pending</SectionHeader>
                 {pending.map((f, idx) => {
                   const friendUser = getFriendUser(f);
                   const isIncoming = f.addressee_id === user?.id;
@@ -511,7 +500,7 @@ export default function Friends() {
                   );
                 })}
                 {pending.length === 0 && (
-                  <div className="text-center text-text-tertiary py-8">No pending requests</div>
+                  <EmptyState icon={<UserPlus className="size-8" />} title="No pending requests" />
                 )}
               </div>
             )}
@@ -530,12 +519,9 @@ export default function Friends() {
                     placeholder="Enter a username#0000"
                     className="flex-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
                   />
-                  <button
-                    onClick={handleSearch}
-                    className="btn-primary text-sm shrink-0"
-                  >
+                  <Button onClick={handleSearch} className="shrink-0">
                     Send Request
-                  </button>
+                  </Button>
                 </div>
                 <div className="h-px bg-border-subtle" />
                 {searchResults.length > 0 ? (
@@ -556,22 +542,14 @@ export default function Friends() {
                             {u.username}
                           </button>
                         </div>
-                        <button
-                          onClick={() => handleSendRequest(u.id)}
-                          disabled={actionLoading.has(u.id)}
-                          className="btn-primary text-sm shrink-0"
-                        >
+                        <Button onClick={() => handleSendRequest(u.id)} disabled={actionLoading.has(u.id)} className="shrink-0">
                           Add
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center flex-1 gap-4">
-                    <UserPlus className="size-16 text-text-tertiary opacity-40" />
-                    <span className="text-base font-semibold text-text-secondary">No one around to chat with?</span>
-                    <span className="text-sm text-text-tertiary">Send a friend request to start chatting!</span>
-                  </div>
+                  <EmptyState icon={<UserPlus className="size-8" />} title="No one around to chat with?" description="Send a friend request to start chatting!" />
                 )}
               </div>
             )}

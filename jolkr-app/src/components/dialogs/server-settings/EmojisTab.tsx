@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Trash2, ImageIcon } from 'lucide-react';
 import * as api from '../../../api/client';
 import { rewriteStorageUrl } from '../../../platform/config';
+import Input from '../../ui/Input';
+import Button from '../../ui/Button';
+import EmptyState from '../../ui/EmptyState';
+import { Smile } from 'lucide-react';
 import type { Server, ServerEmoji, User } from '../../../api/types';
 
 export interface EmojisTabProps {
@@ -116,29 +120,22 @@ export default function EmojisTab({ server }: EmojisTabProps) {
             />
           </div>
         </div>
-        <div className="flex flex-col gap-1 w-36 shrink-0">
-          <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Name</label>
-          <input
+        <div className="w-36 shrink-0">
+          <Input
+            label="Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="my_emoji"
-            className="w-full rounded-lg bg-bg border border-divider px-3.5 py-2.5 text-sm text-text-primary"
           />
         </div>
-        <button
-          onClick={handleUpload}
-          disabled={uploading || !name.trim()}
-          className="btn-primary shrink-0 self-end"
-        >
+        <Button onClick={handleUpload} disabled={uploading || !name.trim()} className="shrink-0 self-end">
           {uploading ? 'Uploading...' : 'Upload'}
-        </button>
+        </Button>
       </div>
 
       {/* Emoji list / empty state */}
       {emojis.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
-          <span className="text-sm text-text-tertiary">No custom emojis yet</span>
-        </div>
+        <EmptyState icon={<Smile className="size-8" />} title="No custom emojis yet" />
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0">
           {emojis.map((emoji) => {

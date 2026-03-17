@@ -1,5 +1,6 @@
 import { useEffect, useState, memo } from 'react';
 import { X, MessageSquare } from 'lucide-react';
+import EmptyState from './ui/EmptyState';
 import type { Thread } from '../api/types';
 import * as api from '../api/client';
 import { useMessagesStore } from '../stores/messages';
@@ -55,7 +56,7 @@ function ThreadListPanelInner({ channelId, onClose, onOpenThread }: ThreadListPa
             <div className="text-center text-danger/70 text-sm py-8">Failed to load threads</div>
           )}
           {!loading && !error && threads.length === 0 && (
-            <div className="text-center text-text-tertiary text-sm py-8">No threads yet.</div>
+            <EmptyState icon={<MessageSquare className="size-8" />} title="No threads yet." />
           )}
           {threads.map((thread) => (
             <button

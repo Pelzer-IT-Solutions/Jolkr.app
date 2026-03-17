@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, memo } from 'react';
-import { X } from 'lucide-react';
+import { X, Pin } from 'lucide-react';
+import EmptyState from './ui/EmptyState';
 import type { Message, User } from '../api/types';
 import * as api from '../api/client';
 import Avatar from './Avatar';
@@ -59,7 +60,7 @@ function PinnedMessagesPanelInner({ channelId, onClose, isDm }: PinnedMessagesPa
             <div className="text-center text-danger text-sm py-8">Failed to load pinned messages</div>
           )}
           {!loading && !fetchError && messages.length === 0 && (
-            <div className="text-center text-text-tertiary text-sm py-8">No pinned messages yet.</div>
+            <EmptyState icon={<Pin className="size-8" />} title="No pinned messages yet." />
           )}
           {messages.map((msg) => {
             const author = users[msg.author_id];

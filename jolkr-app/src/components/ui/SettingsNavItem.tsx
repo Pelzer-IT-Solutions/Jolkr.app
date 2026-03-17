@@ -13,12 +13,12 @@ export default function SettingsNavItem({ label, icon, active, onClick, danger }
     <button
       onClick={onClick}
       className={`
-        w-full flex items-center gap-2 rounded-lg py-2.5 px-4 text-sm font-medium text-left transition-colors
+        w-full flex items-center gap-2 rounded-lg py-2.5 px-4 text-sm text-left transition-colors
         ${danger
-          ? 'text-danger hover:bg-danger-muted'
+          ? 'text-danger font-medium hover:bg-danger-muted'
           : active
-            ? 'bg-active text-text-primary'
-            : 'text-text-secondary hover:bg-hover hover:text-text-primary'
+            ? 'bg-accent-muted text-accent font-semibold'
+            : 'text-text-secondary font-medium hover:bg-hover hover:text-text-primary'
         }
       `}
     >

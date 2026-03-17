@@ -355,7 +355,7 @@ export default function ChannelPage() {
               </>
             )}
             <div className="flex-1" />
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-3">
             {/* Search */}
             {showSearch ? (
               <div>

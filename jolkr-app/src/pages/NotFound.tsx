@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { getAccessToken } from '../api/client';
+import Button from '../components/ui/Button';
 
 export default function NotFound() {
   const navigate = useNavigate();
@@ -12,12 +13,9 @@ export default function NotFound() {
       <p className="text-text-secondary text-sm mb-6">
         The page you're looking for doesn't exist or has been moved.
       </p>
-      <button
-        onClick={() => navigate(isLoggedIn ? '/' : '/login')}
-        className="px-4 py-2 btn-primary text-sm rounded-lg"
-      >
+      <Button onClick={() => navigate(isLoggedIn ? '/' : '/login')}>
         {isLoggedIn ? 'Go Home' : 'Log In'}
-      </button>
+      </Button>
     </div>
   );
 }

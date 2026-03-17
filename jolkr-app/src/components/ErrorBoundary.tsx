@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
+import Button from './ui/Button';
 
 export interface ErrorBoundaryProps {
   children: ReactNode;
@@ -39,12 +40,9 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, State> 
           </p>
           <div className="flex gap-3">
             {canRetry ? (
-              <button
-                onClick={() => this.setState((prev) => ({ hasError: false, error: null, retryCount: prev.retryCount + 1 }))}
-                className="px-4 py-2 btn-primary text-sm rounded-lg"
-              >
+              <Button onClick={() => this.setState((prev) => ({ hasError: false, error: null, retryCount: prev.retryCount + 1 }))}>
                 Try Again
-              </button>
+              </Button>
             ) : (
               <p className="text-text-tertiary text-xs">Too many retries.</p>
             )}

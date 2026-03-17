@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import Button from '../ui/Button';
+import Modal from '../ui/Modal';
 
 export interface ConfirmDialogProps {
   title: string;
@@ -21,45 +22,24 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
-  useFocusTrap(dialogRef);
-
-  useEffect(() => {
-    confirmRef.current?.focus();
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [onCancel]);
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onCancel}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-sidebar rounded-3xl p-8 w-100 max-w-[90vw] animate-modal-scale border border-divider shadow-popup" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-text-primary text-lg font-semibold mb-2">{title}</h3>
-        <p className="text-text-secondary text-sm mb-6">{message}</p>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary rounded-lg hover:bg-hover"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            ref={confirmRef}
-            onClick={onConfirm}
-            className={`px-5 py-2.5 text-sm text-white rounded-lg shadow-sm ${
-              danger
-                ? 'btn-danger'
-                : 'btn-primary'
-            }`}
-          >
-            {confirmLabel}
-          </button>
-        </div>
+    <Modal open onClose={onCancel} className="p-8 w-100 max-w-[90vw]">
+      <h3 className="text-text-primary text-lg font-semibold mb-2">{title}</h3>
+      <p className="text-text-secondary text-sm mb-6">{message}</p>
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={onCancel}
+          className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary rounded-lg hover:bg-hover"
+        >
+          {cancelLabel}
+        </button>
+        <Button ref={confirmRef} onClick={onConfirm} variant={danger ? 'danger' : 'primary'}>
+          {confirmLabel}
+        </Button>
       </div>
-    </div>,
+    </Modal>,
     document.body,
   );
 }

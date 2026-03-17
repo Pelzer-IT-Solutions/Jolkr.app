@@ -3,6 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useServersStore } from '../stores/servers';
 import { useAuthStore } from '../stores/auth';
 import { useUnreadStore } from '../stores/unread';
+import Spinner from './ui/Spinner';
+import Input from './ui/Input';
+import Button from './ui/Button';
+import Modal from './ui/Modal';
+import EmptyState from './ui/EmptyState';
+import { Hash } from 'lucide-react';
 import { useVoiceStore } from '../stores/voice';
 import type { Channel, Server, User, Category } from '../api/types';
 import { hasPermission, MANAGE_CHANNELS, MANAGE_ROLES } from '../utils/permissions';
@@ -333,7 +339,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
       <div className="flex-1 overflow-y-auto py-2 px-3 min-h-0">
         {loading && !serverChannels.length && (
           <div className="flex items-center justify-center py-8">
-            <div className="w-5 h-5 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
+            <Spinner />
           </div>
         )}
 
@@ -345,9 +351,11 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
         )}
 
         {!loading && !error && serverChannels.length === 0 && (
-          <div className="px-2 py-4 text-center text-text-tertiary text-sm">
-            No channels yet. Create one with the + button above.
-          </div>
+          <EmptyState
+            icon={<Hash className="size-8" />}
+            title="No channels yet."
+            description="Create one with the + button above."
+          />
         )}
 
         {/* Uncategorized channels */}
@@ -418,23 +426,22 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
 
       {/* Edit category dialog */}
       {editCategoryId && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={() => setEditCategoryId(null)}>
-          <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-100 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+        <Modal open onClose={() => setEditCategoryId(null)} className="p-8 w-100 max-w-[90vw]">
             <h3 className="text-text-primary text-lg font-semibold mb-4">Edit Category</h3>
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Category Name</label>
-            <input
+            <Input
+              label="Category Name"
               value={editCategoryName}
               onChange={(e) => setEditCategoryName(e.target.value)}
-              className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleEditCategory()}
             />
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setEditCategoryId(null)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">Cancel</button>
-              <button onClick={handleEditCategory} disabled={editCategorySaving} className="px-4 py-2 btn-primary text-sm rounded-lg disabled:opacity-50">{editCategorySaving ? 'Saving...' : 'Save'}</button>
+              <Button onClick={handleEditCategory} disabled={editCategorySaving}>
+                {editCategorySaving ? 'Saving...' : 'Save'}
+              </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Delete category confirm */}
@@ -518,8 +525,7 @@ function CreateChannelDialog({ serverId, categories, defaultCategoryId, onClose 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <Modal open onClose={onClose} className="p-8 w-110 max-w-[90vw]">
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Channel</h3>
         {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded mb-3">{error}</div>}
 
@@ -537,15 +543,16 @@ function CreateChannelDialog({ serverId, categories, defaultCategoryId, onClose 
           ))}
         </div>
 
-        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Channel Name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="new-channel"
-          className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
-          autoFocus
-          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-        />
+        <div className="mb-4">
+          <Input
+            label="Channel Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="new-channel"
+            autoFocus
+            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          />
+        </div>
 
         {categories.length > 0 && (
           <>
@@ -553,7 +560,7 @@ function CreateChannelDialog({ serverId, categories, defaultCategoryId, onClose 
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
+              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
             >
               <option value="">No Category</option>
               {categories.map((cat) => (
@@ -567,16 +574,11 @@ function CreateChannelDialog({ serverId, categories, defaultCategoryId, onClose 
           <button onClick={onClose} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
             Cancel
           </button>
-          <button
-            onClick={handleCreate}
-            disabled={loading}
-            className="px-4 py-2 btn-primary text-sm rounded-lg disabled:opacity-50"
-          >
+          <Button onClick={handleCreate} disabled={loading}>
             {loading ? 'Creating...' : 'Create'}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -603,17 +605,15 @@ function CreateCategoryDialog({ serverId, onClose }: { serverId: string; onClose
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <Modal open onClose={onClose} className="p-8 w-110 max-w-[90vw]">
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Category</h3>
         {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded mb-3">{error}</div>}
 
-        <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">Category Name</label>
-        <input
+        <Input
+          label="Category Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="General"
-          className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm"
           autoFocus
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
         />
@@ -622,15 +622,10 @@ function CreateCategoryDialog({ serverId, onClose }: { serverId: string; onClose
           <button onClick={onClose} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary">
             Cancel
           </button>
-          <button
-            onClick={handleCreate}
-            disabled={loading}
-            className="px-4 py-2 btn-primary text-sm rounded-lg disabled:opacity-50"
-          >
+          <Button onClick={handleCreate} disabled={loading}>
             {loading ? 'Creating...' : 'Create'}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -60,7 +60,6 @@
   padding: 0.625rem 1.25rem;
   transition: all 0.15s ease;
   &:hover { background-color: var(--color-accent-hover); }
-  &:active { transform: scale(0.97); }
   &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 }
 
@@ -199,13 +198,6 @@ select {
 button, [role="button"] { cursor: pointer; }
 button:disabled, [role="button"][aria-disabled="true"] { cursor: not-allowed; }
 
-@media (hover: hover) {
-  button:active:not(:disabled), [role="button"]:active:not([aria-disabled="true"]) {
-    transform: scale(0.97);
-    transition: transform 0.1s ease;
-  }
-}
-
 *:focus-visible {
   outline: none;
 }
@@ -249,7 +241,7 @@ button:disabled, [role="button"][aria-disabled="true"] { cursor: not-allowed; }
 .animate-modal-exit { animation: modal-exit 0.15s ease-in forwards; }
 
 @keyframes dropdown-enter {
-  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  from { opacity: 0; transform: translateY(-4px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .animate-dropdown-enter { animation: dropdown-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1); }

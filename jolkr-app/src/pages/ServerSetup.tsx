@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { isValidServerUrl } from '../platform/config';
+import Button from '../components/ui/Button';
 
 export interface ServerSetupProps {
   onComplete: (url: string) => void;
@@ -127,13 +128,9 @@ export default function ServerSetup({ onComplete }: ServerSetupProps) {
           </label>
         </div>
 
-        <button
-          onClick={handleConnect}
-          disabled={testing || (!useCustom ? !selected : !custom.trim())}
-          className="w-full py-2.5 btn-primary font-medium rounded-lg disabled:opacity-50"
-        >
+        <Button onClick={handleConnect} disabled={testing || (!useCustom ? !selected : !custom.trim())} fullWidth>
           {testing ? 'Connecting...' : 'Connect'}
-        </button>
+        </Button>
       </div>
     </div>
   );

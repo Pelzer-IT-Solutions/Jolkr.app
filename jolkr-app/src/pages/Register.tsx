@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -48,46 +50,33 @@ export default function Register() {
         {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            id="register-email"
+            label={<>Email <span className="text-danger">*</span></>}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+            inputMode="email"
+          />
+          <Input
+            id="register-username"
+            label={<>Username <span className="text-danger">*</span></>}
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
           <div>
-            <label htmlFor="register-email" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-              Email <span className="text-danger">*</span>
-            </label>
-            <input
-              id="register-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-              inputMode="email"
-              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="register-username" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-              Username <span className="text-danger">*</span>
-            </label>
-            <input
-              id="register-username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="register-password" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-              Password <span className="text-danger">*</span>
-            </label>
-            <input
+            <Input
               id="register-password"
+              label={<>Password <span className="text-danger">*</span></>}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
             <div className={`mt-1.5 flex items-center gap-2 transition-opacity duration-150 ${password.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <div className="flex-1 flex gap-1">
@@ -102,13 +91,9 @@ export default function Register() {
                 </span>
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 btn-primary text-sm rounded-lg"
-          >
+          <Button type="submit" disabled={loading} fullWidth>
             {loading ? 'Creating...' : 'Continue'}
-          </button>
+          </Button>
         </form>
 
         <p className="text-sm text-text-tertiary mt-4">

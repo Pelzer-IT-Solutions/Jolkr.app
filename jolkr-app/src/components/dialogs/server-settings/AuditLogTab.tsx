@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ChevronDown, Check, CircleCheck } from 'lucide-react';
+import { ChevronDown, Check, CircleCheck, FileText } from 'lucide-react';
+import EmptyState from '../../ui/EmptyState';
 import * as api from '../../../api/client';
 import type { Server, AuditLogEntry, User } from '../../../api/types';
 import Avatar from '../../Avatar';
@@ -150,7 +151,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
       {loading ? (
         <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">Loading audit log...</div>
       ) : entries.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">No audit log entries found.</div>
+        <EmptyState icon={<FileText className="size-8" />} title="No audit log entries found." />
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0">
           {entries.map((entry) => {

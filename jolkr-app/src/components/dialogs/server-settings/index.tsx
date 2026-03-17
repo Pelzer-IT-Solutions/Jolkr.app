@@ -1,9 +1,9 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useServersStore, selectMyPermissions } from '../../../stores/servers';
 import { useAuthStore } from '../../../stores/auth';
 import type { Server } from '../../../api/types';
 import { hasPermission, BAN_MEMBERS, MANAGE_ROLES, MANAGE_SERVER } from '../../../utils/permissions';
-import { useFocusTrap } from '../../../hooks/useFocusTrap';
+import Modal from '../../ui/Modal';
 import { X } from 'lucide-react';
 
 const GeneralTab = lazy(() => import('./GeneralTab'));
@@ -28,9 +28,6 @@ export default function ServerSettingsDialog({ server, onClose }: Props) {
   const isOwner = currentUser?.id === server.owner_id;
   const myPerms = useServersStore(selectMyPermissions(server.id));
   const fetchPermissions = useServersStore((s) => s.fetchPermissions);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef);
-
   // Owner always has full access; for non-owners, derive from loaded permissions
   const canBan = isOwner || hasPermission(myPerms, BAN_MEMBERS);
   const canManageRoles = isOwner || hasPermission(myPerms, MANAGE_ROLES);
@@ -40,13 +37,6 @@ export default function ServerSettingsDialog({ server, onClose }: Props) {
     fetchPermissions(server.id);
   }, [server.id, fetchPermissions]);
 
-  // Escape key handler for dialog
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const tabs: Tab[] = ['general', 'roles'];
   if (canManageRoles) tabs.push('members');
   if (canBan) tabs.push('bans');
@@ -54,8 +44,7 @@ export default function ServerSettingsDialog({ server, onClose }: Props) {
   if (canManageServer) tabs.push('audit-log');
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-sidebar rounded-3xl border border-divider shadow-popup w-135 h-157 max-w-[95vw] max-h-[85vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <Modal open onClose={onClose} className="w-135 h-157 max-w-[95vw] max-h-[85vh] flex flex-col">
         {/* Tabs */}
         <div className="flex items-center justify-between px-6 py-4 shrink-0">
           <div className="flex items-center gap-5 overflow-x-auto">
@@ -91,7 +80,6 @@ export default function ServerSettingsDialog({ server, onClose }: Props) {
             {tab === 'audit-log' && <AuditLogTab server={server} />}
           </Suspense>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import CreateServerDialog from '../../components/dialogs/CreateServer';
 import JoinServerDialog from '../../components/dialogs/JoinServer';
 import { useMobileNav } from '../../hooks/useMobileNav';
+import Button from '../../components/ui/Button';
 import { Hash, MessageSquare, ChevronLeft } from 'lucide-react';
 
 export default function Home() {
@@ -38,12 +39,9 @@ export default function Home() {
           <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-text-primary`}>Welcome to Jolkr</h1>
           <p className={`${isMobile ? 'text-sm' : 'text-base'} text-text-secondary`}>Select a server or start a conversation</p>
           <div className="flex flex-col gap-3 py-2">
-            <button
-              onClick={() => setShowCreate(true)}
-              className={`btn-primary text-sm flex items-center gap-2 ${isMobile ? 'w-65 justify-center' : ''}`}
-            >
+            <Button onClick={() => setShowCreate(true)} className={isMobile ? 'w-65 justify-center' : ''}>
               Create a Server
-            </button>
+            </Button>
             <button
               onClick={() => setShowJoin(true)}
               className="text-accent hover:text-accent-hover text-sm font-medium justify-center"

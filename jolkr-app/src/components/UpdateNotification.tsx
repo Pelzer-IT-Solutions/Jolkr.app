@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { type UpdateInfo, downloadAndInstallUpdate } from '../services/updater';
+import Button from './ui/Button';
 
 export interface UpdateNotificationProps {
   update: UpdateInfo;
@@ -44,12 +45,9 @@ export default function UpdateNotification({ update }: UpdateNotificationProps) 
             <span className="text-text-tertiary text-xs w-8">{progress}%</span>
           </div>
         ) : (
-          <button
-            onClick={handleUpdate}
-            className="px-3 py-1 btn-primary text-xs rounded-lg font-medium"
-          >
+          <Button onClick={handleUpdate} size="xs">
             Update Now
-          </button>
+          </Button>
         )}
       </div>
     </div>

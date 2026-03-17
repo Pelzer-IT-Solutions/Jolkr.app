@@ -8,6 +8,9 @@ import { wsClient } from '../api/ws';
 import * as api from '../api/client';
 import type { Message, User } from '../api/types';
 import MessageTile from './MessageTile';
+import Spinner from './ui/Spinner';
+import EmptyState from './ui/EmptyState';
+import { MessageCircle, Search as SearchIcon } from 'lucide-react';
 
 const EMPTY_MSGS: Message[] = [];
 const EMPTY_TYPING: string[] = [];
@@ -162,19 +165,21 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     <div className="flex flex-col h-full relative min-h-0">
       {/* column-reverse: browser natively starts scroll at bottom, no JS hacks needed */}
       <div ref={containerRef} className="flex-1 flex flex-col-reverse overflow-y-auto min-h-0" onScroll={handleScroll}>
-        <div className="py-4">
+        <div className="p-4">
           {((isLoading || searchLoading) && msgs.length === 0) || (notYetFetched && !search && !searchResults) ? (
             <div className="flex items-center justify-center py-20">
               {searchLoading ? (
                 <span className="text-text-tertiary">Searching...</span>
               ) : (
-                <div className="w-6 h-6 rounded-full border-2 border-white/10 border-t-white/40 animate-spin" />
+                <Spinner size="md" />
               )}
             </div>
           ) : msgs.length === 0 ? (
-            <div className="flex items-center justify-center py-20 text-text-tertiary">
-              {search ? 'No messages match your search.' : 'No messages yet. Start the conversation!'}
-            </div>
+            <EmptyState
+              icon={search ? <SearchIcon className="size-8" /> : <MessageCircle className="size-8" />}
+              title={search ? 'No messages match your search.' : 'No messages yet.'}
+              description={search ? undefined : 'Start the conversation!'}
+            />
           ) : (
             <>
             {isLoadingOlder && (

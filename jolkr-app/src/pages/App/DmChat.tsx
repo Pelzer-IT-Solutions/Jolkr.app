@@ -19,7 +19,7 @@ import { usePresignRefresh } from '../../hooks/usePresignRefresh';
 import { Phone, Upload, ChevronLeft, Users, Lock, MoreVertical, Search, Bookmark } from 'lucide-react';
 import PinnedMessagesPanel from '../../components/PinnedMessagesPanel';
 
-function CallButton({ dmId, recipientName, recipientUserId, iconClassName }: { dmId: string; recipientName: string; recipientUserId?: string; iconClassName?: string }) {
+function CallButton({ dmId, recipientName, recipientUserId }: { dmId: string; recipientName: string; recipientUserId?: string }) {
   const startCall = useCallStore((s) => s.startCall);
   const activeCallDmId = useCallStore((s) => s.activeCallDmId);
   const outgoingCall = useCallStore((s) => s.outgoingCall);
@@ -36,7 +36,7 @@ function CallButton({ dmId, recipientName, recipientUserId, iconClassName }: { d
       title={inCall ? 'Already in a call' : 'Start voice call'}
       aria-label="Start voice call"
     >
-      <Phone className={iconClassName ?? "size-4.5"} />
+      <Phone className="size-5" />
     </button>
   );
 }
@@ -382,10 +382,7 @@ export default function DmChat() {
           </div>
         )}
         {/* Header */}
-        <div className={`flex items-center shrink-0 min-h-16 ${isMobile
-            ? 'bg-panel px-4 py-2 gap-3 border-b border-border-subtle'
-            : 'bg-panel px-4 py-3 gap-3 border-b border-border-subtle'
-          }`}>
+        <div className={`flex items-center shrink-0 min-h-17 bg-panel px-4 gap-3 border-b border-border-subtle ${isMobile ? 'py-2' : 'py-3'}`}>
           {isMobile && (
             <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary" aria-label="Back to conversations">
               <ChevronLeft className="size-5.5" />
@@ -455,7 +452,7 @@ export default function DmChat() {
                 <span title="End-to-end encrypted"><Lock className="w-4 h-4 text-green-700/60 hover:text-green-700" /></span>
               )}
               <div className="flex-1" />
-              <div className={`flex items-center ${isMobile ? 'gap-3' : 'gap-1'}`}>
+              <div className={`flex items-center gap-3`}>
                 {showSearch ? (
                   <input
                     value={search}
@@ -473,7 +470,7 @@ export default function DmChat() {
                     title="Search messages"
                     aria-label="Search messages"
                   >
-                    <Search className={isMobile ? 'size-5' : 'size-4.5'} />
+                    <Search className="size-5" />
                   </button>
                 )}
                 <button
@@ -482,9 +479,9 @@ export default function DmChat() {
                   title="Pinned Messages"
                   aria-label="Pinned Messages"
                 >
-                  <Bookmark className={isMobile ? 'size-5' : 'size-4.5'} />
+                  <Bookmark className="size-5" />
                 </button>
-                <CallButton dmId={dmId!} recipientName={(otherUser?.display_name || otherUser?.username) ?? 'User'} recipientUserId={otherUser?.id} iconClassName={isMobile ? 'size-5 text-text-secondary' : undefined} />
+                <CallButton dmId={dmId!} recipientName={(otherUser?.display_name || otherUser?.username) ?? 'User'} recipientUserId={otherUser?.id} />
                 {isMobile && (
                   <button className="text-text-secondary hover:text-text-primary" aria-label="More options">
                     <MoreVertical className="size-5" />
@@ -528,8 +525,8 @@ export default function DmChat() {
 
       {/* Members sidebar (group DM only) — full height, outside inner panel */}
       {isGroup && showMembers && !isMobile && (
-        <div className="w-60 shrink-0 h-full overflow-hidden animate-fade-in bg-sidebar border-l border-divider flex flex-col">
-          <div className="p-3 border-b border-divider">
+        <div className="w-65 shrink-0 h-full overflow-hidden animate-fade-in bg-sidebar border-l border-divider flex flex-col">
+          <div className="min-h-17 p-3 border-b border-divider flex items-center">
             <h3 className="text-text-primary text-sm font-semibold">
               Members — {dmChannel?.members.length}
             </h3>
@@ -558,7 +555,7 @@ export default function DmChat() {
               value={addMemberSearch}
               onChange={(e) => handleAddMemberSearch(e.target.value)}
               placeholder="Add a member..."
-              className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary outline-none mb-1"
+              className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary outline-none"
             />
             {addMemberResults.slice(0, 5).map((u) => (
               <button

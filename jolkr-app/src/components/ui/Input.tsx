@@ -1,22 +1,22 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+  label?: ReactNode;
   error?: string;
   helper?: string;
   icon?: ReactNode;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helper, icon, className, ...props }, ref) => {
+  ({ label, error, helper, icon, className, id, ...props }, ref) => {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1">
         {label && (
-          <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+          <label htmlFor={id} className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
             {label}
           </label>
         )}
-        <div className={`relative rounded-lg border bg-input focus-within:border-border-accent transition-colors ${error ? 'border-danger' : 'border-divider'}`}>
+        <div className={`relative rounded-lg border bg-bg focus-within:border-border-accent transition-colors ${error ? 'border-danger' : 'border-divider'}`}>
           {icon && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">
               {icon}
@@ -24,6 +24,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           <input
             ref={ref}
+            id={id}
             className={`
               w-full bg-transparent text-text-primary text-sm rounded-lg
               py-3 px-4 placeholder:text-text-tertiary

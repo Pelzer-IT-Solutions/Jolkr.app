@@ -1,10 +1,13 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { Server } from '../../api/types';
 import * as api from '../../api/client';
 import { useServersStore } from '../../stores/servers';
+import Spinner from '../ui/Spinner';
+import Button from '../ui/Button';
+import Modal from '../ui/Modal';
+import EmptyState from '../ui/EmptyState';
 import { useNavigate } from 'react-router-dom';
 import { rewriteStorageUrl } from '../../platform/config';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { X, Users, Search } from 'lucide-react';
 
 export interface ServerDiscoveryProps {
@@ -21,8 +24,6 @@ export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
   const fetchServers = useServersStore((s) => s.fetchServers);
   const myServers = useServersStore((s) => s.servers);
   const navigate = useNavigate();
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef);
 
   useEffect(() => {
     setLoading(true);
@@ -65,8 +66,7 @@ export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
   const alreadyJoined = new Set(myServers.map((s) => s.id));
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div ref={dialogRef} className="bg-sidebar rounded-3xl border border-divider shadow-popup w-150 max-w-[95vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <Modal open onClose={onClose} className="w-150 max-w-[95vw] max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between p-8 pb-4 border-b border-divider shrink-0">
           <div>
             <h3 className="text-text-primary text-lg font-semibold">Discover Servers</h3>
@@ -82,13 +82,10 @@ export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 rounded-full border-2 border-divider border-t-text-muted animate-spin" />
+              <Spinner size="md" colors="border-divider border-t-text-muted" />
             </div>
           ) : servers.length === 0 ? (
-            <div className="text-center py-12 text-text-tertiary">
-              <Search className="size-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No public servers found</p>
-            </div>
+            <EmptyState icon={<Search className="size-8" />} title="No public servers found" />
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -119,13 +116,9 @@ export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
                       {alreadyJoined.has(server.id) ? (
                         <span className="text-xs text-text-tertiary">Already joined</span>
                       ) : (
-                        <button
-                          onClick={() => handleJoin(server.id)}
-                          disabled={joining === server.id}
-                          className="btn-primary w-full px-4 py-2 text-sm rounded-lg disabled:opacity-50"
-                        >
+                        <Button onClick={() => handleJoin(server.id)} disabled={joining === server.id} fullWidth>
                           {joining === server.id ? 'Joining...' : 'Join Server'}
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -141,7 +134,6 @@ export default function ServerDiscovery({ onClose }: ServerDiscoveryProps) {
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

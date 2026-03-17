@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
+import Button from '../components/ui/Button';
 
 export default function InviteAccept() {
   const { code } = useParams<{ code: string }>();
@@ -47,12 +48,9 @@ export default function InviteAccept() {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-bg gap-4">
         <div className="text-danger text-lg">{error}</div>
-        <button
-          onClick={() => navigate('/', { replace: true })}
-          className="px-4 py-2 btn-primary rounded-lg text-sm"
-        >
+        <Button onClick={() => navigate('/', { replace: true })}>
           Go Home
-        </button>
+        </Button>
       </div>
     );
   }

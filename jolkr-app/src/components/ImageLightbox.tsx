@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, ExternalLink, MoreHorizontal, Copy, Link, Info } from 'lucide-react';
 import { formatBytes } from '../utils/format';
+import Spinner from './ui/Spinner';
 
 export interface LightboxImage {
   src: string;
@@ -287,7 +288,7 @@ export default function ImageLightbox({ images, initialIndex = 0, onClose }: Ima
 
       {/* Spinner */}
       {!loaded && (
-        <div className="w-16 h-16 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+        <Spinner colors="border-white/20 border-t-white/60" className="size-16! border-2!" />
       )}
 
       {/* Image */}

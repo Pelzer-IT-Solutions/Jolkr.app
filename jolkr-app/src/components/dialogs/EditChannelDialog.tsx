@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useServersStore } from '../../stores/servers';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import Modal from '../ui/Modal';
 import type { Channel, ChannelOverwrite, Role, Webhook } from '../../api/types';
 import * as api from '../../api/client';
 import { hasPermission, MANAGE_ROLES, MANAGE_WEBHOOKS, CHANNEL_PERMISSION_LABELS } from '../../utils/permissions';
 import ConfirmDialog from './ConfirmDialog';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
+import EmptyState from '../ui/EmptyState';
+import { Webhook as WebhookIcon } from 'lucide-react';
 
 export interface EditChannelDialogProps {
   channel: Channel;
@@ -43,8 +47,6 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
   const [savingOverwrite, setSavingOverwrite] = useState<string | null>(null);
 
   const fetchRoles = useServersStore((s) => s.fetchRoles);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef);
 
   const [overwriteError, setOverwriteError] = useState<string | null>(null);
 
@@ -147,8 +149,7 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-sidebar rounded-3xl border border-divider shadow-popup p-8 w-130 max-w-[90vw] max-h-[85vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <Modal open onClose={onClose} className="p-8 w-130 max-w-[90vw] max-h-[85vh] flex flex-col">
         <h3 className="text-text-primary text-lg font-semibold mb-4">Edit Channel</h3>
 
         {/* Tabs */}
@@ -226,7 +227,6 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
             <WebhooksTab channelId={channel.id} />
           )}
         </div>
-      </div>
 
       {showDeleteConfirm && (
         <ConfirmDialog
@@ -238,7 +238,7 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
           onCancel={() => setShowDeleteConfirm(false)}
         />
       )}
-    </div>
+    </Modal>
   );
 }
 
@@ -277,22 +277,24 @@ interface GeneralTabProps {
 function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId, isNsfw, setIsNsfw, slowmodeSeconds, setSlowmodeSeconds, serverCategories, saving, onSave, onClose, onDeleteClick }: GeneralTabProps) {
   return (
     <>
-      <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Channel Name</label>
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="channel-name"
-        className="w-full mt-1.5 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
-        autoFocus
-      />
+      <div className="mb-4">
+        <Input
+          label="Channel Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="channel-name"
+          autoFocus
+        />
+      </div>
 
-      <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Topic</label>
-      <input
-        value={topic}
-        onChange={(e) => setTopic(e.target.value)}
-        placeholder="What's this channel about?"
-        className="w-full mt-1.5 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
-      />
+      <div className="mb-4">
+        <Input
+          label="Topic"
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          placeholder="What's this channel about?"
+        />
+      </div>
 
       {serverCategories.length > 0 && (
         <>
@@ -336,13 +338,9 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
         <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
           Cancel
         </button>
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
-        >
+        <Button onClick={onSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Changes'}
-        </button>
+        </Button>
       </div>
 
       {/* Danger zone */}
@@ -351,12 +349,9 @@ function GeneralTab({ name, setName, topic, setTopic, categoryId, setCategoryId,
         <p className="text-sm text-text-secondary leading-relaxed">
           Deleting a channel is permanent. All messages in this channel will be lost.
         </p>
-        <button
-          onClick={onDeleteClick}
-          className="px-5 py-2.5 btn-danger text-sm rounded-lg"
-        >
+        <Button variant="danger" onClick={onDeleteClick}>
           Delete Channel
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -406,13 +401,9 @@ function PermissionsTab({
               <option key={r.id} value={r.id}>{r.name}</option>
             ))}
           </select>
-          <button
-            onClick={onAddRole}
-            disabled={!selectedRoleId}
-            className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
-          >
+          <Button onClick={onAddRole} disabled={!selectedRoleId}>
             Add Role
-          </button>
+          </Button>
         </div>
       )}
 
@@ -553,13 +544,9 @@ function OverwriteEditor({ overwrite, label, color, saving, onSave, onDelete }: 
           >
             Reset
           </button>
-          <button
-            onClick={() => onSave(allow, deny)}
-            disabled={saving}
-            className="btn-primary px-4 py-2 text-sm rounded-lg disabled:opacity-50"
-          >
+          <Button onClick={() => onSave(allow, deny)} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -672,17 +659,13 @@ function WebhooksTab({ channelId }: { channelId: string }) {
           className="flex-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
         />
-        <button
-          onClick={handleCreate}
-          disabled={creating || !newName.trim()}
-          className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
-        >
+        <Button onClick={handleCreate} disabled={creating || !newName.trim()}>
           {creating ? 'Creating...' : 'Create'}
-        </button>
+        </Button>
       </div>
 
       {webhooks.length === 0 && (
-        <p className="text-text-tertiary text-sm">No webhooks yet. Create one to let external services send messages to this channel.</p>
+        <EmptyState icon={<WebhookIcon className="size-8" />} title="No webhooks yet." description="Create one to let external services send messages to this channel." />
       )}
 
       {webhooks.map((wh) => (
@@ -736,31 +719,21 @@ function WebhooksTab({ channelId }: { channelId: string }) {
           {/* Edit form */}
           {editingId === wh.id && (
             <div className="px-4 py-3 border-t border-divider space-y-2">
-              <div>
-                <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Name</label>
-                <input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full mt-1.5 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Avatar URL</label>
-                <input
-                  value={editAvatarUrl}
-                  onChange={(e) => setEditAvatarUrl(e.target.value)}
-                  placeholder="https://example.com/avatar.png"
-                  className="w-full mt-1.5 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-                />
-              </div>
+              <Input
+                label="Name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+              <Input
+                label="Avatar URL"
+                value={editAvatarUrl}
+                onChange={(e) => setEditAvatarUrl(e.target.value)}
+                placeholder="https://example.com/avatar.png"
+              />
               <div className="flex justify-end">
-                <button
-                  onClick={() => handleSaveEdit(wh.id)}
-                  disabled={savingId === wh.id}
-                  className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
-                >
+                <Button onClick={() => handleSaveEdit(wh.id)} disabled={savingId === wh.id}>
                   {savingId === wh.id ? 'Saving...' : 'Save'}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -777,12 +750,9 @@ function WebhooksTab({ channelId }: { channelId: string }) {
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={() => handleDelete(wh.id)}
-                  className="px-4 py-2 btn-danger text-sm rounded-lg"
-                >
+                <Button variant="danger" onClick={() => handleDelete(wh.id)}>
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           )}

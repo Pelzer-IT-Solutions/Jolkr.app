@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { Search } from 'lucide-react';
+import SearchInput from '../../ui/SearchInput';
+import EmptyState from '../../ui/EmptyState';
+import { Users } from 'lucide-react';
 import { useServersStore } from '../../../stores/servers';
 import * as api from '../../../api/client';
 import type { Server, Role, User } from '../../../api/types';
@@ -84,15 +86,12 @@ export default function MembersTab({ server }: MembersTabProps) {
       {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
       {/* Search */}
-      <div className="rounded-lg bg-bg border border-divider px-3.5 py-2.5 gap-2 flex items-center mb-3">
-        <Search className="size-4 text-text-tertiary shrink-0" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search members..."
-          className="text-sm text-text-primary bg-transparent flex-1 outline-none border-none p-0"
-        />
-      </div>
+      <SearchInput
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search members..."
+        className="mb-3"
+      />
 
       <div className="space-y-0 max-h-100 overflow-y-auto">
         {filteredMembers.map((m) => {
@@ -178,9 +177,7 @@ export default function MembersTab({ server }: MembersTabProps) {
         })}
 
         {filteredMembers.length === 0 && (
-          <div className="text-text-tertiary text-sm py-4 text-center">
-            {search ? 'No members found' : 'No members'}
-          </div>
+          <EmptyState icon={<Users className="size-8" />} title={search ? 'No members found' : 'No members'} />
         )}
       </div>
     </div>

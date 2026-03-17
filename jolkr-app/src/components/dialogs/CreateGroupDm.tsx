@@ -4,7 +4,9 @@ import { useAuthStore } from '../../stores/auth';
 import * as api from '../../api/client';
 import type { User } from '../../api/types';
 import Avatar from '../Avatar';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import Input from '../ui/Input';
+import Button from '../ui/Button';
+import Modal from '../ui/Modal';
 import { X } from 'lucide-react';
 
 export interface CreateGroupDmDialogProps {
@@ -24,8 +26,6 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef);
 
   const maxOthers = MAX_MEMBERS - 1; // minus the caller
 
@@ -91,24 +91,22 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
   const totalMembers = selectedUsers.length + 1; // +1 for caller
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" className="bg-sidebar rounded-3xl border border-divider shadow-popup p-8 w-120 max-w-[90vw] max-h-[80vh] flex flex-col animate-modal-scale" onClick={(e) => e.stopPropagation()}>
+    <Modal open onClose={onClose} className="p-8 w-120 max-w-[90vw] max-h-[80vh] flex flex-col">
         <h3 className="text-text-primary text-lg font-semibold mb-1">Create Group DM</h3>
         <p className="text-text-tertiary text-xs mb-4">{totalMembers}/{MAX_MEMBERS} members</p>
 
         {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
         {/* Group name */}
-        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-          Group Name (Optional)
-        </label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="My Group Chat"
-          maxLength={100}
-          className="w-full mt-1 mb-3 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm outline-none"
-        />
+        <div className="mb-3">
+          <Input
+            label="Group Name (Optional)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="My Group Chat"
+            maxLength={100}
+          />
+        </div>
 
         {/* Selected users as chips */}
         {selectedUsers.length > 0 && (
@@ -131,14 +129,11 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
         )}
 
         {/* User search */}
-        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-          Add Members
-        </label>
-        <input
+        <Input
+          label="Add Members"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Search users..."
-          className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm outline-none"
           disabled={selectedUsers.length >= maxOthers}
         />
 
@@ -167,15 +162,10 @@ export default function CreateGroupDmDialog({ onClose }: CreateGroupDmDialogProp
           <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
             Cancel
           </button>
-          <button
-            onClick={handleCreate}
-            disabled={loading || selectedUsers.length < 2}
-            className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
-          >
+          <Button onClick={handleCreate} disabled={loading || selectedUsers.length < 2}>
             {loading ? 'Creating...' : 'Create Group DM'}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

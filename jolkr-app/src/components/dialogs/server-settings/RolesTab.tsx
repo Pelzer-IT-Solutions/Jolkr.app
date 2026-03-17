@@ -3,6 +3,8 @@ import { Plus } from 'lucide-react';
 import { useServersStore } from '../../../stores/servers';
 import type { Server, Role } from '../../../api/types';
 import { PERMISSION_LABELS } from '../../../utils/permissions';
+import Input from '../../ui/Input';
+import Button from '../../ui/Button';
 import ConfirmDialog from '../ConfirmDialog';
 
 export interface RolesTabProps {
@@ -75,11 +77,10 @@ export default function RolesTab({ server }: RolesTabProps) {
         </button>
         {showCreateRole && (
           <div className="mt-1">
-            <input
+            <Input
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
               placeholder="Role name"
-              className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreateRole()}
             />
@@ -171,12 +172,11 @@ function RoleEditor({
   return (
     <div>
       <div className="flex gap-3 mb-4">
-        <div className="flex-1 flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Name</label>
-          <input
+        <div className="flex-1">
+          <Input
+            label="Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
             disabled={role.is_default}
           />
         </div>
@@ -221,13 +221,9 @@ function RoleEditor({
           </button>
         )}
         <div className="flex-1" />
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
-        >
+        <Button onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save'}
-        </button>
+        </Button>
       </div>
 
       {showDeleteConfirm && (

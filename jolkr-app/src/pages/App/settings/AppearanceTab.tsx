@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Toggle from '../../../components/ui/Toggle';
 
 export default function AppearanceTab() {
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('jolkr_font_size') ?? 'normal');
@@ -44,14 +45,7 @@ export default function AppearanceTab() {
             <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Compact Mode</label>
             <p className="text-sm text-text-secondary">Reduce spacing between messages</p>
           </div>
-          <button
-            role="switch"
-            aria-checked={compactMode}
-            onClick={() => handleCompactMode(!compactMode)}
-            className={`w-11 h-6 rounded-xl transition-colors relative ${compactMode ? 'bg-accent' : 'bg-surface border border-divider'}`}
-          >
-            <div className={`absolute top-0.5 size-4.5 rounded-full shadow transition-transform ${compactMode ? 'right-0.5 left-auto bg-white' : 'left-0.5 bg-text-secondary'}`} />
-          </button>
+          <Toggle checked={compactMode} onChange={handleCompactMode} label="Compact Mode" />
         </div>
       </div>
     </>

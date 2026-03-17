@@ -1,6 +1,8 @@
 import { Link, useParams } from 'react-router-dom';
 import { useServersStore } from '../stores/servers';
 import { useAuthStore } from '../stores/auth';
+import Button from './ui/Button';
+import Modal from './ui/Modal';
 import { useUnreadStore } from '../stores/unread';
 import { rewriteStorageUrl } from '../platform/config';
 import { hasPermission, MANAGE_CHANNELS, MANAGE_ROLES } from '../utils/permissions';
@@ -225,35 +227,21 @@ export default function ServerSidebar() {
 
       {/* Add server choice dialog */}
       {showAddMenu && (
-        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50" onClick={() => setShowAddMenu(false)}>
-          <div className="bg-surface rounded-2xl border border-divider shadow-popup p-6 animate-modal-scale w-100 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+        <Modal open onClose={() => setShowAddMenu(false)} className="p-6 w-100 max-w-[90vw]">
             <h3 className="text-text-primary text-lg font-semibold mb-2 text-center">Add a Server</h3>
             <p className="text-text-secondary text-sm mb-6 text-center">Create your own or join an existing one</p>
             <div className="flex flex-col gap-3">
-              <button
-                onClick={() => { setShowAddMenu(false); setShowCreate(true); }}
-                className="w-full px-4 py-3 btn-primary text-sm rounded-lg flex items-center justify-center gap-2"
-              >
-                <Plus className="size-5" />
+              <Button onClick={() => { setShowAddMenu(false); setShowCreate(true); }} fullWidth icon={<Plus className="size-5" />}>
                 Create a Server
-              </button>
-              <button
-                onClick={() => { setShowAddMenu(false); setShowJoin(true); }}
-                className="w-full px-4 py-3 btn-ghost text-sm rounded-lg flex items-center justify-center gap-2"
-              >
-                <LogIn className="size-5" />
+              </Button>
+              <Button variant="ghost" onClick={() => { setShowAddMenu(false); setShowJoin(true); }} fullWidth icon={<LogIn className="size-5" />}>
                 Join a Server
-              </button>
-              <button
-                onClick={() => { setShowAddMenu(false); setShowDiscover(true); }}
-                className="w-full px-4 py-3 btn-ghost text-sm rounded-lg flex items-center justify-center gap-2"
-              >
-                <Search className="size-5" />
+              </Button>
+              <Button variant="ghost" onClick={() => { setShowAddMenu(false); setShowDiscover(true); }} fullWidth icon={<Search className="size-5" />}>
                 Discover Public Servers
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {showCreate && <CreateServerDialog onClose={() => setShowCreate(false)} />}

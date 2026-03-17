@@ -3,6 +3,8 @@ import { Camera } from 'lucide-react';
 import type { User } from '../../../api/types';
 import * as api from '../../../api/client';
 import Avatar from '../../../components/Avatar';
+import Input from '../../../components/ui/Input';
+import Button from '../../../components/ui/Button';
 import { rewriteStorageUrl } from '../../../platform/config';
 
 export interface AccountTabProps {
@@ -44,53 +46,38 @@ function ChangePasswordBlock() {
     <div className="rounded-xl bg-surface border border-divider p-6 gap-4 flex flex-col">
       <h3 className="text-base font-bold text-text-primary">Password</h3>
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="settings-current-pw" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Current Password</label>
-          <input
-            id="settings-current-pw"
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
-            autoComplete="current-password"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="settings-new-pw" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">New Password</label>
-          <input
-            id="settings-new-pw"
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
-            autoComplete="new-password"
-            placeholder="Min. 8 characters, uppercase, lowercase, digit"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="settings-confirm-pw" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Confirm New Password</label>
-          <input
-            id="settings-confirm-pw"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
-            autoComplete="new-password"
-          />
-          {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-            <span className="text-xs text-danger">Passwords do not match</span>
-          )}
-        </div>
+        <Input
+          id="settings-current-pw"
+          label="Current Password"
+          type="password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+        <Input
+          id="settings-new-pw"
+          label="New Password"
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          autoComplete="new-password"
+          placeholder="Min. 8 characters, uppercase, lowercase, digit"
+        />
+        <Input
+          id="settings-confirm-pw"
+          label="Confirm New Password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          autoComplete="new-password"
+          error={confirmPassword.length > 0 && newPassword !== confirmPassword ? 'Passwords do not match' : undefined}
+        />
         {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded">{error}</div>}
         {success && <div className="bg-accent/10 text-accent text-sm p-2 rounded">Password changed successfully!</div>}
         <div>
-          <button
-            onClick={handleSave}
-            disabled={!canSave}
-            className="btn-primary disabled:opacity-50"
-          >
+          <Button onClick={handleSave} disabled={!canSave}>
             {saving ? 'Changing...' : 'Change Password'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -188,25 +175,19 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="settings-username" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Username</label>
-            <input
-              id="settings-username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="settings-displayname" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Display Name</label>
-            <input
-              id="settings-displayname"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
-              placeholder="How others see you (optional)"
-            />
-          </div>
+          <Input
+            id="settings-username"
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <Input
+            id="settings-displayname"
+            label="Display Name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="How others see you (optional)"
+          />
           <div className="flex flex-col gap-1.5">
             <label htmlFor="settings-bio" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Bio</label>
             <textarea
@@ -219,13 +200,9 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
           </div>
           {saveError && <div className="bg-danger/10 text-danger text-sm p-2 rounded">{saveError}</div>}
           <div>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="btn-primary disabled:opacity-50"
-            >
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -238,12 +215,9 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
         <h3 className="text-base font-bold text-danger">Log Out</h3>
         <p className="text-sm text-text-secondary">This will disconnect you from all servers.</p>
         <div>
-          <button
-            onClick={onLogout}
-            className="btn-danger"
-          >
+          <Button variant="danger" onClick={onLogout}>
             Log Out
-          </button>
+          </Button>
         </div>
       </div>
     </>

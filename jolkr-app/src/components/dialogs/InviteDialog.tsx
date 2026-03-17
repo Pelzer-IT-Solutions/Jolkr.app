@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import type { Invite } from '../../api/types';
 import * as api from '../../api/client';
 import { useToast } from '../Toast';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import Button from '../ui/Button';
+import Modal from '../ui/Modal';
+import EmptyState from '../ui/EmptyState';
+import { Link2 } from 'lucide-react';
 
 export interface InviteDialogProps {
   serverId: string;
@@ -49,8 +52,6 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [maxAgeSeconds, setMaxAgeSeconds] = useState(0);
   const [maxUses, setMaxUses] = useState(0);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef);
 
   useEffect(() => {
     api.getInvites(serverId)
@@ -111,14 +112,7 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        className="bg-sidebar rounded-3xl border border-divider shadow-popup w-140 h-130 max-w-[90vw] max-h-[85vh] flex flex-col animate-modal-scale"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open onClose={onClose} className="w-140 h-130 max-w-[90vw] max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 shrink-0">
           <h3 className="text-lg font-bold text-text-primary">Server Invites</h3>
@@ -158,13 +152,9 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
             </div>
           </div>
 
-          <button
-            onClick={handleCreate}
-            disabled={loading}
-            className="btn-primary w-full"
-          >
+          <Button onClick={handleCreate} disabled={loading} fullWidth>
             {loading ? 'Creating...' : 'Create Invite'}
-          </button>
+          </Button>
         </div>
 
         {/* Invite list */}
@@ -176,7 +166,7 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
           {fetchError && invites.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-danger text-sm">Failed to load invites</div>
           ) : invites.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">No invites yet</div>
+            <EmptyState icon={<Link2 className="size-8" />} title="No invites yet" />
           ) : (
             <div className="flex-1 min-h-0">
               {invites.map((inv) => (
@@ -218,7 +208,6 @@ export default function InviteDialog({ serverId, onClose }: InviteDialogProps) {
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../api/client';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import LinkButton from '../components/ui/LinkButton';
 
 export default function ForgotPassword() {
   const [searchParams] = useSearchParams();
@@ -46,12 +49,9 @@ function RequestResetForm() {
             If an account exists for <strong>{email}</strong>, we've sent a password reset link.
             Check your inbox (and spam folder).
           </p>
-          <Link
-            to="/login"
-            className="inline-block w-full py-3 btn-primary text-sm rounded-lg text-center"
-          >
+          <LinkButton to="/login" fullWidth>
             Back to Login
-          </Link>
+          </LinkButton>
         </div>
       </div>
     );
@@ -68,29 +68,20 @@ function RequestResetForm() {
         {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="forgot-email" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-              Email <span className="text-danger">*</span>
-            </label>
-            <input
-              id="forgot-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-              placeholder="you@example.com"
-              inputMode="email"
-              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 btn-primary text-sm rounded-lg"
-          >
+          <Input
+            id="forgot-email"
+            label={<>Email <span className="text-danger">*</span></>}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+            placeholder="you@example.com"
+            inputMode="email"
+          />
+          <Button type="submit" disabled={loading} fullWidth>
             {loading ? 'Sending...' : 'Send Reset Link'}
-          </button>
+          </Button>
         </form>
 
         <p className="text-sm text-text-tertiary mt-4">
@@ -141,12 +132,9 @@ function ResetPasswordForm({ token }: { token: string }) {
           <p className="text-text-secondary text-sm mb-6">
             Your password has been updated. You can now log in with your new password.
           </p>
-          <Link
-            to="/login"
-            className="inline-block w-full py-3 btn-primary text-sm rounded-lg text-center"
-          >
+          <LinkButton to="/login" fullWidth>
             Go to Login
-          </Link>
+          </LinkButton>
         </div>
       </div>
     );
@@ -163,44 +151,30 @@ function ResetPasswordForm({ token }: { token: string }) {
         {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="reset-password" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-              New Password <span className="text-danger">*</span>
-            </label>
-            <input
-              id="reset-password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-              autoFocus
-              placeholder="Min. 8 characters"
-              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="reset-confirm" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-              Confirm Password <span className="text-danger">*</span>
-            </label>
-            <input
-              id="reset-confirm"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
-              placeholder="Repeat your new password"
-              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 btn-primary text-sm rounded-lg"
-          >
+          <Input
+            id="reset-password"
+            label={<>New Password <span className="text-danger">*</span></>}
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength={8}
+            autoFocus
+            placeholder="Min. 8 characters"
+          />
+          <Input
+            id="reset-confirm"
+            label={<>Confirm Password <span className="text-danger">*</span></>}
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+            placeholder="Repeat your new password"
+          />
+          <Button type="submit" disabled={loading} fullWidth>
             {loading ? 'Resetting...' : 'Reset Password'}
-          </button>
+          </Button>
         </form>
 
         <p className="text-sm text-text-tertiary mt-4">

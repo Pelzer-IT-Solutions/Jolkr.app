@@ -6,6 +6,8 @@ import { usePresenceStore } from '../stores/presence';
 import { wsClient } from '../api/ws';
 import Avatar from './Avatar';
 import VoiceConnectionBar from './VoiceConnectionBar';
+import Input from './ui/Input';
+import Button from './ui/Button';
 
 const STATUS_OPTIONS = [
   { value: 'online', label: 'Online', color: 'bg-online' },
@@ -143,22 +145,23 @@ export default function UserPanel() {
             <div className="fixed inset-0 z-40" onClick={() => setShowCustomStatus(false)} />
             <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float p-3 w-56 z-50">
               <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2">Custom Status</div>
-              <input
-                value={customStatusText}
-                onChange={(e) => setCustomStatusText(e.target.value)}
-                placeholder="What are you up to?"
-                className="w-full px-2 py-1.5 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-2"
-                maxLength={128}
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleSetCustomStatus()}
-              />
+              <div className="mb-2">
+                <Input
+                  value={customStatusText}
+                  onChange={(e) => setCustomStatusText(e.target.value)}
+                  placeholder="What are you up to?"
+                  maxLength={128}
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleSetCustomStatus()}
+                />
+              </div>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowCustomStatus(false)} className="px-2 py-1 text-xs text-text-secondary hover:text-text-primary">
                   Cancel
                 </button>
-                <button onClick={handleSetCustomStatus} className="px-2 py-1 text-xs btn-primary rounded-lg">
+                <Button onClick={handleSetCustomStatus} size="xs">
                   Save
-                </button>
+                </Button>
               </div>
             </div>
           </>

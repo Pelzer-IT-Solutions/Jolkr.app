@@ -757,7 +757,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
             {content && (
               <div
                 ref={overlayRef}
-                className="absolute inset-0 text-text-primary text-sm py-1 whitespace-pre-wrap wrap-break-word overflow-hidden pointer-events-none"
+                className="absolute inset-0 text-text-primary text-sm whitespace-pre-wrap wrap-break-word overflow-hidden pointer-events-none"
                 dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
               />
             )}

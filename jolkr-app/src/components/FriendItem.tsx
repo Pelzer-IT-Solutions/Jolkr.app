@@ -2,6 +2,7 @@ import React from 'react';
 import type { User } from '../api/types';
 import Avatar from './Avatar';
 import { MessageCircle, Check, X } from 'lucide-react';
+import Button from './ui/Button';
 
 interface FriendItemProps {
   user: User;
@@ -83,12 +84,9 @@ function FriendItemInner({
           </button>
         )}
         {variant === 'search' && onAdd && (
-          <button
-            onClick={onAdd}
-            className="btn-primary text-xs py-1.5 px-3"
-          >
+          <Button onClick={onAdd} size="sm">
             Add Friend
-          </button>
+          </Button>
         )}
       </div>
     </div>

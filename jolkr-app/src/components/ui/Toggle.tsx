@@ -14,19 +14,9 @@ export default function Toggle({ checked, onChange, disabled, label }: TogglePro
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`
-        relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200
-        disabled:opacity-50 disabled:cursor-not-allowed
-        ${checked ? 'bg-accent' : 'bg-surface border border-divider'}
-      `}
+      className={`w-11 h-6 rounded-xl duration-150 transition-colors relative shrink-0 border ${checked ? 'bg-accent border-none' : 'bg-surface border-divider'} ${disabled ? 'opacity-50' : ''}`}
     >
-      <span
-        className={`
-          pointer-events-none inline-block size-4.5 rounded-full transition-transform duration-200
-          ${checked ? 'translate-x-5.5 bg-white' : 'translate-x-0.5 bg-text-secondary'}
-          mt-0.75
-        `}
-      />
+      <div className={`absolute top-1/2 -translate-y-1/2 duration-150 size-4.5 rounded-full shadow transition-all ${checked ? 'right-0.5 bg-white' : 'left-0.5 bg-text-secondary'}`} />
     </button>
   );
 }

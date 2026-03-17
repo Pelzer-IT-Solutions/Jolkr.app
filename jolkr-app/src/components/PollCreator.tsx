@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import * as api from '../api/client';
-import { useFocusTrap } from '../hooks/useFocusTrap';
+import Button from './ui/Button';
+import Modal from './ui/Modal';
 
 export interface PollCreatorProps {
   channelId: string;
@@ -19,8 +20,6 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
   const [expiresIn, setExpiresIn] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef);
 
   const addOption = () => {
     if (options.length < 10) setOptions([...options, { id: crypto.randomUUID(), value: '' }]);
@@ -63,14 +62,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        className="bg-surface rounded-2xl border border-divider shadow-popup p-8 w-110 max-w-[90vw] max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open onClose={onClose} className="p-8 w-110 max-w-[90vw] max-h-[90vh]">
         <h3 className="text-text-primary text-lg font-semibold mb-4">Create Poll</h3>
 
         {error && (
@@ -139,7 +131,7 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
         <select
           value={expiresIn}
           onChange={(e) => setExpiresIn(e.target.value)}
-          className="w-full mt-1 px-3 py-2 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
+          className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm mb-4"
         >
           <option value="">Never</option>
           <option value="1">1 hour</option>
@@ -154,15 +146,10 @@ export default function PollCreator({ channelId, onClose, onCreated }: PollCreat
           <button onClick={onClose} className="px-5 py-2.5 text-sm text-text-secondary hover:text-text-primary">
             Cancel
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
-          >
+          <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Creating...' : 'Create Poll'}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

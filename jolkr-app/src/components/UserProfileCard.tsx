@@ -8,6 +8,7 @@ import { usePresenceStore } from '../stores/presence';
 import * as api from '../api/client';
 import Avatar from './Avatar';
 import { statusLabel } from './StatusDot';
+import Button from './ui/Button';
 import ConfirmDialog from './dialogs/ConfirmDialog';
 import { getLocalKeys, getRecipientBundle } from '../services/e2ee';
 import { generateSafetyNumber } from '../crypto';
@@ -298,13 +299,9 @@ export default function UserProfileCard({ userId, user: preloaded, anchor, onClo
               {actionError && (
                 <div className="text-xs text-danger bg-danger/10 px-2 py-1 rounded">{actionError}</div>
               )}
-              <button
-                onClick={handleSendMessage}
-                className="w-full px-3 py-2 btn-primary text-sm rounded-lg flex items-center justify-center gap-2"
-              >
-                <MessageCircle className="w-4 h-4" />
+              <Button onClick={handleSendMessage} fullWidth icon={<MessageCircle className="w-4 h-4" />}>
                 Send Message
-              </button>
+              </Button>
 
               {friendStatus === 'none' && (
                 <button

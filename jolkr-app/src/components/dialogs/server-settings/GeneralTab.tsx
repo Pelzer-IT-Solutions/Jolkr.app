@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { useServersStore } from '../../../stores/servers';
 import * as api from '../../../api/client';
+import Input from '../../ui/Input';
+import Button from '../../ui/Button';
 import { rewriteStorageUrl } from '../../../platform/config';
 import type { Server } from '../../../api/types';
 import ConfirmDialog from '../ConfirmDialog';
@@ -103,12 +105,11 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIconUpload} />
       </div>
 
-      <div className="flex flex-col gap-1.5 mb-4">
-        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Server Name</label>
-        <input
+      <div className="mb-4">
+        <Input
+          label="Server Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
           autoFocus
         />
       </div>
@@ -127,13 +128,9 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
         <span onClick={onClose} className="text-sm font-medium text-text-secondary cursor-pointer flex items-center">
           Cancel
         </span>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary px-5 py-2.5 text-sm rounded-lg disabled:opacity-50"
-        >
+        <Button onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Changes'}
-        </button>
+        </Button>
       </div>
 
       {/* Danger zone — only owner can delete */}
@@ -143,12 +140,9 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
           <p className="text-sm text-text-secondary leading-relaxed">
             Deleting a server is permanent and cannot be undone. All channels and messages will be lost.
           </p>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="btn-danger self-start"
-          >
+          <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} className="self-start">
             Delete Server
-          </button>
+          </Button>
         </div>
       )}
 

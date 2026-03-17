@@ -3,6 +3,7 @@ import type { MessageEmbed } from '../api/types';
 import type { VideoInfo } from '../utils/videoUrl';
 import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../utils/videoUrl';
 import { useNMPlayer } from '../hooks/useNMPlayer';
+import Spinner from './ui/Spinner';
 import { isTauri } from '../platform/detect';
 import { Play, Pause, Volume2, VolumeX, Maximize, Video } from 'lucide-react';
 
@@ -265,7 +266,7 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
       {/* Buffering spinner */}
       {player.isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-10 h-10 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+          <Spinner size="lg" colors="border-white/30 border-t-white" />
         </div>
       )}
 

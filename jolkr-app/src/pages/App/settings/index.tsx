@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/auth';
 import { useMobileNav } from '../../../hooks/useMobileNav';
 import Avatar from '../../../components/Avatar';
+import SettingsNavItem from '../../../components/ui/SettingsNavItem';
 import { ArrowLeft, ChevronLeft, ChevronRight, User, Palette, Bell, Monitor, LogOut } from 'lucide-react';
 
 const AccountTab = lazy(() => import('./AccountTab'));
@@ -198,23 +199,19 @@ export default function Settings() {
         <div className="px-3 py-2">
           <div className="space-y-0.5">
             {TABS.map((tab) => (
-              <button
+              <SettingsNavItem
                 key={tab}
+                label={TAB_LABELS[tab]}
+                active={activeTab === tab}
                 onClick={() => setActiveTab(tab)}
-                className={`w-full text-left rounded-lg px-4 py-2.5 gap-2 flex items-center text-sm ${activeTab === tab
-                  ? 'bg-accent-muted text-accent font-semibold'
-                  : 'text-text-secondary font-medium hover:bg-hover'
-                  }`}
-              >
-                {TAB_LABELS[tab]}
-              </button>
+              />
             ))}
           </div>
         </div>
         <div className="bg-bg px-5 py-3.5 gap-2 flex items-center mt-auto">
           <button
             onClick={() => navigate(-1)}
-            className="w-full flex items-center gap-2 text-text-secondary hover:text-text-primary text-sm font-medium"
+            className="min-h-12 w-full flex items-center gap-2 text-text-secondary hover:text-text-primary text-sm font-medium"
           >
             <ArrowLeft className="size-4" />
             Go Back

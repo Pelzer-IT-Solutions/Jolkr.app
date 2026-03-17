@@ -4,24 +4,12 @@ import { isTauri, isWeb } from '../../../platform/detect';
 import { getServerUrl, isDevMachine, isValidServerUrl } from '../../../platform/config';
 import { registerPush, unregisterPush } from '../../../services/pushRegistration';
 import { getRingtoneType } from '../../../hooks/useCallEvents';
+import Toggle from '../../../components/ui/Toggle';
+import Button from '../../../components/ui/Button';
 
 export interface NotificationsTabProps {
   user: User | null;
   onProfileUpdate: (body: { show_read_receipts?: boolean }) => Promise<void>;
-}
-
-function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      disabled={disabled}
-      className={`w-11 h-6 rounded-xl transition-colors relative shrink-0 ${checked ? 'bg-accent' : 'bg-surface border border-divider'} ${disabled ? 'opacity-50' : ''}`}
-    >
-      <div className={`absolute top-0.5 size-4.5 rounded-full shadow transition-transform ${checked ? 'right-0.5 left-auto bg-white' : 'left-0.5 bg-text-secondary'}`} />
-    </button>
-  );
 }
 
 export default function NotificationsTab({ user, onProfileUpdate }: NotificationsTabProps) {
@@ -299,9 +287,9 @@ function ServerUrlSetting() {
         />
         {urlError && <span className="text-danger text-xs self-center">{urlError}</span>}
         {dirty && (
-          <button onClick={handleSave} className="btn-primary">
+          <Button onClick={handleSave}>
             {saved ? 'Saved!' : 'Save'}
-          </button>
+          </Button>
         )}
       </div>
     </div>

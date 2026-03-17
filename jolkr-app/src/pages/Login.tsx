@@ -5,6 +5,8 @@ import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -62,44 +64,32 @@ export default function Login() {
         {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            id="login-email"
+            label={<>Email <span className="text-danger">*</span></>}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+            inputMode="email"
+          />
           <div>
-            <label htmlFor="login-email" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-              Email <span className="text-danger">*</span>
-            </label>
-            <input
-              id="login-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-              inputMode="email"
-              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="login-password" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-              Password <span className="text-danger">*</span>
-            </label>
-            <input
+            <Input
               id="login-password"
+              label={<>Password <span className="text-danger">*</span></>}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full mt-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
             />
             <Link to="/forgot-password" className="text-accent hover:underline text-xs mt-1 inline-block">
               Forgot your password?
             </Link>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 btn-primary text-sm rounded-lg"
-          >
+          <Button type="submit" disabled={loading} fullWidth>
             {loading ? 'Logging in...' : 'Log In'}
-          </button>
+          </Button>
         </form>
 
         <p className="text-sm text-text-tertiary mt-4">
