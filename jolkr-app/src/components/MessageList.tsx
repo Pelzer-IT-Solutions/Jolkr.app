@@ -10,7 +10,7 @@ import type { Message, User } from '../api/types';
 import MessageTile from './MessageTile';
 import Spinner from './ui/Spinner';
 import EmptyState from './ui/EmptyState';
-import { MessageCircle, Search as SearchIcon } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 
 const EMPTY_MSGS: Message[] = [];
 const EMPTY_TYPING: string[] = [];
@@ -23,16 +23,15 @@ const scrollPositionCache = new Map<string, number>();
 
 export interface MessageListProps {
   channelId: string;
-  search?: string;
-  searchResults?: Message[] | null;
-  searchLoading?: boolean;
   isDm?: boolean;
   hideActions?: boolean;
   onReply?: (message: Message) => void;
   onOpenThread?: (message: Message) => void;
+  highlightMessageId?: string | null;
+  onHighlightDone?: () => void;
 }
 
-export default function MessageList({ channelId, search, searchResults, searchLoading, isDm, hideActions, onReply, onOpenThread }: MessageListProps) {
+export default function MessageList({ channelId, isDm, hideActions, onReply, onOpenThread, highlightMessageId, onHighlightDone }: MessageListProps) {
   const fetchMessages = useMessagesStore((s) => s.fetchMessages);
   const fetchOlder = useMessagesStore((s) => s.fetchOlder);
   const channelMessages = useMessagesStore((s) => s.messages[channelId]);
@@ -43,11 +42,7 @@ export default function MessageList({ channelId, search, searchResults, searchLo
   const currentUser = useAuthStore((s) => s.user);
   const notYetFetched = channelMessages === undefined;
   const allMsgs = channelMessages ?? EMPTY_MSGS;
-  const msgs = searchResults
-    ? searchResults
-    : search
-      ? allMsgs.filter((m) => m.content.toLowerCase().includes(search.toLowerCase()))
-      : allMsgs;
+  const msgs = allMsgs;
   const containerRef = useRef<HTMLDivElement>(null);
   const prevChannelIdRef = useRef(channelId);
   const [users, setUsers] = useState<Record<string, User>>(userCache);
@@ -159,6 +154,24 @@ export default function MessageList({ channelId, search, searchResults, searchLo
     return new Date(msgs[i - 1].created_at).toDateString() !== new Date(msgs[i].created_at).toDateString();
   };
 
+  // Scroll-to-message + highlight for search results
+  useEffect(() => {
+    if (!highlightMessageId) return;
+    const el = containerRef.current?.querySelector(`[data-message-id="${highlightMessageId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('highlight-flash');
+      const timer = setTimeout(() => {
+        el.classList.remove('highlight-flash');
+        onHighlightDone?.();
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else {
+      // Message not in DOM (too old / not loaded) — clear highlight
+      onHighlightDone?.();
+    }
+  }, [highlightMessageId, onHighlightDone]);
+
   const otherTyping = typingUsers.filter((id) => id !== currentUser?.id);
 
   return (
@@ -166,19 +179,15 @@ export default function MessageList({ channelId, search, searchResults, searchLo
       {/* column-reverse: browser natively starts scroll at bottom, no JS hacks needed */}
       <div ref={containerRef} className="flex-1 flex flex-col-reverse overflow-y-auto min-h-0" onScroll={handleScroll}>
         <div className="p-4">
-          {((isLoading || searchLoading) && msgs.length === 0) || (notYetFetched && !search && !searchResults) ? (
+          {(isLoading && msgs.length === 0) || notYetFetched ? (
             <div className="flex items-center justify-center py-20">
-              {searchLoading ? (
-                <span className="text-text-tertiary">Searching...</span>
-              ) : (
-                <Spinner size="md" />
-              )}
+              <Spinner size="md" />
             </div>
           ) : msgs.length === 0 ? (
             <EmptyState
-              icon={search ? <SearchIcon className="size-8" /> : <MessageCircle className="size-8" />}
-              title={search ? 'No messages match your search.' : 'No messages yet.'}
-              description={search ? undefined : 'Start the conversation!'}
+              icon={<MessageCircle className="size-8" />}
+              title="No messages yet."
+              description="Start the conversation!"
             />
           ) : (
             <>

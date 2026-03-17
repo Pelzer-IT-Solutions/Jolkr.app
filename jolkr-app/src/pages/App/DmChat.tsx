@@ -17,7 +17,15 @@ import { useVoiceStore } from '../../stores/voice';
 import { useMessagesStore } from '../../stores/messages';
 import { usePresignRefresh } from '../../hooks/usePresignRefresh';
 import { Phone, Upload, ChevronLeft, Users, Lock, MoreVertical, Search, Bookmark } from 'lucide-react';
+import SidePanel from '../../components/SidePanel';
 import PinnedMessagesPanel from '../../components/PinnedMessagesPanel';
+import SearchPanel from '../../components/SearchPanel';
+
+type ActivePanel =
+  | { type: 'members' }
+  | { type: 'pins' }
+  | { type: 'search' }
+  | null;
 
 function CallButton({ dmId, recipientName, recipientUserId }: { dmId: string; recipientName: string; recipientUserId?: string }) {
   const startCall = useCallStore((s) => s.startCall);
@@ -51,7 +59,7 @@ export default function DmChat() {
   // Periodically refresh presigned S3 URLs (every 3h)
   usePresignRefresh(dmId, true);
 
-  // DM cache ref — replaces former module-level mutable state
+  // DM cache ref
   const dmsCacheRef = useRef<DmChannel[] | null>(null);
 
   const getCachedDms = useCallback(async (): Promise<DmChannel[]> => {
@@ -69,16 +77,13 @@ export default function DmChat() {
   const [memberUsers, setMemberUsers] = useState<Record<string, User>>({});
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [e2eeAvailable, setE2eeAvailable] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [addMemberSearch, setAddMemberSearch] = useState('');
   const [addMemberResults, setAddMemberResults] = useState<User[]>([]);
   const [addingMember, setAddingMember] = useState(false);
   const [actionError, setActionError] = useState('');
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [showPins, setShowPins] = useState(false);
-  const [search, setSearch] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchResults, setSearchResults] = useState<Message[] | null>(null);
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const dragCounterRef = useRef(0);
@@ -86,6 +91,11 @@ export default function DmChat() {
   const { setShowSidebar, isMobile } = useMobileNav();
 
   const isGroup = dmChannel?.is_group ?? false;
+
+  const closePanel = useCallback(() => setActivePanel(null), []);
+  const togglePanel = useCallback((type: NonNullable<ActivePanel>['type']) => {
+    setActivePanel((prev) => prev?.type === type ? null : { type } as ActivePanel);
+  }, []);
 
   // On mobile, when navigating to a DM, show content
   useEffect(() => {
@@ -97,7 +107,7 @@ export default function DmChat() {
     if (dmId) sessionStorage.setItem('jolkr_last_dm', dmId);
   }, [dmId]);
 
-  // Fetch DM channel info + member users (uses cached DMs list)
+  // Fetch DM channel info + member users
   const fetchChannelInfo = useCallback(() => {
     if (!dmId) return;
     getCachedDms().then((channels) => {
@@ -147,13 +157,12 @@ export default function DmChat() {
     return otherId ? memberUsers[otherId] ?? null : null;
   }, [dmChannel, isGroup, currentUser?.id, memberUsers]);
 
-  // Check E2EE availability (skip system users)
+  // Check E2EE availability
   useEffect(() => {
     if (otherUser?.is_system) {
       setE2eeAvailable(false);
       return;
     }
-    // For group DMs, check all other members; for 1-on-1, check the single other user
     const otherIds = isGroup
       ? dmChannel?.members.filter((id) => id !== currentUser?.id) ?? []
       : otherUser ? [otherUser.id] : [];
@@ -180,14 +189,11 @@ export default function DmChat() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [otherUser, isGroup, dmChannel?.members, currentUser?.id]);
 
-  // Reset reply when DM channel changes + mark as read
+  // Reset state when DM channel changes
   useEffect(() => {
     setReplyTo(null);
-    setShowMembers(false);
-    setShowPins(false);
-    setSearch('');
-    setSearchResults(null);
-    setShowSearch(false);
+    setActivePanel(null);
+    setHighlightMessageId(null);
     setAddMemberSearch('');
     setAddMemberResults([]);
     if (dmId) setActiveChannel(dmId);
@@ -199,8 +205,6 @@ export default function DmChat() {
 
   // Auto mark-as-read with throttle
   const lastMarkRef = useRef(0);
-  // Select raw value from store (undefined is stable), then fallback outside selector
-  // to avoid creating new [] references inside the selector (causes infinite re-renders)
   const messagesForChannel = useMessagesStore((s) => s.messages[dmId ?? '']);
   const lastMessage = messagesForChannel?.[messagesForChannel.length - 1];
   const lastMsgId = lastMessage?.id;
@@ -213,13 +217,13 @@ export default function DmChat() {
     api.markDmRead(dmId, lastMsgId).catch(() => { });
   }, [dmId, lastMsgId, lastMsgAuthor, currentUser?.id]);
 
-  // Clear add member state when sidebar is hidden
+  // Clear add member state when panel is hidden
   useEffect(() => {
-    if (!showMembers) {
+    if (activePanel?.type !== 'members') {
       setAddMemberSearch('');
       setAddMemberResults([]);
     }
-  }, [showMembers]);
+  }, [activePanel]);
 
   // Add member search handler (debounced)
   const handleAddMemberSearch = useCallback((value: string) => {
@@ -268,7 +272,6 @@ export default function DmChat() {
     }
   };
 
-  // These hooks must be called unconditionally (Rules of Hooks)
   const mentionableUsers = useMemo(() => {
     if (isGroup && dmChannel) {
       const list: { id: string; username: string }[] = [];
@@ -298,22 +301,7 @@ export default function DmChat() {
     return names.join(', ') || 'Group DM';
   }, [isGroup, dmChannel, currentUser?.id, memberUsers]);
 
-  // Client-side search (messages are E2EE — backend has no plaintext)
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    if (value.trim().length < 2) {
-      setSearchResults(null);
-      return;
-    }
-    const allMessages = useMessagesStore.getState().messages[dmId ?? ''] ?? [];
-    const query = value.trim().toLowerCase();
-    const results = allMessages.filter((m) =>
-      m.content?.toLowerCase().includes(query),
-    );
-    setSearchResults(results);
-  }, [dmId]);
-
-  // Drag-and-drop handlers for the full DM chat area
+  // Drag-and-drop handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -346,16 +334,18 @@ export default function DmChat() {
     const valid = dropped.filter((f) => f.size <= 25 * 1024 * 1024);
     if (valid.length > 0) {
       setDroppedFiles(valid);
-      // Reset after one render cycle so the effect doesn't re-fire on canAttach changes
       requestAnimationFrame(() => setDroppedFiles([]));
     }
+  }, []);
+
+  const handleJumpToMessage = useCallback((messageId: string) => {
+    setHighlightMessageId(messageId);
   }, []);
 
   if (!dmId) return null;
 
   const partnerStatus = otherUser ? (statuses[otherUser.id] ?? 'offline') : undefined;
 
-  // Determine reply author for the reply bar
   const replyAuthor = replyTo
     ? (replyTo.author_id === currentUser?.id
       ? currentUser as User
@@ -364,7 +354,7 @@ export default function DmChat() {
 
   return (
     <>
-      <div className="flex-1 flex min-w-0 min-h-0">
+      <div className="flex flex-1 h-full overflow-hidden min-w-0">
       <div
         className="flex-1 flex flex-col bg-panel min-w-0 min-h-0 page-transition relative"
         onDragEnter={handleDragEnter}
@@ -405,37 +395,25 @@ export default function DmChat() {
                 <span className="text-xs text-text-tertiary">{dmChannel?.members.length} members</span>
               </div>
               <div className="flex items-center gap-3">
-                {showSearch ? (
-                  <input
-                    value={search}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    onBlur={() => { if (!search) setShowSearch(false); }}
-                    onKeyDown={(e) => { if (e.key === 'Escape') { setShowSearch(false); setSearch(''); setSearchResults(null); } }}
-                    placeholder="Search messages..."
-                    className={`input-reset px-3 py-1 bg-bg border border-divider rounded-lg text-sm text-text-primary ${isMobile ? 'w-32' : 'w-48'}`}
-                    autoFocus
-                  />
-                ) : (
-                  <button
-                    onClick={() => setShowSearch(true)}
-                    className="p-1.5 rounded hover:bg-hover text-text-secondary hover:text-text-primary"
-                    title="Search messages"
-                    aria-label="Search messages"
-                  >
-                    <Search className="size-5" />
-                  </button>
-                )}
                 <button
-                  onClick={() => setShowPins(!showPins)}
-                  className={`p-1.5 rounded hover:bg-hover ${showPins ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                  onClick={() => togglePanel('search')}
+                  className={`p-1.5 rounded hover:bg-hover ${activePanel?.type === 'search' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                  title="Search messages"
+                  aria-label="Search messages"
+                >
+                  <Search className="size-5" />
+                </button>
+                <button
+                  onClick={() => togglePanel('pins')}
+                  className={`p-1.5 rounded hover:bg-hover ${activePanel?.type === 'pins' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
                   title="Pinned Messages"
                   aria-label="Pinned Messages"
                 >
                   <Bookmark className="size-5" />
                 </button>
                 <button
-                  onClick={() => setShowMembers(!showMembers)}
-                  className={`p-1.5 rounded hover:bg-hover ${showMembers ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                  onClick={() => togglePanel('members')}
+                  className={`p-1.5 rounded hover:bg-hover ${activePanel?.type === 'members' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
                   title="Toggle members"
                   aria-label="Toggle members"
                 >
@@ -452,30 +430,18 @@ export default function DmChat() {
                 <span title="End-to-end encrypted"><Lock className="w-4 h-4 text-green-700/60 hover:text-green-700" /></span>
               )}
               <div className="flex-1" />
-              <div className={`flex items-center gap-3`}>
-                {showSearch ? (
-                  <input
-                    value={search}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    onBlur={() => { if (!search) setShowSearch(false); }}
-                    onKeyDown={(e) => { if (e.key === 'Escape') { setShowSearch(false); setSearch(''); setSearchResults(null); } }}
-                    placeholder="Search messages..."
-                    className={`input-reset px-3 py-1 bg-bg border border-divider rounded-lg text-sm text-text-primary ${isMobile ? 'w-32' : 'w-48'}`}
-                    autoFocus
-                  />
-                ) : (
-                  <button
-                    onClick={() => setShowSearch(true)}
-                    className="p-1.5 rounded hover:bg-hover text-text-secondary hover:text-text-primary"
-                    title="Search messages"
-                    aria-label="Search messages"
-                  >
-                    <Search className="size-5" />
-                  </button>
-                )}
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowPins(!showPins)}
-                  className={`p-1.5 rounded hover:bg-hover ${showPins ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                  onClick={() => togglePanel('search')}
+                  className={`p-1.5 rounded hover:bg-hover ${activePanel?.type === 'search' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                  title="Search messages"
+                  aria-label="Search messages"
+                >
+                  <Search className="size-5" />
+                </button>
+                <button
+                  onClick={() => togglePanel('pins')}
+                  className={`p-1.5 rounded hover:bg-hover ${activePanel?.type === 'pins' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
                   title="Pinned Messages"
                   aria-label="Pinned Messages"
                 >
@@ -493,45 +459,52 @@ export default function DmChat() {
         </div>
 
         {/* Main content area */}
-        <div className="flex-1 flex min-h-0 relative">
-          {showPins && (
-            <PinnedMessagesPanel channelId={dmId} isDm onClose={() => setShowPins(false)} />
-          )}
-          {/* Messages */}
-          <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? 'justify-end' : ''}`}>
-            <div className={isMobile ? 'py-3 gap-1 flex flex-col flex-1 min-h-0' : 'flex-1 flex flex-col min-h-0'}>
-              <MessageList channelId={dmId} isDm hideActions={otherUser?.is_system === true} onReply={setReplyTo} search={search} searchResults={searchResults} searchLoading={false} />
-            </div>
-            <div>
-              <MessageInput
-                channelId={dmId}
-                isDm
-                isGroupDm={isGroup}
-                dmMemberIds={isGroup ? dmChannel?.members : undefined}
-                recipientUserId={isGroup ? undefined : otherUser?.id}
-                replyTo={replyTo}
-                replyAuthor={replyAuthor}
-                onCancelReply={() => setReplyTo(null)}
-                mentionableUsers={mentionableUsers}
-                droppedFiles={droppedFiles}
-                canSend={otherUser?.is_system ? false : undefined}
-                isAnnouncement={otherUser?.is_system === true}
-              />
-            </div>
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className={isMobile ? 'py-3 gap-1 flex flex-col flex-1 min-h-0' : 'flex-1 flex flex-col min-h-0'}>
+            <MessageList
+              channelId={dmId}
+              isDm
+              hideActions={otherUser?.is_system === true}
+              onReply={setReplyTo}
+              highlightMessageId={highlightMessageId}
+              onHighlightDone={() => setHighlightMessageId(null)}
+            />
           </div>
-
+          <div>
+            <MessageInput
+              channelId={dmId}
+              isDm
+              isGroupDm={isGroup}
+              dmMemberIds={isGroup ? dmChannel?.members : undefined}
+              recipientUserId={isGroup ? undefined : otherUser?.id}
+              replyTo={replyTo}
+              replyAuthor={replyAuthor}
+              onCancelReply={() => setReplyTo(null)}
+              mentionableUsers={mentionableUsers}
+              droppedFiles={droppedFiles}
+              canSend={otherUser?.is_system ? false : undefined}
+              isAnnouncement={otherUser?.is_system === true}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Members sidebar (group DM only) — full height, outside inner panel */}
-      {isGroup && showMembers && !isMobile && (
-        <div className="w-65 shrink-0 h-full overflow-hidden animate-fade-in bg-sidebar border-l border-divider flex flex-col">
-          <div className="min-h-17 p-3 border-b border-divider flex items-center">
-            <h3 className="text-text-primary text-sm font-semibold">
-              Members — {dmChannel?.members.length}
-            </h3>
-          </div>
-
+      {/* Sidebar panels — at root flex level, pushes content */}
+      {activePanel?.type === 'pins' && (
+        <SidePanel title="Pinned Messages" onClose={closePanel}>
+          <PinnedMessagesPanel channelId={dmId} isDm />
+        </SidePanel>
+      )}
+      {activePanel?.type === 'search' && (
+        <SearchPanel
+          channelId={dmId}
+          isDm
+          onClose={closePanel}
+          onJumpToMessage={handleJumpToMessage}
+        />
+      )}
+      {isGroup && activePanel?.type === 'members' && (
+        <SidePanel title={`Members — ${dmChannel?.members.length ?? 0}`} onClose={closePanel}>
           <div className="flex-1 overflow-y-auto p-2">
             {dmChannel?.members.map((memberId) => {
               const user = memberId === currentUser?.id ? currentUser : memberUsers[memberId];
@@ -550,7 +523,7 @@ export default function DmChat() {
           </div>
 
           {/* Add member */}
-          <div className="p-2 border-t border-divider">
+          <div className="p-2 border-t border-divider shrink-0">
             <input
               value={addMemberSearch}
               onChange={(e) => handleAddMemberSearch(e.target.value)}
@@ -572,7 +545,7 @@ export default function DmChat() {
           </div>
 
           {/* Leave group */}
-          <div className="p-2 border-t border-divider">
+          <div className="p-2 border-t border-divider shrink-0">
             <button
               onClick={() => setShowLeaveConfirm(true)}
               className="w-full px-3 py-1.5 text-sm text-danger hover:bg-danger/10 rounded text-left"
@@ -580,67 +553,7 @@ export default function DmChat() {
               Leave Group
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Mobile members overlay */}
-      {isGroup && showMembers && isMobile && (
-        <div className="fixed inset-y-0 right-0 w-4/5 max-w-75 z-40 shadow-xl animate-slide-in-right bg-sidebar border-l border-divider flex flex-col">
-          <div className="p-3 border-b border-divider">
-            <h3 className="text-text-primary text-sm font-semibold">
-              Members — {dmChannel?.members.length}
-            </h3>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-2">
-            {dmChannel?.members.map((memberId) => {
-              const user = memberId === currentUser?.id ? currentUser : memberUsers[memberId];
-              const status = statuses[memberId] ?? 'offline';
-              if (!user) return null;
-              return (
-                <div key={memberId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-hover">
-                  <Avatar url={user.avatar_url} name={user.display_name || user.username} size={28} status={status} userId={memberId} />
-                  <span className="text-text-secondary text-sm truncate">
-                    {user.display_name || user.username}
-                    {memberId === currentUser?.id && <span className="text-text-tertiary text-xs ml-1">(you)</span>}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Add member */}
-          <div className="p-2 border-t border-divider">
-            <input
-              value={addMemberSearch}
-              onChange={(e) => handleAddMemberSearch(e.target.value)}
-              placeholder="Add a member..."
-              className="w-full bg-bg border border-divider rounded-lg px-2 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary outline-none mb-1"
-            />
-            {addMemberResults.slice(0, 5).map((u) => (
-              <button
-                key={u.id}
-                onClick={() => handleAddMember(u.id)}
-                disabled={addingMember}
-                className="w-full px-2 py-1 rounded flex items-center gap-2 text-xs text-text-secondary hover:bg-hover hover:text-text-primary disabled:opacity-50"
-              >
-                <Avatar url={u.avatar_url} name={u.display_name || u.username} size={20} userId={u.id} />
-                <span className="truncate">{u.display_name || u.username}</span>
-              </button>
-            ))}
-            {actionError && <div className="text-xs text-danger mt-1 px-1">{actionError}</div>}
-          </div>
-
-          {/* Leave group */}
-          <div className="p-2 border-t border-divider">
-            <button
-              onClick={() => setShowLeaveConfirm(true)}
-              className="w-full px-3 py-1.5 text-sm text-danger hover:bg-danger/10 rounded text-left"
-            >
-              Leave Group
-            </button>
-          </div>
-        </div>
+        </SidePanel>
       )}
       </div>
 

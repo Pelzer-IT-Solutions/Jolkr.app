@@ -331,14 +331,6 @@ export default function MemberList({ serverId, className }: MemberListProps) {
         </div>
       )}
       
-      {!loadError && !actionError && (
-        <div className="min-h-17 p-3 border-b border-divider flex items-center">
-          <h3 className="text-text-primary text-sm font-semibold">
-            Members — {online.length + offline.length}
-          </h3>
-        </div>
-      )}
-
       {online.length > 0 && (
         <div className="px-4 pt-4">
           <SectionHeader className="mb-2" count={online.length}>Online</SectionHeader>

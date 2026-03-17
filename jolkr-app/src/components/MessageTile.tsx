@@ -176,6 +176,7 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
 
   return (
     <div
+      data-message-id={message.id}
       className={`group flex items-start gap-2.5 md:gap-3 px-4 py-1 md:py-1.5 hover:bg-hover relative ${compact ? 'py-0.5' : '[.compact-mode_&]:py-0.5'}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}

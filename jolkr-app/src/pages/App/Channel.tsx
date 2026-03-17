@@ -4,7 +4,7 @@ import { useServersStore, selectServerChannels, selectServerMembers } from '../.
 import { useUnreadStore } from '../../stores/unread';
 import { useMessagesStore } from '../../stores/messages';
 import * as api from '../../api/client';
-import type { Message, User } from '../../api/types';
+import type { Message, User, Thread } from '../../api/types';
 import { useAuthStore } from '../../stores/auth';
 import { hasPermission, SEND_MESSAGES, ATTACH_FILES } from '../../utils/permissions';
 import ChannelList from '../../components/ChannelList';
@@ -14,15 +14,25 @@ import PollCreator from '../../components/PollCreator';
 import MemberList from '../../components/MemberList';
 import UserPanel from '../../components/UserPanel';
 import InviteDialog from '../../components/dialogs/InviteDialog';
+import SidePanel from '../../components/SidePanel';
 import PinnedMessagesPanel from '../../components/PinnedMessagesPanel';
 import ThreadPanel from '../../components/ThreadPanel';
 import ThreadListPanel from '../../components/ThreadListPanel';
+import SearchPanel from '../../components/SearchPanel';
 import { useMobileNav } from '../../hooks/useMobileNav';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { usePresignRefresh } from '../../hooks/usePresignRefresh';
 import { useVoiceStore } from '../../stores/voice';
 import Avatar from '../../components/Avatar';
-import { UserPlus, Upload, ChevronLeft, Mic, Search, BarChart3, MessageSquare, Bookmark, Users, X, VolumeX } from 'lucide-react';
+import { UserPlus, Upload, ChevronLeft, Mic, Search, BarChart3, MessageSquare, Bookmark, Users, VolumeX, Archive } from 'lucide-react';
+
+type ActivePanel =
+  | { type: 'members' }
+  | { type: 'pins' }
+  | { type: 'threads' }
+  | { type: 'thread'; threadId: string }
+  | { type: 'search' }
+  | null;
 
 export default function ChannelPage() {
   const { serverId, channelId } = useParams<{ serverId: string; channelId: string }>();
@@ -36,17 +46,9 @@ export default function ChannelPage() {
   const channelPermissions = useServersStore((s) => s.channelPermissions);
   const fetchChannelPermissions = useServersStore((s) => s.fetchChannelPermissions);
   const fetchEmojis = useServersStore((s) => s.fetchEmojis);
-  const [showMembers, setShowMembers] = useState(false);
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [showInvites, setShowInvites] = useState(false);
-  const [showPins, setShowPins] = useState(false);
-  const [showThreads, setShowThreads] = useState(false);
-  const [search, setSearch] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchResults, setSearchResults] = useState<Message[] | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [openThreadId, setOpenThreadId] = useState<string | null>(null);
   const [showTopicExpanded, setShowTopicExpanded] = useState(false);
   const [nsfwAcknowledged, setNsfwAcknowledged] = useState(false);
   const [showPollCreator, setShowPollCreator] = useState(false);
@@ -56,6 +58,13 @@ export default function ChannelPage() {
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const dragCounterRef = useRef(0);
   const { showSidebar, setShowSidebar, isMobile } = useMobileNav();
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
+  const [threadInfo, setThreadInfo] = useState<{ name: string; isArchived: boolean } | null>(null);
+
+  const closePanel = useCallback(() => setActivePanel(null), []);
+  const togglePanel = useCallback((type: ActivePanel extends null ? never : NonNullable<ActivePanel>['type']) => {
+    setActivePanel((prev) => prev?.type === type ? null : { type } as ActivePanel);
+  }, []);
 
   // On mobile, when navigating to a channel, show content
   useEffect(() => {
@@ -96,69 +105,17 @@ export default function ChannelPage() {
       .filter((u) => u.username !== 'Unknown');
   }, [members, memberUsers]);
 
-  // Debounced server-side search
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (value.trim().length < 2) {
-      setSearchResults(null);
-      setSearchLoading(false);
-      return;
-    }
-    setSearchLoading(true);
-    searchTimerRef.current = setTimeout(() => {
-      if (channelId) {
-        // Parse filter syntax: from:user has:file before:date after:date
-        const filterRegex = /(?:from|has|before|after):\S+/g;
-        const filters = value.match(filterRegex) ?? [];
-        const textQuery = value.replace(filterRegex, '').trim();
-
-        const params: { q?: string; from?: string; has?: string; before?: string; after?: string } = {};
-        if (textQuery) params.q = textQuery;
-        for (const f of filters) {
-          const [key, val] = f.split(':');
-          if (key === 'from') params.from = val;
-          else if (key === 'has') params.has = val;
-          else if (key === 'before') params.before = new Date(val).toISOString();
-          else if (key === 'after') params.after = new Date(val).toISOString();
-        }
-
-        const hasFilters = params.from || params.has || params.before || params.after;
-        const searchFn = hasFilters
-          ? api.searchMessagesAdvanced(channelId, params)
-          : api.searchMessages(channelId, value.trim());
-
-        searchFn
-          .then((msgs) => setSearchResults(msgs.reverse()))
-          .catch(() => setSearchResults(null))
-          .finally(() => setSearchLoading(false));
-      }
-    }, 300);
-  }, [channelId]);
-
-  // Reset search, panels, and thread when channel changes
+  // Reset panels when channel changes
   useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    setSearch('');
-    setSearchResults(null);
-    setShowSearch(false);
-    setOpenThreadId(null);
-    setShowPins(false);
-    setShowThreads(false);
+    setActivePanel(null);
     setShowTopicExpanded(false);
-    // Check NSFW acknowledgment from localStorage
+    setHighlightMessageId(null);
+    setThreadInfo(null);
     if (channelId) {
       const acked = localStorage.getItem(`nsfw_ack_${channelId}`);
       setNsfwAcknowledged(acked === 'true');
     }
   }, [channelId]);
-
-  // Cleanup search timer on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    };
-  }, []);
 
   // Reset reply when channel changes + mark as read
   useEffect(() => {
@@ -188,17 +145,14 @@ export default function ChannelPage() {
     return new Date(myMember.timeout_until) > new Date();
   }, [serverId, currentUserId, members]);
 
-  // Compute whether user can send messages in this channel
-  // undefined = still loading (MessageInput shows loading state), true/false = resolved
   const canSend = useMemo(() => {
     if (isTimedOut) return false;
     if (!channelId) return true;
     const perms = channelPermissions[channelId];
-    if (perms === undefined) return undefined; // still loading
+    if (perms === undefined) return undefined;
     return hasPermission(perms, SEND_MESSAGES);
   }, [channelId, channelPermissions, isTimedOut]);
 
-  // Compute whether user can attach files
   const canAttach = useMemo(() => {
     if (isTimedOut) return false;
     if (!channelId) return true;
@@ -207,7 +161,7 @@ export default function ChannelPage() {
     return hasPermission(perms, ATTACH_FILES);
   }, [channelId, channelPermissions, isTimedOut]);
 
-  // Drag-and-drop handlers for the full chat area
+  // Drag-and-drop handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -241,7 +195,6 @@ export default function ChannelPage() {
     const valid = dropped.filter((f) => f.size <= 25 * 1024 * 1024);
     if (valid.length > 0) {
       setDroppedFiles(valid);
-      // Reset after one render cycle so the effect doesn't re-fire on canAttach changes
       requestAnimationFrame(() => setDroppedFiles([]));
     }
   }, [canAttach]);
@@ -251,37 +204,48 @@ export default function ChannelPage() {
 
   // Global keyboard shortcuts
   useKeyboardShortcuts({
-    toggleSearch: useCallback(() => setShowSearch((prev) => !prev), []),
-    toggleMembers: useCallback(() => setShowMembers((prev) => !prev), []),
+    toggleSearch: useCallback(() => togglePanel('search'), [togglePanel]),
+    toggleMembers: useCallback(() => togglePanel('members'), [togglePanel]),
     closeAll: useCallback(() => {
-      setShowSearch(false);
-      setShowPins(false);
-      setShowThreads(false);
-      setOpenThreadId(null);
+      setActivePanel(null);
       setShowTopicExpanded(false);
     }, []),
   });
 
   const handleOpenThread = useCallback(async (message: Message) => {
     if (message.thread_id) {
-      // Message already has a thread — open it
-      setOpenThreadId(message.thread_id);
-      setShowPins(false);
-      setShowThreads(false);
+      setActivePanel({ type: 'thread', threadId: message.thread_id });
     } else if (channelId) {
-      // Create a new thread from this message
       try {
         const result = await api.createThread(channelId, message.id);
-        // Update the starter message in the channel store so thread_id + badge appear
         useMessagesStore.getState().updateMessage(channelId, result.message);
-        setOpenThreadId(result.thread.id);
-        setShowPins(false);
-        setShowThreads(false);
+        setActivePanel({ type: 'thread', threadId: result.thread.id });
       } catch (e) {
         console.warn('Failed to create thread:', (e as Error).message);
       }
     }
   }, [channelId]);
+
+  const handleThreadLoaded = useCallback((thread: Thread) => {
+    setThreadInfo({ name: thread.name ?? 'Thread', isArchived: thread.is_archived });
+  }, []);
+
+  const handleArchiveThread = useCallback(async () => {
+    if (activePanel?.type !== 'thread' || !threadInfo) return;
+    try {
+      const updated = await api.updateThread(activePanel.threadId, { is_archived: !threadInfo.isArchived });
+      setThreadInfo({ name: updated.name ?? 'Thread', isArchived: updated.is_archived });
+    } catch (e) {
+      console.warn('Failed to update thread:', (e as Error).message);
+    }
+  }, [activePanel, threadInfo]);
+
+  const handleJumpToMessage = useCallback((messageId: string) => {
+    setHighlightMessageId(messageId);
+  }, []);
+
+  // Member count for sidebar title
+  const onlineCount = members.length;
 
   if (!server || !channelId) return null;
 
@@ -323,7 +287,7 @@ export default function ChannelPage() {
             </div>
           )}
           {/* Channel header */}
-          <div className="bg-panel px-4 py-3 flex items-center gap-3 border-b border-border-subtle shrink-0">
+          <div className="bg-panel min-h-17 px-4 py-3 flex items-center gap-3 border-b border-border-subtle shrink-0">
             {isMobile && (
               <button onClick={() => setShowSidebar(true)} className="text-text-secondary hover:text-text-primary mr-1" aria-label="Back to channels">
                 <ChevronLeft className="size-5" />
@@ -357,28 +321,14 @@ export default function ChannelPage() {
             <div className="flex-1" />
             <div className="flex items-center gap-3">
             {/* Search */}
-            {showSearch ? (
-              <div>
-              <input
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                onBlur={() => { if (!search) setShowSearch(false); }}
-                onKeyDown={(e) => { if (e.key === 'Escape') { setShowSearch(false); setSearch(''); setSearchResults(null); } }}
-                placeholder="Search messages..."
-                className={`input-reset px-3 py-1 bg-bg border border-divider rounded-lg text-sm text-text-primary ${isMobile ? 'w-32' : 'w-48'}`}
-                autoFocus
-              />
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowSearch(true)}
-                className="p-1.5 rounded hover:bg-hover text-text-secondary hover:text-text-primary"
-                title="Search messages"
-                aria-label="Search messages"
-              >
-                <Search className="size-5" />
-              </button>
-            )}
+            <button
+              onClick={() => togglePanel('search')}
+              className={`p-1.5 rounded ${activePanel?.type === 'search' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              title="Search messages"
+              aria-label="Search messages"
+            >
+              <Search className="size-5" />
+            </button>
 
             {/* Create Poll */}
             <button
@@ -392,12 +342,8 @@ export default function ChannelPage() {
 
             {/* Toggle threads list */}
             <button
-              onClick={() => {
-                const next = !showThreads;
-                setShowThreads(next);
-                if (next) { setShowPins(false); setOpenThreadId(null); }
-              }}
-              className={`p-1.5 rounded ${showThreads ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              onClick={() => togglePanel('threads')}
+              className={`p-1.5 rounded ${activePanel?.type === 'threads' || activePanel?.type === 'thread' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
               title="Threads"
               aria-label="Threads"
             >
@@ -406,12 +352,8 @@ export default function ChannelPage() {
 
             {/* Toggle pinned messages */}
             <button
-              onClick={() => {
-                const next = !showPins;
-                setShowPins(next);
-                if (next) { setShowThreads(false); setOpenThreadId(null); }
-              }}
-              className={`p-1.5 rounded ${showPins ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              onClick={() => togglePanel('pins')}
+              className={`p-1.5 rounded ${activePanel?.type === 'pins' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
               title="Pinned Messages"
               aria-label="Pinned Messages"
             >
@@ -420,8 +362,8 @@ export default function ChannelPage() {
 
             {/* Toggle member list */}
             <button
-              onClick={() => setShowMembers(!showMembers)}
-              className={`p-1.5 rounded ${showMembers ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              onClick={() => togglePanel('members')}
+              className={`p-1.5 rounded ${activePanel?.type === 'members' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
               aria-label="Toggle members"
             >
               <Users className="size-5" />
@@ -470,15 +412,13 @@ export default function ChannelPage() {
             </div>
           )}
 
-          {/* Messages + member list + pins panel (text channels) */}
+          {/* Messages + input (text channels) */}
           {(!channel?.is_nsfw || nsfwAcknowledged) && channel?.kind !== 'voice' && (
-          <div className="flex-1 flex min-h-0 relative">
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-h-0">
               <MessageList
                 channelId={channelId}
-                search={search}
-                searchResults={searchResults}
-                searchLoading={searchLoading}
+                highlightMessageId={highlightMessageId}
+                onHighlightDone={() => setHighlightMessageId(null)}
                 onReply={setReplyTo}
                 onOpenThread={handleOpenThread}
               />
@@ -495,35 +435,6 @@ export default function ChannelPage() {
                 droppedFiles={droppedFiles}
               />
             </div>
-            {/* MemberList: overlay on mobile */}
-            {showMembers && serverId && isMobile && (
-              <div className="fixed inset-0 z-50 flex">
-                <div className="flex-1" onClick={() => setShowMembers(false)} />
-                <div className="w-70 max-w-[80vw] bg-sidebar border-l border-divider h-full overflow-y-auto animate-slide-in-right">
-                  <div className="px-4 py-3 flex items-center border-b border-divider shrink-0">
-                    <span className="text-text-primary font-semibold text-sm flex-1">Members</span>
-                    <button onClick={() => setShowMembers(false)} className="text-text-secondary hover:text-text-primary" aria-label="Close members">
-                      <X className="size-5" />
-                    </button>
-                  </div>
-                  <MemberList serverId={serverId} className="flex-1 overflow-y-auto" />
-                </div>
-              </div>
-            )}
-            {showPins && channelId && (
-              <PinnedMessagesPanel channelId={channelId} onClose={() => setShowPins(false)} />
-            )}
-            {showThreads && channelId && (
-              <ThreadListPanel
-                channelId={channelId}
-                onClose={() => setShowThreads(false)}
-                onOpenThread={(id) => { setOpenThreadId(id); setShowThreads(false); }}
-              />
-            )}
-            {openThreadId && channelId && (
-              <ThreadPanel threadId={openThreadId} channelId={channelId} onClose={() => setOpenThreadId(null)} />
-            )}
-          </div>
           )}
 
           {/* Voice channel view */}
@@ -532,9 +443,51 @@ export default function ChannelPage() {
           )}
         </div>
 
-      {/* MemberList: full height on desktop */}
-      {showMembers && serverId && !isMobile && (
-        <MemberList serverId={serverId} />
+      {/* Sidebar panels — at root flex level, pushes content */}
+      {activePanel?.type === 'members' && serverId && (
+        <SidePanel title={`Members — ${onlineCount}`} onClose={closePanel}>
+          <MemberList serverId={serverId} className="flex-1 overflow-y-auto" />
+        </SidePanel>
+      )}
+      {activePanel?.type === 'pins' && channelId && (
+        <SidePanel title="Pinned Messages" onClose={closePanel}>
+          <PinnedMessagesPanel channelId={channelId} />
+        </SidePanel>
+      )}
+      {activePanel?.type === 'threads' && channelId && (
+        <SidePanel title="Threads" onClose={closePanel}>
+          <ThreadListPanel
+            channelId={channelId}
+            onOpenThread={(id) => setActivePanel({ type: 'thread', threadId: id })}
+          />
+        </SidePanel>
+      )}
+      {activePanel?.type === 'thread' && channelId && (
+        <SidePanel
+          title={threadInfo?.name ?? 'Thread'}
+          onClose={closePanel}
+          headerRight={
+            threadInfo && (
+              <button
+                onClick={handleArchiveThread}
+                className="text-text-tertiary hover:text-text-primary"
+                title={threadInfo.isArchived ? 'Unarchive Thread' : 'Archive Thread'}
+                aria-label={threadInfo.isArchived ? 'Unarchive Thread' : 'Archive Thread'}
+              >
+                <Archive className={`w-4 h-4 ${threadInfo.isArchived ? 'text-yellow-500' : ''}`} />
+              </button>
+            )
+          }
+        >
+          <ThreadPanel threadId={activePanel.threadId} channelId={channelId} onThreadLoaded={handleThreadLoaded} />
+        </SidePanel>
+      )}
+      {activePanel?.type === 'search' && channelId && (
+        <SearchPanel
+          channelId={channelId}
+          onClose={closePanel}
+          onJumpToMessage={handleJumpToMessage}
+        />
       )}
 
       {showInvites && serverId && <InviteDialog serverId={serverId} onClose={() => setShowInvites(false)} />}
@@ -575,7 +528,6 @@ function VoiceChannelView({
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6">
-      {/* Voice icon */}
       <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center">
         <Mic className="size-10 text-accent" strokeWidth={1.5} />
       </div>
@@ -597,7 +549,6 @@ function VoiceChannelView({
         </div>
       )}
 
-      {/* Participants grid */}
       {isInThisChannel && participants.length > 0 && (
         <div className="flex flex-wrap gap-4 justify-center max-w-lg">
           {participants.map((p) => {
@@ -621,7 +572,6 @@ function VoiceChannelView({
         </div>
       )}
 
-      {/* Join / Leave button */}
       {!isInThisChannel ? (
         <button
           onClick={handleJoin}
