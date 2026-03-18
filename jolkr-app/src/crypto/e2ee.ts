@@ -9,6 +9,8 @@ import {
   mlkemDecapsulate,
   deriveMessageKey,
   deriveHybridMessageKey,
+  deriveMessageKeyLegacy,
+  deriveHybridMessageKeyLegacy,
   encryptMessage,
   decryptMessage,
   toBase64,
@@ -26,8 +28,9 @@ export interface EncryptedPayload {
 }
 
 // Version bytes for encrypted payload format
-const VERSION_CLASSICAL = 0x01;
-const VERSION_HYBRID_PQ = 0x02;
+const VERSION_CLASSICAL = 0x01;       // Legacy: SHA-256 KDF, X25519 only
+const VERSION_HYBRID_PQ = 0x02;       // Legacy: SHA-256 KDF, X25519 + ML-KEM-768
+const VERSION_HYBRID_PQ_HKDF = 0x03;  // Current: HKDF-SHA256, X25519 + ML-KEM-768
 
 // ML-KEM-768 ciphertext is 1088 bytes
 const MLKEM768_CIPHERTEXT_SIZE = 1088;
@@ -65,13 +68,13 @@ export async function encryptForRecipient(
       // ML-KEM-768 encapsulation
       const { ciphertext: pqCiphertext, sharedSecret: pqShared } = mlkemEncapsulate(bundle.pqSignedPrekey!);
 
-      // Derive hybrid key from both secrets
+      // Derive hybrid key from both secrets using HKDF-SHA256
       const messageKey = await deriveHybridMessageKey(classicalShared, pqShared);
       const { ciphertext, nonce } = await encryptMessage(messageKey, plaintext);
 
       // Pack: version(1) || ephemeral_pub(32) || pq_ciphertext(1088) || ciphertext
       const packed = new Uint8Array(1 + 32 + pqCiphertext.length + ciphertext.length);
-      packed[0] = VERSION_HYBRID_PQ;
+      packed[0] = VERSION_HYBRID_PQ_HKDF;
       packed.set(ephemeralPub, 1);
       packed.set(pqCiphertext, 33);
       packed.set(ciphertext, 33 + pqCiphertext.length);
@@ -103,8 +106,11 @@ export async function encryptForRecipient(
 
 /**
  * Decrypt an incoming encrypted message using our signed prekey private key.
- * Supports both classical (v1) and hybrid post-quantum (v2) formats.
- * Also handles legacy unversioned format (pre-v0.3.0) for backwards compat.
+ * Supports versioned formats:
+ *   0x03 — HKDF-SHA256, hybrid X25519 + ML-KEM-768 (current)
+ *   0x02 — Legacy SHA-256 KDF, hybrid X25519 + ML-KEM-768
+ *   0x01 — Legacy SHA-256 KDF, classical X25519 only
+ *   other — Legacy unversioned format (pre-v0.3.0)
  */
 export async function decryptFromSender(
   localKeys: LocalKeySet,
@@ -120,7 +126,7 @@ export async function decryptFromSender(
 
   const version = packed[0];
 
-  if (version === VERSION_HYBRID_PQ) {
+  if (version === VERSION_HYBRID_PQ_HKDF || version === VERSION_HYBRID_PQ) {
     // Hybrid PQ format: version(1) || ephemeral_pub(32) || pq_ciphertext(1088) || ciphertext
     const minSize = 1 + 32 + MLKEM768_CIPHERTEXT_SIZE + 16; // 16 = min AES-GCM tag
     if (packed.length < minSize) {
@@ -139,7 +145,10 @@ export async function decryptFromSender(
     // Post-quantum: ML-KEM decapsulation
     const pqShared = mlkemDecapsulate(pqCiphertext, localKeys.pqSignedPreKey.keyPair.decapsulationKey);
 
-    const messageKey = await deriveHybridMessageKey(classicalShared, pqShared);
+    // Use HKDF for v0x03, legacy SHA-256 for v0x02
+    const messageKey = version === VERSION_HYBRID_PQ_HKDF
+      ? await deriveHybridMessageKey(classicalShared, pqShared)
+      : await deriveHybridMessageKeyLegacy(classicalShared, pqShared);
     return decryptMessage(messageKey, ciphertext, nonce);
   }
 
@@ -148,7 +157,7 @@ export async function decryptFromSender(
     const ephemeralPub = packed.slice(1, 33);
     const ciphertext = packed.slice(33);
     const shared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, ephemeralPub);
-    const messageKey = await deriveMessageKey(shared);
+    const messageKey = await deriveMessageKeyLegacy(shared);
     return decryptMessage(messageKey, ciphertext, nonce);
   }
 
@@ -156,7 +165,7 @@ export async function decryptFromSender(
   const ephemeralPub = packed.slice(0, 32);
   const ciphertext = packed.slice(32);
   const shared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, ephemeralPub);
-  const messageKey = await deriveMessageKey(shared);
+  const messageKey = await deriveMessageKeyLegacy(shared);
   return decryptMessage(messageKey, ciphertext, nonce);
 }
 

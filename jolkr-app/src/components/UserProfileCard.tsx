@@ -52,7 +52,7 @@ function statusColor(s: string): string {
     case 'online': return 'bg-online';
     case 'idle': return 'bg-idle';
     case 'dnd': return 'bg-dnd';
-    default: return 'bg-text-muted';
+    default: return 'bg-offline';
   }
 }
 

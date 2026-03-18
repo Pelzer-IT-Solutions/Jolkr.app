@@ -13,12 +13,26 @@ pub struct EmailService {
 
 impl EmailService {
     /// Create a new EmailService. If `smtp_host` is None, emails are logged instead.
+    /// Uses plaintext for local dev hosts (mailhog/localhost), STARTTLS for external.
     pub fn new(smtp_host: Option<&str>, smtp_port: u16, smtp_from: &str) -> Self {
         let mailer = smtp_host.map(|host| {
-            SmtpTransport::builder_dangerous(host)
-                .port(smtp_port)
-                .tls(Tls::None)
-                .build()
+            let is_local = host == "mailhog" || host == "localhost" || host == "127.0.0.1";
+            if is_local {
+                // Dev: no TLS needed for local mail catchers
+                SmtpTransport::builder_dangerous(host)
+                    .port(smtp_port)
+                    .tls(Tls::None)
+                    .build()
+            } else {
+                // Production: use STARTTLS for secure transport
+                SmtpTransport::starttls_relay(host)
+                    .unwrap_or_else(|_| {
+                        warn!(host, "STARTTLS relay failed, falling back to dangerous builder");
+                        SmtpTransport::builder_dangerous(host)
+                    })
+                    .port(smtp_port)
+                    .build()
+            }
         });
 
         if mailer.is_some() {

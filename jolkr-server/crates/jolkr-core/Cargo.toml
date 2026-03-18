@@ -19,6 +19,7 @@ base64 = { workspace = true }
 tokio = { workspace = true }
 sqlx = { workspace = true }
 sha2 = "0.10"
+hkdf = "0.12"
 hex = "0.4"
 x25519-dalek = { version = "2", features = ["static_secrets"] }
 ed25519-dalek = { version = "2", features = ["rand_core"] }

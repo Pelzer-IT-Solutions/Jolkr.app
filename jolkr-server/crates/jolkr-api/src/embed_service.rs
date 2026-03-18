@@ -53,7 +53,7 @@ static DIRECT_VIDEO_REGEX: std::sync::LazyLock<regex::Regex> = std::sync::LazyLo
 /// Check if a URL is safe to fetch (not internal/private network).
 /// Blocks: private IPs, localhost, link-local, cloud metadata, Docker hostnames.
 /// Also resolves DNS to prevent rebinding attacks (hostname→private IP).
-fn is_safe_url(raw_url: &str) -> bool {
+async fn is_safe_url(raw_url: &str) -> bool {
     let parsed = match url::Url::parse(raw_url) {
         Ok(u) => u,
         Err(_) => return false,
@@ -78,23 +78,28 @@ fn is_safe_url(raw_url: &str) -> bool {
     if let Ok(ip) = host.parse::<IpAddr>() {
         return is_public_ip(ip);
     }
-    // DNS resolution check: resolve hostname and verify all IPs are public
-    // This prevents DNS rebinding attacks where a hostname resolves to a private IP
+    // DNS resolution on blocking thread pool to avoid starving async workers.
+    // Also prevents DNS rebinding attacks where a hostname resolves to a private IP.
     let port = parsed.port_or_known_default().unwrap_or(80);
-    if let Ok(addrs) = std::net::ToSocketAddrs::to_socket_addrs(&(host.as_str(), port)) {
-        let addrs: Vec<_> = addrs.collect();
-        if addrs.is_empty() {
-            return false;
-        }
-        for addr in addrs {
-            if !is_public_ip(addr.ip()) {
-                return false;
+    let host_owned = host.clone();
+    let dns_result = tokio::task::spawn_blocking(move || {
+        std::net::ToSocketAddrs::to_socket_addrs(&(host_owned.as_str(), port))
+            .ok()
+            .map(|addrs| addrs.collect::<Vec<_>>())
+    })
+    .await;
+
+    match dns_result {
+        Ok(Some(addrs)) if !addrs.is_empty() => {
+            for addr in &addrs {
+                if !is_public_ip(addr.ip()) {
+                    return false;
+                }
             }
+            true // All resolved IPs are public → safe
         }
+        _ => false, // DNS failed, empty, or task panicked → block
     }
-    // If DNS resolution fails, block — allowing would let attackers bypass
-    // the SSRF check by causing a temporary DNS failure before rebinding.
-    false
 }
 
 fn is_public_ip(ip: IpAddr) -> bool {
@@ -223,7 +228,7 @@ impl LinkEmbedService {
 
         for url in urls {
             // SSRF protection: skip private/internal URLs
-            if !is_safe_url(&url) {
+            if !is_safe_url(&url).await {
                 warn!(url = %url, "Skipping unsafe URL (SSRF protection)");
                 continue;
             }
@@ -275,7 +280,7 @@ impl LinkEmbedService {
     /// Fetch metadata (OG tags) from a URL.
     async fn fetch_metadata(&self, url: &str) -> Result<Option<EmbedMetadata>, String> {
         // Defense-in-depth: re-check URL safety
-        if !is_safe_url(url) {
+        if !is_safe_url(url).await {
             return Err("URL targets internal network".to_string());
         }
 

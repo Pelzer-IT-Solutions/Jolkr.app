@@ -136,8 +136,11 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
 const CONTEXT_STRING = new TextEncoder().encode('jolkr-e2ee-v1');
 const HYBRID_CONTEXT = new TextEncoder().encode('jolkr-e2ee-hybrid-v1');
 
-export async function deriveMessageKey(shared: Uint8Array): Promise<CryptoKey> {
-  // SHA-256(shared || context)
+/**
+ * Legacy KDF: SHA-256(shared || context). Used for decrypting v0x01 messages.
+ * @deprecated Use deriveMessageKey (HKDF) for new encryptions.
+ */
+export async function deriveMessageKeyLegacy(shared: Uint8Array): Promise<CryptoKey> {
   const input = new Uint8Array(shared.length + CONTEXT_STRING.length);
   input.set(shared);
   input.set(CONTEXT_STRING, shared.length);
@@ -154,11 +157,10 @@ export async function deriveMessageKey(shared: Uint8Array): Promise<CryptoKey> {
 }
 
 /**
- * Derive a hybrid message key from both a classical and post-quantum shared secret.
- * Uses HKDF: SHA-256(classical || pqSecret || context) → AES-256-GCM key.
- * If either algorithm is broken, the other still protects the key.
+ * Legacy hybrid KDF: SHA-256(classical || pq || context). Used for decrypting v0x02 messages.
+ * @deprecated Use deriveHybridMessageKey (HKDF) for new encryptions.
  */
-export async function deriveHybridMessageKey(
+export async function deriveHybridMessageKeyLegacy(
   classicalShared: Uint8Array,
   pqShared: Uint8Array,
 ): Promise<CryptoKey> {
@@ -173,6 +175,44 @@ export async function deriveHybridMessageKey(
     'raw',
     hash,
     { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+/** Derive an AES-256-GCM key from a classical shared secret using HKDF-SHA256. */
+export async function deriveMessageKey(shared: Uint8Array): Promise<CryptoKey> {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', toArrayBuffer(shared), 'HKDF', false, ['deriveKey'],
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: toArrayBuffer(CONTEXT_STRING) },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+/**
+ * Derive a hybrid message key from both a classical and post-quantum shared secret
+ * using HKDF-SHA256. If either algorithm is broken, the other still protects the key.
+ */
+export async function deriveHybridMessageKey(
+  classicalShared: Uint8Array,
+  pqShared: Uint8Array,
+): Promise<CryptoKey> {
+  const ikm = new Uint8Array(classicalShared.length + pqShared.length);
+  ikm.set(classicalShared);
+  ikm.set(pqShared, classicalShared.length);
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', toArrayBuffer(ikm), 'HKDF', false, ['deriveKey'],
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: toArrayBuffer(HYBRID_CONTEXT) },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
     false,
     ['encrypt', 'decrypt'],
   );

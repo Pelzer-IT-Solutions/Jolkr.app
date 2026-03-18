@@ -62,7 +62,7 @@ function PollDisplayInner({ pollId, initialPoll }: PollDisplayProps) {
       <div className="flex items-center gap-2 mb-2">
         <span className="text-text-primary text-sm font-medium">{poll.question}</span>
         {isExpired && (
-          <span className="px-1.5 py-0.5 text-2xs bg-text-muted/20 text-text-tertiary rounded font-bold uppercase">
+          <span className="px-1.5 py-0.5 text-2xs bg-offline/20 text-text-tertiary rounded font-bold uppercase">
             Ended
           </span>
         )}

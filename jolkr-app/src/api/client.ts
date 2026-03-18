@@ -272,7 +272,8 @@ export async function login(email: string, password: string): Promise<TokenPair>
 export async function resetPassword(email: string, newPassword: string, adminSecret: string): Promise<void> {
   await request<void>('/auth/reset-password', {
     method: 'POST',
-    body: JSON.stringify({ email, new_password: newPassword, admin_secret: adminSecret }),
+    headers: { 'X-Admin-Secret': adminSecret },
+    body: JSON.stringify({ email, new_password: newPassword }),
   });
 }
 

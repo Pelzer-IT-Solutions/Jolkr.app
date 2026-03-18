@@ -31,7 +31,7 @@ base64 = { workspace = true }
 async-nats = { workspace = true }
 rust-s3 = { workspace = true }
 web-push = { workspace = true }
-lettre = "0.11"
+lettre = { version = "0.11", default-features = false, features = ["builder", "hostname", "smtp-transport", "tokio1-rustls-tls"] }
 subtle = "2"
 sha2 = "0.10"
 hmac = "0.12"

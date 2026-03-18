@@ -40,17 +40,6 @@ pub fn is_allowed_content_type(ct: &str) -> bool {
 /// Validate that actual file bytes match the claimed MIME type via magic bytes.
 /// Returns the effective content type to use for storage.
 fn validate_content_type(claimed: &str, data: &[u8]) -> Result<String, AppError> {
-    // SVG is XML-based and can contain scripts — block it
-    if claimed.eq_ignore_ascii_case("image/svg+xml") {
-        let prefix = std::str::from_utf8(&data[..data.len().min(4096)]).unwrap_or("");
-        let lower = prefix.to_lowercase();
-        if lower.contains("<script") || lower.contains("javascript:") || lower.contains("on") {
-            return Err(AppError(jolkr_common::JolkrError::Validation(
-                "SVG files with embedded scripts are not allowed".into(),
-            )));
-        }
-    }
-
     // For binary formats, verify magic bytes match the claimed type
     let dominated = match &data[..data.len().min(12)] {
         // JPEG: FF D8 FF

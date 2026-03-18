@@ -184,17 +184,13 @@ pub fn x25519_key_agreement(private_key: &[u8; 32], public_key: &[u8; 32]) -> [u
 }
 
 /// Derive an AES-256 encryption key from a shared secret using HKDF-SHA256.
+/// Uses RFC 5869 HKDF with empty salt (extract) and info context (expand).
 pub fn derive_message_key(shared_secret: &[u8; 32], info: &[u8]) -> [u8; 32] {
+    use hkdf::Hkdf;
     use sha2::Sha256;
-    use sha2::Digest;
 
-    // Simple KDF: HMAC-SHA256(shared_secret, info)
-    // For production, use a proper HKDF implementation
-    let mut hasher = Sha256::new();
-    hasher.update(shared_secret);
-    hasher.update(info);
-    let result = hasher.finalize();
+    let hk = Hkdf::<Sha256>::new(None, shared_secret);
     let mut key = [0u8; 32];
-    key.copy_from_slice(&result);
+    hk.expand(info, &mut key).expect("32 bytes is a valid HKDF-SHA256 output length");
     key
 }

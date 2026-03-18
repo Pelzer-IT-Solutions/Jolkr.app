@@ -156,8 +156,8 @@ services:
     command: >
       --jetstream
       --store_dir /data
-      --user ${NATS_USER}
-      --pass ${NATS_PASSWORD}
+      --user ${NATS_USER:?NATS_USER must be set in .env}
+      --pass ${NATS_PASSWORD:?NATS_PASSWORD must be set in .env}
     volumes:
       - nats_data:/data
     networks:

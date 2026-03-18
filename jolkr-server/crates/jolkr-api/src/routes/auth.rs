@@ -38,7 +38,6 @@ pub struct RefreshRequest {
 pub struct ResetPasswordRequest {
     pub email: String,
     pub new_password: String,
-    pub admin_secret: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -130,18 +129,22 @@ pub async fn login(
 }
 
 /// POST /api/auth/reset-password
-/// Admin-only endpoint: requires ADMIN_SECRET header.
+/// Admin-only endpoint: requires X-Admin-Secret header.
 pub async fn reset_password(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<StatusCode, AppError> {
     let secret = admin_secret().ok_or_else(|| {
         AppError(jolkr_common::JolkrError::Unauthorized)
     })?;
+    let provided = headers.get("x-admin-secret")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| AppError(jolkr_common::JolkrError::Unauthorized))?;
     // Use constant-time comparison via SHA-256 hashes to prevent timing side-channel attacks.
     use sha2::{Sha256, Digest};
     use subtle::ConstantTimeEq;
-    let provided_hash = Sha256::digest(body.admin_secret.as_bytes());
+    let provided_hash = Sha256::digest(provided.as_bytes());
     let expected_hash = Sha256::digest(secret.as_bytes());
     if provided_hash.ct_eq(&expected_hash).unwrap_u8() != 1 {
         return Err(AppError(jolkr_common::JolkrError::Unauthorized));

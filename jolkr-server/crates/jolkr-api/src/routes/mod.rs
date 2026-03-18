@@ -24,7 +24,7 @@ pub mod threads;
 pub mod users;
 
 use axum::{
-    extract::Extension,
+    extract::{DefaultBodyLimit, Extension},
     middleware as axum_mw,
     routing::{get, put, post, patch, delete},
     Router,
@@ -352,6 +352,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/ws", get(ws::handler::ws_upgrade))
         // ── Health check (no rate limit) ────────────────────────────
         .route("/health", get(health::health_check))
+        .layer(DefaultBodyLimit::max(26 * 1024 * 1024)) // 26 MB, matches nginx client_max_body_size
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state)
