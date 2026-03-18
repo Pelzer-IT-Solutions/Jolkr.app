@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useClickOutside } from '../../../hooks/useClickOutside';
 import { ChevronDown, Check, CircleCheck, FileText } from 'lucide-react';
 import EmptyState from '../../ui/EmptyState';
 import * as api from '../../../api/client';
@@ -30,6 +31,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
   const [hasMore, setHasMore] = useState(true);
   const [actionFilter, setActionFilter] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useClickOutside<HTMLDivElement>(() => setFilterOpen(false), filterOpen);
   const [error, setError] = useState('');
   const fetchedIdsRef = useRef(new Set<string>());
 
@@ -114,7 +116,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
       <div className="text-xs font-semibold text-text-tertiary tracking-wider uppercase shrink-0">Filter by action</div>
 
       {/* Filter dropdown */}
-      <div className="relative shrink-0">
+      <div ref={filterRef} className="relative shrink-0">
         <button
           onClick={() => setFilterOpen(!filterOpen)}
           className="w-full rounded-lg bg-bg border border-divider px-3.5 py-2.5 flex justify-between items-center"
@@ -124,7 +126,6 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
         </button>
         {filterOpen && (
           <>
-            <div className="fixed inset-0 z-60" onClick={() => setFilterOpen(false)} />
             <div className="absolute top-full left-0 right-0 mt-1 z-70 bg-surface border border-divider rounded-lg shadow-popup py-1 max-h-60 overflow-y-auto">
               <button
                 onClick={() => { setActionFilter(''); setFilterOpen(false); }}

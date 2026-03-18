@@ -91,11 +91,10 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingRef = useRef(0);
   const mentionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const mobileEmojiRef = useClickOutside<HTMLDivElement>(() => setShowEmoji(false), showEmoji);
-  const textFormatRef = useClickOutside<HTMLDivElement>(() => setShowTextFormat(false), showTextFormat);
-  const desktopEmojiRef = useClickOutside<HTMLDivElement>(() => setShowEmoji(false), showEmoji);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const emojiJustToggledRef = useRef(false);
+  const mobileEmojiRef = useClickOutside<HTMLDivElement>(() => setShowEmoji(false), showEmoji);
+  const desktopEmojiRef = useClickOutside<HTMLDivElement>(() => setShowEmoji(false), showEmoji);
+  const textFormatRef = useClickOutside<HTMLDivElement>(() => setShowTextFormat(false), showTextFormat);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const fileIds = useMemo(() => {
     const seen = new Map<string, number>();
@@ -511,21 +510,6 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
           </div>
         )}
 
-        {showEmoji && (
-          <div ref={mobileEmojiRef} className="absolute bottom-full right-3 mb-2 z-50">
-            <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
-              <LazyEmojiPicker
-                theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
-                onEmojiClick={(emoji: { emoji: string }) => {
-                  setContent((prev) => prev + emoji.emoji);
-                  inputRef.current?.focus();
-                }}
-                width={320}
-                height={360}
-              />
-            </Suspense>
-          </div>
-        )}
 
         {/* Reply bar (mobile) */}
         {replyTo && (
@@ -595,7 +579,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
                 onChange={(e) => handleInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
-                onFocus={() => { if (!emojiJustToggledRef.current) setShowEmoji(false); }}
+                onFocus={() => setShowEmoji(false)}
                 placeholder="Type a message..."
                 rows={1}
                 className="input-reset relative w-full bg-transparent text-transparent caret-text-accent text-sm resize-none max-h-30 placeholder:text-text-tertiary selection:bg-accent/30"
@@ -611,15 +595,31 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
               />
             </div>
 
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
-              className="text-text-tertiary shrink-0"
-              title="Emoji"
-              aria-label="Emoji"
-            >
-              <Smile className="size-5" />
-            </button>
+            <div ref={mobileEmojiRef} className="relative shrink-0">
+              <button
+                onClick={() => setShowEmoji(!showEmoji)}
+                className="text-text-tertiary"
+                title="Emoji"
+                aria-label="Emoji"
+              >
+                <Smile className="size-5" />
+              </button>
+              {showEmoji && (
+                <div className="absolute bottom-full right-0 mb-2 z-50">
+                  <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
+                    <LazyEmojiPicker
+                      theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
+                      onEmojiClick={(emoji: { emoji: string }) => {
+                        setContent((prev) => prev + emoji.emoji);
+                        inputRef.current?.focus();
+                      }}
+                      width={320}
+                      height={360}
+                    />
+                  </Suspense>
+                </div>
+              )}
+            </div>
           </div>
 
           <button
@@ -767,7 +767,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
               onChange={(e) => handleInput(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              onFocus={() => { if (!emojiJustToggledRef.current) setShowEmoji(false); }}
+              onFocus={() => setShowEmoji(false)}
               placeholder="Type a message..."
               rows={1}
               className="input-reset relative w-full bg-transparent text-transparent caret-text-accent text-sm resize-none max-h-30 placeholder:text-text-tertiary selection:bg-accent/30"
@@ -783,10 +783,9 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
             />
           </div>
 
-          <div className="flex items-center relative shrink-0">
+          <div ref={textFormatRef} className="flex items-center relative shrink-0">
             <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { setShowTextFormat(!showTextFormat) }}
+              onClick={() => setShowTextFormat(!showTextFormat)}
               className="text-text-tertiary hover:text-text-primary"
               title="Formatting"
               aria-label="Formatting"
@@ -796,7 +795,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
             {showTextFormat && (
               <>
                 {/* Formatting toolbar */}
-                <div ref={textFormatRef} className="absolute bottom-full right-0 mb-2 z-50">
+                <div className="absolute bottom-full right-0 mb-2 z-50">
                   <div
                     className="flex justify-self-end-safe items-center gap-0.5 mb-1 px-1 py-0.5 rounded-lg bg-surface/50 border border-divider/50 w-fit">
                     <button onClick={() => { insertFormatting('**', '**'); setShowTextFormat(false); }} className="p-1.5 text-text-tertiary hover:text-text-primary rounded-md hover:bg-hover transition-colors" title="Bold (Ctrl+B)">
@@ -825,10 +824,9 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
             )}
           </div>
 
-          <div className="flex items-center relative shrink-0">
+          <div ref={desktopEmojiRef} className="flex items-center relative shrink-0">
             <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { emojiJustToggledRef.current = true; setShowEmoji(!showEmoji); setTimeout(() => { emojiJustToggledRef.current = false; }, 100); }}
+              onClick={() => setShowEmoji(!showEmoji)}
               className="text-text-tertiary hover:text-text-primary"
               title="Emoji"
               aria-label="Emoji"
@@ -837,7 +835,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
             </button>
             {showEmoji && (
               <>
-                <div ref={desktopEmojiRef} className="absolute bottom-full right-0 mb-2 z-50">
+                <div className="absolute bottom-full right-0 mb-2 z-50">
                   <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
                     <LazyEmojiPicker
                       theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}

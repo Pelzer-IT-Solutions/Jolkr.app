@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, lazy, Suspense, memo } from 'react';
 import { createPortal } from 'react-dom';
+import { useClickOutside } from '../hooks/useClickOutside';
 import type { Message, User, Reaction, MessageEmbed } from '../api/types';
 import { useAuthStore } from '../stores/auth';
 import { useMessagesStore } from '../stores/messages';
@@ -53,6 +54,7 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const reactionBtnRef = useRef<HTMLButtonElement>(null);
+  const reactionPickerRef = useClickOutside<HTMLDivElement>(() => setShowReactionPicker(false), showReactionPicker);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pinning, setPinning] = useState(false);
   const [editError, setEditError] = useState('');
@@ -502,8 +504,7 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
       {/* Reaction picker */}
       {showReactionPicker && pickerPos && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowReactionPicker(false)} />
-          <div className="fixed z-50" style={{ top: pickerPos.top, left: pickerPos.left }}>
+          <div ref={reactionPickerRef} className="fixed z-50" style={{ top: pickerPos.top, left: pickerPos.left }}>
             <Suspense fallback={<div className="w-75 h-87.5 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
               <LazyEmojiPicker
                 theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}

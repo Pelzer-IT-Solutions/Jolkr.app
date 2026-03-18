@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useClickOutside } from '../../hooks/useClickOutside';
 import { useParams } from 'react-router-dom';
 import { useServersStore, selectServerChannels, selectServerMembers } from '../../stores/servers';
 import { useUnreadStore } from '../../stores/unread';
@@ -50,6 +51,7 @@ export default function ChannelPage() {
   const [showInvites, setShowInvites] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showTopicExpanded, setShowTopicExpanded] = useState(false);
+  const topicRef = useClickOutside<HTMLDivElement>(() => setShowTopicExpanded(false), showTopicExpanded);
   const [nsfwAcknowledged, setNsfwAcknowledged] = useState(false);
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [memberUsers, setMemberUsers] = useState<Record<string, User>>({});
@@ -374,8 +376,7 @@ export default function ChannelPage() {
           {/* Expanded topic panel */}
           {showTopicExpanded && channel?.topic && (
             <>
-              <div className="fixed inset-0 z-30 animate-fade-in" onClick={() => setShowTopicExpanded(false)} />
-              <div className="relative z-40 px-4 py-3 bg-surface border-b border-divider animate-fade-in-down">
+              <div ref={topicRef} className="relative z-40 px-4 py-3 bg-surface border-b border-divider animate-fade-in-down">
                 <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-1">Channel Topic</div>
                 <div className="text-text-secondary text-sm whitespace-pre-wrap">{channel.topic}</div>
               </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useServersStore } from '../stores/servers';
 import { useAuthStore } from '../stores/auth';
@@ -68,7 +69,8 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
   const voiceChannelId = useVoiceStore((s) => s.channelId);
   const voiceParticipants = useVoiceStore((s) => s.participants);
   const userCacheRef = useRef<Record<string, User>>({});
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useClickOutside<HTMLDivElement>(() => setShowDropdown(false), showDropdown);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Drag lock ref — replaces module-level `channelDragLock` variable
   const dragLockRef = useRef(false);
@@ -225,14 +227,14 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
   useEffect(() => {
     if (!showDropdown) return;
     requestAnimationFrame(() => {
-      const items = dropdownRef.current?.querySelectorAll<HTMLElement>('button');
+      const items = menuRef.current?.querySelectorAll<HTMLElement>('button');
       items?.[0]?.focus();
     });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { setShowDropdown(false); return; }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
         e.preventDefault();
-        const items = dropdownRef.current?.querySelectorAll<HTMLElement>('button');
+        const items = menuRef.current?.querySelectorAll<HTMLElement>('button');
         if (!items || items.length === 0) return;
         const current = document.activeElement as HTMLElement;
         const idx = Array.from(items).indexOf(current);
@@ -265,7 +267,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Server header with dropdown */}
-      <div className="h-17 px-4 gap-2 flex items-center border-b border-divider shrink-0 relative">
+      <div ref={dropdownRef} className="h-17 px-4 gap-2 flex items-center border-b border-divider shrink-0 relative">
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           aria-expanded={showDropdown}
@@ -291,8 +293,7 @@ export default function ChannelList({ server, onChannelSelect }: ChannelListProp
         {/* Dropdown menu */}
         {showDropdown && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
-            <div ref={dropdownRef} role="menu" className="absolute left-2 right-2 top-12 z-50 bg-surface border border-divider rounded-lg shadow-float py-1 animate-dropdown-enter">
+            <div ref={menuRef} role="menu" className="absolute left-2 right-2 top-12 z-50 bg-surface border border-divider rounded-lg shadow-float py-1 animate-dropdown-enter">
               {canAccessSettings && (
                 <button
                   role="menuitem"

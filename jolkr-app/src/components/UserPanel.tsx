@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { Link } from 'react-router-dom';
 import { Settings, Pencil, X } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
@@ -35,6 +36,8 @@ export default function UserPanel() {
   const [showPicker, setShowPicker] = useState(false);
   const [showCustomStatus, setShowCustomStatus] = useState(false);
   const [customStatusText, setCustomStatusText] = useState('');
+  const pickerRef = useClickOutside<HTMLDivElement>(() => setShowPicker(false), showPicker && !showCustomStatus);
+  const customStatusRef = useClickOutside<HTMLDivElement>(() => setShowCustomStatus(false), showCustomStatus);
   const [statusError, setStatusError] = useState<string | null>(null);
 
   const handleStatusChange = (status: string) => {
@@ -71,7 +74,7 @@ export default function UserPanel() {
   return (
     <div className="shrink-0">
       <VoiceConnectionBar />
-      <div className="bg-bg px-4 py-3 relative">
+      <div ref={pickerRef} className="bg-bg px-4 py-3 relative">
         <div className='min-h-12 gap-2.5 flex items-center shrink-0'>
           <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size="sm" status={currentStatus} userId={user?.id} />
           <div className="flex-1 min-w-0 flex flex-col justify-center gap-0">
@@ -106,7 +109,6 @@ export default function UserPanel() {
         {/* Status picker dropdown */}
         {showPicker && !showCustomStatus && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
             <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float py-1 w-48 z-50">
               <button
                 onClick={() => { setCustomStatusText(user?.status ?? ''); setShowCustomStatus(true); }}
@@ -142,8 +144,7 @@ export default function UserPanel() {
         {/* Custom status input popup */}
         {showCustomStatus && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowCustomStatus(false)} />
-            <div className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float p-3 w-56 z-50">
+            <div ref={customStatusRef} className="absolute bottom-full left-2 mb-2 bg-surface border border-divider rounded-xl shadow-float p-3 w-56 z-50">
               <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2">Custom Status</div>
               <div className="mb-2">
                 <Input
