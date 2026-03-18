@@ -2,15 +2,36 @@ import { useEffect, useState } from 'react';
 import { Globe, Monitor, Smartphone, Cpu } from 'lucide-react';
 import * as api from '../../../api/client';
 
+interface Device {
+  id: string;
+  device_name: string;
+  device_type: string;
+  has_push_token: boolean;
+  last_active_at: string | null;
+  created_at: string;
+}
+
+function formatRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
 export default function DevicesTab() {
-  const [devices, setDevices] = useState<Array<{ id: string; device_name: string; device_type: string; has_push_token: boolean }>>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     api.getDevices()
-      .then((data) => { setDevices(data.devices); setError(false); })
+      .then((data) => { setDevices(data.devices.filter((d) => d.device_type !== 'e2ee')); setError(false); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -64,7 +85,16 @@ export default function DevicesTab() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium text-text-primary truncate">{device.device_name}</div>
-                  <div className="text-xs text-text-tertiary capitalize">{device.device_type}{device.has_push_token ? ' — push enabled' : ''}</div>
+                  <div className="text-xs text-text-tertiary capitalize">
+                    {device.device_type}
+                    {device.has_push_token ? ' — Push Enabled' : ''}
+                  </div>
+                  <div className="text-xs text-text-tertiary mt-0.5 flex gap-3">
+                    <span>Added {new Date(device.created_at).toLocaleDateString()}</span>
+                    {device.last_active_at && (
+                      <span>Active {formatRelative(device.last_active_at)}</span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => handleDelete(device.id)}

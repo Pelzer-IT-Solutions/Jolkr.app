@@ -170,7 +170,7 @@ export async function resetE2EE(): Promise<void> {
   localKeys = null;
   bundleCache.clear();
   await clearKeySet();
-  // Clear upload flag and device ID so next login re-generates fresh keys
+  // Clear upload flag so next login re-uploads keys; keep device ID to reuse the same device row
   await storage.remove('e2ee_keys_uploaded');
-  await storage.remove('jolkr_e2ee_device_id');
+  localStorage.removeItem('e2ee_keys_uploaded');
 }

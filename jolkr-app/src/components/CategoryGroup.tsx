@@ -233,7 +233,7 @@ const CategoryGroup = memo(function CategoryGroup({
         onContextMenu={(e) => onCategoryContextMenu(category.id, e)}
         aria-expanded={!collapsed}
         aria-label={`${category.name} category`}
-        className="w-full px-4 pt-3 pb-1 text-xs font-semibold text-text-tertiary uppercase tracking-wider flex items-center gap-0.5 hover:text-text-secondary group"
+        className="w-full pl-2 pt-3 pb-1 text-xs font-semibold text-text-tertiary uppercase tracking-wider flex items-center gap-2 hover:text-text-secondary group"
       >
         <ChevronDown className={`size-3 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
         <span className="truncate flex-1 text-left">{category.name}</span>

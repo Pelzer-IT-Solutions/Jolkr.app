@@ -32,6 +32,7 @@ pub struct DeviceInfo {
     pub device_name: String,
     pub device_type: String,
     pub has_push_token: bool,
+    pub last_active_at: Option<chrono::DateTime<chrono::Utc>>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -71,6 +72,7 @@ pub async fn register_device(
             device_name: row.device_name,
             device_type: row.device_type,
             has_push_token: row.push_token.is_some(),
+            last_active_at: row.last_active_at,
             created_at: row.created_at,
         },
     }))
@@ -97,6 +99,7 @@ pub async fn update_push_token(
             device_name: row.device_name,
             device_type: row.device_type,
             has_push_token: row.push_token.is_some(),
+            last_active_at: row.last_active_at,
             created_at: row.created_at,
         },
     }))
@@ -116,6 +119,7 @@ pub async fn list_devices(
             device_name: row.device_name,
             device_type: row.device_type,
             has_push_token: row.push_token.is_some(),
+            last_active_at: row.last_active_at,
             created_at: row.created_at,
         })
         .collect();

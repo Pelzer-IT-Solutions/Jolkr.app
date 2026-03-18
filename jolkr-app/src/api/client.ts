@@ -647,7 +647,7 @@ export const registerDevice = (body: {
 }) => request<{ device: { id: string } }>('/devices', { method: 'POST', body: JSON.stringify(body) });
 
 export const getDevices = () =>
-  request<{ devices: Array<{ id: string; device_name: string; device_type: string; has_push_token: boolean }> }>('/devices');
+  request<{ devices: Array<{ id: string; device_name: string; device_type: string; has_push_token: boolean; last_active_at: string | null; created_at: string }> }>('/devices');
 
 export const deleteDevice = (deviceId: string) =>
   request<void>(`/devices/${deviceId}`, { method: 'DELETE' });
