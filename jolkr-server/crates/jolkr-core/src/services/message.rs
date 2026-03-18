@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
 use jolkr_db::models::MessageRow;
-use jolkr_db::repo::{AttachmentRepo, EmbedRepo, MemberRepo, MessageRepo, PinRepo, ReactionRepo, ThreadRepo};
+use jolkr_db::repo::{AttachmentRepo, EmbedRepo, MemberRepo, MessageRepo, PinRepo, PollRepo, ReactionRepo, ThreadRepo};
 use jolkr_db::repo::{ChannelRepo, RoleRepo, ServerRepo};
 
 /// Attachment info included in message responses.
@@ -243,6 +243,75 @@ pub(crate) async fn enrich_with_attachments(pool: &PgPool, messages: &mut [Messa
     Ok(())
 }
 
+/// Batch load polls and attach them to messages as JSON.
+/// Note: `my_votes` is left empty because enrichment has no viewer context.
+/// The frontend PollDisplay component will fetch fresh data when the user interacts.
+pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo]) -> Result<(), JolkrError> {
+    let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
+    if msg_ids.is_empty() {
+        return Ok(());
+    }
+
+    let polls = PollRepo::get_by_message_ids(pool, &msg_ids).await?;
+    if polls.is_empty() {
+        return Ok(());
+    }
+
+    let poll_ids: Vec<Uuid> = polls.iter().map(|p| p.id).collect();
+
+    // Batch load options and vote counts
+    let all_options = PollRepo::get_options_batch(pool, &poll_ids).await?;
+    let all_counts = PollRepo::get_vote_counts_batch(pool, &poll_ids).await?;
+
+    // Group options by poll_id
+    let mut options_by_poll: HashMap<Uuid, Vec<serde_json::Value>> = HashMap::new();
+    for opt in all_options {
+        options_by_poll.entry(opt.poll_id).or_default().push(serde_json::json!({
+            "id": opt.id,
+            "poll_id": opt.poll_id,
+            "position": opt.position,
+            "text": opt.text,
+        }));
+    }
+
+    // Group vote counts by poll_id → { option_id_str: count }
+    let mut votes_by_poll: HashMap<Uuid, HashMap<String, i64>> = HashMap::new();
+    let mut totals_by_poll: HashMap<Uuid, i64> = HashMap::new();
+    for (poll_id, option_id, count) in &all_counts {
+        votes_by_poll.entry(*poll_id).or_default().insert(option_id.to_string(), *count);
+        *totals_by_poll.entry(*poll_id).or_insert(0) += count;
+    }
+
+    // Map message_id → poll JSON
+    let mut poll_by_msg: HashMap<Uuid, serde_json::Value> = HashMap::new();
+    for poll in polls {
+        let options = options_by_poll.remove(&poll.id).unwrap_or_default();
+        let votes = votes_by_poll.remove(&poll.id).unwrap_or_default();
+        let total = totals_by_poll.get(&poll.id).copied().unwrap_or(0);
+
+        poll_by_msg.insert(poll.message_id, serde_json::json!({
+            "id": poll.id,
+            "message_id": poll.message_id,
+            "channel_id": poll.channel_id,
+            "question": poll.question,
+            "multi_select": poll.multi_select,
+            "anonymous": poll.anonymous,
+            "expires_at": poll.expires_at,
+            "options": options,
+            "votes": votes,
+            "my_votes": [],
+            "total_votes": total,
+        }));
+    }
+
+    for msg in messages.iter_mut() {
+        if let Some(poll_json) = poll_by_msg.remove(&msg.id) {
+            msg.poll = Some(poll_json);
+        }
+    }
+    Ok(())
+}
+
 pub struct MessageService;
 
 impl MessageService {
@@ -402,6 +471,7 @@ impl MessageService {
         enrich_with_reactions(pool, &mut msgs).await?;
         enrich_with_thread_counts(pool, &mut msgs).await?;
         enrich_with_embeds(pool, &mut msgs).await?;
+        enrich_with_polls(pool, &mut msgs).await?;
 
         msgs.into_iter().next().ok_or(JolkrError::Internal("Failed to enrich message".into()))
     }
@@ -421,6 +491,7 @@ impl MessageService {
         enrich_with_reactions(pool, &mut messages).await?;
         enrich_with_thread_counts(pool, &mut messages).await?;
         enrich_with_embeds(pool, &mut messages).await?;
+        enrich_with_polls(pool, &mut messages).await?;
 
         Ok(messages)
     }
@@ -444,6 +515,7 @@ impl MessageService {
         enrich_with_reactions(pool, &mut messages).await?;
         enrich_with_thread_counts(pool, &mut messages).await?;
         enrich_with_embeds(pool, &mut messages).await?;
+        enrich_with_polls(pool, &mut messages).await?;
 
         Ok(messages)
     }
@@ -459,6 +531,7 @@ impl MessageService {
         enrich_with_reactions(pool, &mut messages).await?;
         enrich_with_thread_counts(pool, &mut messages).await?;
         enrich_with_embeds(pool, &mut messages).await?;
+        enrich_with_polls(pool, &mut messages).await?;
 
         Ok(messages)
     }
@@ -616,6 +689,7 @@ impl MessageService {
 
         enrich_with_attachments(pool, &mut messages).await?;
         enrich_with_reactions(pool, &mut messages).await?;
+        enrich_with_polls(pool, &mut messages).await?;
 
         Ok(messages)
     }
