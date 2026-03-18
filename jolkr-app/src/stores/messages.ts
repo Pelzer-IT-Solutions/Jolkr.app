@@ -104,13 +104,10 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   fetchMessages: async (channelId, isDm) => {
     const hasCached = (get().messages[channelId]?.length ?? 0) > 0;
-    if (hasCached) {
-      if (get().loading[channelId]) {
-        set({ loading: { ...get().loading, [channelId]: false } });
-      }
-      return;
+    // Show cached messages immediately but always revalidate from server
+    if (!hasCached) {
+      set({ loading: { ...get().loading, [channelId]: true } });
     }
-    set({ loading: { ...get().loading, [channelId]: true } });
     try {
       let msgs: Message[];
       if (isDm) {

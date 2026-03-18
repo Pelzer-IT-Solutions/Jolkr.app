@@ -16,7 +16,7 @@ import { useCallStore } from '../../stores/call';
 import { useVoiceStore } from '../../stores/voice';
 import { useMessagesStore } from '../../stores/messages';
 import { usePresignRefresh } from '../../hooks/usePresignRefresh';
-import { Phone, Upload, ChevronLeft, Users, Lock, MoreVertical, Search, Bookmark } from 'lucide-react';
+import { Phone, Upload, ChevronLeft, Users, Lock, Search, Bookmark } from 'lucide-react';
 import SidePanel from '../../components/SidePanel';
 import PinnedMessagesPanel from '../../components/PinnedMessagesPanel';
 import SearchPanel from '../../components/SearchPanel';
@@ -448,11 +448,7 @@ export default function DmChat() {
                   <Bookmark className="size-5" />
                 </button>
                 <CallButton dmId={dmId!} recipientName={(otherUser?.display_name || otherUser?.username) ?? 'User'} recipientUserId={otherUser?.id} />
-                {isMobile && (
-                  <button className="text-text-secondary hover:text-text-primary" aria-label="More options">
-                    <MoreVertical className="size-5" />
-                  </button>
-                )}
+
               </div>
             </>
           )}

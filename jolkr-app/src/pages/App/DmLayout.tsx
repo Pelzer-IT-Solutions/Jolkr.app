@@ -42,7 +42,7 @@ export default function DmLayout() {
         </div>
 
         {/* Page content — rendered via Outlet */}
-        <div className={`flex-1 min-w-0 flex flex-col h-full${showSidebar ? ' hidden' : ''}`}>
+        <div className={`flex-1 min-w-0 min-h-0 flex flex-col${showSidebar ? ' hidden' : ''}`}>
           <Outlet />
         </div>
 

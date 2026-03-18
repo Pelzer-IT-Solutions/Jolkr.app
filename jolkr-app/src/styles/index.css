@@ -216,11 +216,23 @@ button:disabled, [role="button"][aria-disabled="true"] { cursor: not-allowed; }
 }
 .animate-slide-in-right { animation: slide-in-right 0.2s ease-out; }
 
+@keyframes slide-out-right {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+.animate-slide-out-right { animation: slide-out-right 0.2s ease-in forwards; }
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 .animate-fade-in { animation: fade-in 0.2s ease-out; }
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.animate-fade-out { animation: fade-out 0.2s ease-in forwards; }
 
 @keyframes fade-in-down {
   from { opacity: 0; transform: translateY(-4px); }
