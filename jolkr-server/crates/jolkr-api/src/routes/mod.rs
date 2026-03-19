@@ -60,6 +60,7 @@ pub struct AppState {
 
 /// Build the complete Axum router with all route groups.
 pub fn create_router(state: AppState) -> Router {
+    let redis = Some(state.redis.clone());
     // Read CORS origins from env var (comma-separated). Fall back to localhost for dev.
     let cors_origin = match std::env::var("CORS_ORIGINS") {
         Ok(origins) if !origins.is_empty() => {
@@ -91,9 +92,10 @@ pub fn create_router(state: AppState) -> Router {
         ]);
 
     // Rate limiters: auth = strict (2/s), API = standard (30/s), webhook = moderate (10/s)
-    let auth_limiter = RateLimiter::new(5, 2.0);
-    let api_limiter = RateLimiter::new(60, 30.0);
-    let webhook_limiter = RateLimiter::new(20, 10.0);
+    // Distributed via Redis with local DashMap fallback
+    let auth_limiter = RateLimiter::new("auth", 5, 2.0, redis.clone());
+    let api_limiter = RateLimiter::new("api", 60, 30.0, redis.clone());
+    let webhook_limiter = RateLimiter::new("webhook", 20, 10.0, redis);
 
     // Spawn background cleanup tasks to prevent memory leaks from stale entries
     auth_limiter.spawn_cleanup();

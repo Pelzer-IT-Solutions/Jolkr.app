@@ -478,8 +478,8 @@ export default function DmChat() {
               onCancelReply={() => setReplyTo(null)}
               mentionableUsers={mentionableUsers}
               droppedFiles={droppedFiles}
-              canSend={otherUser?.is_system ? false : undefined}
-              isAnnouncement={otherUser?.is_system === true}
+              canSend={isGroup ? undefined : (otherUser && !otherUser.is_system ? undefined : false)}
+              isAnnouncement={!isGroup && (!otherUser || otherUser.is_system === true)}
             />
           </div>
         </div>

@@ -187,6 +187,20 @@ function DeepLinkHandler() {
           console.error('Failed to use invite:', e);
         }
       }
+
+      if (path === 'add' && params.userId) {
+        if (!userRef.current) {
+          sessionStorage.setItem('jolkr_pending_add_friend', params.userId);
+          navigate('/login');
+          return;
+        }
+        try {
+          await api.sendFriendRequest(params.userId);
+          navigate('/friends');
+        } catch (e) {
+          console.error('Failed to send friend request:', e);
+        }
+      }
     });
 
     initDeepLinks();

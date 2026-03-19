@@ -2457,7 +2457,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-api"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -2497,7 +2497,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-common"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "chrono",
  "serde",
@@ -2509,7 +2509,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-core"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2537,7 +2537,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-db"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "chrono",
  "jolkr-common",
@@ -2550,7 +2550,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-media"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "axum",
  "futures-util",
@@ -2683,6 +2683,7 @@ dependencies = [
  "rustls 0.23.37",
  "socket2 0.6.2",
  "tokio",
+ "tokio-rustls 0.26.4",
  "url",
  "webpki-roots 1.0.6",
 ]

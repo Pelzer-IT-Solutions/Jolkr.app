@@ -11,7 +11,9 @@ import { usePresenceStore } from '../../stores/presence';
 import Avatar from '../../components/Avatar';
 import UserProfileCard from '../../components/UserProfileCard';
 import { useMobileNav } from '../../hooks/useMobileNav';
-import { Users, MessageCircle, Check, X, UserPlus } from 'lucide-react';
+import { Users, MessageCircle, Check, X, UserPlus, QrCode, ScanLine } from 'lucide-react';
+import QrCodeDisplay from '../../components/QrCodeDisplay';
+import QrCodeScanner from '../../components/QrCodeScanner';
 
 type Tab = 'all' | 'pending' | 'add';
 
@@ -30,6 +32,8 @@ export default function Friends() {
   const [actionLoading, setActionLoading] = useState<Set<string>>(new Set());
   const fetchedIdsRef = useRef(new Set<string>());
   const [profileTarget, setProfileTarget] = useState<{ userId: string; user?: User; anchor: { x: number; y: number } } | null>(null);
+  const [showQr, setShowQr] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const { setShowSidebar, isMobile } = useMobileNav();
 
   // On mobile, Friends page shows content by default
@@ -79,16 +83,27 @@ export default function Friends() {
     }
   }, [friends, pending, setBulk]);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    try {
-      const results = await api.searchUsers(searchQuery.trim());
-      setSearchResults(results.filter((u) => u.id !== user?.id));
+  // Live debounced search while typing
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed || trimmed.length < 3) {
+      setSearchResults([]);
       setError('');
-    } catch (e) {
-      setError((e as Error).message);
+      return;
     }
-  };
+
+    const timer = setTimeout(async () => {
+      try {
+        const results = await api.searchUsers(trimmed);
+        setSearchResults(results.filter((u) => u.id !== user?.id));
+        setError('');
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, user?.id]);
 
   const handleSendRequest = async (userId: string) => {
     setActionLoading((prev) => new Set(prev).add(userId));
@@ -291,17 +306,26 @@ export default function Friends() {
 
             {tab === 'add' && (
               <div className="flex flex-col gap-5 flex-1 px-4 py-5">
-                <p className="text-sm text-text-secondary">You can add friends by their username.</p>
+                <p className="text-sm text-text-secondary">You can add friends with their exact Jolkr username, email, or QR code.</p>
+                <div className="flex gap-3">
+                  <Button variant="secondary" icon={<QrCode className="size-4" />} onClick={() => setShowQr(true)} className="flex-1">
+                    My QR
+                  </Button>
+                  <Button variant="secondary" icon={<ScanLine className="size-4" />} onClick={() => setShowScanner(true)} className="flex-1">
+                    Scan
+                  </Button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-border-subtle" />
+                  <span className="text-xs text-text-tertiary">or search</span>
+                  <div className="flex-1 h-px bg-border-subtle" />
+                </div>
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="Enter a username..."
+                  placeholder="Start typing a username or email..."
                   className="w-full px-4 py-3.5 bg-panel border border-divider rounded-xl text-text-primary text-sm"
                 />
-                <Button onClick={handleSearch} fullWidth>
-                  Send Friend Request
-                </Button>
                 {searchResults.length > 0 ? (
                   <div className="flex flex-col">
                     {searchResults.map((u, idx) => {
@@ -349,6 +373,8 @@ export default function Friends() {
             onClose={() => setProfileTarget(null)}
           />
         )}
+        <QrCodeDisplay open={showQr} onClose={() => setShowQr(false)} />
+        <QrCodeScanner open={showScanner} onClose={() => setShowScanner(false)} onFriendRequestSent={fetchFriendsData} />
       </>
     );
   }
@@ -509,21 +535,27 @@ export default function Friends() {
               <div className="flex flex-col gap-4 flex-1">
                 <div className="flex flex-col gap-2">
                   <div className="text-base font-bold text-text-primary">Add Friend</div>
-                  <p className="text-sm text-text-secondary">You can add friends with their Jolkr username.</p>
+                  <p className="text-sm text-text-secondary">You can add friends with their exact Jolkr username, email, or QR code.</p>
                 </div>
                 <div className="flex gap-3">
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="Enter a username#0000"
-                    className="flex-1 px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
-                  />
-                  <Button onClick={handleSearch} className="shrink-0">
-                    Send Request
+                  <Button variant="secondary" icon={<QrCode className="size-4" />} onClick={() => setShowQr(true)} className="flex-1">
+                    Show My QR Code
+                  </Button>
+                  <Button variant="secondary" icon={<ScanLine className="size-4" />} onClick={() => setShowScanner(true)} className="flex-1">
+                    Scan QR Code
                   </Button>
                 </div>
-                <div className="h-px bg-border-subtle" />
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-border-subtle" />
+                  <span className="text-xs text-text-tertiary">or search by username</span>
+                  <div className="flex-1 h-px bg-border-subtle" />
+                </div>
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Start typing a username or email..."
+                  className="w-full px-4 py-3 bg-bg border border-divider rounded-lg text-text-primary text-sm"
+                />
                 {searchResults.length > 0 ? (
                   <div className="flex flex-col gap-0.5">
                     {searchResults.map((u) => (
@@ -564,6 +596,8 @@ export default function Friends() {
           onClose={() => setProfileTarget(null)}
         />
       )}
+      <QrCodeDisplay open={showQr} onClose={() => setShowQr(false)} />
+      <QrCodeScanner open={showScanner} onClose={() => setShowScanner(false)} onFriendRequestSent={fetchFriendsData} />
     </>
   );
 }

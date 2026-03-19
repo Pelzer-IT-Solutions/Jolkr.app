@@ -94,6 +94,24 @@ impl DeviceRepo {
         Ok(rows)
     }
 
+    /// Get devices with push tokens for multiple users at once (batch query for push notifications).
+    pub async fn get_pushable_devices_batch(
+        pool: &PgPool,
+        user_ids: &[Uuid],
+    ) -> Result<Vec<DeviceRow>, JolkrError> {
+        if user_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let rows = sqlx::query_as::<_, DeviceRow>(
+            r#"SELECT * FROM devices WHERE user_id = ANY($1) AND push_token IS NOT NULL"#,
+        )
+        .bind(user_ids)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows)
+    }
+
     /// Delete a device.
     pub async fn delete(
         pool: &PgPool,

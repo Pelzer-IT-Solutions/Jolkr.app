@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use sqlx::PgPool;
 use tracing::{info, warn, error};
 use uuid::Uuid;
@@ -9,6 +10,7 @@ use web_push::{
 
 use jolkr_db::repo::DeviceRepo;
 
+use crate::redis_store::RedisStore;
 use crate::ws::gateway::GatewayState;
 
 /// Push notification service for sending Web Push notifications to offline users.
@@ -16,6 +18,7 @@ use crate::ws::gateway::GatewayState;
 pub struct PushService {
     pool: PgPool,
     gateway: GatewayState,
+    redis: RedisStore,
     vapid_builder: Option<PartialVapidSignatureBuilder>,
     client: Option<IsahcWebPushClient>,
     vapid_public_key: Option<String>,
@@ -26,6 +29,7 @@ impl PushService {
     pub fn new(
         pool: PgPool,
         gateway: GatewayState,
+        redis: RedisStore,
         vapid_private_key: Option<String>,
         vapid_public_key: Option<String>,
         vapid_subject: String,
@@ -60,6 +64,7 @@ impl PushService {
         Self {
             pool,
             gateway,
+            redis,
             vapid_builder,
             client,
             vapid_public_key,
@@ -237,6 +242,125 @@ impl PushService {
         });
 
         self.notify_user(recipient_id, &title, &body, data).await;
+    }
+
+    /// Send push notifications to multiple users at once (batch).
+    /// Filters online users via Redis MGET, then fetches all devices in one query.
+    pub async fn notify_message_batch(
+        &self,
+        recipients: &[(Uuid, Uuid)],  // (member_id, user_id)
+        sender_name: &str,
+        channel_name: &str,
+        content: &str,
+        channel_id: Uuid,
+        message_id: Uuid,
+    ) {
+        let (vapid_builder, client) = match (&self.vapid_builder, &self.client) {
+            (Some(v), Some(c)) => (v, c),
+            _ => return,
+        };
+
+        if recipients.is_empty() {
+            return;
+        }
+
+        let user_ids: Vec<Uuid> = recipients.iter().map(|(_, uid)| *uid).collect();
+
+        // Batch online check via Redis MGET — filter out online users
+        let presences = self.redis.get_presences(&user_ids).await;
+        let offline_user_ids: Vec<Uuid> = presences
+            .into_iter()
+            .filter(|(_, status)| status == "offline")
+            .map(|(uid, _)| uid)
+            .collect();
+
+        if offline_user_ids.is_empty() {
+            return;
+        }
+
+        // Single batch query for all pushable devices
+        let devices = match DeviceRepo::get_pushable_devices_batch(&self.pool, &offline_user_ids).await {
+            Ok(d) => d,
+            Err(e) => {
+                error!(error = %e, "Failed to batch-get pushable devices");
+                return;
+            }
+        };
+
+        if devices.is_empty() {
+            return;
+        }
+
+        // Group devices by user_id
+        let mut devices_by_user: HashMap<Uuid, Vec<&jolkr_db::models::DeviceRow>> = HashMap::new();
+        for device in &devices {
+            devices_by_user.entry(device.user_id).or_default().push(device);
+        }
+
+        let title = format!("{sender_name} in #{channel_name}");
+        let body = truncate_utf8(content, 100);
+        let payload = serde_json::json!({
+            "title": title,
+            "body": body,
+            "data": {
+                "type": "message",
+                "channel_id": channel_id.to_string(),
+                "message_id": message_id.to_string(),
+            },
+            "tag": "jolkr-msg",
+        });
+        let payload_bytes = payload.to_string().into_bytes();
+
+        for (user_id, user_devices) in &devices_by_user {
+            for device in user_devices {
+                if let Some(ref token) = device.push_token {
+                    let subscription: SubscriptionInfo = match serde_json::from_str(token) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            warn!(device_id = %device.id, error = %e, "Invalid push subscription JSON, skipping");
+                            continue;
+                        }
+                    };
+
+                    let mut sig_builder = vapid_builder.clone().add_sub_info(&subscription);
+                    sig_builder.add_claim("sub", &*self.vapid_subject);
+                    let signature = match sig_builder.build() {
+                        Ok(s) => s,
+                        Err(e) => {
+                            error!(device_id = %device.id, error = %e, "Failed to build VAPID signature");
+                            continue;
+                        }
+                    };
+
+                    let mut builder = WebPushMessageBuilder::new(&subscription);
+                    builder.set_payload(ContentEncoding::Aes128Gcm, &payload_bytes);
+                    builder.set_vapid_signature(signature);
+
+                    let message = match builder.build() {
+                        Ok(m) => m,
+                        Err(e) => {
+                            error!(device_id = %device.id, error = %e, "Failed to build push message");
+                            continue;
+                        }
+                    };
+
+                    match client.send(message).await {
+                        Ok(()) => {
+                            info!(user_id = %user_id, device_id = %device.id, "Push notification sent");
+                        }
+                        Err(WebPushError::EndpointNotFound(_)) | Err(WebPushError::EndpointNotValid(_)) => {
+                            warn!(device_id = %device.id, user_id = %user_id, "Push subscription expired, removing device");
+                            if let Err(e) = DeviceRepo::delete(&self.pool, device.id, *user_id).await {
+                                error!(device_id = %device.id, error = %e, "Failed to delete expired device");
+                            }
+                        }
+                        Err(e) => {
+                            error!(device_id = %device.id, user_id = %user_id, error = %e, "Failed to send push notification");
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

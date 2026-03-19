@@ -241,6 +241,80 @@ impl RoleRepo {
         Ok(rows)
     }
 
+    /// Get all roles with permissions for all members in a server (single query).
+    /// Returns (member_id, role_id, permissions) tuples for batch permission computation.
+    pub async fn get_member_roles_batch(
+        pool: &PgPool,
+        server_id: Uuid,
+    ) -> Result<Vec<(Uuid, Uuid, i64)>, JolkrError> {
+        let rows: Vec<(Uuid, Uuid, i64)> = sqlx::query_as(
+            r#"
+            SELECT mr.member_id, mr.role_id, r.permissions
+            FROM member_roles mr
+            JOIN members m ON m.id = mr.member_id
+            JOIN roles r ON r.id = mr.role_id
+            WHERE m.server_id = $1
+            "#,
+        )
+        .bind(server_id)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Compute channel permissions for all members in one go, using pre-fetched batch data.
+    /// Returns a HashMap<member_id, permissions>.
+    pub fn compute_channel_permissions_for_all_members(
+        members: &[(Uuid, Uuid)],  // (member_id, user_id)
+        member_roles_batch: &[(Uuid, Uuid, i64)],  // (member_id, role_id, permissions)
+        overwrites: &[ChannelOverwriteRow],
+        everyone_role: Option<&RoleRow>,
+        server_owner_id: Uuid,
+    ) -> HashMap<Uuid, i64> {
+        let everyone_perms = everyone_role.map(|r| r.permissions).unwrap_or(Permissions::DEFAULT as i64);
+        let everyone_role_id = everyone_role.map(|r| r.id);
+
+        // Group role data by member_id
+        let mut roles_by_member: HashMap<Uuid, Vec<(Uuid, i64)>> = HashMap::new();
+        for &(member_id, role_id, permissions) in member_roles_batch {
+            roles_by_member.entry(member_id).or_default().push((role_id, permissions));
+        }
+
+        let mut result = HashMap::new();
+        for &(member_id, user_id) in members {
+            // Server owner gets all permissions
+            if user_id == server_owner_id {
+                result.insert(member_id, Permissions::ALL as i64);
+                continue;
+            }
+
+            // Compute base: @everyone | all assigned roles
+            let mut base = everyone_perms;
+            let member_role_ids: Vec<Uuid>;
+            if let Some(roles) = roles_by_member.get(&member_id) {
+                for &(_role_id, perms) in roles {
+                    base |= perms;
+                }
+                member_role_ids = roles.iter().map(|(rid, _)| *rid).collect();
+            } else {
+                member_role_ids = Vec::new();
+            }
+
+            // ADMINISTRATOR bypasses everything
+            if base as u64 & Permissions::ADMINISTRATOR != 0 {
+                result.insert(member_id, Permissions::ALL as i64);
+                continue;
+            }
+
+            // Apply channel overwrites
+            base = Self::apply_overwrites(base, overwrites, &member_role_ids, everyone_role_id, member_id);
+            result.insert(member_id, base);
+        }
+
+        result
+    }
+
     /// Compute the combined permissions for a user in a server.
     /// Merges the @everyone role permissions with all assigned role permissions.
     pub async fn compute_permissions(

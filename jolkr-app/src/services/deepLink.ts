@@ -17,6 +17,10 @@ function parseDeepLink(url: string): { path: string; params: Record<string, stri
       params.code = segments[1];
     }
 
+    if (path === 'add' && segments[1]) {
+      params.userId = segments[1];
+    }
+
     return { path, params };
   } catch {
     return null;

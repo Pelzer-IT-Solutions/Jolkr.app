@@ -30,6 +30,11 @@ impl RedisStore {
         Ok(Self { conn })
     }
 
+    /// Get a cloned connection manager for direct Redis operations.
+    pub fn connection(&self) -> ConnectionManager {
+        self.conn.clone()
+    }
+
     /// Set a user's presence status with a TTL.
     pub async fn set_presence(&self, user_id: Uuid, status: &str) {
         let key = format!("{PRESENCE_PREFIX}{user_id}");

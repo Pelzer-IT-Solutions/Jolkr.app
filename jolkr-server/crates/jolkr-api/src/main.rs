@@ -81,6 +81,7 @@ async fn main() {
     let push = push_service::PushService::new(
         pool.clone(),
         gateway.clone(),
+        redis.clone(),
         config.vapid_private_key.clone(),
         config.vapid_public_key.clone(),
         config.vapid_subject.clone(),
@@ -108,6 +109,9 @@ async fn main() {
         embed,
         app_url: config.app_url.clone(),
     };
+
+    // Spawn webhook rate limiter cleanup (must be inside tokio runtime)
+    routes::webhooks::spawn_webhook_rate_cleanup();
 
     // Build the Axum router
     let app = routes::create_router(app_state);

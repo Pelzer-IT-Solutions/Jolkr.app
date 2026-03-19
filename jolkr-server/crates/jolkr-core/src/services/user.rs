@@ -103,7 +103,7 @@ impl UserService {
         Ok(rows.into_iter().map(UserProfile::from).collect())
     }
 
-    /// Search users by username prefix (returns max 25 results).
+    /// Search users by exact username or email match.
     pub async fn search_users(
         pool: &PgPool,
         query: &str,

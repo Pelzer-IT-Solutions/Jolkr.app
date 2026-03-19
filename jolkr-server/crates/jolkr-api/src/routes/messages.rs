@@ -72,7 +72,7 @@ pub async fn send_message(
     }
 
     // Push notifications to offline channel members (fire-and-forget)
-    // Only notify members who have VIEW_CHANNELS permission for this channel
+    // Batch: all permission checks in-memory, single Redis MGET, single devices query
     let push = state.push.clone();
     let pool = state.pool.clone();
     let msg_content = if message.encrypted_content.is_some() {
@@ -99,34 +99,45 @@ pub async fn send_message(
             Ok(m) => m,
             Err(e) => { tracing::warn!("Push: failed to list members: {e}"); return; }
         };
-        // Pre-fetch shared data once (instead of per-member) to avoid N+1 queries
+
+        // Batch: fetch all member-roles + overwrites + everyone_role in 3 queries total
+        let member_roles_batch = RoleRepo::get_member_roles_batch(&pool, channel.server_id).await.unwrap_or_default();
         let overwrites = ChannelOverwriteRepo::list_for_channel(&pool, channel_id).await.unwrap_or_default();
         let everyone_role = RoleRepo::get_default(&pool, channel.server_id).await.ok();
-        for member in members {
-            if member.user_id == author_id {
-                continue;
-            }
-            // Server owner bypasses permission checks
-            if server.owner_id != member.user_id {
-                if let Ok(perms) = RoleRepo::compute_channel_permissions_with_cache(
-                    &pool, channel.server_id, member.id, &overwrites, everyone_role.as_ref(),
-                ).await {
-                    if !Permissions::from(perms).has(Permissions::VIEW_CHANNELS) {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
-            }
-            push.notify_message(
-                member.user_id,
-                &sender.username,
-                &channel.name,
-                msg_content.as_deref().unwrap_or(""),
-                channel_id,
-                msg_id,
-            ).await;
-        }
+
+        // Build (member_id, user_id) pairs, excluding the author
+        let member_pairs: Vec<(uuid::Uuid, uuid::Uuid)> = members.iter()
+            .filter(|m| m.user_id != author_id)
+            .map(|m| (m.id, m.user_id))
+            .collect();
+
+        // Compute all permissions in-memory (0 extra DB queries)
+        let perms_map = RoleRepo::compute_channel_permissions_for_all_members(
+            &member_pairs,
+            &member_roles_batch,
+            &overwrites,
+            everyone_role.as_ref(),
+            server.owner_id,
+        );
+
+        // Filter to members with VIEW_CHANNELS permission
+        let eligible: Vec<(uuid::Uuid, uuid::Uuid)> = member_pairs.into_iter()
+            .filter(|(member_id, _user_id)| {
+                perms_map.get(member_id)
+                    .map(|&p| Permissions::from(p).has(Permissions::VIEW_CHANNELS))
+                    .unwrap_or(false)
+            })
+            .collect();
+
+        // Batch: Redis MGET for online check + single devices query + send
+        push.notify_message_batch(
+            &eligible,
+            &sender.username,
+            &channel.name,
+            msg_content.as_deref().unwrap_or(""),
+            channel_id,
+            msg_id,
+        ).await;
     });
 
     Ok(Json(MessageResponse { message }))
