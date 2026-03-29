@@ -1,0 +1,58 @@
+scope: jolkr-cluster
+namespace: /jolkr/
+name: ${NODE_NAME}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: ${NODE_IP}:8008
+
+etcd3:
+  hosts:
+    - ${NODE_A_IP}:2379
+    - ${NODE_B_IP}:2379
+    - ${NODE_C_IP}:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    synchronous_mode: true
+    postgresql:
+      use_pg_rewind: true
+      parameters:
+        max_connections: 100
+        shared_buffers: 256MB
+        work_mem: 4MB
+        wal_level: replica
+        hot_standby: "on"
+        max_wal_senders: 5
+        max_replication_slots: 5
+        wal_log_hints: "on"
+        statement_timeout: 30000
+
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+  pg_hba:
+    - host replication replicator 0.0.0.0/0 md5
+    - host all all 0.0.0.0/0 md5
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: ${NODE_IP}:5432
+  data_dir: /var/lib/postgresql/data/patroni
+  authentication:
+    superuser:
+      username: postgres
+      password: ${POSTGRES_PASSWORD}
+    replication:
+      username: replicator
+      password: ${REPLICATION_PASSWORD}
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: true

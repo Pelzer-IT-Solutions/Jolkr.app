@@ -32,10 +32,16 @@ use axum::{
 use sqlx::PgPool;
 use axum::http::{Method, HeaderName};
 use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
+use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
+use std::time::Duration;
+
+use metrics_exporter_prometheus::PrometheusHandle;
 
 use crate::embed_service::LinkEmbedService;
 use crate::email_service::EmailService;
+use crate::middleware::metrics::metrics_middleware;
 use crate::middleware::rate_limit::{rate_limit_middleware, RateLimiter};
 use crate::nats_bus::NatsBus;
 use crate::push_service::PushService;
@@ -59,7 +65,7 @@ pub struct AppState {
 }
 
 /// Build the complete Axum router with all route groups.
-pub fn create_router(state: AppState) -> Router {
+pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Router {
     let redis = Some(state.redis.clone());
     // Read CORS origins from env var (comma-separated). Fall back to localhost for dev.
     let cors_origin = match std::env::var("CORS_ORIGINS") {
@@ -119,6 +125,8 @@ pub fn create_router(state: AppState) -> Router {
     let api_routes = Router::new()
         // ── Auth (authenticated) ──────────────────────────────────
         .route("/api/auth/change-password", post(auth::change_password))
+        .route("/api/auth/logout", post(auth::logout))
+        .route("/api/auth/logout-all", post(auth::logout_all))
         // ── Users ───────────────────────────────────────────────────
         .route("/api/users/@me", get(users::get_me).patch(users::update_me))
         .route("/api/users/batch", post(users::get_users_batch))
@@ -340,7 +348,8 @@ pub fn create_router(state: AppState) -> Router {
         .layer(axum_mw::from_fn(rate_limit_middleware))
         .layer(Extension(api_limiter));
 
-    Router::new()
+    // All HTTP routes get a 30s request timeout (WebSocket & health excluded)
+    let timed_routes = Router::new()
         .merge(auth_routes)
         .merge(api_routes)
         // ── Webhook execution (unauthenticated, token-based, rate limited) ──
@@ -350,11 +359,32 @@ pub fn create_router(state: AppState) -> Router {
                 .layer(axum_mw::from_fn(rate_limit_middleware))
                 .layer(Extension(webhook_limiter))
         )
-        // ── WebSocket gateway (no rate limit) ───────────────────────
+        .layer(TimeoutLayer::new(Duration::from_secs(30)));
+
+    // Prometheus metrics endpoint (returns text/plain OpenMetrics format)
+    let metrics_route = {
+        let handle = prometheus_handle;
+        Router::new().route(
+            "/metrics",
+            get(move || {
+                let h = handle.clone();
+                async move { h.render() }
+            }),
+        )
+    };
+
+    Router::new()
+        .merge(timed_routes)
+        // ── WebSocket gateway (no timeout, long-lived) ──────────────
         .route("/ws", get(ws::handler::ws_upgrade))
-        // ── Health check (no rate limit) ────────────────────────────
+        // ── Health check (no timeout) ───────────────────────────────
         .route("/health", get(health::health_check))
+        // ── Prometheus metrics ───────────────────────────────────────
+        .merge(metrics_route)
         .layer(DefaultBodyLimit::max(26 * 1024 * 1024)) // 26 MB, matches nginx client_max_body_size
+        .layer(axum_mw::from_fn(metrics_middleware))
+        .layer(PropagateRequestIdLayer::x_request_id())
+        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state)

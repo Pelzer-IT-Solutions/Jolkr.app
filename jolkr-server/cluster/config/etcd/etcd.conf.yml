@@ -1,0 +1,12 @@
+name: ${NODE_NAME}
+data-dir: /etcd-data
+
+listen-client-urls: http://0.0.0.0:2379
+advertise-client-urls: http://${NODE_IP}:2379
+
+listen-peer-urls: http://0.0.0.0:2380
+initial-advertise-peer-urls: http://${NODE_IP}:2380
+
+initial-cluster: node-a=http://${NODE_A_IP}:2380,node-b=http://${NODE_B_IP}:2380,node-c=http://${NODE_C_IP}:2380
+initial-cluster-state: new
+initial-cluster-token: jolkr-etcd-cluster

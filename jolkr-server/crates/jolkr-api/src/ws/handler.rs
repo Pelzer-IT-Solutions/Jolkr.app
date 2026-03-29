@@ -1,10 +1,16 @@
+use std::net::IpAddr;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::LazyLock;
+
 use axum::{
     extract::{
         ws::{Message, WebSocket},
-        State, WebSocketUpgrade,
+        ConnectInfo, State, WebSocketUpgrade,
     },
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
+use dashmap::DashMap;
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
@@ -16,6 +22,32 @@ use jolkr_db::repo::{ChannelRepo, DmRepo, MemberRepo, RoleRepo, ServerRepo};
 
 use super::events::{ClientEvent, GatewayEvent};
 use crate::routes::AppState;
+
+/// Maximum WebSocket connections allowed per IP address.
+const MAX_WS_PER_IP: u32 = 10;
+
+/// Global per-IP WebSocket connection counter.
+static WS_CONNECTIONS: LazyLock<DashMap<IpAddr, AtomicU32>> = LazyLock::new(DashMap::new);
+
+/// Extract the real client IP from the request, considering trusted proxies.
+fn resolve_client_ip(connect_addr: std::net::SocketAddr, headers: &HeaderMap) -> IpAddr {
+    let connect_ip = connect_addr.ip();
+    // Trust X-Forwarded-For only from loopback or Docker network (172.16.0.0/12)
+    let is_trusted = match connect_ip {
+        IpAddr::V4(v4) => v4.is_loopback() || (v4.octets()[0] == 172 && (v4.octets()[1] & 0xF0) == 16),
+        IpAddr::V6(v6) => v6.is_loopback(),
+    };
+    if is_trusted {
+        headers
+            .get("x-forwarded-for")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.split(',').next())
+            .and_then(|s| s.trim().parse::<IpAddr>().ok())
+            .unwrap_or(connect_ip)
+    } else {
+        connect_ip
+    }
+}
 
 /// Check if a user has access to a channel (regular or DM).
 /// For regular channels: checks VIEW_CHANNELS permission (with channel overwrites).
@@ -47,11 +79,37 @@ async fn can_access_channel(state: &AppState, user_id: Uuid, channel_id: Uuid) -
 }
 
 /// HTTP handler that upgrades the connection to a WebSocket.
+/// Enforces per-IP connection limit before upgrading.
 pub async fn ws_upgrade(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
+    headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, state))
+    let ip = resolve_client_ip(addr, &headers);
+
+    // Check per-IP connection limit
+    let count = WS_CONNECTIONS
+        .entry(ip)
+        .or_insert_with(|| AtomicU32::new(0));
+    if count.load(Ordering::Relaxed) >= MAX_WS_PER_IP {
+        return StatusCode::TOO_MANY_REQUESTS.into_response();
+    }
+    count.fetch_add(1, Ordering::Relaxed);
+    drop(count);
+
+    ws.on_upgrade(move |socket| async move {
+        handle_socket(socket, state).await;
+        // Decrement connection count on disconnect
+        if let Some(counter) = WS_CONNECTIONS.get(&ip) {
+            let prev = counter.fetch_sub(1, Ordering::Relaxed);
+            if prev <= 1 {
+                drop(counter);
+                WS_CONNECTIONS.remove(&ip);
+            }
+        }
+    })
+    .into_response()
 }
 
 /// Handles the full lifecycle of a single WebSocket connection.

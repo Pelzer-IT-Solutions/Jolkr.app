@@ -2,10 +2,9 @@ use axum::{
     extract::{Path, State},
     Json,
 };
-use dashmap::DashMap;
+use redis::AsyncCommands;
 use serde::Serialize;
-use std::sync::Arc;
-use std::time::Instant;
+use tracing::warn;
 use uuid::Uuid;
 
 use jolkr_core::services::webhook::{
@@ -18,39 +17,27 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
-/// Simple per-webhook rate limiter: 5 requests per second.
-static WEBHOOK_RATE: std::sync::LazyLock<Arc<DashMap<Uuid, (Instant, u32)>>> =
-    std::sync::LazyLock::new(|| Arc::new(DashMap::new()));
+/// Max webhook executions per second (distributed via Redis).
+const WEBHOOK_RATE_LIMIT: u64 = 5;
 
-/// Spawn the background cleanup task for stale webhook rate entries.
-/// Must be called from within an active tokio runtime (e.g. in main.rs).
-pub fn spawn_webhook_rate_cleanup() {
-    let map = Arc::clone(&WEBHOOK_RATE);
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-        loop {
-            interval.tick().await;
-            let now = Instant::now();
-            map.retain(|_, (window_start, _)| {
-                now.duration_since(*window_start).as_secs() < 60
-            });
+/// Check webhook rate limit using Redis sliding window.
+/// Multi-instance safe: all instances share the same Redis counter.
+async fn check_webhook_rate(state: &AppState, webhook_id: Uuid) -> bool {
+    let key = format!("rl:webhook:{webhook_id}");
+    let mut conn = state.redis.connection();
+
+    match conn.incr::<_, _, u64>(&key, 1u64).await {
+        Ok(count) => {
+            // Set 1-second expiry on first request in this window
+            if count == 1 {
+                let _ = conn.expire::<_, ()>(&key, 1).await;
+            }
+            count <= WEBHOOK_RATE_LIMIT
         }
-    });
-}
-
-fn check_webhook_rate(webhook_id: Uuid) -> bool {
-    let now = Instant::now();
-    let mut entry = WEBHOOK_RATE.entry(webhook_id).or_insert((now, 0));
-    let (ref mut window_start, ref mut count) = *entry;
-    if now.duration_since(*window_start).as_secs() >= 1 {
-        *window_start = now;
-        *count = 1;
-        true
-    } else if *count < 5 {
-        *count += 1;
-        true
-    } else {
-        false
+        Err(e) => {
+            warn!(error = %e, webhook_id = %webhook_id, "Redis webhook rate check failed, DENYING request");
+            false // fail-closed: block webhooks if Redis is down (they can retry)
+        }
     }
 }
 
@@ -127,7 +114,7 @@ pub async fn execute_webhook(
     Path((webhook_id, token)): Path<(Uuid, String)>,
     Json(body): Json<ExecuteWebhookRequest>,
 ) -> Result<Json<WebhookMessageResponse>, AppError> {
-    if !check_webhook_rate(webhook_id) {
+    if !check_webhook_rate(&state, webhook_id).await {
         return Err(AppError(jolkr_common::JolkrError::Validation(
             "Rate limited: max 5 requests per second per webhook".into(),
         )));

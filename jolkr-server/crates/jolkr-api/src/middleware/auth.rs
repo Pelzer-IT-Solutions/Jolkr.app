@@ -5,6 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use redis::AsyncCommands;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -56,6 +57,14 @@ impl FromRequestParts<AppState> for AuthUser {
 
         let claims = AuthService::validate_token(&state.jwt_secret, token)
             .map_err(|e| AuthError(format!("Invalid token: {e}")))?;
+
+        // Check if this token has been revoked (e.g. via logout)
+        let blacklist_key = format!("blacklist:{}", claims.jti);
+        let mut conn = state.redis.connection();
+        let is_revoked: bool = conn.exists(&blacklist_key).await.unwrap_or(false);
+        if is_revoked {
+            return Err(AuthError("Token has been revoked".into()));
+        }
 
         Ok(AuthUser {
             user_id: claims.sub,

@@ -200,20 +200,61 @@ export async function deriveE2EESeed(password: string, userId: string): Promise<
   return new Uint8Array(bits);
 }
 
+/** Helper: derive bytes from seed using HKDF-SHA256. */
+async function hkdfDerive(seed: Uint8Array, info: string, lengthBits = 256): Promise<Uint8Array> {
+  const buf = seed.buffer.slice(seed.byteOffset, seed.byteOffset + seed.byteLength) as ArrayBuffer;
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', buf, 'HKDF', false, ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: new TextEncoder().encode(info) },
+    keyMaterial, lengthBits,
+  );
+  return new Uint8Array(bits);
+}
+
 /**
- * Generate a deterministic key set from a seed (derived from password).
+ * Generate a deterministic key set from a seed using HKDF-SHA256.
  * This ensures all devices of the same user have identical keys.
  * Includes post-quantum ML-KEM-768 keys for quantum-proof encryption.
  */
 export async function generateKeySetFromSeed(seed: Uint8Array): Promise<LocalKeySet> {
-  // Derive Ed25519 identity key deterministically
+  // Derive Ed25519 identity key deterministically via HKDF
+  const identityPriv = await hkdfDerive(seed, 'jolkr-e2ee-identity-ed25519');
+  const identityPub = ed25519.getPublicKey(identityPriv);
+
+  // Derive X25519 signed prekey deterministically via HKDF
+  const spPriv = await hkdfDerive(seed, 'jolkr-e2ee-signedprekey-x25519');
+  const spPub = x25519.getPublicKey(spPriv);
+  const signature = ed25519.sign(spPub, identityPriv);
+
+  // Derive ML-KEM-768 seed deterministically via HKDF (keygen_derand needs 64 bytes)
+  const pqSeed = await hkdfDerive(seed, 'jolkr-e2ee-pqprekey-mlkem768', 512);
+
+  const { publicKey: pqPublicKey, secretKey: pqSecretKey } = ml_kem768.keygen(pqSeed);
+  const pqSignature = ed25519.sign(pqPublicKey, identityPriv);
+
+  return {
+    identity: { publicKey: identityPub, privateKey: identityPriv },
+    signedPreKey: { keyPair: { publicKey: spPub, privateKey: spPriv }, signature },
+    pqSignedPreKey: {
+      keyPair: { encapsulationKey: pqPublicKey, decapsulationKey: pqSecretKey },
+      signature: pqSignature,
+    },
+  };
+}
+
+/**
+ * Legacy seed-based key derivation using SHA-256(seed || tag).
+ * Used to decrypt old messages from before the HKDF migration.
+ */
+export async function generateKeySetFromSeedLegacy(seed: Uint8Array): Promise<LocalKeySet> {
   const idInput = new Uint8Array(seed.length + 7);
   idInput.set(seed);
   idInput.set(new TextEncoder().encode('ed25519'), seed.length);
   const identityPriv = new Uint8Array(await crypto.subtle.digest('SHA-256', idInput));
   const identityPub = ed25519.getPublicKey(identityPriv);
 
-  // Derive X25519 signed prekey deterministically
   const spInput = new Uint8Array(seed.length + 6);
   spInput.set(seed);
   spInput.set(new TextEncoder().encode('x25519'), seed.length);
@@ -221,12 +262,10 @@ export async function generateKeySetFromSeed(seed: Uint8Array): Promise<LocalKey
   const spPub = x25519.getPublicKey(spPriv);
   const signature = ed25519.sign(spPub, identityPriv);
 
-  // Derive ML-KEM-768 seed deterministically (keygen_derand needs 64 bytes)
   const pqInput = new Uint8Array(seed.length + 6);
   pqInput.set(seed);
   pqInput.set(new TextEncoder().encode('mlkem7'), seed.length);
   const pqHash1 = new Uint8Array(await crypto.subtle.digest('SHA-256', pqInput));
-  // Second hash for full 64-byte seed
   const pqInput2 = new Uint8Array(seed.length + 7);
   pqInput2.set(seed);
   pqInput2.set(new TextEncoder().encode('mlkem72'), seed.length);

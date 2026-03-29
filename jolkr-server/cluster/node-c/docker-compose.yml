@@ -1,0 +1,142 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Jolkr HA Cluster — Node C (Witness / Quorum)
+#
+# Lightweight node providing the third vote for:
+#   - etcd   (Patroni DCS quorum)
+#   - Redis Sentinel (Redis failover quorum)
+#   - NATS   (messaging cluster quorum, no JetStream storage)
+#
+# Does NOT run: API, Media, Postgres, Redis data, MinIO, nginx, keepalived.
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ───────────────────────────────────────────────────────────────────────────
+  # etcd — node 3 (quorum member for Patroni)
+  # ───────────────────────────────────────────────────────────────────────────
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.17
+    container_name: jolkr-etcd-c
+    hostname: etcd-c
+    env_file:
+      - ../.env
+    environment:
+      ETCD_NAME: etcd-c
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_ADVERTISE_CLIENT_URLS: http://${NODE_C_IP}:2379
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://${NODE_C_IP}:2380
+      ETCD_INITIAL_CLUSTER: >-
+        etcd-a=http://${NODE_A_IP}:2380,
+        etcd-b=http://${NODE_B_IP}:2380,
+        etcd-c=http://${NODE_C_IP}:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: jolkr-etcd-cluster
+      ETCD_ENABLE_V2: "false"
+      ETCD_AUTO_COMPACTION_RETENTION: "1"
+      ETCD_QUOTA_BACKEND_BYTES: "2147483648"
+    volumes:
+      - etcd_data:/etcd-data
+    ports:
+      - "${NODE_C_IP}:2379:2379"
+      - "${NODE_C_IP}:2380:2380"
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health", "--endpoints=http://localhost:2379"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Redis Sentinel — quorum voter for Redis failover (no data instance)
+  # ───────────────────────────────────────────────────────────────────────────
+  redis-sentinel:
+    image: redis:7-alpine
+    container_name: jolkr-sentinel-c
+    hostname: sentinel-c
+    env_file:
+      - ../.env
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ../config/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    ports:
+      - "${NODE_C_IP}:26379:26379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+        reservations:
+          cpus: "0.05"
+          memory: 16M
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # NATS — node 3 (cluster quorum, memory-only, no JetStream storage)
+  # ───────────────────────────────────────────────────────────────────────────
+  nats:
+    image: nats:2-alpine
+    container_name: jolkr-nats-c
+    hostname: nats-c
+    env_file:
+      - ../.env
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ../config/nats/nats-node-c.conf:/etc/nats/nats.conf:ro
+      - nats_data:/data
+    ports:
+      - "${NODE_C_IP}:4222:4222"
+      - "${NODE_C_IP}:6222:6222"
+      - "${NODE_C_IP}:8222:8222"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Volumes
+# ═════════════════════════════════════════════════════════════════════════════
+volumes:
+  etcd_data:
+    driver: local
+  nats_data:
+    driver: local
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Networks
+# ═════════════════════════════════════════════════════════════════════════════
+networks:
+  jolkr-net:
+    driver: bridge

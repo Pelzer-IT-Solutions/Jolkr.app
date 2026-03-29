@@ -29,6 +29,14 @@ struct HealthResponse {
     status: &'static str,
     uptime_seconds: u64,
     services: Services,
+    pool: PoolStats,
+}
+
+#[derive(Serialize)]
+struct PoolStats {
+    size: u32,
+    idle: u32,
+    max: u32,
 }
 
 #[derive(Serialize)]
@@ -170,6 +178,12 @@ pub async fn health_check(
         .map(|v| v.contains("text/html"))
         .unwrap_or(false);
 
+    let pool_stats = PoolStats {
+        size: state.pool.size(),
+        idle: state.pool.num_idle() as u32,
+        max: 30,
+    };
+
     if wants_html {
         let html = render_html(overall, uptime, &services);
         (http_status, Html(html)).into_response()
@@ -178,6 +192,7 @@ pub async fn health_check(
             status: overall,
             uptime_seconds: uptime,
             services,
+            pool: pool_stats,
         };
         (http_status, axum::Json(body)).into_response()
     }

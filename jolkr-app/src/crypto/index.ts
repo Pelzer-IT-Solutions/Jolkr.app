@@ -34,6 +34,7 @@ export {
   generateKeySet,
   deriveE2EESeed,
   generateKeySetFromSeed,
+  generateKeySetFromSeedLegacy,
 } from './e2ee';
 
 export type { EncryptedPayload } from './e2ee';

@@ -1,0 +1,456 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Jolkr HA Cluster — Node B (Replica Data Node)
+# ══════════════════════════════════════════════════════════════════════════════
+# Services: API, Media, Patroni (replica), etcd, Redis replica + Sentinel,
+#           NATS, MinIO (distributed), nginx, keepalived (BACKUP)
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ===========================================================================
+  # Jolkr API Server (Rust)
+  # ===========================================================================
+  jolkr-api:
+    build:
+      context: ../../
+      dockerfile: docker/Dockerfile.api
+    container_name: jolkr-api-b
+    ports:
+      - "8080:8080"
+    depends_on:
+      patroni:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    env_file:
+      - ../.env
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+      NODE_NAME: node-b
+      DATABASE_URL: "postgres://${POSTGRES_USER:-jolkr}:${POSTGRES_PASSWORD}@patroni:5432/${POSTGRES_DB:-jolkr}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+      MINIO_ENDPOINT: "http://minio:9000"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD}"
+      MINIO_BUCKET: "jolkr"
+      NATS_URL: "nats://nats:4222"
+      NATS_USER: "${NATS_USER}"
+      NATS_PASSWORD: "${NATS_PASSWORD}"
+      NATS_HMAC_SECRET: "${NATS_HMAC_SECRET}"
+      JWT_SECRET: "${JWT_SECRET}"
+      ADMIN_SECRET: "${ADMIN_SECRET}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
+      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@jolkr.app}"
+      MEDIA_SERVER_URL: "http://jolkr-media:8081"
+      SMTP_HOST: "${SMTP_HOST:-smtp.example.com}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_FROM: "${SMTP_FROM:-noreply@jolkr.app}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      APP_URL: "${APP_URL:-https://jolkr.app/app}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-https://jolkr.app,https://tauri.localhost}"
+      RUST_LOG: "${RUST_LOG:-info}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ===========================================================================
+  # Jolkr Media Server (Rust — WebRTC / voice & video)
+  # ===========================================================================
+  jolkr-media:
+    build:
+      context: ../../
+      dockerfile: docker/Dockerfile.media
+    container_name: jolkr-media-b
+    ports:
+      - "8081:8081"
+      - "10000-10100:10000-10100/udp"
+    depends_on:
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    env_file:
+      - ../.env
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+      MEDIA_PORT: "8081"
+      MEDIA_UDP_PORT: "10000"
+      PUBLIC_IP: "${PUBLIC_IP:-127.0.0.1}"
+      LOCAL_IP: "${NODE_B_IP}"
+      JWT_SECRET: "${JWT_SECRET}"
+      NATS_URL: "nats://nats:4222"
+      NATS_USER: "${NATS_USER}"
+      NATS_PASSWORD: "${NATS_PASSWORD}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+      RUST_LOG: "${RUST_LOG:-info}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ===========================================================================
+  # Patroni — PostgreSQL REPLICA with HA failover
+  # ===========================================================================
+  patroni:
+    image: patroni/patroni:latest
+    container_name: jolkr-patroni-b
+    ports:
+      - "5432:5432"
+      - "8008:8008"
+    env_file:
+      - ../.env
+    environment:
+      PATRONI_NAME: node-b
+      PATRONI_SCOPE: jolkr-cluster
+      PATRONI_RESTAPI_LISTEN: "0.0.0.0:8008"
+      PATRONI_RESTAPI_CONNECT_ADDRESS: "${NODE_B_IP}:8008"
+      PATRONI_RESTAPI_USERNAME: admin
+      PATRONI_RESTAPI_PASSWORD: "${PATRONI_RESTAPI_PASSWORD}"
+      PATRONI_POSTGRESQL_LISTEN: "0.0.0.0:5432"
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: "${NODE_B_IP}:5432"
+      PATRONI_POSTGRESQL_DATA_DIR: /var/lib/postgresql/data
+      PATRONI_SUPERUSER_USERNAME: "${POSTGRES_USER:-jolkr}"
+      PATRONI_SUPERUSER_PASSWORD: "${POSTGRES_PASSWORD}"
+      PATRONI_REPLICATION_USERNAME: "${REPLICATION_USER:-replicator}"
+      PATRONI_REPLICATION_PASSWORD: "${REPLICATION_PASSWORD}"
+      PATRONI_ETCD3_HOSTS: "'${NODE_A_IP}:2379','${NODE_B_IP}:2379','${NODE_C_IP}:2379'"
+      PATRONI_POSTGRESQL_PGPASS: /tmp/pgpass
+      PATRONI_BOOTSTRAP_DCS_POSTGRESQL_PARAMETERS_MAX_CONNECTIONS: "100"
+      PATRONI_BOOTSTRAP_DCS_POSTGRESQL_PARAMETERS_SHARED_BUFFERS: "256MB"
+      PATRONI_BOOTSTRAP_DCS_POSTGRESQL_PARAMETERS_WORK_MEM: "4MB"
+      PATRONI_BOOTSTRAP_DCS_POSTGRESQL_PARAMETERS_STATEMENT_TIMEOUT: "30000"
+      PATRONI_BOOTSTRAP_DCS_POSTGRESQL_PARAMETERS_WAL_LEVEL: "replica"
+      PATRONI_BOOTSTRAP_DCS_POSTGRESQL_PARAMETERS_MAX_WAL_SENDERS: "5"
+      PATRONI_BOOTSTRAP_DCS_POSTGRESQL_PARAMETERS_MAX_REPLICATION_SLOTS: "5"
+      PATRONI_BOOTSTRAP_DCS_POSTGRESQL_PARAMETERS_HOT_STANDBY: "on"
+    volumes:
+      - patroni_data:/var/lib/postgresql/data
+    depends_on:
+      etcd:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8008/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  # ===========================================================================
+  # etcd — distributed consensus store (node 2 of 3)
+  # ===========================================================================
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.17
+    container_name: jolkr-etcd-b
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    env_file:
+      - ../.env
+    environment:
+      ETCD_NAME: etcd-node-b
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://${NODE_B_IP}:2379"
+      ETCD_LISTEN_PEER_URLS: "http://0.0.0.0:2380"
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: "http://${NODE_B_IP}:2380"
+      ETCD_INITIAL_CLUSTER: "etcd-node-a=http://${NODE_A_IP}:2380,etcd-node-b=http://${NODE_B_IP}:2380,etcd-node-c=http://${NODE_C_IP}:2380"
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: jolkr-etcd-cluster
+    volumes:
+      - etcd_data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health", "--endpoints=http://localhost:2379"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ===========================================================================
+  # Redis — replica of Node A primary
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: jolkr-redis-b
+    ports:
+      - "6379:6379"
+    env_file:
+      - ../.env
+    command: >
+      redis-server
+      --replicaof ${NODE_A_IP} 6379
+      --masterauth ${REDIS_PASSWORD}
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ===========================================================================
+  # Redis Sentinel — monitors Redis primary, handles failover
+  # ===========================================================================
+  redis-sentinel:
+    image: redis:7-alpine
+    container_name: jolkr-sentinel-b
+    ports:
+      - "26379:26379"
+    env_file:
+      - ../.env
+    command: >
+      sh -c '
+        mkdir -p /etc/redis &&
+        cat > /etc/redis/sentinel.conf <<SENTINEL_EOF
+      port 26379
+      sentinel monitor jolkr-redis ${NODE_A_IP} 6379 2
+      sentinel auth-pass jolkr-redis ${REDIS_PASSWORD}
+      sentinel down-after-milliseconds jolkr-redis 5000
+      sentinel failover-timeout jolkr-redis 10000
+      sentinel parallel-syncs jolkr-redis 1
+      sentinel resolve-hostnames yes
+      SENTINEL_EOF
+        redis-sentinel /etc/redis/sentinel.conf
+      '
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+  # ===========================================================================
+  # NATS — messaging / event bus with JetStream (node 2 of 3)
+  # ===========================================================================
+  nats:
+    image: nats:2-alpine
+    container_name: jolkr-nats-b
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+      - "8222:8222"
+    env_file:
+      - ../.env
+    command: ["--config", "/etc/nats/nats.conf"]
+    volumes:
+      - nats_data:/data
+      - ../config/nats/nats-node-b.conf:/etc/nats/nats.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  # ===========================================================================
+  # MinIO — S3-compatible object storage, distributed mode (node 2 of 2)
+  # ===========================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: jolkr-minio-b
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    env_file:
+      - ../.env
+    command: >
+      server
+      http://${NODE_A_IP}:9000/data1
+      http://${NODE_A_IP}:9000/data2
+      http://${NODE_B_IP}:9000/data1
+      http://${NODE_B_IP}:9000/data2
+      --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+    volumes:
+      - minio_data1:/data1
+      - minio_data2:/data2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ===========================================================================
+  # nginx — reverse proxy & TLS termination
+  # ===========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: jolkr-nginx-b
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../config/nginx/nginx-ha.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      jolkr-api:
+        condition: service_healthy
+      jolkr-media:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+  # ===========================================================================
+  # keepalived — VRRP BACKUP (priority 90, failover from Node A)
+  # ===========================================================================
+  keepalived:
+    image: osixia/keepalived:2.0.20
+    container_name: jolkr-keepalived-b
+    cap_add:
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+    network_mode: host
+    env_file:
+      - ../.env
+    volumes:
+      - ../config/keepalived/keepalived-backup.conf:/usr/local/etc/keepalived/keepalived.conf:ro
+    environment:
+      KEEPALIVED_PRIORITY: "90"
+      KEEPALIVED_STATE: BACKUP
+      KEEPALIVED_INTERFACE: "${KEEPALIVED_INTERFACE:-eth0}"
+      KEEPALIVED_VIRTUAL_IP: "${VIRTUAL_IP}"
+      KEEPALIVED_PASSWORD: "${KEEPALIVED_PASSWORD}"
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  patroni_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data1:
+    driver: local
+  minio_data2:
+    driver: local
+  nats_data:
+    driver: local
+  etcd_data:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  jolkr-net:
+    driver: bridge

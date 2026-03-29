@@ -18,6 +18,8 @@ use jolkr_db::repo::{PasswordResetRepo, SessionRepo, UserRepo};
 /// JWT claims embedded in every access token.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
+    /// JWT ID: unique identifier for this token (used for revocation).
+    pub jti: String,
     /// Subject: the user ID.
     pub sub: Uuid,
     /// Device ID (if applicable).
@@ -324,6 +326,7 @@ impl AuthService {
 
         // Build access token
         let access_claims = Claims {
+            jti: Uuid::new_v4().to_string(),
             sub: user_id,
             device_id,
             iat: now.timestamp(),
@@ -356,6 +359,11 @@ impl AuthService {
         let mut bytes = [0u8; 48];
         rand::thread_rng().fill_bytes(&mut bytes);
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
+    }
+
+    /// Public wrapper for hashing a refresh token (used by logout endpoints).
+    pub fn hash_refresh_token_pub(token: &str) -> String {
+        Self::hash_refresh_token(token)
     }
 
     /// Deterministic hash of a refresh token (for DB lookup).

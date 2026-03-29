@@ -110,11 +110,13 @@ async fn main() {
         app_url: config.app_url.clone(),
     };
 
-    // Spawn webhook rate limiter cleanup (must be inside tokio runtime)
-    routes::webhooks::spawn_webhook_rate_cleanup();
+    // Install Prometheus metrics exporter (recorder must be installed before router)
+    let prometheus_handle = metrics_exporter_prometheus::PrometheusBuilder::new()
+        .install_recorder()
+        .expect("Failed to install Prometheus metrics recorder");
 
     // Build the Axum router
-    let app = routes::create_router(app_state);
+    let app = routes::create_router(app_state, prometheus_handle);
 
     // Start listening
     let addr = SocketAddr::from(([0, 0, 0, 0], config.server_port));

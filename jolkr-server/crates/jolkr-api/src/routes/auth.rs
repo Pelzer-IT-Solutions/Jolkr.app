@@ -1,12 +1,55 @@
 use axum::{extract::State, http::StatusCode, Json};
+use axum::http::HeaderMap;
+use chrono::Utc;
+use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{info, warn};
 
 use jolkr_core::{AuthService, TokenPair};
+use jolkr_db::repo::SessionRepo;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
+
+// ── Account lockout after repeated failed logins ─────────────────────────
+
+const MAX_LOGIN_ATTEMPTS: u64 = 5;
+const LOCKOUT_WINDOW_SECS: u64 = 900; // 15 minutes
+
+/// Check if an account is locked out due to too many failed login attempts.
+async fn check_login_lockout(state: &AppState, email: &str) -> Result<(), AppError> {
+    let key = format!("lockout:{}", email.to_lowercase());
+    let mut conn = state.redis.connection();
+    let count: u64 = conn.get(&key).await.unwrap_or(0);
+    if count >= MAX_LOGIN_ATTEMPTS {
+        return Err(AppError(jolkr_common::JolkrError::Validation(
+            "Account temporarily locked due to too many failed login attempts. Try again in 15 minutes.".into(),
+        )));
+    }
+    Ok(())
+}
+
+/// Record a failed login attempt in Redis.
+async fn record_failed_login(state: &AppState, email: &str) {
+    let key = format!("lockout:{}", email.to_lowercase());
+    let mut conn = state.redis.connection();
+    match conn.incr::<_, _, u64>(&key, 1u64).await {
+        Ok(count) => {
+            if count == 1 {
+                let _ = conn.expire::<_, ()>(&key, LOCKOUT_WINDOW_SECS as i64).await;
+            }
+        }
+        Err(e) => warn!(error = %e, "Failed to record login attempt in Redis"),
+    }
+}
+
+/// Clear lockout counter on successful login.
+async fn clear_login_lockout(state: &AppState, email: &str) {
+    let key = format!("lockout:{}", email.to_lowercase());
+    let mut conn = state.redis.connection();
+    let _ = conn.del::<_, ()>(&key).await;
+}
 
 // Admin secret for password reset (cached via OnceLock, read from env once)
 fn admin_secret() -> Option<&'static String> {
@@ -55,6 +98,11 @@ pub struct ResetPasswordConfirmRequest {
 pub struct ChangePasswordRequest {
     pub current_password: String,
     pub new_password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LogoutRequest {
+    pub refresh_token: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -112,20 +160,31 @@ pub async fn login(
     State(state): State<AppState>,
     Json(body): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, AppError> {
-    let (user, tokens) =
-        AuthService::login(&state.pool, &state.jwt_secret, &body.email, &body.password).await?;
+    // Check lockout before attempting authentication
+    check_login_lockout(&state, &body.email).await?;
 
-    Ok(Json(AuthResponse {
-        user: UserDto {
-            id: user.id.to_string(),
-            email: user.email,
-            username: user.username,
-            display_name: user.display_name,
-            avatar_url: user.avatar_url,
-            is_system: user.is_system,
-        },
-        tokens,
-    }))
+    match AuthService::login(&state.pool, &state.jwt_secret, &body.email, &body.password).await {
+        Ok((user, tokens)) => {
+            // Success — clear any lockout counter
+            clear_login_lockout(&state, &body.email).await;
+            Ok(Json(AuthResponse {
+                user: UserDto {
+                    id: user.id.to_string(),
+                    email: user.email,
+                    username: user.username,
+                    display_name: user.display_name,
+                    avatar_url: user.avatar_url,
+                    is_system: user.is_system,
+                },
+                tokens,
+            }))
+        }
+        Err(e) => {
+            // Record failed attempt
+            record_failed_login(&state, &body.email).await;
+            Err(AppError(e))
+        }
+    }
 }
 
 /// POST /api/auth/reset-password
@@ -220,5 +279,69 @@ pub async fn change_password(
     )
     .await?;
     info!(user_id = %auth.user_id, "User changed their password");
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/auth/logout
+/// Revokes the current session's refresh token and blacklists the access token.
+pub async fn logout(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<LogoutRequest>,
+) -> Result<StatusCode, AppError> {
+    // Delete the session (refresh token)
+    let token_hash = AuthService::hash_refresh_token_pub(&body.refresh_token);
+    if let Ok(session) = SessionRepo::get_by_token(&state.pool, &token_hash).await {
+        SessionRepo::delete_session(&state.pool, session.id).await?;
+    }
+
+    // Blacklist the current access token's JTI in Redis
+    if let Some(token) = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+    {
+        if let Ok(claims) = AuthService::validate_token(&state.jwt_secret, token) {
+            let ttl = (claims.exp - Utc::now().timestamp()).max(0) as u64;
+            if ttl > 0 {
+                let key = format!("blacklist:{}", claims.jti);
+                let mut conn = state.redis.connection();
+                let _ = conn.set_ex::<_, _, ()>(&key, "1", ttl).await;
+            }
+        }
+    }
+
+    info!(user_id = %auth.user_id, "User logged out");
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/auth/logout-all
+/// Revokes ALL sessions for the current user and blacklists the current access token.
+pub async fn logout_all(
+    auth: AuthUser,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<StatusCode, AppError> {
+    // Delete all sessions for this user
+    SessionRepo::delete_all_for_user(&state.pool, auth.user_id).await?;
+
+    // Blacklist current access token
+    if let Some(token) = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+    {
+        if let Ok(claims) = AuthService::validate_token(&state.jwt_secret, token) {
+            let ttl = (claims.exp - Utc::now().timestamp()).max(0) as u64;
+            if ttl > 0 {
+                let key = format!("blacklist:{}", claims.jti);
+                let mut conn = state.redis.connection();
+                let _ = conn.set_ex::<_, _, ()>(&key, "1", ttl).await;
+            }
+        }
+    }
+
+    info!(user_id = %auth.user_id, "User logged out of all sessions");
     Ok(StatusCode::NO_CONTENT)
 }
