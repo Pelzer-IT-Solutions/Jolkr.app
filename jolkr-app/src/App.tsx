@@ -22,14 +22,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import NotFound from './pages/NotFound';
-import Layout from './pages/App/Layout';
-import DmLayout from './pages/App/DmLayout';
-import Home from './pages/App/Home';
-import ServerPage from './pages/App/Server';
-import ChannelPage from './pages/App/Channel';
-import DmChat from './pages/App/DmChat';
-import Friends from './pages/App/Friends';
-import Settings from './pages/App/settings';
+import AppShell from './pages/App/AppShell';
 import InviteAccept from './pages/InviteAccept';
 import ServerSetup from './pages/ServerSetup';
 
@@ -38,31 +31,15 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const loading = useAuthStore((s) => s.loading);
   const location = useLocation();
 
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center bg-bg">
-        <div className="text-text-tertiary">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
+  if (loading) return null; // Splash from index.html covers this
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   return <>{children}</>;
 }
 
 function GuestGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center bg-bg">
-        <div className="text-text-tertiary">Loading...</div>
-      </div>
-    );
-  }
+  if (loading) return null;
   if (user) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -72,11 +49,8 @@ function AppInit({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
-  // Apply theme (dark/light) early so auth pages also get it
-  useEffect(() => {
-    const theme = localStorage.getItem('jolkr_theme') ?? 'dark';
-    document.documentElement.dataset.theme = theme;
-  }, []);
+  // Theme is applied by inline script in index.html (before React mount)
+  // and managed by useColorMode() in AppShell.
 
   // Disable default browser context menu globally — custom TextContextMenu handles input/textarea
   useEffect(() => {
@@ -137,11 +111,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
   }, [loadUser]);
 
   if (!ready) {
-    return (
-      <div className="h-full flex items-center justify-center bg-bg">
-        <div className="text-text-tertiary">Loading...</div>
-      </div>
-    );
+    return null; // Splash is shown by index.html inline styles — no double loading screen
   }
 
   return (
@@ -231,17 +201,7 @@ export default function App() {
             <Route path="/register" element={<GuestGuard><Register /></GuestGuard>} />
             <Route path="/forgot-password" element={<GuestGuard><ForgotPassword /></GuestGuard>} />
             <Route path="/invite/:code" element={<InviteAccept />} />
-            <Route path="/" element={<AuthGuard><Layout /></AuthGuard>}>
-              {/* DmLayout shares the DM sidebar (DmList + UserPanel) across these routes */}
-              <Route element={<DmLayout />}>
-                <Route index element={<Home />} />
-                <Route path="dm/:dmId" element={<DmChat />} />
-                <Route path="friends" element={<Friends />} />
-              </Route>
-              <Route path="servers/:serverId" element={<ServerPage />} />
-              <Route path="servers/:serverId/channels/:channelId" element={<ChannelPage />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
+            <Route path="/*" element={<AuthGuard><AppShell /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppInit>

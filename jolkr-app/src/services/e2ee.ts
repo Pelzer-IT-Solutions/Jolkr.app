@@ -1,7 +1,6 @@
 import type { LocalKeySet, PreKeyBundle, EncryptedPayload } from '../crypto';
 import {
   generateKeySetFromSeed,
-  generateKeySetFromSeedLegacy,
   encryptForRecipient,
   decryptFromSender,
   toBase64,
@@ -15,8 +14,6 @@ import type { PreKeyBundleResponse } from '../api/types';
 // ── State ──────────────────────────────────────────────────────────
 
 let localKeys: LocalKeySet | null = null;
-/** Legacy keys kept in memory for decrypting old messages from before HKDF migration. */
-let legacyKeys: LocalKeySet | null = null;
 
 /** Cache TTL for successful bundles: 5 minutes. */
 const BUNDLE_CACHE_TTL = 5 * 60 * 1000;
@@ -34,10 +31,8 @@ const bundleCache = new Map<string, CachedBundle>();
  */
 export async function initE2EE(deviceId: string, seed?: Uint8Array): Promise<void> {
   if (seed) {
-    // Derive deterministic keys from password seed using HKDF (current)
+    // Derive deterministic keys from password seed using HKDF
     const keys = await generateKeySetFromSeed(seed);
-    // Also derive legacy keys for decrypting old messages
-    legacyKeys = await generateKeySetFromSeedLegacy(seed);
     localKeys = keys;
     await saveKeySet(keys);
     // Force re-upload (keys may differ from what's on server)
@@ -101,6 +96,7 @@ export function getLocalKeys(): LocalKeySet | null {
   return localKeys;
 }
 
+
 /**
  * Fetch and cache a recipient's prekey bundle. Returns null if no keys available.
  */
@@ -152,8 +148,6 @@ export async function encryptDmMessage(
 
 /**
  * Decrypt an incoming encrypted DM message.
- * Tries current HKDF-derived keys first, falls back to legacy SHA-256 keys
- * for messages encrypted before the HKDF migration.
  */
 export async function decryptDmMessage(
   encryptedContentB64: string,
@@ -162,15 +156,7 @@ export async function decryptDmMessage(
   if (!localKeys) {
     throw new Error('E2EE keys not loaded');
   }
-  try {
-    return await decryptFromSender(localKeys, encryptedContentB64, nonceB64);
-  } catch (e) {
-    // Fall back to legacy keys for messages encrypted with old SHA-256 derived keys
-    if (legacyKeys) {
-      return decryptFromSender(legacyKeys, encryptedContentB64, nonceB64);
-    }
-    throw e;
-  }
+  return decryptFromSender(localKeys, encryptedContentB64, nonceB64);
 }
 
 /** Invalidate a cached bundle so the next encryption fetches fresh keys. */
@@ -183,7 +169,6 @@ export function invalidateBundle(userId: string): void {
  */
 export async function resetE2EE(): Promise<void> {
   localKeys = null;
-  legacyKeys = null;
   bundleCache.clear();
   await clearKeySet();
   // Clear upload flag so next login re-uploads keys; keep device ID to reuse the same device row

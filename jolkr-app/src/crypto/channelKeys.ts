@@ -32,9 +32,20 @@ const channelKeyCache = new Map<string, CachedChannelKey>();
 
 // ── Public API ─────────────────────────────────────────────────────
 
+/** Sentinel: a key exists on the server but we couldn't decrypt it. */
+export class ChannelKeyDecryptError extends Error {
+  constructor(channelId: string, cause?: unknown) {
+    super(`Channel key for ${channelId} exists but could not be decrypted`);
+    this.name = 'ChannelKeyDecryptError';
+    this.cause = cause;
+  }
+}
+
 /**
- * Get the channel encryption key, fetching/generating as needed.
- * Returns null if E2EE is not available.
+ * Get the channel encryption key, fetching from server if not cached.
+ * Returns null if no key has been distributed yet.
+ * Throws ChannelKeyDecryptError if a key exists but can't be decrypted
+ * (prevents accidental re-keying that would destroy old messages).
  */
 export async function getChannelKey(
   channelId: string,
@@ -46,30 +57,30 @@ export async function getChannelKey(
   if (cached) return cached;
 
   // Try to fetch from server
+  const serverKey = await api.getMyChannelKey(channelId, isDm);
+  if (!serverKey) return null; // No key distributed yet
+
+  // Key exists — attempt decrypt. Let errors propagate so callers
+  // know the key exists but is undecryptable (don't silently overwrite).
   try {
-    const serverKey = await api.getMyChannelKey(channelId, isDm);
-    if (serverKey) {
-      // Decrypt the channel key using our local keys
-      const rawKeyB64 = await decryptFromSender(localKeys, serverKey.encrypted_key, serverKey.nonce);
-      const rawKeyBytes = fromBase64(rawKeyB64);
+    const rawKeyB64 = await decryptFromSender(localKeys, serverKey.encrypted_key, serverKey.nonce);
+    const rawKeyBytes = fromBase64(rawKeyB64);
 
-      const key = await crypto.subtle.importKey(
-        'raw',
-        toArrayBuffer(rawKeyBytes),
-        { name: 'AES-GCM' },
-        true,
-        ['encrypt', 'decrypt'],
-      );
+    const key = await crypto.subtle.importKey(
+      'raw',
+      toArrayBuffer(rawKeyBytes),
+      { name: 'AES-GCM' },
+      true,
+      ['encrypt', 'decrypt'],
+    );
 
-      const entry: CachedChannelKey = { key, keyGeneration: serverKey.key_generation };
-      channelKeyCache.set(channelId, entry);
-      return entry;
-    }
+    const entry: CachedChannelKey = { key, keyGeneration: serverKey.key_generation };
+    channelKeyCache.set(channelId, entry);
+    return entry;
   } catch (e) {
-    console.warn('Channel E2EE: Failed to fetch/decrypt channel key:', e);
+    console.warn('Channel E2EE: Key exists but decrypt failed for channel', channelId, e);
+    throw new ChannelKeyDecryptError(channelId, e);
   }
-
-  return null;
 }
 
 /**
@@ -155,7 +166,20 @@ export async function encryptChannelMessage(
   isDm?: boolean,
 ): Promise<{ encryptedContent: string; nonce: string } | null> {
   // Get or generate channel key
-  let channelKey = await getChannelKey(channelId, localKeys, isDm);
+  let channelKey: CachedChannelKey | null = null;
+
+  try {
+    channelKey = await getChannelKey(channelId, localKeys, isDm);
+  } catch (e) {
+    if (e instanceof ChannelKeyDecryptError) {
+      // A key exists on the server but we can't decrypt it.
+      // Don't generate a new key — that would overwrite the existing one
+      // and make old messages permanently undecryptable.
+      console.error('Channel E2EE: Cannot send — existing key undecryptable. Re-login may fix this.');
+      return null;
+    }
+    throw e;
+  }
 
   if (!channelKey) {
     // No key exists yet — we generate and distribute

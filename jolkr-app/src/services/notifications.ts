@@ -73,10 +73,9 @@ export function initNotifications() {
     playNotificationSound();
 
     // Show desktop notification
-    const content = msg.encrypted_content
-      ? 'Sent an encrypted message'
-      : (msg.content?.slice(0, 100) || 'Sent an attachment');
-    showDesktopNotification('New Message', content);
+    // All messages are encrypted — show generic notification
+    const notifContent = msg.nonce ? 'Sent an encrypted message' : (msg.content?.slice(0, 100) || 'New message');
+    showDesktopNotification('New Message', notifContent);
   });
 }
 

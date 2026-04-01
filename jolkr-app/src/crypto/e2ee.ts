@@ -9,8 +9,6 @@ import {
   mlkemDecapsulate,
   deriveMessageKey,
   deriveHybridMessageKey,
-  deriveMessageKeyLegacy,
-  deriveHybridMessageKeyLegacy,
   encryptMessage,
   decryptMessage,
   toBase64,
@@ -28,8 +26,7 @@ export interface EncryptedPayload {
 }
 
 // Version bytes for encrypted payload format
-const VERSION_CLASSICAL = 0x01;       // Legacy: SHA-256 KDF, X25519 only
-const VERSION_HYBRID_PQ = 0x02;       // Legacy: SHA-256 KDF, X25519 + ML-KEM-768
+const VERSION_CLASSICAL = 0x01;       // Classical: HKDF-SHA256, X25519 only (fallback)
 const VERSION_HYBRID_PQ_HKDF = 0x03;  // Current: HKDF-SHA256, X25519 + ML-KEM-768
 
 // ML-KEM-768 ciphertext is 1088 bytes
@@ -106,11 +103,9 @@ export async function encryptForRecipient(
 
 /**
  * Decrypt an incoming encrypted message using our signed prekey private key.
- * Supports versioned formats:
- *   0x03 — HKDF-SHA256, hybrid X25519 + ML-KEM-768 (current)
- *   0x02 — Legacy SHA-256 KDF, hybrid X25519 + ML-KEM-768
- *   0x01 — Legacy SHA-256 KDF, classical X25519 only
- *   other — Legacy unversioned format (pre-v0.3.0)
+ * Supports:
+ *   0x03 — HKDF-SHA256, hybrid X25519 + ML-KEM-768 (current, quantum-proof)
+ *   0x01 — HKDF-SHA256, classical X25519 only (fallback for recipients without PQ keys)
  */
 export async function decryptFromSender(
   localKeys: LocalKeySet,
@@ -126,9 +121,9 @@ export async function decryptFromSender(
 
   const version = packed[0];
 
-  if (version === VERSION_HYBRID_PQ_HKDF || version === VERSION_HYBRID_PQ) {
+  if (version === VERSION_HYBRID_PQ_HKDF) {
     // Hybrid PQ format: version(1) || ephemeral_pub(32) || pq_ciphertext(1088) || ciphertext
-    const minSize = 1 + 32 + MLKEM768_CIPHERTEXT_SIZE + 16; // 16 = min AES-GCM tag
+    const minSize = 1 + 32 + MLKEM768_CIPHERTEXT_SIZE + 16;
     if (packed.length < minSize) {
       throw new Error('Invalid hybrid encrypted content: too short');
     }
@@ -140,15 +135,9 @@ export async function decryptFromSender(
     const pqCiphertext = packed.slice(33, 33 + MLKEM768_CIPHERTEXT_SIZE);
     const ciphertext = packed.slice(33 + MLKEM768_CIPHERTEXT_SIZE);
 
-    // Classical: X25519 DH
     const classicalShared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, ephemeralPub);
-    // Post-quantum: ML-KEM decapsulation
     const pqShared = mlkemDecapsulate(pqCiphertext, localKeys.pqSignedPreKey.keyPair.decapsulationKey);
-
-    // Use HKDF for v0x03, legacy SHA-256 for v0x02
-    const messageKey = version === VERSION_HYBRID_PQ_HKDF
-      ? await deriveHybridMessageKey(classicalShared, pqShared)
-      : await deriveHybridMessageKeyLegacy(classicalShared, pqShared);
+    const messageKey = await deriveHybridMessageKey(classicalShared, pqShared);
     return decryptMessage(messageKey, ciphertext, nonce);
   }
 
@@ -157,16 +146,11 @@ export async function decryptFromSender(
     const ephemeralPub = packed.slice(1, 33);
     const ciphertext = packed.slice(33);
     const shared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, ephemeralPub);
-    const messageKey = await deriveMessageKeyLegacy(shared);
+    const messageKey = await deriveMessageKey(shared);
     return decryptMessage(messageKey, ciphertext, nonce);
   }
 
-  // Legacy unversioned format: ephemeral_pub(32) || ciphertext (no version byte)
-  const ephemeralPub = packed.slice(0, 32);
-  const ciphertext = packed.slice(32);
-  const shared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, ephemeralPub);
-  const messageKey = await deriveMessageKeyLegacy(shared);
-  return decryptMessage(messageKey, ciphertext, nonce);
+  throw new Error(`Unsupported encryption version: 0x${version.toString(16)}`);
 }
 
 // ── Key generation ─────────────────────────────────────────────────
@@ -244,45 +228,3 @@ export async function generateKeySetFromSeed(seed: Uint8Array): Promise<LocalKey
   };
 }
 
-/**
- * Legacy seed-based key derivation using SHA-256(seed || tag).
- * Used to decrypt old messages from before the HKDF migration.
- */
-export async function generateKeySetFromSeedLegacy(seed: Uint8Array): Promise<LocalKeySet> {
-  const idInput = new Uint8Array(seed.length + 7);
-  idInput.set(seed);
-  idInput.set(new TextEncoder().encode('ed25519'), seed.length);
-  const identityPriv = new Uint8Array(await crypto.subtle.digest('SHA-256', idInput));
-  const identityPub = ed25519.getPublicKey(identityPriv);
-
-  const spInput = new Uint8Array(seed.length + 6);
-  spInput.set(seed);
-  spInput.set(new TextEncoder().encode('x25519'), seed.length);
-  const spPriv = new Uint8Array(await crypto.subtle.digest('SHA-256', spInput));
-  const spPub = x25519.getPublicKey(spPriv);
-  const signature = ed25519.sign(spPub, identityPriv);
-
-  const pqInput = new Uint8Array(seed.length + 6);
-  pqInput.set(seed);
-  pqInput.set(new TextEncoder().encode('mlkem7'), seed.length);
-  const pqHash1 = new Uint8Array(await crypto.subtle.digest('SHA-256', pqInput));
-  const pqInput2 = new Uint8Array(seed.length + 7);
-  pqInput2.set(seed);
-  pqInput2.set(new TextEncoder().encode('mlkem72'), seed.length);
-  const pqHash2 = new Uint8Array(await crypto.subtle.digest('SHA-256', pqInput2));
-  const pqSeed = new Uint8Array(64);
-  pqSeed.set(pqHash1);
-  pqSeed.set(pqHash2, 32);
-
-  const { publicKey: pqPublicKey, secretKey: pqSecretKey } = ml_kem768.keygen(pqSeed);
-  const pqSignature = ed25519.sign(pqPublicKey, identityPriv);
-
-  return {
-    identity: { publicKey: identityPub, privateKey: identityPriv },
-    signedPreKey: { keyPair: { publicKey: spPub, privateKey: spPriv }, signature },
-    pqSignedPreKey: {
-      keyPair: { encapsulationKey: pqPublicKey, decapsulationKey: pqSecretKey },
-      signature: pqSignature,
-    },
-  };
-}

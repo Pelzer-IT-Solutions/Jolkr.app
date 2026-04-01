@@ -1,0 +1,73 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  padding: var(--gap);
+  gap: var(--gap);
+  /* background applied inline via buildBackground() */
+}
+
+/* Row that holds main shell + optional panels (notifications, etc.) */
+.contentRow {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+/* Main rounded container — only workspace content, no tab bar */
+.shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--bg-loud);
+  box-shadow: var(--shadow-panel);
+  min-height: 0;
+  min-width: 0;
+}
+
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Splash screen ── */
+
+.splash {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.splashLogo {
+  width: 4rem;
+  height: 4rem;
+  object-fit: contain;
+  animation: splashPulse 1.8s ease-in-out infinite;
+}
+
+.splashSpinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--border-muted);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: splashSpin 0.8s linear infinite;
+}
+
+@keyframes splashPulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes splashSpin {
+  to { transform: rotate(360deg); }
+}

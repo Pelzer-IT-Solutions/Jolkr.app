@@ -1,0 +1,240 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  width: 90%;
+  max-width: 28rem;
+  background: var(--bg-default);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-popout);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.25rem 0.75rem;
+}
+
+.headerIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: rgba(235, 75, 75, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger-default);
+}
+
+.title {
+  color: var(--text-strong);
+  line-height: 1.25;
+}
+
+.subtitle {
+  color: var(--text-faint);
+  margin-top: 0.125rem;
+}
+
+.content {
+  padding: 0 1.25rem 1rem;
+}
+
+.description {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-loud);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.option:hover {
+  border-color: var(--accent-default);
+  background: var(--bg-subtle);
+}
+
+.option.selected {
+  border-color: var(--danger-default);
+  background: rgba(235, 75, 75, 0.05);
+}
+
+.optionRadio {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  border: 2px solid var(--border-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  transition: all 0.15s ease;
+}
+
+.option:hover .optionRadio {
+  border-color: var(--accent-default);
+}
+
+.option.selected .optionRadio {
+  border-color: var(--danger-default);
+  background: var(--danger-default);
+}
+
+.radioInner {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: white;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.15s ease;
+}
+
+.option.selected .radioInner {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.optionText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.optionLabel {
+  color: var(--text-strong);
+}
+
+.optionDescription {
+  color: var(--text-faint);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  color: var(--text-default);
+}
+
+.textarea {
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  color: var(--text-default);
+  font-family: inherit;
+  resize: none;
+  min-height: 5rem;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent-default);
+}
+
+.textarea::placeholder {
+  color: var(--text-faint);
+}
+
+.charCount {
+  color: var(--text-faint);
+  text-align: right;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border-muted);
+}
+
+.cancelBtn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cancelBtn:hover {
+  background: var(--bg-loud);
+  color: var(--text-default);
+}
+
+.submitBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
+  background: var(--danger-default);
+  color: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--danger-strong);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Success view */
+.successView {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.successIcon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: rgba(59, 165, 92, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3ba55c;
+  margin-bottom: 1rem;
+}

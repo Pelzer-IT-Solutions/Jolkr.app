@@ -421,7 +421,10 @@ export const getMessages = (channelId: string, limit = 50, before?: string) => {
 export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string) =>
   request<Message>(`/channels/${channelId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ content, nonce, reply_to_id }),
+    // content is always encrypted — send as encrypted_content to match backend API
+    body: JSON.stringify(nonce
+      ? { encrypted_content: content, nonce, reply_to_id }
+      : { content, reply_to_id }),
   }, 'message');
 export const editMessage = (messageId: string, content: string) =>
   request<Message>(`/messages/${messageId}`, {
@@ -466,14 +469,16 @@ export const getDmMessages = (dmId: string, limit = 50, before?: string) => {
   return request<Message[]>(path, {}, 'messages');
 };
 export const sendDmMessage = (dmId: string, body: {
-  content?: string | null;
-  encrypted_content?: string;
+  content: string;
   nonce?: string;
   reply_to_id?: string;
 }) =>
   request<Message>(`/dms/${dmId}/messages`, {
     method: 'POST',
-    body: JSON.stringify(body),
+    // content is always encrypted — send as encrypted_content to match backend API
+    body: JSON.stringify(body.nonce
+      ? { encrypted_content: body.content, nonce: body.nonce, reply_to_id: body.reply_to_id }
+      : body),
   }, 'message');
 export const editDmMessage = (messageId: string, content: string) =>
   request<Message>(`/dms/messages/${messageId}`, {

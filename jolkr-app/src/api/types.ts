@@ -49,7 +49,6 @@ export interface Message {
   channel_id: string;
   author_id: string;
   content: string;
-  encrypted_content?: string | null;
   nonce?: string | null;
   created_at: string;
   updated_at?: string | null;

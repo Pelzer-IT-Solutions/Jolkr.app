@@ -1,0 +1,402 @@
+.area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--bg-faint);
+}
+
+/* ─── Header — always full width ─── */
+.header {
+  display: flex;
+  align-items: center;
+  height: var(--bar-height);
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border-muted);
+  flex-shrink: 0;
+  gap: 0.5rem;
+  background: var(--bg-muted);
+}
+
+.headerIcon {
+  font-size: 1.0625rem;
+  line-height: 1;
+  color: var(--icon-default);
+  flex-shrink: 0;
+}
+
+.headerIconPadded {
+  margin-left: 0.5rem;
+}
+
+.headerName { color: var(--text-strong); }
+
+.headerDivider {
+  width: 1px;
+  height: 0.875rem;
+  background: var(--border-strong);
+  flex-shrink: 0;
+  margin: 0 0.125rem;
+}
+
+.headerDesc {
+  color: var(--text-faint);
+  flex: 1;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── DM header avatar ── */
+.dmAvatar {
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 0.4375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.groupAvatars {
+  position: relative;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+}
+.groupAvatar {
+  position: absolute;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+}
+.groupAvatar:first-child { top: 0; left: 0; z-index: 1; }
+.groupAvatar.groupAvatarBack { bottom: 0; right: 0; z-index: 0; opacity: 0.7; }
+
+.dmStatusDot {
+  position: absolute;
+  bottom: -0.125rem;
+  right: -0.125rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  border: 2px solid var(--bg-muted);
+}
+.online  { background: oklch(65% 0.18 143); }
+.idle    { background: oklch(75% 0.18 65); }
+.dnd     { background: oklch(55% 0.2 25); }
+.offline { background: var(--jolkr-neutral-dark-20); }
+
+/* ── Thin vertical separator in header actions ── */
+.headerSep {
+  width: 1px;
+  height: 1rem;
+  background: var(--border-strong);
+  flex-shrink: 0;
+  margin: 0 0.125rem;
+}
+
+.iconBtn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-muted);
+  transition: background-color var(--transition), color var(--transition);
+}
+.iconBtn:hover  { background: var(--bg-dark-default); color: var(--icon-strong); }
+.iconBtn.active { background: var(--bg-dark-strong);  color: var(--icon-strong); }
+
+/* ─── Chat body — positioning context for the floating composer ─── */
+.chatBody {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Message list — fills chatBody, scrolls behind the composer ─── */
+.messageList {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 2rem 0 5.5rem; /* bottom pad keeps last msg above the composer */
+  display: flex;
+  flex-direction: column;
+  /* fade in at top, fade out before the floating composer at bottom */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 2.5rem,
+    black calc(100% - 5rem),
+    transparent calc(100% - 1rem)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 2.5rem,
+    black calc(100% - 5rem),
+    transparent calc(100% - 1rem)
+  );
+}
+
+/* ─── Pushes messages to the bottom when content is shorter than the viewport ─── */
+.spacer { flex: 1; }
+
+/* ─── Centered content column ─── */
+.messageInner {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.messageInnerDm {
+  max-width: 960px;
+  padding: 0 1.5rem;
+  gap: 1.25rem;
+}
+
+.dateSeparator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0 0.875rem;
+  flex-shrink: 0;
+}
+
+.sepLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border-muted);
+}
+
+.sepLabel {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 100px;
+  background: var(--bg-dark-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+.sepLabel:hover { background: var(--bg-dark-default); }
+
+/* ─── Composer — floats above the message list ─── */
+.composerWrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.375rem 0.75rem 0.625rem;
+  max-width: 42rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ─── Double-card stack ─── */
+.composerStack {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Reply card slides up from behind the composer */
+.replyCard {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem 1.625rem; /* large bottom pad — will be hidden behind composer */
+  margin-bottom: -1.25rem;          /* pull composer up so it covers the card's bottom */
+  background: var(--accent-muted);
+  border: 1px solid var(--accent-strong);
+  border-radius: 0.875rem;
+  position: relative;
+  z-index: 0;
+  animation: replyCardIn 200ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.replyCardInner {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex: 1;
+  min-width: 0;
+  color: var(--accent-text);
+}
+.replyCardInner svg { flex-shrink: 0; }
+
+.replyCardLabel {
+  flex-shrink: 0;
+  color: var(--accent-text);
+  white-space: nowrap;
+}
+.replyCardLabel strong { font-weight: 600; }
+
+.replyCardPreview {
+  color: var(--text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.replyCardClose {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent-text);
+  transition: background-color var(--transition);
+}
+.replyCardClose:hover { background: var(--accent-strong); }
+
+@keyframes replyCardIn {
+  from { transform: translateY(50%); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding: 0.5625rem 0.625rem;
+  border-radius: 0.875rem;
+  background-image: var(--surface-raised);
+  background-color: var(--bg-shout);
+  box-shadow: var(--shadow-composer);
+  transition: box-shadow var(--transition);
+  position: relative;
+  z-index: 1;
+}
+.composer:focus-within {
+  box-shadow: var(--shadow-composer), 0 0 0 1px var(--jolkr-neutral-dark-10);
+}
+
+.emojiBtn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-muted);
+  flex-shrink: 0;
+  transition: background-color var(--transition), color var(--transition);
+}
+.emojiBtn:hover { background: var(--bg-dark-default); color: var(--icon-strong); }
+
+.input {
+  flex: 1;
+  min-height: 1.5rem;
+  max-height: 7.5rem;
+  overflow-y: auto;
+  outline: none;
+  color: var(--text-strong);
+  background: transparent;
+  scrollbar-width: none;
+  word-break: break-word;
+  padding: 0.0625rem 0;
+  line-height: 1.5625;
+}
+.input::-webkit-scrollbar { display: none; }
+.input:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.composerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+
+.composerBtn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-muted);
+  transition: background-color var(--transition), color var(--transition);
+}
+.composerBtn:hover { background: var(--bg-dark-default); color: var(--icon-strong); }
+
+/* ─── Floating format bar — centered above selected text ─── */
+.fmtBar {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.25rem 0.3125rem;
+  border-radius: 0.625rem;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  box-shadow: 0 4px 16px oklch(0% 0 0 / 0.14), 0 1px 4px oklch(0% 0 0 / 0.08);
+  z-index: 100;
+  animation: fmtBarIn 120ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.fmtBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.4375rem;
+  color: var(--text-muted);
+  transition: background-color var(--transition), color var(--transition);
+}
+.fmtBtn:hover {
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+}
+
+@keyframes fmtBarIn {
+  from { opacity: 0; transform: translate(-50%, -100%) scale(0.92); }
+  to   { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+
+.sendBtn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
+  transition: opacity var(--transition), transform var(--transition);
+}
+.sendBtn:hover  { opacity: 0.85; }
+.sendBtn:active { transform: scale(0.93); }

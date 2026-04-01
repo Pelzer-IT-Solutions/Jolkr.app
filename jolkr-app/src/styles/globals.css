@@ -1,0 +1,161 @@
+/* ─── Global resets & typography ─── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin:  0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100svh;
+  overflow: hidden;
+}
+
+body {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-strong);
+}
+
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  outline: none;
+}
+button:focus-visible {
+  outline: solid 0.1rem var(--jolkr-neutral-dark-60);
+  outline-offset: 0.05rem;
+  border-radius: 0.625rem;
+}
+
+svg { display: block; flex-shrink: 0; }
+
+/* ─── Typography utilities ─── */
+.txt-tiny   { font-size: 0.6875rem; line-height: 1.5; letter-spacing: -0.005em; }
+.txt-small  { font-size: 0.8125rem; line-height: 1.5; letter-spacing: -0.005em; }
+.txt-body   { font-size: 0.875rem;  line-height: 1.5; letter-spacing: -0.01em;  }
+.txt-large  { font-size: 0.9375rem; line-height: 1.5; letter-spacing: -0.01em;  }
+.txt-medium { font-weight: var(--medium-font-weight); }
+.txt-semibold { font-weight: 600; }
+.txt-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ─── Color mode transition ─── */
+/* Temporarily applied to <html> during light↔dark switches */
+.color-mode-transition,
+.color-mode-transition *,
+.color-mode-transition *::before,
+.color-mode-transition *::after {
+  transition:
+    background-color 300ms ease,
+    border-color     300ms ease,
+    box-shadow       300ms ease,
+    color            200ms ease,
+    fill             200ms ease,
+    stroke           200ms ease !important;
+}
+
+/* ─── Scrollbar styling ─── */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--jolkr-neutral-dark-10) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar       { width: 0.25rem; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--jolkr-neutral-dark-10); border-radius: 100px; }
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* ─── Markdown rendering in chat messages ─── */
+.md-inline-code {
+  padding: 0.125em 0.375em;
+  border-radius: 0.3125rem;
+  background: var(--bg-dark-muted);
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 0.8125em;
+  color: var(--text-strong);
+  word-break: break-word;
+}
+
+.md-codeblock {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.625rem;
+  background: var(--bg-dark-muted);
+  border: 1px solid var(--border-muted);
+  overflow-x: auto;
+}
+.md-codeblock code {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--text-strong);
+  white-space: pre;
+}
+
+.md-link {
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 100ms ease;
+}
+.md-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* ─── Staggered reveal animation ─── */
+/* Applied to individual list items on panel open / server switch.
+   CSS custom property --reveal-delay sets the per-item stagger offset. */
+@keyframes channelReveal {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0);
+  }
+}
+
+.revealing {
+  animation: channelReveal 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* ─── Scroll edge fades ─── */
+/* Mask-based content dissolves at scroll boundaries */
+.scroll-fade-vertical {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.scroll-fade-top {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
+}
+
+.scroll-fade-bottom {
+  mask-image: linear-gradient(to top, transparent 0%, black 10%);
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 10%);
+}
+
+.scroll-fade-horizontal {
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.scroll-fade-left {
+  mask-image: linear-gradient(to right, transparent 0%, black 10%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%);
+}
+
+.scroll-fade-right {
+  mask-image: linear-gradient(to left, transparent 0%, black 10%);
+  -webkit-mask-image: linear-gradient(to left, transparent 0%, black 10%);
+}

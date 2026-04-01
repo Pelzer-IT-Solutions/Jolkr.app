@@ -18,9 +18,7 @@ export {
   mlkemEncapsulate,
   mlkemDecapsulate,
   deriveMessageKey,
-  deriveMessageKeyLegacy,
   deriveHybridMessageKey,
-  deriveHybridMessageKeyLegacy,
   encryptMessage,
   decryptMessage,
   toBase64,
@@ -34,7 +32,6 @@ export {
   generateKeySet,
   deriveE2EESeed,
   generateKeySetFromSeed,
-  generateKeySetFromSeedLegacy,
 } from './e2ee';
 
 export type { EncryptedPayload } from './e2ee';

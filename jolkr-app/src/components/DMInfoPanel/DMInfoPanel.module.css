@@ -1,0 +1,132 @@
+.panel {
+  width: var(--sidebar-width);
+  border-left: 1px solid var(--border-muted);
+  background: var(--bg-muted);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: width var(--transition), border-color var(--transition);
+}
+.panel.hidden {
+  width: 0;
+  border-left-color: transparent;
+}
+
+.header {
+  height: var(--bar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 0.875rem;
+  border-bottom: 1px solid var(--border-muted);
+  flex-shrink: 0;
+}
+
+.title {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.375rem 0.3125rem 1rem;
+  display: flex;
+  flex-direction: column;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 1.25rem,
+    black calc(100% - 1.25rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 1.25rem,
+    black calc(100% - 1.25rem),
+    transparent 100%
+  );
+}
+
+/* ── Section headers ── */
+.sectionTitle {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.75rem 0.5rem 0.25rem;
+}
+
+/* ── Pinned messages ── */
+.pinnedItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  transition: background-color var(--transition);
+}
+.pinnedItem:hover { background: var(--bg-dark-muted); }
+.pinnedItem svg {
+  color: var(--icon-muted);
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.pinnedMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+.pinnedAuthor  { color: var(--text-strong); display: block; }
+.pinnedPreview { color: var(--text-faint); display: block; }
+.pinnedTime    { color: var(--text-faint); flex-shrink: 0; white-space: nowrap; margin-left: auto; }
+
+/* ── Shared files ── */
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  transition: background-color var(--transition);
+}
+.fileItem:hover { background: var(--bg-dark-muted); }
+
+.fileIcon { font-size: 1rem; flex-shrink: 0; }
+
+.fileMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+.fileName { color: var(--text-muted); display: block; }
+.fileSize  { color: var(--text-faint); }
+
+/* ── Links ── */
+.linkItem {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  color: var(--accent-text);
+  transition: background-color var(--transition);
+}
+.linkItem:hover { background: var(--bg-dark-muted); }
+.linkItem svg { flex-shrink: 0; color: var(--accent); }

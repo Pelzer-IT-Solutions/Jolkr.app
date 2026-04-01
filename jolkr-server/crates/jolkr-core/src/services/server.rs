@@ -113,8 +113,7 @@ impl ServerService {
         )
         .await?;
 
-        // H10: Add owner as the first member
-        MemberRepo::add_member(pool, server_id, owner_id).await?;
+        // Owner is already added as member by ServerRepo::create_server
 
         // Auto-create default @everyone role
         let role_id = Uuid::new_v4();

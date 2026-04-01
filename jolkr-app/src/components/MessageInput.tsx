@@ -282,7 +282,7 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
         if (!encrypted) {
           throw new Error('Could not encrypt message. The recipient may need to log in first to set up encryption keys.');
         }
-        msg = await sendDmMessage(channelId, null, replyTo?.id, encrypted.encryptedContent, encrypted.nonce);
+        msg = await sendDmMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce);
       } else {
         msg = await sendMessage(channelId, msgContent, replyTo?.id);
       }

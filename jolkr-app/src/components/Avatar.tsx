@@ -1,16 +1,23 @@
 import { useState, useRef } from 'react';
-import { rewriteStorageUrl } from '../platform/config';
-import * as api from '../api/client';
+import { getApiBaseUrl } from '../platform/config';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 interface AvatarProps {
+  /** Presigned S3 URL (legacy) or ignored when userId is set */
   url?: string | null;
   name: string;
   size?: AvatarSize | number;
   status?: string | null;
+  /** When set, avatar is loaded via /api/avatars/:userId (cached, no presign) */
   userId?: string;
   className?: string;
+}
+
+/** Build a direct avatar URL that the backend serves with cache headers. */
+function avatarEndpoint(userId: string): string {
+  const base = getApiBaseUrl()  // "/api" for web, "https://jolkr.app/api" for Tauri
+  return `${base}/avatars/${userId}`
 }
 
 /** Map legacy numeric sizes to named variants */
@@ -41,16 +48,16 @@ const statusColors: Record<string, string> = {
 };
 
 export default function Avatar({ url, name, size = 'lg', status, userId, className }: AvatarProps) {
-  const [resolvedUrl, setResolvedUrl] = useState(() => rewriteStorageUrl(url));
+  // Prefer the dedicated avatar endpoint when we have a userId
+  const imgSrc = userId ? avatarEndpoint(userId) : (url ?? undefined);
   const [imgError, setImgError] = useState(false);
-  const retriedRef = useRef(false);
-  const prevUrlRef = useRef(url);
+  const prevKeyRef = useRef(userId ?? url);
 
-  if (url !== prevUrlRef.current) {
-    prevUrlRef.current = url;
-    setResolvedUrl(rewriteStorageUrl(url));
+  // Reset error state when the identity changes
+  const currentKey = userId ?? url;
+  if (currentKey !== prevKeyRef.current) {
+    prevKeyRef.current = currentKey;
     setImgError(false);
-    retriedRef.current = false;
   }
 
   const initials = (name.trim()
@@ -61,34 +68,19 @@ export default function Avatar({ url, name, size = 'lg', status, userId, classNa
     .slice(0, 2)
     .toUpperCase()) || '?';
 
-  const handleError = async () => {
-    if (!retriedRef.current && userId) {
-      retriedRef.current = true;
-      try {
-        const freshUser = await api.getUser(userId);
-        const freshUrl = rewriteStorageUrl(freshUser.avatar_url);
-        if (freshUrl) {
-          setResolvedUrl(freshUrl);
-          return;
-        }
-      } catch { /* fall through */ }
-    }
-    setImgError(true);
-  };
-
   const resolved = resolveSize(size);
   const s = sizeMap[resolved];
-  const showImage = resolvedUrl && !imgError;
+  const showImage = imgSrc && !imgError;
 
   return (
     <div className={`relative inline-block shrink-0 ${s.container} ${className ?? ''}`}>
       {showImage ? (
         <img
-          src={resolvedUrl}
+          src={imgSrc}
           alt={name}
           className={`${s.container} rounded-full object-cover`}
           loading="lazy"
-          onError={handleError}
+          onError={() => setImgError(true)}
         />
       ) : (
         <div className={`${s.container} rounded-full bg-accent flex items-center justify-center text-bg font-semibold select-none ${s.font}`}>

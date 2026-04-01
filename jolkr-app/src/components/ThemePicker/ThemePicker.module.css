@@ -1,0 +1,166 @@
+/* ─── Trigger ─── */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  color: var(--icon-muted);
+  transition: background-color var(--transition), color var(--transition);
+}
+.trigger:hover { background: var(--bg-dark-default); color: var(--icon-strong); }
+
+/* ─── Popover card ─── */
+.picker {
+  position: fixed;
+  width: 17.5rem;
+  border-radius: 1.25rem;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  overflow: hidden;
+  box-shadow:
+    0 12px 40px oklch(0% 0 0 / 0.16),
+    0 4px 12px  oklch(0% 0 0 / 0.08);
+  z-index: 9999;
+  animation: popIn 160ms cubic-bezier(0.34, 1.25, 0.64, 1) both;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.93) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* ─── Gradient canvas ─── */
+.canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+/* Subtle dot grid */
+.dotGrid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, oklch(20% 0 0 / 0.12) 0.6px, transparent 0.6px);
+  background-size: 13px 13px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Canvas overlay buttons ─── */
+.canvasBtn {
+  position: absolute;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(100% 0 0 / 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--text-muted);
+  box-shadow: 0 1px 4px oklch(0% 0 0 / 0.12);
+  z-index: 2;
+  cursor: pointer;
+  transition: background-color 100ms ease, transform 100ms ease;
+}
+.canvasBtn:hover { background: oklch(100% 0 0 / 0.92); transform: scale(1.06); }
+
+/* ─── Orb drag handles ─── */
+.orbHandle {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow:
+    0 2px 10px oklch(0% 0 0 / 0.24),
+    0 0 0 0.5px oklch(0% 0 0 / 0.08);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  z-index: 3;
+  transition: box-shadow 100ms ease, transform 100ms ease;
+}
+.orbHandle:hover  { box-shadow: 0 4px 16px oklch(0% 0 0 / 0.3), 0 0 0 0.5px oklch(0% 0 0 / 0.08); }
+.orbHandle:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.15); }
+
+/* ─── Preset swatches ─── */
+.presets {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem 0.75rem;
+  overflow-x: auto;
+}
+
+.preset {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  outline: none;
+  transition: transform 100ms ease;
+}
+.preset:hover    { transform: scale(1.18); }
+
+.presetNone {
+  background: oklch(60% 0 0);
+  position: relative;
+  overflow: hidden;
+}
+.presetNone::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 42%,
+    oklch(80% 0 0) 42%,
+    oklch(80% 0 0) 58%,
+    transparent 58%
+  );
+}
+
+.presetActive    {
+  border-color: var(--bg-loud);
+  box-shadow: 0 0 0 1.5px var(--text-muted);
+  transform: scale(1.1);
+}
+
+/* ─── Light / Auto / Dark mode footer ─── */
+.modeFooter {
+  padding: 0 0.625rem 0.75rem;
+}
+
+.modeSegment {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  background: var(--bg-dark-muted);
+  border-radius: 0.5rem;
+  padding: 0.1875rem;
+}
+
+.modeBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3125rem;
+  height: 1.625rem;
+  border-radius: 0.3125rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-faint);
+  transition: background-color var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.modeBtn:hover { color: var(--text-muted); }
+.modeBtn.modeBtnActive {
+  background: var(--bg-shout);
+  color: var(--text-strong);
+  box-shadow: 0 1px 3px var(--jolkr-neutral-dark-8), 0 0 0 0.5px var(--jolkr-neutral-dark-6);
+}

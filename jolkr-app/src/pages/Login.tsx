@@ -5,8 +5,6 @@ import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
-import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -31,7 +29,7 @@ export default function Login() {
           deviceId = crypto.randomUUID();
           localStorage.setItem('jolkr_e2ee_device_id', deviceId);
         }
-        initE2EE(deviceId, seed).catch(console.warn);
+        await initE2EE(deviceId, seed).catch(console.warn);
       }
 
       // Handle pending deep-link invite
@@ -51,52 +49,142 @@ export default function Login() {
   };
 
   return (
-    <div className="h-full flex items-center justify-center bg-bg">
-      <div className="bg-surface rounded-3xl p-8 w-105 max-w-[90vw] border border-divider shadow-popup animate-modal-scale">
-        <div className="flex justify-center mb-6">
-          <div className="size-14 rounded-2xl bg-accent-muted flex items-center justify-center">
-            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" className="w-8 h-8" />
-          </div>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <div style={styles.iconWrap}>
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" style={{ width: 32, height: 32 }} />
         </div>
-        <h1 className="text-2xl font-bold text-text-primary text-center mb-1.5">Welcome back!</h1>
-        <p className="text-text-secondary text-center mb-6 text-sm">We're so excited to see you again!</p>
+        <h1 style={styles.title}>Welcome back!</h1>
+        <p style={styles.subtitle}>We're so excited to see you again!</p>
 
-        {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
+        {error && <div style={styles.error}>{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            id="login-email"
-            label={<>Email <span className="text-danger">*</span></>}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-            inputMode="email"
-          />
-          <div>
-            <Input
-              id="login-password"
-              label={<>Password <span className="text-danger">*</span></>}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <label style={styles.label}>
+            <span style={styles.labelText}>Email <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+              inputMode="email"
+              style={styles.input}
+            />
+          </label>
+          <label style={styles.label}>
+            <span style={styles.labelText}>Password <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
+            <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              style={styles.input}
             />
-            <Link to="/forgot-password" className="text-accent hover:underline text-xs mt-1 inline-block">
-              Forgot your password?
-            </Link>
-          </div>
-          <Button type="submit" disabled={loading} fullWidth>
+            <Link to="/forgot-password" style={styles.link}>Forgot your password?</Link>
+          </label>
+          <button type="submit" disabled={loading} style={styles.button}>
             {loading ? 'Logging in...' : 'Log In'}
-          </Button>
+          </button>
         </form>
 
-        <p className="text-sm text-text-tertiary mt-4">
+        <p style={styles.footer}>
           Need an account?{' '}
-          <Link to="/register" className="text-accent hover:underline">Register</Link>
+          <Link to="/register" style={styles.link}>Register</Link>
         </p>
       </div>
     </div>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'var(--bg-default)',
+  },
+  card: {
+    background: 'var(--surface-raised)',
+    borderRadius: '1.25rem',
+    padding: '2rem',
+    width: '26rem',
+    maxWidth: '90vw',
+    border: '1px solid var(--border-muted)',
+    boxShadow: 'var(--shadow-elevation-large)',
+  },
+  iconWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '1.5rem',
+  },
+  title: {
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    color: 'var(--text-shout)',
+    textAlign: 'center',
+    marginBottom: '0.375rem',
+  },
+  subtitle: {
+    color: 'var(--text-muted)',
+    textAlign: 'center',
+    marginBottom: '1.5rem',
+    fontSize: '0.875rem',
+  },
+  error: {
+    background: 'oklch(55% 0.2 25 / 0.1)',
+    color: 'oklch(55% 0.2 25)',
+    fontSize: '0.875rem',
+    padding: '0.75rem',
+    borderRadius: '0.5rem',
+    border: '1px solid oklch(55% 0.2 25 / 0.2)',
+    marginBottom: '1rem',
+  },
+  label: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.375rem',
+  },
+  labelText: {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: 'var(--text-strong)',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.02em',
+  },
+  input: {
+    background: 'var(--surface-field)',
+    border: '1px solid var(--border-muted)',
+    borderRadius: '0.5rem',
+    padding: '0.625rem 0.75rem',
+    fontSize: '0.875rem',
+    color: 'var(--text-default)',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box' as const,
+  },
+  button: {
+    background: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '0.5rem',
+    padding: '0.625rem',
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    width: '100%',
+    marginTop: '0.5rem',
+  },
+  link: {
+    color: 'var(--accent)',
+    fontSize: '0.75rem',
+    textDecoration: 'none',
+    marginTop: '0.25rem',
+  },
+  footer: {
+    fontSize: '0.875rem',
+    color: 'var(--text-muted)',
+    marginTop: '1rem',
+  },
+};

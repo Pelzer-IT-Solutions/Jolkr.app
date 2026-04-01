@@ -38,8 +38,8 @@ interface MessagesState {
 
   fetchMessages: (channelId: string, isDm?: boolean) => Promise<void>;
   fetchOlder: (channelId: string, isDm?: boolean) => Promise<void>;
-  sendMessage: (channelId: string, content: string, replyToId?: string) => Promise<Message>;
-  sendDmMessage: (dmId: string, content: string | null, replyToId?: string, encryptedContent?: string, nonce?: string) => Promise<Message>;
+  sendMessage: (channelId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
+  sendDmMessage: (dmId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean) => Promise<void>;
   deleteMessage: (messageId: string, channelId: string, isDm?: boolean) => Promise<void>;
   addMessage: (channelId: string, message: Message) => void;
@@ -64,8 +64,8 @@ function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
     id: m.id as string,
     channel_id: (m.dm_channel_id as string) ?? dmId,
     author_id: m.author_id as string,
-    content: (m.content as string) ?? '',
-    encrypted_content: (m.encrypted_content as string) ?? null,
+    // content = encrypted_content from backend (all messages are E2EE)
+    content: (m.encrypted_content as string) ?? (m.content as string) ?? '',
     nonce: (m.nonce as string) ?? null,
     created_at: m.created_at as string,
     updated_at: (m.updated_at as string) ?? null,
@@ -155,17 +155,12 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
-  sendMessage: async (channelId, content, replyToId) => {
-    return api.sendMessage(channelId, content, undefined, replyToId);
+  sendMessage: async (channelId, content, replyToId, nonce) => {
+    return api.sendMessage(channelId, content, nonce, replyToId);
   },
 
-  sendDmMessage: async (dmId, content, replyToId, encryptedContent, nonce) => {
-    return api.sendDmMessage(dmId, {
-      content: content ?? undefined,
-      encrypted_content: encryptedContent,
-      nonce,
-      reply_to_id: replyToId,
-    });
+  sendDmMessage: async (dmId, content, replyToId, nonce) => {
+    return api.sendDmMessage(dmId, { content, nonce, reply_to_id: replyToId });
   },
 
   editMessage: async (messageId, channelId, content, isDm) => {
@@ -340,8 +335,8 @@ function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
     id: raw.id as string,
     channel_id: channelId,
     author_id: (raw.author_id as string) ?? '',
-    content: (raw.content as string) ?? '',
-    encrypted_content: (raw.encrypted_content as string) ?? null,
+    // content = encrypted_content from backend (all messages are E2EE)
+    content: (raw.encrypted_content as string) ?? (raw.content as string) ?? '',
     nonce: (raw.nonce as string) ?? null,
     created_at: (raw.created_at as string) ?? new Date().toISOString(),
     updated_at: (raw.updated_at as string) ?? null,

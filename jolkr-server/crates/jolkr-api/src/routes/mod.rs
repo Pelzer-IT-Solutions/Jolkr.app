@@ -1,4 +1,5 @@
 pub mod attachments;
+pub mod avatars;
 pub mod health;
 pub mod audit_log;
 pub mod auth;
@@ -107,6 +108,13 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
     auth_limiter.spawn_cleanup();
     api_limiter.spawn_cleanup();
     webhook_limiter.spawn_cleanup();
+
+    // Public image routes (no auth, rate-limited, long cache)
+    let avatar_routes = Router::new()
+        .route("/api/avatars/:user_id", get(avatars::get_user_avatar))
+        .route("/api/icons/:server_id", get(avatars::get_server_icon))
+        .layer(axum_mw::from_fn(rate_limit_middleware))
+        .layer(Extension(api_limiter.clone()));
 
     // Auth routes with strict rate limiting
     // Layer order: last added = outermost (runs first)
@@ -352,6 +360,7 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
     let timed_routes = Router::new()
         .merge(auth_routes)
         .merge(api_routes)
+        .merge(avatar_routes)
         // ── Webhook execution (unauthenticated, token-based, rate limited) ──
         .merge(
             Router::new()

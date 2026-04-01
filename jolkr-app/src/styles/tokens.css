@@ -1,0 +1,268 @@
+/* ─── Design tokens ─── */
+:root {
+  /* ── Theme hue — drives the entire palette tint ── */
+  --theme-hue: 136.69;
+
+  /* Base palette — tinted neutrals that respond to theme-hue */
+  /* Low chroma creates "neutral with character" - subtle tint matching the theme */
+  --jolkr-base-heavy:        oklch(87.92% 0.066 var(--theme-hue));
+  --jolkr-base-heavy-loud:   oklch(87.92% 0.066 var(--theme-hue) / 0.96);
+  --jolkr-base-heavy-strong: oklch(87.92% 0.066 var(--theme-hue) / 0.72);
+  --jolkr-base-heavy-muted:  oklch(87.92% 0.066 var(--theme-hue) / 0.4);
+
+  --jolkr-base-light:         oklch(94.00% 0.032 var(--theme-hue));
+  --jolkr-base-light-loud:    oklch(94.00% 0.032 var(--theme-hue) / 0.96);
+  --jolkr-base-light-strong:  oklch(94.00% 0.032 var(--theme-hue) / 0.8);
+  --jolkr-base-light-default: oklch(94.00% 0.032 var(--theme-hue) / 0.7);
+  --jolkr-base-light-muted:   oklch(94.00% 0.032 var(--theme-hue) / 0.6);
+
+  /* Neutral dark scale — low chroma tinted greys */
+  --jolkr-neutral-dark-2:    oklch(25.42% 0.004 var(--theme-hue) / 0.02);
+  --jolkr-neutral-dark-4:    oklch(25.42% 0.004 var(--theme-hue) / 0.04);
+  --jolkr-neutral-dark-6:    oklch(25.42% 0.004 var(--theme-hue) / 0.06);
+  --jolkr-neutral-dark-8:    oklch(25.42% 0.004 var(--theme-hue) / 0.08);
+  --jolkr-neutral-dark-10:   oklch(25.42% 0.004 var(--theme-hue) / 0.1);
+  --jolkr-neutral-dark-16:   oklch(25.42% 0.004 var(--theme-hue) / 0.16);
+  --jolkr-neutral-dark-20:   oklch(25.42% 0.004 var(--theme-hue) / 0.2);
+  --jolkr-neutral-dark-30:   oklch(25.42% 0.004 var(--theme-hue) / 0.3);
+  --jolkr-neutral-dark-40:   oklch(25.42% 0.004 var(--theme-hue) / 0.4);
+  --jolkr-neutral-dark-50:   oklch(25.42% 0.004 var(--theme-hue) / 0.5);
+  --jolkr-neutral-dark-60:   oklch(25.42% 0.004 var(--theme-hue) / 0.6);
+  --jolkr-neutral-dark-70:   oklch(25.42% 0.004 var(--theme-hue) / 0.7);
+  --jolkr-neutral-dark-80:   oklch(25.42% 0.004 var(--theme-hue) / 0.8);
+  --jolkr-neutral-dark-90:   oklch(25.42% 0.004 var(--theme-hue) / 0.9);
+  --jolkr-neutral-dark-100:  oklch(25.42% 0.004 var(--theme-hue));
+  --jolkr-neutral-dark-1000: #000;
+
+  /* Neutral light scale — low chroma tinted greys */
+  --jolkr-neutral-light-2:    oklch(97.92% 0.011 var(--theme-hue) / 0.02);
+  --jolkr-neutral-light-4:    oklch(97.92% 0.011 var(--theme-hue) / 0.04);
+  --jolkr-neutral-light-8:    oklch(97.92% 0.011 var(--theme-hue) / 0.08);
+  --jolkr-neutral-light-20:   oklch(97.92% 0.011 var(--theme-hue) / 0.2);
+  --jolkr-neutral-light-40:   oklch(97.92% 0.011 var(--theme-hue) / 0.4);
+  --jolkr-neutral-light-80:   oklch(97.92% 0.011 var(--theme-hue) / 0.8);
+  --jolkr-neutral-light-90:   oklch(97.92% 0.011 var(--theme-hue) / 0.9);
+  --jolkr-neutral-light-1000: #fff;
+
+  /* Semantic backgrounds */
+  --bg-shout:   var(--jolkr-neutral-light-1000);
+  --bg-loud:    var(--jolkr-neutral-light-90);
+  --bg-strong:  var(--jolkr-neutral-light-80);
+  --bg-default: var(--jolkr-neutral-light-40);
+  --bg-muted:   var(--jolkr-neutral-light-20);
+  --bg-faint:   var(--jolkr-neutral-light-2);
+
+  --bg-dark-shout:   var(--jolkr-neutral-dark-1000);
+  --bg-dark-loud:    var(--jolkr-neutral-dark-20);
+  --bg-dark-strong:  var(--jolkr-neutral-dark-8);
+  --bg-dark-default: var(--jolkr-neutral-dark-6);
+  --bg-dark-muted:   var(--jolkr-neutral-dark-4);
+  --bg-dark-faint:   var(--jolkr-neutral-dark-2);
+
+  /* Semantic text */
+  --text-shout:   var(--jolkr-neutral-dark-100);
+  --text-loud:    var(--jolkr-neutral-dark-90);
+  --text-strong:  var(--jolkr-neutral-dark-80);
+  --text-default: var(--jolkr-neutral-dark-70);
+  --text-muted:   var(--jolkr-neutral-dark-50);
+  --text-faint:   var(--jolkr-neutral-dark-40);
+
+  /* Icons */
+  --icon-loud:    var(--jolkr-neutral-dark-90);
+  --icon-strong:  var(--jolkr-neutral-dark-70);
+  --icon-default: var(--jolkr-neutral-dark-60);
+  --icon-muted:   var(--jolkr-neutral-dark-40);
+
+  /* Borders */
+  --border-loud:    var(--jolkr-neutral-dark-16);
+  --border-strong:  var(--jolkr-neutral-dark-10);
+  --border-default: var(--jolkr-neutral-dark-8);
+  --border-muted:   var(--jolkr-neutral-dark-6);
+
+  /* Raised glass surface gradient */
+  --surface-raised:
+    linear-gradient(to bottom, var(--bg-shout) 0%, var(--bg-strong) 100%),
+    linear-gradient(to bottom, var(--bg-loud)  0%, var(--bg-loud)   100%);
+
+  /* Shadows — semantic elevation system */
+  /* Panel: main shell container shadow */
+  --shadow-panel:
+    0 0 6px 0 var(--jolkr-neutral-dark-8),
+    0 1px 3px 0 var(--jolkr-neutral-dark-4),
+    0 0.5px 0.5px 0 var(--jolkr-neutral-dark-6);
+
+  /* Tab: navigation items with hairline border + lift */
+  --shadow-tab:
+    0 0 0 0.75px var(--jolkr-neutral-dark-4),
+    0 1px 3px 0 var(--jolkr-neutral-dark-4),
+    0 2px 6px -1px var(--jolkr-neutral-dark-6);
+
+  /* Navigation x-small: inset top highlight for active/selected items */
+  /* Creates "lifted" feel with inner glow on top edge */
+  --shadow-navigation-x-small:
+    inset 0 0.75px 0.75px 0 var(--jolkr-neutral-light-40),
+    0 1px 2px 0 var(--jolkr-neutral-dark-4),
+    0 0.5px 1px 0 var(--jolkr-neutral-dark-2);
+
+  /* Elevation scale: small, medium, large for floating surfaces */
+  --shadow-elevation-small:
+    0 0 2px 0 var(--jolkr-neutral-dark-4),
+    0 1px 2px 0 var(--jolkr-neutral-dark-4);
+  --shadow-elevation-medium:
+    0 0 6px 0 var(--jolkr-neutral-dark-6),
+    0 2px 8px 0 var(--jolkr-neutral-dark-4);
+  --shadow-elevation-large:
+    0 0 12px 0 var(--jolkr-neutral-dark-6),
+    0 8px 24px 0 var(--jolkr-neutral-dark-8);
+
+  /* Composer: floating input with layered lift */
+  --shadow-composer:
+    0 32px 48px hsla(0, 0%, 3.9%, 0.02),
+    0 16px 32px hsla(0, 0%, 3.9%, 0.04),
+    0 8px 24px  hsla(0, 0%, 3.9%, 0.02),
+    0 4px 12px  hsla(0, 0%, 3.9%, 0.02),
+    0 0 0 0.75px hsla(0, 0%, 3.9%, 0.06);
+
+  /* Tooltip: subtle lift for popovers */
+  --shadow-tooltip:
+    0 0 2px 0 var(--jolkr-neutral-dark-4),
+    0 4px 6px 0 var(--jolkr-neutral-dark-4),
+    0 10px 24px 0 var(--jolkr-neutral-dark-4);
+
+  /* Easings — extended palette for richer motion */
+  --ease-out-quart:      cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-out-expo:       cubic-bezier(0.19,  1,    0.22, 1);
+  --ease-in-out-quad:    cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  --ease-out-cubic:      cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-out-quint:      cubic-bezier(0.23,  1,    0.32, 1);
+  --ease-spring-subtle:  cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* Layout */
+  --gap:               0.5rem;
+  --sidebar-width:     240px;
+  --member-width:      196px;
+  --bar-height:        44px;
+  --transition:        150ms ease;
+  --medium-font-weight: 450;
+
+  /* Solid opaque surfaces — for modals/portals that render over the body */
+  /* Hierarchy: nav (darkest/furthest) → content → field → raised (lightest/closest) */
+  /* Tinted neutrals that respond to theme-hue */
+  --surface-nav:     oklch(93%   0.004 var(--theme-hue));
+  --surface-content: oklch(96%   0.004 var(--theme-hue));
+  --surface-field:   oklch(97.5% 0.004 var(--theme-hue));
+  --surface-raised:  oklch(99%   0.004 var(--theme-hue));
+
+  /* Jolkr accent — driven by the server theme hue */
+  --accent:        oklch(55% 0.18 var(--theme-hue));
+  --accent-muted:  oklch(55% 0.18 var(--theme-hue) / 0.12);
+  --accent-strong: oklch(55% 0.18 var(--theme-hue) / 0.24);
+  --accent-text:   oklch(38% 0.14 var(--theme-hue));
+}
+
+/* ─── Dark mode overrides ────────────────────────────────────────────── */
+/*
+ * Strategy: shift the two neutral scales so that every semantic variable
+ * (--bg-*, --text-*, --icon-*, --border-*) and every direct palette
+ * reference adapts automatically while preserving elevation hierarchy.
+ *
+ * "dark" neutrals (used for text / icons / borders in light mode)
+ *   → become near-white (oklch 99%) in dark mode — text stays light-on-dark.
+ *
+ * "light" neutrals (used for surfaces / backgrounds in light mode)
+ *   → shift to a dark-range raised surface (oklch 22%) in dark mode.
+ *   The alpha steps (0.02 → solid) are kept, so faint surfaces barely rise
+ *   above the ~14% page background while shout surfaces land at ~22% —
+ *   the same elevated-is-lighter direction as light mode.
+ *
+ * Shadows and --surface-raised are overridden explicitly because their
+ * visual role doesn't change with the palette.
+ */
+:root.dark {
+  /* ── Neutral dark → near-white (tinted) ── */
+  --jolkr-neutral-dark-2:    oklch(99% 0.004 var(--theme-hue) / 0.02);
+  --jolkr-neutral-dark-4:    oklch(99% 0.004 var(--theme-hue) / 0.04);
+  --jolkr-neutral-dark-6:    oklch(99% 0.004 var(--theme-hue) / 0.06);
+  --jolkr-neutral-dark-8:    oklch(99% 0.004 var(--theme-hue) / 0.08);
+  --jolkr-neutral-dark-10:   oklch(99% 0.004 var(--theme-hue) / 0.10);
+  --jolkr-neutral-dark-16:   oklch(99% 0.004 var(--theme-hue) / 0.16);
+  --jolkr-neutral-dark-20:   oklch(99% 0.004 var(--theme-hue) / 0.20);
+  --jolkr-neutral-dark-30:   oklch(99% 0.004 var(--theme-hue) / 0.30);
+  --jolkr-neutral-dark-40:   oklch(99% 0.004 var(--theme-hue) / 0.40);
+  --jolkr-neutral-dark-50:   oklch(99% 0.004 var(--theme-hue) / 0.50);
+  --jolkr-neutral-dark-60:   oklch(99% 0.004 var(--theme-hue) / 0.60);
+  --jolkr-neutral-dark-70:   oklch(99% 0.004 var(--theme-hue) / 0.70);
+  --jolkr-neutral-dark-80:   oklch(99% 0.004 var(--theme-hue) / 0.80);
+  --jolkr-neutral-dark-90:   oklch(99% 0.004 var(--theme-hue) / 0.90);
+  --jolkr-neutral-dark-100:  oklch(99% 0.004 var(--theme-hue));
+  --jolkr-neutral-dark-1000: #fff;
+
+  /* ── Neutral light → raised dark surface (tinted) ── */
+  --jolkr-neutral-light-2:    oklch(22% 0.004 var(--theme-hue) / 0.02);
+  --jolkr-neutral-light-4:    oklch(22% 0.004 var(--theme-hue) / 0.04);
+  --jolkr-neutral-light-8:    oklch(22% 0.004 var(--theme-hue) / 0.08);
+  --jolkr-neutral-light-20:   oklch(22% 0.004 var(--theme-hue) / 0.20);
+  --jolkr-neutral-light-40:   oklch(22% 0.004 var(--theme-hue) / 0.40);
+  --jolkr-neutral-light-80:   oklch(22% 0.004 var(--theme-hue) / 0.80);
+  --jolkr-neutral-light-90:   oklch(22% 0.004 var(--theme-hue) / 0.90);
+  --jolkr-neutral-light-1000: oklch(27% 0.004 var(--theme-hue));
+
+  /* ── Raised glass surface — dark glass gradient (tinted) ── */
+  --surface-raised:
+    linear-gradient(
+      to bottom,
+      oklch(18% 0.004 var(--theme-hue)) 0%,
+      oklch(13% 0.004 var(--theme-hue)) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      oklch(15% 0.004 var(--theme-hue)) 0%,
+      oklch(15% 0.004 var(--theme-hue)) 100%
+    );
+
+  /* ── Navigation x-small — dark mode variant ── */
+  --shadow-navigation-x-small:
+    inset 0 0.75px 0.75px 0 var(--jolkr-neutral-light-40),
+    0 1px 2px 0 rgba(0, 0, 0, 0.24),
+    0 0.5px 1px 0 rgba(0, 0, 0, 0.14);
+
+  /* ── Elevation — dark mode variants ── */
+  --shadow-elevation-small:
+    0 0 2px 0 rgba(0, 0, 0, 0.24),
+    0 1px 2px 0 rgba(0, 0, 0, 0.20);
+  --shadow-elevation-medium:
+    0 0 6px 0 rgba(0, 0, 0, 0.24),
+    0 2px 8px 0 rgba(0, 0, 0, 0.20);
+  --shadow-elevation-large:
+    0 0 12px 0 rgba(0, 0, 0, 0.24),
+    0 8px 24px 0 rgba(0, 0, 0, 0.28);
+
+  /* ── Shadows — reduced opacity for dark mode ── */
+  --shadow-panel:
+    0 0 6px 0   rgba(0, 0, 0, 0.12),
+    0 1px 3px 0 rgba(0, 0, 0, 0.08),
+    0 0.5px 0.5px 0 rgba(0, 0, 0, 0.10);
+  --shadow-tab:
+    0 0 0 0.75px rgba(0, 0, 0, 0.08),
+    0 1px 2px 0  rgba(0, 0, 0, 0.08),
+    0 1px 4px -1px rgba(0, 0, 0, 0.10);
+  --shadow-composer:
+    0 32px 48px   rgba(0, 0, 0, 0.08),
+    0 16px 32px   rgba(0, 0, 0, 0.10),
+    0 8px  24px   rgba(0, 0, 0, 0.07),
+    0 4px  12px   rgba(0, 0, 0, 0.06),
+    0 0 0 0.75px  rgba(0, 0, 0, 0.10);
+  --shadow-tooltip:
+    0 0 2px  0  rgba(0, 0, 0, 0.12),
+    0 4px 6px 0 rgba(0, 0, 0, 0.10),
+    0 10px 24px 0 rgba(0, 0, 0, 0.10);
+
+  /* ── Solid surfaces — dark equivalents (tinted) ── */
+  --surface-nav:     oklch(11% 0.004 var(--theme-hue));
+  --surface-content: oklch(14% 0.004 var(--theme-hue));
+  --surface-field:   oklch(18% 0.004 var(--theme-hue));
+  --surface-raised:  oklch(21% 0.004 var(--theme-hue));
+
+  /* ── Accent text — brighter in dark for readability ── */
+  --accent-text: oklch(72% 0.14 var(--theme-hue));
+}

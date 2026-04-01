@@ -63,8 +63,7 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const { displayContent, isEncrypted } = useDecryptedContent(
-    message.content, message.encrypted_content, message.nonce, isDm,
-    user?.id === message.author_id, channelId,
+    message.content, message.nonce, isDm, channelId,
   );
   const hasText = !!displayContent && displayContent.trim().length > 0 && displayContent !== '\u200B';
 

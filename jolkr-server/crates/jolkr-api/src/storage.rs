@@ -107,6 +107,29 @@ impl Storage {
         }
     }
 
+    /// Download an object's bytes and content-type.
+    pub async fn get_object(&self, key: &str) -> Result<(Vec<u8>, String), String> {
+        let response = self.bucket
+            .get_object(key)
+            .await
+            .map_err(|e| format!("S3 get failed: {e}"))?;
+
+        if response.status_code() == 404 {
+            return Err("not_found".to_string());
+        }
+        if response.status_code() < 200 || response.status_code() >= 300 {
+            return Err(format!("S3 get failed with status {}", response.status_code()));
+        }
+
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "application/octet-stream".to_string());
+
+        Ok((response.to_vec(), content_type))
+    }
+
     /// Generate a presigned download URL (valid for `expires_secs` seconds).
     pub async fn presign_get(&self, key: &str, expires_secs: u32) -> Result<String, String> {
         self.bucket

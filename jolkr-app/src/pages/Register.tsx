@@ -3,8 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
-import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -20,7 +18,6 @@ export default function Register() {
     try {
       await register(email, username, password);
 
-      // Init E2EE with deterministic keys derived from password + userId (PBKDF2)
       const userId = useAuthStore.getState().user?.id;
       if (userId) {
         const seed = await deriveE2EESeed(password, userId);
@@ -37,70 +34,151 @@ export default function Register() {
   };
 
   return (
-    <div className="h-full flex items-center justify-center bg-bg">
-      <div className="bg-surface rounded-3xl p-8 w-105 max-w-[90vw] border border-divider shadow-popup animate-modal-scale">
-        <div className="flex justify-center mb-6">
-          <div className="size-14 rounded-2xl bg-accent-muted flex items-center justify-center">
-            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" className="w-8 h-8" />
-          </div>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <div style={styles.iconWrap}>
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" style={{ width: 32, height: 32 }} />
         </div>
-        <h1 className="text-2xl font-bold text-text-primary text-center mb-1.5">Create an account</h1>
-        <p className="text-text-secondary text-center mb-6 text-sm">Join Jolkr today</p>
+        <h1 style={styles.title}>Create an account</h1>
+        <p style={styles.subtitle}>Join Jolkr today</p>
 
-        {error && <div role="alert" className="bg-danger/10 text-danger text-sm p-3 rounded-lg border border-danger/20 mb-4">{error}</div>}
+        {error && <div style={styles.error}>{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            id="register-email"
-            label={<>Email <span className="text-danger">*</span></>}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-            inputMode="email"
-          />
-          <Input
-            id="register-username"
-            label={<>Username <span className="text-danger">*</span></>}
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-          <div>
-            <Input
-              id="register-password"
-              label={<>Password <span className="text-danger">*</span></>}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <label style={styles.label}>
+            <span style={styles.labelText}>Email <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+              inputMode="email"
+              style={styles.input}
+            />
+          </label>
+          <label style={styles.label}>
+            <span style={styles.labelText}>Username <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              style={styles.input}
+            />
+          </label>
+          <label style={styles.label}>
+            <span style={styles.labelText}>Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              style={styles.input}
             />
-            <div className={`mt-1.5 flex items-center gap-2 transition-opacity duration-150 ${password.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <div className="flex-1 flex gap-1">
-                  {[1, 2, 3, 4].map((i) => {
-                    const strength = (password.length >= 6 ? 1 : 0) + (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0);
-                    const color = strength >= i ? (strength <= 1 ? 'bg-danger' : strength <= 2 ? 'bg-yellow-500' : strength <= 3 ? 'bg-accent' : 'bg-green-500') : 'bg-input';
-                    return <div key={i} className={`h-1 flex-1 rounded-full ${color}`} />;
-                  })}
-                </div>
-                <span className="text-2xs text-text-tertiary">
-                  {password.length < 6 ? 'Too short' : (() => { const s = (password.length >= 8 ? 1 : 0) + (/[A-Z]/.test(password) && /[a-z]/.test(password) ? 1 : 0) + (/\d/.test(password) || /[^a-zA-Z0-9]/.test(password) ? 1 : 0); return s <= 0 ? 'Weak' : s <= 1 ? 'Fair' : s <= 2 ? 'Good' : 'Strong'; })()}
-                </span>
-            </div>
-          </div>
-          <Button type="submit" disabled={loading} fullWidth>
+          </label>
+          <button type="submit" disabled={loading} style={styles.button}>
             {loading ? 'Creating...' : 'Continue'}
-          </Button>
+          </button>
         </form>
 
-        <p className="text-sm text-text-tertiary mt-4">
+        <p style={styles.footer}>
           Already have an account?{' '}
-          <Link to="/login" className="text-accent hover:underline">Log In</Link>
+          <Link to="/login" style={styles.link}>Log In</Link>
         </p>
       </div>
     </div>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'var(--bg-default)',
+  },
+  card: {
+    background: 'var(--surface-raised)',
+    borderRadius: '1.25rem',
+    padding: '2rem',
+    width: '26rem',
+    maxWidth: '90vw',
+    border: '1px solid var(--border-muted)',
+    boxShadow: 'var(--shadow-elevation-large)',
+  },
+  iconWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '1.5rem',
+  },
+  title: {
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    color: 'var(--text-shout)',
+    textAlign: 'center',
+    marginBottom: '0.375rem',
+  },
+  subtitle: {
+    color: 'var(--text-muted)',
+    textAlign: 'center',
+    marginBottom: '1.5rem',
+    fontSize: '0.875rem',
+  },
+  error: {
+    background: 'oklch(55% 0.2 25 / 0.1)',
+    color: 'oklch(55% 0.2 25)',
+    fontSize: '0.875rem',
+    padding: '0.75rem',
+    borderRadius: '0.5rem',
+    border: '1px solid oklch(55% 0.2 25 / 0.2)',
+    marginBottom: '1rem',
+  },
+  label: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.375rem',
+  },
+  labelText: {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: 'var(--text-strong)',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.02em',
+  },
+  input: {
+    background: 'var(--surface-field)',
+    border: '1px solid var(--border-muted)',
+    borderRadius: '0.5rem',
+    padding: '0.625rem 0.75rem',
+    fontSize: '0.875rem',
+    color: 'var(--text-default)',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box' as const,
+  },
+  button: {
+    background: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '0.5rem',
+    padding: '0.625rem',
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    width: '100%',
+    marginTop: '0.5rem',
+  },
+  link: {
+    color: 'var(--accent)',
+    fontSize: '0.875rem',
+    textDecoration: 'none',
+  },
+  footer: {
+    fontSize: '0.875rem',
+    color: 'var(--text-muted)',
+    marginTop: '1rem',
+  },
+};

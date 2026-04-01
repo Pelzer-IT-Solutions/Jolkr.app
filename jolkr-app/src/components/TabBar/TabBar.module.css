@@ -1,0 +1,517 @@
+/* Floating bar sits directly on the outer green-tinted background */
+.bar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 0.25rem;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.1875rem 0;
+}
+
+/* ── Individual server tab ── */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  height: 2rem;
+  padding: 0 0.375rem;
+  border-radius: 0.625rem;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+  transition: background-color var(--transition);
+  max-width: 180px;
+  user-select: none;
+  background: transparent;
+}
+.tab:hover {
+  background: var(--bg-dark-default);
+}
+.tab.active {
+  /* Match main shell surface treatment */
+  background: var(--bg-loud);
+  box-shadow: var(--shadow-tab);
+}
+
+.tabIcon {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 0.4375rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0;
+}
+
+.tabName {
+  color: var(--jolkr-neutral-dark-50);
+  min-width: 0;
+  flex: 1;
+  transition: color var(--transition);
+}
+.tab.active .tabName { color: var(--text-strong); }
+.tab:hover:not(.active) .tabName { color: var(--jolkr-neutral-dark-70); }
+
+.unreadDot {
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 50%;
+  background: var(--server-color, var(--accent));
+  flex-shrink: 0;
+}
+
+/* ── Drag and drop (dnd-kit) ── */
+.tab.draggingPlaceholder {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dragOverlay {
+  cursor: grabbing;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.12);
+  pointer-events: none;
+}
+
+.closeBtn {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--jolkr-neutral-dark-40);
+  opacity: 0;
+  transition: opacity var(--transition), background-color var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+.tab:hover .closeBtn,
+.tab.active .closeBtn { opacity: 1; }
+.closeBtn:hover {
+  background: var(--jolkr-base-heavy-default);
+  color: var(--jolkr-neutral-dark-70);
+}
+
+/* ── Add / browser button ── */
+.addWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.addBtn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--jolkr-neutral-dark-40);
+  transition: background-color var(--transition), color var(--transition);
+}
+.addBtn:hover,
+.addBtn.addBtnActive {
+  background: var(--bg-dark-default);
+  color: var(--jolkr-neutral-dark-70);
+}
+
+/* ── Server browser popover ── */
+.browser {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: 17rem;
+  border-radius: 0.875rem;
+  background-image: var(--surface-raised);
+  background-color: var(--bg-shout);
+  box-shadow:
+    0 0 0 1px var(--jolkr-neutral-dark-4),
+    0 0 2px 0 var(--jolkr-neutral-dark-4),
+    0 4px 6px -2px var(--jolkr-neutral-dark-4),
+    0 16px 28px -8px var(--jolkr-neutral-dark-4),
+    0 24px 40px -12px var(--jolkr-neutral-dark-8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow: hidden;
+  z-index: 999;
+  animation: popIn 120ms var(--ease-out-quart) both;
+}
+:global(:root.dark) .browser {
+  box-shadow:
+    0 0 0 1px oklch(0% 0 0 / 0.2),
+    0 0 2px 0 oklch(0% 0 0 / 0.1),
+    0 4px 6px -2px oklch(0% 0 0 / 0.1),
+    0 16px 28px -8px oklch(0% 0 0 / 0.2),
+    0 24px 40px -12px oklch(0% 0 0 / 0.2);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+/* ── Browser action rows (Join / Create) ── */
+.browserActions {
+  padding: 0.3125rem 0.3125rem 0.1875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+
+.browserActionRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  height: 2.375rem;
+  padding: 0 0.5rem;
+  border-radius: 0.625rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+.browserActionRow:hover { background: var(--bg-dark-muted); }
+
+.browserActionIcon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark-default);
+  color: var(--icon-muted);
+  flex-shrink: 0;
+  transition: background-color var(--transition), color var(--transition);
+}
+.browserActionRow:hover .browserActionIcon {
+  background: var(--accent-muted);
+  color: var(--accent-text);
+}
+
+.browserActionLabel {
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+.browserActionRow:hover .browserActionLabel { color: var(--text-strong); }
+
+.browserDivider {
+  height: 1px;
+  background: var(--border-muted);
+  margin: 0.1875rem 0;
+}
+
+.browserHeader {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem 0.375rem;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.browserTitle {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.browserList {
+  max-height: 20rem;
+  overflow-y: auto;
+  padding: 0.3125rem;
+}
+
+.browserRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  height: 3rem;
+  padding: 0 0.5rem;
+  border-radius: 0.625rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+.browserRow:hover { background: var(--bg-dark-muted); }
+.browserRow.browserRowActive {
+  background:
+    radial-gradient(ellipse 55% 100% at 0% 50%,
+      color-mix(in srgb, var(--row-color, var(--accent)) 40%, transparent) 0%,
+      transparent 100%),
+    var(--bg-dark-strong);
+}
+
+.browserIcon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0;
+}
+
+.browserMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.browserName { color: var(--text-strong); }
+.browserSub  { color: var(--text-faint); }
+
+.tabbedPill {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.1875rem 0.4375rem;
+  border-radius: 100px;
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  border: 0.75px solid var(--accent-strong);
+  flex-shrink: 0;
+}
+
+.addTabbedHint {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-muted);
+  opacity: 0;
+  transition: opacity var(--transition), background-color var(--transition);
+  flex-shrink: 0;
+}
+.browserRow:hover .addTabbedHint {
+  opacity: 1;
+  background: var(--bg-dark-default);
+}
+
+/* ── Right side actions ── */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding-left: 0.25rem;
+}
+
+.iconBtn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--jolkr-neutral-dark-40);
+  transition: background-color var(--transition), color var(--transition);
+}
+.iconBtn:hover {
+  background: var(--bg-dark-default);
+  color: var(--jolkr-neutral-dark-70);
+}
+.iconBtn.iconBtnActive {
+  background: var(--bg-loud);
+  box-shadow: var(--shadow-tab);
+  color: var(--text-strong);
+}
+
+.userChip {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.75rem;
+  padding: 0 0.375rem 0 0.25rem;
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+.userChip:hover,
+.userChip.userChipActive { background: var(--bg-dark-default); }
+
+.avatar {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  position: relative;
+  overflow: hidden;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.statusDot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--jolkr-base-heavy-loud);
+}
+
+.userName { color: var(--jolkr-neutral-dark-70); }
+
+/* ── Profile menu ── */
+.profileMenu {
+  position: fixed;
+  z-index: 999;
+  width: 13rem;
+  border-radius: 0.875rem;
+  background-image: var(--surface-raised);
+  background-color: var(--bg-shout);
+  box-shadow:
+    0 0 0 1px var(--jolkr-neutral-dark-4),
+    0 4px 6px -2px var(--jolkr-neutral-dark-4),
+    0 16px 28px -8px var(--jolkr-neutral-dark-8),
+    0 24px 40px -12px var(--jolkr-neutral-dark-12);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow: hidden;
+  animation: popIn 120ms var(--ease-out-quart) both;
+}
+
+.profileHead {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 0.75rem 0.625rem;
+}
+
+.profileAvatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  position: relative;
+}
+
+.profileStatusDot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  border-radius: 50%;
+  border: 2px solid var(--bg-shout);
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+}
+
+.profileName  { color: var(--text-strong); }
+.profileStatus { font-weight: 500; }
+
+.menuDivider {
+  height: 1px;
+  background: var(--border-muted);
+  margin: 0;
+}
+
+.menuSection {
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+
+.menuSectionLabel {
+  padding: 0.3125rem 0.5rem 0.125rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+}
+
+/* Status options */
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  transition: background-color var(--transition);
+}
+.statusItem:hover       { background: var(--bg-dark-muted); }
+.statusItem.statusItemActive { background: var(--bg-dark-default); }
+
+.statusBullet {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusLabel { flex: 1; color: var(--text-muted); }
+.statusItem:hover .statusLabel,
+.statusItem.statusItemActive .statusLabel { color: var(--text-strong); }
+
+.statusCheck {
+  font-size: 0.625rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Generic menu items (Settings, Log Out) */
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4375rem 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  text-align: left;
+  transition: background-color var(--transition), color var(--transition);
+}
+.menuItem:hover { background: var(--bg-dark-muted); color: var(--text-strong); }
+
+.menuItemDanger       { color: oklch(55% 0.2 25); }
+.menuItemDanger:hover { background: oklch(55% 0.2 25 / 0.12); color: oklch(55% 0.2 25); }

@@ -8,6 +8,18 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>Jolkr</title>
+    <script>
+      // Apply theme BEFORE any rendering to prevent white flash
+      (function(){
+        var p = localStorage.getItem('jolkr-color-mode') || 'system';
+        var dark = p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme:dark)').matches);
+        if (dark) document.documentElement.classList.add('dark');
+      })();
+    </script>
+    <style>
+      html       { background: oklch(14% 0.01 137) } /* dark default */
+      html:not(.dark) { background: oklch(96% 0.01 137) } /* light */
+    </style>
   </head>
   <body>
     <div id="root"></div>
