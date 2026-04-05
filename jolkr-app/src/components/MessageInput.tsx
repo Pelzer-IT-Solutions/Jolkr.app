@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { Paperclip, X, Reply, Clock, Plus, Smile, Send, Type } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import DOMPurify from 'dompurify';
@@ -15,8 +15,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
+import EmojiPickerPopup from './EmojiPickerPopup';
 
 const MAX_FILE_SIZE_MB = 25;
 const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -92,8 +91,11 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
   const lastTypingRef = useRef(0);
   const mentionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const mobileEmojiRef = useClickOutside<HTMLDivElement>(() => setShowEmoji(false), showEmoji);
-  const desktopEmojiRef = useClickOutside<HTMLDivElement>(() => setShowEmoji(false), showEmoji);
+  const mobileEmojiRef = useRef<HTMLDivElement>(null);
+  const desktopEmojiRef = useRef<HTMLDivElement>(null);
+  const mobileEmojiBtnRef = useRef<HTMLButtonElement>(null);
+  const desktopEmojiBtnRef = useRef<HTMLButtonElement>(null);
+  const [emojiPos, setEmojiPos] = useState<{ top: number; left: number } | null>(null);
   const textFormatRef = useClickOutside<HTMLDivElement>(() => setShowTextFormat(false), showTextFormat);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const fileIds = useMemo(() => {
@@ -597,27 +599,26 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
 
             <div ref={mobileEmojiRef} className="relative shrink-0">
               <button
-                onClick={() => setShowEmoji(!showEmoji)}
+                ref={mobileEmojiBtnRef}
+                onClick={() => {
+                  if (!showEmoji && mobileEmojiBtnRef.current) {
+                    const r = mobileEmojiBtnRef.current.getBoundingClientRect();
+                    setEmojiPos({ top: r.top, left: r.left + r.width / 2 });
+                  }
+                  setShowEmoji(!showEmoji);
+                }}
                 className="text-text-tertiary"
                 title="Emoji"
                 aria-label="Emoji"
               >
                 <Smile className="size-5" />
               </button>
-              {showEmoji && (
-                <div className="absolute bottom-full right-0 mb-2 z-50">
-                  <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
-                    <LazyEmojiPicker
-                      theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
-                      onEmojiClick={(emoji: { emoji: string }) => {
-                        setContent((prev) => prev + emoji.emoji);
-                        inputRef.current?.focus();
-                      }}
-                      width={320}
-                      height={360}
-                    />
-                  </Suspense>
-                </div>
+              {showEmoji && emojiPos && (
+                <EmojiPickerPopup
+                  position={emojiPos}
+                  onSelect={(emoji) => { setContent((prev) => prev + emoji); inputRef.current?.focus(); }}
+                  onClose={() => setShowEmoji(false)}
+                />
               )}
             </div>
           </div>
@@ -826,29 +827,26 @@ export default function MessageInput({ channelId, isDm, dmMemberIds, recipientUs
 
           <div ref={desktopEmojiRef} className="flex items-center relative shrink-0">
             <button
-              onClick={() => setShowEmoji(!showEmoji)}
+              ref={desktopEmojiBtnRef}
+              onClick={() => {
+                if (!showEmoji && desktopEmojiBtnRef.current) {
+                  const r = desktopEmojiBtnRef.current.getBoundingClientRect();
+                  setEmojiPos({ top: r.top, left: r.left + r.width / 2 });
+                }
+                setShowEmoji(!showEmoji);
+              }}
               className="text-text-tertiary hover:text-text-primary"
               title="Emoji"
               aria-label="Emoji"
             >
               <Smile className="size-5" />
             </button>
-            {showEmoji && (
-              <>
-                <div className="absolute bottom-full right-0 mb-2 z-50">
-                  <Suspense fallback={<div className="w-87.5 h-100 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
-                    <LazyEmojiPicker
-                      theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
-                      onEmojiClick={(emoji: { emoji: string }) => {
-                        setContent((prev) => prev + emoji.emoji);
-                        inputRef.current?.focus();
-                      }}
-                      width={350}
-                      height={400}
-                    />
-                  </Suspense>
-                </div>
-              </>
+            {showEmoji && emojiPos && (
+              <EmojiPickerPopup
+                position={emojiPos}
+                onSelect={(emoji) => { setContent((prev) => prev + emoji); inputRef.current?.focus(); }}
+                onClose={() => setShowEmoji(false)}
+              />
             )}
           </div>
         </div>

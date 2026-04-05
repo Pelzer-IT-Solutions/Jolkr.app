@@ -1,6 +1,4 @@
-import { useState, useRef, useMemo, lazy, Suspense, memo } from 'react';
-import { createPortal } from 'react-dom';
-import { useClickOutside } from '../hooks/useClickOutside';
+import { useState, useRef, useMemo, memo } from 'react';
 import type { Message, User, Reaction, MessageEmbed } from '../api/types';
 import { useAuthStore } from '../stores/auth';
 import { useMessagesStore } from '../stores/messages';
@@ -23,9 +21,9 @@ import { useMobileView } from '../hooks/useMobileView';
 import { Reply, Lock, FileText, MessageSquare, Check, Bookmark, Smile, Pencil, Trash2 } from 'lucide-react';
 import { useContextMenuStore } from '../stores/context-menu';
 
-const URL_RE = /https?:\/\/[^\s<>)\]']+/g;
+import EmojiPickerPopup from './EmojiPickerPopup';
 
-const LazyEmojiPicker = lazy(() => import('emoji-picker-react'));
+const URL_RE = /https?:\/\/[^\s<>)\]']+/g;
 
 export interface MessageTileProps {
   message: Message;
@@ -54,7 +52,6 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const reactionBtnRef = useRef<HTMLButtonElement>(null);
-  const reactionPickerRef = useClickOutside<HTMLDivElement>(() => setShowReactionPicker(false), showReactionPicker);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pinning, setPinning] = useState(false);
   const [editError, setEditError] = useState('');
@@ -501,20 +498,12 @@ function MessageTileInner({ message, compact, author, isDm, channelId, onReply, 
       )}
 
       {/* Reaction picker */}
-      {showReactionPicker && pickerPos && createPortal(
-        <>
-          <div ref={reactionPickerRef} className="fixed z-50" style={{ top: pickerPos.top, left: pickerPos.left }}>
-            <Suspense fallback={<div className="w-75 h-87.5 bg-surface rounded-lg flex items-center justify-center text-text-tertiary text-sm">Loading...</div>}>
-              <LazyEmojiPicker
-                theme={(localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark') as never}
-                onEmojiClick={(emoji: { emoji: string }) => handleReaction(emoji.emoji)}
-                width={300}
-                height={350}
-              />
-            </Suspense>
-          </div>
-        </>,
-        document.body,
+      {showReactionPicker && pickerPos && (
+        <EmojiPickerPopup
+          position={pickerPos}
+          onSelect={(emoji) => handleReaction(emoji)}
+          onClose={() => setShowReactionPicker(false)}
+        />
       )}
 
       {/* User profile card */}

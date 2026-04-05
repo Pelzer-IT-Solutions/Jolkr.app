@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import {
   Phone, Video, Files, CornerUpLeft, X,
   PanelLeftOpen, AlignLeft, Users, Smile,
@@ -7,11 +7,9 @@ import {
 } from 'lucide-react'
 import type { Channel, DMConversation, Message as MessageType, ReplyRef } from '../../types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
-import { createPortal } from 'react-dom'
 import { Message } from '../Message/Message'
+import EmojiPickerPopup from '../EmojiPickerPopup'
 import s from './ChatArea.module.css'
-
-const LazyEmojiPicker = lazy(() => import('emoji-picker-react'))
 
 interface Props {
   channel:            Channel
@@ -94,20 +92,9 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
 
   const [fmtBar, setFmtBar] = useState<{ top: number; left: number } | null>(null)
   const [showComposerEmoji, setShowComposerEmoji] = useState(false)
-  const composerEmojiRef = useRef<HTMLDivElement>(null)
+  const [composerEmojiPos, setComposerEmojiPos] = useState<{ top: number; left: number } | null>(null)
+  const composerEmojiBtnRef = useRef<HTMLButtonElement>(null)
   const savedRange = useRef<Range | null>(null)
-
-  // Close composer emoji on outside click
-  useEffect(() => {
-    if (!showComposerEmoji) return
-    function handleClick(e: MouseEvent) {
-      if (composerEmojiRef.current && !composerEmojiRef.current.contains(e.target as Node)) {
-        setShowComposerEmoji(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showComposerEmoji])
 
   // Clear reply context when channel changes
   useEffect(() => { setReplyingTo(null) }, [channel.id])
@@ -345,29 +332,31 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
                 </div>
               )}
               <div style={{ position: 'relative' }}>
-                <button className={s.emojiBtn} title="Emoji" onClick={() => setShowComposerEmoji(v => !v)}>
+                <button
+                  ref={composerEmojiBtnRef}
+                  className={s.emojiBtn}
+                  title="Emoji"
+                  onClick={() => {
+                    if (!showComposerEmoji && composerEmojiBtnRef.current) {
+                      const r = composerEmojiBtnRef.current.getBoundingClientRect()
+                      setComposerEmojiPos({ top: r.top, left: r.left + r.width / 2 })
+                    }
+                    setShowComposerEmoji(v => !v)
+                  }}
+                >
                   <EmojiIcon />
                 </button>
-                {showComposerEmoji && createPortal(
-                  <div ref={composerEmojiRef} style={{ position: 'fixed', bottom: '4.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
-                    <Suspense fallback={<div style={{ width: 350, height: 400, background: 'var(--surface-raised)', borderRadius: '0.75rem' }} />}>
-                      <LazyEmojiPicker
-                        onEmojiClick={(emojiData) => {
-                          if (inputRef.current) {
-                            inputRef.current.innerText += emojiData.emoji
-                            inputRef.current.focus()
-                          }
-                          setShowComposerEmoji(false)
-                        }}
-                        theme={'dark' as import('emoji-picker-react').Theme}
-                        width={350}
-                        height={400}
-                        searchPlaceholder="Search emoji..."
-                        lazyLoadEmojis
-                      />
-                    </Suspense>
-                  </div>,
-                  document.body,
+                {showComposerEmoji && composerEmojiPos && (
+                  <EmojiPickerPopup
+                    position={composerEmojiPos}
+                    onSelect={(emoji) => {
+                      if (inputRef.current) {
+                        inputRef.current.innerText += emoji
+                        inputRef.current.focus()
+                      }
+                    }}
+                    onClose={() => setShowComposerEmoji(false)}
+                  />
                 )}
               </div>
               <div

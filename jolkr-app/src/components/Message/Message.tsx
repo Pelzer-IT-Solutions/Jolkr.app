@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, lazy, Suspense } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import {
   SmilePlus, CornerUpLeft, Pencil, MoreHorizontal,
@@ -9,9 +9,8 @@ import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useAuthStore } from '../../stores/auth'
 import { renderMarkdown } from '../../utils/markdown'
 import { useMenuPosition } from '../../utils/position'
+import EmojiPickerPopup from '../EmojiPickerPopup'
 import s from './Message.module.css'
-
-const LazyEmojiPicker = lazy(() => import('emoji-picker-react'))
 
 interface Props {
   message:          MessageType
@@ -41,7 +40,6 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 
   const [moreTriggerPos, setMoreTriggerPos] = useState<{ x: number; y: number } | null>(null)
   const emojiTriggerRef = useRef<HTMLButtonElement>(null)
-  const emojiRef        = useRef<HTMLDivElement>(null)
   const moreRef         = useRef<HTMLDivElement>(null)
   const moreMenuRef     = useRef<HTMLDivElement>(null)
   const editRef         = useRef<HTMLDivElement>(null)
@@ -49,17 +47,16 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   const morePos = useMenuPosition(moreTriggerPos, moreMenuRef, showMore)
   const anyOpen = showEmoji || showMore
 
-  // Close popover on outside click
+  // Close more menu on outside click (emoji picker handles its own close)
   useEffect(() => {
-    if (!anyOpen) return
+    if (!showMore) return
     function handle(e: MouseEvent) {
-      if (showEmoji && emojiRef.current && !emojiRef.current.contains(e.target as Node)) setShowEmoji(false)
-      if (showMore && moreRef.current && !moreRef.current.contains(e.target as Node) &&
+      if (moreRef.current && !moreRef.current.contains(e.target as Node) &&
           moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) setShowMore(false)
     }
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
-  }, [anyOpen, showEmoji, showMore])
+  }, [showMore])
 
   function handleReactionClick(emoji: string) {
     onToggleReaction?.(emoji)
@@ -190,24 +187,12 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           <EmojiAddIcon />
         </button>
       </div>
-      {showEmoji && createPortal(
-        <div
-          ref={emojiRef}
-          className={s.emojiPicker}
-          style={{ top: pickerPos.top, left: pickerPos.left }}
-        >
-          <Suspense fallback={<div style={{ width: 350, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading...</div>}>
-            <LazyEmojiPicker
-              onEmojiClick={(emojiData) => handleReactionClick(emojiData.emoji)}
-              theme={'dark' as import('emoji-picker-react').Theme}
-              width={350}
-              height={400}
-              searchPlaceholder="Search emoji..."
-              lazyLoadEmojis
-            />
-          </Suspense>
-        </div>,
-        document.body,
+      {showEmoji && (
+        <EmojiPickerPopup
+          position={{ top: pickerPos.top, left: pickerPos.left }}
+          onSelect={(emoji) => handleReactionClick(emoji)}
+          onClose={() => setShowEmoji(false)}
+        />
       )}
 
       {/* ── Reply ── */}
@@ -298,24 +283,12 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                   <EmojiAddIcon />
                 </button>
               </div>
-              {showEmoji && createPortal(
-                <div
-                  ref={emojiRef}
-                  className={s.emojiPicker}
-                  style={{ top: pickerPos.top, left: pickerPos.left }}
-                >
-                  <Suspense fallback={<div style={{ width: 350, height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading...</div>}>
-                    <LazyEmojiPicker
-                      onEmojiClick={(emojiData) => handleReactionClick(emojiData.emoji)}
-                      theme={'dark' as import('emoji-picker-react').Theme}
-                      width={350}
-                      height={400}
-                      searchPlaceholder="Search emoji..."
-                      lazyLoadEmojis
-                    />
-                  </Suspense>
-                </div>,
-                document.body,
+              {showEmoji && (
+                <EmojiPickerPopup
+                  position={{ top: pickerPos.top, left: pickerPos.left }}
+                  onSelect={(emoji) => handleReactionClick(emoji)}
+                  onClose={() => setShowEmoji(false)}
+                />
               )}
 
               <button className={s.dmActionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>

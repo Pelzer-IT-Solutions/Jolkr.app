@@ -1,0 +1,8 @@
+.popup {
+  position: fixed;
+  transform: translateX(-50%) translateY(calc(-100% - 0.5rem));
+  z-index: 9999;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 8px 24px oklch(0% 0 0 / 0.18), 0 2px 8px oklch(0% 0 0 / 0.1);
+}
