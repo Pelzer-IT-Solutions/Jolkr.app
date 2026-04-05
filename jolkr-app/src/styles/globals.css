@@ -9,10 +9,7 @@ html, body, #root {
   height: 100svh;
   overflow: hidden;
 }
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--text-faint) transparent !important;
-}
+
 body {
   font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -131,34 +128,31 @@ svg { display: block; flex-shrink: 0; }
   animation-delay: var(--reveal-delay, 0ms);
 }
 
+/* ─── New message slide-in ─── */
+/* Transform-only (no opacity) so the message occupies its layout space
+   immediately — no "popping gap" — and slides up from below into position. */
+@keyframes messageEnter {
+  from { transform: translateY(28px); }
+  to   { transform: translateY(0); }
+}
+
+.messageEnter {
+  animation: messageEnter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Radial cutout where a status / unread dot sits (TabBar tabs, avatars, DM rows) */
+.hasActivityAvatarFace {
+  mask-image: radial-gradient(
+    circle at calc(100% - var(--activity-dot-mask-inset)) calc(100% - var(--activity-dot-mask-inset)),
+    transparent var(--activity-dot-mask-r),
+    black var(--activity-dot-mask-r)
+  );
+  -webkit-mask-image: radial-gradient(
+    circle at calc(100% - var(--activity-dot-mask-inset)) calc(100% - var(--activity-dot-mask-inset)),
+    transparent var(--activity-dot-mask-r),
+    black var(--activity-dot-mask-r)
+  );
+}
+
 /* ─── Scroll edge fades ─── */
-/* Mask-based content dissolves at scroll boundaries */
-.scroll-fade-vertical {
-  mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
-}
-
-.scroll-fade-top {
-  mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
-}
-
-.scroll-fade-bottom {
-  mask-image: linear-gradient(to top, transparent 0%, black 10%);
-  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 10%);
-}
-
-.scroll-fade-horizontal {
-  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-}
-
-.scroll-fade-left {
-  mask-image: linear-gradient(to right, transparent 0%, black 10%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%);
-}
-
-.scroll-fade-right {
-  mask-image: linear-gradient(to left, transparent 0%, black 10%);
-  -webkit-mask-image: linear-gradient(to left, transparent 0%, black 10%);
-}
+/* See scroll-fade.css (imported in main.tsx) for .scroll-view-y, .scroll-view-x, .scroll-view-y-chat */

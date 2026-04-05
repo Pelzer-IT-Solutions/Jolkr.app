@@ -1,0 +1,60 @@
+/* ── Avatar sizes ── */
+.wrap { position: relative; display: inline-block; flex-shrink: 0; }
+
+.xs  { width: 1.5rem;  height: 1.5rem;  }
+.sm  { width: 2rem;    height: 2rem;    }
+.md  { width: 2.25rem; height: 2.25rem; }
+.lg  { width: 2.5rem;  height: 2.5rem;  }
+.xl  { width: 3rem;    height: 3rem;    }
+.xxl { width: 3.5rem;  height: 3.5rem;  }
+
+/* ── Image avatar ── */
+.img {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-user-avatar);
+  object-fit: cover;
+}
+
+/* ── Fallback initials ── */
+.fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-user-avatar);
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-default);
+  font-weight: 600;
+  user-select: none;
+}
+.fontXs  { font-size: 0.625rem; }
+.fontSm  { font-size: 0.75rem;  }
+.fontMd  { font-size: 0.875rem; }
+.fontLg  { font-size: 1rem;     }
+.fontXl  { font-size: 1.125rem; }
+.fontXxl { font-size: 1.25rem;  }
+
+/* ── Status dot ── */
+.statusDot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  z-index: 10;
+  border-radius: 50%;
+  border: 2px solid var(--bg-muted);
+}
+.statusBorderThin { border-width: 1px; }
+
+.statusXs  { width: 0.5rem;    height: 0.5rem;    }
+.statusSm  { width: 0.625rem;  height: 0.625rem;  }
+.statusMd  { width: 0.75rem;   height: 0.75rem;   }
+.statusLg  { width: 0.75rem;   height: 0.75rem;   }
+.statusXl  { width: 0.875rem;  height: 0.875rem;  }
+.statusXxl { width: 1rem;      height: 1rem;      }
+
+.online  { background: oklch(65% 0.18 143); }
+.idle    { background: oklch(75% 0.18 65);  }
+.dnd     { background: oklch(55% 0.2 25);   }
+.offline { background: var(--jolkr-neutral-dark-20); }

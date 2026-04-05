@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, X, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon } from 'lucide-react'
+import { Plus, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon, MoreHorizontal, VolumeX, CheckCheck } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -18,7 +18,71 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Server } from '../../types'
+import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
 import s from './TabBar.module.css'
+
+/** Max width of each edge fade (matches ~2.5rem) */
+const TAB_MASK_FADE_PX = 40
+/** Scroll distance (px) over which fade strength ramps 0 → 1 */
+const TAB_MASK_SCROLL_RAMP_PX = 48
+/** Interpolation toward scroll target each frame */
+const TAB_MASK_LERP = 0.14
+
+function buildTabsMaskImage(clientWidth: number, leftStrength: number, rightStrength: number): string | null {
+  if (clientWidth <= 0) return null
+  let pL = (TAB_MASK_FADE_PX / clientWidth) * 100 * leftStrength
+  let pR = (TAB_MASK_FADE_PX / clientWidth) * 100 * rightStrength
+  if (pL + pR > 100) {
+    const scale = 100 / (pL + pR)
+    pL *= scale
+    pR *= scale
+  }
+  if (pL < 0.04 && pR < 0.04) return null
+
+  const midEnd = 100 - pR
+  const parts: string[] = []
+
+  if (pL < 0.04) {
+    parts.push('black 0')
+  } else {
+    parts.push(
+      'transparent 0%',
+      `rgba(0,0,0,0.14) ${(pL * 0.2).toFixed(3)}%`,
+      `rgba(0,0,0,0.42) ${(pL * 0.48).toFixed(3)}%`,
+      `rgba(0,0,0,0.76) ${(pL * 0.78).toFixed(3)}%`,
+      `black ${pL.toFixed(3)}%`,
+    )
+  }
+
+  if (midEnd > pL + 0.02) {
+    parts.push(`black ${midEnd.toFixed(3)}%`)
+  }
+
+  if (pR < 0.04) {
+    parts.push('black 100%')
+  } else {
+    parts.push(
+      `rgba(0,0,0,0.76) ${(midEnd + pR * 0.22).toFixed(3)}%`,
+      `rgba(0,0,0,0.42) ${(midEnd + pR * 0.52).toFixed(3)}%`,
+      `rgba(0,0,0,0.14) ${(midEnd + pR * 0.8).toFixed(3)}%`,
+      'transparent 100%',
+    )
+  }
+
+  return `linear-gradient(to right, ${parts.join(', ')})`
+}
+
+function applyTabsMask(el: HTMLDivElement | null, left: number, right: number) {
+  if (!el) return
+  const img = buildTabsMaskImage(el.clientWidth, left, right)
+  if (img == null) {
+    el.style.maskImage = ''
+    el.style.webkitMaskImage = ''
+    return
+  }
+  el.style.maskImage = img
+  el.style.webkitMaskImage = img
+}
 
 type UserStatus = 'online' | 'idle' | 'dnd' | 'offline'
 
@@ -38,68 +102,143 @@ interface UserInfo {
 }
 
 interface Props {
-  allServers:          Server[]
-  tabbedServers:       Server[]
-  activeServerId:      string
-  dmActive:            boolean
-  searchActive:        boolean
-  notificationsActive: boolean
-  user?:               UserInfo
-  onSwitch:            (id: string) => void
-  onClose:             (id: string) => void
-  onOpenServer:        (id: string) => void
-  onReorder:           (newIds: string[]) => void
-  onDmClick:           () => void
-  onSearchClick:       () => void
-  onNotificationsClick:() => void
-  onOpenSettings:      () => void
-  onJoinServer:        () => void
-  onCreateServer:      () => void
-  onLogout?:           () => void
-  onStatusChange?:     (status: UserStatus) => void
+  allServers:           Server[]
+  tabbedServers:        Server[]
+  activeServerId:       string
+  dmActive:             boolean
+  searchActive:         boolean
+  notificationsActive:  boolean
+  user?:                UserInfo
+  // New optional props — all backward-compatible
+  mutedServerIds?:      string[]
+  currentUserId?:       string
+  currentStatus?:       UserStatus
+  userProfile?: {
+    display_name: string
+    username: string
+    banner_color: string
+    avatar_url: string | null
+  }
+  onSwitch:             (id: string) => void
+  onClose:              (id: string) => void
+  onOpenServer:         (id: string) => void
+  onReorder:            (newIds: string[]) => void
+  onDmClick:            () => void
+  onSearchClick:        () => void
+  onNotificationsClick: () => void
+  onOpenSettings:       () => void
+  onJoinServer:         () => void
+  onCreateServer:       () => void
+  onLogout?:            () => void
+  onStatusChange?:      (status: UserStatus) => void
+  onOpenServerSettings?:(serverId: string) => void
+  onToggleMuteServer?:  (serverId: string) => void
+  onMarkAllRead?:       (serverId: string) => void
+  onLeaveServer?:       (serverId: string) => void
 }
 
-export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, searchActive, notificationsActive, user, onSwitch, onClose, onOpenServer, onReorder, onDmClick, onSearchClick, onNotificationsClick, onOpenSettings, onJoinServer, onCreateServer, onLogout, onStatusChange }: Props) {
+export function TabBar({
+  allServers, tabbedServers, activeServerId, dmActive, searchActive, notificationsActive,
+  user, mutedServerIds, currentUserId: _currentUserId, currentStatus: statusProp, userProfile,
+  onSwitch, onClose, onOpenServer, onReorder, onDmClick, onSearchClick,
+  onNotificationsClick, onOpenSettings, onJoinServer, onCreateServer,
+  onLogout, onStatusChange, onOpenServerSettings, onToggleMuteServer, onMarkAllRead, onLeaveServer,
+}: Props) {
   const [browserOpen,  setBrowserOpen]  = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [menuOpen,     setMenuOpen]     = useState(false)
-  const [status,       setStatus]       = useState<UserStatus>('online')
+  const status: UserStatus = statusProp ?? 'online'
   const [menuPos,      setMenuPos]      = useState({ top: 0, right: 0 })
+
+  // Server tab context menu
+  const [serverTabMenuOpen, setServerTabMenuOpen] = useState<string | null>(null)
+  const [serverTabMenuPos,  setServerTabMenuPos]  = useState({ x: 0, y: 0 })
+  const serverTabBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
 
-  const [tabsOverflow, setTabsOverflow] = useState({ left: false, right: false })
   const tabsRef     = useRef<HTMLDivElement>(null)
   const browserRef  = useRef<HTMLDivElement>(null)
   const addBtnRef   = useRef<HTMLButtonElement>(null)
   const chipRef     = useRef<HTMLButtonElement>(null)
   const menuRef     = useRef<HTMLDivElement>(null)
 
-  function checkTabsOverflow() {
+  // RAF-based smooth scroll-fade for tabs
+  const targetFadeRef  = useRef({ left: 0, right: 0 })
+  const displayFadeRef = useRef({ left: 0, right: 0 })
+  const fadeRafRef     = useRef(0)
+
+  function updateTabsScrollTargets() {
     const el = tabsRef.current
     if (!el) return
-    const left  = el.scrollLeft > 1
-    const right = el.scrollLeft < el.scrollWidth - el.clientWidth - 1
-    setTabsOverflow(prev =>
-      prev.left === left && prev.right === right ? prev : { left, right }
-    )
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth)
+    if (maxScroll <= 0) {
+      targetFadeRef.current = { left: 0, right: 0 }
+    } else {
+      const ramp = TAB_MASK_SCROLL_RAMP_PX
+      targetFadeRef.current = {
+        left:  Math.min(1, el.scrollLeft / ramp),
+        right: Math.min(1, (maxScroll - el.scrollLeft) / ramp),
+      }
+    }
   }
 
-  // Re-check whenever tabs change or on scroll / resize
+  function scheduleTabsMaskAnimation() {
+    if (fadeRafRef.current !== 0) return
+    fadeRafRef.current = requestAnimationFrame(function tick() {
+      const el = tabsRef.current
+      if (!el) { fadeRafRef.current = 0; return }
+      const t = targetFadeRef.current
+      const d = displayFadeRef.current
+      const k = TAB_MASK_LERP
+      let nl = d.left  + (t.left  - d.left)  * k
+      let nr = d.right + (t.right - d.right) * k
+      if (Math.abs(t.left  - nl) < 0.002) nl = t.left
+      if (Math.abs(t.right - nr) < 0.002) nr = t.right
+      displayFadeRef.current = { left: nl, right: nr }
+      applyTabsMask(el, nl, nr)
+      const done = nl === t.left && nr === t.right
+      if (done) {
+        fadeRafRef.current = 0
+      } else {
+        fadeRafRef.current = requestAnimationFrame(tick)
+      }
+    })
+  }
+
+  function syncTabsScrollTargets() {
+    updateTabsScrollTargets()
+    scheduleTabsMaskAnimation()
+  }
+
+  useLayoutEffect(() => {
+    updateTabsScrollTargets()
+    displayFadeRef.current = { ...targetFadeRef.current }
+    const el = tabsRef.current
+    if (el) applyTabsMask(el, displayFadeRef.current.left, displayFadeRef.current.right)
+    if (fadeRafRef.current) cancelAnimationFrame(fadeRafRef.current)
+    fadeRafRef.current = 0
+    return () => {
+      if (fadeRafRef.current) cancelAnimationFrame(fadeRafRef.current)
+      fadeRafRef.current = 0
+    }
+  }, [tabbedServers])
+
   useEffect(() => {
     const el = tabsRef.current
     if (!el) return
-    checkTabsOverflow()
-    el.addEventListener('scroll', checkTabsOverflow, { passive: true })
-    const ro = new ResizeObserver(checkTabsOverflow)
+    syncTabsScrollTargets()
+    const onScroll = () => syncTabsScrollTargets()
+    el.addEventListener('scroll', onScroll, { passive: true })
+    const ro = new ResizeObserver(() => syncTabsScrollTargets())
     ro.observe(el)
     return () => {
-      el.removeEventListener('scroll', checkTabsOverflow)
+      el.removeEventListener('scroll', onScroll)
       ro.disconnect()
     }
-  }, [tabbedServers])
+  }, [tabbedServers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close server browser on outside click
   useEffect(() => {
@@ -140,18 +279,16 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
     setMenuOpen(v => !v)
   }
 
-  const tabbedIds = new Set(tabbedServers.map(s => s.id))
+  function openServerTabMenu(serverId: string) {
+    const btn = serverTabBtnRefs.current[serverId]
+    if (!btn) return
+    const rect = btn.getBoundingClientRect()
+    setServerTabMenuPos({ x: rect.left, y: rect.bottom + 4 })
+    setServerTabMenuOpen(serverId)
+  }
 
-  // Build a mask-image that only fades edges where content is clipped
-  const tabsMask = (() => {
-    const { left, right } = tabsOverflow
-    if (!left && !right) return undefined
-    const l = left  ? 'transparent 0, black 2.5rem'                   : 'black 0, black 2.5rem'
-    const r = right ? 'black calc(100% - 2.5rem), transparent 100%'   : 'black calc(100% - 2.5rem), black 100%'
-    const mask = `linear-gradient(to right, ${l}, ${r})`
-    return { WebkitMaskImage: mask, maskImage: mask }
-  })()
-  const tabIds    = tabbedServers.map(s => s.id)
+  const tabbedIds = new Set(tabbedServers.map(srv => srv.id))
+  const tabIds    = tabbedServers.map(srv => srv.id)
 
   function handleDragStart(e: DragStartEvent) {
     setActiveDragId(e.active.id as string)
@@ -168,6 +305,12 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
   }
 
   const currentStatus = STATUS_META[status]
+
+  // Resolve avatar info — prefer userProfile (new format) over legacy user prop
+  const avatarBg  = userProfile?.banner_color ?? user?.avatarColor ?? 'var(--accent)'
+  const avatarUrl = userProfile?.avatar_url   ?? user?.avatarUrl   ?? null
+  const avatarInitial = (userProfile?.display_name?.charAt(0) || user?.avatarLetter || '?').toUpperCase()
+  const displayName   = userProfile?.display_name ?? user?.displayName ?? 'User'
 
   return (
     <div className={s.bar}>
@@ -204,7 +347,7 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
             <div className={s.browserHeader}>
               <span className={`${s.browserTitle} txt-tiny txt-semibold`}>Your servers</span>
             </div>
-            <div className={`${s.browserList} scrollbar-thin`}>
+            <div className={`${s.browserList} scrollbar-thin scroll-view-y`}>
               {allServers.map(server => {
                 const isTabbed = tabbedIds.has(server.id)
                 const isActive = server.id === activeServerId
@@ -241,15 +384,19 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
         onDragCancel={() => setActiveDragId(null)}
       >
         <SortableContext items={tabIds} strategy={horizontalListSortingStrategy}>
-          <div ref={tabsRef} className={`${s.tabs} scrollbar-none`} style={tabsMask}>
+          <div ref={tabsRef} className={`${s.tabs} scrollbar-none`}>
             {tabbedServers.map(server => (
               <SortableTab
                 key={server.id}
                 server={server}
                 isActive={server.id === activeServerId}
                 isDragging={activeDragId === server.id}
+                isMuted={(mutedServerIds ?? []).includes(server.id)}
+                isMenuOpen={serverTabMenuOpen === server.id}
                 onSwitch={onSwitch}
                 onClose={onClose}
+                onOpenMenu={openServerTabMenu}
+                menuBtnRefSetter={el => { serverTabBtnRefs.current[server.id] = el }}
               />
             ))}
           </div>
@@ -257,17 +404,68 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
 
         <DragOverlay>
           {activeDragId ? (() => {
-            const srv = tabbedServers.find(s => s.id === activeDragId)
+            const srv = tabbedServers.find(srv => srv.id === activeDragId)
             if (!srv) return null
+            const serverColor = srv.hue != null ? `oklch(60% 0.15 ${srv.hue})` : srv.color
             return (
               <div className={`${s.tab} ${srv.id === activeServerId ? s.active : ''} ${s.dragOverlay}`}>
-                <div className={s.tabIcon} style={{ background: srv.color }}>{srv.icon}</div>
-                <span className={`${s.tabName} txt-small txt-medium txt-truncate`}>{srv.name}</span>
+                <div className={s.tabClip}>
+                  <div className={s.tabIconWrapper}>
+                    <div className={s.tabIcon} style={{ background: serverColor }}>{srv.icon}</div>
+                  </div>
+                  <span className={`${s.tabName} txt-small txt-medium txt-truncate`}>{srv.name}</span>
+                </div>
               </div>
             )
           })() : null}
         </DragOverlay>
       </DndContext>
+
+      {/* ── Server tab context menu ── */}
+      <Menu
+        isOpen={!!serverTabMenuOpen}
+        position={serverTabMenuPos}
+        onClose={() => setServerTabMenuOpen(null)}
+        minWidth="10rem"
+      >
+        {serverTabMenuOpen && (
+          <>
+            <MenuSection>
+              <MenuItem
+                icon={<VolumeX size={13} strokeWidth={1.5} />}
+                label={(mutedServerIds ?? []).includes(serverTabMenuOpen) ? 'Unmute Server' : 'Mute Server'}
+                onClick={() => { onToggleMuteServer?.(serverTabMenuOpen); setServerTabMenuOpen(null) }}
+              />
+              <MenuItem
+                icon={<CheckCheck size={13} strokeWidth={1.5} />}
+                label="Mark as Read"
+                onClick={() => { onMarkAllRead?.(serverTabMenuOpen); setServerTabMenuOpen(null) }}
+              />
+              {onOpenServerSettings && (
+                <MenuItem
+                  icon={<Settings size={13} strokeWidth={1.5} />}
+                  label="Server Settings"
+                  onClick={() => { onOpenServerSettings(serverTabMenuOpen); setServerTabMenuOpen(null) }}
+                />
+              )}
+            </MenuSection>
+            <MenuDivider />
+            <MenuSection>
+              <MenuItem
+                label="Remove from Tabs"
+                onClick={() => { onClose(serverTabMenuOpen); setServerTabMenuOpen(null) }}
+              />
+              {onLeaveServer && (
+                <MenuItem
+                  label="Leave Server"
+                  danger
+                  onClick={() => { onLeaveServer(serverTabMenuOpen); setServerTabMenuOpen(null) }}
+                />
+              )}
+            </MenuSection>
+          </>
+        )}
+      </Menu>
 
       {/* ── Right actions ── */}
       <div className={s.right}>
@@ -300,13 +498,15 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
           onClick={openMenu}
           title="Profile"
         >
-          <div className={s.avatar} style={!user?.avatarUrl && user?.avatarColor ? { background: user.avatarColor } : undefined}>
-            {user?.avatarUrl
-              ? <img src={user.avatarUrl} alt="" className={s.avatarImg} />
-              : (user?.avatarLetter ?? '?')}
+          <div className={s.avatarWrap}>
+            <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ background: avatarBg }}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                : avatarInitial}
+            </div>
             <span className={s.statusDot} style={{ background: currentStatus.color }} />
           </div>
-          <span className={`${s.userName} txt-small txt-medium`}>{user?.displayName ?? 'User'}</span>
+          <span className={`${s.userName} txt-small txt-medium`}>{displayName}</span>
         </button>
       </div>
 
@@ -319,14 +519,16 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
         >
           {/* User info */}
           <div className={s.profileHead}>
-            <div className={s.profileAvatar} style={!user?.avatarUrl && user?.avatarColor ? { background: user.avatarColor } : undefined}>
-              {user?.avatarUrl
-                ? <img src={user.avatarUrl} alt="" className={s.avatarImg} />
-                : (user?.avatarLetter ?? '?')}
+            <div className={s.profileAvatarWrap}>
+              <div className={s.profileAvatarFace} style={{ background: avatarBg }}>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                  : avatarInitial}
+              </div>
               <span className={s.profileStatusDot} style={{ background: currentStatus.color }} />
             </div>
             <div className={s.profileInfo}>
-              <span className={`${s.profileName} txt-small txt-semibold`}>{user?.displayName ?? 'User'}</span>
+              <span className={`${s.profileName} txt-small txt-semibold`}>{displayName}</span>
               <span className={`${s.profileStatus} txt-tiny`} style={{ color: currentStatus.color }}>
                 {currentStatus.label}
               </span>
@@ -342,7 +544,7 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
               <button
                 key={key}
                 className={`${s.statusItem} ${status === key ? s.statusItemActive : ''}`}
-                onClick={() => { setStatus(key); setMenuOpen(false); onStatusChange?.(key) }}
+                onClick={() => { setMenuOpen(false); onStatusChange?.(key) }}
               >
                 <span className={s.statusBullet} style={{ background: meta.color }} />
                 <span className={`${s.statusLabel} txt-small`}>{meta.label}</span>
@@ -378,12 +580,16 @@ export function TabBar({ allServers, tabbedServers, activeServerId, dmActive, se
 }
 
 /* ── Sortable tab wrapper ── */
-function SortableTab({ server, isActive, isDragging, onSwitch, onClose }: {
-  server:    Server
-  isActive:  boolean
-  isDragging:boolean
-  onSwitch:  (id: string) => void
-  onClose:   (id: string) => void
+function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwitch, onClose, onOpenMenu, menuBtnRefSetter }: {
+  server:           Server
+  isActive:         boolean
+  isDragging:       boolean
+  isMuted:          boolean
+  isMenuOpen:       boolean
+  onSwitch:         (id: string) => void
+  onClose:          (id: string) => void
+  onOpenMenu:       (id: string) => void
+  menuBtnRefSetter: (el: HTMLButtonElement | null) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: server.id })
 
@@ -392,26 +598,45 @@ function SortableTab({ server, isActive, isDragging, onSwitch, onClose }: {
     transition,
   }
 
+  const serverColor = server.hue != null ? `oklch(60% 0.15 ${server.hue})` : server.color
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={[s.tab, isActive ? s.active : '', isDragging ? s.draggingPlaceholder : ''].join(' ')}
+      className={[s.tab, isActive ? s.active : '', isDragging ? s.draggingPlaceholder : '', isMenuOpen ? s.menuOpen : ''].filter(Boolean).join(' ')}
       {...attributes}
       {...listeners}
       onClick={() => onSwitch(server.id)}
       onAuxClick={e => { if (e.button === 1) { e.preventDefault(); onClose(server.id) } }}
     >
-      <div className={s.tabIcon} style={{ background: server.color }}>{server.icon}</div>
-      <span className={`${s.tabName} txt-small txt-medium txt-truncate`}>{server.name}</span>
-      {server.unread && <span className={s.unreadDot} style={{ '--server-color': server.color } as React.CSSProperties} />}
+      <div className={s.tabClip}>
+        <div className={s.tabIconWrapper}>
+          <div
+            className={`${s.tabIcon}${!isMuted && server.unread ? ' hasActivityAvatarFace' : ''}`}
+            style={{ background: serverColor }}
+          >
+            {server.icon}
+          </div>
+          {server.unread && (
+            <span className={s.unreadDot} style={{ '--server-color': serverColor } as React.CSSProperties} />
+          )}
+          {isMuted && (
+            <span className={`${s.mutedOverlay}${server.unread ? ' hasActivityAvatarFace' : ''}`}>
+              <VolumeX size={14} strokeWidth={2} />
+            </span>
+          )}
+        </div>
+        <span className={`${s.tabName} txt-small txt-medium txt-truncate`}>{server.name}</span>
+      </div>
       <button
-        className={s.closeBtn}
+        ref={menuBtnRefSetter}
+        className={`${s.menuBtn}${isMenuOpen ? ` ${s.rotated}` : ''}`}
         onPointerDown={e => e.stopPropagation()}
-        onClick={e => { e.stopPropagation(); onClose(server.id) }}
-        title="Remove from tabs"
+        onClick={e => { e.stopPropagation(); onOpenMenu(server.id) }}
+        title="Server options"
       >
-        <CloseIcon />
+        <MoreHorizontal size={12} strokeWidth={2} />
       </button>
     </div>
   )
@@ -422,7 +647,6 @@ function PlusIcon({ open }: { open: boolean }) {
   return <Plus size={14} strokeWidth={1.5} style={{ transition: 'transform 200ms ease', transform: open ? 'rotate(45deg)' : 'none' }} />
 }
 function SmallPlusIcon() { return <Plus          size={10} strokeWidth={1.75} /> }
-function CloseIcon()     { return <X             size={9}  strokeWidth={1.75} /> }
 function DmIcon()        { return <MessagesSquare size={14} strokeWidth={1.5} /> }
 function SearchIcon()    { return <Search        size={14} strokeWidth={1.5} /> }
 function BellIcon()      { return <Bell          size={14} strokeWidth={1.5} /> }

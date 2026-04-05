@@ -253,7 +253,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         onDragCancel={handleDragCancel}
       >
         <div
-          className={`${s.scroll} scrollbar-thin`}
+          className={`${s.scroll} scrollbar-thin scroll-view-y`}
           onContextMenu={handleContextMenu}
         >
           <SortableContext items={catIds} strategy={verticalListSortingStrategy}>

@@ -1,0 +1,114 @@
+.menu {
+  position: fixed;
+  z-index: 999;
+  border-radius: 0.875rem;
+  background-image: var(--surface-raised);
+  background-color: var(--bg-shout);
+  box-shadow:
+    0 0 0 1px var(--jolkr-neutral-dark-4),
+    0 0 2px 0 var(--jolkr-neutral-dark-4),
+    0 4px 6px -2px var(--jolkr-neutral-dark-4),
+    0 16px 28px -8px var(--jolkr-neutral-dark-8),
+    0 24px 40px -12px var(--jolkr-neutral-dark-12);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow: hidden;
+  animation: popIn 120ms var(--ease-out-quart) both;
+}
+
+:global(:root.dark) .menu {
+  box-shadow:
+    0 0 0 1px oklch(0% 0 0 / 0.2),
+    0 0 2px 0 oklch(0% 0 0 / 0.1),
+    0 4px 6px -2px oklch(0% 0 0 / 0.1),
+    0 16px 28px -8px oklch(0% 0 0 / 0.2),
+    0 24px 40px -12px oklch(0% 0 0 / 0.2);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.section {
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+
+.sectionLabel {
+  padding: 0.3125rem 0.5rem 0.125rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.625rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.sectionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4375rem 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  text-align: left;
+  transition: background-color var(--transition), color var(--transition);
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+}
+
+.item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.itemDanger {
+  color: oklch(55% 0.2 25);
+}
+
+.itemDanger:hover {
+  background: oklch(55% 0.2 25 / 0.12);
+  color: oklch(55% 0.2 25);
+}
+
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.itemLabel {
+  font-size: 0.875rem;
+  flex: 1;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-muted);
+  margin: 0;
+}
+
+.header {
+  padding: 0.75rem 0.75rem 0.625rem;
+}
+
+.customContent {
+  padding: 0;
+}

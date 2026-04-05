@@ -24,7 +24,7 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
         </div>
       </div>
 
-      <div className={`${s.scroll} scrollbar-thin`}>
+      <div className={`${s.scroll} scrollbar-thin scroll-view-y`}>
         {conversations.length === 0 && (
           <div style={{ padding: '2rem 1rem', textAlign: 'center', opacity: 0.4 }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💬</div>
@@ -80,7 +80,7 @@ function ConvAvatar({ conv }: { conv: DMConversation }) {
     if (!p) return <div className={s.avatar} style={{ background: 'oklch(50% 0 0)' }}>?</div>
     return (
       <div className={s.avatarWrap}>
-        <ParticipantAvatar p={p} />
+        <ParticipantAvatar p={p} className={`${s.avatar} hasActivityAvatarFace`} />
         <span className={`${s.statusDot} ${s[p.status]}`} />
       </div>
     )

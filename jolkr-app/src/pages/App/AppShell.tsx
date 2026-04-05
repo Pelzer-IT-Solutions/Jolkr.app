@@ -270,6 +270,25 @@ export default function AppShell() {
     }
   }, [user])
 
+  // ── User profile for new TabBar format ──
+  const userProfile = useMemo(() => {
+    if (!user) return undefined
+    return {
+      display_name: user.display_name || user.username,
+      username: user.username,
+      banner_color: hashColor(user.id),
+      avatar_url: user.avatar_url ? `${getApiBaseUrl()}/avatars/${user.id}` : null,
+    }
+  }, [user])
+
+  // ── Muted servers (UI-only local state, no backend yet) ──
+  const [mutedServerIds, setMutedServerIds] = useState<string[]>([])
+  const handleToggleMuteServer = useCallback((serverId: string) => {
+    setMutedServerIds(prev =>
+      prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
+    )
+  }, [])
+
   // ── Logout handler ──
   const handleLogout = useCallback(async () => {
     await useAuthStore.getState().logout()
@@ -278,8 +297,9 @@ export default function AppShell() {
 
   // ── Status change handler ──
   const handleStatusChange = useCallback((status: string) => {
+    if (user?.id) usePresenceStore.getState().setStatus(user.id, status)
     wsClient.updatePresence(status)
-  }, [])
+  }, [user?.id])
 
   // ── Profile update handler ──
   const handleUpdateProfile = useCallback(async (data: { display_name?: string; username?: string }) => {
@@ -575,6 +595,10 @@ export default function AppShell() {
           searchActive={searchActive}
           notificationsActive={notificationsActive}
           user={userInfo}
+          userProfile={userProfile}
+          mutedServerIds={mutedServerIds}
+          currentUserId={user?.id ?? ''}
+          currentStatus={(user?.id ? presences[user.id] : undefined) as 'online' | 'idle' | 'dnd' | 'offline' | undefined}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
           onClose={handleCloseTab}
           onReorder={setTabbedIds}
@@ -587,6 +611,9 @@ export default function AppShell() {
           onCreateServer={() => setCreateServerOpen(true)}
           onLogout={handleLogout}
           onStatusChange={handleStatusChange}
+          onToggleMuteServer={handleToggleMuteServer}
+          onMarkAllRead={_id => { /* TODO: backend endpoint for mark-all-read */ }}
+          onOpenServerSettings={serverId => { handleSwitchServer(serverId); setServerSettingsOpen(true) }}
         />
 
         <div className={s.contentRow}>

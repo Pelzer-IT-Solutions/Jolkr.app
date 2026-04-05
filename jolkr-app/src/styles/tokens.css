@@ -47,7 +47,10 @@
   /* Semantic backgrounds */
   --bg-shout:   var(--jolkr-neutral-light-1000);
   --bg-loud:    var(--jolkr-neutral-light-90);
+  /* Same color as --bg-loud with full opacity (overlays; blocks content underneath) */
+  --bg-loud-solid: oklch(from var(--bg-loud) l c h / 1);
   --bg-strong:  var(--jolkr-neutral-light-80);
+  --bg-strong-solid: oklch(from var(--bg-strong) l c h / 1);
   --bg-default: var(--jolkr-neutral-light-40);
   --bg-muted:   var(--jolkr-neutral-light-20);
   --bg-faint:   var(--jolkr-neutral-light-2);
@@ -78,6 +81,14 @@
   --border-strong:  var(--jolkr-neutral-dark-10);
   --border-default: var(--jolkr-neutral-dark-8);
   --border-muted:   var(--jolkr-neutral-dark-6);
+
+  /* Activity dot on avatars / tab icons — radial mask cutout (bottom-right) */
+  --activity-dot-mask-r: 6px;
+  --activity-dot-mask-inset: 4px;
+
+  /* Entity shape: servers / workspaces use rounded squares; people use circles */
+  --radius-server-icon: 0.4375rem;
+  --radius-user-avatar: 50%;
 
   /* Raised glass surface gradient */
   --surface-raised:

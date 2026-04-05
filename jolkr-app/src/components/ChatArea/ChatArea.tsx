@@ -242,7 +242,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
 
       {/* Centered body — messages + composer */}
       <div className={s.chatBody}>
-        <div className={`${s.messageList} scrollbar-thin`} ref={listRef} onScroll={handleScroll}>
+        <div className={`${s.messageList} scrollbar-thin scroll-view-y-chat`} ref={listRef} onScroll={handleScroll}>
           <div className={s.spacer} />
           <div className={`${s.messageInner} ${isDm ? s.messageInnerDm : ''}`}>
             <div className={s.dateSeparator}>

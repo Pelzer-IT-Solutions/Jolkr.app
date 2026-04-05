@@ -39,7 +39,7 @@ export function MemberPanel({ members, visible, serverId }: Props) {
           Members — {total}
         </span>
       </div>
-      <div className={`${s.scroll} scrollbar-thin`}>
+      <div className={`${s.scroll} scrollbar-thin scroll-view-y`}>
         <div
           className={`${s.category} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}
           style={revealStyle(0)}
@@ -52,7 +52,7 @@ export function MemberPanel({ members, visible, serverId }: Props) {
             className={`${s.member} ${isRevealing ? 'revealing' : ''}`}
             style={revealStyle(1 + i)}
           >
-            <div className={s.avatar} style={{ background: m.color }}>
+            <div className={`${s.avatar} hasActivityAvatarFace`} style={{ background: m.color }}>
               {m.letter}
               <StatusDot status={m.status} />
             </div>
@@ -72,7 +72,7 @@ export function MemberPanel({ members, visible, serverId }: Props) {
             className={`${s.member} ${s.memberOffline} ${isRevealing ? 'revealing' : ''}`}
             style={revealStyle(offlineStart + i)}
           >
-            <div className={s.avatar} style={{ background: 'var(--jolkr-neutral-dark-10)', color: 'var(--text-faint)' }}>
+            <div className={`${s.avatar} hasActivityAvatarFace`} style={{ background: 'var(--jolkr-neutral-dark-10)', color: 'var(--text-faint)' }}>
               {m.letter}
               <StatusDot status={m.status} />
             </div>

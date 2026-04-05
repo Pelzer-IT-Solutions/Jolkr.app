@@ -1,0 +1,210 @@
+/* ─── Scroll edge masks — @property makes gradient stops interpolatable ───
+ * Scroll-driven animations (no JS) tie mask depth to scroll position. */
+
+@property --fade-y-top {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
+
+@property --fade-y-bottom {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
+
+@property --fade-x-left {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
+
+@property --fade-x-right {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
+
+@keyframes scroll-fade-y {
+  0% {
+    --fade-y-top: 0%;
+    --fade-y-bottom: 12%;
+  }
+  8%,
+  92% {
+    --fade-y-top: 12%;
+    --fade-y-bottom: 12%;
+  }
+  100% {
+    --fade-y-top: 12%;
+    --fade-y-bottom: 0%;
+  }
+}
+
+@keyframes scroll-fade-x {
+  0% {
+    --fade-x-left: 0%;
+    --fade-x-right: 12%;
+  }
+  8%,
+  92% {
+    --fade-x-left: 12%;
+    --fade-x-right: 12%;
+  }
+  100% {
+    --fade-x-left: 12%;
+    --fade-x-right: 0%;
+  }
+}
+
+/* Chat list: scroll-linked top fade + fixed bottom cutout for the composer */
+@keyframes scroll-fade-y-chat {
+  0% {
+    --fade-y-top: 0%;
+  }
+  8%,
+  100% {
+    --fade-y-top: 12%;
+  }
+}
+
+.scroll-view-y {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black max(var(--fade-y-top), 0.05%),
+    black calc(100% - max(var(--fade-y-bottom), 0.05%)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black max(var(--fade-y-top), 0.05%),
+    black calc(100% - max(var(--fade-y-bottom), 0.05%)),
+    transparent 100%
+  );
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.scroll-view-x {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black max(var(--fade-x-left), 0.05%),
+    black calc(100% - max(var(--fade-x-right), 0.05%)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black max(var(--fade-x-left), 0.05%),
+    black calc(100% - max(var(--fade-x-right), 0.05%)),
+    transparent 100%
+  );
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.scroll-view-y-chat {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black max(var(--fade-y-top), 0.05%),
+    black calc(100% - 5rem),
+    transparent calc(100% - 1rem)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black max(var(--fade-y-top), 0.05%),
+    black calc(100% - 5rem),
+    transparent calc(100% - 1rem)
+  );
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+@supports (animation-timeline: scroll(self block)) {
+  .scroll-view-y {
+    animation: scroll-fade-y linear forwards;
+    animation-timeline: scroll(self block);
+  }
+
+  .scroll-view-y-chat {
+    animation: scroll-fade-y-chat linear forwards;
+    animation-timeline: scroll(self block);
+  }
+}
+
+@supports (animation-timeline: scroll(self inline)) {
+  .scroll-view-x {
+    animation: scroll-fade-x linear forwards;
+    animation-timeline: scroll(self inline);
+  }
+}
+
+/* Browsers without scroll-driven animations: static edge fades */
+@supports not (animation-timeline: scroll(self block)) {
+  .scroll-view-y,
+  .scroll-view-y-chat {
+    animation: none;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+  }
+
+  .scroll-view-y-chat {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 8%,
+      black calc(100% - 5rem),
+      transparent calc(100% - 1rem)
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 8%,
+      black calc(100% - 5rem),
+      transparent calc(100% - 1rem)
+    );
+  }
+}
+
+@supports not (animation-timeline: scroll(self inline)) {
+  .scroll-view-x {
+    animation: none;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+  }
+}

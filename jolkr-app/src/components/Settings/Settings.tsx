@@ -82,7 +82,7 @@ export function Settings({ onClose, isDark, colorPref, onSetColorPref, user, onL
       <div className={s.modal}>
         {/* ── Left nav ── */}
         <aside className={s.nav}>
-          <div className={`${s.navScroll} scrollbar-thin`}>
+          <div className={`${s.navScroll} scrollbar-thin scroll-view-y`}>
             {NAV.map(group => {
               const groupIdx = navIdx++
               return (
@@ -116,7 +116,7 @@ export function Settings({ onClose, isDark, colorPref, onSetColorPref, user, onL
 
         {/* ── Content ── */}
         <div className={s.content}>
-          <div className={`${s.contentScroll} scrollbar-thin`}>
+          <div className={`${s.contentScroll} scrollbar-thin scroll-view-y`}>
             <SectionContent
               section={section}
               isDark={isDark}

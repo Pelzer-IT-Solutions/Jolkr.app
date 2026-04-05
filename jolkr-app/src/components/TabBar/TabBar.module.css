@@ -22,11 +22,10 @@
 /* ── Individual server tab ── */
 .tab {
   display: flex;
-  align-items: center;
-  gap: 0.4375rem;
+  align-items: stretch;
   height: 2rem;
-  padding: 0 0.375rem;
-  border-radius: 0.625rem;
+  padding: 0;
+  border-radius: 0.7rem;
   flex-shrink: 0;
   cursor: grab;
   touch-action: none;
@@ -34,21 +33,38 @@
   max-width: 180px;
   user-select: none;
   background: transparent;
+  position: relative;
+}
+
+.tabClip {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.625rem 0 0.3125rem;
+  border-radius: inherit;
+  overflow: hidden;
+  position: relative;
 }
 .tab:hover {
   background: var(--bg-dark-default);
 }
 .tab.active {
-  /* Match main shell surface treatment */
   background: var(--bg-loud);
-  box-shadow: var(--shadow-tab);
+}
+
+.tabIconWrapper {
+  position: relative;
+  flex-shrink: 0;
+  width: 1.375rem;
+  height: 1.375rem;
 }
 
 .tabIcon {
-  width: 1.375rem;
-  height: 1.375rem;
-  border-radius: 0.4375rem;
-  flex-shrink: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-server-icon);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,6 +72,30 @@
   font-weight: 700;
   color: #fff;
   letter-spacing: 0;
+}
+
+.unreadDot {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--server-color, var(--accent));
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+.mutedOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-server-icon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 1;
 }
 
 .tabName {
@@ -66,14 +106,6 @@
 }
 .tab.active .tabName { color: var(--text-strong); }
 .tab:hover:not(.active) .tabName { color: var(--jolkr-neutral-dark-70); }
-
-.unreadDot {
-  width: 0.3125rem;
-  height: 0.3125rem;
-  border-radius: 50%;
-  background: var(--server-color, var(--accent));
-  flex-shrink: 0;
-}
 
 /* ── Drag and drop (dnd-kit) ── */
 .tab.draggingPlaceholder {
@@ -87,23 +119,44 @@
   pointer-events: none;
 }
 
-.closeBtn {
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 0.375rem;
+.menuBtn {
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--jolkr-neutral-dark-40);
   opacity: 0;
   transition: opacity var(--transition), background-color var(--transition), color var(--transition);
-  flex-shrink: 0;
+  z-index: 2;
 }
-.tab:hover .closeBtn,
-.tab.active .closeBtn { opacity: 1; }
-.closeBtn:hover {
-  background: var(--jolkr-base-heavy-default);
-  color: var(--jolkr-neutral-dark-70);
+.tab:hover .menuBtn,
+.tab.menuOpen .menuBtn {
+  opacity: 1;
+  background: var(--bg-shout);
+}
+.tab.active:hover .menuBtn,
+.tab.active.menuOpen .menuBtn {
+  background: var(--bg-loud-solid);
+  color: var(--icon-default);
+}
+.tab:hover:not(.active) .menuBtn:hover {
+  background: var(--surface-field);
+  color: var(--icon-strong);
+}
+/* Same neutral stack as the tab — not accent-muted (reads as theme teal on dark) */
+.tab.active:hover .menuBtn:hover,
+.tab.active.menuOpen .menuBtn:hover {
+  background: var(--bg-strong-solid);
+  color: var(--icon-strong);
+}
+.menuBtn.rotated {
+  transform: translateY(-50%) rotate(45deg);
 }
 
 /* ── Add / browser button ── */
@@ -351,11 +404,17 @@
 .userChip:hover,
 .userChip.userChipActive { background: var(--bg-dark-default); }
 
-.avatar {
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
   width: 1.375rem;
   height: 1.375rem;
-  border-radius: 50%;
-  flex-shrink: 0;
+}
+
+.avatarFace {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-user-avatar);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -363,47 +422,20 @@
   font-weight: 700;
   color: #fff;
   background: var(--accent);
-  position: relative;
   overflow: hidden;
-}
-
-.avatarImg {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
 }
 
 .statusDot {
   position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 0.4375rem;
-  height: 0.4375rem;
+  bottom: 0;
+  right: 0;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
-  border: 1.5px solid var(--jolkr-base-heavy-loud);
+  z-index: 2;
 }
 
 .userName { color: var(--jolkr-neutral-dark-70); }
-
-/* ── Profile menu ── */
-.profileMenu {
-  position: fixed;
-  z-index: 999;
-  width: 13rem;
-  border-radius: 0.875rem;
-  background-image: var(--surface-raised);
-  background-color: var(--bg-shout);
-  box-shadow:
-    0 0 0 1px var(--jolkr-neutral-dark-4),
-    0 4px 6px -2px var(--jolkr-neutral-dark-4),
-    0 16px 28px -8px var(--jolkr-neutral-dark-8),
-    0 24px 40px -12px var(--jolkr-neutral-dark-12);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  overflow: hidden;
-  animation: popIn 120ms var(--ease-out-quart) both;
-}
 
 .profileHead {
   display: flex;
@@ -412,11 +444,17 @@
   padding: 0.75rem 0.75rem 0.625rem;
 }
 
-.profileAvatar {
+.profileAvatarWrap {
+  position: relative;
+  flex-shrink: 0;
   width: 2rem;
   height: 2rem;
-  border-radius: 50%;
-  flex-shrink: 0;
+}
+
+.profileAvatarFace {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-user-avatar);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -424,17 +462,17 @@
   font-weight: 700;
   color: #fff;
   background: var(--accent);
-  position: relative;
+  overflow: hidden;
 }
 
 .profileStatusDot {
   position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 0.5625rem;
-  height: 0.5625rem;
+  bottom: 0;
+  right: 0;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
-  border: 2px solid var(--bg-shout);
+  z-index: 2;
 }
 
 .profileInfo {
@@ -447,25 +485,10 @@
 .profileName  { color: var(--text-strong); }
 .profileStatus { font-weight: 500; }
 
-.menuDivider {
-  height: 1px;
-  background: var(--border-muted);
-  margin: 0;
-}
-
-.menuSection {
-  padding: 0.25rem;
+.statusList {
   display: flex;
   flex-direction: column;
   gap: 0.0625rem;
-}
-
-.menuSectionLabel {
-  padding: 0.3125rem 0.5rem 0.125rem;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  display: block;
 }
 
 /* Status options */
@@ -497,6 +520,46 @@
   font-size: 0.625rem;
   color: var(--accent);
   font-weight: 700;
+}
+
+/* ── Profile menu (fixed portal) ── */
+.profileMenu {
+  position: fixed;
+  z-index: 999;
+  width: 13rem;
+  border-radius: 0.875rem;
+  background-image: var(--surface-raised);
+  background-color: var(--bg-shout);
+  box-shadow:
+    0 0 0 1px var(--jolkr-neutral-dark-4),
+    0 4px 6px -2px var(--jolkr-neutral-dark-4),
+    0 16px 28px -8px var(--jolkr-neutral-dark-8),
+    0 24px 40px -12px var(--jolkr-neutral-dark-12);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow: hidden;
+  animation: popIn 120ms var(--ease-out-quart) both;
+}
+
+.menuDivider {
+  height: 1px;
+  background: var(--border-muted);
+  margin: 0;
+}
+
+.menuSection {
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+
+.menuSectionLabel {
+  padding: 0.3125rem 0.5rem 0.125rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
 }
 
 /* Generic menu items (Settings, Log Out) */
