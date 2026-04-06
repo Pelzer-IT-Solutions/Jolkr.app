@@ -203,6 +203,7 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
             "/api/servers/:id/members/:user_id/timeout",
             post(servers::timeout_member).delete(servers::remove_timeout),
         )
+        .route("/api/servers/:id/read-all", post(servers::mark_server_read))
         .route("/api/servers/:id/bans", get(servers::list_bans).post(servers::ban_member))
         .route("/api/servers/:id/bans/:user_id", delete(servers::unban_member))
         // ── Invites ─────────────────────────────────────────────────
@@ -268,6 +269,7 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/channels/:id/permissions/@me", get(channels::get_my_channel_permissions))
         .route("/api/channels/:id/overwrites", get(channels::list_overwrites).put(channels::upsert_overwrite))
         .route("/api/channels/:id/overwrites/:target_type/:target_id", delete(channels::delete_overwrite))
+        .route("/api/channels/:id/read", post(channels::mark_channel_read))
         // ── Threads ─────────────────────────────────────────────────
         .route(
             "/api/channels/:channel_id/threads",

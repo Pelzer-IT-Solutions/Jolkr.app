@@ -197,6 +197,19 @@ pub enum GatewayEvent {
         message_id: Uuid,
     },
 
+    /// A user has read messages up to a specific message in a channel.
+    ChannelMessagesRead {
+        channel_id: Uuid,
+        user_id: Uuid,
+        message_id: Uuid,
+    },
+
+    /// A user has marked all channels in a server as read.
+    ServerMessagesRead {
+        server_id: Uuid,
+        user_id: Uuid,
+    },
+
     /// A user's profile was updated (status, display name, etc).
     UserUpdate {
         user_id: Uuid,

@@ -409,3 +409,24 @@ pub async fn join_public_server(
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
+
+// ── Mark server as read ─────────────────────────────────────────────
+
+/// POST /api/servers/:server_id/read-all
+pub async fn mark_server_read(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(server_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    use jolkr_db::repo::ChannelReadsRepo;
+
+    ChannelReadsRepo::mark_server_read(&state.pool, auth.user_id, server_id).await?;
+
+    let event = crate::ws::events::GatewayEvent::ServerMessagesRead {
+        server_id,
+        user_id: auth.user_id,
+    };
+    state.nats.publish_to_user(auth.user_id, &event).await;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}

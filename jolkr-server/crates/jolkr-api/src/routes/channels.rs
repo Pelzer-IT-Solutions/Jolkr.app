@@ -255,3 +255,32 @@ pub async fn delete_overwrite(
     ).await?;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
+
+// ── Mark channel as read ────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct MarkChannelReadRequest {
+    pub message_id: Uuid,
+}
+
+/// POST /api/channels/:channel_id/read
+pub async fn mark_channel_read(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(channel_id): Path<Uuid>,
+    Json(body): Json<MarkChannelReadRequest>,
+) -> Result<axum::http::StatusCode, AppError> {
+    use jolkr_db::repo::ChannelReadsRepo;
+
+    ChannelReadsRepo::mark_read(&state.pool, auth.user_id, channel_id, body.message_id).await?;
+
+    // Broadcast to user's other sessions
+    let event = crate::ws::events::GatewayEvent::ChannelMessagesRead {
+        channel_id,
+        user_id: auth.user_id,
+        message_id: body.message_id,
+    };
+    state.nats.publish_to_user(auth.user_id, &event).await;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
