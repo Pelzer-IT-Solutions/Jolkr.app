@@ -6,6 +6,7 @@ import { useServersStore } from '../../stores/servers'
 import { useMessagesStore } from '../../stores/messages'
 import { usePresenceStore } from '../../stores/presence'
 import { useUnreadStore } from '../../stores/unread'
+import { useTypingUsers } from '../../stores/typing'
 import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
 import { getApiBaseUrl } from '../../platform/config'
@@ -405,6 +406,7 @@ export default function AppShell() {
   }).map(s => s.id), [servers, user, serverPermissions])
   const activeTheme = serverThemes[activeServerId] ?? { hue: null, orbs: [] }
   const chatAnimKey = dmActive ? activeDmId : `${activeServerId}:${activeChannelId}`
+  const typingUsers = useTypingUsers(effectiveChannelId, user?.id)
 
   const appStyle = useAnimatedTheme(activeServerId, activeTheme, isDark)
 
@@ -718,6 +720,7 @@ export default function AppShell() {
                 dmConversation={dmActive ? activeDmConv : undefined}
                 animationKey={chatAnimKey}
                 onTyping={handleTyping}
+                typingUsers={typingUsers}
                 onLoadOlder={() => {
                   const { fetchOlder, loadingOlder } = useMessagesStore.getState()
                   const channelId = dmActive ? activeDmId : activeChannelId

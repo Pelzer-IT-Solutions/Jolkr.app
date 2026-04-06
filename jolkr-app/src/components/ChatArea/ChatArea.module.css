@@ -400,3 +400,37 @@
 }
 .sendBtn:hover  { opacity: 0.85; }
 .sendBtn:active { transform: scale(0.93); }
+
+/* ─── Typing indicator ─── */
+.typingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 1rem 0.25rem;
+  min-height: 1.25rem;
+}
+
+.typingText {
+  color: var(--fg-muted);
+}
+
+.typingDots {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  animation: typingPulse 1.4s ease-in-out infinite;
+}
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingPulse {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(1); }
+  30% { opacity: 1; transform: scale(1.2); }
+}

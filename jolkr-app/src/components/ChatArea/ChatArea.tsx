@@ -29,9 +29,10 @@ interface Props {
   onLoadOlder?:       () => void
   hasMore?:           boolean
   readOnly?:          boolean
+  typingUsers?:       string[]
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, onExpandSidebar, onToggleMembers, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, onExpandSidebar, onToggleMembers, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers }: Props) {
   const listRef  = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLDivElement>(null)
 
@@ -279,6 +280,25 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
             })}
           </div>
         </div>
+
+        {/* Typing indicator */}
+        {typingUsers && typingUsers.length > 0 && (
+          <div className={s.typingIndicator}>
+            <span className={s.typingDots}>
+              <span className={s.dot} />
+              <span className={s.dot} />
+              <span className={s.dot} />
+            </span>
+            <span className={`${s.typingText} txt-tiny`}>
+              {typingUsers.length === 1
+                ? <><strong>{typingUsers[0]}</strong> is typing...</>
+                : typingUsers.length === 2
+                ? <><strong>{typingUsers[0]}</strong> and <strong>{typingUsers[1]}</strong> are typing...</>
+                : <>Several people are typing...</>
+              }
+            </span>
+          </div>
+        )}
 
         {readOnly ? (
           <div className={s.composerWrap}>
