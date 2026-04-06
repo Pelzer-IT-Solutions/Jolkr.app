@@ -1,0 +1,1319 @@
+# Jolkr Backend API Reference
+
+> Complete API reference for building frontend clients. All endpoints, WebSocket events, environment variables, database models, and architectural patterns.
+
+---
+
+## Table of Contents
+
+1. [Authentication](#1-authentication)
+2. [Users](#2-users)
+3. [Friends & Relationships](#3-friends--relationships)
+4. [Direct Messages (DMs)](#4-direct-messages-dms)
+5. [Servers](#5-servers)
+6. [Channels](#6-channels)
+7. [Categories](#7-categories)
+8. [Messages](#8-messages)
+9. [Threads](#9-threads)
+10. [Roles & Permissions](#10-roles--permissions)
+11. [Invites](#11-invites)
+12. [Reactions](#12-reactions)
+13. [Pins](#13-pins)
+14. [Polls](#14-polls)
+15. [Webhooks](#15-webhooks)
+16. [Custom Emojis](#16-custom-emojis)
+17. [E2EE Keys (Signal Protocol)](#17-e2ee-keys-signal-protocol)
+18. [Channel E2EE (Sender Keys)](#18-channel-e2ee-sender-keys)
+19. [Devices & Push Notifications](#19-devices--push-notifications)
+20. [Notifications Settings](#20-notification-settings)
+21. [Presence & Status](#21-presence--status)
+22. [Audit Log](#22-audit-log)
+23. [File Uploads](#23-file-uploads)
+24. [Health & Metrics](#24-health--metrics)
+25. [WebSocket Gateway](#25-websocket-gateway)
+26. [Environment Variables](#26-environment-variables)
+27. [Database Models](#27-database-models)
+28. [Rate Limiting](#28-rate-limiting)
+29. [Error Responses](#29-error-responses)
+
+---
+
+## General Notes
+
+- **Base URL**: `http://localhost:8080` (configurable via `SERVER_PORT`)
+- **Auth header**: `Authorization: Bearer <access_token>` (marked as "JWT" below)
+- **Content-Type**: `application/json` unless noted otherwise
+- **UUIDs**: All IDs are UUID v4
+
+---
+
+## 1. Authentication
+
+All auth endpoints are rate-limited: **2 requests per 5 seconds per IP**.
+Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/auth/register` | None | Create new account |
+| POST | `/api/auth/login` | None | Login with credentials |
+| POST | `/api/auth/refresh` | None | Refresh access token |
+| POST | `/api/auth/forgot-password` | None | Request password reset email |
+| POST | `/api/auth/reset-password-confirm` | None | Confirm password reset with token |
+| POST | `/api/auth/reset-password` | JWT | Admin password reset |
+| POST | `/api/auth/change-password` | JWT | Change current user's password |
+| POST | `/api/auth/logout` | JWT | Revoke refresh token |
+| POST | `/api/auth/logout-all` | JWT | Revoke all sessions |
+
+### POST `/api/auth/register`
+```json
+// Request
+{ "email": "user@example.com", "username": "johndoe", "password": "SecurePass123!" }
+
+// Response 200
+{
+  "user": { "id": "uuid", "email": "...", "username": "...", "display_name": null, "avatar_url": null, "status": null, "bio": null, "created_at": "..." },
+  "tokens": { "access_token": "eyJ...", "refresh_token": "eyJ..." }
+}
+```
+
+### POST `/api/auth/login`
+```json
+// Request
+{ "email": "user@example.com", "password": "SecurePass123!" }
+
+// Response 200 — same as register
+```
+
+### POST `/api/auth/refresh`
+```json
+// Request
+{ "refresh_token": "eyJ..." }
+
+// Response 200
+{ "tokens": { "access_token": "eyJ...", "refresh_token": "eyJ..." } }
+```
+
+### POST `/api/auth/forgot-password`
+```json
+// Request
+{ "email": "user@example.com" }
+
+// Response 200
+{ "message": "If the email exists, a reset link has been sent." }
+```
+
+### POST `/api/auth/reset-password-confirm`
+```json
+// Request
+{ "token": "reset-token-from-email", "new_password": "NewSecurePass456!" }
+
+// Response 200
+{}
+```
+
+### POST `/api/auth/change-password`
+```json
+// Request
+{ "current_password": "OldPass", "new_password": "NewPass" }
+// Response 200
+{}
+```
+
+### POST `/api/auth/logout`
+```json
+// Request
+{ "refresh_token": "eyJ..." }
+// Response 200
+{}
+```
+
+### JWT Token Details
+- **Algorithm**: HS256 (HMAC-SHA256)
+- **Claims**: `{ sub: user_id, iat, exp, device_id?, jti: token_id }`
+- **Access token**: Short-lived (~1 hour)
+- **Refresh token**: Stored as bcrypt hash in `sessions` table
+
+### Auth Flow for Frontend Clients
+1. Register or login → receive `access_token` + `refresh_token`
+2. Store both tokens (e.g., localStorage or secure storage)
+3. Use `Authorization: Bearer <access_token>` on all API calls
+4. When access token expires (401), call `/api/auth/refresh`
+5. On logout, call `/api/auth/logout` to invalidate refresh token
+
+---
+
+## 2. Users
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/users/@me` | JWT | Get current user profile |
+| PATCH | `/api/users/@me` | JWT | Update current user |
+| GET | `/api/users/:id` | JWT | Get user profile by ID |
+| POST | `/api/users/batch` | JWT | Get multiple users at once |
+| GET | `/api/users/search?q=query` | JWT | Search users |
+
+### GET `/api/users/@me`
+```json
+// Response 200
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "johndoe",
+    "display_name": "John Doe",
+    "avatar_url": "https://...",
+    "status": "online",
+    "bio": "Hello world",
+    "show_read_receipts": true,
+    "created_at": "2026-01-01T00:00:00Z"
+  }
+}
+```
+
+### PATCH `/api/users/@me`
+```json
+// Request — all fields optional
+{
+  "display_name": "New Name",
+  "avatar_url": "https://...",
+  "status": "online",
+  "bio": "Updated bio",
+  "show_read_receipts": false
+}
+```
+
+### POST `/api/users/batch`
+```json
+// Request
+{ "ids": ["uuid1", "uuid2", "uuid3"] }
+
+// Response 200
+{ "users": [ { "id": "...", "username": "...", ... } ] }
+```
+
+### GET `/api/users/search?q=john`
+- **Query param**: `q` (min 3 characters, exact match on username/email)
+- Returns max 3 results
+```json
+{ "users": [ { "id": "...", "username": "...", ... } ] }
+```
+
+---
+
+## 3. Friends & Relationships
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/friends` | JWT | List accepted friends |
+| GET | `/api/friends/pending` | JWT | List pending friend requests |
+| POST | `/api/friends` | JWT | Send friend request |
+| POST | `/api/friends/:id/accept` | JWT | Accept friend request |
+| DELETE | `/api/friends/:id` | JWT | Decline/remove friend |
+| POST | `/api/friends/block` | JWT | Block a user |
+
+### POST `/api/friends`
+```json
+// Request
+{ "user_id": "uuid-of-target-user" }
+
+// Response 200
+{
+  "friendship": {
+    "id": "uuid",
+    "requester_id": "uuid",
+    "addressee_id": "uuid",
+    "status": "pending",
+    "created_at": "...",
+    "updated_at": "..."
+  }
+}
+```
+
+### Friendship Statuses
+- `"pending"` — request sent, awaiting acceptance
+- `"accepted"` — mutual friendship
+- `"blocked"` — user blocked
+
+---
+
+## 4. Direct Messages (DMs)
+
+### DM Channels
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/dms` | JWT | List all DM channels |
+| POST | `/api/dms` | JWT | Create 1-on-1 or group DM |
+| PATCH | `/api/dms/:dm_id` | JWT | Update DM (rename group) |
+| PUT | `/api/dms/:dm_id/members` | JWT | Add member to group DM |
+| DELETE | `/api/dms/:dm_id/members/@me` | JWT | Leave DM |
+| POST | `/api/dms/:dm_id/close` | JWT | Close/hide DM |
+
+### POST `/api/dms` — Create DM
+```json
+// 1-on-1 DM
+{ "user_id": "uuid" }
+
+// Group DM
+{ "user_ids": ["uuid1", "uuid2"], "name": "Group Chat Name" }
+```
+
+### DM Messages
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/dms/:dm_id/messages` | JWT | Get DM messages |
+| POST | `/api/dms/:dm_id/messages` | JWT | Send DM message |
+| PATCH | `/api/dms/messages/:id` | JWT | Edit DM message |
+| DELETE | `/api/dms/messages/:id` | JWT | Delete DM message |
+
+**Query params for GET messages**: `limit` (default 50), `before` (UUID cursor)
+
+### POST `/api/dms/:dm_id/messages`
+```json
+// Plaintext
+{ "content": "Hello!" }
+
+// Encrypted (E2EE)
+{ "encrypted_content": "<base64-bytes>", "nonce": "<base64-bytes>" }
+```
+
+### DM Reactions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/dms/messages/:id/reactions` | JWT | List reactions |
+| POST | `/api/dms/messages/:id/reactions` | JWT | Add reaction |
+| DELETE | `/api/dms/messages/:id/reactions/:emoji` | JWT | Remove reaction |
+
+```json
+// Add reaction
+{ "emoji": "👍" }
+```
+
+### DM Pins
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/dms/:dm_id/pins` | JWT | Get pinned messages |
+| POST | `/api/dms/:dm_id/pins/:message_id` | JWT | Pin message |
+| DELETE | `/api/dms/:dm_id/pins/:message_id` | JWT | Unpin message |
+
+### DM Read Receipts
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/dms/:dm_id/read` | JWT | Mark DM as read |
+
+```json
+{ "message_id": "uuid-of-last-read-message" }
+```
+
+### DM Calls
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/dms/:dm_id/call` | JWT | Initiate call |
+| POST | `/api/dms/:dm_id/call/accept` | JWT | Accept call |
+| POST | `/api/dms/:dm_id/call/reject` | JWT | Reject call |
+| POST | `/api/dms/:dm_id/call/end` | JWT | End call |
+
+### DM E2EE Key Distribution
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/dms/:dm_id/e2ee/distribute` | JWT | Distribute encrypted keys |
+| GET | `/api/dms/:dm_id/e2ee/my-key` | JWT | Get my E2EE key for this DM |
+
+```json
+// Distribute keys
+{
+  "key_generation": 1,
+  "recipients": [
+    { "user_id": "uuid", "encrypted_key": "base64...", "nonce": "base64..." }
+  ]
+}
+
+// Get my key response
+{ "encrypted_key": "base64...", "nonce": "base64...", "key_generation": 1 }
+```
+
+### DM Attachments
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/dms/:dm_id/messages/:message_id/attachments` | JWT | Upload attachment (multipart) |
+
+---
+
+## 5. Servers
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/servers` | JWT | List user's servers |
+| POST | `/api/servers` | JWT | Create server |
+| GET | `/api/servers/discover` | JWT | Discover public servers |
+| GET | `/api/servers/:id` | JWT | Get server details |
+| PATCH | `/api/servers/:id` | JWT | Update server |
+| DELETE | `/api/servers/:id` | JWT | Delete server (owner only) |
+| POST | `/api/servers/:id/join` | JWT | Join public server |
+| PUT | `/api/users/@me/servers/reorder` | JWT | Reorder server list |
+
+### POST `/api/servers`
+```json
+// Request
+{
+  "name": "My Server",
+  "description": "A cool server",
+  "icon_url": "https://...",
+  "banner_url": "https://..."
+}
+
+// Response 200
+{
+  "server": {
+    "id": "uuid",
+    "name": "My Server",
+    "description": "A cool server",
+    "icon_url": "https://...",
+    "banner_url": "https://...",
+    "owner_id": "uuid",
+    "discoverable": false,
+    "created_at": "...",
+    "updated_at": "..."
+  }
+}
+```
+
+### PATCH `/api/servers/:id`
+```json
+// All fields optional
+{
+  "name": "Updated Name",
+  "description": "Updated description",
+  "icon_url": "https://...",
+  "banner_url": "https://...",
+  "discoverable": true
+}
+```
+
+### GET `/api/servers/discover?limit=20&offset=0`
+```json
+{ "servers": [...], "total": 42 }
+```
+
+### PUT `/api/users/@me/servers/reorder`
+```json
+{ "server_positions": [{ "id": "uuid", "position": 0 }, { "id": "uuid", "position": 1 }] }
+```
+
+### Server Members
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/servers/:id/members` | JWT | List members |
+| DELETE | `/api/servers/:id/members/@me` | JWT | Leave server |
+| DELETE | `/api/servers/:id/members/:user_id` | JWT | Kick member |
+| PATCH | `/api/servers/:id/members/:user_id/nickname` | JWT | Set member nickname |
+| POST | `/api/servers/:id/members/:user_id/timeout` | JWT | Timeout member |
+| DELETE | `/api/servers/:id/members/:user_id/timeout` | JWT | Remove timeout |
+
+**Query params for GET members**: `limit`, `offset`
+
+### POST `/api/servers/:id/members/:user_id/timeout`
+```json
+{ "seconds": 3600, "reason": "Spamming" }
+```
+
+### PATCH `/api/servers/:id/members/:user_id/nickname`
+```json
+{ "nickname": "CoolNick" }
+// Set to null to remove nickname
+{ "nickname": null }
+```
+
+### Server Bans
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/servers/:id/bans` | JWT | List banned users |
+| POST | `/api/servers/:id/bans` | JWT | Ban user |
+| DELETE | `/api/servers/:id/bans/:user_id` | JWT | Unban user |
+
+```json
+// Ban request
+{ "user_id": "uuid", "reason": "Rule violation" }
+```
+
+---
+
+## 6. Channels
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/servers/:server_id/channels` | JWT | Create channel |
+| GET | `/api/servers/:server_id/channels/list` | JWT | List server channels |
+| PUT | `/api/servers/:server_id/channels/reorder` | JWT | Reorder channels |
+| GET | `/api/channels/:id` | JWT | Get channel details |
+| PATCH | `/api/channels/:id` | JWT | Update channel |
+| DELETE | `/api/channels/:id` | JWT | Delete channel |
+
+### POST `/api/servers/:server_id/channels`
+```json
+{
+  "name": "general",
+  "topic": "General discussion",
+  "kind": "text",
+  "category_id": "uuid-or-null",
+  "is_nsfw": false,
+  "slowmode_seconds": 0
+}
+```
+
+### Channel Types (`kind`)
+- `"text"` — Standard text channel
+- `"voice"` — Voice channel
+- `"announcement"` — Announcement channel
+- `"category"` — Category container
+
+### Channel Response
+```json
+{
+  "channel": {
+    "id": "uuid",
+    "server_id": "uuid",
+    "category_id": "uuid|null",
+    "name": "general",
+    "topic": "General discussion",
+    "kind": "text",
+    "position": 0,
+    "is_nsfw": false,
+    "slowmode_seconds": 0,
+    "e2ee_key_generation": 0,
+    "created_at": "...",
+    "updated_at": "..."
+  }
+}
+```
+
+### PUT `/api/servers/:server_id/channels/reorder`
+```json
+{ "channel_positions": [{ "id": "uuid", "position": 0 }, { "id": "uuid", "position": 1 }] }
+```
+
+### Channel Permission Overwrites
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/channels/:id/permissions/@me` | JWT | Get my computed permissions |
+| GET | `/api/channels/:id/overwrites` | JWT | List permission overwrites |
+| PUT | `/api/channels/:id/overwrites` | JWT | Set/update overwrite |
+| DELETE | `/api/channels/:id/overwrites/:target_type/:target_id` | JWT | Delete overwrite |
+
+```json
+// Set overwrite — target_type is "user" or "role"
+{
+  "target_type": "role",
+  "target_id": "uuid",
+  "allow": 1024,
+  "deny": 0
+}
+
+// Get my permissions response
+{ "permissions": 2147483647 }
+```
+
+---
+
+## 7. Categories
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/servers/:server_id/categories` | JWT | List categories |
+| POST | `/api/servers/:server_id/categories` | JWT | Create category |
+| PATCH | `/api/categories/:id` | JWT | Update category |
+| DELETE | `/api/categories/:id` | JWT | Delete category |
+
+```json
+// Create category
+{ "name": "Voice Channels", "position": 2 }
+```
+
+---
+
+## 8. Messages
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/channels/:id/messages` | JWT | Get channel messages |
+| POST | `/api/channels/:id/messages` | JWT | Send message |
+| GET | `/api/channels/:id/messages/search` | JWT | Search messages |
+| PATCH | `/api/messages/:id` | JWT | Edit message |
+| DELETE | `/api/messages/:id` | JWT | Delete message |
+
+### GET `/api/channels/:id/messages`
+**Query params**: `limit` (default 50), `before` (UUID), `after` (UUID)
+
+### POST `/api/channels/:id/messages`
+```json
+// Plaintext message
+{ "content": "Hello, world!" }
+
+// Reply to another message
+{ "content": "I agree!", "reply_to_id": "uuid-of-original-message" }
+
+// Message in thread
+{ "content": "Thread reply", "thread_id": "uuid-of-thread" }
+
+// Encrypted message
+{ "encrypted_content": "<base64-bytes>", "nonce": "<base64-bytes>" }
+```
+
+### Message Response
+```json
+{
+  "message": {
+    "id": "uuid",
+    "channel_id": "uuid",
+    "author_id": "uuid",
+    "content": "Hello!",
+    "encrypted_content": null,
+    "nonce": null,
+    "reply_to_id": null,
+    "thread_id": null,
+    "webhook_id": null,
+    "is_edited": false,
+    "is_pinned": false,
+    "created_at": "...",
+    "updated_at": "..."
+  }
+}
+```
+
+### GET `/api/channels/:id/messages/search?q=keyword`
+**Query params**: `q` (search term), `limit`, `offset`
+```json
+{ "messages": [...], "total": 15 }
+```
+
+### Message Attachments
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/channels/:channel_id/messages/:message_id/attachments` | JWT | Upload attachment (multipart) |
+| GET | `/api/messages/:message_id/attachments` | JWT | List attachments |
+
+---
+
+## 9. Threads
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/channels/:channel_id/threads` | JWT | List threads |
+| POST | `/api/channels/:channel_id/threads` | JWT | Create thread |
+| GET | `/api/threads/:thread_id` | JWT | Get thread details |
+| PATCH | `/api/threads/:thread_id` | JWT | Update thread |
+| GET | `/api/threads/:thread_id/messages` | JWT | Get thread messages |
+| POST | `/api/threads/:thread_id/messages` | JWT | Send message in thread |
+
+### POST `/api/channels/:channel_id/threads`
+```json
+// Request
+{ "name": "Discussion about feature X" }
+
+// Response 200
+{
+  "thread": {
+    "id": "uuid",
+    "channel_id": "uuid",
+    "starter_msg_id": "uuid|null",
+    "name": "Discussion about feature X",
+    "is_archived": false,
+    "created_at": "...",
+    "updated_at": "..."
+  },
+  "message": { ... }
+}
+```
+
+### PATCH `/api/threads/:thread_id`
+```json
+{ "name": "Renamed thread", "is_archived": true }
+```
+
+### GET `/api/channels/:channel_id/threads?include_archived=true`
+
+---
+
+## 10. Roles & Permissions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/servers/:server_id/roles` | JWT | List all server roles |
+| POST | `/api/servers/:server_id/roles` | JWT | Create role |
+| PATCH | `/api/roles/:id` | JWT | Update role |
+| DELETE | `/api/roles/:id` | JWT | Delete role |
+| PUT | `/api/servers/:server_id/roles/:role_id/members` | JWT | Assign role to user |
+| DELETE | `/api/servers/:server_id/roles/:role_id/members/:user_id` | JWT | Remove role from user |
+| GET | `/api/servers/:server_id/members-with-roles` | JWT | List members with their roles |
+| GET | `/api/servers/:server_id/permissions/@me` | JWT | Get my server permissions |
+
+### POST `/api/servers/:server_id/roles`
+```json
+{
+  "name": "Moderator",
+  "color": 3447003,
+  "permissions": 1099511627775
+}
+```
+
+### Role Response
+```json
+{
+  "role": {
+    "id": "uuid",
+    "server_id": "uuid",
+    "name": "Moderator",
+    "color": 3447003,
+    "position": 1,
+    "permissions": 1099511627775,
+    "is_default": false,
+    "created_at": "..."
+  }
+}
+```
+
+### PUT `/api/servers/:server_id/roles/:role_id/members`
+```json
+{ "user_id": "uuid" }
+```
+
+### Permission Bitfield
+
+Permissions are stored as a 64-bit integer (bitfield). Each bit represents a permission:
+
+| Permission | Bit | Value | Description |
+|-----------|-----|-------|-------------|
+| VIEW_CHANNEL | 0 | 1 | View channels |
+| SEND_MESSAGES | 1 | 2 | Send messages in channels |
+| MANAGE_MESSAGES | 2 | 4 | Delete/pin messages by others |
+| MANAGE_CHANNELS | 3 | 8 | Create/edit/delete channels |
+| MANAGE_SERVER | 4 | 16 | Edit server settings |
+| MANAGE_ROLES | 5 | 32 | Create/edit/delete roles |
+| KICK_MEMBERS | 6 | 64 | Kick members |
+| BAN_MEMBERS | 7 | 128 | Ban/unban members |
+| CREATE_INVITES | 8 | 256 | Create invite links |
+| MANAGE_WEBHOOKS | 9 | 512 | Create/edit/delete webhooks |
+| MANAGE_EMOJIS | 10 | 1024 | Upload/delete custom emojis |
+| MANAGE_THREADS | 11 | 2048 | Manage threads |
+| ADMINISTRATOR | 12 | 4096 | Full permissions (overrides all) |
+
+> **Note**: Server owners always have all permissions regardless of role assignments.
+
+### Permission Calculation
+1. Start with `@everyone` role permissions (the default role)
+2. OR together all assigned role permissions
+3. Apply channel overwrites: add `allow` bits, remove `deny` bits
+4. If ADMINISTRATOR bit is set, grant all permissions
+
+---
+
+## 11. Invites
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/servers/:server_id/invites` | JWT | List server invites |
+| POST | `/api/servers/:server_id/invites` | JWT | Create invite |
+| DELETE | `/api/servers/:server_id/invites/:invite_id` | JWT | Delete invite |
+| POST | `/api/invites/:code` | JWT | Join server via invite code |
+
+### POST `/api/servers/:server_id/invites`
+```json
+// Request — all fields optional
+{
+  "max_uses": 10,
+  "expires_in_hours": 24
+}
+
+// Response 200
+{
+  "invite": {
+    "id": "uuid",
+    "server_id": "uuid",
+    "creator_id": "uuid",
+    "code": "abc123XYZ",
+    "max_uses": 10,
+    "use_count": 0,
+    "expires_at": "2026-04-01T00:00:00Z",
+    "created_at": "..."
+  }
+}
+```
+
+### POST `/api/invites/:code` — Join via invite
+No request body needed. Returns the invite info on success.
+
+---
+
+## 12. Reactions
+
+### Channel Message Reactions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/messages/:id/reactions` | JWT | Add reaction |
+| GET | `/api/messages/:id/reactions` | JWT | List reactions |
+| DELETE | `/api/messages/:message_id/reactions/:emoji` | JWT | Remove my reaction |
+
+```json
+// Add reaction
+{ "emoji": "🔥" }
+
+// List reactions response
+{
+  "reactions": [
+    { "emoji": "🔥", "count": 3, "users": ["uuid1", "uuid2", "uuid3"] }
+  ]
+}
+```
+
+### DM Message Reactions
+Same pattern at `/api/dms/messages/:id/reactions` (see section 4).
+
+---
+
+## 13. Pins
+
+### Channel Pins
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/channels/:channel_id/pins` | JWT | List pinned messages |
+| POST | `/api/channels/:channel_id/pins/:message_id` | JWT | Pin message |
+| DELETE | `/api/channels/:channel_id/pins/:message_id` | JWT | Unpin message |
+
+### DM Pins
+Same pattern at `/api/dms/:dm_id/pins/...` (see section 4).
+
+---
+
+## 14. Polls
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/channels/:id/polls` | JWT | Create poll |
+| GET | `/api/polls/:id` | JWT | Get poll details |
+| POST | `/api/polls/:id/vote` | JWT | Vote on poll |
+| DELETE | `/api/polls/:id/vote` | JWT | Remove vote |
+
+### POST `/api/channels/:id/polls`
+```json
+// Request
+{
+  "question": "What should we build next?",
+  "options": ["Feature A", "Feature B", "Feature C"],
+  "duration_seconds": 86400
+}
+
+// Response 200
+{
+  "poll": {
+    "id": "uuid",
+    "message_id": "uuid",
+    "question": "What should we build next?",
+    "options": [
+      { "id": "uuid", "text": "Feature A", "position": 0, "votes": 0 },
+      { "id": "uuid", "text": "Feature B", "position": 1, "votes": 0 },
+      { "id": "uuid", "text": "Feature C", "position": 2, "votes": 0 }
+    ],
+    "duration_seconds": 86400,
+    "created_at": "..."
+  },
+  "message": { ... }
+}
+```
+
+### POST `/api/polls/:id/vote`
+```json
+{ "option_id": "uuid" }
+```
+
+---
+
+## 15. Webhooks
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/channels/:id/webhooks` | JWT | List webhooks |
+| POST | `/api/channels/:id/webhooks` | JWT | Create webhook |
+| PATCH | `/api/webhooks/:id` | JWT | Update webhook |
+| DELETE | `/api/webhooks/:id` | JWT | Delete webhook |
+| POST | `/api/webhooks/:id/token` | JWT | Regenerate token |
+| POST | `/api/webhooks/:id/:token` | **None** | Execute webhook (send message) |
+
+### POST `/api/channels/:id/webhooks`
+```json
+{ "name": "GitHub Bot", "avatar_url": "https://..." }
+```
+
+### POST `/api/webhooks/:id/:token` — Execute (no auth needed)
+```json
+{ "content": "New commit pushed!", "embeds": [] }
+```
+
+**Rate limit**: 5 executions per second per webhook (distributed via Redis).
+
+---
+
+## 16. Custom Emojis
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/servers/:server_id/emojis` | JWT | List server emojis |
+| POST | `/api/servers/:server_id/emojis` | JWT | Upload custom emoji (multipart) |
+| DELETE | `/api/emojis/:emoji_id` | JWT | Delete emoji |
+
+### POST `/api/servers/:server_id/emojis`
+Multipart form data with fields: `name` (string), `file` (image file).
+
+```json
+// Response 200
+{
+  "emoji": {
+    "id": "uuid",
+    "server_id": "uuid",
+    "name": "pepe_happy",
+    "url": "https://...",
+    "creator_id": "uuid",
+    "created_at": "..."
+  }
+}
+```
+
+---
+
+## 17. E2EE Keys (Signal Protocol / X3DH)
+
+Used for DM end-to-end encryption. Implements the X3DH (Extended Triple Diffie-Hellman) key agreement protocol with optional ML-KEM-768 post-quantum key encapsulation.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/keys/upload` | JWT | Upload prekey bundle |
+| GET | `/api/keys/count/:device_id` | JWT | Check remaining one-time prekeys |
+| GET | `/api/keys/:user_id/:device_id` | JWT | Get prekey bundle for user's device |
+| GET | `/api/keys/:user_id` | JWT | Get all devices' prekey bundles |
+
+### POST `/api/keys/upload`
+```json
+{
+  "device_id": "uuid",
+  "identity_key": "base64...",
+  "signed_prekey": "base64...",
+  "signed_prekey_signature": "base64...",
+  "one_time_prekeys": ["base64...", "base64...", "base64..."],
+  "pq_signed_prekey": "base64...",
+  "pq_signed_prekey_signature": "base64..."
+}
+
+// Response 200
+{ "message": "Keys uploaded", "prekey_count": 50 }
+```
+
+### GET `/api/keys/:user_id/:device_id`
+```json
+{
+  "user_id": "uuid",
+  "device_id": "uuid",
+  "identity_key": "base64...",
+  "signed_prekey": "base64...",
+  "signed_prekey_signature": "base64...",
+  "one_time_prekey": "base64...",
+  "pq_signed_prekey": "base64...",
+  "pq_signed_prekey_signature": "base64..."
+}
+```
+
+---
+
+## 18. Channel E2EE (Sender Keys)
+
+Used for end-to-end encryption in server channels and group DMs using the Sender Keys protocol.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/channels/:id/e2ee/distribute` | JWT | Distribute encrypted channel keys |
+| GET | `/api/channels/:id/e2ee/my-key` | JWT | Get my channel E2EE key |
+| GET | `/api/channels/:id/e2ee/generation` | JWT | Get current key generation |
+
+### POST `/api/channels/:id/e2ee/distribute`
+```json
+{
+  "key_generation": 1,
+  "recipients": [
+    { "user_id": "uuid", "encrypted_key": "base64...", "nonce": "base64..." },
+    { "user_id": "uuid", "encrypted_key": "base64...", "nonce": "base64..." }
+  ]
+}
+```
+
+### GET `/api/channels/:id/e2ee/my-key`
+```json
+{ "encrypted_key": "base64...", "nonce": "base64...", "key_generation": 1 }
+```
+
+### GET `/api/channels/:id/e2ee/generation`
+```json
+{ "key_generation": 1 }
+```
+
+---
+
+## 19. Devices & Push Notifications
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/devices` | JWT | List my devices |
+| POST | `/api/devices` | JWT | Register a device |
+| DELETE | `/api/devices/:device_id` | JWT | Unregister device |
+| PATCH | `/api/devices/:device_id/push-token` | JWT | Update push token |
+| GET | `/api/push/vapid-key` | **None** | Get VAPID public key |
+
+### POST `/api/devices`
+```json
+{
+  "device_id": "uuid-optional",
+  "device_name": "iPhone 15 Pro",
+  "device_type": "ios",
+  "push_token": "firebase-or-apns-token"
+}
+```
+
+### Device Types
+- `"android"` — Android (FCM)
+- `"ios"` — iOS (APNs)
+- `"desktop"` — Desktop (Tauri)
+- `"web"` — Web browser (Web Push)
+
+### GET `/api/push/vapid-key`
+```json
+{ "public_key": "BPnJ..." }
+```
+
+---
+
+## 20. Notification Settings
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/users/me/notifications` | JWT | List all notification settings |
+| GET | `/api/users/me/notifications/:target_type/:target_id` | JWT | Get notification setting |
+| PUT | `/api/users/me/notifications/:target_type/:target_id` | JWT | Update notification setting |
+
+### Target Types
+- `"server"` — Server-level mute
+- `"channel"` — Channel-level mute
+
+### PUT `/api/users/me/notifications/server/:server_id`
+```json
+{
+  "muted": true,
+  "mute_until": "2026-04-01T00:00:00Z",
+  "suppress_everyone": true
+}
+```
+
+---
+
+## 21. Presence & Status
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/presence/query` | JWT | Query user presence |
+
+### POST `/api/presence/query`
+```json
+// Request — max 100 user IDs per request
+{ "user_ids": ["uuid1", "uuid2", "uuid3"] }
+
+// Response 200
+{
+  "presences": [
+    { "user_id": "uuid1", "status": "online" },
+    { "user_id": "uuid2", "status": "idle" },
+    { "user_id": "uuid3", "status": "offline" }
+  ]
+}
+```
+
+### Valid Statuses
+- `"online"` — Active
+- `"idle"` — Away / inactive
+- `"dnd"` — Do Not Disturb
+- `"offline"` — Disconnected
+
+---
+
+## 22. Audit Log
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/servers/:server_id/audit-log` | JWT | Get audit log entries |
+
+**Requires**: Server owner or `MANAGE_SERVER` permission.
+
+### GET `/api/servers/:server_id/audit-log?action=member_kick&limit=50&before=uuid`
+
+```json
+{
+  "entries": [
+    {
+      "id": "uuid",
+      "server_id": "uuid",
+      "user_id": "uuid",
+      "action_type": "member_kick",
+      "target_id": "uuid",
+      "target_type": "member",
+      "changes": { "reason": "Spamming" },
+      "reason": "Violated rules",
+      "created_at": "..."
+    }
+  ]
+}
+```
+
+---
+
+## 23. File Uploads
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/upload` | JWT | Upload file (generic) |
+
+### Constraints
+- **Max file size**: 26 MB
+- **Allowed MIME types**: `image/*`, `video/*`, `audio/*`, `application/pdf`, `text/plain`, `application/octet-stream`
+- **MIME validation**: Magic bytes (not just Content-Type header)
+- **Filename sanitization**: Removes path traversal, null bytes
+- **Storage**: MinIO/S3
+- **Access**: Via presigned URLs (4-hour expiry)
+
+### Attachment Response
+```json
+{
+  "attachment": {
+    "id": "uuid",
+    "filename": "photo.jpg",
+    "content_type": "image/jpeg",
+    "size": 1048576,
+    "url": "https://minio.../presigned-url",
+    "created_at": "..."
+  }
+}
+```
+
+---
+
+## 24. Health & Metrics
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | None | Service health check |
+| GET | `/metrics` | None | Prometheus metrics |
+
+### GET `/health`
+Returns JSON or HTML (based on Accept header) with database connection pool stats and service status.
+
+### GET `/metrics`
+Returns OpenMetrics/Prometheus format (`text/plain`).
+
+---
+
+## 25. WebSocket Gateway
+
+### Connection
+```
+ws://localhost:8080/ws
+```
+
+### Connection Limits
+- **10 concurrent connections per IP**
+- **30 messages per second per connection** (token bucket)
+- **90 second heartbeat timeout** (server disconnects if no heartbeat)
+- **65 KB max message size**
+
+### Client → Server Events
+
+| Op | Data | Description |
+|----|------|-------------|
+| `Identify` | `{ token: "JWT..." }` | **Must be first message** — authenticates the connection |
+| `Heartbeat` | `{ seq: 42 }` | Keep connection alive (send every ~45 seconds) |
+| `Subscribe` | `{ channel_id: "uuid" }` | Subscribe to channel events |
+| `Unsubscribe` | `{ channel_id: "uuid" }` | Unsubscribe from channel events |
+| `TypingStart` | `{ channel_id: "uuid" }` | Broadcast typing indicator |
+| `PresenceUpdate` | `{ status: "online" }` | Update presence status |
+
+### Server → Client Events
+
+| Op | Data | Description |
+|----|------|-------------|
+| `Ready` | `{ user_id, session_id }` | Connection authenticated successfully |
+| `HeartbeatAck` | `{ seq }` | Heartbeat acknowledged |
+| `MessageCreate` | `{ message: MessageInfo }` | New message in subscribed channel |
+| `MessageUpdate` | `{ message: MessageInfo }` | Message edited |
+| `MessageDelete` | `{ message_id, channel_id }` | Message deleted |
+| `TypingStart` | `{ channel_id, user_id, timestamp }` | User started typing |
+| `PresenceUpdate` | `{ user_id, status }` | User presence changed |
+| `DmCreate` | `{ channel: DmChannelInfo }` | New DM channel created |
+| `DmUpdate` | `{ channel: DmChannelInfo }` | DM channel updated |
+| `DmMessagesRead` | `{ dm_id, user_id, message_id }` | DM read receipt |
+| `ThreadCreate` | `{ thread: ThreadInfo }` | New thread created |
+| `ThreadUpdate` | `{ thread: ThreadInfo }` | Thread updated |
+| `ChannelCreate` | `{ channel: ChannelInfo }` | New channel created |
+| `ChannelUpdate` | `{ channel: ChannelInfo }` | Channel updated |
+| `ChannelDelete` | `{ channel_id, server_id }` | Channel deleted |
+| `MemberJoin` | `{ server_id, user_id }` | User joined server |
+| `MemberLeave` | `{ server_id, user_id }` | User left/kicked from server |
+| `MemberUpdate` | `{ server_id, user_id, timeout_until? }` | Member updated (timeout, etc.) |
+| `ServerUpdate` | `{ server: ServerInfo }` | Server settings updated |
+| `ServerDelete` | `{ server_id }` | Server deleted |
+| `ReactionUpdate` | `{ channel_id, message_id, reactions }` | Reactions changed on message |
+| `PollUpdate` | `{ poll, channel_id, message_id }` | Poll state changed |
+| `DmCallRing` | `{ dm_id, caller_id, caller_username }` | Incoming DM call |
+| `DmCallAccept` | `{ dm_id, user_id }` | Call accepted |
+| `DmCallReject` | `{ dm_id, user_id }` | Call rejected |
+| `DmCallEnd` | `{ dm_id, user_id }` | Call ended |
+| `UserUpdate` | `{ user_id, status?, display_name?, avatar_url?, bio? }` | User profile updated |
+| `Error` | `{ message: string }` | Error occurred |
+
+### WebSocket Message Format
+```json
+{ "op": "Identify", "d": { "token": "eyJ..." } }
+```
+
+### WebSocket Auth Flow
+1. Connect to `ws://host/ws`
+2. Send `Identify` with JWT token as first message
+3. Receive `Ready` with `user_id` and `session_id`
+4. Server auto-subscribes you to all your server channels
+5. Send `Heartbeat` every ~45 seconds
+6. Receive `HeartbeatAck` in response
+7. If no heartbeat within 90 seconds, server closes connection
+
+---
+
+## 26. Environment Variables
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `DATABASE_URL` | `postgres://jolkr:jolkr_dev@localhost:5432/jolkr` | Yes | PostgreSQL connection string |
+| `REDIS_URL` | `redis://localhost:6379` | Yes | Redis for caching, sessions, rate limits, presence |
+| `JWT_SECRET` | — | **Yes** | JWT signing secret (min 32 chars) |
+| `NATS_HMAC_SECRET` | — | **Yes** | NATS HMAC signing secret (min 32 chars) |
+| `SERVER_PORT` | `8080` | No | HTTP server listen port |
+| `MINIO_ENDPOINT` | `http://localhost:9000` | Yes | S3/MinIO endpoint URL |
+| `MINIO_ACCESS_KEY` | `jolkr` | Yes | S3/MinIO access key |
+| `MINIO_SECRET_KEY` | `jolkr_dev_secret` | Yes | S3/MinIO secret key |
+| `MINIO_BUCKET` | `jolkr` | Yes | S3/MinIO bucket name |
+| `NATS_URL` | `nats://localhost:4222` | Yes | NATS event bus URL |
+| `NATS_USER` | — | No | NATS auth username |
+| `NATS_PASSWORD` | — | No | NATS auth password |
+| `VAPID_PRIVATE_KEY` | — | No | Web Push VAPID private key |
+| `VAPID_PUBLIC_KEY` | — | No | Web Push VAPID public key |
+| `VAPID_SUBJECT` | `mailto:admin@jolkr.app` | No | Web Push subject |
+| `SMTP_HOST` | — | No | SMTP server for password reset emails |
+| `SMTP_PORT` | `1025` | No | SMTP port |
+| `SMTP_FROM` | `noreply@jolkr.app` | No | Email sender address |
+| `APP_URL` | `http://localhost/app` | No | Frontend URL (used in reset email links) |
+| `CORS_ORIGINS` | `localhost:1420, localhost, tauri.localhost` | No | Comma-separated CORS origins |
+| `RUST_LOG` | `info` | No | Log level filter (e.g., `debug`, `info,sqlx=warn`) |
+
+---
+
+## 27. Database Models
+
+### Core Tables Summary
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `users` | User accounts | id, email, username, display_name, avatar_url, status, bio, password_hash, show_read_receipts |
+| `servers` | Server/guild entities | id, name, description, icon_url, banner_url, owner_id, discoverable |
+| `channels` | Server channels | id, server_id, category_id, name, topic, kind, position, is_nsfw, slowmode_seconds, e2ee_key_generation |
+| `categories` | Channel categories | id, server_id, name, position |
+| `messages` | Channel messages | id, channel_id, author_id, content, encrypted_content, nonce, reply_to_id, thread_id, webhook_id, is_edited, is_pinned |
+| `members` | Server membership | id, server_id, user_id, nickname, joined_at |
+| `roles` | Server roles | id, server_id, name, color, position, permissions (BIGINT), is_default |
+| `member_roles` | Role assignments | member_id, role_id |
+| `threads` | Channel threads | id, channel_id, starter_msg_id, name, is_archived |
+| `dm_channels` | DM channels | id, is_group, name |
+| `dm_members` | DM membership | id, dm_channel_id, user_id |
+| `dm_messages` | DM messages | id, dm_channel_id, author_id, content, encrypted_content, nonce, is_edited |
+| `friendships` | Friend relationships | id, requester_id, addressee_id, status (pending/accepted/blocked) |
+| `devices` | Registered devices | id, user_id, device_name, device_type, push_token |
+| `sessions` | Auth sessions | id, user_id, device_id, refresh_token_hash, expires_at |
+| `user_keys` | E2EE prekeys (X3DH) | id, user_id, device_id, identity_key, signed_prekey, one_time_prekey, is_used |
+| `channel_encryption_keys` | Channel E2EE keys | id, channel_id, recipient_user_id, encrypted_key, nonce, key_generation |
+| `reactions` | Message reactions | id, message_id, user_id, emoji |
+| `pins` | Pinned messages | id, channel_id, message_id, pinned_by |
+| `webhooks` | Channel webhooks | id, channel_id, server_id, creator_id, name, avatar_url, token |
+| `invites` | Server invites | id, server_id, creator_id, code, max_uses, use_count, expires_at |
+| `polls` | Channel polls | id, message_id, question, duration_seconds |
+| `poll_options` | Poll options | id, poll_id, text, position |
+| `poll_votes` | Poll votes | id, poll_id, option_id, user_id |
+| `notification_settings` | Mute/notification prefs | id, user_id, target_type, target_id, muted, mute_until, suppress_everyone |
+| `audit_log` | Server audit trail | id, server_id, user_id, action_type, target_id, changes (JSONB), reason |
+
+---
+
+## 28. Rate Limiting
+
+Distributed rate limiting via Redis with local DashMap fallback.
+
+| Endpoint Group | Limit | Window | Notes |
+|----------------|-------|--------|-------|
+| Auth routes | 2 req | 5 sec | Strict — prevents brute force |
+| General API | 30 req | 60 sec | Default for all authenticated routes |
+| Webhook execution | 10 req | 20 sec | Per webhook |
+| WebSocket messages | 30 msg/sec | Token bucket | Burst capacity = 30 |
+| Presence query | 100 user IDs | Per request | Hard limit on batch size |
+
+---
+
+## 29. Error Responses
+
+All API errors follow a consistent format:
+
+```json
+{
+  "error": {
+    "code": 400,
+    "message": "Descriptive error message"
+  }
+}
+```
+
+| Status Code | Meaning |
+|-------------|---------|
+| `200` | Success with response body |
+| `204` | Success, no response body |
+| `400` | Bad request / validation error |
+| `401` | Unauthorized — missing or invalid JWT |
+| `403` | Forbidden — insufficient permissions |
+| `404` | Resource not found |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+| `503` | Service unavailable (DB/Redis down) |
+
+---
+
+## Infrastructure Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Web Framework | Axum 0.7 (Rust) | Async HTTP server |
+| Database | PostgreSQL + sqlx | Persistent data storage |
+| Cache | Redis | Sessions, rate limits, presence, token blacklist |
+| Event Bus | NATS | Multi-instance pub/sub coordination |
+| Object Storage | MinIO (S3-compatible) | Files, avatars, emojis |
+| Push Notifications | Web Push (VAPID) | Browser/device notifications |
+| Email | SMTP | Password reset emails |
+| Metrics | Prometheus | Monitoring via `/metrics` |

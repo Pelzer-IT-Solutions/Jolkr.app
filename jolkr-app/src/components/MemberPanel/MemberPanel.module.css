@@ -114,3 +114,47 @@
 .offline { background: var(--jolkr-neutral-dark-30); }
 
 .name { color: var(--text-muted); flex: 1; }
+
+/* Pinned Messages Styles */
+
+.empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-faint);
+}
+
+.pinnedItem {
+  position: relative;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  margin: 0.25rem 0.5rem 0.5rem;
+  background: var(--surface-field);
+}
+.pinnedItem:hover { background: var(--surface-raised); }
+
+.pinnedItemAuthor {
+  margin-bottom: 0.25rem;
+  color: var(--text-strong);
+}
+
+.pinnedItemContent {
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.unpinBtn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 0.125rem;
+  border-radius: 0.25rem;
+  opacity: 0;
+  transition: opacity var(--transition), background-color var(--transition);
+}
+.pinnedItem:hover .unpinBtn { opacity: 1; }
+.unpinBtn:hover { background: var(--surface-raised); color: var(--danger); }

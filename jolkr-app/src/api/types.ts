@@ -33,6 +33,7 @@ export interface Channel {
   position: number;
   category_id?: string | null;
   is_nsfw?: boolean;
+  is_system?: boolean;
   slowmode_seconds?: number;
   e2ee_key_generation?: number;
   created_at?: string | null;

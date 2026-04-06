@@ -19,7 +19,7 @@ function lerpHue(a: number, b: number, t: number): number {
   return ((a + d * t) % 360 + 360) % 360
 }
 
-interface OrbSnap { x: number; y: number; hue: number }
+interface OrbSnap { x: number; y: number; hue: number; scale: number }
 
 interface ThemeSnap {
   baseHue: number
@@ -28,25 +28,48 @@ interface ThemeSnap {
 }
 
 const NEUTRAL_ORBS: OrbSnap[] = [
-  { x: 0.22, y: 0.72, hue: 0 },
-  { x: 0.74, y: 0.28, hue: 22 },
-  { x: 0.12, y: 0.22, hue: 342 },
+  { x: 0.22, y: 0.72, hue: 0, scale: 1 },
+  { x: 0.74, y: 0.28, hue: 22, scale: 1 },
+  { x: 0.12, y: 0.22, hue: 342, scale: 1 },
 ]
+
+function getNeutralOrbPosition(x: number, y: number): { x: number; y: number } {
+  // Determine nearest corner based on orb position
+  // Push far outside viewport so gradients are completely invisible
+  const toLeft = x < 0.5
+  const toTop = y < 0.5
+  
+  return {
+    x: toLeft ? -2 : 3,
+    y: toTop ? -2 : 3,
+  }
+}
 
 function snap(theme: ServerTheme, fallbackOrbs?: OrbSnap[]): ThemeSnap {
   // Truly theme-less: no preset hue AND no orbs
   if (theme.hue === null && theme.orbs.length === 0) {
+    // Move orbs off-screen for neutral themes
+    const neutralOrbs = fallbackOrbs
+      ? fallbackOrbs.map(o => {
+          const pos = getNeutralOrbPosition(o.x, o.y)
+          return { ...o, x: pos.x, y: pos.y }
+        })
+      : NEUTRAL_ORBS.map(o => {
+          const pos = getNeutralOrbPosition(o.x, o.y)
+          return { ...o, x: pos.x, y: pos.y }
+        })
+    
     return {
       baseHue: 0,
       intensity: 0,
-      orbs: fallbackOrbs ?? NEUTRAL_ORBS.map(o => ({ ...o })),
+      orbs: neutralOrbs,
     }
   }
   // Custom hue (orbs with individual hues but no preset) or preset hue
   return {
     baseHue: theme.hue ?? (theme.orbs[0]?.hue ?? 0),
     intensity: 1,
-    orbs: theme.orbs.map(o => ({ x: o.x, y: o.y, hue: o.hue })),
+    orbs: theme.orbs.map(o => ({ x: o.x, y: o.y, hue: o.hue, scale: o.scale ?? 1 })),
   }
 }
 
@@ -57,9 +80,10 @@ function tween(from: ThemeSnap, to: ThemeSnap, t: number): ThemeSnap {
     orbs: from.orbs.map((f, i) => {
       const tOrb = to.orbs[i] ?? f
       return {
-        x:   lerp(f.x, tOrb.x, t),
-        y:   lerp(f.y, tOrb.y, t),
-        hue: lerpHue(f.hue, tOrb.hue, t),
+        x:     lerp(f.x, tOrb.x, t),
+        y:     lerp(f.y, tOrb.y, t),
+        hue:   lerpHue(f.hue, tOrb.hue, t),
+        scale: lerp(f.scale, tOrb.scale, t),
       }
     }),
   }
@@ -71,13 +95,15 @@ function buildBg(st: ThemeSnap, dark: boolean): string {
 
   const orbL  = dark ? '36%' : '83%'
   const orbC  = (dark ? 0.10 : 0.11) * st.intensity
-  const orbA  = (dark ? 0.88 : 0.82) * st.intensity
+  const blendOrbA = (dark ? 0.95 : 0.92) * st.intensity
   const baseC = (dark ? 0.018 : 0.021) * st.intensity
 
-  const grads = st.orbs.map(o =>
-    `radial-gradient(ellipse 72% 72% at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, ` +
-    `oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / ${orbA.toFixed(4)}) 0%, transparent 100%)`,
-  )
+  const grads = st.orbs.map(o => {
+    const spread = 72 * o.scale
+    // Use farthest-corner with scale to create circular gradients
+    // Fade from full opacity to 0% of the same color (not transparent black)
+    return `radial-gradient(circle farthest-corner at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / ${blendOrbA.toFixed(4)}) 0%, oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / 0) ${spread.toFixed(1)}%)`
+  })
   return [...grads, `oklch(${baseL} ${baseC.toFixed(4)} ${st.baseHue.toFixed(1)})`].join(', ')
 }
 

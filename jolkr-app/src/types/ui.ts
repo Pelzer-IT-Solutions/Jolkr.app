@@ -1,9 +1,10 @@
 export interface Channel {
-  id:     string
-  name:   string
-  icon:   string
-  desc:   string
-  unread: number
+  id:        string
+  name:      string
+  icon:      string
+  desc:      string
+  unread:    number
+  is_system?: boolean
 }
 
 export interface Category {

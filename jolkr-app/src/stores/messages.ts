@@ -50,7 +50,7 @@ interface MessagesState {
   // Thread actions
   fetchThreadMessages: (threadId: string) => Promise<void>;
   fetchOlderThreadMessages: (threadId: string) => Promise<void>;
-  sendThreadMessage: (threadId: string, content: string, replyToId?: string) => Promise<Message>;
+  sendThreadMessage: (threadId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   addThreadMessage: (threadId: string, message: Message) => void;
   updateThreadMessage: (threadId: string, message: Message) => void;
   removeThreadMessage: (threadId: string, messageId: string) => void;
@@ -276,8 +276,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
-  sendThreadMessage: async (threadId, content, replyToId) => {
-    return api.sendThreadMessage(threadId, content, replyToId);
+  sendThreadMessage: async (threadId, content, replyToId, nonce) => {
+    return api.sendThreadMessage(threadId, content, nonce, replyToId);
   },
 
   addThreadMessage: (threadId, message) => {

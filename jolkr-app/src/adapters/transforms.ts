@@ -213,6 +213,7 @@ export function transformServer(
       icon: channelIcon(ch.kind),
       desc: ch.topic || '',
       unread: channelUnreads?.[ch.id] ?? 0,
+      is_system: ch.is_system,
     }))
 
   return {

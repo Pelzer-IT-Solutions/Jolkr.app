@@ -4,9 +4,9 @@ import type { ThemeOrb, ServerTheme } from '../types'
 /** Default three-orb layout for a given primary hue */
 export function orbsForHue(hue: number): ThemeOrb[] {
   return [
-    { id: 'a', x: 0.22, y: 0.72, hue },
-    { id: 'b', x: 0.74, y: 0.28, hue: (hue + 22) % 360 },
-    { id: 'c', x: 0.12, y: 0.22, hue: (hue - 18 + 360) % 360 },
+    { id: 'a', x: 0.22, y: 0.72, hue, scale: 1 },
+    { id: 'b', x: 0.74, y: 0.28, hue: (hue + 22) % 360, scale: 1 },
+    { id: 'c', x: 0.12, y: 0.22, hue: (hue - 18 + 360) % 360, scale: 1 },
   ]
 }
 
@@ -16,23 +16,30 @@ export function buildBackground(theme: ServerTheme, isDark = false): string {
   // Dark  mode: deep saturated orbs on a near-black base
   const baseL = isDark ? '11%'   : '91.5%'
 
-  // Theme-less server with no orbs: neutral grey background
-  if (theme.hue === null && theme.orbs.length === 0) {
+  // No orbs at all: neutral grey background
+  if (theme.orbs.length === 0) {
     return `oklch(${baseL} 0 0)`
   }
 
   const orbL  = isDark ? '36%'    : '83%'
   const orbC  = isDark ? '0.10'   : '0.11'
-  const orbA  = isDark ? '0.88'   : '0.82'
   const baseC = isDark ? '0.018'  : '0.021'
 
-  // Derive base hue from first orb if no preset hue is set (custom hue wheel edit)
-  const baseHue = theme.hue ?? (theme.orbs[0]?.hue ?? 0)
-
+  // Build orb gradients with scale support
+  // Use increased opacity for better color mixing with blend modes
+  const blendOrbA = isDark ? '0.95' : '0.92'
+  
   const grads = theme.orbs.map(o => {
-    const spread = (72 * (o.scale ?? 1)).toFixed(1)
-    return `radial-gradient(ellipse ${spread}% ${spread}% at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC} ${o.hue.toFixed(1)} / ${orbA}) 0%, transparent 100%)`
+    const scale = o.scale ?? 1
+    // Use farthest-corner with scale to create circular gradients
+    // Scale affects the gradient spread (larger scale = larger orb)
+    const spread = 72 * scale
+    // Fade from full opacity to 0% of the same color (not transparent black)
+    return `radial-gradient(circle farthest-corner at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC} ${o.hue.toFixed(1)} / ${blendOrbA}) 0%, oklch(${orbL} ${orbC} ${o.hue.toFixed(1)} / 0) ${spread.toFixed(1)}%)`
   })
+
+  // Base color: use theme hue if set, otherwise derive from first orb
+  const baseHue = theme.hue ?? (theme.orbs[0]?.hue ?? 0)
   const base = `oklch(${baseL} ${baseC} ${baseHue.toFixed(1)})`
   return [...grads, base].join(', ')
 }
@@ -64,7 +71,7 @@ export function buildThemeStyle(
   } as React.CSSProperties
 }
 
-/** Randomise orb positions, keeping their hues */
+/** Randomise orb positions, keeping their hues and scales */
 export function randomiseOrbs(orbs: ThemeOrb[]): ThemeOrb[] {
   return orbs.map(o => ({
     ...o,
