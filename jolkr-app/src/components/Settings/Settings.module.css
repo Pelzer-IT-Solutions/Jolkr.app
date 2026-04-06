@@ -131,7 +131,384 @@
   margin: 1.25rem 0;
 }
 
-/* ── Profile card ── */
+/* ── Profile Preview Card (Figma Style) ── */
+.profilePreviewCard {
+  position: relative;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-muted);
+  margin-bottom: 1.5rem;
+}
+
+/* Actions Bar */
+.profileActions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+/* Color Picker Inline */
+.colorPickerInline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-direction: row-reverse;
+}
+
+.colorPickerBtn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  transition: background-color var(--transition), color var(--transition), transform 120ms;
+}
+
+.colorPickerBtn:hover {
+  background: var(--surface-field);
+  color: var(--text-strong);
+  transform: scale(1.05);
+}
+
+.colorPickerActive {
+  background: var(--accent);
+  color: #fff;
+}
+
+.colorPickerSwatchesInline {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-muted);
+  border-radius: 2rem;
+  animation: slideIn 200ms ease;
+}
+
+.colorPickerSwatch {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform 120ms, border-color var(--transition);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.colorPickerSwatch:hover {
+  transform: scale(1.15);
+}
+
+.colorPickerSwatchActive {
+  border-color: var(--text-strong);
+  box-shadow: 0 0 0 1px var(--surface-raised), 0 0 0 3px var(--accent);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Edit Button */
+.editProfileBtn {
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  background: var(--surface-raised);
+  color: var(--text-strong);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background-color var(--transition), transform 120ms;
+}
+
+.editProfileBtn:hover {
+  background: var(--surface-field);
+  transform: translateY(-1px);
+}
+
+.editActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cancelEditBtn,
+.saveEditBtn {
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background-color var(--transition), transform 120ms;
+}
+
+.cancelEditBtn {
+  background: var(--surface-raised);
+  color: var(--text-muted);
+}
+
+.cancelEditBtn:hover {
+  background: var(--surface-field);
+  color: var(--text-strong);
+}
+
+.saveEditBtn {
+  background: var(--accent);
+  color: #fff;
+}
+
+.saveEditBtn:hover {
+  background: var(--accent-strong);
+  transform: translateY(-1px);
+}
+
+/* Banner */
+.previewBanner {
+  height: 5rem;
+  transition: background-color var(--transition);
+}
+
+/* Content Area */
+.previewContent {
+  padding: 0 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Avatar */
+.previewAvatarWrap {
+  position: relative;
+  width: 5rem;
+  height: 5rem;
+  margin-top: -2.5rem;
+  border-radius: 50%;
+  border: 3px solid var(--surface-content);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 120ms;
+}
+
+.previewAvatarWrap:hover {
+  transform: scale(1.02);
+}
+
+.previewAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: oklch(60% 0.15 250);
+  overflow: hidden;
+}
+
+.previewAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarChangeOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity var(--transition);
+  border-radius: 50%;
+  color: #fff;
+}
+
+.previewAvatarWrap:hover .avatarChangeOverlay {
+  opacity: 1;
+}
+
+/* Profile Info */
+.previewInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.previewDisplayName {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.previewUsername {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.previewDivider {
+  width: 2rem;
+  height: 2px;
+  background: var(--border-strong);
+  border-radius: 1px;
+  margin: 0.25rem 0;
+}
+
+.previewBio {
+  font-size: 0.9375rem;
+  color: var(--text-strong);
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+/* Edit Inputs */
+.editInput {
+  background: var(--surface-field);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-strong);
+  font-size: 0.9375rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.editInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.displayNameInput {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.usernameInput {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.editTextarea {
+  background: var(--surface-field);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  color: var(--text-strong);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 4rem;
+  font-family: inherit;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.editTextarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+/* Roles Section */
+.previewRolesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.previewRolesTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+
+.previewRolesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.previewRoleBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--surface-field);
+  border-radius: 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.roleDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.roleName {
+  font-weight: 500;
+}
+
+/* ── Simple Field (no card) ── */
+.simpleField {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--surface-field);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-muted);
+  margin-bottom: 1rem;
+}
+
+.simpleFieldLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.simpleFieldValueWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.simpleFieldValue {
+  font-size: 0.9375rem;
+  color: var(--text-strong);
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+.simpleFieldEdit {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  transition: background-color var(--transition), color var(--transition);
+}
+
+.simpleFieldEdit:hover {
+  background: var(--accent-muted);
+  color: var(--accent-strong);
+}
+
+/* ── Old profile card (Profiles section) ── */
 .profileCard {
   border: 1px solid var(--border-muted);
   border-radius: 0.75rem;
@@ -165,16 +542,6 @@
   font-weight: 700;
   color: #fff;
 }
-.editProfileBtn {
-  padding: 0.375rem 0.875rem;
-  border-radius: 0.5rem;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  transition: opacity var(--transition);
-}
-.editProfileBtn:hover { opacity: 0.85; }
 
 .profileFields {
   padding: 0 1rem 1rem;

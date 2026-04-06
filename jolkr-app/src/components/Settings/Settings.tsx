@@ -2,14 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, User, Shield, Link, Palette, Accessibility,
-  Mic, Bell, Keyboard, Globe, ChevronRight,
+  Mic, Bell, Keyboard, Globe, ChevronRight, Camera,
 } from 'lucide-react'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import s from './Settings.module.css'
 
 type Section =
-  | 'account' | 'profiles' | 'privacy' | 'connections'
+  | 'account' | 'privacy' | 'connections'
   | 'appearance' | 'accessibility' | 'voice' | 'notifications' | 'keybinds' | 'language'
 
 interface UserInfo {
@@ -38,7 +38,6 @@ const NAV: { group: string; items: { id: Section; label: string; icon: React.Rea
     group: 'User Settings',
     items: [
       { id: 'account',     label: 'My Account',      icon: <User       size={15} strokeWidth={1.5} /> },
-      { id: 'profiles',    label: 'Profiles',         icon: <User       size={15} strokeWidth={1.5} /> },
       { id: 'privacy',     label: 'Privacy & Safety', icon: <Shield     size={15} strokeWidth={1.5} /> },
       { id: 'connections', label: 'Connections',      icon: <Link       size={15} strokeWidth={1.5} /> },
     ],
@@ -155,7 +154,6 @@ function SectionContent({ section, isDark, colorPref, onSetColorPref, user, onLo
 }) {
   switch (section) {
     case 'account':     return <AccountSection user={user} onLogout={onLogout} onClose={onClose} onUpdateProfile={onUpdateProfile} onUploadAvatar={onUploadAvatar} onChangePassword={onChangePassword} />
-    case 'profiles':    return <ProfilesSection />
     case 'privacy':     return <PrivacySection />
     case 'connections': return <ConnectionsSection />
     case 'appearance':  return <AppearanceSection isDark={isDark} colorPref={colorPref} onSetColorPref={onSetColorPref} />
@@ -170,6 +168,21 @@ function SectionContent({ section, isDark, colorPref, onSetColorPref, user, onLo
 /* ─────────────────────────────────────────
    SECTION: My Account
 ───────────────────────────────────────── */
+const BANNER_COLORS = [
+  { name: 'Sage', value: 'oklch(60% 0.1 136)' },
+  { name: 'Gold', value: 'oklch(65% 0.12 85)' },
+  { name: 'Ocean', value: 'oklch(60% 0.12 215)' },
+  { name: 'Royal', value: 'oklch(55% 0.18 280)' },
+  { name: 'Berry', value: 'oklch(55% 0.18 340)' },
+  { name: 'Coral', value: 'oklch(60% 0.15 25)' },
+]
+
+const MOCK_ROLES = [
+  { name: 'Admin', color: '#e64343' },
+  { name: 'Moderator', color: '#72da7a' },
+  { name: 'Designer', color: '#6d62ed' },
+]
+
 function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvatar, onChangePassword }: {
   user?: UserInfo
   onLogout?: () => void
@@ -178,8 +191,13 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   onUploadAvatar?: (file: File) => Promise<void>
   onChangePassword?: (current: string, newPw: string) => Promise<void>
 }) {
-  const [editField, setEditField] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const [editDisplayName, setEditDisplayName] = useState(user?.displayName ?? '')
+  const [editUsername, setEditUsername] = useState(user?.username ?? '')
+  const [editBio, setEditBio] = useState('')
+  const [bio, setBio] = useState('')
+  const [bannerColor, setBannerColor] = useState(user?.avatarColor ?? 'oklch(60% 0.12 215)')
   const [saving, setSaving] = useState(false)
   const [pwMode, setPwMode] = useState(false)
   const [currentPw, setCurrentPw] = useState('')
@@ -187,16 +205,33 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   const [pwError, setPwError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  async function handleSaveField() {
-    if (!editField || !editValue.trim()) return
+  async function handleSave() {
     setSaving(true)
     try {
-      await onUpdateProfile?.({ [editField === 'Display Name' ? 'display_name' : 'username']: editValue.trim() })
-      setEditField(null)
+      await onUpdateProfile?.({ display_name: editDisplayName.trim(), username: editUsername.trim() })
+      setBio(editBio)
+      setIsEditing(false)
     } catch (e) {
       console.error('Failed to update:', e)
     } finally {
       setSaving(false)
+    }
+  }
+
+  function handleCancel() {
+    setEditDisplayName(user?.displayName ?? '')
+    setEditUsername(user?.username ?? '')
+    setEditBio(bio)
+    setIsEditing(false)
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      await onUploadAvatar?.(file)
+    } catch (err) {
+      console.error('Avatar upload failed:', err)
     }
   }
 
@@ -216,68 +251,138 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
     }
   }
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      await onUploadAvatar?.(file)
-    } catch (err) {
-      console.error('Avatar upload failed:', err)
-    }
-  }
-
   return (
     <div className={s.section}>
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>My Account</h2>
 
-      {/* Profile card */}
-      <div className={s.profileCard}>
-        <div className={s.profileBanner} style={user?.avatarColor ? { background: user.avatarColor } : undefined} />
-        <div className={s.profileCardBody}>
-          <div className={s.profileAvatarWrap} onClick={() => fileInputRef.current?.click()} style={{ cursor: 'pointer' }} title="Change avatar">
-            <div className={s.profileAvatar} style={!user?.avatarUrl && user?.avatarColor ? { background: user.avatarColor } : undefined}>
-              {user?.avatarUrl
-                ? <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                : (user?.avatarLetter ?? '?')}
-            </div>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+      {/* Profile Preview Card */}
+      <div className={s.profilePreviewCard}>
+        {/* Actions Bar */}
+        <div className={s.profileActions}>
+          {/* Color Picker - Inline */}
+          <div className={s.colorPickerInline}>
+            <button
+              className={`${s.colorPickerBtn} ${showColorPicker ? s.colorPickerActive : ''}`}
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              title="Change banner color"
+            >
+              <Palette size={16} strokeWidth={1.5} />
+            </button>
+            {showColorPicker && (
+              <div className={s.colorPickerSwatchesInline}>
+                {BANNER_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    className={`${s.colorPickerSwatch} ${bannerColor === c.value ? s.colorPickerSwatchActive : ''}`}
+                    style={{ background: c.value }}
+                    onClick={() => { setBannerColor(c.value); setShowColorPicker(false) }}
+                    title={c.name}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-          <button className={s.editProfileBtn} onClick={() => fileInputRef.current?.click()}>Change Avatar</button>
+
+          {/* Edit Button */}
+          {isEditing ? (
+            <div className={s.editActions}>
+              <button className={s.cancelEditBtn} onClick={handleCancel}>Cancel</button>
+              <button className={s.saveEditBtn} onClick={handleSave}>{saving ? 'Saving...' : 'Save'}</button>
+            </div>
+          ) : (
+            <button className={s.editProfileBtn} onClick={() => { setIsEditing(true); setEditDisplayName(user?.displayName ?? ''); setEditUsername(user?.username ?? ''); setEditBio(bio) }}>
+              Edit Profile
+            </button>
+          )}
         </div>
-        <div className={s.profileFields}>
-          {editField === 'Display Name' ? (
-            <div className={s.field}>
-              <span className={`${s.fieldLabel} txt-tiny txt-semibold`}>Display Name</span>
-              <input
-                className={`${s.fieldValue} txt-small`}
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleSaveField(); if (e.key === 'Escape') setEditField(null) }}
-                autoFocus
-                style={{ background: 'var(--surface-field)', border: '1px solid var(--border-muted)', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', color: 'var(--text-default)', outline: 'none' }}
-              />
-              <button className={s.fieldEdit} onClick={handleSaveField} disabled={saving}>{saving ? '...' : 'Save'}</button>
+
+        {/* Banner */}
+        <div className={s.previewBanner} style={{ background: bannerColor }} />
+
+        {/* Profile Content */}
+        <div className={s.previewContent}>
+          {/* Avatar - Click to change */}
+          <div className={s.previewAvatarWrap} onClick={() => fileInputRef.current?.click()}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleAvatarChange}
+            />
+            <div className={s.previewAvatar} style={{ background: user?.avatarColor ?? bannerColor }}>
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="Profile" className={s.previewAvatarImg} />
+              ) : (
+                user?.avatarLetter ?? '?'
+              )}
             </div>
-          ) : (
-            <Field label="Display Name" value={user?.displayName ?? ''} onEdit={() => { setEditField('Display Name'); setEditValue(user?.displayName ?? '') }} />
-          )}
-          {editField === 'Username' ? (
-            <div className={s.field}>
-              <span className={`${s.fieldLabel} txt-tiny txt-semibold`}>Username</span>
-              <input
-                className={`${s.fieldValue} txt-small`}
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleSaveField(); if (e.key === 'Escape') setEditField(null) }}
-                autoFocus
-                style={{ background: 'var(--surface-field)', border: '1px solid var(--border-muted)', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', color: 'var(--text-default)', outline: 'none' }}
-              />
-              <button className={s.fieldEdit} onClick={handleSaveField} disabled={saving}>{saving ? '...' : 'Save'}</button>
+            <div className={s.avatarChangeOverlay}>
+              <Camera size={20} strokeWidth={1.5} />
             </div>
-          ) : (
-            <Field label="Username" value={user?.username ?? ''} onEdit={() => { setEditField('Username'); setEditValue(user?.username ?? '') }} />
-          )}
-          <Field label="Email" value={user?.email ?? ''} masked />
+          </div>
+
+          {/* Profile Info */}
+          <div className={s.previewInfo}>
+            {isEditing ? (
+              <>
+                <input
+                  type="text"
+                  className={`${s.editInput} ${s.displayNameInput}`}
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                  placeholder="Display Name"
+                />
+                <input
+                  type="text"
+                  className={`${s.editInput} ${s.usernameInput}`}
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value)}
+                  placeholder="Username"
+                />
+              </>
+            ) : (
+              <>
+                <h3 className={s.previewDisplayName}>{user?.displayName ?? ''}</h3>
+                <p className={s.previewUsername}>{user?.username ?? ''}</p>
+              </>
+            )}
+
+            <div className={s.previewDivider} />
+
+            {isEditing ? (
+              <textarea
+                className={`${s.editTextarea} ${s.bioInput}`}
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                placeholder="Tell others about yourself..."
+                rows={3}
+              />
+            ) : (
+              <p className={s.previewBio}>{bio || 'No bio set yet.'}</p>
+            )}
+          </div>
+
+          {/* Roles Section */}
+          <div className={s.previewRolesSection}>
+            <h4 className={s.previewRolesTitle}>Roles</h4>
+            <div className={s.previewRolesList}>
+              {MOCK_ROLES.map((role) => (
+                <div key={role.name} className={s.previewRoleBadge}>
+                  <span className={s.roleDot} style={{ background: role.color }} />
+                  <span className={s.roleName}>{role.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Account Information</h3>
+      <div className={s.simpleField}>
+        <span className={s.simpleFieldLabel}>Email</span>
+        <div className={s.simpleFieldValueWrap}>
+          <span className={s.simpleFieldValue}>••••••••••</span>
         </div>
       </div>
 
@@ -291,14 +396,14 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
             placeholder="Current password"
             value={currentPw}
             onChange={e => setCurrentPw(e.target.value)}
-            style={{ background: 'var(--surface-field)', border: '1px solid var(--border-muted)', borderRadius: '0.375rem', padding: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-default)', outline: 'none' }}
+            className={s.editInput}
           />
           <input
             type="password"
             placeholder="New password (min 6 chars)"
             value={newPw}
             onChange={e => setNewPw(e.target.value)}
-            style={{ background: 'var(--surface-field)', border: '1px solid var(--border-muted)', borderRadius: '0.375rem', padding: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-default)', outline: 'none' }}
+            className={s.editInput}
           />
           {pwError && <span style={{ color: 'oklch(55% 0.2 25)', fontSize: '0.75rem' }}>{pwError}</span>}
           <div className={s.rowBtns}>
@@ -309,6 +414,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       ) : (
         <div className={s.rowBtns}>
           <OutlineBtn onClick={() => setPwMode(true)}>Change Password</OutlineBtn>
+          <OutlineBtn>Enable Two-Factor Auth</OutlineBtn>
         </div>
       )}
 
@@ -321,30 +427,6 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       <h3 className={`${s.subTitle} ${s.danger} txt-small txt-semibold`}>Danger Zone</h3>
       <p className={`${s.helpText} txt-small`}>Deleting your account is permanent and cannot be undone.</p>
       <DangerBtn>Delete Account</DangerBtn>
-    </div>
-  )
-}
-
-/* ─────────────────────────────────────────
-   SECTION: Profiles
-───────────────────────────────────────── */
-function ProfilesSection() {
-  return (
-    <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Profiles</h2>
-
-      <SettingBlock title="About Me" description="Tell others a little about yourself.">
-        <textarea className={s.textarea} placeholder="Add a bio…" rows={4} />
-      </SettingBlock>
-
-      <Divider />
-      <SettingBlock title="Profile Banner Colour">
-        <div className={s.colorSwatches}>
-          {['oklch(48% 0.15 136)', '#7c3aed', '#4338ca', '#0284c7', '#9333ea', '#dc2626'].map(c => (
-            <button key={c} className={s.swatch} style={{ background: c }} />
-          ))}
-        </div>
-      </SettingBlock>
     </div>
   )
 }
@@ -417,7 +499,7 @@ function ConnectionsSection() {
 /* ─────────────────────────────────────────
    SECTION: Appearance
 ───────────────────────────────────────── */
-function AppearanceSection({ isDark: _isDark, colorPref, onSetColorPref }: {
+function AppearanceSection({ colorPref, onSetColorPref }: {
   isDark: boolean; colorPref: ColorPreference; onSetColorPref: (p: ColorPreference) => void
 }) {
   const [display, setDisplay]   = useState<'cozy' | 'compact'>('cozy')
@@ -614,16 +696,6 @@ function LanguageSection() {
    Shared UI primitives
 ───────────────────────────────────────── */
 function Divider() { return <div className={s.divider} /> }
-
-function Field({ label, value, masked, onEdit }: { label: string; value: string; masked?: boolean; onEdit?: () => void }) {
-  return (
-    <div className={s.field}>
-      <span className={`${s.fieldLabel} txt-tiny txt-semibold`}>{label}</span>
-      <span className={`${s.fieldValue} txt-small`}>{masked ? '••••••••••' : value}</span>
-      {onEdit && <button className={s.fieldEdit} onClick={onEdit}>Edit</button>}
-    </div>
-  )
-}
 
 function SettingBlock({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (

@@ -187,6 +187,7 @@ export function transformServer(
 
   // Build UI categories (name + channel ID list)
   const uiCategories: UiCategory[] = sortedCats.map(cat => ({
+    id: cat.id,
     name: cat.name,
     channels: channels
       .filter(ch => ch.category_id === cat.id)
@@ -199,6 +200,7 @@ export function transformServer(
   const uncategorized = channels.filter(ch => !categorizedIds.has(ch.id))
   if (uncategorized.length > 0) {
     uiCategories.unshift({
+      id: '__uncategorized__',
       name: 'Channels',
       channels: uncategorized.sort((a, b) => a.position - b.position).map(ch => ch.id),
     })

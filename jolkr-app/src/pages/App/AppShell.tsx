@@ -600,6 +600,22 @@ export default function AppShell() {
     }
   }, [activeServerId, activeChannelId])
 
+  const handleDeleteCategory = useCallback(async (categoryId: string) => {
+    await api.deleteCategory(categoryId)
+    await fetchCategories(activeServerId)
+    await fetchChannels(activeServerId)
+  }, [activeServerId])
+
+  const handleRenameChannel = useCallback(async (channelId: string, newName: string) => {
+    await api.updateChannel(channelId, { name: newName })
+    await fetchChannels(activeServerId)
+  }, [activeServerId])
+
+  const handleRenameCategory = useCallback(async (categoryId: string, newName: string) => {
+    await api.updateCategory(categoryId, { name: newName })
+    await fetchCategories(activeServerId)
+  }, [activeServerId])
+
   async function handleJoinServer(serverId: string, _accessCode: string): Promise<boolean> {
     try {
       await api.useInvite(serverId)
@@ -752,6 +768,9 @@ export default function AppShell() {
                   onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
                   onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
                   onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
+                  onDeleteCategory={canManageChannels ? handleDeleteCategory : undefined}
+                  onRenameChannel={canManageChannels ? handleRenameChannel : undefined}
+                  onRenameCategory={canManageChannels ? handleRenameCategory : undefined}
                 />
               ) : null}
 

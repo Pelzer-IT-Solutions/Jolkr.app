@@ -42,7 +42,7 @@ const statusColorClass: Record<string, string> = {
 }
 
 export default function Avatar({ url, name, size = 'lg', status, userId, className }: AvatarProps) {
-  const imgSrc = userId ? avatarEndpoint(userId) : (url ?? undefined)
+  const imgSrc = userId && url ? avatarEndpoint(userId) : (url ?? undefined)
   const [imgError, setImgError] = useState(false)
   const prevKeyRef = useRef(userId ?? url)
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, UserPlus, Check, XCircle, MessageCircle, UserX } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
+import Avatar from '../Avatar'
 import s from './FriendsPanel.module.css'
 
 type FriendTab = 'all' | 'online' | 'pending'
@@ -130,9 +131,7 @@ export function FriendsPanel({
                   {incomingRequests.map(req => (
                     <div key={req.id} className={s.requestRow}>
                       <div className={s.userInfo}>
-                        <div className={s.avatar} style={{ background: req.user.color }}>
-                          {req.user.letter}
-                        </div>
+                        <Avatar url={null} name={req.user.display_name ?? req.user.username} size="sm" userId={req.user.user_id} />
                         <div className={s.names}>
                           <span className={`${s.displayName} txt-small txt-medium`}>{req.user.display_name ?? req.user.username}</span>
                           <span className={`${s.username} txt-tiny`}>@{req.user.username}</span>
@@ -157,9 +156,7 @@ export function FriendsPanel({
                   {outgoingRequests.map(req => (
                     <div key={req.id} className={s.requestRow}>
                       <div className={s.userInfo}>
-                        <div className={s.avatar} style={{ background: req.user.color }}>
-                          {req.user.letter}
-                        </div>
+                        <Avatar url={null} name={req.user.display_name ?? req.user.username} size="sm" userId={req.user.user_id} />
                         <div className={s.names}>
                           <span className={`${s.displayName} txt-small txt-medium`}>{req.user.display_name ?? req.user.username}</span>
                           <span className={`${s.username} txt-tiny`}>@{req.user.username}</span>
@@ -189,10 +186,7 @@ export function FriendsPanel({
                   onClick={() => setSelectedUserId(selectedUserId === friend.user.user_id ? null : friend.user.user_id)}
                 >
                   <div className={s.userInfo}>
-                    <div className={s.avatar} style={{ background: friend.user.color }}>
-                      {friend.user.letter}
-                      <span className={`${s.statusDot} ${s[friend.status]}`} />
-                    </div>
+                    <Avatar url={null} name={friend.user.display_name ?? friend.user.username} size="sm" status={friend.status} userId={friend.user.user_id} />
                     <div className={s.names}>
                       <span className={`${s.displayName} txt-small txt-medium`}>{friend.user.display_name ?? friend.user.username}</span>
                       <span className={`${s.statusText} txt-tiny`}>

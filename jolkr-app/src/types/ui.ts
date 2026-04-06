@@ -7,6 +7,7 @@ export interface Channel {
 }
 
 export interface Category {
+  id:       string
   name:     string
   channels: string[]
 }

@@ -1,47 +1,57 @@
 import { useState, useRef } from 'react';
-import { rewriteStorageUrl } from '../platform/config';
+import { getApiBaseUrl } from '../platform/config';
+import css from './ServerIcon.module.css';
 
 interface ServerIconProps {
   name: string;
   iconUrl?: string | null;
-  size?: 'sm' | 'md' | 'lg';
+  serverId?: string;
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-const sizeMap = {
-  sm: { container: 'size-10', font: 'text-sm', radius: 'rounded-xl' },
-  md: { container: 'size-12', font: 'text-lg', radius: 'rounded-2xl' },
-  lg: { container: 'size-14', font: 'text-xl', radius: 'rounded-2xl' },
+function iconEndpoint(serverId: string): string {
+  return `${getApiBaseUrl()}/icons/${serverId}`;
+}
+
+const sizeClass: Record<string, string> = {
+  xs: css.xs, sm: css.sm, md: css.md, lg: css.lg,
+};
+const fontClass: Record<string, string> = {
+  xs: css.fontXs, sm: css.fontSm, md: css.fontMd, lg: css.fontLg,
 };
 
-export default function ServerIcon({ name, iconUrl, size = 'md', className }: ServerIconProps) {
-  const resolved = rewriteStorageUrl(iconUrl);
+export default function ServerIcon({ name, iconUrl, serverId, size = 'md', className }: ServerIconProps) {
+  const imgSrc = serverId && iconUrl ? iconEndpoint(serverId) : (iconUrl ?? undefined);
   const [imgError, setImgError] = useState(false);
-  const prevUrl = useRef(iconUrl);
+  const prevKey = useRef(serverId ?? iconUrl);
 
-  if (iconUrl !== prevUrl.current) {
-    prevUrl.current = iconUrl;
+  const currentKey = serverId ?? iconUrl;
+  if (currentKey !== prevKey.current) {
+    prevKey.current = currentKey;
     setImgError(false);
   }
 
-  const s = sizeMap[size];
   const initial = name.trim().charAt(0).toUpperCase() || '?';
+  const showImage = imgSrc && !imgError;
 
-  if (resolved && !imgError) {
+  if (showImage) {
     return (
-      <img
-        src={resolved}
-        alt={name}
-        className={`${s.container} ${s.radius} object-cover shrink-0 ${className ?? ''}`}
-        loading="lazy"
-        onError={() => setImgError(true)}
-      />
+      <div className={`${css.wrap} ${sizeClass[size]} ${className ?? ''}`}>
+        <img
+          src={imgSrc}
+          alt={name}
+          className={css.img}
+          loading="lazy"
+          onError={() => setImgError(true)}
+        />
+      </div>
     );
   }
 
   return (
-    <div className={`${s.container} ${s.radius} bg-panel flex items-center justify-center shrink-0 ${className ?? ''}`}>
-      <span className={`${s.font} font-bold text-text-primary select-none`}>{initial}</span>
+    <div className={`${css.wrap} ${sizeClass[size]} ${className ?? ''}`}>
+      <div className={`${css.fallback} ${fontClass[size]}`}>{initial}</div>
     </div>
   );
 }

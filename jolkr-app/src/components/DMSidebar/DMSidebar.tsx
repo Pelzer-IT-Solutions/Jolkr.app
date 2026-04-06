@@ -1,6 +1,7 @@
 import { SquarePen, Users } from 'lucide-react'
 import type { DMConversation } from '../../types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import Avatar from '../Avatar'
 import s from './DMSidebar.module.css'
 
 interface Props {
@@ -64,35 +65,18 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
   )
 }
 
-function ParticipantAvatar({ p, className }: { p: DMConversation['participants'][0]; className?: string }) {
-  return (
-    <div className={className ?? s.avatar} style={p.avatarUrl ? undefined : { background: p.color }}>
-      {p.avatarUrl
-        ? <img src={p.avatarUrl} alt="" loading="lazy" width={32} height={32} className={s.avatarImg} />
-        : p.letter}
-    </div>
-  )
-}
-
 function ConvAvatar({ conv }: { conv: DMConversation }) {
   if (conv.type === 'direct') {
     const p = conv.participants[0]
-    if (!p) return <div className={s.avatar} style={{ background: 'oklch(50% 0 0)' }}>?</div>
-    return (
-      <div className={s.avatarWrap}>
-        <ParticipantAvatar p={p} className={`${s.avatar} hasActivityAvatarFace`} />
-        <span className={`${s.statusDot} ${s[p.status]}`} />
-      </div>
-    )
+    if (!p) return <Avatar url={null} name="?" size="sm" />
+    return <Avatar url={p.avatarUrl} name={p.name} size="sm" status={p.status} userId={p.userId} />
   }
   return (
     <div className={s.groupAvatars}>
       {conv.participants.slice(0, 2).map((p, i) => (
-        <ParticipantAvatar
-          key={i}
-          p={p}
-          className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}
-        />
+        <div key={i} className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}>
+          <Avatar url={p.avatarUrl} name={p.name} size="xs" userId={p.userId} />
+        </div>
       ))}
     </div>
   )

@@ -88,7 +88,7 @@ function MemberAvatar({ m, offline }: { m: MemberGroup['online'][0]; offline?: b
 
   return (
     <div className={s.avatarWrap}>
-      <div className={`${s.avatar} hasActivityAvatarFace`} style={m.avatarUrl ? undefined : bgStyle}>
+      <div className={`${s.avatarFace} hasActivityAvatarFace`} style={m.avatarUrl ? undefined : bgStyle}>
         {m.avatarUrl
           ? <img src={m.avatarUrl} alt="" loading="lazy" className={s.avatarImg} />
           : m.letter}

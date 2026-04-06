@@ -10,6 +10,7 @@ import { useAuthStore } from '../../stores/auth'
 import { renderMarkdown } from '../../utils/markdown'
 import { useMenuPosition } from '../../utils/position'
 import EmojiPickerPopup from '../EmojiPickerPopup'
+import Avatar from '../Avatar'
 import s from './Message.module.css'
 
 interface Props {
@@ -261,7 +262,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           {/* Header: sender on left, actions on right */}
           <div className={s.dmHeader}>
             <div className={s.dmHeaderSender}>
-              <div className={s.dmAvatar} style={{ background: message.color }}>{message.letter}</div>
+              <Avatar url={message.avatarUrl} name={message.author} size="xs" userId={message.author_id} className={s.dmAvatar} />
               <span className={`${s.dmAuthor} txt-body txt-semibold`}>{message.author}</span>
               <span className={`${s.dmTimeBadge} txt-tiny`}>{message.time}</span>
             </div>
@@ -404,26 +405,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 
 /* ─── Icons ─── */
 function MessageAvatar({ message }: { message: MessageType }) {
-  const [imgErr, setImgErr] = useState(false)
-  const src = message.avatarUrl
-  if (!src || imgErr) {
-    return (
-      <div className={s.avatar} style={{ background: message.color }}>
-        {message.letter}
-      </div>
-    )
-  }
-  return (
-    <div className={s.avatar}>
-      <img
-        src={src}
-        alt=""
-        loading="lazy"
-        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-        onError={() => setImgErr(true)}
-      />
-    </div>
-  )
+  return <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} />
 }
 
 function EmojiAddIcon() { return <SmilePlus      size={14} strokeWidth={1.4} /> }

@@ -3,12 +3,12 @@ import { createPortal } from 'react-dom'
 import { VolumeX, Flag, UserPlus, Link2, CircleSlash, UserMinus, Gavel } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
 import type { Server as ApiServer } from '../../api/types'
-import { getApiBaseUrl } from '../../platform/config'
-import { hashColor } from '../../adapters/transforms'
+import Avatar from '../Avatar'
+import ServerIconComp from '../ServerIcon'
+import s from './UserContextMenu.module.css'
 
 // Extend API Server with frontend-only display fields
 type Server = ApiServer & { hue?: number | null }
-import s from './UserContextMenu.module.css'
 
 export interface UserContextMenuState {
   x: number
@@ -104,14 +104,13 @@ export function UserContextMenu({
       >
         {/* User Header */}
         <div className={s.header}>
-          <div className={s.avatarWrap}>
-            <div className={s.avatar} style={menu.user.avatar_url ? undefined : { background: menu.user.color }}>
-              {menu.user.avatar_url
-                ? <img src={menu.user.avatar_url} alt="" className={s.avatarImg} />
-                : menu.user.letter}
-            </div>
-            <span className={`${s.statusDot} ${s[menu.user.status]}`} />
-          </div>
+          <Avatar
+            url={menu.user.avatar_url}
+            name={menu.user.display_name ?? menu.user.username}
+            size="md"
+            status={menu.user.status}
+            userId={menu.user.user_id}
+          />
           <div className={s.userInfo}>
             <span className={`${s.displayName} txt-small txt-semibold`}>
               {menu.user.display_name ?? menu.user.username}
@@ -181,11 +180,7 @@ export function UserContextMenu({
                   className={s.serverItem}
                   onClick={() => handleInvite(server.id)}
                 >
-                  <div className={s.serverIcon} style={server.icon_url ? undefined : { background: server.hue != null ? `oklch(60% 0.15 ${server.hue})` : hashColor(server.id) }}>
-                    {server.icon_url
-                      ? <img src={`${getApiBaseUrl()}/icons/${server.id}`} alt="" className={s.serverIconImg} />
-                      : server.name.charAt(0).toUpperCase()}
-                  </div>
+                  <ServerIconComp name={server.name} iconUrl={server.icon_url} serverId={server.id} size="xs" />
                   <span className={`${s.serverName} txt-small txt-truncate`}>{server.name}</span>
                 </button>
               ))}
