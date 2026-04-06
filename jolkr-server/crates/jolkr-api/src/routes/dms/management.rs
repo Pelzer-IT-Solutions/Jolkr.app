@@ -1,0 +1,151 @@
+use axum::{
+    extract::{Path, State},
+    Json,
+};
+use serde::Deserialize;
+use uuid::Uuid;
+
+use jolkr_core::DmService;
+use jolkr_core::services::dm::{AddMemberRequest, CreateGroupDmRequest, UpdateGroupDmRequest};
+use jolkr_db::repo::DmRepo;
+
+use crate::errors::AppError;
+use crate::middleware::auth::AuthUser;
+use crate::routes::AppState;
+
+use super::types::*;
+
+/// POST /api/dms — create a 1-on-1 or group DM.
+pub async fn create_dm(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(body): Json<CreateDmRequest>,
+) -> Result<Json<DmChannelResponse>, AppError> {
+    let channel = match body {
+        CreateDmRequest::OneOnOne { user_id } => {
+            DmService::open_dm(&state.pool, auth.user_id, user_id).await?
+        }
+        CreateDmRequest::Group { user_ids, name } => {
+            DmService::create_group_dm(&state.pool, auth.user_id, CreateGroupDmRequest { user_ids, name }).await?
+        }
+    };
+
+    // Notify all DM members about the new/reopened channel
+    let event = crate::ws::events::GatewayEvent::DmUpdate {
+        channel: channel.clone(),
+    };
+    for &member_id in &channel.members {
+        state.nats.publish_to_user(member_id, &event).await;
+    }
+
+    Ok(Json(DmChannelResponse { channel }))
+}
+
+pub async fn list_dms(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<DmChannelsResponse>, AppError> {
+    let channels = DmService::list_dms(&state.pool, auth.user_id).await?;
+    Ok(Json(DmChannelsResponse { channels }))
+}
+
+/// PATCH /api/dms/:dm_id — update group DM name.
+pub async fn update_dm(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(dm_id): Path<Uuid>,
+    Json(body): Json<UpdateGroupDmRequest>,
+) -> Result<Json<DmChannelResponse>, AppError> {
+    let channel = DmService::update_group(&state.pool, dm_id, auth.user_id, body).await?;
+
+    let event = crate::ws::events::GatewayEvent::DmUpdate {
+        channel: channel.clone(),
+    };
+    for &member_id in &channel.members {
+        state.nats.publish_to_user(member_id, &event).await;
+    }
+
+    Ok(Json(DmChannelResponse { channel }))
+}
+
+/// PUT /api/dms/:dm_id/members — add a member to a group DM.
+pub async fn add_dm_member(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(dm_id): Path<Uuid>,
+    Json(body): Json<AddMemberRequest>,
+) -> Result<Json<DmChannelResponse>, AppError> {
+    let channel = DmService::add_member(&state.pool, dm_id, auth.user_id, body.user_id).await?;
+
+    let event = crate::ws::events::GatewayEvent::DmUpdate {
+        channel: channel.clone(),
+    };
+    for &member_id in &channel.members {
+        state.nats.publish_to_user(member_id, &event).await;
+    }
+
+    Ok(Json(DmChannelResponse { channel }))
+}
+
+/// DELETE /api/dms/:dm_id/members/@me — leave a group DM.
+pub async fn leave_dm(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(dm_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    let channel = DmService::leave_group(&state.pool, dm_id, auth.user_id).await?;
+
+    // Notify remaining members
+    let event = crate::ws::events::GatewayEvent::DmUpdate {
+        channel: channel.clone(),
+    };
+    for &member_id in &channel.members {
+        state.nats.publish_to_user(member_id, &event).await;
+    }
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// POST /api/dms/:dm_id/close — close (hide) a DM from the user's list.
+pub async fn close_dm(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(dm_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    DmService::close_dm(&state.pool, dm_id, auth.user_id).await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+// ── Read Receipts ────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct MarkAsReadRequest {
+    pub message_id: Uuid,
+}
+
+/// POST /api/dms/:dm_id/read
+pub async fn mark_as_read(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(dm_id): Path<Uuid>,
+    Json(body): Json<MarkAsReadRequest>,
+) -> Result<axum::http::StatusCode, AppError> {
+    let should_broadcast =
+        DmService::mark_as_read(&state.pool, dm_id, auth.user_id, body.message_id).await?;
+
+    if should_broadcast {
+        // Broadcast DmMessagesRead to ALL DM members (including reader's other sessions)
+        let event = crate::ws::events::GatewayEvent::DmMessagesRead {
+            dm_id,
+            user_id: auth.user_id,
+            message_id: body.message_id,
+        };
+        if let Ok(members) = DmRepo::get_dm_members(&state.pool, dm_id).await {
+            for member in &members {
+                state.nats.publish_to_user(member.user_id, &event).await;
+            }
+        }
+    }
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}

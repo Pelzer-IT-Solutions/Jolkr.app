@@ -16,7 +16,7 @@ services:
       minio:
         condition: service_healthy
       nats:
-        condition: service_started
+        condition: service_healthy
     environment:
       DEBIAN_FRONTEND: noninteractive
       DATABASE_URL: "postgres://jolkr:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/jolkr"
@@ -67,7 +67,7 @@ services:
       redis:
         condition: service_healthy
       nats:
-        condition: service_started
+        condition: service_healthy
     environment:
       DEBIAN_FRONTEND: noninteractive
       MEDIA_PORT: "8081"
@@ -151,7 +151,7 @@ services:
   # MinIO — S3-compatible object storage (avatars, attachments, media)
   # =============================================================================
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: jolkr-minio
     ports:
       - "127.0.0.1:9000:9000"
@@ -189,6 +189,7 @@ services:
     command: >
       --jetstream
       --store_dir /data
+      --http_port 8222
       --user ${NATS_USER:?NATS_USER must be set in .env}
       --pass ${NATS_PASSWORD:?NATS_PASSWORD must be set in .env}
     volumes:
@@ -198,6 +199,12 @@ services:
         limits:
           cpus: "0.5"
           memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
     networks:
       - jolkr-net
     restart: unless-stopped

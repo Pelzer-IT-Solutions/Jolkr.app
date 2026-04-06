@@ -23,7 +23,9 @@ pub struct WebhookInfo {
 }
 
 impl WebhookInfo {
-    pub fn from_row(row: WebhookRow, include_token: bool) -> Self {
+    /// Build from row. `plaintext_token` is only set on create/regenerate (the only
+    /// time the caller still has the unhashed token).
+    pub fn from_row(row: WebhookRow, plaintext_token: Option<String>) -> Self {
         Self {
             id: row.id,
             channel_id: row.channel_id,
@@ -31,7 +33,7 @@ impl WebhookInfo {
             creator_id: row.creator_id,
             name: row.name,
             avatar_url: row.avatar_url,
-            token: if include_token { Some(row.token) } else { None },
+            token: plaintext_token,
         }
     }
 }
@@ -103,7 +105,7 @@ impl WebhookService {
         ).await?;
 
         info!(webhook_id = %id, channel_id = %channel_id, "Webhook created");
-        Ok(WebhookInfo::from_row(row, true))
+        Ok(WebhookInfo::from_row(row, Some(token)))
     }
 
     /// List webhooks for a channel.
@@ -117,7 +119,7 @@ impl WebhookService {
             .await.map_err(|_| JolkrError::Forbidden)?;
 
         let rows = WebhookRepo::list_for_channel(pool, channel_id).await?;
-        Ok(rows.into_iter().map(|r| WebhookInfo::from_row(r, false)).collect())
+        Ok(rows.into_iter().map(|r| WebhookInfo::from_row(r, None)).collect())
     }
 
     /// Update a webhook.
@@ -149,7 +151,7 @@ impl WebhookService {
         }
 
         let row = WebhookRepo::update(pool, webhook_id, req.name.as_deref(), req.avatar_url.as_deref()).await?;
-        Ok(WebhookInfo::from_row(row, false))
+        Ok(WebhookInfo::from_row(row, None))
     }
 
     /// Delete a webhook.
@@ -199,7 +201,7 @@ impl WebhookService {
 
         let new_token = Self::generate_token();
         let row = WebhookRepo::regenerate_token(pool, webhook_id, &new_token).await?;
-        Ok(WebhookInfo::from_row(row, true))
+        Ok(WebhookInfo::from_row(row, Some(new_token)))
     }
 
     /// Execute a webhook — create a message as the webhook identity.
@@ -211,9 +213,10 @@ impl WebhookService {
         req: ExecuteWebhookRequest,
     ) -> Result<MessageInfo, JolkrError> {
         let webhook = WebhookRepo::get_by_id(pool, webhook_id).await?;
-        // Constant-time comparison to prevent timing side-channel attacks
+        // Hash the provided token and compare with stored hash (constant-time)
+        let provided_hash = jolkr_db::repo::webhooks::hash_token(token);
         use subtle::ConstantTimeEq;
-        if webhook.token.as_bytes().ct_eq(token.as_bytes()).unwrap_u8() != 1 {
+        if webhook.token_hash.as_bytes().ct_eq(provided_hash.as_bytes()).unwrap_u8() != 1 {
             return Err(JolkrError::Forbidden);
         }
 

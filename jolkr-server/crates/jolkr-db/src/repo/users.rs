@@ -170,7 +170,7 @@ impl UserRepo {
         Ok(users)
     }
 
-    /// Search users by username prefix (LIKE) or exact email match.
+    /// Search users by username prefix (LIKE). Case-insensitive.
     /// Returns results only when specific enough (≤ 3 matches), otherwise empty.
     pub async fn search_by_username(
         pool: &PgPool,
@@ -181,13 +181,11 @@ impl UserRepo {
             r#"
             SELECT * FROM users
             WHERE LOWER(username) LIKE LOWER($1)
-               OR LOWER(email) = LOWER($2)
             ORDER BY username ASC
             LIMIT 4
             "#,
         )
         .bind(&pattern)
-        .bind(query)
         .fetch_all(pool)
         .await?;
 

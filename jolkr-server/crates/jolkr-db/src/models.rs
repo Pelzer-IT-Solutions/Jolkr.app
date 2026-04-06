@@ -410,7 +410,7 @@ pub struct WebhookRow {
     pub creator_id: Uuid,
     pub name: String,
     pub avatar_url: Option<String>,
-    pub token: String,
+    pub token_hash: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
