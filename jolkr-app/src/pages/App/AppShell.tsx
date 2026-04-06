@@ -535,6 +535,27 @@ export default function AppShell() {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
   }
 
+  // ── Channel CRUD handlers ──
+  const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice') => {
+    await api.createChannel(activeServerId, { name, kind })
+    await fetchChannels(activeServerId)
+  }, [activeServerId])
+
+  const handleCreateCategory = useCallback(async (name: string) => {
+    await api.createCategory(activeServerId, { name })
+    await fetchCategories(activeServerId)
+    await fetchChannels(activeServerId)
+  }, [activeServerId])
+
+  const handleDeleteChannel = useCallback(async (channelId: string) => {
+    await api.deleteChannel(channelId)
+    await fetchChannels(activeServerId)
+    if (channelId === activeChannelId) {
+      const chs = useServersStore.getState().channels[activeServerId]
+      setActiveChannelId(chs?.find(c => c.kind === 'text')?.id ?? chs?.[0]?.id ?? '')
+    }
+  }, [activeServerId, activeChannelId])
+
   async function handleJoinServer(serverId: string, _accessCode: string): Promise<boolean> {
     try {
       await api.useInvite(serverId)
@@ -676,6 +697,9 @@ export default function AppShell() {
                   onSetColorPref={setColorPref}
                   onOpenSettings={canAccessSettings ? () => setServerSettingsOpen(true) : undefined}
                   canManageChannels={canManageChannels}
+                  onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
+                  onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
+                  onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
                 />
               ) : null}
 

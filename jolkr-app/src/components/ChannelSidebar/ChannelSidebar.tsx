@@ -46,9 +46,12 @@ interface Props {
   onSetColorPref:  (pref: ColorPreference) => void
   onOpenSettings?: () => void
   canManageChannels?: boolean
+  onCreateChannel?:  (name: string, kind: 'text' | 'voice') => Promise<void>
+  onCreateCategory?: (name: string) => Promise<void>
+  onDeleteChannel?:  (channelId: string) => Promise<void>
 }
 
-export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels }: Props) {
+export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, onCreateChannel, onCreateCategory, onDeleteChannel }: Props) {
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
   const [localCats,          setLocalCats]           = useState<Category[]>(server.categories)
   const [localExtraChannels, setLocalExtraChannels]  = useState<Channel[]>([])
@@ -142,20 +145,33 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     setNewName('')
   }
 
-  function confirmCreate(e: React.KeyboardEvent<HTMLInputElement>) {
+  async function confirmCreate(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Escape') { setCreating(null); return }
     if (e.key !== 'Enter') return
     const name = newName.trim()
     if (!name) { setCreating(null); return }
 
+    // Optimistic local update
     if (creating === 'folder') {
       setLocalCats(prev => [...prev, { name, channels: [] }])
     } else {
-      const id = `ch-${Date.now()}`
-      setLocalExtraChannels(prev => [...prev, { id, name, icon: '#', desc: '', unread: 0 }])
+      const tempId = `ch-${Date.now()}`
+      setLocalExtraChannels(prev => [...prev, { id: tempId, name, icon: '#', desc: '', unread: 0 }])
     }
+    const creatingType = creating
     setCreating(null)
     setNewName('')
+
+    // Fire API call — on error, the next fetchChannels will correct state
+    try {
+      if (creatingType === 'folder') {
+        await onCreateCategory?.(name)
+      } else {
+        await onCreateChannel?.(name, 'text')
+      }
+    } catch (err) {
+      console.error('Failed to create:', err)
+    }
   }
 
   // ── DnD handlers ──
@@ -283,6 +299,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                 isRevealing={isRevealing}
                 catStaggerIdx={catMeta[i].catStaggerIdx}
                 chanStaggerStart={catMeta[i].chanStaggerStart}
+                onDeleteChannel={onDeleteChannel}
               />
             ))}
           </SortableContext>
@@ -361,7 +378,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 }
 
 /* ── Sortable category wrapper ── */
-function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapsed, onToggle, activeDragId: _activeDragId, isRevealing, catStaggerIdx, chanStaggerStart }: {
+function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapsed, onToggle, activeDragId: _activeDragId, isRevealing, catStaggerIdx, chanStaggerStart, onDeleteChannel }: {
   cat:             Category
   channelMap:      Record<string, Channel>
   activeChannelId: string
@@ -372,6 +389,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
   isRevealing:     boolean
   catStaggerIdx:   number
   chanStaggerStart: number
+  onDeleteChannel?: (channelId: string) => Promise<void>
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `cat:${cat.name}`,
@@ -414,6 +432,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
                   onClick={() => onSwitch(ch.id)}
                   isRevealing={isRevealing}
                   staggerIdx={chanStaggerStart + i}
+                  onDeleteChannel={onDeleteChannel}
                 />
               )
             })}
@@ -425,13 +444,14 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
 }
 
 /* ── Sortable channel row wrapper ── */
-function SortableChannelRow({ id, channel, active, onClick, isRevealing, staggerIdx }: {
-  id:          string
-  channel:     Channel
-  active:      boolean
-  onClick:     () => void
-  isRevealing: boolean
-  staggerIdx:  number
+function SortableChannelRow({ id, channel, active, onClick, isRevealing, staggerIdx, onDeleteChannel }: {
+  id:               string
+  channel:          Channel
+  active:           boolean
+  onClick:          () => void
+  isRevealing:      boolean
+  staggerIdx:       number
+  onDeleteChannel?: (channelId: string) => Promise<void>
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
@@ -449,6 +469,7 @@ function SortableChannelRow({ id, channel, active, onClick, isRevealing, stagger
         onClick={onClick}
         isRevealing={isRevealing}
         staggerIdx={staggerIdx}
+        onDeleteChannel={onDeleteChannel}
       />
     </div>
   )
@@ -461,12 +482,13 @@ function UncategorizedZone({ children }: { children: React.ReactNode }) {
 }
 
 /* ── Presentational channel row ── */
-function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx }: {
-  channel:      Channel
-  active:       boolean
-  onClick:      () => void
-  isRevealing?: boolean
-  staggerIdx?:  number
+function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx, onDeleteChannel }: {
+  channel:          Channel
+  active:           boolean
+  onClick:          () => void
+  isRevealing?:     boolean
+  staggerIdx?:      number
+  onDeleteChannel?: (channelId: string) => Promise<void>
 }) {
   const isText = channel.icon === '#'
   return (
@@ -477,6 +499,14 @@ function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx }: {
         : undefined
       }
       onClick={onClick}
+      onContextMenu={(e) => {
+        if (!onDeleteChannel) return
+        e.preventDefault()
+        e.stopPropagation()
+        if (window.confirm(`Delete #${channel.name}?`)) {
+          onDeleteChannel(channel.id)
+        }
+      }}
     >
       <span className={s.channelIcon}>{isText ? '#' : channel.icon}</span>
       <span className={`${s.channelName} txt-small txt-medium txt-truncate`}>{channel.name}</span>
