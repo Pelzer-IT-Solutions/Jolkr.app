@@ -140,6 +140,43 @@ impl LinkEmbedService {
         Self { client }
     }
 
+    /// Resolve DNS and build a one-shot client pinned to validated IPs.
+    /// This prevents DNS rebinding TOCTOU attacks.
+    fn build_pinned_client(url: &str) -> Result<(Client, String), String> {
+        let parsed = url::Url::parse(url).map_err(|e| e.to_string())?;
+        let host = parsed.host_str().ok_or("No host")?.to_string();
+        let port = parsed.port_or_known_default().unwrap_or(80);
+
+        // Resolve DNS synchronously (called from async context via spawn_blocking)
+        let addrs: Vec<std::net::SocketAddr> = std::net::ToSocketAddrs::to_socket_addrs(&(host.as_str(), port))
+            .map_err(|e| e.to_string())?
+            .collect();
+
+        if addrs.is_empty() {
+            return Err("DNS resolution returned no addresses".to_string());
+        }
+
+        // Validate ALL resolved IPs are public
+        for addr in &addrs {
+            if !is_public_ip(addr.ip()) {
+                return Err(format!("Resolved IP {} is not public", addr.ip()));
+            }
+        }
+
+        // Pin the client to use only these validated IPs
+        let mut builder = Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .user_agent("JolkrBot/1.0 (link preview)")
+            .redirect(reqwest::redirect::Policy::none()); // No redirects — we handle them manually
+
+        for addr in &addrs {
+            builder = builder.resolve(&host, *addr);
+        }
+
+        let client = builder.build().map_err(|e| e.to_string())?;
+        Ok((client, host))
+    }
+
     /// Try to generate embed metadata for known video platforms without scraping.
     fn try_video_embed(url: &str) -> Option<EmbedMetadata> {
         // YouTube
@@ -278,14 +315,23 @@ impl LinkEmbedService {
     }
 
     /// Fetch metadata (OG tags) from a URL.
+    /// Uses DNS-pinned client to prevent TOCTOU / DNS rebinding attacks.
     async fn fetch_metadata(&self, url: &str) -> Result<Option<EmbedMetadata>, String> {
         // Defense-in-depth: re-check URL safety
         if !is_safe_url(url).await {
             return Err("URL targets internal network".to_string());
         }
 
-        let response = self
-            .client
+        // Resolve DNS and pin connection to validated IPs (prevents DNS rebinding)
+        let url_owned = url.to_string();
+        let (pinned_client, _host) = tokio::task::spawn_blocking(move || {
+            Self::build_pinned_client(&url_owned)
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("DNS pinning failed: {e}"))?;
+
+        let response = pinned_client
             .get(url)
             .header("Accept", "text/html")
             .send()

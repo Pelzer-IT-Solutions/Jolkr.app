@@ -31,9 +31,15 @@ class WebStorage implements SecureStorage {
     return this.encKey;
   }
 
-  private async encryptValue(value: string): Promise<string> {
+  private async encryptValue(value: string, storageKey: string): Promise<string> {
     const key = await this.getEncKey();
-    if (!key) return value; // No encryption key yet — store plaintext
+    if (!key) {
+      // For sensitive keys, refuse to store plaintext — defer until encryption key is available
+      if (SENSITIVE_KEYS.has(storageKey)) {
+        throw new Error(`Cannot store sensitive key "${storageKey}" without encryption — re-login required`);
+      }
+      return value;
+    }
     const nonce = crypto.getRandomValues(new Uint8Array(12));
     const ct = new Uint8Array(await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv: nonce }, key, new TextEncoder().encode(value),
@@ -73,7 +79,7 @@ class WebStorage implements SecureStorage {
 
   async set(key: string, value: string): Promise<void> {
     if (SENSITIVE_KEYS.has(key)) {
-      localStorage.setItem(key, await this.encryptValue(value));
+      localStorage.setItem(key, await this.encryptValue(value, key));
     } else {
       localStorage.setItem(key, value);
     }
@@ -101,14 +107,28 @@ class TauriStorage implements SecureStorage {
     return this.initPromise;
   }
 
-  /** Get or generate a per-installation vault password (stored in localStorage). */
+  /**
+   * Get or generate a per-installation vault password.
+   * Stored in sessionStorage to reduce exposure — it only persists for the
+   * browser session. On Tauri desktop, the vault is unlocked once per app
+   * launch. A new random password is generated per install.
+   */
   private getVaultPassword(): string {
     const VAULT_KEY = 'jolkr_vault_key';
-    let pw = localStorage.getItem(VAULT_KEY);
+    // Check sessionStorage first (session-scoped), then localStorage (migration)
+    let pw = sessionStorage.getItem(VAULT_KEY);
+    if (!pw) {
+      // Migrate from localStorage if present (from older versions)
+      pw = localStorage.getItem(VAULT_KEY);
+      if (pw) {
+        sessionStorage.setItem(VAULT_KEY, pw);
+        localStorage.removeItem(VAULT_KEY);
+      }
+    }
     if (!pw) {
       const bytes = crypto.getRandomValues(new Uint8Array(32));
       pw = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-      localStorage.setItem(VAULT_KEY, pw);
+      sessionStorage.setItem(VAULT_KEY, pw);
     }
     return pw;
   }

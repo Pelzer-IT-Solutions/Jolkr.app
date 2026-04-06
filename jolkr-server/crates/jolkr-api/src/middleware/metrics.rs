@@ -4,7 +4,19 @@ use axum::{
     response::Response,
 };
 use metrics::{counter, histogram};
+use std::sync::LazyLock;
 use std::time::Instant;
+
+/// Pre-compiled regexes for path normalization (compiled once, not per-request).
+static UUID_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(
+        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+    )
+    .unwrap()
+});
+static NUMERIC_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"/\d+(/|$)").unwrap()
+});
 
 /// Middleware that records HTTP request metrics (counter + latency histogram).
 pub async fn metrics_middleware(request: Request, next: Next) -> Response {
@@ -29,12 +41,6 @@ pub async fn metrics_middleware(request: Request, next: Next) -> Response {
 
 /// Replace UUID segments and numeric IDs with placeholders to keep cardinality low.
 fn normalize_path(path: &str) -> String {
-    let uuid_re = regex::Regex::new(
-        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
-    )
-    .unwrap();
-    let numeric_re = regex::Regex::new(r"/\d+(/|$)").unwrap();
-
-    let s = uuid_re.replace_all(path, ":id").to_string();
-    numeric_re.replace_all(&s, "/:id$1").to_string()
+    let s = UUID_RE.replace_all(path, ":id").to_string();
+    NUMERIC_RE.replace_all(&s, "/:id$1").to_string()
 }

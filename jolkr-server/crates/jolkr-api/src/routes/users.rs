@@ -74,6 +74,20 @@ pub async fn update_me(
     auth: AuthUser,
     Json(body): Json<UpdateMeRequest>,
 ) -> Result<Json<UserResponse>, AppError> {
+    // Input length validation to prevent DB DoS
+    if let Some(ref v) = body.display_name {
+        if v.len() > 64 { return Err(AppError(jolkr_common::JolkrError::Validation("Display name must be 64 characters or less".into()))); }
+    }
+    if let Some(ref v) = body.status {
+        if v.len() > 128 { return Err(AppError(jolkr_common::JolkrError::Validation("Status must be 128 characters or less".into()))); }
+    }
+    if let Some(ref v) = body.bio {
+        if v.len() > 500 { return Err(AppError(jolkr_common::JolkrError::Validation("Bio must be 500 characters or less".into()))); }
+    }
+    if let Some(ref v) = body.avatar_url {
+        if v.len() > 512 { return Err(AppError(jolkr_common::JolkrError::Validation("Avatar URL must be 512 characters or less".into()))); }
+    }
+
     let mut profile = UserService::update_profile(
         &state.pool,
         auth.user_id,
@@ -119,6 +133,11 @@ pub async fn get_users_batch(
     _auth: AuthUser,
     Json(body): Json<BatchUsersRequest>,
 ) -> Result<Json<UsersResponse>, AppError> {
+    if body.ids.len() > 100 {
+        return Err(AppError(jolkr_common::JolkrError::Validation(
+            "Cannot request more than 100 users at once".into(),
+        )));
+    }
     let ids: Vec<Uuid> = body.ids.into_iter().collect();
     let mut users = UserService::get_profiles_batch(&state.pool, &ids).await?;
     for user in &mut users {

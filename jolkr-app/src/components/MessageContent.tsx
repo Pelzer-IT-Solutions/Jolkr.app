@@ -97,6 +97,11 @@ function highlightMentions(html: string): string {
   );
 }
 
+// Escape a string for safe use as an HTML attribute value
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // Replace custom emoji shortcodes (:name:) with img tags
 function renderCustomEmojis(html: string, emojiMap?: Map<string, string>): string {
   if (!emojiMap || emojiMap.size === 0) return html;
@@ -107,7 +112,11 @@ function renderCustomEmojis(html: string, emojiMap?: Map<string, string>): strin
       if (name) {
         const url = emojiMap.get(name);
         if (url) {
-          return `<img src="${url}" alt=":${name}:" title=":${name}:" class="inline-block h-5 w-5 align-text-bottom" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
+          // Validate URL and escape attribute values to prevent injection
+          try { new URL(url); } catch { return match; }
+          const safeUrl = escapeAttr(url);
+          const safeName = escapeAttr(name);
+          return `<img src="${safeUrl}" alt=":${safeName}:" title=":${safeName}:" class="inline-block h-5 w-5 align-text-bottom" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
         }
       }
       return match;

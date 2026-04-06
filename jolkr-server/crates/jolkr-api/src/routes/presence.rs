@@ -40,7 +40,11 @@ pub async fn query_presence(
     let results = state.redis.get_presences(&body.user_ids).await;
     let presences = results
         .into_iter()
-        .map(|(user_id, status)| PresenceEntry { user_id, status })
+        .map(|(user_id, status)| PresenceEntry {
+            user_id,
+            // Map "invisible" to "offline" to prevent leaking invisible status
+            status: if status == "invisible" { "offline".to_string() } else { status },
+        })
         .collect();
 
     Ok(Json(PresenceResponse { presences }))

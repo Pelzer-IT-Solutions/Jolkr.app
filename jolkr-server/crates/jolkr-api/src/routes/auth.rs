@@ -133,14 +133,36 @@ pub async fn register(
     State(state): State<AppState>,
     Json(body): Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>, AppError> {
-    let (user, tokens) = AuthService::register(
+    // Input validation
+    if body.email.len() > 254 {
+        return Err(AppError(jolkr_common::JolkrError::Validation("Email too long".into())));
+    }
+    if body.username.len() > 32 || body.username.len() < 2 {
+        return Err(AppError(jolkr_common::JolkrError::Validation("Username must be 2-32 characters".into())));
+    }
+    if body.password.len() < 8 {
+        return Err(AppError(jolkr_common::JolkrError::Validation("Password must be at least 8 characters".into())));
+    }
+    if body.password.len() > 128 {
+        return Err(AppError(jolkr_common::JolkrError::Validation("Password must be 128 characters or less".into())));
+    }
+
+    let result = AuthService::register(
         &state.pool,
         &state.jwt_secret,
         &body.email,
         &body.username,
         &body.password,
     )
-    .await?;
+    .await;
+
+    // Generic error message for conflicts to prevent email/username enumeration
+    let (user, tokens) = result.map_err(|e| match &e {
+        jolkr_common::JolkrError::Conflict(_) => {
+            AppError(jolkr_common::JolkrError::Conflict("Registration failed — email or username may already be in use".into()))
+        }
+        _ => AppError(e),
+    })?;
 
     Ok(Json(AuthResponse {
         user: UserDto {

@@ -7,8 +7,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.api
     container_name: jolkr-api
-    ports:
-      - "8080:8080"
+    # No external port binding — nginx proxies all traffic
     depends_on:
       postgres:
         condition: service_healthy
@@ -27,8 +26,8 @@ services:
       MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in .env}"
       MINIO_BUCKET: "jolkr"
       NATS_URL: "nats://nats:4222"
-      NATS_USER: "${NATS_USER:-}"
-      NATS_PASSWORD: "${NATS_PASSWORD:-}"
+      NATS_USER: "${NATS_USER:?NATS_USER must be set in .env}"
+      NATS_PASSWORD: "${NATS_PASSWORD:?NATS_PASSWORD must be set in .env}"
       NATS_HMAC_SECRET: "${NATS_HMAC_SECRET:?NATS_HMAC_SECRET must be set in .env}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
       ADMIN_SECRET: "${ADMIN_SECRET:?ADMIN_SECRET must be set in .env}"
@@ -63,8 +62,7 @@ services:
       dockerfile: docker/Dockerfile.media
     container_name: jolkr-media
     ports:
-      - "8081:8081"
-      - "10000-10100:10000-10100/udp"
+      - "10000-10100:10000-10100/udp"   # RTP — UDP must be exposed directly
     depends_on:
       redis:
         condition: service_healthy

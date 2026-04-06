@@ -6,7 +6,7 @@ interface LinkEmbedProps {
 }
 
 export default function LinkEmbed({ embed }: LinkEmbedProps) {
-  const borderColor = embed.color || '#5865F2';
+  const borderColor = (embed.color && /^#[0-9a-fA-F]{3,6}$/.test(embed.color)) ? embed.color : '#5865F2';
   const [imgErrored, setImgErrored] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const safeUrl = /^https?:\/\//i.test(embed.url) ? embed.url : '#';

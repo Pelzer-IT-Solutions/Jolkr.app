@@ -193,7 +193,7 @@ export async function resetE2EE(): Promise<void> {
   localKeys = null;
   bundleCache.clear();
   await clearKeySet();
-  // Clear upload flag so next login re-uploads keys; keep device ID to reuse the same device row
+  // Clear upload flag so next login re-uploads keys; keep device ID to reuse the same device row.
+  // Only use platform storage (Stronghold on desktop, localStorage on web) — not both.
   await storage.remove('e2ee_keys_uploaded');
-  localStorage.removeItem('e2ee_keys_uploaded');
 }

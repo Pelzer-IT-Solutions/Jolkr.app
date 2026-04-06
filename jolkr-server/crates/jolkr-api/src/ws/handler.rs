@@ -16,6 +16,7 @@ use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+use redis::AsyncCommands;
 use jolkr_common::Permissions;
 use jolkr_core::AuthService;
 use jolkr_db::repo::{ChannelRepo, DmRepo, MemberRepo, RoleRepo, ServerRepo};
@@ -88,14 +89,17 @@ pub async fn ws_upgrade(
 ) -> impl IntoResponse {
     let ip = resolve_client_ip(addr, &headers);
 
-    // Check per-IP connection limit
+    // Check per-IP connection limit (atomic increment-then-check to avoid race condition)
     let count = WS_CONNECTIONS
         .entry(ip)
         .or_insert_with(|| AtomicU32::new(0));
-    if count.load(Ordering::Relaxed) >= MAX_WS_PER_IP {
+    let prev = count.fetch_add(1, Ordering::Relaxed);
+    if prev >= MAX_WS_PER_IP {
+        // Over limit — revert the increment and reject
+        count.fetch_sub(1, Ordering::Relaxed);
+        drop(count);
         return StatusCode::TOO_MANY_REQUESTS.into_response();
     }
-    count.fetch_add(1, Ordering::Relaxed);
     drop(count);
 
     ws.on_upgrade(move |socket| async move {
@@ -198,9 +202,21 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     });
                     continue;
                 }
-                // Validate the JWT
+                // Validate the JWT and check blacklist (mirrors HTTP auth middleware)
                 match AuthService::validate_token(&state.jwt_secret, &token) {
                     Ok(claims) => {
+                        // Check if this token has been revoked (e.g. via logout)
+                        let blacklist_key = format!("blacklist:{}", claims.jti);
+                        let mut conn = state.redis.connection();
+                        let is_revoked: bool = conn.exists(&blacklist_key).await.unwrap_or(false);
+                        if is_revoked {
+                            let err = GatewayEvent::Error {
+                                message: "Token has been revoked".to_string(),
+                            };
+                            let _ = tx.try_send(err);
+                            continue;
+                        }
+
                         let sid = Uuid::new_v4();
                         session_id = Some(sid);
                         user_id = Some(claims.sub);

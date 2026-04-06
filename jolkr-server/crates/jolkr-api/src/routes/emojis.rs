@@ -86,6 +86,18 @@ pub async fn upload_emoji(
     if !content_type.starts_with("image/") {
         return Err(AppError(jolkr_common::JolkrError::Validation("Only image files are allowed for emojis".into())));
     }
+    // Validate magic bytes match the claimed content type
+    let magic_ok = match content_type.as_str() {
+        "image/png" => file_data.starts_with(&[0x89, 0x50, 0x4E, 0x47]),
+        "image/jpeg" | "image/jpg" => file_data.starts_with(&[0xFF, 0xD8, 0xFF]),
+        "image/gif" => file_data.starts_with(b"GIF87a") || file_data.starts_with(b"GIF89a"),
+        "image/webp" => file_data.len() >= 12 && &file_data[..4] == b"RIFF" && &file_data[8..12] == b"WEBP",
+        "image/svg+xml" => false, // SVG not allowed for emojis (XSS risk)
+        _ => false,
+    };
+    if !magic_ok {
+        return Err(AppError(jolkr_common::JolkrError::Validation("File content does not match the declared image type".into())));
+    }
 
     let animated = content_type == "image/gif";
 

@@ -2,7 +2,7 @@
 # Override any value via environment variables (e.g. DATABASE_URL)
 
 [database]
-url = "postgres://jolkr:jolkr@localhost:5432/jolkr"
+url = ""  # REQUIRED: set via DATABASE_URL env var
 max_connections = 20
 min_connections = 2
 
@@ -11,8 +11,8 @@ url = "redis://localhost:6379"
 
 [minio]
 endpoint = "http://localhost:9000"
-access_key = "minioadmin"
-secret_key = "minioadmin"
+access_key = ""  # REQUIRED: set via MINIO_ACCESS_KEY env var
+secret_key = ""  # REQUIRED: set via MINIO_SECRET_KEY env var
 bucket = "jolkr"
 region = "us-east-1"
 
@@ -25,7 +25,7 @@ port = 8080
 media_port = 8081
 
 [auth]
-jwt_secret = "jolkr-dev-secret-change-in-production"
+jwt_secret = ""  # REQUIRED: set via JWT_SECRET env var — startup will fail if empty
 access_token_ttl_seconds = 900       # 15 minutes
 refresh_token_ttl_seconds = 604800   # 7 days
 bcrypt_cost = 12
