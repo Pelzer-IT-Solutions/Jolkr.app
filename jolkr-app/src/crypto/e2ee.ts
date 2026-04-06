@@ -7,7 +7,6 @@ import {
   x25519KeyAgreement,
   mlkemEncapsulate,
   mlkemDecapsulate,
-  deriveMessageKey,
   deriveHybridMessageKey,
   encryptMessage,
   decryptMessage,
@@ -26,7 +25,6 @@ export interface EncryptedPayload {
 }
 
 // Version bytes for encrypted payload format
-const VERSION_CLASSICAL = 0x01;       // Classical: HKDF-SHA256, X25519 only (fallback)
 const VERSION_HYBRID_PQ_HKDF = 0x03;  // Current: HKDF-SHA256, X25519 + ML-KEM-768
 
 // ML-KEM-768 ciphertext is 1088 bytes
@@ -34,8 +32,8 @@ const MLKEM768_CIPHERTEXT_SIZE = 1088;
 
 /**
  * Encrypt a plaintext message for a recipient using their prekey bundle.
- * Uses hybrid X25519 + ML-KEM-768 when PQ keys are available (quantum-proof).
- * Falls back to classical X25519-only for recipients without PQ keys.
+ * Requires hybrid X25519 + ML-KEM-768 PQ keys (quantum-proof).
+ * Throws if the recipient has no PQ keys.
  */
 export async function encryptForRecipient(
   bundle: PreKeyBundle,
@@ -60,7 +58,7 @@ export async function encryptForRecipient(
   if (hasPQ) {
     // Verify PQ signed prekey signature
     if (!verifyPQSignedPreKey(bundle.identityKey, bundle.pqSignedPrekey!, bundle.pqSignedPrekeySignature!)) {
-      console.warn('E2EE: Invalid PQ signed prekey signature for', bundle.userId, '— falling back to classical');
+      throw new Error(`E2EE: Invalid PQ signed prekey signature for ${bundle.userId}`);
     } else {
       // ML-KEM-768 encapsulation
       const { ciphertext: pqCiphertext, sharedSecret: pqShared } = mlkemEncapsulate(bundle.pqSignedPrekey!);
@@ -83,20 +81,7 @@ export async function encryptForRecipient(
     }
   }
 
-  // Classical-only fallback
-  const messageKey = await deriveMessageKey(classicalShared);
-  const { ciphertext, nonce } = await encryptMessage(messageKey, plaintext);
-
-  // Pack: version(1) || ephemeral_pub(32) || ciphertext
-  const packed = new Uint8Array(1 + 32 + ciphertext.length);
-  packed[0] = VERSION_CLASSICAL;
-  packed.set(ephemeralPub, 1);
-  packed.set(ciphertext, 33);
-
-  return {
-    encryptedContent: toBase64(packed),
-    nonce: toBase64(nonce),
-  };
+  throw new Error('E2EE: Recipient has no PQ keys — cannot encrypt');
 }
 
 // ── Decrypt ────────────────────────────────────────────────────────
@@ -105,7 +90,6 @@ export async function encryptForRecipient(
  * Decrypt an incoming encrypted message using our signed prekey private key.
  * Supports:
  *   0x03 — HKDF-SHA256, hybrid X25519 + ML-KEM-768 (current, quantum-proof)
- *   0x01 — HKDF-SHA256, classical X25519 only (fallback for recipients without PQ keys)
  */
 export async function decryptFromSender(
   localKeys: LocalKeySet,
@@ -138,15 +122,6 @@ export async function decryptFromSender(
     const classicalShared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, ephemeralPub);
     const pqShared = mlkemDecapsulate(pqCiphertext, localKeys.pqSignedPreKey.keyPair.decapsulationKey);
     const messageKey = await deriveHybridMessageKey(classicalShared, pqShared);
-    return decryptMessage(messageKey, ciphertext, nonce);
-  }
-
-  if (version === VERSION_CLASSICAL) {
-    // Classical format: version(1) || ephemeral_pub(32) || ciphertext
-    const ephemeralPub = packed.slice(1, 33);
-    const ciphertext = packed.slice(33);
-    const shared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, ephemeralPub);
-    const messageKey = await deriveMessageKey(shared);
     return decryptMessage(messageKey, ciphertext, nonce);
   }
 

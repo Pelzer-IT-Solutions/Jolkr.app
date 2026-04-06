@@ -136,50 +136,6 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
 const CONTEXT_STRING = new TextEncoder().encode('jolkr-e2ee-v1');
 const HYBRID_CONTEXT = new TextEncoder().encode('jolkr-e2ee-hybrid-v1');
 
-/**
- * Legacy KDF: SHA-256(shared || context). Used for decrypting v0x01 messages.
- * @deprecated Use deriveMessageKey (HKDF) for new encryptions.
- */
-export async function deriveMessageKeyLegacy(shared: Uint8Array): Promise<CryptoKey> {
-  const input = new Uint8Array(shared.length + CONTEXT_STRING.length);
-  input.set(shared);
-  input.set(CONTEXT_STRING, shared.length);
-
-  const hash = await crypto.subtle.digest('SHA-256', toArrayBuffer(input));
-
-  return crypto.subtle.importKey(
-    'raw',
-    hash,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt', 'decrypt'],
-  );
-}
-
-/**
- * Legacy hybrid KDF: SHA-256(classical || pq || context). Used for decrypting v0x02 messages.
- * @deprecated Use deriveHybridMessageKey (HKDF) for new encryptions.
- */
-export async function deriveHybridMessageKeyLegacy(
-  classicalShared: Uint8Array,
-  pqShared: Uint8Array,
-): Promise<CryptoKey> {
-  const input = new Uint8Array(classicalShared.length + pqShared.length + HYBRID_CONTEXT.length);
-  input.set(classicalShared);
-  input.set(pqShared, classicalShared.length);
-  input.set(HYBRID_CONTEXT, classicalShared.length + pqShared.length);
-
-  const hash = await crypto.subtle.digest('SHA-256', toArrayBuffer(input));
-
-  return crypto.subtle.importKey(
-    'raw',
-    hash,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt', 'decrypt'],
-  );
-}
-
 /** Derive an AES-256-GCM key from a classical shared secret using HKDF-SHA256. */
 export async function deriveMessageKey(shared: Uint8Array): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
