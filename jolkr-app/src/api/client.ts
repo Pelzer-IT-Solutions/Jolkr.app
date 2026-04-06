@@ -421,15 +421,12 @@ export const getMessages = (channelId: string, limit = 50, before?: string) => {
 export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string) =>
   request<Message>(`/channels/${channelId}/messages`, {
     method: 'POST',
-    // content is always encrypted — send as encrypted_content to match backend API
-    body: JSON.stringify(nonce
-      ? { encrypted_content: content, nonce, reply_to_id }
-      : { content, reply_to_id }),
+    body: JSON.stringify({ content, nonce, reply_to_id }),
   }, 'message');
-export const editMessage = (messageId: string, content: string) =>
+export const editMessage = (messageId: string, content: string, nonce?: string) =>
   request<Message>(`/messages/${messageId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, nonce }),
   }, 'message');
 export const deleteMessage = (messageId: string) =>
   request<void>(`/messages/${messageId}`, { method: 'DELETE' });
@@ -485,15 +482,12 @@ export const sendDmMessage = (dmId: string, body: {
 }) =>
   request<Message>(`/dms/${dmId}/messages`, {
     method: 'POST',
-    // content is always encrypted — send as encrypted_content to match backend API
-    body: JSON.stringify(body.nonce
-      ? { encrypted_content: body.content, nonce: body.nonce, reply_to_id: body.reply_to_id }
-      : body),
+    body: JSON.stringify(body),
   }, 'message');
-export const editDmMessage = (messageId: string, content: string) =>
+export const editDmMessage = (messageId: string, content: string, nonce?: string) =>
   request<Message>(`/dms/messages/${messageId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, nonce }),
   }, 'message');
 export const deleteDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}`, { method: 'DELETE' });
@@ -730,10 +724,10 @@ export const getThreadMessages = (threadId: string, limit = 50, before?: string)
   return request<Message[]>(path, {}, 'messages');
 };
 
-export const sendThreadMessage = (threadId: string, content: string, replyToId?: string) =>
+export const sendThreadMessage = (threadId: string, content: string, nonce?: string, replyToId?: string) =>
   request<Message>(`/threads/${threadId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ content, reply_to_id: replyToId }),
+    body: JSON.stringify({ content, nonce, reply_to_id: replyToId }),
   }, 'message');
 
 // ── Server Emojis ──────────────────────────────────────────────────────

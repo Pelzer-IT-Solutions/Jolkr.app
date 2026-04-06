@@ -72,17 +72,43 @@ export const useVoiceStore = create<VoiceState>((set) => ({
       await svc.joinChannel(channelId, token);
       set({ channelId, serverId, channelName });
 
-      // Voice E2EE for DM calls: pairwise X25519 DH shared key
+      // Voice E2EE for DM calls: ephemeral X25519 DH + ML-KEM-768 hybrid key
       if (recipientUserId) {
         try {
           const { isE2EEReady, getLocalKeys, getRecipientBundle } = await import('../services/e2ee');
-          const { x25519KeyAgreement, deriveMessageKey } = await import('../crypto/keys');
+          const {
+            x25519KeyAgreement, deriveHybridMessageKey, mlkemEncapsulate,
+            verifySignedPreKey, verifyPQSignedPreKey,
+          } = await import('../crypto/keys');
+          const { x25519 } = await import('@noble/curves/ed25519.js');
+
           if (isE2EEReady()) {
             const localKeys = getLocalKeys();
             const bundle = await getRecipientBundle(recipientUserId);
             if (localKeys && bundle) {
-              const shared = x25519KeyAgreement(localKeys.signedPreKey.keyPair.privateKey, bundle.signedPrekey);
-              const aesKey = await deriveMessageKey(shared);
+              // Verify bundle signatures
+              if (!verifySignedPreKey(bundle.identityKey, bundle.signedPrekey, bundle.signedPrekeySignature)) {
+                throw new Error('Invalid signed prekey signature');
+              }
+
+              // Ephemeral X25519 DH (forward secrecy per call)
+              const ephemeralPriv = x25519.utils.randomSecretKey();
+              const classicalShared = x25519KeyAgreement(ephemeralPriv, bundle.signedPrekey);
+
+              // ML-KEM-768 hybrid layer (quantum resistance)
+              let aesKey: CryptoKey;
+              if (bundle.pqSignedPrekey && bundle.pqSignedPrekeySignature) {
+                if (!verifyPQSignedPreKey(bundle.identityKey, bundle.pqSignedPrekey, bundle.pqSignedPrekeySignature)) {
+                  throw new Error('Invalid PQ signed prekey signature');
+                }
+                const { sharedSecret: pqShared } = mlkemEncapsulate(bundle.pqSignedPrekey);
+                aesKey = await deriveHybridMessageKey(classicalShared, pqShared);
+              } else {
+                // Fallback: classical-only with ephemeral DH
+                const { deriveMessageKey } = await import('../crypto/keys');
+                aesKey = await deriveMessageKey(classicalShared);
+              }
+
               const rawBytes = new Uint8Array(await crypto.subtle.exportKey('raw', aesKey));
               svc.setVoiceKey(rawBytes);
             }

@@ -41,8 +41,7 @@ export async function encryptForRecipient(
 ): Promise<EncryptedPayload | null> {
   // Verify the classical signed prekey signature
   if (!verifySignedPreKey(bundle.identityKey, bundle.signedPrekey, bundle.signedPrekeySignature)) {
-    console.warn('E2EE: Invalid signed prekey signature for', bundle.userId);
-    return null;
+    throw new Error(`E2EE: Invalid signed prekey signature for ${bundle.userId}`);
   }
 
   // Generate fresh ephemeral X25519 keypair

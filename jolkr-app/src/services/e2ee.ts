@@ -11,6 +11,24 @@ import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
 
+// ── Storage encryption ────────────────────────────────────────────
+
+const STORAGE_KEY_SESSION = 'jolkr_storage_enc_key';
+
+/** Derive storage encryption key from E2EE seed and store in sessionStorage. */
+async function deriveAndStoreStorageKey(seed: Uint8Array): Promise<void> {
+  const buf = seed.buffer.slice(seed.byteOffset, seed.byteOffset + seed.byteLength) as ArrayBuffer;
+  const keyMaterial = await crypto.subtle.importKey('raw', buf, 'HKDF', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: new TextEncoder().encode('jolkr-storage-key') },
+    keyMaterial, 256,
+  );
+  const raw = new Uint8Array(bits);
+  let b64 = '';
+  for (let i = 0; i < raw.length; i++) b64 += String.fromCharCode(raw[i]);
+  sessionStorage.setItem(STORAGE_KEY_SESSION, btoa(b64));
+}
+
 // ── State ──────────────────────────────────────────────────────────
 
 let localKeys: LocalKeySet | null = null;
@@ -31,6 +49,10 @@ const bundleCache = new Map<string, CachedBundle>();
  */
 export async function initE2EE(deviceId: string, seed?: Uint8Array): Promise<void> {
   if (seed) {
+    // Derive storage encryption key from seed and persist in sessionStorage
+    // This protects private keys in localStorage at rest (cleared on tab close)
+    await deriveAndStoreStorageKey(seed);
+
     // Derive deterministic keys from password seed using HKDF
     const keys = await generateKeySetFromSeed(seed);
     localKeys = keys;

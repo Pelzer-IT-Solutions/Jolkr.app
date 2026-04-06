@@ -26,7 +26,6 @@ pub struct DmMessageInfo {
     pub dm_channel_id: Uuid,
     pub author_id: Uuid,
     pub content: Option<String>,
-    pub encrypted_content: Option<String>,
     pub nonce: Option<String>,
     pub is_edited: bool,
     pub is_pinned: bool,
@@ -49,7 +48,6 @@ impl From<DmMessageRow> for DmMessageInfo {
             dm_channel_id: row.dm_channel_id,
             author_id: row.author_id,
             content: row.content,
-            encrypted_content: row.encrypted_content.map(|b| engine.encode(&b)),
             nonce: row.nonce.map(|b| engine.encode(&b)),
             is_edited: row.is_edited,
             is_pinned: row.is_pinned,
@@ -66,7 +64,6 @@ impl From<DmMessageRow> for DmMessageInfo {
 #[derive(Debug, Deserialize)]
 pub struct SendDmRequest {
     pub content: Option<String>,
-    pub encrypted_content: Option<String>,
     pub nonce: Option<String>,
     pub reply_to_id: Option<Uuid>,
 }
@@ -74,6 +71,7 @@ pub struct SendDmRequest {
 #[derive(Debug, Deserialize)]
 pub struct EditDmRequest {
     pub content: String,
+    pub nonce: Option<String>,  // base64-encoded; when provided, updates nonce in DB
 }
 
 #[derive(Debug, Deserialize)]
@@ -367,9 +365,9 @@ impl DmService {
         author_id: Uuid,
         req: SendDmRequest,
     ) -> Result<DmMessageInfo, JolkrError> {
-        if req.content.is_none() && req.encrypted_content.is_none() {
+        if req.content.is_none() {
             return Err(JolkrError::Validation(
-                "Message must have content or encrypted_content".into(),
+                "Message must have content".into(),
             ));
         }
 
@@ -414,12 +412,9 @@ impl DmService {
             }
         }
 
+        // Decode optional nonce (base64 → bytes)
         use base64::Engine;
         let engine = base64::engine::general_purpose::STANDARD;
-        let encrypted = req.encrypted_content.as_deref()
-            .map(|s| engine.decode(s))
-            .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for encrypted_content".into()))?;
         let nonce = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
@@ -432,7 +427,6 @@ impl DmService {
             dm_channel_id,
             author_id,
             req.content.as_deref(),
-            encrypted.as_deref(),
             nonce.as_deref(),
             req.reply_to_id,
         )
@@ -466,7 +460,15 @@ impl DmService {
             ));
         }
 
-        let row = DmRepo::update_message(pool, message_id, &content).await?;
+        // Decode optional nonce (base64 → bytes)
+        use base64::Engine;
+        let engine = base64::engine::general_purpose::STANDARD;
+        let nonce_bytes = req.nonce.as_deref()
+            .map(|s| engine.decode(s))
+            .transpose()
+            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+
+        let row = DmRepo::update_message(pool, message_id, &content, nonce_bytes.as_deref()).await?;
         Ok(DmMessageInfo::from(row))
     }
 

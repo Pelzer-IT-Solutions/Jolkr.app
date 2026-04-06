@@ -98,7 +98,6 @@ fn dm_to_message_info(msg: &DmMessageInfo) -> MessageInfo {
         channel_id: msg.dm_channel_id,
         author_id: msg.author_id,
         content: msg.content.clone(),
-        encrypted_content: msg.encrypted_content.clone(),
         nonce: msg.nonce.clone(),
         is_edited: msg.is_edited,
         is_pinned: msg.is_pinned,
@@ -140,7 +139,8 @@ pub async fn send_dm_message(
     }
 
     // Link embed processing (fire-and-forget) for DM messages
-    if message.encrypted_content.is_none() {
+    // Only process embeds for unencrypted messages; encrypted content has nonce set
+    if message.nonce.is_none() {
         if let Some(ref content) = message.content {
             let embed_svc = state.embed.clone();
             let embed_pool = state.pool.clone();
@@ -187,7 +187,7 @@ pub async fn send_dm_message(
     // Push notification to offline DM recipient (fire-and-forget)
     let push = state.push.clone();
     let pool = state.pool.clone();
-    let msg_content = if message.encrypted_content.is_some() {
+    let msg_content = if message.nonce.is_some() {
         "Sent an encrypted message".to_string()
     } else {
         message.content.clone().unwrap_or_default()

@@ -19,12 +19,7 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin 
     setLoading(true)
     const fetch = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
     fetch.then(msgs => {
-      // Map encrypted_content → content (backend sends them as separate fields)
-      setMessages(msgs.map(m => {
-        const raw = m as unknown as Record<string, unknown>;
-        const enc = raw.encrypted_content as string | undefined;
-        return enc ? { ...m, content: enc } : m;
-      }))
+      setMessages(msgs)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [channelId, isDm])

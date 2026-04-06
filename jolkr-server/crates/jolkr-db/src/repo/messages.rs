@@ -23,7 +23,6 @@ impl MessageRepo {
         channel_id: Uuid,
         author_id: Uuid,
         content: Option<&str>,
-        encrypted_content: Option<&[u8]>,
         nonce: Option<&[u8]>,
         reply_to_id: Option<Uuid>,
     ) -> Result<MessageRow, JolkrError> {
@@ -31,9 +30,9 @@ impl MessageRepo {
         let msg = sqlx::query_as::<_, MessageRow>(
             r#"
             INSERT INTO messages
-                (id, channel_id, author_id, content, encrypted_content, nonce,
+                (id, channel_id, author_id, content, nonce,
                  is_edited, is_pinned, reply_to_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, false, false, $7, $8, $8)
+            VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, $7)
             RETURNING *
             "#,
         )
@@ -41,7 +40,6 @@ impl MessageRepo {
         .bind(channel_id)
         .bind(author_id)
         .bind(content)
-        .bind(encrypted_content)
         .bind(nonce)
         .bind(reply_to_id)
         .bind(now)
@@ -150,19 +148,21 @@ impl MessageRepo {
         pool: &PgPool,
         id: Uuid,
         content: &str,
+        nonce: Option<&[u8]>,
     ) -> Result<MessageRow, JolkrError> {
         let now = Utc::now();
         let msg = sqlx::query_as::<_, MessageRow>(
             r#"
             UPDATE messages
-            SET content = $2, is_edited = true, updated_at = $3
-            WHERE id = $1
+            SET content = $1, nonce = $2, is_edited = true, updated_at = $3
+            WHERE id = $4
             RETURNING *
             "#,
         )
-        .bind(id)
         .bind(content)
+        .bind(nonce)
         .bind(now)
+        .bind(id)
         .fetch_optional(pool)
         .await?
         .ok_or(JolkrError::NotFound)?;
@@ -317,7 +317,6 @@ impl MessageRepo {
         channel_id: Uuid,
         author_id: Uuid,
         content: Option<&str>,
-        encrypted_content: Option<&[u8]>,
         nonce: Option<&[u8]>,
         reply_to_id: Option<Uuid>,
         thread_id: Uuid,
@@ -326,9 +325,9 @@ impl MessageRepo {
         let msg = sqlx::query_as::<_, MessageRow>(
             r#"
             INSERT INTO messages
-                (id, channel_id, author_id, content, encrypted_content, nonce,
+                (id, channel_id, author_id, content, nonce,
                  is_edited, is_pinned, reply_to_id, thread_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, false, false, $7, $8, $9, $9)
+            VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, $8, $8)
             RETURNING *
             "#,
         )
@@ -336,7 +335,6 @@ impl MessageRepo {
         .bind(channel_id)
         .bind(author_id)
         .bind(content)
-        .bind(encrypted_content)
         .bind(nonce)
         .bind(reply_to_id)
         .bind(thread_id)

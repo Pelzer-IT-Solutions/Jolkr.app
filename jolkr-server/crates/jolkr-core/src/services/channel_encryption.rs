@@ -32,6 +32,32 @@ impl ChannelEncryptionService {
             return Err(JolkrError::Validation("Too many recipients (max 1000)".into()));
         }
 
+        // Validate all recipients are members of the channel's server
+        let server_row = sqlx::query_as::<_, (Uuid,)>(
+            "SELECT server_id FROM channels WHERE id = $1",
+        )
+        .bind(channel_id)
+        .fetch_optional(pool)
+        .await?;
+
+        if let Some((server_id,)) = server_row {
+            let recipient_ids: Vec<Uuid> = recipients.iter().map(|r| r.user_id).collect();
+            let member_count: (i64,) = sqlx::query_as(
+                "SELECT COUNT(*) FROM members WHERE server_id = $1 AND user_id = ANY($2)",
+            )
+            .bind(server_id)
+            .bind(&recipient_ids)
+            .fetch_one(pool)
+            .await?;
+
+            if (member_count.0 as usize) != recipient_ids.len() {
+                return Err(JolkrError::Validation(
+                    "One or more recipients are not members of this server".into(),
+                ));
+            }
+        }
+        // If no server found, this might be a DM channel — skip member validation
+
         let tuples: Vec<(Uuid, String, String)> = recipients
             .into_iter()
             .map(|r| (r.user_id, r.encrypted_key, r.nonce))

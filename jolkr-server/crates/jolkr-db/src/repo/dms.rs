@@ -293,20 +293,18 @@ impl DmRepo {
         dm_channel_id: Uuid,
         author_id: Uuid,
         content: Option<&str>,
-        encrypted_content: Option<&[u8]>,
         nonce: Option<&[u8]>,
         reply_to_id: Option<Uuid>,
     ) -> Result<DmMessageRow, JolkrError> {
         let row = sqlx::query_as::<_, DmMessageRow>(
-            r#"INSERT INTO dm_messages (id, dm_channel_id, author_id, content, encrypted_content, nonce, reply_to_id)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
+            r#"INSERT INTO dm_messages (id, dm_channel_id, author_id, content, nonce, reply_to_id)
+               VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING *"#,
         )
         .bind(id)
         .bind(dm_channel_id)
         .bind(author_id)
         .bind(content)
-        .bind(encrypted_content)
         .bind(nonce)
         .bind(reply_to_id)
         .fetch_one(pool)
@@ -361,15 +359,17 @@ impl DmRepo {
         pool: &PgPool,
         id: Uuid,
         content: &str,
+        nonce: Option<&[u8]>,
     ) -> Result<DmMessageRow, JolkrError> {
         let row = sqlx::query_as::<_, DmMessageRow>(
             r#"UPDATE dm_messages
-               SET content = $2, is_edited = true, updated_at = NOW()
-               WHERE id = $1
+               SET content = $1, nonce = $2, is_edited = true, updated_at = NOW()
+               WHERE id = $3
                RETURNING *"#,
         )
-        .bind(id)
         .bind(content)
+        .bind(nonce)
+        .bind(id)
         .fetch_optional(pool)
         .await?
         .ok_or(JolkrError::NotFound)?;

@@ -49,7 +49,9 @@ pub async fn send_message(
     state.nats.publish_to_channel(channel_id, &event).await;
 
     // Link embed processing (fire-and-forget) — fetch URL previews async
-    if let Some(ref content) = message.content {
+    // Only process embeds for unencrypted messages (webhooks); encrypted content has nonce set
+    let msg_content_for_embeds = if message.nonce.is_some() { None } else { message.content.as_deref().map(|s| s.to_string()) };
+    if let Some(ref content) = msg_content_for_embeds {
         let embed_svc = state.embed.clone();
         let embed_pool = state.pool.clone();
         let embed_nats = state.nats.clone();
@@ -75,7 +77,7 @@ pub async fn send_message(
     // Batch: all permission checks in-memory, single Redis MGET, single devices query
     let push = state.push.clone();
     let pool = state.pool.clone();
-    let msg_content = if message.encrypted_content.is_some() {
+    let msg_content = if message.nonce.is_some() {
         Some("Sent an encrypted message".to_string())
     } else {
         message.content.clone()

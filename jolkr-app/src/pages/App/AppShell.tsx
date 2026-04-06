@@ -534,19 +534,36 @@ export default function AppShell() {
     const msg = currentApiMessages.find(m => m.id === msgId)
     const existing = msg?.reactions?.find(r => r.emoji === emoji)
     if (existing?.me) {
-      api.removeReaction(msgId, emoji).catch(console.error)
+      (dmActive ? api.removeDmReaction : api.removeReaction)(msgId, emoji).catch(console.error)
     } else {
-      api.addReaction(msgId, emoji).catch(console.error)
+      (dmActive ? api.addDmReaction : api.addReaction)(msgId, emoji).catch(console.error)
     }
-  }, [currentApiMessages])
+  }, [currentApiMessages, dmActive])
 
   const handleDeleteMessage = useCallback((msgId: string) => {
     deleteMessage(msgId, effectiveChannelId, dmActive)
   }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleEditMessage = useCallback((msgId: string, newText: string) => {
-    editMessage(msgId, effectiveChannelId, newText, dmActive)
-  }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  const handleEditMessage = useCallback(async (msgId: string, newText: string) => {
+    const channelId = dmActive ? activeDmId : activeChannelId
+    const isDm = dmActive
+    const localKeys = getLocalKeys()
+    if (!localKeys) return
+
+    const getMemberIds = async () => {
+      if (isDm) {
+        const dm = dmList.find(d => d.id === channelId)
+        return dm?.members ?? []
+      }
+      const members = membersByServer[activeServerId] ?? []
+      return members.map(m => m.user_id)
+    }
+
+    const encrypted = await encryptChannelMessage(channelId, localKeys, newText, getMemberIds, isDm)
+    if (!encrypted) return
+
+    editMessage(msgId, effectiveChannelId, encrypted.encryptedContent, isDm, encrypted.nonce)
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId

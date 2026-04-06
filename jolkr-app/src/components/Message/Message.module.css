@@ -48,6 +48,11 @@
   margin-left: 0.25rem;
   flex-shrink: 0;
 }
+.unencryptedBadge {
+  color: var(--accent-warning, #e5a00d);
+  margin-left: 0.35rem;
+  opacity: 0.7;
+}
 .text   { color: var(--text-loud); line-height: 1.5625; word-break: break-word; }
 
 .editedTag {

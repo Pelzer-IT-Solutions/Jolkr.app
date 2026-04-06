@@ -126,7 +126,8 @@ export function transformMessage(
       const replyAuthor = replyMsg.author ?? users.get(replyMsg.author_id)
       replyTo = {
         author: replyAuthor?.display_name || replyAuthor?.username || 'Unknown',
-        text: replyMsg.content?.slice(0, 100) || 'Encrypted message',
+        // If the reply has a nonce, it's encrypted — show placeholder (content is raw ciphertext)
+        text: replyMsg.nonce ? 'Encrypted message' : (replyMsg.content?.slice(0, 100) || 'Encrypted message'),
       }
     }
   }

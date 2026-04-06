@@ -5,6 +5,11 @@
   padding: 0;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--jolkr-neutral-dark-30) transparent;
+}
+
 html, body, #root {
   height: 100svh;
   overflow: hidden;

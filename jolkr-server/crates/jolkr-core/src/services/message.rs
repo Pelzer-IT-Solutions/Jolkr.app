@@ -47,7 +47,6 @@ pub struct MessageInfo {
     pub channel_id: Uuid,
     pub author_id: Uuid,
     pub content: Option<String>,
-    pub encrypted_content: Option<String>,
     pub nonce: Option<String>,
     pub is_edited: bool,
     pub is_pinned: bool,
@@ -83,7 +82,6 @@ impl From<MessageRow> for MessageInfo {
             channel_id: row.channel_id,
             author_id: row.author_id,
             content: row.content,
-            encrypted_content: row.encrypted_content.map(|b| engine.encode(&b)),
             nonce: row.nonce.map(|b| engine.encode(&b)),
             is_edited: row.is_edited,
             is_pinned: row.is_pinned,
@@ -106,7 +104,6 @@ impl From<MessageRow> for MessageInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SendMessageRequest {
     pub content: Option<String>,
-    pub encrypted_content: Option<String>, // base64-encoded
     pub nonce: Option<String>,             // base64-encoded
     pub reply_to_id: Option<Uuid>,
 }
@@ -114,6 +111,7 @@ pub struct SendMessageRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditMessageRequest {
     pub content: String,
+    pub nonce: Option<String>,  // base64-encoded; when provided, updates nonce in DB
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -323,10 +321,10 @@ impl MessageService {
         req: SendMessageRequest,
         thread_id: Option<Uuid>,
     ) -> Result<MessageInfo, JolkrError> {
-        // Validate: at least one of content or encrypted_content must be present
-        if req.content.is_none() && req.encrypted_content.is_none() {
+        // Validate: content must be present
+        if req.content.is_none() {
             return Err(JolkrError::Validation(
-                "Message must have either content or encrypted_content".into(),
+                "Message must have content".into(),
             ));
         }
 
@@ -393,13 +391,9 @@ impl MessageService {
 
         let message_id = Uuid::new_v4();
 
-        // Decode optional E2EE fields
+        // Decode optional nonce (base64 → bytes)
         use base64::Engine;
         let engine = base64::engine::general_purpose::STANDARD;
-        let encrypted_bytes = req.encrypted_content.as_deref()
-            .map(|s| engine.decode(s))
-            .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for encrypted_content".into()))?;
         let nonce_bytes = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
@@ -412,7 +406,6 @@ impl MessageService {
                 channel_id,
                 author_id,
                 req.content.as_deref(),
-                encrypted_bytes.as_deref(),
                 nonce_bytes.as_deref(),
                 req.reply_to_id,
                 tid,
@@ -424,7 +417,6 @@ impl MessageService {
                 channel_id,
                 author_id,
                 req.content.as_deref(),
-                encrypted_bytes.as_deref(),
                 nonce_bytes.as_deref(),
                 req.reply_to_id,
             ).await?
@@ -558,7 +550,15 @@ impl MessageService {
             ));
         }
 
-        let _updated = MessageRepo::update(pool, message_id, &content).await?;
+        // Decode optional nonce (base64 → bytes)
+        use base64::Engine;
+        let engine = base64::engine::general_purpose::STANDARD;
+        let nonce_bytes = req.nonce.as_deref()
+            .map(|s| engine.decode(s))
+            .transpose()
+            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+
+        let _updated = MessageRepo::update(pool, message_id, &content, nonce_bytes.as_deref()).await?;
         // Return the full enriched message (with attachments, reactions, thread info)
         // instead of the bare MessageRow, so the broadcast includes all data.
         Self::get_message_by_id(pool, message_id).await

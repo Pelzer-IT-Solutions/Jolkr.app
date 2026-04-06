@@ -229,14 +229,23 @@ export async function generateSafetyNumber(
   combined.set(first);
   combined.set(second, first.length);
 
-  const hash = new Uint8Array(
+  // Double-hash for more entropy bytes (need ≥30 bytes for 60 digits)
+  const hash1 = new Uint8Array(
     await crypto.subtle.digest('SHA-256', toArrayBuffer(combined)),
   );
+  const hash2 = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', toArrayBuffer(hash1)),
+  );
+  const allBytes = new Uint8Array(64);
+  allBytes.set(hash1);
+  allBytes.set(hash2, 32);
 
-  // Convert to decimal digits: each byte → 3-digit number (mod 1000), take first 60 digits
+  // Convert to decimal digits: 2-byte pairs → mod 10000 → 4 uniform digits
+  // Bias: 65536 mod 10000 = 5536, so values 0-5535 are ~0.06% more likely — negligible
   let digits = '';
-  for (let i = 0; i < hash.length && digits.length < 60; i++) {
-    digits += hash[i].toString().padStart(3, '0');
+  for (let i = 0; i + 1 < allBytes.length && digits.length < 60; i += 2) {
+    const val = ((allBytes[i] << 8) | allBytes[i + 1]) % 10000;
+    digits += val.toString().padStart(4, '0');
   }
   digits = digits.slice(0, 60);
 

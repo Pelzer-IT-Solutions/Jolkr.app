@@ -28,13 +28,15 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   const isOwn = message.author_id === currentUserId || message.author === 'You'
 
   // Decrypt E2EE content
-  const { displayContent, decrypting } = useDecryptedContent(
+  const { displayContent, isEncrypted, decrypting } = useDecryptedContent(
     message.content,
     message.nonce,
     message.isDm ?? isDm,
     message.channel_id,
   )
   const messageContent = displayContent || message.content
+  // Webhook messages have no nonce → isEncrypted=false, but only show badge if content exists
+  const showUnencryptedBadge = !isEncrypted && !!message.content
   const [showEmoji, setShowEmoji] = useState(false)
   const [showMore,  setShowMore]  = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -395,6 +397,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           <span className={`${s.author} txt-body txt-semibold`}>{message.author}</span>
           <span className={`${s.time} txt-tiny`}>{message.time}</span>
           {message.is_pinned && <Pin size={11} strokeWidth={1.4} className={s.pinnedBadge} />}
+          {showUnencryptedBadge && <span className={`${s.unencryptedBadge} txt-tiny`}>unencrypted</span>}
         </div>
         {body}
       </div>

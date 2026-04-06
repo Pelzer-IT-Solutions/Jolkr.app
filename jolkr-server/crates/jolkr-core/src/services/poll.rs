@@ -78,7 +78,7 @@ impl PollService {
         let poll_text = format!("📊 {}", req.question);
         jolkr_db::repo::MessageRepo::create_message(
             pool, message_id, channel_id, author_id,
-            Some(&poll_text), None, None, None,
+            Some(&poll_text), None, None,
         ).await?;
 
         // Create poll

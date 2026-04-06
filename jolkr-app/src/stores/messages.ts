@@ -40,7 +40,7 @@ interface MessagesState {
   fetchOlder: (channelId: string, isDm?: boolean) => Promise<void>;
   sendMessage: (channelId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   sendDmMessage: (dmId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
-  editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean) => Promise<void>;
+  editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean, nonce?: string) => Promise<void>;
   deleteMessage: (messageId: string, channelId: string, isDm?: boolean) => Promise<void>;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
@@ -50,24 +50,12 @@ interface MessagesState {
   // Thread actions
   fetchThreadMessages: (threadId: string) => Promise<void>;
   fetchOlderThreadMessages: (threadId: string) => Promise<void>;
-  sendThreadMessage: (threadId: string, content: string, replyToId?: string) => Promise<Message>;
+  sendThreadMessage: (threadId: string, content: string, nonce?: string, replyToId?: string) => Promise<Message>;
   addThreadMessage: (threadId: string, message: Message) => void;
   updateThreadMessage: (threadId: string, message: Message) => void;
   removeThreadMessage: (threadId: string, messageId: string) => void;
   clearThreadMessages: (threadId: string) => void;
   reset: () => void;
-}
-
-/** Normalize channel messages from API: map encrypted_content → content (same as WS/DM paths). */
-function normalizeChannelMessages(msgs: Message[]): Message[] {
-  return msgs.map((m) => {
-    const raw = m as unknown as Record<string, unknown>;
-    const encContent = raw.encrypted_content as string | undefined;
-    if (encContent) {
-      return { ...m, content: encContent };
-    }
-    return m;
-  });
 }
 
 // Map DM message response to Message interface
@@ -76,8 +64,7 @@ function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
     id: m.id as string,
     channel_id: (m.dm_channel_id as string) ?? dmId,
     author_id: m.author_id as string,
-    // content = encrypted_content from backend (all messages are E2EE)
-    content: (m.encrypted_content as string) ?? (m.content as string) ?? '',
+    content: (m.content as string) ?? '',
     nonce: (m.nonce as string) ?? null,
     created_at: m.created_at as string,
     updated_at: (m.updated_at as string) ?? null,
@@ -127,7 +114,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         const raw = await api.getDmMessages(channelId);
         msgs = normalizeDmMessages(raw, channelId);
       } else {
-        msgs = normalizeChannelMessages(await api.getMessages(channelId));
+        msgs = await api.getMessages(channelId);
       }
       const reversed = transformReactions([...msgs].reverse());
       const evicted = evictOldChannels({ ...get().messages, [channelId]: reversed }, channelId);
@@ -154,7 +141,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         const raw = await api.getDmMessages(channelId, 50, oldest.created_at);
         msgs = normalizeDmMessages(raw, channelId);
       } else {
-        msgs = normalizeChannelMessages(await api.getMessages(channelId, 50, oldest.created_at));
+        msgs = await api.getMessages(channelId, 50, oldest.created_at);
       }
       const reversed = transformReactions([...msgs].reverse());
       const fresh = get().messages[channelId] ?? [];
@@ -176,13 +163,13 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     return api.sendDmMessage(dmId, { content, nonce, reply_to_id: replyToId });
   },
 
-  editMessage: async (messageId, channelId, content, isDm) => {
+  editMessage: async (messageId, channelId, content, isDm, nonce?) => {
     if (isDm) {
-      const raw = await api.editDmMessage(messageId, content);
+      const raw = await api.editDmMessage(messageId, content, nonce);
       const normalized = normalizeDmMessages([raw], channelId)[0];
       get().updateMessage(channelId, normalized);
     } else {
-      const updated = await api.editMessage(messageId, content);
+      const updated = await api.editMessage(messageId, content, nonce);
       get().updateMessage(channelId, updated);
     }
   },
@@ -256,7 +243,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     if (get().threadLoading[threadId]) return;
     set({ threadLoading: { ...get().threadLoading, [threadId]: true } });
     try {
-      const msgs = normalizeChannelMessages(await api.getThreadMessages(threadId));
+      const msgs = await api.getThreadMessages(threadId);
       const reversed = transformReactions([...msgs].reverse());
       set({
         threadMessages: { ...get().threadMessages, [threadId]: reversed },
@@ -275,7 +262,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     set({ threadLoadingOlder: { ...get().threadLoadingOlder, [threadId]: true } });
     try {
       const oldest = current[0];
-      const msgs = normalizeChannelMessages(await api.getThreadMessages(threadId, 50, oldest.created_at));
+      const msgs = await api.getThreadMessages(threadId, 50, oldest.created_at);
       const reversed = transformReactions([...msgs].reverse());
       const fresh = get().threadMessages[threadId] ?? [];
       set({
@@ -288,8 +275,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
-  sendThreadMessage: async (threadId, content, replyToId) => {
-    return api.sendThreadMessage(threadId, content, replyToId);
+  sendThreadMessage: async (threadId, content, nonce, replyToId) => {
+    return api.sendThreadMessage(threadId, content, nonce, replyToId);
   },
 
   addThreadMessage: (threadId, message) => {
@@ -348,8 +335,7 @@ function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
     id: raw.id as string,
     channel_id: channelId,
     author_id: (raw.author_id as string) ?? '',
-    // content = encrypted_content from backend (all messages are E2EE)
-    content: (raw.encrypted_content as string) ?? (raw.content as string) ?? '',
+    content: (raw.content as string) ?? '',
     nonce: (raw.nonce as string) ?? null,
     created_at: (raw.created_at as string) ?? new Date().toISOString(),
     updated_at: (raw.updated_at as string) ?? null,
