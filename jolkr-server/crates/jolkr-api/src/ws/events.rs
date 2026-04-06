@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use jolkr_core::services::category::CategoryInfo;
 use jolkr_core::services::channel::ChannelInfo;
 use jolkr_core::services::dm::DmChannelInfo;
 use jolkr_core::services::message::MessageInfo;
@@ -119,6 +120,22 @@ pub enum GatewayEvent {
     /// A channel was deleted.
     ChannelDelete {
         channel_id: Uuid,
+        server_id: Uuid,
+    },
+
+    /// A category was created in a server.
+    CategoryCreate {
+        category: CategoryInfo,
+    },
+
+    /// A category was updated.
+    CategoryUpdate {
+        category: CategoryInfo,
+    },
+
+    /// A category was deleted.
+    CategoryDelete {
+        category_id: Uuid,
         server_id: Uuid,
     },
 

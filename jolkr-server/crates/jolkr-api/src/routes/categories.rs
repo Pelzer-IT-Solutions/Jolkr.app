@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use jolkr_core::CategoryService;
 use jolkr_core::services::category::{CategoryInfo, CreateCategoryRequest, UpdateCategoryRequest};
-use jolkr_db::repo::MemberRepo;
+use jolkr_db::repo::{CategoryRepo, MemberRepo};
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
@@ -36,6 +36,10 @@ pub async fn create_category(
 ) -> Result<Json<CategoryResponse>, AppError> {
     let category =
         CategoryService::create_category(&state.pool, server_id, auth.user_id, body).await?;
+    let event = crate::ws::events::GatewayEvent::CategoryCreate {
+        category: category.clone(),
+    };
+    state.nats.publish_to_server(server_id, &event).await;
     Ok(Json(CategoryResponse { category }))
 }
 
@@ -61,6 +65,10 @@ pub async fn update_category(
 ) -> Result<Json<CategoryResponse>, AppError> {
     let category =
         CategoryService::update_category(&state.pool, id, auth.user_id, body).await?;
+    let event = crate::ws::events::GatewayEvent::CategoryUpdate {
+        category: category.clone(),
+    };
+    state.nats.publish_to_server(category.server_id, &event).await;
     Ok(Json(CategoryResponse { category }))
 }
 
@@ -70,6 +78,13 @@ pub async fn delete_category(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<axum::http::StatusCode, AppError> {
+    let cat_row = CategoryRepo::get_by_id(&state.pool, id).await?;
+    let server_id = cat_row.server_id;
     CategoryService::delete_category(&state.pool, id, auth.user_id).await?;
+    let event = crate::ws::events::GatewayEvent::CategoryDelete {
+        category_id: id,
+        server_id,
+    };
+    state.nats.publish_to_server(server_id, &event).await;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
