@@ -15,9 +15,9 @@ interface Props {
   channel:            Channel
   messages:           MessageType[]
   sidebarCollapsed:   boolean
-  membersVisible:     boolean
+  rightPanelMode:     'members' | 'pinned' | 'threads' | null
   onExpandSidebar:    () => void
-  onToggleMembers:    () => void
+  onSetRightPanelMode: (mode: 'members' | 'pinned' | 'threads' | null) => void
   onSend:             (text: string, replyTo?: ReplyRef) => void
   onToggleReaction:   (msgId: string, emoji: string) => void
   onDeleteMessage:    (msgId: string) => void
@@ -31,13 +31,16 @@ interface Props {
   readOnly?:          boolean
   typingUsers?:       string[]
   onPinMessage?:      (msgId: string) => void
-  onTogglePinPanel?:  () => void
-  pinnedPanelOpen?:   boolean
+  hasPinnedMessages?: boolean
+  hasThreads?:        boolean
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, onExpandSidebar, onToggleMembers, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onTogglePinPanel, pinnedPanelOpen }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, hasPinnedMessages = false, hasThreads = false }: Props) {
   const listRef  = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLDivElement>(null)
+
+  // System channels are read-only
+  const isReadOnly = readOnly || channel.is_system
 
   const [replyingTo,  setReplyingTo]  = useState<MessageType | null>(null)
   const [isRevealing, setIsRevealing] = useState(false)
@@ -230,21 +233,31 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
               <div className={s.headerSep} />
             </>
           ) : (
-            <button className={s.iconBtn} title="Thread view">
-              <ThreadsIcon />
-            </button>
+            <>
+              {hasThreads && (
+                <button
+                  className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
+                  title="Threads"
+                  onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
+                >
+                  <ThreadsIcon />
+                </button>
+              )}
+              {hasPinnedMessages && (
+                <button
+                  className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
+                  title="Pinned messages"
+                  onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
+                >
+                  <Pin size={14} strokeWidth={1.5} />
+                </button>
+              )}
+            </>
           )}
           <button
-            className={`${s.iconBtn} ${pinnedPanelOpen ? s.active : ''}`}
-            title="Pinned messages"
-            onClick={onTogglePinPanel}
-          >
-            <Pin size={14} strokeWidth={1.5} />
-          </button>
-          <button
-            className={`${s.iconBtn} ${membersVisible ? s.active : ''}`}
+            className={`${s.iconBtn} ${rightPanelMode === 'members' ? s.active : ''}`}
             title={isDm ? 'Files & pins' : 'Members'}
-            onClick={onToggleMembers}
+            onClick={() => onSetRightPanelMode(rightPanelMode === 'members' ? null : 'members')}
           >
             {isDm ? <FilesIcon /> : <MembersIcon />}
           </button>
@@ -279,11 +292,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
                 >
                   <Message
                     message={msg}
-                    onToggleReaction={readOnly ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
-                    onDelete={readOnly ? undefined : () => onDeleteMessage(msg.id)}
-                    onEdit={readOnly ? undefined : (newText) => onEditMessage(msg.id, newText)}
-                    onReply={readOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
-                    onPin={readOnly ? undefined : () => onPinMessage?.(msg.id)}
+                    onToggleReaction={isReadOnly ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
+                    onDelete={isReadOnly ? undefined : () => onDeleteMessage(msg.id)}
+                    onEdit={isReadOnly ? undefined : (newText) => onEditMessage(msg.id, newText)}
+                    onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
+                    onPin={isReadOnly ? undefined : () => onPinMessage?.(msg.id)}
                     isDm={isDm}
                   />
                 </div>
@@ -311,11 +324,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
           </div>
         )}
 
-        {readOnly ? (
+        {isReadOnly ? (
           <div className={s.composerWrap}>
             <div className={`${s.composer} ${s.readOnly}`} style={{ padding: '.725rem .625rem' }}>
               <span className="txt-small" style={{ opacity: 0.4, textAlign: 'center', width: '100%' }}>
-                This is a read-only channel
+                {channel.is_system ? 'This is a system channel' : 'This is a read-only channel'}
               </span>
             </div>
           </div>

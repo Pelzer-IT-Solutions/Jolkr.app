@@ -36,9 +36,9 @@ import { NewDMModal } from '../../components/NewDMModal/NewDMModal'
 import { JoinServerModal } from '../../components/JoinServerModal/JoinServerModal'
 import { CreateServerModal } from '../../components/CreateServerModal/CreateServerModal'
 import { NotificationsPanel } from '../../components/NotificationsPanel/NotificationsPanel'
-import { PinnedMessagesPanel } from '../../components/PinnedMessagesPanel/PinnedMessagesPanel'
 import { FriendsPanel } from '../../components/FriendsPanel'
 import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
+import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
 import { ReportModal } from '../../components/ReportModal'
 import { UserContextMenu } from '../../components/UserContextMenu'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
@@ -75,7 +75,7 @@ export default function AppShell() {
   const [activeServerId, setActiveServerId] = useState('')
   const [activeChannelId, setActiveChannelId] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [membersVisible, setMembersVisible] = useState(true)
+  const [rightPanelMode, setRightPanelMode] = useState<'members' | 'pinned' | 'threads' | null>('members')
   const [dmActive, setDmActive] = useState(false)
   const [activeDmId, setActiveDmId] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -86,9 +86,13 @@ export default function AppShell() {
   const [notificationsActive, setNotificationsActive] = useState(false)
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
   const [serverSettingsOpen, setServerSettingsOpen] = useState(false)
+  const [channelSettingsOpen, setChannelSettingsOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<MemberDisplay | null>(null)
   const [userContextMenu, setUserContextMenu] = useState<UserContextMenuState | null>(null)
-  const [pinnedPanelOpen, setPinnedPanelOpen] = useState(false)
+
+  // ── Content availability for conditional icon display ──
+  const [pinnedCount, setPinnedCount] = useState(0)
+  const [threadsCount, setThreadsCount] = useState(0)
 
   const lastChannelPerServer = useRef<Record<string, string>>({})
   const [ready, setReady] = useState(false)
@@ -277,6 +281,21 @@ export default function AppShell() {
       }
     }
 
+    // Fetch pinned count and threads count for conditional icon display
+    const fetchCounts = async () => {
+      try {
+        const pinned = dmActive
+          ? await api.getDmPinnedMessages(channelId)
+          : await api.getPinnedMessages(channelId)
+        setPinnedCount(pinned.length)
+      } catch {
+        setPinnedCount(0)
+      }
+      // TODO: Fetch threads count when API is available
+      setThreadsCount(0)
+    }
+    fetchCounts()
+
     return () => {
       useUnreadStore.getState().setActiveChannel(null)
     }
@@ -347,11 +366,6 @@ export default function AppShell() {
     const { key } = await api.uploadFile(file, 'avatar')
     // Store the S3 key — the avatar is served via /api/avatars/:userId (no presigned URL)
     await useAuthStore.getState().updateProfile({ avatar_url: key })
-  }, [])
-
-  // ── Password change handler ──
-  const handleChangePassword = useCallback(async (currentPassword: string, newPassword: string) => {
-    await api.changePassword(currentPassword, newPassword)
   }, [])
 
   // ── Typing indicator (throttled) ──
@@ -560,6 +574,15 @@ export default function AppShell() {
         if (dmActive) await api.pinDmMessage(channelId, msgId)
         else await api.pinMessage(channelId, msgId)
       }
+      // Refresh pinned count and messages to update UI
+      const pinned = dmActive
+        ? await api.getDmPinnedMessages(channelId)
+        : await api.getPinnedMessages(channelId)
+      setPinnedCount(pinned.length)
+      // Update the message's is_pinned status in the store
+      const store = useMessagesStore.getState()
+      const updatedMsg = { ...msg, is_pinned: !msg.is_pinned }
+      store.updateMessage(channelId, updatedMsg)
     } catch (err) {
       console.error('Pin toggle failed:', err)
     }
@@ -570,6 +593,18 @@ export default function AppShell() {
     try {
       if (dmActive) await api.unpinDmMessage(channelId, msgId)
       else await api.unpinMessage(channelId, msgId)
+      // Refresh pinned count
+      const pinned = dmActive
+        ? await api.getDmPinnedMessages(channelId)
+        : await api.getPinnedMessages(channelId)
+      setPinnedCount(pinned.length)
+      // Find and update the message's is_pinned status in the store
+      const store = useMessagesStore.getState()
+      const channelMsgs = store.messages[channelId] ?? []
+      const msg = channelMsgs.find(m => m.id === msgId)
+      if (msg) {
+        store.updateMessage(channelId, { ...msg, is_pinned: false })
+      }
     } catch (err) {
       console.error('Unpin failed:', err)
     }
@@ -600,9 +635,30 @@ export default function AppShell() {
     }
   }, [activeServerId, activeChannelId])
 
-  async function handleJoinServer(serverId: string, _accessCode: string): Promise<boolean> {
+  const handleDeleteCategory = useCallback(async (categoryName: string) => {
+    // Find the category by name to get its ID
+    const categories = categoriesByServer[activeServerId] ?? []
+    const category = categories.find(c => c.name === categoryName)
+    if (!category) return
+    
+    await api.deleteCategory(category.id)
+    await fetchCategories(activeServerId)
+    await fetchChannels(activeServerId)
+  }, [activeServerId, categoriesByServer])
+
+  const handleArchiveChannel = useCallback(async (channelId: string) => {
+    await api.updateChannel(channelId, { is_system: true })
+    await fetchChannels(activeServerId)
+  }, [activeServerId])
+
+  async function handleJoinServer(serverId: string, accessCode: string): Promise<boolean> {
     try {
-      await api.useInvite(serverId)
+      // If access code is provided, use invite code path; otherwise join public server directly
+      if (accessCode && accessCode.trim()) {
+        await api.useInvite(accessCode.trim())
+      } else {
+        await api.joinPublicServer(serverId)
+      }
       await fetchServers()
       handleOpenServer(serverId)
       setJoinServerOpen(false)
@@ -752,6 +808,9 @@ export default function AppShell() {
                   onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
                   onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
                   onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
+                  onDeleteCategory={canManageChannels ? handleDeleteCategory : undefined}
+                  onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
+                  onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
                 />
               ) : null}
 
@@ -759,9 +818,9 @@ export default function AppShell() {
                 channel={activeChannel}
                 messages={displayMessages}
                 sidebarCollapsed={dmActive ? false : sidebarCollapsed}
-                membersVisible={membersVisible}
+                rightPanelMode={rightPanelMode}
                 onExpandSidebar={() => setSidebarCollapsed(false)}
-                onToggleMembers={() => setMembersVisible(v => !v)}
+                onSetRightPanelMode={setRightPanelMode}
                 onSend={handleSend}
                 onToggleReaction={handleToggleReaction}
                 onDeleteMessage={handleDeleteMessage}
@@ -771,6 +830,8 @@ export default function AppShell() {
                 animationKey={chatAnimKey}
                 onTyping={handleTyping}
                 typingUsers={typingUsers}
+                hasPinnedMessages={pinnedCount > 0}
+                hasThreads={threadsCount > 0}
                 onLoadOlder={() => {
                   const { fetchOlder, loadingOlder } = useMessagesStore.getState()
                   const channelId = dmActive ? activeDmId : activeChannelId
@@ -779,26 +840,17 @@ export default function AppShell() {
                 hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
                 readOnly={isDmWithSystemUser}
                 onPinMessage={handlePinMessage}
-                onTogglePinPanel={() => setPinnedPanelOpen(v => !v)}
-                pinnedPanelOpen={pinnedPanelOpen}
               />
 
-              {pinnedPanelOpen && (
-                <PinnedMessagesPanel
-                  channelId={effectiveChannelId}
-                  isDm={dmActive}
-                  onClose={() => setPinnedPanelOpen(false)}
-                  onUnpin={handleUnpinMessage}
-                />
-              )}
-
               {dmActive ? (
-                <DMInfoPanel visible={membersVisible} />
+                <DMInfoPanel visible={rightPanelMode !== null} />
               ) : activeServer ? (
                 <MemberPanel
                   members={activeServer.members}
-                  visible={membersVisible}
+                  mode={rightPanelMode}
                   serverId={activeServerId}
+                  channelId={activeChannelId}
+                  isDm={false}
                   onMemberClick={(member, e) => {
                     if (!member.userId) return
                     const u = userMap.get(member.userId)
@@ -816,6 +868,7 @@ export default function AppShell() {
                       },
                     })
                   }}
+                  onUnpin={handleUnpinMessage}
                 />
               ) : null}
             </div>
@@ -846,7 +899,6 @@ export default function AppShell() {
           onLogout={handleLogout}
           onUpdateProfile={handleUpdateProfile}
           onUploadAvatar={handleUploadAvatar}
-          onChangePassword={handleChangePassword}
         />
       )}
 
@@ -885,7 +937,7 @@ export default function AppShell() {
         }}
         onAcceptRequest={async (id) => { await api.acceptFriend(id) }}
         onRejectRequest={async (id) => { await api.declineFriend(id) }}
-        onRemoveFriend={async (id) => { await api.declineFriend(id) }}
+        onRemoveFriend={async (userId) => { await api.removeFriendByUserId(userId) }}
       />
 
       {serverSettingsOpen && activeServer && (() => {
@@ -914,6 +966,24 @@ export default function AppShell() {
             await fetchServers() // safety effect handles fallback
           }}
         />
+        )
+      })()}
+
+      {channelSettingsOpen && activeChannel && activeServerId && (() => {
+        const rawChannels = channelsByServer[activeServerId] ?? []
+        const rawChannel = rawChannels.find(ch => ch.id === activeChannelId)
+        if (!rawChannel) return null
+        return (
+          <ChannelSettings
+            channel={rawChannel}
+            serverId={activeServerId}
+            serverPermissions={serverPermissions[activeServerId] ?? 0}
+            onClose={() => setChannelSettingsOpen(false)}
+            onUpdate={async (channelId, data) => {
+              await api.updateChannel(channelId, data)
+              await fetchChannels(activeServerId)
+            }}
+          />
         )
       })()}
 
