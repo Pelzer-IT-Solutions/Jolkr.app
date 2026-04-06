@@ -58,6 +58,18 @@ interface MessagesState {
   reset: () => void;
 }
 
+/** Normalize channel messages from API: map encrypted_content → content (same as WS/DM paths). */
+function normalizeChannelMessages(msgs: Message[]): Message[] {
+  return msgs.map((m) => {
+    const raw = m as unknown as Record<string, unknown>;
+    const encContent = raw.encrypted_content as string | undefined;
+    if (encContent) {
+      return { ...m, content: encContent };
+    }
+    return m;
+  });
+}
+
 // Map DM message response to Message interface
 function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
   return (msgs as Array<Record<string, unknown>>).map((m) => ({
@@ -115,7 +127,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         const raw = await api.getDmMessages(channelId);
         msgs = normalizeDmMessages(raw, channelId);
       } else {
-        msgs = await api.getMessages(channelId);
+        msgs = normalizeChannelMessages(await api.getMessages(channelId));
       }
       const reversed = transformReactions([...msgs].reverse());
       const evicted = evictOldChannels({ ...get().messages, [channelId]: reversed }, channelId);
@@ -142,7 +154,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         const raw = await api.getDmMessages(channelId, 50, oldest.created_at);
         msgs = normalizeDmMessages(raw, channelId);
       } else {
-        msgs = await api.getMessages(channelId, 50, oldest.created_at);
+        msgs = normalizeChannelMessages(await api.getMessages(channelId, 50, oldest.created_at));
       }
       const reversed = transformReactions([...msgs].reverse());
       const fresh = get().messages[channelId] ?? [];
@@ -244,7 +256,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     if (get().threadLoading[threadId]) return;
     set({ threadLoading: { ...get().threadLoading, [threadId]: true } });
     try {
-      const msgs = await api.getThreadMessages(threadId);
+      const msgs = normalizeChannelMessages(await api.getThreadMessages(threadId));
       const reversed = transformReactions([...msgs].reverse());
       set({
         threadMessages: { ...get().threadMessages, [threadId]: reversed },
@@ -263,7 +275,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     set({ threadLoadingOlder: { ...get().threadLoadingOlder, [threadId]: true } });
     try {
       const oldest = current[0];
-      const msgs = await api.getThreadMessages(threadId, 50, oldest.created_at);
+      const msgs = normalizeChannelMessages(await api.getThreadMessages(threadId, 50, oldest.created_at));
       const reversed = transformReactions([...msgs].reverse());
       const fresh = get().threadMessages[threadId] ?? [];
       set({
