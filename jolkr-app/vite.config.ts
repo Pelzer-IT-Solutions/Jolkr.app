@@ -4,6 +4,14 @@ import pkg from './package.json' with { type: 'json' }
 
 const isTauri = !!process.env.TAURI_ENV_PLATFORM;
 
+// Dev proxy: live server by default, VITE_API_TARGET=local to use localhost:8080
+const apiTarget = process.env.VITE_API_TARGET === 'local'
+  ? 'http://localhost:8080'
+  : 'https://jolkr.app';
+const wsTarget = process.env.VITE_API_TARGET === 'local'
+  ? 'ws://localhost:8080'
+  : 'wss://jolkr.app';
+
 export default defineConfig({
   plugins: [react()],
   base: isTauri ? '/' : '/app/',
@@ -37,8 +45,10 @@ export default defineConfig({
     ? { port: 1420, strictPort: true }
     : {
         proxy: {
-          '/api': 'http://localhost:8080',
-          '/ws': { target: 'ws://localhost:8080', ws: true },
+          '/api': { target: apiTarget, changeOrigin: true, secure: true },
+          '/ws': { target: wsTarget, ws: true, changeOrigin: true, secure: true },
+          '/s3': { target: apiTarget, changeOrigin: true, secure: true },
+          '/media': { target: wsTarget, ws: true, changeOrigin: true, secure: true },
         },
       },
   envPrefix: ['VITE_', 'TAURI_ENV_'],
