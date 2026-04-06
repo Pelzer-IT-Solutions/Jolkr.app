@@ -18,10 +18,11 @@ interface Props {
   onDelete?:         () => void
   onReply?:          () => void
   onEdit?:           (newText: string) => void
+  onPin?:            () => void
   isDm?:            boolean
 }
 
-export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, isDm = false }: Props) {
+export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
 
@@ -232,8 +233,8 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             <button className={s.menuItem} onClick={handleCopyText}>
               <CopyIcon /><span>Copy Text</span>
             </button>
-            <button className={s.menuItem} onClick={() => setShowMore(false)}>
-              <PinIcon /><span>Pin Message</span>
+            <button className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
+              <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
             </button>
             <div className={s.menuDivider} />
             {isOwn ? (
@@ -323,8 +324,8 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                     <button className={s.menuItem} onClick={handleCopyText}>
                       <CopyIcon /><span>Copy Text</span>
                     </button>
-                    <button className={s.menuItem} onClick={() => setShowMore(false)}>
-                      <PinIcon /><span>Pin Message</span>
+                    <button className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
+                      <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
                     </button>
                     <div className={s.menuDivider} />
                     {isOwn ? (
@@ -392,6 +393,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
         <div className={s.meta}>
           <span className={`${s.author} txt-body txt-semibold`}>{message.author}</span>
           <span className={`${s.time} txt-tiny`}>{message.time}</span>
+          {message.is_pinned && <Pin size={11} strokeWidth={1.4} className={s.pinnedBadge} />}
         </div>
         {body}
       </div>

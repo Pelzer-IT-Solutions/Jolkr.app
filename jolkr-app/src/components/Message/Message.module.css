@@ -42,6 +42,12 @@
 
 .author { color: var(--text-shout); }
 .time   { color: var(--text-faint); }
+
+.pinnedBadge {
+  color: var(--fg-muted);
+  margin-left: 0.25rem;
+  flex-shrink: 0;
+}
 .text   { color: var(--text-loud); line-height: 1.5625; word-break: break-word; }
 
 .editedTag {

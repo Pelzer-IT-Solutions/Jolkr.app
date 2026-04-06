@@ -36,6 +36,7 @@ import { NewDMModal } from '../../components/NewDMModal/NewDMModal'
 import { JoinServerModal } from '../../components/JoinServerModal/JoinServerModal'
 import { CreateServerModal } from '../../components/CreateServerModal/CreateServerModal'
 import { NotificationsPanel } from '../../components/NotificationsPanel/NotificationsPanel'
+import { PinnedMessagesPanel } from '../../components/PinnedMessagesPanel/PinnedMessagesPanel'
 import { FriendsPanel } from '../../components/FriendsPanel'
 import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
 import { ReportModal } from '../../components/ReportModal'
@@ -87,6 +88,7 @@ export default function AppShell() {
   const [serverSettingsOpen, setServerSettingsOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<MemberDisplay | null>(null)
   const [userContextMenu, setUserContextMenu] = useState<UserContextMenuState | null>(null)
+  const [pinnedPanelOpen, setPinnedPanelOpen] = useState(false)
 
   const lastChannelPerServer = useRef<Record<string, string>>({})
   const [ready, setReady] = useState(false)
@@ -533,6 +535,33 @@ export default function AppShell() {
     editMessage(msgId, effectiveChannelId, newText, dmActive)
   }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handlePinMessage = useCallback(async (msgId: string) => {
+    const channelId = dmActive ? activeDmId : activeChannelId
+    const msg = currentApiMessages.find(m => m.id === msgId)
+    if (!msg) return
+    try {
+      if (msg.is_pinned) {
+        if (dmActive) await api.unpinDmMessage(channelId, msgId)
+        else await api.unpinMessage(channelId, msgId)
+      } else {
+        if (dmActive) await api.pinDmMessage(channelId, msgId)
+        else await api.pinMessage(channelId, msgId)
+      }
+    } catch (err) {
+      console.error('Pin toggle failed:', err)
+    }
+  }, [dmActive, activeDmId, activeChannelId, currentApiMessages])
+
+  const handleUnpinMessage = useCallback(async (msgId: string) => {
+    const channelId = dmActive ? activeDmId : activeChannelId
+    try {
+      if (dmActive) await api.unpinDmMessage(channelId, msgId)
+      else await api.unpinMessage(channelId, msgId)
+    } catch (err) {
+      console.error('Unpin failed:', err)
+    }
+  }, [dmActive, activeDmId, activeChannelId])
+
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
   }
@@ -728,7 +757,19 @@ export default function AppShell() {
                 }}
                 hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
                 readOnly={isDmWithSystemUser}
+                onPinMessage={handlePinMessage}
+                onTogglePinPanel={() => setPinnedPanelOpen(v => !v)}
+                pinnedPanelOpen={pinnedPanelOpen}
               />
+
+              {pinnedPanelOpen && (
+                <PinnedMessagesPanel
+                  channelId={effectiveChannelId}
+                  isDm={dmActive}
+                  onClose={() => setPinnedPanelOpen(false)}
+                  onUnpin={handleUnpinMessage}
+                />
+              )}
 
               {dmActive ? (
                 <DMInfoPanel visible={membersVisible} />

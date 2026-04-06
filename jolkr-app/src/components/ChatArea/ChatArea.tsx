@@ -3,7 +3,7 @@ import {
   Phone, Video, Files, CornerUpLeft, X,
   PanelLeftOpen, AlignLeft, Users, Smile,
   Paperclip, ImagePlay, SendHorizontal,
-  Bold, Italic, Strikethrough, Code,
+  Bold, Italic, Strikethrough, Code, Pin,
 } from 'lucide-react'
 import type { Channel, DMConversation, Message as MessageType, ReplyRef } from '../../types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
@@ -30,9 +30,12 @@ interface Props {
   hasMore?:           boolean
   readOnly?:          boolean
   typingUsers?:       string[]
+  onPinMessage?:      (msgId: string) => void
+  onTogglePinPanel?:  () => void
+  pinnedPanelOpen?:   boolean
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, onExpandSidebar, onToggleMembers, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, onExpandSidebar, onToggleMembers, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onTogglePinPanel, pinnedPanelOpen }: Props) {
   const listRef  = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLDivElement>(null)
 
@@ -232,6 +235,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
             </button>
           )}
           <button
+            className={`${s.iconBtn} ${pinnedPanelOpen ? s.active : ''}`}
+            title="Pinned messages"
+            onClick={onTogglePinPanel}
+          >
+            <Pin size={14} strokeWidth={1.5} />
+          </button>
+          <button
             className={`${s.iconBtn} ${membersVisible ? s.active : ''}`}
             title={isDm ? 'Files & pins' : 'Members'}
             onClick={onToggleMembers}
@@ -273,6 +283,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
                     onDelete={readOnly ? undefined : () => onDeleteMessage(msg.id)}
                     onEdit={readOnly ? undefined : (newText) => onEditMessage(msg.id, newText)}
                     onReply={readOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
+                    onPin={readOnly ? undefined : () => onPinMessage?.(msg.id)}
                     isDm={isDm}
                   />
                 </div>
