@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useShallow } from 'zustand/shallow'
 import { wsClient } from '../api/ws'
 
 interface TypingEntry {
@@ -56,13 +57,13 @@ export const useTypingStore = create<TypingState>((set, get) => ({
 
 /** Get array of usernames currently typing in a channel (excluding own userId) */
 export function useTypingUsers(channelId: string, ownUserId: string | undefined): string[] {
-  return useTypingStore(state => {
+  return useTypingStore(useShallow(state => {
     const channelTyping = state.typing[channelId]
     if (!channelTyping) return []
     return Object.entries(channelTyping)
       .filter(([uid]) => uid !== ownUserId)
       .map(([, entry]) => entry.username)
-  })
+  }))
 }
 
 // Wire WS listener — receive typing events from other users
