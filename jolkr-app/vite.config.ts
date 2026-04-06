@@ -3,14 +3,7 @@ import react from '@vitejs/plugin-react'
 import pkg from './package.json' with { type: 'json' }
 
 const isTauri = !!process.env.TAURI_ENV_PLATFORM;
-
-// Dev proxy: live server by default, VITE_API_TARGET=local to use localhost:8080
-const apiTarget = process.env.VITE_API_TARGET === 'local'
-  ? 'http://localhost:8080'
-  : 'https://jolkr.app';
-const wsTarget = process.env.VITE_API_TARGET === 'local'
-  ? 'ws://localhost:8080'
-  : 'wss://jolkr.app';
+const useLocalProxy = process.env.VITE_API_TARGET === 'local';
 
 export default defineConfig({
   plugins: [react()],
@@ -44,12 +37,16 @@ export default defineConfig({
   server: isTauri
     ? { port: 1420, strictPort: true }
     : {
-        proxy: {
-          '/api': { target: apiTarget, changeOrigin: true, secure: true },
-          '/ws': { target: wsTarget, ws: true, changeOrigin: true, secure: true },
-          '/s3': { target: apiTarget, changeOrigin: true, secure: true },
-          '/media': { target: wsTarget, ws: true, changeOrigin: true, secure: true },
-        },
+        // Proxy only when running with local backend (VITE_API_TARGET=local)
+        // Otherwise the frontend hits jolkr.app directly via absolute URLs
+        ...(useLocalProxy ? {
+          proxy: {
+            '/api': { target: 'http://localhost:8080', changeOrigin: true },
+            '/ws': { target: 'ws://localhost:8080', ws: true, changeOrigin: true },
+            '/s3': { target: 'http://localhost:8080', changeOrigin: true },
+            '/media': { target: 'ws://localhost:8080', ws: true, changeOrigin: true },
+          },
+        } : {}),
       },
   envPrefix: ['VITE_', 'TAURI_ENV_'],
 })

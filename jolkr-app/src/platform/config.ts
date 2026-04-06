@@ -38,6 +38,11 @@ export function isValidServerUrl(url: string): boolean {
 
 export function getApiBaseUrl(): string {
   if (isTauri) return `${getServerUrl()}/api`;
+  // Vite dev server with local proxy
+  if (import.meta.env.DEV && import.meta.env.VITE_API_TARGET === 'local') return '/api';
+  // Vite dev without local backend → hit live server directly
+  if (import.meta.env.DEV) return 'https://jolkr.app/api';
+  // Production build: relative path (served by nginx)
   return '/api';
 }
 
@@ -47,6 +52,9 @@ export function getWsUrl(): string {
     const wsProto = server.startsWith('https') ? 'wss' : 'ws';
     const host = server.replace(/^https?:\/\//, '');
     return `${wsProto}://${host}/ws`;
+  }
+  if (import.meta.env.DEV && import.meta.env.VITE_API_TARGET !== 'local') {
+    return 'wss://jolkr.app/ws';
   }
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${proto}//${window.location.host}/ws`;
@@ -59,6 +67,9 @@ export function getMediaWsUrl(): string {
     // Media WS goes through nginx (port 80/443), not the API server (port 8080)
     const host = server.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
     return `${wsProto}://${host}/media/ws/voice`;
+  }
+  if (import.meta.env.DEV && import.meta.env.VITE_API_TARGET !== 'local') {
+    return 'wss://jolkr.app/media/ws/voice';
   }
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${proto}//${window.location.host}/media/ws/voice`;
@@ -81,6 +92,9 @@ export function rewriteStorageUrl(url: string | null | undefined): string | unde
     // presigned URLs are signed for Host "minio:9000", not "localhost:9000"
     const server = getServerUrl() || 'http://localhost';
     return url.replace(/^https?:\/\/minio:9000\//, `${server.replace(/:8080$/, '')}/s3/`);
+  }
+  if (import.meta.env.DEV && import.meta.env.VITE_API_TARGET !== 'local') {
+    return url.replace(/^https?:\/\/minio:9000\//, 'https://jolkr.app/s3/');
   }
   return url.replace(/^https?:\/\/minio:9000\//, '/s3/');
 }
