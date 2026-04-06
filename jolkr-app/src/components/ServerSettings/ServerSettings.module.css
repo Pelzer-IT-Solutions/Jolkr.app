@@ -285,12 +285,16 @@
 }
 
 .createBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
   padding: 0.5rem 0.875rem;
   border-radius: 0.5rem;
   background: var(--accent);
   color: #fff;
   font-size: 0.8125rem;
   font-weight: 500;
+  white-space: nowrap;
   transition: background-color var(--transition);
 }
 .createBtn:hover {

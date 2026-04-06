@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon, MoreHorizontal, VolumeX, CheckCheck } from 'lucide-react'
+import { Plus, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon, MoreHorizontal, VolumeX, CheckCheck, X } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -113,6 +113,8 @@ interface Props {
   mutedServerIds?:      string[]
   currentUserId?:       string
   currentStatus?:       UserStatus
+  ownerServerIds?:      string[]
+  settingsServerIds?:   string[]
   userProfile?: {
     display_name: string
     username: string
@@ -139,7 +141,7 @@ interface Props {
 
 export function TabBar({
   allServers, tabbedServers, activeServerId, dmActive, searchActive, notificationsActive,
-  user, mutedServerIds, currentUserId: _currentUserId, currentStatus: statusProp, userProfile,
+  user, mutedServerIds, currentUserId: _currentUserId, currentStatus: statusProp, ownerServerIds, settingsServerIds, userProfile,
   onSwitch, onClose, onOpenServer, onReorder, onDmClick, onSearchClick,
   onNotificationsClick, onOpenSettings, onJoinServer, onCreateServer,
   onLogout, onStatusChange, onOpenServerSettings, onToggleMuteServer, onMarkAllRead, onLeaveServer,
@@ -441,7 +443,7 @@ export function TabBar({
                 label="Mark as Read"
                 onClick={() => { onMarkAllRead?.(serverTabMenuOpen); setServerTabMenuOpen(null) }}
               />
-              {onOpenServerSettings && (
+              {onOpenServerSettings && (settingsServerIds ?? []).includes(serverTabMenuOpen) && (
                 <MenuItem
                   icon={<Settings size={13} strokeWidth={1.5} />}
                   label="Server Settings"
@@ -452,17 +454,24 @@ export function TabBar({
             <MenuDivider />
             <MenuSection>
               <MenuItem
-                label="Remove from Tabs"
+                icon={<X size={13} strokeWidth={1.5} />}
+                label="Close Tab"
                 onClick={() => { onClose(serverTabMenuOpen); setServerTabMenuOpen(null) }}
               />
-              {onLeaveServer && (
-                <MenuItem
-                  label="Leave Server"
-                  danger
-                  onClick={() => { onLeaveServer(serverTabMenuOpen); setServerTabMenuOpen(null) }}
-                />
-              )}
             </MenuSection>
+            {!(ownerServerIds ?? []).includes(serverTabMenuOpen) && (
+              <>
+                <MenuDivider />
+                <MenuSection>
+                  <MenuItem
+                    icon={<LogOut size={13} strokeWidth={1.5} />}
+                    label="Leave Server"
+                    danger
+                    onClick={() => { onLeaveServer?.(serverTabMenuOpen); setServerTabMenuOpen(null) }}
+                  />
+                </MenuSection>
+              </>
+            )}
           </>
         )}
       </Menu>
@@ -614,9 +623,11 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
         <div className={s.tabIconWrapper}>
           <div
             className={`${s.tabIcon}${!isMuted && server.unread ? ' hasActivityAvatarFace' : ''}`}
-            style={{ background: serverColor }}
+            style={server.iconUrl ? undefined : { background: serverColor }}
           >
-            {server.icon}
+            {server.iconUrl
+              ? <img src={server.iconUrl} alt="" className={s.tabIconImg} />
+              : server.icon}
           </div>
           {server.unread && (
             <span className={s.unreadDot} style={{ '--server-color': serverColor } as React.CSSProperties} />
@@ -631,12 +642,12 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
       </div>
       <button
         ref={menuBtnRefSetter}
-        className={`${s.menuBtn}${isMenuOpen ? ` ${s.rotated}` : ''}`}
+        className={s.menuBtn}
         onPointerDown={e => e.stopPropagation()}
         onClick={e => { e.stopPropagation(); onOpenMenu(server.id) }}
         title="Server options"
       >
-        <MoreHorizontal size={12} strokeWidth={2} />
+        {isMenuOpen ? <X size={12} strokeWidth={2} /> : <MoreHorizontal size={12} strokeWidth={2} />}
       </button>
     </div>
   )

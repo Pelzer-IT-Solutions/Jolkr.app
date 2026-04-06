@@ -387,11 +387,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 
   return (
     <div className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
-      <div className={s.avatar} style={!message.avatarUrl ? { background: message.color } : undefined}>
-        {message.avatarUrl
-          ? <img src={message.avatarUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-          : message.letter}
-      </div>
+      <MessageAvatar message={message} />
       <div className={s.body}>
         <div className={s.meta}>
           <span className={`${s.author} txt-body txt-semibold`}>{message.author}</span>
@@ -405,6 +401,29 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 }
 
 /* ─── Icons ─── */
+function MessageAvatar({ message }: { message: MessageType }) {
+  const [imgErr, setImgErr] = useState(false)
+  const src = message.avatarUrl
+  if (!src || imgErr) {
+    return (
+      <div className={s.avatar} style={{ background: message.color }}>
+        {message.letter}
+      </div>
+    )
+  }
+  return (
+    <div className={s.avatar}>
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+        onError={() => setImgErr(true)}
+      />
+    </div>
+  )
+}
+
 function EmojiAddIcon() { return <SmilePlus      size={14} strokeWidth={1.4} /> }
 function ReplyIcon()    { return <CornerUpLeft   size={14} strokeWidth={1.4} /> }
 function EditIcon()     { return <Pencil         size={14} strokeWidth={1.4} /> }

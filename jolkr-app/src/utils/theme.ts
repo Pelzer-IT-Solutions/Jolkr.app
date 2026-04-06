@@ -16,8 +16,8 @@ export function buildBackground(theme: ServerTheme, isDark = false): string {
   // Dark  mode: deep saturated orbs on a near-black base
   const baseL = isDark ? '11%'   : '91.5%'
 
-  // Theme-less server: neutral grey background, no orbs
-  if (theme.hue === null) {
+  // Theme-less server with no orbs: neutral grey background
+  if (theme.hue === null && theme.orbs.length === 0) {
     return `oklch(${baseL} 0 0)`
   }
 
@@ -26,11 +26,14 @@ export function buildBackground(theme: ServerTheme, isDark = false): string {
   const orbA  = isDark ? '0.88'   : '0.82'
   const baseC = isDark ? '0.018'  : '0.021'
 
-  const grads = theme.orbs.map(
-    o =>
-      `radial-gradient(ellipse 72% 72% at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC} ${o.hue.toFixed(1)} / ${orbA}) 0%, transparent 100%)`,
-  )
-  const base = `oklch(${baseL} ${baseC} ${theme.hue.toFixed(1)})`
+  // Derive base hue from first orb if no preset hue is set (custom hue wheel edit)
+  const baseHue = theme.hue ?? (theme.orbs[0]?.hue ?? 0)
+
+  const grads = theme.orbs.map(o => {
+    const spread = (72 * (o.scale ?? 1)).toFixed(1)
+    return `radial-gradient(ellipse ${spread}% ${spread}% at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC} ${o.hue.toFixed(1)} / ${orbA}) 0%, transparent 100%)`
+  })
+  const base = `oklch(${baseL} ${baseC} ${baseHue.toFixed(1)})`
   return [...grads, base].join(', ')
 }
 
@@ -46,6 +49,7 @@ export function buildThemeStyle(
   background: string,
 ): React.CSSProperties {
   const h = hue ?? 0
+  // hasHue is true when there's a preset OR custom orb hues are in use
   const hasHue = hue !== null
 
   return {

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
 import type { Server as ApiServer, Member } from '../../api/types'
+import * as api from '../../api/client'
 import * as P from '../../utils/permissions'
 import { useAuthStore } from '../../stores/auth'
 
@@ -87,13 +88,14 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     return () => document.removeEventListener('keydown', handleKey)
   }, [onClose])
 
-  // Load mock data (will be replaced with real API calls)
+  // Load real data from API
   useEffect(() => {
-    setInvites([])
-    setRoles([])
-    setMembers([])
-    setBans([])
-    setAuditLog([])
+    const id = server.id
+    api.getRoles(id).then(setRoles).catch(() => setRoles([]))
+    api.getMembersWithRoles(id).then(setMembers).catch(() => setMembers([]))
+    api.getInvites(id).then(setInvites).catch(() => setInvites([]))
+    api.getBans(id).then(setBans).catch(() => setBans([]))
+    api.getAuditLog(id).then(setAuditLog).catch(() => setAuditLog([]))
   }, [server.id])
 
   const handleFieldChange = (field: keyof Server, value: unknown) => {
@@ -120,31 +122,37 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     setInvites(prev => [newInvite, ...prev])
   }
 
-  const handleDeleteInvite = (inviteId: string) => {
-    setInvites(prev => prev.filter(inv => inv.id !== inviteId))
+  const handleDeleteInvite = async (inviteId: string) => {
+    try {
+      await api.deleteInvite(server.id, inviteId)
+      setInvites(prev => prev.filter(inv => inv.id !== inviteId))
+    } catch (e) { console.warn('Failed to delete invite:', e) }
   }
 
   // Ban management handlers
-  const handleUnban = (banId: string) => {
-    setBans(prev => prev.filter(ban => ban.id !== banId))
+  const handleUnban = async (banId: string) => {
+    const ban = bans.find(b => b.id === banId)
+    if (!ban) return
+    try {
+      await api.unbanMember(server.id, ban.user_id)
+      setBans(prev => prev.filter(b => b.id !== banId))
+    } catch (e) { console.warn('Failed to unban:', e) }
   }
 
   // Role management handlers
-  const handleCreateRole = () => {
+  const handleCreateRole = async () => {
     if (!newRoleName.trim()) return
-    const newRole: Role = {
-      id: `role-${Date.now()}`,
-      server_id: server.id,
-      name: newRoleName.trim(),
-      color: parseInt(newRoleColor.replace('#', ''), 16),
-      position: roles.length,
-      permissions: 0,
-      is_default: false,
-    }
-    setRoles(prev => [...prev, newRole])
-    setNewRoleName('')
-    setNewRoleColor('#5865F2')
-    setShowCreateRole(false)
+    try {
+      const newRole = await api.createRole(server.id, {
+        name: newRoleName.trim(),
+        color: parseInt(newRoleColor.replace('#', ''), 16),
+        permissions: 0,
+      })
+      setRoles(prev => [...prev, newRole])
+      setNewRoleName('')
+      setNewRoleColor('#5865F2')
+      setShowCreateRole(false)
+    } catch (e) { console.warn('Failed to create role:', e) }
   }
 
   const handleStartEditRole = (role: Role) => {
@@ -155,13 +163,16 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     setSelectedRoleId(role.id)
   }
 
-  const handleSaveRole = () => {
+  const handleSaveRole = async () => {
     if (!editingRoleId || !editingRoleName.trim()) return
-    setRoles(prev => prev.map(r =>
-      r.id === editingRoleId
-        ? { ...r, name: editingRoleName.trim(), color: parseInt(editingRoleColor.replace('#', ''), 16), permissions: editingRolePermissions }
-        : r
-    ))
+    try {
+      const updated = await api.updateRole(editingRoleId, {
+        name: editingRoleName.trim(),
+        color: parseInt(editingRoleColor.replace('#', ''), 16),
+        permissions: editingRolePermissions,
+      })
+      setRoles(prev => prev.map(r => r.id === editingRoleId ? updated : r))
+    } catch (e) { console.warn('Failed to update role:', e) }
     setEditingRoleId(null)
     setEditingRoleName('')
     setEditingRoleColor('#000000')
@@ -197,12 +208,15 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     }
   }
 
-  const handleDeleteRole = (roleId: string) => {
-    setRoles(prev => prev.filter(r => r.id !== roleId))
-    setMembers(prev => prev.map(m => ({
-      ...m,
-      role_ids: (m.role_ids ?? []).filter((id: string) => id !== roleId)
-    })))
+  const handleDeleteRole = async (roleId: string) => {
+    try {
+      await api.deleteRole(roleId)
+      setRoles(prev => prev.filter(r => r.id !== roleId))
+      setMembers(prev => prev.map(m => ({
+        ...m,
+        role_ids: (m.role_ids ?? []).filter((id: string) => id !== roleId)
+      })))
+    } catch (e) { console.warn('Failed to delete role:', e) }
   }
 
   const currentName = editedServer.name ?? server.name
@@ -362,8 +376,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                         className={s.createBtn}
                         onClick={() => setShowCreateRole(true)}
                       >
-                        <Plus size={14} strokeWidth={1.5} />
-                        <span>Create Role</span>
+                        <Plus size={14} strokeWidth={1.5} /> Create Role
                       </button>
                     </div>
 

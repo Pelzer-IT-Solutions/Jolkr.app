@@ -12,7 +12,7 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, PanelLeftClose, ChevronDown, FolderPlus, Hash, Settings as SettingsIcon } from 'lucide-react'
+import { Plus, PanelLeftClose, ChevronDown, FolderPlus, Hash } from 'lucide-react'
 import type { Server, Channel, Category, ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
@@ -45,9 +45,10 @@ interface Props {
   colorPref:       ColorPreference
   onSetColorPref:  (pref: ColorPreference) => void
   onOpenSettings?: () => void
+  canManageChannels?: boolean
 }
 
-export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings }: Props) {
+export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels }: Props) {
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
   const [localCats,          setLocalCats]           = useState<Category[]>(server.categories)
   const [localExtraChannels, setLocalExtraChannels]  = useState<Channel[]>([])
@@ -55,6 +56,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [isRevealing,        setIsRevealing]         = useState(false)
 
   // ── Context menu ──
+  const ctxMenuRef = useRef<HTMLDivElement>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [creating,    setCreating]    = useState<'folder' | 'channel' | null>(null)
   const [newName,     setNewName]     = useState('')
@@ -108,6 +110,20 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   const addBtnRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!contextMenu) return
+    function handleMouseDown(e: MouseEvent) {
+      if (ctxMenuRef.current && !ctxMenuRef.current.contains(e.target as Node)) setContextMenu(null)
+    }
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') setContextMenu(null) }
+    document.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [contextMenu])
 
   // ── Context menu helpers ──
   function handleContextMenu(e: React.MouseEvent) {
@@ -225,12 +241,9 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       <div className={s.header}>
         <span className={`${s.title} txt-small txt-semibold`}>Channels</span>
         <div className={s.actions}>
-          {onOpenSettings && (
-            <button className={s.iconBtn} title="Server settings" onClick={onOpenSettings}>
-              <SettingsIcon size={14} strokeWidth={1.5} />
-            </button>
+          {canManageChannels && (
+            <button ref={addBtnRef} className={s.iconBtn} title="New channel" onClick={handleAddClick}><PlusIcon /></button>
           )}
-          <button ref={addBtnRef} className={s.iconBtn} title="New channel" onClick={handleAddClick}><PlusIcon /></button>
           <ThemePicker
             theme={theme}
             onChange={onThemeChange}
@@ -331,9 +344,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
       {/* ── Context menu portal ── */}
       {contextMenu && createPortal(
-        <>
-          <div className={s.ctxBackdrop} onClick={() => setContextMenu(null)} />
-          <div className={s.ctxMenu} style={{ top: contextMenu.y, left: contextMenu.x }}>
+          <div ref={ctxMenuRef} className={s.ctxMenu} style={{ top: contextMenu.y, left: contextMenu.x }}>
             <button className={s.ctxItem} onClick={() => startCreating('folder')}>
               <FolderPlus size={13} strokeWidth={1.5} />
               <span>New Folder</span>
@@ -342,8 +353,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               <Hash size={13} strokeWidth={1.5} />
               <span>New Channel</span>
             </button>
-          </div>
-        </>,
+          </div>,
         document.body
       )}
     </aside>

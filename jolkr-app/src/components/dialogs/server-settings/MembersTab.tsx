@@ -22,6 +22,21 @@ export default function MembersTab({ server }: MembersTabProps) {
   const [search, setSearch] = useState('');
   const [rolePopover, setRolePopover] = useState<string | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!rolePopover) return;
+    function handleMouseDown(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setRolePopover(null);
+    }
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') setRolePopover(null); }
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [rolePopover]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const fetchedIdsRef = useRef(new Set<string>());
@@ -134,9 +149,8 @@ export default function MembersTab({ server }: MembersTabProps) {
                   Roles
                 </button>
                 {isPopoverOpen && popoverPos && (
-                  <>
-                    <div className="fixed inset-0 z-[60]" onClick={() => setRolePopover(null)} />
                     <div
+                      ref={popoverRef}
                       className="fixed z-[70] bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-45 max-h-50 overflow-y-auto"
                       style={{ top: popoverPos.top, left: popoverPos.left }}
                     >
@@ -169,7 +183,6 @@ export default function MembersTab({ server }: MembersTabProps) {
                         );
                       })}
                     </div>
-                  </>
                 )}
               </div>
             </div>

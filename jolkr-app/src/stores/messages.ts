@@ -72,6 +72,7 @@ function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
     is_edited: (m.is_edited as boolean) ?? false,
     is_pinned: false,
     reply_to_id: (m.reply_to_id as string) ?? null,
+    author: (m.author as Message['author']) ?? (m.sender as Message['author']) ?? null,
     attachments: (m.attachments as Message['attachments']) ?? [],
     reactions: (m.reactions as Reaction[]) ?? [],
     embeds: (m.embeds as Message['embeds']) ?? [],

@@ -22,7 +22,7 @@ import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { orbsForHue } from '../../utils/theme'
 import { useAnimatedTheme } from '../../utils/useAnimatedTheme'
 import { useColorMode } from '../../utils/colorMode'
-import { hasPermission, MANAGE_CHANNELS, MANAGE_ROLES, MANAGE_SERVER } from '../../utils/permissions'
+import { hasPermission, MANAGE_CHANNELS, MANAGE_ROLES, MANAGE_SERVER, KICK_MEMBERS, BAN_MEMBERS } from '../../utils/permissions'
 
 import { TabBar } from '../../components/TabBar/TabBar'
 import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
@@ -117,14 +117,19 @@ export default function AppShell() {
       const userIds = new Set<string>()
       dms.forEach(dm => dm.members.forEach(id => userIds.add(id)))
       if (userIds.size > 0) {
+        const idArr = Array.from(userIds)
         Promise.all(
-          Array.from(userIds).map(id => api.getUser(id).catch(() => null))
+          idArr.map(id => api.getUser(id).catch(() => null))
         ).then(users => {
           if (cancelled) return
           const map = new Map<string, User>()
           users.forEach(u => { if (u) map.set(u.id, u) })
           setDmUsers(map)
         })
+        // Fetch presence for DM participants
+        api.queryPresence(idArr).then(p => {
+          if (!cancelled) usePresenceStore.getState().setBulk(p)
+        }).catch(console.warn)
       }
 
       const srvs = useServersStore.getState().servers
@@ -180,6 +185,14 @@ export default function AppShell() {
           : chs.find(c => c.kind === 'text')?.id ?? chs[0].id
         setActiveChannelId(channelId)
       }
+      // Fetch presence for all server members
+      const mems = useServersStore.getState().members[serverId]
+      if (mems?.length) {
+        const userIds = mems.map(m => m.user_id)
+        api.queryPresence(userIds).then(p => {
+          if (!cancelled) usePresenceStore.getState().setBulk(p)
+        }).catch(console.warn)
+      }
     }
 
     init().catch(console.error)
@@ -212,7 +225,14 @@ export default function AppShell() {
       fetchMembers(activeServerId),
       fetchCategories(activeServerId),
       fetchPermissions(activeServerId),
-    ])
+    ]).then(() => {
+      const mems = useServersStore.getState().members[activeServerId]
+      if (mems?.length) {
+        api.queryPresence(mems.map(m => m.user_id)).then(p => {
+          usePresenceStore.getState().setBulk(p)
+        }).catch(console.warn)
+      }
+    })
   }, [activeServerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Safety: if active server disappears (deleted/left), fall back ──
@@ -376,6 +396,13 @@ export default function AppShell() {
   const isServerOwner = !!user && activeRawServer?.owner_id === user.id
   const myPerms = serverPermissions[activeServerId] ?? 0
   const canAccessSettings = isServerOwner || hasPermission(myPerms, MANAGE_SERVER) || hasPermission(myPerms, MANAGE_CHANNELS) || hasPermission(myPerms, MANAGE_ROLES)
+  const canManageChannels = isServerOwner || hasPermission(myPerms, MANAGE_CHANNELS)
+  const ownerServerIds = useMemo(() => user ? servers.filter(s => s.owner_id === user.id).map(s => s.id) : [], [servers, user])
+  const settingsServerIds = useMemo(() => servers.filter(srv => {
+    if (user && srv.owner_id === user.id) return true
+    const p = serverPermissions[srv.id] ?? 0
+    return hasPermission(p, MANAGE_SERVER) || hasPermission(p, MANAGE_CHANNELS) || hasPermission(p, MANAGE_ROLES)
+  }).map(s => s.id), [servers, user, serverPermissions])
   const activeTheme = serverThemes[activeServerId] ?? { hue: null, orbs: [] }
   const chatAnimKey = dmActive ? activeDmId : `${activeServerId}:${activeChannelId}`
 
@@ -599,6 +626,7 @@ export default function AppShell() {
           mutedServerIds={mutedServerIds}
           currentUserId={user?.id ?? ''}
           currentStatus={(user?.id ? presences[user.id] : undefined) as 'online' | 'idle' | 'dnd' | 'offline' | undefined}
+          ownerServerIds={ownerServerIds}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
           onClose={handleCloseTab}
           onReorder={setTabbedIds}
@@ -613,6 +641,7 @@ export default function AppShell() {
           onStatusChange={handleStatusChange}
           onToggleMuteServer={handleToggleMuteServer}
           onMarkAllRead={_id => { /* TODO: backend endpoint for mark-all-read */ }}
+          settingsServerIds={settingsServerIds}
           onOpenServerSettings={serverId => { handleSwitchServer(serverId); setServerSettingsOpen(true) }}
         />
 
@@ -646,6 +675,7 @@ export default function AppShell() {
                   colorPref={colorPref}
                   onSetColorPref={setColorPref}
                   onOpenSettings={canAccessSettings ? () => setServerSettingsOpen(true) : undefined}
+                  canManageChannels={canManageChannels}
                 />
               ) : null}
 
@@ -676,7 +706,28 @@ export default function AppShell() {
               {dmActive ? (
                 <DMInfoPanel visible={membersVisible} />
               ) : activeServer ? (
-                <MemberPanel members={activeServer.members} visible={membersVisible} serverId={activeServerId} />
+                <MemberPanel
+                  members={activeServer.members}
+                  visible={membersVisible}
+                  serverId={activeServerId}
+                  onMemberClick={(member, e) => {
+                    if (!member.userId) return
+                    const u = userMap.get(member.userId)
+                    setUserContextMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      user: {
+                        user_id: member.userId,
+                        username: u?.username ?? member.name,
+                        display_name: u?.display_name ?? member.name,
+                        status: member.status,
+                        color: member.color,
+                        letter: member.letter,
+                        avatar_url: member.avatarUrl,
+                      },
+                    })
+                  }}
+                />
               ) : null}
             </div>
           </div>
@@ -791,7 +842,30 @@ export default function AppShell() {
           setUserContextMenu(null)
         }}
         onAddFriend={async (userId: string) => {
-          await api.sendFriendRequest(userId)
+          await api.sendFriendRequest(userId).catch(console.warn)
+          setUserContextMenu(null)
+        }}
+        onBlock={async (userId: string) => {
+          await api.blockUser(userId).catch(console.warn)
+          setUserContextMenu(null)
+        }}
+        onInviteToServer={async (_userId: string, serverId: string) => {
+          const invite = await api.createInvite(serverId, { max_uses: 1 }).catch(() => null)
+          if (invite) {
+            // Copy invite link to clipboard
+            const url = `${window.location.origin}/invite/${invite.code}`
+            navigator.clipboard.writeText(url).catch(console.warn)
+          }
+          setUserContextMenu(null)
+        }}
+        canKick={!dmActive && (isServerOwner || hasPermission(myPerms, KICK_MEMBERS))}
+        canBan={!dmActive && (isServerOwner || hasPermission(myPerms, BAN_MEMBERS))}
+        onKick={async (userId: string) => {
+          if (activeServerId) await api.kickMember(activeServerId, userId).catch(console.warn)
+          setUserContextMenu(null)
+        }}
+        onBan={async (userId: string) => {
+          if (activeServerId) await api.banMember(activeServerId, userId).catch(console.warn)
           setUserContextMenu(null)
         }}
         servers={servers.map(s => ({ ...s, hue: serverThemes[s.id]?.hue ?? null }))}

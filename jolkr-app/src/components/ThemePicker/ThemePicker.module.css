@@ -50,25 +50,24 @@
   z-index: 1;
 }
 
-/* ─── Canvas overlay buttons ─── */
-.canvasBtn {
+/* Size hint overlay */
+.sizeHint {
   position: absolute;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: oklch(100% 0 0 / 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: var(--text-muted);
-  box-shadow: 0 1px 4px oklch(0% 0 0 / 0.12);
-  z-index: 2;
-  cursor: pointer;
-  transition: background-color 100ms ease, transform 100ms ease;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.5rem;
+  background: oklch(0% 0 0 / 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: oklch(100% 0 0);
+  font-size: 0.625rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  pointer-events: none;
+  z-index: 4;
+  white-space: nowrap;
 }
-.canvasBtn:hover { background: oklch(100% 0 0 / 0.92); transform: scale(1.06); }
 
 /* ─── Orb drag handles ─── */
 .orbHandle {
@@ -81,10 +80,83 @@
   transform: translate(-50%, -50%);
   cursor: grab;
   z-index: 3;
-  transition: box-shadow 100ms ease, transform 100ms ease;
+  transition: box-shadow 100ms ease, transform 100ms ease, border-color 100ms ease;
 }
 .orbHandle:hover  { box-shadow: 0 4px 16px oklch(0% 0 0 / 0.3), 0 0 0 0.5px oklch(0% 0 0 / 0.08); }
 .orbHandle:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.15); }
+
+/* Selected orb state - white ring with outer glow */
+.orbHandleSelected {
+  border-color: #fff;
+  box-shadow:
+    0 4px 20px oklch(0% 0 0 / 0.35),
+    0 0 0 0.5px oklch(0% 0 0 / 0.1),
+    0 0 0 4px oklch(100% 0 0 / 0.25);
+  z-index: 5;
+}
+.orbHandleSelected:hover {
+  box-shadow:
+    0 6px 24px oklch(0% 0 0 / 0.4),
+    0 0 0 0.5px oklch(0% 0 0 / 0.1),
+    0 0 0 4px oklch(100% 0 0 / 0.3);
+}
+
+/* ─── Hue Wheel ─── */
+.hueWheel {
+  position: absolute;
+  border-radius: 50%;
+  z-index: 4;
+  pointer-events: auto;
+  cursor: crosshair;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+/* The hue gradient ring */
+.hueWheelRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 6px;
+  background: conic-gradient(
+    from 0deg,
+    hsl(0 100% 50%),
+    hsl(30 100% 50%),
+    hsl(60 100% 50%),
+    hsl(90 100% 50%),
+    hsl(120 100% 50%),
+    hsl(150 100% 50%),
+    hsl(180 100% 50%),
+    hsl(210 100% 50%),
+    hsl(240 100% 50%),
+    hsl(270 100% 50%),
+    hsl(300 100% 50%),
+    hsl(330 100% 50%),
+    hsl(360 100% 50%)
+  );
+  -webkit-mask:
+    radial-gradient(transparent 58%, black 62%);
+  mask:
+    radial-gradient(transparent 58%, black 62%);
+  box-shadow:
+    0 0 0 1px oklch(0% 0 0 / 0.15),
+    inset 0 0 0 1px oklch(0% 0 0 / 0.1);
+}
+
+/* The selector dot on the hue wheel */
+.hueWheelSelector {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid oklch(0% 0 0 / 0.3);
+  box-shadow:
+    0 2px 6px oklch(0% 0 0 / 0.3),
+    inset 0 0 0 1px oklch(0% 0 0 / 0.1);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 5;
+}
 
 /* ─── Preset swatches ─── */
 .presets {

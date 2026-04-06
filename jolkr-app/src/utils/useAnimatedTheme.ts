@@ -34,15 +34,17 @@ const NEUTRAL_ORBS: OrbSnap[] = [
 ]
 
 function snap(theme: ServerTheme, fallbackOrbs?: OrbSnap[]): ThemeSnap {
-  if (theme.hue === null) {
+  // Truly theme-less: no preset hue AND no orbs
+  if (theme.hue === null && theme.orbs.length === 0) {
     return {
       baseHue: 0,
       intensity: 0,
       orbs: fallbackOrbs ?? NEUTRAL_ORBS.map(o => ({ ...o })),
     }
   }
+  // Custom hue (orbs with individual hues but no preset) or preset hue
   return {
-    baseHue: theme.hue,
+    baseHue: theme.hue ?? (theme.orbs[0]?.hue ?? 0),
     intensity: 1,
     orbs: theme.orbs.map(o => ({ x: o.x, y: o.y, hue: o.hue })),
   }

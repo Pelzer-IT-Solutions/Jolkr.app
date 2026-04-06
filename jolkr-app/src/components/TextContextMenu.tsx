@@ -139,11 +139,9 @@ export default function TextContextMenu() {
   ];
 
   return createPortal(
-    <>
-      <div className="fixed inset-0 z-[100]" onClick={() => setMenu(null)} />
       <div
         ref={menuRef}
-        className="fixed z-[101] bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-50 animate-dropdown-enter backdrop-blur-sm"
+        className="fixed z-[1001] bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-50 animate-dropdown-enter backdrop-blur-sm"
         style={{ left: menu.x, top: menu.y }}
         role="menu"
       >
@@ -166,8 +164,7 @@ export default function TextContextMenu() {
             </button>
           )
         )}
-      </div>
-    </>,
+      </div>,
     document.body
   );
 }

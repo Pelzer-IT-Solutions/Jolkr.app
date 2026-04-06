@@ -103,7 +103,8 @@ export const useServersStore = create<ServersState>((set, get) => ({
     // Skip if already cached — WS events keep this updated
     if (get().members[serverId]?.length) return;
     try {
-      const members = await api.getServerMembers(serverId);
+      // Use enriched endpoint — includes full User objects with avatar_url
+      const members = await api.getMembersWithRoles(serverId);
       set({ members: { ...get().members, [serverId]: members } });
     } catch (e) {
       console.warn('Failed to fetch members:', e);

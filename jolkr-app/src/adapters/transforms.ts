@@ -52,6 +52,11 @@ function avatarEndpoint(userId: string): string {
   return `${getApiBaseUrl()}/avatars/${userId}`
 }
 
+/** Build the cached icon endpoint URL for a server. */
+function iconEndpoint(serverId: string): string {
+  return `${getApiBaseUrl()}/icons/${serverId}`
+}
+
 /** Avatar props from a User object. */
 export function userToAvatar(user: User): { color: string; letter: string; avatarUrl?: string | null } {
   return {
@@ -106,7 +111,7 @@ export function transformMessage(
   allMessages: Map<string, ApiMessage>,
   prevMsg?: ApiMessage | null,
 ): UiMessage {
-  const author = msg.author ?? users.get(msg.author_id)
+  const author = users.get(msg.author_id) ?? msg.author
   const { color, letter, avatarUrl } = author ? userToAvatar(author) : { color: 'oklch(50% 0 0)', letter: '?', avatarUrl: null }
   const displayName = author?.display_name || author?.username || 'Unknown'
 
@@ -215,6 +220,7 @@ export function transformServer(
     icon: (server.name?.[0] ?? '?').toUpperCase(),
     color: hashColor(server.id),
     unread: unreadCount > 0,
+    iconUrl: server.icon_url ? iconEndpoint(server.id) : null,
     categories: uiCategories,
     channels: uiChannels,
     members: memberGroup,

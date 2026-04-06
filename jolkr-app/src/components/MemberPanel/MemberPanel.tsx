@@ -1,15 +1,16 @@
 import { useState, useLayoutEffect } from 'react'
-import type { MemberGroup, MemberStatus } from '../../types'
+import type { MemberGroup, MemberStatus, Member } from '../../types'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import s from './MemberPanel.module.css'
 
 interface Props {
-  members:  MemberGroup
-  visible:  boolean
+  members: MemberGroup
+  visible: boolean
   serverId: string
+  onMemberClick?: (member: Member, e: React.MouseEvent) => void
 }
 
-export function MemberPanel({ members, visible, serverId }: Props) {
+export function MemberPanel({ members, visible, serverId, onMemberClick }: Props) {
   const total = members.online.length + members.offline.length
 
   // 2 group headers + all member rows
@@ -27,7 +28,7 @@ export function MemberPanel({ members, visible, serverId }: Props) {
 
   // Pre-compute stagger offsets
   const offlineHeaderIdx = 1 + members.online.length
-  const offlineStart     = offlineHeaderIdx + 1
+  const offlineStart = offlineHeaderIdx + 1
 
   const revealStyle = (idx: number): React.CSSProperties | undefined =>
     isRevealing ? { '--reveal-delay': `${revealDelay(idx)}ms` } as React.CSSProperties : undefined
@@ -51,11 +52,9 @@ export function MemberPanel({ members, visible, serverId }: Props) {
             key={i}
             className={`${s.member} ${isRevealing ? 'revealing' : ''}`}
             style={revealStyle(1 + i)}
+            onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
           >
-            <div className={`${s.avatar} hasActivityAvatarFace`} style={{ background: m.color }}>
-              {m.letter}
-              <StatusDot status={m.status} />
-            </div>
+            <MemberAvatar m={m} />
             <span className={`${s.name} txt-small txt-medium txt-truncate`}>{m.name}</span>
           </button>
         ))}
@@ -71,16 +70,31 @@ export function MemberPanel({ members, visible, serverId }: Props) {
             key={i}
             className={`${s.member} ${s.memberOffline} ${isRevealing ? 'revealing' : ''}`}
             style={revealStyle(offlineStart + i)}
+            onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
           >
-            <div className={`${s.avatar} hasActivityAvatarFace`} style={{ background: 'var(--jolkr-neutral-dark-10)', color: 'var(--text-faint)' }}>
-              {m.letter}
-              <StatusDot status={m.status} />
-            </div>
+            <MemberAvatar m={m} offline />
             <span className={`${s.name} txt-small txt-medium txt-truncate`}>{m.name}</span>
           </button>
         ))}
       </div>
     </aside>
+  )
+}
+
+function MemberAvatar({ m, offline }: { m: MemberGroup['online'][0]; offline?: boolean }) {
+  const bgStyle = offline
+    ? { background: 'var(--jolkr-neutral-dark-10)', color: 'var(--text-faint)' }
+    : { background: m.color }
+
+  return (
+    <div className={s.avatarWrap}>
+      <div className={`${s.avatar} hasActivityAvatarFace`} style={m.avatarUrl ? undefined : bgStyle}>
+        {m.avatarUrl
+          ? <img src={m.avatarUrl} alt="" loading="lazy" className={s.avatarImg} />
+          : m.letter}
+      </div>
+      <StatusDot status={m.status} />
+    </div>
   )
 }
 

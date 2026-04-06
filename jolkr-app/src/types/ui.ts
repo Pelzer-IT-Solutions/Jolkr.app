@@ -18,6 +18,7 @@ export interface Server {
   color:      string
   unread:     boolean
   hue?:       number
+  iconUrl?:   string | null
   categories: Category[]
   channels:   Channel[]
   members:    MemberGroup
@@ -93,10 +94,11 @@ export interface Message {
 export type MessageStore = Record<string, Record<string, Message[]>>
 
 export interface ThemeOrb {
-  id:  string
-  x:   number   // 0 – 1 (fraction of canvas width)
-  y:   number   // 0 – 1 (fraction of canvas height)
-  hue: number   // OKLCH hue (0 – 360)
+  id:     string
+  x:      number   // 0 – 1 (fraction of canvas width)
+  y:      number   // 0 – 1 (fraction of canvas height)
+  hue:    number   // OKLCH hue (0 – 360)
+  scale?: number   // 0.5 – 2.0 (orb size multiplier, default 1.0)
 }
 
 export interface ServerTheme {

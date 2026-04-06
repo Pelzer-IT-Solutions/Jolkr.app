@@ -169,6 +169,11 @@
   --accent-muted:  oklch(55% 0.18 var(--theme-hue) / 0.12);
   --accent-strong: oklch(55% 0.18 var(--theme-hue) / 0.24);
   --accent-text:   oklch(38% 0.14 var(--theme-hue));
+
+  /* Danger / destructive — fixed red, not theme-driven */
+  --danger-default: oklch(55% 0.2 25);
+  --danger-strong:  oklch(62% 0.22 25);
+  --danger-muted:   oklch(55% 0.2 25 / 0.12);
 }
 
 /* ─── Dark mode overrides ────────────────────────────────────────────── */
