@@ -451,10 +451,10 @@ export default function AppShell() {
     time: 'Today',
     content: dmActive
       ? `Start a conversation with ${activeDmConv?.name ?? activeDmConv?.participants[0]?.name ?? 'someone'}!`
-      : `Welcome to #${activeChannelId}! Be the first to say something.`,
+      : `Welcome to #${activeChannel.name}! Be the first to say something.`,
     reactions: [],
     edited: false,
-  }], [dmActive, activeDmConv, activeChannelId])
+  }], [dmActive, activeDmConv, activeChannel.name])
 
   const displayMessages = uiMessages.length > 0 ? uiMessages : fallbackMessages
 
