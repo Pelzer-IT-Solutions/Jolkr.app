@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Edit2, Check, XCircle
+  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Edit2, Check, XCircle, Camera
 } from 'lucide-react'
 import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
 import type { Server as ApiServer, Member } from '../../api/types'
 import * as api from '../../api/client'
 import * as P from '../../utils/permissions'
 import { useAuthStore } from '../../stores/auth'
+import ServerIcon from '../ServerIcon'
 
 // Extend API Server with frontend-only display fields
 type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
@@ -57,6 +58,9 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [isRevealing, setIsRevealing] = useState(true)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [iconUploading, setIconUploading] = useState(false)
+  const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null)
+  const iconFileRef = useRef<HTMLInputElement>(null)
 
   // TODO: Replace with real API data
   const [invites, setInvites] = useState<Invite[]>([])
@@ -219,9 +223,20 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     } catch (e) { console.warn('Failed to delete role:', e) }
   }
 
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIconUploading(true)
+    try {
+      const result = await api.uploadFile(file, 'icon')
+      handleFieldChange('icon_url', result.key)
+      setIconPreviewUrl(URL.createObjectURL(file))
+    } catch { /* ignore */ }
+    setIconUploading(false)
+  }
+
   const currentName = editedServer.name ?? server.name
   const currentDescription = editedServer.description ?? server.description ?? ''
-  const currentIconUrl = editedServer.icon_url ?? server.icon_url ?? ''
   const currentBannerUrl = editedServer.banner_url ?? server.banner_url ?? ''
   const currentDiscoverable = editedServer.discoverable ?? server.discoverable ?? false
 
@@ -234,9 +249,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
         <aside className={s.nav}>
           <div className={`${s.navScroll} scrollbar-thin`}>
             <div className={s.serverHeader}>
-              <div className={s.serverIcon} style={{ background: server.hue != null ? `oklch(60% 0.15 ${server.hue})` : 'oklch(60% 0 0)' }}>
-                {server.name.charAt(0).toUpperCase()}
-              </div>
+              <ServerIcon name={server.name} iconUrl={server.icon_url} serverId={server.id} size="sm" />
               <span className={`${s.serverName} txt-small txt-semibold`}>{server.name}</span>
             </div>
             <div className={s.navDivider} />
@@ -321,14 +334,28 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                 </div>
 
                 <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Icon URL</label>
-                  <input
-                    type="text"
-                    className={`${s.input} txt-small`}
-                    value={currentIconUrl}
-                    onChange={e => handleFieldChange('icon_url', e.target.value)}
-                    placeholder="https://..."
-                  />
+                  <label className={`${s.label} txt-tiny txt-semibold`}>Server Icon</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="group"
+                      style={{ position: 'relative', cursor: 'pointer', borderRadius: '50%', overflow: 'hidden', width: 64, height: 64, flexShrink: 0 }}
+                      onClick={() => iconFileRef.current?.click()}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); iconFileRef.current?.click() }}}
+                    >
+                      {iconPreviewUrl ? (
+                        <img src={iconPreviewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <ServerIcon name={currentName} iconUrl={server.icon_url} serverId={server.id} size="lg" />
+                      )}
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        {iconUploading ? <span style={{ color: '#fff', fontSize: 11 }}>...</span> : <Camera size={20} color="#aaa" />}
+                      </div>
+                    </div>
+                    <span className="txt-tiny" style={{ color: 'var(--text-tertiary)' }}>Click to upload<br />Recommended: 128x128</span>
+                    <input ref={iconFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleIconUpload} />
+                  </div>
                 </div>
 
                 <div className={s.fieldGroup}>
