@@ -23,6 +23,8 @@ interface UnreadState {
   setActiveChannel: (channelId: string | null) => void;
   /** Get total unread across specific channels */
   getTotalForChannels: (channelIds: string[]) => number;
+  /** Mark all channels for a server as read */
+  markServerRead: (channelIds: string[]) => void;
   reset: () => void;
 }
 
@@ -73,6 +75,12 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
     return channelIds.reduce((sum, id) => sum + (counts[id] ?? 0), 0);
   },
 
+  markServerRead: (channelIds) => {
+    const counts = { ...get().counts };
+    for (const id of channelIds) delete counts[id];
+    set({ counts });
+  },
+
   reset: () => {
     set({ counts: {}, activeChannel: null, lastSeenMessageId: {} });
     localStorage.removeItem('jolkr_last_seen');
@@ -102,6 +110,21 @@ wsClient.on((op, d) => {
     const currentUserId = useAuthStore.getState().user?.id;
     if ((d.user_id as string) === currentUserId) {
       useUnreadStore.getState().markRead(d.dm_id as string);
+    }
+  }
+
+  if (op === 'ChannelMessagesRead') {
+    const currentUserId = useAuthStore.getState().user?.id;
+    if ((d.user_id as string) === currentUserId) {
+      useUnreadStore.getState().markRead(d.channel_id as string);
+    }
+  }
+
+  if (op === 'ServerMessagesRead') {
+    const currentUserId = useAuthStore.getState().user?.id;
+    if ((d.user_id as string) === currentUserId) {
+      // Clear all counts — this event is only sent to the user who triggered it
+      useUnreadStore.setState({ counts: {} });
     }
   }
 });

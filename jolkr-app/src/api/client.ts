@@ -446,6 +446,16 @@ export const unpinMessage = (channelId: string, messageId: string) =>
 export const getPinnedMessages = (channelId: string) =>
   request<Message[]>(`/channels/${channelId}/pins`, {}, 'messages');
 
+// Read state
+export const markChannelRead = (channelId: string, messageId: string) =>
+  request<void>(`/channels/${channelId}/read`, {
+    method: 'POST',
+    body: JSON.stringify({ message_id: messageId }),
+  });
+
+export const markServerRead = (serverId: string) =>
+  request<void>(`/servers/${serverId}/read-all`, { method: 'POST' });
+
 // Attachments
 export const getMessageAttachments = (messageId: string) =>
   request<Attachment[]>(`/messages/${messageId}/attachments`, {}, 'attachments');

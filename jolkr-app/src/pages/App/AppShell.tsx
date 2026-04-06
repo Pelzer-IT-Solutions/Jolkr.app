@@ -263,7 +263,20 @@ export default function AppShell() {
     const channelId = dmActive ? activeDmId : activeChannelId
     if (!channelId) return
     fetchMessages(channelId, dmActive)
+
+    // Mark as read locally
+    const prevUnread = useUnreadStore.getState().counts[channelId] ?? 0
     useUnreadStore.getState().setActiveChannel(channelId)
+
+    // If there were unread messages in a server channel, tell the backend
+    if (prevUnread > 0 && !dmActive) {
+      const msgs = useMessagesStore.getState().messages[channelId]
+      const lastMsg = msgs?.[msgs.length - 1]
+      if (lastMsg) {
+        api.markChannelRead(channelId, lastMsg.id).catch(console.warn)
+      }
+    }
+
     return () => {
       useUnreadStore.getState().setActiveChannel(null)
     }
@@ -692,7 +705,15 @@ export default function AppShell() {
           onLogout={handleLogout}
           onStatusChange={handleStatusChange}
           onToggleMuteServer={handleToggleMuteServer}
-          onMarkAllRead={_id => { /* TODO: backend endpoint for mark-all-read */ }}
+          onMarkAllRead={async (serverId) => {
+            try {
+              await api.markServerRead(serverId)
+              const chs = channelsByServer[serverId] ?? []
+              useUnreadStore.getState().markServerRead(chs.map(c => c.id))
+            } catch (err) {
+              console.error('Mark server read failed:', err)
+            }
+          }}
           settingsServerIds={settingsServerIds}
           onOpenServerSettings={serverId => { handleSwitchServer(serverId); setServerSettingsOpen(true) }}
         />
