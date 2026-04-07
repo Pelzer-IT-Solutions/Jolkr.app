@@ -98,7 +98,7 @@
 
 | Platform | Methode | Details |
 |----------|---------|---------|
-| Tauri Desktop | Stronghold encrypted vault | `{appDataDir}/vault.hold`, password `io.jolkr.app` |
+| Tauri Desktop | Stronghold encrypted vault | `{appDataDir}/vault.hold`, random password per installatie in `sessionStorage` (legacy fallback: `io.jolkr.app`) |
 | Web / Mobile | `localStorage` | Keys: `access_token`, `refresh_token` |
 
 Extra localStorage keys:
@@ -197,9 +197,9 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
 | `getMe` | GET | `/users/@me` | — | `{user: User}` |
-| `updateMe` | PATCH | `/users/@me` | `{username?, display_name?, bio?, avatar_url?, status?, show_read_receipts?}` | `{user: User}` |
+| `updateMe` | PATCH | `/users/@me` | `{display_name?, bio?, avatar_url?, status?, show_read_receipts?}` | `{user: User}` |
 | `getUser` | GET | `/users/{id}` | — | `{user: User}` |
-| `getUsersBatch` | GET×N | `/users/{id}` (parallel) | — | `User[]` |
+| `getUsersBatch` | GET×N | `/users/{id}` (parallel `Promise.all`) | — | `User[]` |
 | `searchUsers` | GET | `/users/search?q={q}` | — | `{users: User[]}` |
 
 ---
@@ -220,6 +220,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `discoverServers` | GET | `/servers/discover?limit={n}&offset={n}` | — | `{servers: Server[]}` |
 | `joinPublicServer` | POST | `/servers/{id}/join` | — | void |
 | `getMyPermissions` | GET | `/servers/{id}/permissions/@me` | — | `{permissions: number}` |
+| `markServerRead` | POST | `/servers/{id}/read-all` | — | void |
 
 ---
 
@@ -232,7 +233,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `unbanMember` | DELETE | `/servers/{id}/bans/{userId}` | — | void |
 | `getBans` | GET | `/servers/{id}/bans` | — | `{bans: Ban[]}` |
 | `setNickname` | PATCH | `/servers/{id}/members/{userId}/nickname` | `{nickname}` | void |
-| `timeoutMember` | POST | `/servers/{id}/members/{userId}/timeout` | `{timeout_until: string}` | void |
+| `timeoutMember` | POST | `/servers/{id}/members/{userId}/timeout` | `{timeout_until: ISO8601}` | void |
 | `removeTimeout` | DELETE | `/servers/{id}/members/{userId}/timeout` | — | void |
 
 ---
@@ -266,7 +267,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
 | `getChannels` | GET | `/servers/{id}/channels/list` | — | `{channels: Channel[]}` |
-| `createChannel` | POST | `/servers/{id}/channels` | `{name, kind, topic?, category_id?}` | `{channel: Channel}` |
+| `createChannel` | POST | `/servers/{id}/channels` | `{name, kind?, topic?, category_id?}` | `{channel: Channel}` |
 | `getChannel` | GET | `/channels/{id}` | — | `{channel: Channel}` |
 | `updateChannel` | PATCH | `/channels/{id}` | `{name?, topic?, category_id?, is_nsfw?, slowmode_seconds?}` | `{channel: Channel}` |
 | `reorderChannels` | PUT | `/servers/{id}/channels/reorder` | `{channel_positions: [{id, position}]}` | `{channels: Channel[]}` |
@@ -282,15 +283,16 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
-| `getMessages` | GET | `/channels/{id}/messages?limit={n}&before={ts?}` | — | `{messages: Message[]}` |
+| `getMessages` | GET | `/channels/{id}/messages?limit={n}&before={datetime?}` | — | `{messages: Message[]}` |
 | `sendMessage` | POST | `/channels/{id}/messages` | `{content, nonce?, reply_to_id?}` | `{message: Message}` |
-| `editMessage` | PATCH | `/messages/{id}` | `{content}` | `{message: Message}` |
+| `editMessage` | PATCH | `/messages/{id}` | `{content, nonce?}` | `{message: Message}` |
 | `deleteMessage` | DELETE | `/messages/{id}` | — | void |
 | `searchMessages` | GET | `/channels/{id}/messages/search?q={q}&limit={n}` | — | `{messages: Message[]}` |
-| `searchMessagesAdvanced` | GET | `/channels/{id}/messages/search?{q,from,has,before,after,limit}` | — | `{messages: Message[]}` |
+| `searchMessagesAdvanced` | GET | `/channels/{id}/messages/search?{q,from,has,before,after,limit}` | — | `{messages: Message[], total: number}` |
 | `pinMessage` | POST | `/channels/{id}/pins/{messageId}` | — | `{message: Message}` |
 | `unpinMessage` | DELETE | `/channels/{id}/pins/{messageId}` | — | `{message: Message}` |
 | `getPinnedMessages` | GET | `/channels/{id}/pins` | — | `{messages: Message[]}` |
+| `markChannelRead` | POST | `/channels/{id}/read` | `{message_id}` | void |
 
 ---
 
@@ -312,9 +314,9 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `getDms` | GET | `/dms` | — | `{channels: DmChannel[]}` |
 | `openDm` | POST | `/dms` | `{user_id}` | `{channel: DmChannel}` |
 | `createGroupDm` | POST | `/dms` | `{user_ids, name?}` | `{channel: DmChannel}` |
-| `getDmMessages` | GET | `/dms/{id}/messages?limit={n}&before={ts?}` | — | `{messages: Message[]}` |
-| `sendDmMessage` | POST | `/dms/{id}/messages` | `{content?, encrypted_content?, nonce?, reply_to_id?}` | `{message: Message}` |
-| `editDmMessage` | PATCH | `/dms/messages/{id}` | `{content}` | `{message: Message}` |
+| `getDmMessages` | GET | `/dms/{id}/messages?limit={n}&before={datetime?}` | — | `{messages: Message[]}` |
+| `sendDmMessage` | POST | `/dms/{id}/messages` | `{content, nonce?, reply_to_id?}` | `{message: Message}` |
+| `editDmMessage` | PATCH | `/dms/messages/{id}` | `{content, nonce?}` | `{message: Message}` |
 | `deleteDmMessage` | DELETE | `/dms/messages/{id}` | — | void |
 | `pinDmMessage` | POST | `/dms/{id}/pins/{messageId}` | — | `{message: Message}` |
 | `unpinDmMessage` | DELETE | `/dms/{id}/pins/{messageId}` | — | `{message: Message}` |
@@ -349,7 +351,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `removeDmReaction` | DELETE | `/dms/messages/{id}/reactions/{emoji}` | — | void |
 | `getDmReactionsRaw` | GET | `/dms/messages/{id}/reactions` | — | `{reactions: RawReaction[]}` |
 
-`getReactionsAggregated` en `getDmReactionsAggregated` zijn client-side computed (raw → `{emoji, count, me}[]`).
+`getReactionsAggregated` en `getDmReactionsAggregated` zijn client-side computed: backend retourneert raw rows (`{id, message_id, user_id, emoji, created_at}[]`), frontend aggregeert naar `{emoji, count, me}[]`.
 
 ---
 
@@ -361,6 +363,8 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `getInvites` | GET | `/servers/{id}/invites` | — | `{invites: Invite[]}` |
 | `deleteInvite` | DELETE | `/servers/{id}/invites/{inviteId}` | — | void |
 | `useInvite` | POST | `/invites/{code}` | — | `{invite: Invite}` |
+
+> **Invite create body**: `{max_uses?: number, max_age_seconds?: number}` — beide optioneel.
 
 ---
 
@@ -381,12 +385,12 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
-| `createThread` | POST | `/channels/{id}/threads` | `{message_id, name?}` | `{thread: Thread, message: Message}` |
+| `createThread` | POST | `/channels/{id}/threads` | `{message_id: string, name?: string}` | `{thread: Thread, message: Message}` |
 | `getThreads` | GET | `/channels/{id}/threads?include_archived={bool}` | — | `{threads: Thread[]}` |
 | `getThread` | GET | `/threads/{id}` | — | `{thread: Thread}` |
 | `updateThread` | PATCH | `/threads/{id}` | `{name?, is_archived?}` | `{thread: Thread}` |
-| `getThreadMessages` | GET | `/threads/{id}/messages?limit={n}&before={ts?}` | — | `{messages: Message[]}` |
-| `sendThreadMessage` | POST | `/threads/{id}/messages` | `{content, reply_to_id?}` | `{message: Message}` |
+| `getThreadMessages` | GET | `/threads/{id}/messages?limit={n}&before={datetime?}` | — | `{messages: Message[]}` |
+| `sendThreadMessage` | POST | `/threads/{id}/messages` | `{content, nonce?, reply_to_id?}` | `{message: Message}` |
 
 ---
 
@@ -394,7 +398,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
-| `createPoll` | POST | `/channels/{id}/polls` | `{question, options[], multi_select?, anonymous?, expires_at?}` | `{poll: Poll, message: Message}` |
+| `createPoll` | POST | `/channels/{id}/polls` | `{question, options: string[], multi_select?, anonymous?, expires_at?: ISO8601}` | `{poll: Poll, message: Message}` |
 | `votePoll` | POST | `/polls/{id}/vote` | `{option_id}` | `{poll: Poll}` |
 | `unvotePoll` | DELETE | `/polls/{id}/vote` | `{option_id}` | `{poll: Poll}` |
 | `getPoll` | GET | `/polls/{id}` | — | `{poll: Poll}` |
@@ -510,19 +514,24 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `ThreadCreate` | _(any)_ | `stores/messages.ts` (threadListVersion++) |
 | `ThreadUpdate` | _(any)_ | `stores/messages.ts` (threadListVersion++) |
 | `PresenceUpdate` | `{ user_id, status }` | `stores/presence.ts` |
-| `TypingStart` | `{ channel_id, user_id }` | `stores/presence.ts` (8s TTL) |
+| `TypingStart` | `{ channel_id, user_id }` | `stores/typing.ts` (5s TTL) |
 | `ChannelCreate` | `{ channel: Channel }` | `stores/servers.ts` |
 | `ChannelUpdate` | `{ channel: Channel }` | `stores/servers.ts` |
 | `ChannelDelete` | `{ channel_id, server_id }` | `stores/servers.ts` |
 | `MemberJoin` | `{ server_id, user_id }` | `stores/servers.ts` |
 | `MemberLeave` | `{ server_id, user_id }` | `stores/servers.ts` |
-| `MemberUpdate` | `{ server_id, user_id, timeout_until?, nickname?, role_ids? }` | `stores/servers.ts` (+ permission cache invalidatie) |
+| `MemberUpdate` | `{ server_id, user_id, timeout_until? }` | `stores/servers.ts` (+ permission cache invalidatie) |
 | `ServerUpdate` | `{ server: Server }` | `stores/servers.ts` |
 | `ServerDelete` | `{ server_id }` | `stores/servers.ts` |
 | `UserUpdate` | `{ status?, display_name?, avatar_url?, bio? }` | `stores/auth.ts` |
 | `DmMessagesRead` | `{ dm_id, user_id, message_id }` | `stores/unread.ts`, `stores/dm-reads.ts` |
 | `DmCreate` | `{ channel?: DmChannel }` | `DmList.tsx` |
 | `DmUpdate` | `{ channel: DmChannel }` | `DmList.tsx`, `DmChat.tsx` |
+| `CategoryCreate` | `{ category: Category }` | `stores/servers.ts` |
+| `CategoryUpdate` | `{ category: Category }` | `stores/servers.ts` |
+| `CategoryDelete` | `{ category_id, server_id }` | `stores/servers.ts` |
+| `ChannelMessagesRead` | `{ channel_id, user_id, message_id }` | `stores/unread.ts` |
+| `ServerMessagesRead` | `{ server_id, user_id }` | `stores/unread.ts` |
 | `DmCallRing` | `{ dm_id, caller_id, caller_username }` | `hooks/useCallEvents.ts` |
 | `DmCallAccept` | `{ dm_id }` | `hooks/useCallEvents.ts` |
 | `DmCallReject` | `{ dm_id }` | `hooks/useCallEvents.ts` |
@@ -658,12 +667,11 @@ Decrypt:
 
 ### Version Bytes
 
-| Byte | KDF | Quantum |
-|------|-----|---------|
-| `0x03` | HKDF-SHA256 | Ja (hybrid) |
-| `0x02` | SHA-256 (legacy) | Ja (hybrid) |
-| `0x01` | SHA-256 (legacy) | Nee (classical only) |
-| geen | Pre-v0.3.0 | Nee |
+| Byte | KDF | Quantum | Status |
+|------|-----|---------|--------|
+| `0x03` | HKDF-SHA256 | Ja (hybrid X25519 + ML-KEM-768) | **Enige supported versie** |
+
+> Legacy versies `0x01` (classical) en `0x02` (SHA-256 hybrid) zijn verwijderd. Alleen v0x03 wordt ondersteund.
 
 ### Channel/Group Encryptie (shared symmetric key)
 
@@ -717,7 +725,7 @@ WS listener: `UserUpdate` → patcht eigen user object.
 | `channelPermissions` | `Record<channelId, number>` |
 | `emojis` | `Record<serverId, ServerEmoji[]>` |
 
-WS listeners: `ChannelCreate/Update/Delete`, `MemberJoin/Leave/Update`, `ServerUpdate/Delete`.
+WS listeners: `ChannelCreate/Update/Delete`, `CategoryCreate/Update/Delete`, `MemberJoin/Leave/Update`, `ServerUpdate/Delete`.
 
 Cache: skip fetch als data al geladen; permission cache invalidatie bij eigen role wijziging.
 
@@ -742,10 +750,17 @@ WS listeners: `MessageCreate/Update/Delete`, `ThreadCreate/Update`, `ReactionUpd
 
 | State | Type |
 |-------|------|
-| `statuses` | `Record<userId, string>` |
-| `typing` | `Record<channelId, userId[]>` |
+| `presence` | `Record<userId, 'online' \| 'idle' \| 'offline'>` |
 
-Geen API calls — puur WS-driven. Typing auto-clear na 8s.
+Geen API calls — puur WS-driven (`PresenceUpdate` event).
+
+### 8.11 `useTypingStore` (`stores/typing.ts`)
+
+| State | Type |
+|-------|------|
+| `typing` | `Record<channelId, Record<userId, TypingEntry>>` |
+
+WS: `TypingStart` → track per-channel typing. Auto-clear na 5s. Selector `useTypingUsers(channelId, ownUserId)` filtert eigen user.
 
 ### 8.5 `useVoiceStore` (`stores/voice.ts`)
 
@@ -779,7 +794,14 @@ API calls: `api.initiateCall`, `acceptCall`, `rejectCall`, `endCall`.
 | `activeChannel` | `string \| null` |
 | `lastSeenMessageId` | `Record<channelId, string>` (localStorage `jolkr_last_seen`) |
 
-WS: `MessageCreate` (increment), `DmMessagesRead` (mark read).
+| Action | Beschrijving |
+|--------|-------------|
+| `increment(channelId)` | +1 als user niet in dat kanaal zit |
+| `markRead(channelId)` | Reset count naar 0 |
+| `setActiveChannel(channelId)` | Markeert kanaal als gelezen, slaat last seen op |
+| `markServerRead(channelIds)` | Clear counts voor meerdere kanalen tegelijk |
+
+WS: `MessageCreate` (increment), `DmMessagesRead` (mark read), `ChannelMessagesRead` (sync read state), `ServerMessagesRead` (clear all counts).
 
 ### 8.8 `useDmReadsStore` (`stores/dm-reads.ts`)
 
@@ -809,7 +831,7 @@ API calls: `api.registerDevice`, `api.uploadPrekeys`, `api.getPreKeyBundle`.
 
 Bundle cache: `Map<userId, CachedBundle>` (5min TTL valid, 10s TTL null).
 
-Twee key sets in memory: `localKeys` (HKDF) + `legacyKeys` (SHA-256 fallback).
+Één key set in memory: `localKeys` (HKDF-derived). Legacy SHA-256 keys zijn verwijderd — alleen v0x03 hybrid X25519+ML-KEM-768 wordt ondersteund.
 
 ### 9.2 `services/notifications.ts`
 
@@ -851,11 +873,14 @@ Ring sound: `HTMLAudioElement` + Web Audio API fallback.
 
 ### `useDecryptedContent` (`hooks/useDecryptedContent.ts`)
 
-Decrypts encrypted message content. Twee modellen:
-- Channel-key (symmetric): `decryptChannelMessage()`
-- Legacy direct (asymmetric): `decryptDmMessage()`
+Decrypts encrypted message content. Parameters: `content, nonce?, isDm?, channelId`.
 
-Retry: max 3x met 1s delay als E2EE keys nog niet geladen.
+Returns: `{displayContent, isEncrypted, decrypting}`.
+
+- Decrypts via `decryptChannelMessage()` met shared symmetric channel key
+- `nonce` aanwezig = encrypted, anders plaintext
+- Fallback: `[Encrypted message — keys unavailable]` als decryptie faalt
+- Retry: max 3x met 1s delay als E2EE keys nog niet geladen
 
 ### `usePresignRefresh` (`hooks/usePresignRefresh.ts`)
 
@@ -932,63 +957,76 @@ Geen `QueryClientProvider`, geen Redux Provider, geen externe context providers 
 
 ```typescript
 interface User {
-  id: string; username: string; email: string;
-  display_name?: string; avatar_url?: string; bio?: string;
-  status?: string; show_read_receipts?: boolean;
-  created_at: string; updated_at: string;
+  id: string; username: string;
+  display_name?: string | null; email?: string | null;
+  avatar_url?: string | null; status?: string | null;
+  bio?: string | null; is_online?: boolean;
+  show_read_receipts?: boolean; is_system?: boolean;
+  created_at?: string | null;
 }
 
 interface Server {
-  id: string; name: string; description?: string;
-  icon_url?: string; owner_id: string; is_public?: boolean;
-  created_at: string; updated_at: string;
+  id: string; name: string; description?: string | null;
+  icon_url?: string | null; banner_url?: string | null;
+  owner_id: string; is_public?: boolean;
+  member_count?: number;
+  created_at?: string | null;
 }
 
 interface Channel {
   id: string; server_id: string; name: string;
-  kind: string; topic?: string; category_id?: string;
-  position: number; is_nsfw?: boolean; slowmode_seconds?: number;
-  created_at: string; updated_at: string;
+  kind: 'text' | 'voice' | 'category'; topic?: string | null;
+  category_id?: string | null; position: number;
+  is_nsfw?: boolean; slowmode_seconds?: number;
+  e2ee_key_generation?: number;
+  created_at?: string | null;
 }
 
 interface Message {
-  id: string; channel_id?: string; dm_channel_id?: string;
-  author_id: string; content?: string;
-  encrypted_content?: string; nonce?: string;
-  created_at: string; updated_at?: string;
-  is_edited?: boolean; is_pinned?: boolean;
-  reply_to_id?: string; thread_id?: string;
-  thread_reply_count?: number;
-  attachments?: Attachment[]; reactions?: Reaction[];
-  embeds?: MessageEmbed[];
+  id: string; channel_id: string;
+  author_id: string; content: string;
+  nonce?: string | null;              // non-null = content is encrypted (base64 ciphertext)
+  created_at: string; updated_at?: string | null;
+  is_edited: boolean; is_pinned: boolean;
+  reply_to_id?: string | null; thread_id?: string | null;
+  thread_reply_count?: number | null;
+  attachments: Attachment[]; reactions?: Reaction[];
+  embeds?: MessageEmbed[]; poll?: Poll;
+  webhook_id?: string | null;
+  webhook_name?: string | null;
+  webhook_avatar?: string | null;
+  author?: User | null;
 }
 
 interface Attachment {
-  id: string; message_id: string; filename: string;
-  content_type: string; size: number; url: string;
+  id: string; filename: string;
+  content_type: string; size_bytes: number; url: string;
 }
 
 interface MessageEmbed {
-  url: string; title?: string; description?: string;
-  image_url?: string; site_name?: string;
+  url: string; title?: string | null; description?: string | null;
+  image_url?: string | null; site_name?: string | null;
+  color?: string | null;
 }
 
 interface Thread {
-  id: string; channel_id: string; name?: string;
-  message_id: string; is_archived?: boolean;
-  reply_count: number; created_at: string;
+  id: string; channel_id: string;
+  starter_msg_id?: string | null; name?: string | null;
+  is_archived: boolean; message_count: number;
+  created_at: string; updated_at: string;
 }
 
 interface Member {
-  user_id: string; server_id: string;
-  nickname?: string; role_ids?: string[];
-  timeout_until?: string; joined_at: string;
-  user?: User;
+  id: string; server_id: string; user_id: string;
+  nickname?: string | null; joined_at: string;
+  timeout_until?: string | null;
+  user?: User; role_ids?: string[];
 }
 
 interface Role {
   id: string; server_id: string; name: string;
-  color?: string; position: number; permissions: number;
+  color: number; position: number; permissions: number;
+  is_default: boolean;
 }
 
 interface Category {
@@ -997,90 +1035,94 @@ interface Category {
 
 interface ChannelOverwrite {
   id: string; channel_id: string;
-  target_type: string; target_id: string;
+  target_type: 'role' | 'member'; target_id: string;
   allow: number; deny: number;
 }
 
 interface DmChannel {
-  id: string; kind: string; name?: string;
-  owner_id?: string; members: User[];
-  last_message_at?: string; created_at: string;
+  id: string; is_group: boolean; name?: string | null;
+  members: string[];           // UUID array (not full User objects)
+  created_at: string;
 }
 
 interface Friendship {
-  id: string; user_id: string; friend_id: string;
-  status: string; created_at: string;
-  user?: User; friend?: User;
+  id: string; requester_id: string; addressee_id: string;
+  status: 'pending' | 'accepted' | 'blocked';
+  requester?: User; addressee?: User;
 }
 
 interface Ban {
   id: string; server_id: string; user_id: string;
-  reason?: string; created_at: string; user?: User;
+  banned_by?: string | null; reason?: string | null;
+  created_at: string;
 }
 
 interface Invite {
   id: string; server_id: string; code: string;
-  inviter_id: string; max_uses?: number;
-  uses: number; max_age_seconds?: number;
-  expires_at?: string; created_at: string;
-  server?: Server;
+  creator_id: string; max_uses?: number | null;
+  use_count: number;
+  expires_at?: string | null;
 }
 
 interface Webhook {
-  id: string; channel_id: string; name: string;
-  avatar_url?: string; token?: string;
-  created_at: string; updated_at: string;
+  id: string; channel_id: string; server_id: string;
+  creator_id: string; name: string;
+  avatar_url?: string | null; token?: string;
 }
 
 interface Poll {
-  id: string; question: string; options: PollOption[];
-  multi_select?: boolean; anonymous?: boolean;
-  expires_at?: string; created_at: string;
+  id: string; message_id: string; channel_id: string;
+  question: string; multi_select: boolean; anonymous: boolean;
+  expires_at?: string | null;
+  options: PollOption[];
+  votes: Record<string, number>;  // option_id → count
+  my_votes?: string[];             // option_ids I voted for
+  total_votes: number;
 }
 
 interface PollOption {
-  id: string; text: string; vote_count: number;
-  voted?: boolean;
+  id: string; poll_id: string; position: number; text: string;
 }
 
 interface ServerEmoji {
   id: string; server_id: string; name: string;
-  url: string; uploader_id: string;
+  image_url: string; uploader_id: string; animated: boolean;
 }
 
 interface NotificationSetting {
-  target_type: string; target_id: string;
-  muted: boolean; mute_until?: string;
-  suppress_everyone?: boolean;
+  target_type: 'server' | 'channel'; target_id: string;
+  muted: boolean; mute_until?: string | null;
+  suppress_everyone: boolean;
 }
 
 interface AuditLogEntry {
-  id: string; server_id: string; actor_id: string;
-  action: string; target_id?: string;
-  changes?: Record<string, unknown>;
-  reason?: string; created_at: string;
+  id: string; server_id: string; user_id: string;
+  action_type: string; target_id?: string | null;
+  target_type?: string | null;
+  changes?: Record<string, unknown> | null;
+  reason?: string | null; created_at: string;
 }
 
 interface TokenPair {
   access_token: string;
   refresh_token: string;
-  expires_in: number;
+  expires_in?: number;
 }
 
 interface PreKeyBundleResponse {
   user_id: string; device_id: string;
-  identity_key: string;         // base64
-  signed_prekey: string;        // base64
-  signed_prekey_signature: string; // base64
-  pq_signed_prekey?: string;    // base64
-  pq_signed_prekey_signature?: string; // base64
+  identity_key: string;
+  signed_prekey: string;
+  signed_prekey_signature: string;
+  one_time_prekey?: string | null;
+  pq_signed_prekey?: string | null;
+  pq_signed_prekey_signature?: string | null;
 }
 
 interface Reaction {
   emoji: string;
   count: number;
-  me?: boolean;
-  user_ids?: string[];
+  me: boolean;
 }
 ```
 
@@ -1125,9 +1167,9 @@ interface Reaction {
 ### Must-have (features werken niet zonder)
 
 - [ ] **E2EE Key Generatie**: PBKDF2 seed → HKDF key derivation → upload
-- [ ] **DM Encryptie**: X25519 + ML-KEM-768 hybrid, version-aware decrypt
+- [ ] **DM Encryptie**: X25519 + ML-KEM-768 hybrid (v0x03 only — legacy verwijderd)
 - [ ] **Channel Key Management**: shared symmetric key distribute/fetch/cache
-- [ ] **Message Decryption Hook**: channel-key + legacy dual-model decrypt
+- [ ] **Message Decryption Hook**: `useDecryptedContent` — nonce-based detection, channel-key decrypt
 - [ ] **Voice WS + WebRTC**: separate signaling WS, SDP offer/answer, ICE
 - [ ] **Voice E2EE**: Web Worker frame encryption
 - [ ] **Push Registration**: service worker + VAPID subscription
@@ -1135,10 +1177,10 @@ interface Reaction {
 
 ### Nice-to-have (UX features)
 
-- [ ] **Typing Indicators**: TypingStart send (3s throttle) + receive (8s TTL)
+- [ ] **Typing Indicators**: TypingStart send (3s throttle) + receive (5s TTL via `useTypingStore`)
 - [ ] **Presence Updates**: send/receive online status
 - [ ] **Unread Counts**: WS-driven met localStorage persistence
-- [ ] **Read Receipts**: DmMessagesRead events + per-user tracking
+- [ ] **Read Receipts**: DmMessagesRead + ChannelMessagesRead + ServerMessagesRead events
 - [ ] **Notification Sound**: Web Audio API beep
 - [ ] **Desktop Notifications**: Notification API
 - [ ] **Presign Refresh**: S3 URL refresh elke 3 uur
@@ -1172,12 +1214,13 @@ Deze bestanden zijn framework-onafhankelijk en kunnen (bijna) letterlijk gekopie
 | `useAuthStore` | user, loading, error | REST + WS (UserUpdate) |
 | `useServersStore` | servers, channels, members, roles, categories, permissions, emojis | REST + WS (6 events) |
 | `useMessagesStore` | messages (LRU 30), threads | REST + WS (7 events) |
-| `usePresenceStore` | statuses, typing | WS only (2 events) |
+| `usePresenceStore` | presence | WS only (PresenceUpdate) |
+| `useTypingStore` | typing per channel | WS only (TypingStart, 5s TTL) |
 | `useVoiceStore` | voice state | Voice WS + WebRTC |
 | `useCallStore` | call state | REST (4 endpoints) + WS (4 events) |
-| `useUnreadStore` | counts, activeChannel, lastSeen | WS (2 events) + localStorage |
+| `useUnreadStore` | counts, activeChannel, lastSeen | WS (4 events: MessageCreate, DmMessagesRead, ChannelMessagesRead, ServerMessagesRead) + localStorage |
 | `useDmReadsStore` | readStates | WS (1 event) |
 
 ---
 
-> **Gegenereerd op 2026-03-24** — gebaseerd op de huidige staat van `jolkr-app/src/`.
+> **Bijgewerkt op 2026-04-07** — gebaseerd op de huidige staat van `jolkr-app/src/` en `jolkr-server/` (inclusief migraties t/m 033).
