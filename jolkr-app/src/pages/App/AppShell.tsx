@@ -1,4 +1,5 @@
 import { useMessagesStore } from '../../stores/messages'
+import { useServersStore } from '../../stores/servers'
 import { useUnreadStore } from '../../stores/unread'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS } from '../../utils/permissions'
 import * as api from '../../api/client'
@@ -100,7 +101,7 @@ export default function AppShell() {
           ownerServerIds={ownerServerIds}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
           onClose={handleCloseTab}
-          onReorder={setTabbedIds}
+          onReorder={ids => { setTabbedIds(ids); useServersStore.getState().reorderServers(ids) }}
           onOpenServer={id => { setDmActive(false); handleOpenServer(id) }}
           onDmClick={() => { setDmActive(v => !v); setNotificationsActive(false) }}
           onSearchClick={() => setSearchActive(v => !v)}
