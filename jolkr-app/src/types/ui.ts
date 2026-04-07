@@ -91,6 +91,7 @@ export interface Message {
   channel_id?:        string
   isDm?:              boolean
   is_pinned?:         boolean
+  is_system?:         boolean
 }
 
 export type MessageStore = Record<string, Record<string, Message[]>>

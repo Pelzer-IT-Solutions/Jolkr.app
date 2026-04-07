@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import appIconUrl from '/icon.png?url'
 import type { Channel, DMConversation } from '../../types/ui'
 import { useTypingUsers } from '../../stores/typing'
 import { getApiBaseUrl } from '../../platform/config'
@@ -138,12 +139,14 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     author: 'Jolkr',
     color: 'oklch(60% 0.18 136.69)',
     letter: 'J',
+    avatarUrl: appIconUrl,
     time: 'Today',
     content: dmActive
       ? `Start a conversation with ${activeDmConv?.name ?? activeDmConv?.participants[0]?.name ?? 'someone'}!`
       : `Welcome to #${activeChannel.name}! Be the first to say something.`,
     reactions: [],
     edited: false,
+    is_system: true,
   }], [dmActive, activeDmConv, activeChannel.name])
 
   const displayMessages = uiMessages.length > 0 ? uiMessages : fallbackMessages

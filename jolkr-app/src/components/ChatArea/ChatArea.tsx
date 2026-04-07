@@ -279,11 +279,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
                 >
                   <Message
                     message={msg}
-                    onToggleReaction={readOnly ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
-                    onDelete={readOnly ? undefined : () => onDeleteMessage(msg.id)}
-                    onEdit={readOnly ? undefined : (newText) => onEditMessage(msg.id, newText)}
-                    onReply={readOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
-                    onPin={readOnly ? undefined : () => onPinMessage?.(msg.id)}
+                    onToggleReaction={readOnly || msg.is_system ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
+                    onDelete={readOnly || msg.is_system ? undefined : () => onDeleteMessage(msg.id)}
+                    onEdit={readOnly || msg.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
+                    onReply={readOnly || msg.is_system ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
+                    onPin={readOnly || msg.is_system ? undefined : () => onPinMessage?.(msg.id)}
                     isDm={isDm}
                   />
                 </div>

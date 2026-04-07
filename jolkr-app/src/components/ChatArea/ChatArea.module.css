@@ -55,6 +55,7 @@
 
 /* ── DM header avatar ── */
 .dmAvatar {
+  position: relative;
   width: 1.625rem;
   height: 1.625rem;
   border-radius: 0.4375rem;
@@ -65,8 +66,6 @@
   font-weight: 700;
   color: #fff;
   flex-shrink: 0;
-  overflow: hidden;
-  position: relative;
 }
 
 .groupAvatars {
