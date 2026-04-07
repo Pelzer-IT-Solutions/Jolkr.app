@@ -82,18 +82,22 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [editingCatName, setEditingCatName] = useState('')
   const catRenameInputRef = useRef<HTMLInputElement>(null)
 
-  // Reset all server-specific state synchronously before paint
+  // Reset reveal + collapsed state only when switching servers
   useLayoutEffect(() => {
-    setLocalCats(server.categories)
     setCollapsedCats(new Set())
     setLocalExtraChannels([])
+  }, [server.id])
+
+  // Sync local categories whenever the server's categories change (initial fetch, WS updates, etc.)
+  useLayoutEffect(() => {
+    setLocalCats(server.categories)
     setIsRevealing(true)
     const totalItems =
       server.categories.length +
       server.categories.reduce((sum, c) => sum + c.channels.length, 0)
     const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
     return () => clearTimeout(timer)
-  }, [server.id])
+  }, [server.id, server.categories])
 
   useEffect(() => {
     if (creating) setTimeout(() => inputRef.current?.focus(), 0)
