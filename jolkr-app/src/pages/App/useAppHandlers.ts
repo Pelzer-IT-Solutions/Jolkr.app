@@ -8,6 +8,7 @@ import * as api from '../../api/client'
 import { getLocalKeys } from '../../services/e2ee'
 import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { orbsForHue } from '../../utils/theme'
+import { useMessagesStore } from '../../stores/messages'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -31,6 +32,8 @@ export function useAppHandlers(
 
   // ── Muted servers (UI-only local state) ──
   const [mutedServerIds, setMutedServerIds] = useState<string[]>([])
+  // Counter to trigger PinnedMessagesPanel refetch after pin/unpin
+  const [pinVersion, setPinVersion] = useState(0)
   const handleToggleMuteServer = useCallback((serverId: string) => {
     setMutedServerIds(prev =>
       prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
@@ -185,28 +188,50 @@ export function useAppHandlers(
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    const msg = currentApiMessages.find(m => m.id === msgId)
+    // Read fresh from store to avoid stale closure (preserves reactions etc.)
+    const store = useMessagesStore.getState()
+    const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
     if (!msg) return
+    const newPinned = !msg.is_pinned
+    // Optimistically update local store immediately
+    store.updateMessage(channelId, { ...msg, is_pinned: newPinned })
     try {
-      if (msg.is_pinned) {
-        if (dmActive) await api.unpinDmMessage(channelId, msgId)
-        else await api.unpinMessage(channelId, msgId)
-      } else {
+      if (newPinned) {
         if (dmActive) await api.pinDmMessage(channelId, msgId)
         else await api.pinMessage(channelId, msgId)
+      } else {
+        if (dmActive) await api.unpinDmMessage(channelId, msgId)
+        else await api.unpinMessage(channelId, msgId)
       }
+      // Bump pin version so PinnedMessagesPanel refetches
+      setPinVersion(v => v + 1)
     } catch (err) {
       console.error('Pin toggle failed:', err)
+      // Revert optimistic update on failure
+      const revertStore = useMessagesStore.getState()
+      const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
+      if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned })
     }
-  }, [dmActive, activeDmId, activeChannelId, currentApiMessages])
+  }, [dmActive, activeDmId, activeChannelId])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
+    // Optimistically update local store
+    const store = useMessagesStore.getState()
+    const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
+    if (msg) store.updateMessage(channelId, { ...msg, is_pinned: false })
     try {
       if (dmActive) await api.unpinDmMessage(channelId, msgId)
       else await api.unpinMessage(channelId, msgId)
+      setPinVersion(v => v + 1)
     } catch (err) {
       console.error('Unpin failed:', err)
+      // Revert on failure
+      if (msg) {
+        const revertStore = useMessagesStore.getState()
+        const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
+        if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: true })
+      }
     }
   }, [dmActive, activeDmId, activeChannelId])
 
@@ -322,7 +347,7 @@ export function useAppHandlers(
     handleUploadAvatar, handleChangePassword, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,
     handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
-    handlePinMessage, handleUnpinMessage, handleThemeChange,
+    handlePinMessage, handleUnpinMessage, pinVersion, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleRenameChannel, handleRenameCategory,
     handleJoinServer, handleCreateServer, handleCreateDm,

@@ -69,7 +69,7 @@ function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
     created_at: m.created_at as string,
     updated_at: (m.updated_at as string) ?? null,
     is_edited: (m.is_edited as boolean) ?? false,
-    is_pinned: false,
+    is_pinned: (m.is_pinned as boolean) ?? false,
     reply_to_id: (m.reply_to_id as string) ?? null,
     author: (m.author as Message['author']) ?? (m.sender as Message['author']) ?? null,
     attachments: (m.attachments as Message['attachments']) ?? [],
@@ -196,7 +196,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ...get().messages,
         [channelId]: current.map((m) =>
           m.id === message.id
-            ? { ...m, ...message, reactions: message.reactions !== undefined ? message.reactions : m.reactions }
+            ? { ...m, ...message, reactions: message.reactions?.length ? message.reactions : m.reactions }
             : m,
         ),
       },
@@ -292,7 +292,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ...get().threadMessages,
         [threadId]: current.map((m) =>
           m.id === message.id
-            ? { ...m, ...message, reactions: message.reactions !== undefined ? message.reactions : m.reactions }
+            ? { ...m, ...message, reactions: message.reactions?.length ? message.reactions : m.reactions }
             : m,
         ),
       },

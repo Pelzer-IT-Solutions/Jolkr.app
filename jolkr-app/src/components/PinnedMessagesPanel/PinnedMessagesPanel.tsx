@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Pin, X } from 'lucide-react'
 import * as api from '../../api/client'
 import type { Message } from '../../api/types'
+import type { User } from '../../api/types'
+import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import s from './PinnedMessagesPanel.module.css'
 
 interface Props {
@@ -9,9 +11,39 @@ interface Props {
   isDm?: boolean
   onClose: () => void
   onUnpin?: (messageId: string) => void
+  users?: Map<string, User>
 }
 
-export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin }: Props) {
+/** Single pinned message item — uses hook for E2EE decryption. */
+function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
+  msg: Message
+  channelId: string
+  isDm: boolean
+  onUnpin?: (id: string) => void
+  users?: Map<string, User>
+}) {
+  const { displayContent, decrypting } = useDecryptedContent(
+    msg.content, msg.nonce, isDm, channelId,
+  )
+  const author = users?.get(msg.author_id)
+  const authorName = author?.display_name ?? author?.username ?? 'Unknown'
+
+  return (
+    <div className={s.item}>
+      <div className={`${s.itemAuthor} txt-tiny txt-semibold`}>{authorName}</div>
+      <div className={`${s.itemContent} txt-small`}>
+        {decrypting ? 'Decrypting...' : (displayContent || '').slice(0, 200)}
+      </div>
+      {onUnpin && (
+        <button className={s.unpinBtn} title="Unpin" onClick={() => onUnpin(msg.id)}>
+          <X size={12} strokeWidth={1.5} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin, users }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -19,7 +51,12 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin 
     setLoading(true)
     const fetch = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
     fetch.then(msgs => {
-      setMessages(msgs)
+      // Normalize DM messages: dm_channel_id → channel_id
+      const normalized = msgs.map((m) => ({
+        ...m,
+        channel_id: m.channel_id ?? (m as unknown as { dm_channel_id?: string }).dm_channel_id ?? channelId,
+      }))
+      setMessages(normalized)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [channelId, isDm])
@@ -42,20 +79,14 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin 
           <div className={`${s.empty} txt-small`}>No pinned messages</div>
         )}
         {messages.map(msg => (
-          <div key={msg.id} className={s.item}>
-            <div className={`${s.itemAuthor} txt-tiny txt-semibold`}>
-              {(msg.author as { display_name?: string; username?: string })?.display_name
-                ?? (msg.author as { username?: string })?.username ?? 'Unknown'}
-            </div>
-            <div className={`${s.itemContent} txt-small`}>
-              {(msg.content || '').slice(0, 200)}
-            </div>
-            {onUnpin && (
-              <button className={s.unpinBtn} title="Unpin" onClick={() => handleUnpin(msg.id)}>
-                <X size={12} strokeWidth={1.5} />
-              </button>
-            )}
-          </div>
+          <PinnedItem
+            key={msg.id}
+            msg={msg}
+            channelId={channelId}
+            isDm={isDm}
+            onUnpin={onUnpin ? handleUnpin : undefined}
+            users={users}
+          />
         ))}
       </div>
     </div>

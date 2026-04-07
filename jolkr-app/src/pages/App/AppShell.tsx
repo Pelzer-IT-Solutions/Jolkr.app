@@ -64,7 +64,7 @@ export default function AppShell() {
     handleUploadAvatar, handleChangePassword, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,
     handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
-    handlePinMessage, handleUnpinMessage, handleThemeChange,
+    handlePinMessage, handleUnpinMessage, pinVersion, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleRenameChannel, handleRenameCategory,
     handleJoinServer, handleCreateServer, handleCreateDm,
@@ -195,10 +195,12 @@ export default function AppShell() {
 
               {pinnedPanelOpen && (
                 <PinnedMessagesPanel
+                  key={`pins-${effectiveChannelId}-${pinVersion}`}
                   channelId={effectiveChannelId}
                   isDm={dmActive}
                   onClose={() => setPinnedPanelOpen(false)}
                   onUnpin={handleUnpinMessage}
+                  users={userMap}
                 />
               )}
 
