@@ -843,7 +843,7 @@ function UncategorizedZone({ children }: { children: React.ReactNode }) {
 }
 
 /* ── Presentational channel row ── */
-function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx, onContextMenu, isEditing, editingName, onStartRename, onSaveRename, onRenameKeyDown, onRenameChange, renameInputRef, onOpenChannelSettings, canManageChannels }: {
+function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx, onContextMenu, isEditing, editingName, onStartRename, onSaveRename, onRenameKeyDown, onRenameChange, renameInputRef }: {
   channel:          Channel
   active:           boolean
   onClick:          () => void
