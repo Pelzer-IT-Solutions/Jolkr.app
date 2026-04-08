@@ -10,19 +10,22 @@ import { useAuthStore } from '../../stores/auth'
 import { renderMarkdown } from '../../utils/markdown'
 import { useMenuPosition } from '../../utils/position'
 import EmojiPickerPopup from '../EmojiPickerPopup'
+import { ReactionTooltip } from './ReactionTooltip'
 import s from './Message.module.css'
 
 interface Props {
-  message:          MessageType
-  onToggleReaction?: (emoji: string) => void
-  onDelete?:         () => void
-  onReply?:          () => void
-  onEdit?:           (newText: string) => void
-  onPin?:            () => void
-  isDm?:            boolean
+  message:               MessageType
+  onToggleReaction?:     (emoji: string) => void
+  onDelete?:             () => void
+  onReply?:              () => void
+  onEdit?:               (newText: string) => void
+  onPin?:                () => void
+  isDm?:                 boolean
+  serverId?:             string
+  dmParticipantNames?:   Record<string, string>
 }
 
-export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false }: Props) {
+export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false, serverId, dmParticipantNames }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
 
@@ -129,14 +132,20 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   const reactionsBlock = message.reactions.length > 0 ? (
     <div className={s.reactions}>
       {message.reactions.map((r, i) => (
-        <button
+        <ReactionTooltip
           key={i}
-          className={`${s.reaction} ${r.me ? s.active : ''}`}
-          onClick={() => onToggleReaction?.(r.emoji)}
+          reaction={r}
+          serverId={serverId}
+          dmParticipantNames={dmParticipantNames}
         >
-          <span>{r.emoji}</span>
-          <span className={`${s.reactionCount} txt-tiny txt-medium`}>{r.count}</span>
-        </button>
+          <button
+            className={`${s.reaction} ${r.me ? s.active : ''}`}
+            onClick={() => onToggleReaction?.(r.emoji)}
+          >
+            <span>{r.emoji}</span>
+            <span className={`${s.reactionCount} txt-tiny txt-medium`}>{r.count}</span>
+          </button>
+        </ReactionTooltip>
       ))}
     </div>
   ) : null

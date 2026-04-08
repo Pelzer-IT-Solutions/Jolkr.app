@@ -832,6 +832,7 @@ export default function AppShell() {
                 typingUsers={typingUsers}
                 hasPinnedMessages={pinnedCount > 0}
                 hasThreads={threadsCount > 0}
+                serverId={dmActive ? undefined : activeServerId}
                 onLoadOlder={() => {
                   const { fetchOlder, loadingOlder } = useMessagesStore.getState()
                   const channelId = dmActive ? activeDmId : activeChannelId

@@ -43,6 +43,7 @@ export interface Reaction {
   emoji: string;
   count: number;
   me: boolean;
+  user_ids?: string[]; // Backend sends user IDs who reacted (for tooltip)
 }
 
 export interface Message {

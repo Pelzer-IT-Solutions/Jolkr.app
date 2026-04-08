@@ -33,9 +33,10 @@ interface Props {
   onPinMessage?:      (msgId: string) => void
   hasPinnedMessages?: boolean
   hasThreads?:        boolean
+  serverId?:          string
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, hasPinnedMessages = false, hasThreads = false }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, hasPinnedMessages = false, hasThreads = false, serverId }: Props) {
   const listRef  = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLDivElement>(null)
 
@@ -298,6 +299,10 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                     onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
                     onPin={isReadOnly ? undefined : () => onPinMessage?.(msg.id)}
                     isDm={isDm}
+                    serverId={isDm ? undefined : serverId}
+                    dmParticipantNames={isDm && dmConversation
+                      ? Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
+                      : undefined}
                   />
                 </div>
               )

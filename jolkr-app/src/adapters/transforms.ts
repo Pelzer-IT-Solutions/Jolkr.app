@@ -131,11 +131,12 @@ export function transformMessage(
     }
   }
 
-  // Reactions — backend format is already compatible
+  // Reactions — map to UI format with userIds for tooltip
   const reactions: Reaction[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
     me: r.me,
+    userIds: r.user_ids ?? [],
   }))
 
   return {

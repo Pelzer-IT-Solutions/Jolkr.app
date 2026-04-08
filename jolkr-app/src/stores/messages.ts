@@ -4,18 +4,18 @@ import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
 
-/** Transform backend reaction format (user_ids) to frontend format (me boolean) */
+/** Transform backend reaction format (user_ids) to frontend format (me boolean + user_ids) */
 function transformReactions(msgs: Message[]): Message[] {
   const currentUserId = useAuthStore.getState().user?.id;
-  if (!currentUserId) return msgs;
   return msgs.map((m) => {
     if (!m.reactions?.length) return m;
     return {
       ...m,
-      reactions: m.reactions.map((r: Reaction & { user_ids?: string[] }) => ({
+      reactions: m.reactions.map((r) => ({
         emoji: r.emoji,
         count: r.count,
-        me: r.user_ids ? r.user_ids.includes(currentUserId) : r.me ?? false,
+        me: currentUserId ? (r.user_ids ? r.user_ids.includes(currentUserId) : r.me ?? false) : false,
+        user_ids: r.user_ids ?? [],
       })),
     };
   });
@@ -433,6 +433,7 @@ wsClient.on((op, d) => {
         emoji: r.emoji,
         count: r.count,
         me: currentUserId ? (r.user_ids?.includes(currentUserId) ?? false) : false,
+        user_ids: r.user_ids ?? [],
       }));
       store.updateReactions(channelId, messageId, reactions);
       break;
