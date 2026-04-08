@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/auth';
 import { useMobileNav } from '../../../hooks/useMobileNav';
 import Avatar from '../../../components/Avatar';
+import { hashColor } from '../../../adapters/transforms';
 import SettingsNavItem from '../../../components/ui/SettingsNavItem';
 import { ArrowLeft, ChevronLeft, ChevronRight, User, Palette, Bell, Monitor, LogOut } from 'lucide-react';
 
@@ -132,6 +133,7 @@ export default function Settings() {
                     name={user?.display_name || user?.username || '?'}
                     size={52}
                     userId={user?.id}
+                    color={user ? hashColor(user.id) : undefined}
                   />
                   <div className="flex-1 flex flex-col gap-0.5 min-w-0">
                     <span className="text-lg font-bold text-text-primary truncate">

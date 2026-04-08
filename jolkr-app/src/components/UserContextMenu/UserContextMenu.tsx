@@ -110,6 +110,7 @@ export function UserContextMenu({
             size="md"
             status={menu.user.status}
             userId={menu.user.user_id}
+            color={menu.user.color}
           />
           <div className={s.userInfo}>
             <span className={`${s.displayName} txt-small txt-semibold`}>

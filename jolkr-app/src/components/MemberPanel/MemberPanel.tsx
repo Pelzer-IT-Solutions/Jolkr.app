@@ -1,6 +1,7 @@
 import { useState, useLayoutEffect } from 'react'
-import type { MemberGroup, MemberStatus, Member } from '../../types'
+import type { MemberGroup, Member } from '../../types'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
+import Avatar from '../Avatar'
 import s from './MemberPanel.module.css'
 
 interface Props {
@@ -54,7 +55,7 @@ export function MemberPanel({ members, visible, serverId, onMemberClick }: Props
             style={revealStyle(1 + i)}
             onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
           >
-            <MemberAvatar m={m} />
+            <Avatar url={m.avatarUrl} name={m.name} size="xs" status={m.status} userId={m.userId} color={m.color} />
             <span className={`${s.name} txt-small txt-medium txt-truncate`}>{m.name}</span>
           </button>
         ))}
@@ -72,7 +73,7 @@ export function MemberPanel({ members, visible, serverId, onMemberClick }: Props
             style={revealStyle(offlineStart + i)}
             onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
           >
-            <MemberAvatar m={m} offline />
+            <Avatar url={m.avatarUrl} name={m.name} size="xs" status={m.status} userId={m.userId} color={m.color} />
             <span className={`${s.name} txt-small txt-medium txt-truncate`}>{m.name}</span>
           </button>
         ))}
@@ -81,23 +82,3 @@ export function MemberPanel({ members, visible, serverId, onMemberClick }: Props
   )
 }
 
-function MemberAvatar({ m, offline }: { m: MemberGroup['online'][0]; offline?: boolean }) {
-  const bgStyle = offline
-    ? { background: 'var(--jolkr-neutral-dark-10)', color: 'var(--text-faint)' }
-    : { background: m.color }
-
-  return (
-    <div className={s.avatarWrap}>
-      <div className={`${s.avatarFace} hasActivityAvatarFace`} style={m.avatarUrl ? undefined : bgStyle}>
-        {m.avatarUrl
-          ? <img src={m.avatarUrl} alt="" loading="lazy" className={s.avatarImg} />
-          : m.letter}
-      </div>
-      <StatusDot status={m.status} />
-    </div>
-  )
-}
-
-function StatusDot({ status }: { status: MemberStatus }) {
-  return <span className={`${s.statusDot} ${s[status]}`} />
-}

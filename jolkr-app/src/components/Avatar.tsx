@@ -11,6 +11,7 @@ interface AvatarProps {
   status?: string | null
   userId?: string
   className?: string
+  color?: string
 }
 
 function avatarEndpoint(userId: string): string {
@@ -41,7 +42,7 @@ const statusColorClass: Record<string, string> = {
   online: s.online, idle: s.idle, dnd: s.dnd, offline: s.offline,
 }
 
-export default function Avatar({ url, name, size = 'lg', status, userId, className }: AvatarProps) {
+export default function Avatar({ url, name, size = 'lg', status, userId, className, color }: AvatarProps) {
   const imgSrc = userId && url ? avatarEndpoint(userId) : (url ?? undefined)
   const [imgError, setImgError] = useState(false)
   const prevKeyRef = useRef(userId ?? url)
@@ -74,7 +75,7 @@ export default function Avatar({ url, name, size = 'lg', status, userId, classNa
           onError={() => setImgError(true)}
         />
       ) : (
-        <div className={`${s.fallback} ${fontClass[resolved]}`}>
+        <div className={`${s.fallback} ${fontClass[resolved]}`} style={color ? { background: color } : undefined}>
           {initials}
         </div>
       )}

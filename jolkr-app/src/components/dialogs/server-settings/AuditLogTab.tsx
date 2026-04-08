@@ -5,6 +5,7 @@ import EmptyState from '../../ui/EmptyState';
 import * as api from '../../../api/client';
 import type { Server, AuditLogEntry, User } from '../../../api/types';
 import Avatar from '../../Avatar';
+import { hashColor } from '../../../adapters/transforms';
 
 export interface AuditLogTabProps {
   server: Server;
@@ -167,7 +168,7 @@ export default function AuditLogTab({ server }: AuditLogTabProps) {
 
             return (
               <div key={entry.id} className="py-3 gap-3 flex items-center border-b border-border-subtle">
-                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={entry.user_id} />
+                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={entry.user_id} color={hashColor(entry.user_id)} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1 text-sm">
                     <span className="font-medium text-text-primary">{user?.username ?? entry.user_id.slice(0, 8)}</span>

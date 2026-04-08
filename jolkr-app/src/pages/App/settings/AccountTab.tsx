@@ -3,6 +3,7 @@ import { Camera } from 'lucide-react';
 import type { User } from '../../../api/types';
 import * as api from '../../../api/client';
 import Avatar from '../../../components/Avatar';
+import { hashColor } from '../../../adapters/transforms';
 import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 import { rewriteStorageUrl } from '../../../platform/config';
@@ -152,7 +153,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); }}}
             aria-label="Upload avatar"
           >
-            <Avatar url={displayAvatarUrl} name={user?.username ?? '?'} size="2xl" status="online" />
+            <Avatar url={displayAvatarUrl} name={user?.username ?? '?'} size="2xl" status="online" color={user ? hashColor(user.id) : undefined} />
             <div className={`absolute inset-0 size-14 rounded-full bg-black/50 flex items-center justify-center transition-opacity ${avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}>
               {avatarUploading ? (
                 <div className="text-white text-xs font-medium animate-pulse">Uploading</div>

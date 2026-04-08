@@ -7,6 +7,7 @@ import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
 import { hashColor, avatarLetter } from '../../adapters/transforms'
 import { rewriteStorageUrl } from '../../platform/config'
+import Avatar from '../Avatar'
 import s from './NewDMModal.module.css'
 
 interface Props {
@@ -261,12 +262,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
 function UserRow({ user, selected, onClick }: { user: DisplayUser; selected: boolean; onClick: () => void }) {
   return (
     <button className={`${s.userRow} ${selected ? s.selected : ''}`} onClick={onClick}>
-      <div className={s.userAvatar} style={{ background: user.avatarUrl ? 'transparent' : user.color }}>
-        {user.avatarUrl
-          ? <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-          : user.letter}
-        <span className={`${s.statusDot} ${s[user.status]}`} />
-      </div>
+      <Avatar url={user.avatarUrl} name={user.name} size="sm" status={user.status} color={user.color} />
       <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <span className={`${s.userName} txt-small txt-medium txt-truncate`}>{user.name}</span>
         {user.name !== user.username && (

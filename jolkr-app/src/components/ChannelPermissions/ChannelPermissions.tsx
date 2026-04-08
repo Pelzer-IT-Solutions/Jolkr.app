@@ -5,6 +5,7 @@ import type { Channel, PermissionOverwrite, MemberDisplay } from '../../types'
 import type { Role } from '../../api/types'
 import * as P from '../../utils/permissions'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
+import Avatar from '../Avatar'
 import s from './ChannelPermissions.module.css'
 
 interface Props {
@@ -283,9 +284,7 @@ export function ChannelPermissions({ channel, roles, members, isOpen, onClose, o
                         className={s.addOption}
                         onClick={() => handleAddOverwrite('member', member.user_id)}
                       >
-                        <div className={s.memberAvatar} style={{ background: member.color }}>
-                          {member.letter}
-                        </div>
+                        <Avatar url={member?.avatar_url} name={member.display_name || member.username} size="xs" userId={member.user_id} color={member.color} />
                         <span className={`${s.addOptionName} txt-small`}>{member.display_name || member.username}</span>
                       </button>
                     ))}

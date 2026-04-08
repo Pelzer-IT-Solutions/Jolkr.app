@@ -264,7 +264,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           {/* Header: sender on left, actions on right */}
           <div className={s.dmHeader}>
             <div className={s.dmHeaderSender}>
-              <Avatar url={message.avatarUrl} name={message.author} size="xs" userId={message.author_id} className={s.dmAvatar} />
+              <Avatar url={message.avatarUrl} name={message.author} size="xs" userId={message.author_id} className={s.dmAvatar} color={message.color} />
               <span className={`${s.dmAuthor} txt-body txt-semibold`}>{message.author}</span>
               <span className={`${s.dmTimeBadge} txt-tiny`}>{message.time}</span>
             </div>
@@ -408,7 +408,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 
 /* ─── Icons ─── */
 function MessageAvatar({ message }: { message: MessageType }) {
-  return <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} />
+  return <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} color={message.color} />
 }
 
 function EmojiAddIcon() { return <SmilePlus      size={14} strokeWidth={1.4} /> }

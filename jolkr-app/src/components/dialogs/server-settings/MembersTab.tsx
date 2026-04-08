@@ -6,6 +6,7 @@ import { useServersStore } from '../../../stores/servers';
 import * as api from '../../../api/client';
 import type { Server, Role, User } from '../../../api/types';
 import Avatar from '../../Avatar';
+import { hashColor } from '../../../adapters/transforms';
 
 export interface MembersTabProps {
   server: Server;
@@ -117,7 +118,7 @@ export default function MembersTab({ server }: MembersTabProps) {
           return (
             <div key={m.id} className="px-1 py-3 flex justify-between items-center border-b border-border-subtle">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={m.user_id} />
+                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={m.user_id} color={hashColor(m.user_id)} />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm text-text-primary truncate">
                     {m.nickname ?? user?.username ?? m.user_id.slice(0, 8)}

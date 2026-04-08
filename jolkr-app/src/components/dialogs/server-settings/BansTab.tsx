@@ -5,6 +5,7 @@ import { ShieldCheck } from 'lucide-react';
 import * as api from '../../../api/client';
 import type { Server, Ban, User } from '../../../api/types';
 import Avatar from '../../Avatar';
+import { hashColor } from '../../../adapters/transforms';
 
 export interface BansTabProps {
   server: Server;
@@ -89,7 +90,7 @@ export default function BansTab({ server }: BansTabProps) {
             const bannedByUser = ban.banned_by ? banUsers[ban.banned_by] : null;
             return (
               <div key={ban.id} className="px-1 py-3 flex items-center gap-3 border-b border-border-subtle">
-                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={ban.user_id} />
+                <Avatar url={user?.avatar_url} name={user?.username ?? '?'} size={32} userId={ban.user_id} color={hashColor(ban.user_id)} />
                 <div className="flex-1 min-w-0">
                   <div className="text-text-primary text-sm font-medium truncate">
                     {user?.username ?? ban.user_id.slice(0, 8)}

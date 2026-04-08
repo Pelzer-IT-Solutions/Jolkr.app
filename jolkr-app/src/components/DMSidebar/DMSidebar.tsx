@@ -69,13 +69,13 @@ function ConvAvatar({ conv }: { conv: DMConversation }) {
   if (conv.type === 'direct') {
     const p = conv.participants[0]
     if (!p) return <Avatar url={null} name="?" size="sm" />
-    return <Avatar url={p.avatarUrl} name={p.name} size="sm" status={p.status} userId={p.userId} />
+    return <Avatar url={p.avatarUrl} name={p.name} size="sm" status={p.status} userId={p.userId} color={p.color} />
   }
   return (
     <div className={s.groupAvatars}>
       {conv.participants.slice(0, 2).map((p, i) => (
         <div key={i} className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}>
-          <Avatar url={p.avatarUrl} name={p.name} size="xs" userId={p.userId} />
+          <Avatar url={p.avatarUrl} name={p.name} size="xs" userId={p.userId} color={p.color} />
         </div>
       ))}
     </div>
