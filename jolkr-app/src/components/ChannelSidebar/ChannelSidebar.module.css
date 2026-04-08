@@ -71,7 +71,7 @@
   );
 }
 
-.category { margin-bottom: 0.125rem; }
+.category { margin-bottom: 1.5rem; }
 
 .channelList {
   display: grid;
