@@ -60,45 +60,26 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionIndex, setMentionIndex] = useState(0)
 
-  // Tracks previous values to distinguish navigation from message sends
-  const prevAnimKeyRef    = useRef<string | null>(null) // null = sentinel for first mount
-  const prevMsgCountRef   = useRef(0)
-  const navTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // 'smooth' signals the scroll effect to slide to the new message; 'auto' = skip
-  const scrollBehaviorRef = useRef<ScrollBehavior>('auto')
+  // Tracks previous animation key for reveal stagger on navigation
+  const prevAnimKeyRef = useRef<string | null>(null)
+  const navTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useLayoutEffect(() => {
-    const prevAnimKey  = prevAnimKeyRef.current
-    const prevMsgCount = prevMsgCountRef.current
-    prevAnimKeyRef.current  = animationKey
-    prevMsgCountRef.current = messages.length
+    const prevAnimKey = prevAnimKeyRef.current
+    prevAnimKeyRef.current = animationKey
 
     if (animationKey !== prevAnimKey) {
-      // Navigation (first mount, channel/server/DM switch):
-      // jump to bottom instantly before paint so the stagger reveal starts correctly
+      // Navigation (first mount, channel/server/DM switch): trigger reveal stagger
+      // column-reverse already anchors scroll at the bottom — no JS scroll needed
       if (navTimerRef.current) clearTimeout(navTimerRef.current)
-      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
       setIsRevealing(true)
       const animCount = Math.min(messages.length, CHAT_REVEAL_LIMIT)
       navTimerRef.current = setTimeout(() => {
         setIsRevealing(false)
         navTimerRef.current = null
       }, revealWindowMs(animCount))
-      return
-    }
-
-    if (messages.length > prevMsgCount) {
-      // New message sent — signal the scroll effect to slide smoothly to it
-      scrollBehaviorRef.current = 'smooth'
     }
   }, [animationKey, messages])
-
-  // Smooth scroll when a message is sent; navigation is handled in the layout effect above
-  useEffect(() => {
-    if (!listRef.current || scrollBehaviorRef.current !== 'smooth') return
-    listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
-    scrollBehaviorRef.current = 'auto'
-  }, [messages])
 
   // Cleanup nav timer on unmount
   useEffect(() => () => {
@@ -106,10 +87,12 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
   }, [])
 
 
-  // Load older messages when scrolling to top
+  // Load older messages when scrolling to top (in column-reverse, scrollTop
+  // is 0 at the bottom and goes negative when scrolling up toward older msgs)
   function handleScroll() {
     if (!listRef.current || !hasMore || !onLoadOlder) return
-    if (listRef.current.scrollTop < 100) onLoadOlder()
+    const el = listRef.current
+    if (el.scrollHeight + el.scrollTop - el.clientHeight < 100) onLoadOlder()
   }
 
   const [fmtBar, setFmtBar] = useState<{ top: number; left: number } | null>(null)
@@ -377,7 +360,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
       {/* Centered body — messages + composer */}
       <div className={s.chatBody}>
         <div className={`${s.messageList} scrollbar-thin scroll-view-y-chat`} ref={listRef} onScroll={handleScroll}>
-          <div className={s.spacer} />
           <div className={`${s.messageInner} ${isDm ? s.messageInnerDm : ''}`}>
             <div className={s.dateSeparator}>
               <div className={s.sepLine} />

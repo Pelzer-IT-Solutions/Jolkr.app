@@ -141,26 +141,8 @@
   overflow-y: auto;
   padding: 2rem 0 5.5rem; /* bottom pad keeps last msg above the composer */
   display: flex;
-  flex-direction: column;
-  /* fade in at top, fade out before the floating composer at bottom */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    black 2.5rem,
-    black calc(100% - 5rem),
-    transparent calc(100% - 1rem)
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    black 2.5rem,
-    black calc(100% - 5rem),
-    transparent calc(100% - 1rem)
-  );
+  flex-direction: column-reverse; /* native chat scroll: anchored at bottom */
 }
-
-/* ─── Pushes messages to the bottom when content is shorter than the viewport ─── */
-.spacer { flex: 1; }
 
 /* ─── Centered content column ─── */
 .messageInner {

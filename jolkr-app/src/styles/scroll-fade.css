@@ -57,14 +57,15 @@
   }
 }
 
-/* Chat list: scroll-linked top fade + fixed bottom cutout for the composer */
+/* Chat list: scroll-linked top fade + fixed bottom cutout for the composer.
+   column-reverse: progress 0% = bottom (newest), 100% = top (oldest). */
 @keyframes scroll-fade-y-chat {
-  0% {
-    --fade-y-top: 0%;
-  }
-  8%,
-  100% {
+  0%,
+  92% {
     --fade-y-top: 12%;
+  }
+  100% {
+    --fade-y-top: 0%;
   }
 }
 
