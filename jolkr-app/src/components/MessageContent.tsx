@@ -116,7 +116,7 @@ function renderCustomEmojis(html: string, emojiMap?: Map<string, string>): strin
           try { new URL(url); } catch { return match; }
           const safeUrl = escapeAttr(url);
           const safeName = escapeAttr(name);
-          return `<img src="${safeUrl}" alt=":${safeName}:" title=":${safeName}:" class="inline-block h-5 w-5 align-text-bottom" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
+          return `<img src="${safeUrl}" alt=":${safeName}:" title=":${safeName}:" style="display:inline-block;vertical-align:text-bottom;width:1.25rem;height:1.25rem" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
         }
       }
       return match;
@@ -132,7 +132,7 @@ export interface MessageContentProps {
 }
 
 const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div'];
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin'];
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin'];
 
 export default memo(function MessageContent({ content, className, emojiMap, serverId }: MessageContentProps) {
   // Build emoji map from store if serverId is provided and no explicit emojiMap

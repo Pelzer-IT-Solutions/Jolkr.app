@@ -127,6 +127,14 @@
 .reaction:hover   { background: var(--bg-dark-default); }
 .reaction.active  { background: var(--accent-muted); border-color: var(--accent-strong); }
 
+.reactionEmoji {
+  width: 1rem;
+  height: 1rem;
+  display: inline-block;
+  vertical-align: middle;
+  pointer-events: none;
+}
+
 .reactionCount { color: var(--text-muted); }
 .reaction.active .reactionCount { color: var(--accent-text); }
 

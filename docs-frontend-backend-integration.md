@@ -1,5 +1,7 @@
 # Frontend ↔ Backend Integratie Documentatie
 
+> **Versie**: 0.10.0
+>
 > Volledige mapping van alle koppelingen tussen `jolkr-app` (React/Vite/TypeScript) en `jolkr-server` (Rust/Axum).
 > Doel: nieuwe frontend 1:1 koppelen aan dezelfde backend zonder iets te missen.
 
@@ -467,6 +469,33 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 |---------|--------|------|------|----------|
 | `queryPresence` | POST | `/presence/query` | `{user_ids: string[]}` | `{presences: [{user_id, status}]}` |
 | `getAuditLog` | GET | `/servers/{id}/audit-log?action?&limit?&before?` | — | `{entries: AuditLogEntry[]}` |
+
+---
+
+### 4.23 Backend routes zonder client.ts functie
+
+De volgende backend routes bestaan maar hebben geen dedicated wrapper in `src/api/client.ts`:
+
+| Method | Path | Omschrijving |
+|--------|------|-------------|
+| GET | `/avatars/{userId}` | Publiek avatar endpoint (geen auth, direct via URL) |
+| GET | `/icons/{serverId}` | Publiek server icon endpoint (geen auth, direct via URL) |
+| GET | `/channels/{id}/messages` | Berichten ophalen (client gebruikt query params via `getMessages`) |
+| GET | `/channels/{id}/e2ee/my-key` | E2EE key ophalen (client gebruikt `getMyChannelKey` helper) |
+| GET | `/dms/{id}/messages` | DM berichten ophalen (client gebruikt `getDmMessages`) |
+| GET | `/dms/{id}/e2ee/my-key` | DM E2EE key ophalen (client gebruikt `getMyChannelKey` helper) |
+| GET | `/devices` | Apparaten ophalen (client gebruikt `getDevices`) |
+| GET | `/keys/{userId}/{deviceId}` | PreKey bundle ophalen (client gebruikt `getPreKeyBundle`) |
+| GET | `/keys/count/{deviceId}` | One-time prekey count (client controleert niet actief) |
+| GET | `/threads/{id}/messages` | Thread berichten ophalen (client gebruikt `getThreadMessages`) |
+| POST | `/auth/logout` | Sessie invalideren (client roept via `clearTokens` flow) |
+| POST | `/auth/logout-all` | Alle sessies invalideren (geen directe client wrapper) |
+| POST | `/auth/refresh` | Token refresh (client gebruikt `refreshAccessToken` intern) |
+| POST | `/channels/{id}/e2ee/distribute` | E2EE keys distribueren (client gebruikt `distributeChannelKeys`) |
+| POST | `/dms/{id}/e2ee/distribute` | DM E2EE keys distribueren (client gebruikt `distributeChannelKeys`) |
+| POST | `/presence/query` | Presence opvragen (client gebruikt `queryPresence`) |
+| POST | `/users/batch` | Meerdere users ophalen (client gebruikt parallel `getUser` calls) |
+| POST | `/webhooks/{id}/{token}` | Webhook uitvoeren (geen auth, extern aangeroepen) |
 
 ---
 
@@ -1223,4 +1252,4 @@ Deze bestanden zijn framework-onafhankelijk en kunnen (bijna) letterlijk gekopie
 
 ---
 
-> **Bijgewerkt op 2026-04-07** — gebaseerd op de huidige staat van `jolkr-app/src/` en `jolkr-server/` (inclusief migraties t/m 033).
+> **Bijgewerkt op 2026-04-08** — versie 0.10.0, gebaseerd op de huidige staat van `jolkr-app/src/` en `jolkr-server/` (inclusief migraties t/m 033).

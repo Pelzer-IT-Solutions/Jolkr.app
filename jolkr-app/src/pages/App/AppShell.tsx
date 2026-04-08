@@ -56,6 +56,7 @@ export default function AppShell() {
     canAccessSettings, canManageChannels, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
+    mentionableUsers,
   } = memos
 
   const {
@@ -191,6 +192,7 @@ export default function AppShell() {
                 onPinMessage={handlePinMessage}
                 onTogglePinPanel={() => setPinnedPanelOpen(v => !v)}
                 pinnedPanelOpen={pinnedPanelOpen}
+                mentionableUsers={mentionableUsers}
               />
 
               {pinnedPanelOpen && (

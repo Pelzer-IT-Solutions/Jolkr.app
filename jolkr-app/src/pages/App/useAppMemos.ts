@@ -151,6 +151,15 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
 
   const displayMessages = uiMessages.length > 0 ? uiMessages : fallbackMessages
 
+  // ── Mentionable users for current channel ──
+  const mentionableUsers = useMemo(() => {
+    if (dmActive) return []
+    const members = membersByServer[activeServerId] ?? []
+    return members
+      .filter(m => m.user?.username)
+      .map(m => ({ id: m.user_id, username: m.user!.username }))
+  }, [dmActive, activeServerId, membersByServer])
+
   return {
     isDark, colorPref, setColorPref,
     presenceMap, userInfo, userProfile, userMap,
@@ -159,5 +168,6 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     canAccessSettings, canManageChannels, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, fallbackMessages, displayMessages,
+    mentionableUsers,
   }
 }

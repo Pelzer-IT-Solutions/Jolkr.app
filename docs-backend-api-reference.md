@@ -1,5 +1,7 @@
 # Jolkr Backend API Reference
 
+> **Version**: 0.10.0
+>
 > Complete API reference for building frontend clients. All endpoints, WebSocket events, environment variables, database models, and architectural patterns.
 
 ---
@@ -1273,6 +1275,19 @@ ws://localhost:8080/ws
 | `APP_URL` | `http://localhost/app` | No | Frontend URL (used in reset email links) |
 | `CORS_ORIGINS` | `http://localhost:1420, http://localhost, https://tauri.localhost` | No | Comma-separated CORS origins (full URLs with protocol) |
 | `RUST_LOG` | `info` | No | Log level filter (e.g., `debug`, `info,sqlx=warn`) |
+| `ACCESS_TOKEN_EXPIRY` | — | No | Access token expiry duration |
+| `REFRESH_TOKEN_EXPIRY` | — | No | Refresh token expiry duration |
+| `ADMIN_SECRET` | — | No | Admin secret for admin-only endpoints (e.g., admin password reset) |
+| `API_HOST` | — | No | API server bind host |
+| `API_PORT` | — | No | API server bind port |
+| `API_WORKERS` | — | No | Number of API worker threads |
+| `LOCAL_IP` | — | No | Local IP address for internal networking |
+| `PUBLIC_IP` | — | No | Public IP address for external access |
+| `MEDIA_HOST` | — | No | Media server bind host |
+| `MEDIA_PORT` | — | No | Media server bind port |
+| `MINIO_URL` | — | No | MinIO/S3 internal URL (used for presigned URL generation) |
+| `REDIS_PASSWORD` | — | No | Redis authentication password |
+| `STUN_SERVER` | — | No | STUN server address for WebRTC ICE |
 
 ---
 
@@ -1309,6 +1324,16 @@ ws://localhost:8080/ws
 | `channel_read_states` | Channel read tracking | user_id, channel_id, last_read_message_id, updated_at |
 | `notification_settings` | Mute/notification prefs | id, user_id, target_type, target_id, muted, mute_until, suppress_everyone |
 | `audit_log` | Server audit trail | id, server_id, user_id, action_type, target_id, changes (JSONB), reason |
+| `attachments` | Message file attachments | id, message_id, filename, content_type, size_bytes, url |
+| `dm_attachments` | DM message file attachments | id, dm_message_id, filename, content_type, size_bytes, url |
+| `channel_permission_overwrites` | Channel permission overwrites | id, channel_id, target_type, target_id, allow, deny |
+| `dm_message_embeds` | DM message link embeds | id, dm_message_id, url, title, description, image_url |
+| `dm_pins` | Pinned DM messages | id, dm_channel_id, message_id, pinned_by |
+| `dm_reactions` | DM message reactions | id, dm_message_id, user_id, emoji |
+| `message_embeds` | Channel message link embeds | id, message_id, url, title, description, image_url |
+| `password_reset_tokens` | Password reset tokens | id, user_id, token_hash, expires_at |
+| `server_bans` | Server ban records | id, server_id, user_id, banned_by, reason |
+| `server_emojis` | Custom server emojis | id, server_id, name, image_url, uploader_id, animated |
 
 ---
 
@@ -1342,6 +1367,7 @@ All API errors follow a consistent format:
 | Status Code | Meaning |
 |-------------|---------|
 | `200` | Success with response body |
+| `201` | Created — resource successfully created |
 | `204` | Success, no response body |
 | `400` | Bad request / validation error |
 | `401` | Unauthorized — missing or invalid JWT |
@@ -1376,3 +1402,5 @@ These endpoints return cached avatar/icon images with `Cache-Control: max-age=60
 | Push Notifications | Web Push (VAPID) | Browser/device notifications |
 | Email | SMTP | Password reset emails |
 | Metrics | Prometheus | Monitoring via `/metrics` |
+| Docker: `jolkr-media` | Media server container | Voice/media SFU service |
+| Docker: `nginx` | Nginx reverse proxy | Request routing, static files, SSL termination |

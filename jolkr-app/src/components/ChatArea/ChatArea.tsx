@@ -1,15 +1,22 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Phone, Video, Files, CornerUpLeft, X,
   PanelLeftOpen, AlignLeft, Users, Smile,
   Paperclip, ImagePlay, SendHorizontal,
   Bold, Italic, Strikethrough, Code, Pin,
 } from 'lucide-react'
+import DOMPurify from 'dompurify'
 import type { Channel, DMConversation, Message as MessageType, ReplyRef } from '../../types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { Message } from '../Message/Message'
 import EmojiPickerPopup from '../EmojiPickerPopup'
+import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../../utils/emoji'
 import s from './ChatArea.module.css'
+
+export interface MentionableUser {
+  id: string
+  username: string
+}
 
 interface Props {
   channel:            Channel
@@ -33,14 +40,25 @@ interface Props {
   onPinMessage?:      (msgId: string) => void
   onTogglePinPanel?:  () => void
   pinnedPanelOpen?:   boolean
+  mentionableUsers?:  MentionableUser[]
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, onExpandSidebar, onToggleMembers, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onTogglePinPanel, pinnedPanelOpen }: Props) {
-  const listRef  = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLDivElement>(null)
+export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, onExpandSidebar, onToggleMembers, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onTogglePinPanel, pinnedPanelOpen, mentionableUsers = [] }: Props) {
+  const listRef    = useRef<HTMLDivElement>(null)
+  const inputRef   = useRef<HTMLTextAreaElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
+  const [content,     setContent]     = useState('')
   const [replyingTo,  setReplyingTo]  = useState<MessageType | null>(null)
   const [isRevealing, setIsRevealing] = useState(false)
+
+  // Emoji autocomplete state
+  const [emojiQuery, setEmojiQuery]   = useState<string | null>(null)
+  const [emojiIndex, setEmojiIndex]   = useState(0)
+
+  // Mention autocomplete state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [mentionIndex, setMentionIndex] = useState(0)
 
   // Tracks previous values to distinguish navigation from message sends
   const prevAnimKeyRef    = useRef<string | null>(null) // null = sentinel for first mount
@@ -98,75 +116,180 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
   const [showComposerEmoji, setShowComposerEmoji] = useState(false)
   const [composerEmojiPos, setComposerEmojiPos] = useState<{ top: number; left: number } | null>(null)
   const composerEmojiBtnRef = useRef<HTMLButtonElement>(null)
-  const savedRange = useRef<Range | null>(null)
+  const mentionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  // Clear reply context when channel changes
-  useEffect(() => { setReplyingTo(null) }, [channel.id])
+  // Clear reply context + content when channel changes
+  useEffect(() => { setReplyingTo(null); setContent('') }, [channel.id])
 
+  // Cleanup mention timer on unmount
+  useEffect(() => () => { if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current) }, [])
+
+  // Auto-focus textarea on channel switch
+  useEffect(() => { inputRef.current?.focus() }, [channel.id])
+
+  // ── Emoji autocomplete ──
+  const emojiMatches = useMemo(() => {
+    if (emojiQuery === null) return []
+    return searchEmojis(emojiQuery, 8)
+  }, [emojiQuery])
+
+  const getEmojiContext = useCallback(() => {
+    const el = inputRef.current
+    if (!el) return null
+    const cursor = el.selectionStart
+    const text = el.value.slice(0, cursor)
+    const lastColon = text.lastIndexOf(':')
+    if (lastColon === -1) return null
+    if (lastColon > 0 && !/\s/.test(text[lastColon - 1])) return null
+    const query = text.slice(lastColon + 1)
+    if (/\s/.test(query) || query.length < 2 || !/^[a-zA-Z0-9_]+$/.test(query)) return null
+    return { start: lastColon, query }
+  }, [])
+
+  const insertEmoji = useCallback((emoji: string) => {
+    const el = inputRef.current
+    if (!el) return
+    const cursor = el.selectionStart
+    const text = el.value
+    const before = text.slice(0, cursor)
+    const lastColon = before.lastIndexOf(':')
+    if (lastColon === -1) return
+    const after = text.slice(cursor)
+    const newContent = text.slice(0, lastColon) + emoji + ' ' + after
+    setContent(newContent)
+    setEmojiQuery(null)
+    setEmojiIndex(0)
+    setTimeout(() => {
+      const newPos = lastColon + emoji.length + 1
+      el.selectionStart = el.selectionEnd = newPos
+      el.focus()
+    }, 0)
+  }, [])
+
+  // ── Mention autocomplete ──
+  const mentionMatches = useMemo(() => {
+    if (mentionQuery === null || mentionableUsers.length === 0) return []
+    const q = mentionQuery.toLowerCase()
+    return mentionableUsers.filter((u) => u.username.toLowerCase().includes(q)).slice(0, 8)
+  }, [mentionQuery, mentionableUsers])
+
+  const getMentionContext = useCallback(() => {
+    const el = inputRef.current
+    if (!el) return null
+    const cursor = el.selectionStart
+    const text = el.value.slice(0, cursor)
+    const lastAt = text.lastIndexOf('@')
+    if (lastAt === -1) return null
+    if (lastAt > 0 && !/\s/.test(text[lastAt - 1])) return null
+    const query = text.slice(lastAt + 1)
+    if (/\s/.test(query)) return null
+    return { start: lastAt, query }
+  }, [])
+
+  const insertMention = useCallback((username: string) => {
+    const el = inputRef.current
+    if (!el) return
+    const cursor = el.selectionStart
+    const text = el.value
+    const before = text.slice(0, cursor)
+    const lastAt = before.lastIndexOf('@')
+    if (lastAt === -1) return
+    const after = text.slice(cursor)
+    const newContent = text.slice(0, lastAt) + `@${username} ` + after
+    setContent(newContent)
+    setMentionQuery(null)
+    setMentionIndex(0)
+    setTimeout(() => {
+      const newPos = lastAt + username.length + 2
+      el.selectionStart = el.selectionEnd = newPos
+      el.focus()
+    }, 0)
+  }, [])
+
+  // ── Formatting (selection-based on textarea) ──
+  const insertFormatting = useCallback((prefix: string, suffix: string) => {
+    const el = inputRef.current
+    if (!el) return
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const text = el.value
+    const selected = text.slice(start, end)
+    const newContent = text.slice(0, start) + prefix + selected + suffix + text.slice(end)
+    setContent(newContent)
+    setTimeout(() => {
+      if (selected) {
+        el.selectionStart = start + prefix.length
+        el.selectionEnd = end + prefix.length
+      } else {
+        el.selectionStart = el.selectionEnd = start + prefix.length
+      }
+      el.focus()
+    }, 0)
+  }, [])
+
+  // ── Selection-based floating format bar ──
   const checkSelection = useCallback(() => {
-    const sel = window.getSelection()
-    if (
-      !sel || sel.isCollapsed || !sel.rangeCount ||
-      !inputRef.current?.contains(sel.anchorNode)
-    ) {
+    const el = inputRef.current
+    if (!el || el.selectionStart === el.selectionEnd) {
       setFmtBar(null)
-      savedRange.current = null
       return
     }
-    const range = sel.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
-    if (rect.width === 0) { setFmtBar(null); return }
-    savedRange.current = range.cloneRange()
+    // Measure selection rect via a temporary range in the overlay
+    // For textarea we approximate position from the element's bounding rect
+    const rect = el.getBoundingClientRect()
+    // Place the bar above the textarea, centered
     setFmtBar({ top: rect.top - 6, left: rect.left + rect.width / 2 })
   }, [])
 
-  useEffect(() => {
-    document.addEventListener('selectionchange', checkSelection)
-    return () => document.removeEventListener('selectionchange', checkSelection)
-  }, [checkSelection])
+  // ── Input handler ──
+  const handleInput = useCallback((val: string) => {
+    setContent(val)
+    if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
+    mentionTimerRef.current = setTimeout(() => {
+      const emojiCtx = getEmojiContext()
+      if (emojiCtx) { setEmojiQuery(emojiCtx.query); setEmojiIndex(0) }
+      else setEmojiQuery(null)
 
-  function wrapSelection(before: string, after: string) {
-    const sel = window.getSelection()
-    const range = savedRange.current
-    if (!sel || !range || !inputRef.current) return
+      const mentionCtx = getMentionContext()
+      if (mentionCtx) { setMentionQuery(mentionCtx.query); setMentionIndex(0) }
+      else setMentionQuery(null)
+    }, 0)
+    onTyping?.()
+  }, [getEmojiContext, getMentionContext, onTyping])
 
-    const text = range.toString()
-    if (!text) return
-
-    sel.removeAllRanges()
-    sel.addRange(range)
-    range.deleteContents()
-    const node = document.createTextNode(before + text + after)
-    range.insertNode(node)
-
-    const newRange = document.createRange()
-    newRange.setStart(node, before.length)
-    newRange.setEnd(node, before.length + text.length)
-    sel.removeAllRanges()
-    sel.addRange(newRange)
-
-    setFmtBar(null)
-    savedRange.current = null
-    inputRef.current.focus()
-  }
-
+  // ── Send ──
   function send() {
-    const text = inputRef.current?.innerText.trim() ?? ''
+    const text = content.trim()
     if (!text) return
     const replyRef = replyingTo ? { id: replyingTo.id, author: replyingTo.author, text: replyingTo.content } : undefined
     onSend(text, replyRef)
-    if (inputRef.current) inputRef.current.innerText = ''
+    setContent('')
     setReplyingTo(null)
+    if (inputRef.current) inputRef.current.style.height = 'auto'
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      send()
+  // ── Keyboard ──
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Emoji autocomplete navigation
+    if (emojiQuery !== null && emojiMatches.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setEmojiIndex((i) => (i + 1) % emojiMatches.length); return }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setEmojiIndex((i) => (i - 1 + emojiMatches.length) % emojiMatches.length); return }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); insertEmoji(emojiMatches[emojiIndex].emoji); return }
+      if (e.key === 'Escape') { e.preventDefault(); setEmojiQuery(null); return }
     }
-    if (e.key === 'Escape' && replyingTo) {
-      setReplyingTo(null)
+    // Mention autocomplete navigation
+    if (mentionQuery !== null && mentionMatches.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex((i) => (i + 1) % mentionMatches.length); return }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionIndex((i) => (i - 1 + mentionMatches.length) % mentionMatches.length); return }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); insertMention(mentionMatches[mentionIndex].username); return }
+      if (e.key === 'Escape') { e.preventDefault(); setMentionQuery(null); return }
     }
+    // Formatting shortcuts
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); insertFormatting('**', '**'); return }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); insertFormatting('*', '*'); return }
+    // Send
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+    if (e.key === 'Escape' && replyingTo) setReplyingTo(null)
   }
 
   const dateLabel = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -340,6 +463,44 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
               </div>
             )}
 
+            {/* ── Mention autocomplete dropdown ── */}
+            {mentionQuery !== null && mentionMatches.length > 0 && (
+              <div role="listbox" className={s.autocomplete}>
+                <div className={s.autocompleteHeader}>Members</div>
+                {mentionMatches.map((u, i) => (
+                  <button
+                    key={u.id}
+                    role="option"
+                    aria-selected={i === mentionIndex}
+                    onClick={() => insertMention(u.username)}
+                    className={`${s.autocompleteItem} ${i === mentionIndex ? s.autocompleteItemActive : ''}`}
+                  >
+                    <span className={s.accentChar}>@</span>
+                    <span>{u.username}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* ── Emoji autocomplete dropdown ── */}
+            {emojiQuery !== null && emojiMatches.length > 0 && (
+              <div role="listbox" className={s.autocomplete}>
+                <div className={s.autocompleteHeader}>Emoji matching :{emojiQuery}</div>
+                {emojiMatches.map((entry, i) => (
+                  <button
+                    key={entry.name}
+                    role="option"
+                    aria-selected={i === emojiIndex}
+                    onClick={() => insertEmoji(entry.emoji)}
+                    className={`${s.autocompleteItem} ${i === emojiIndex ? s.autocompleteItemActive : ''}`}
+                  >
+                    <img src={emojiToImgUrl(entry.emoji)} alt={entry.emoji} className={s.autocompleteEmoji} loading="lazy" draggable={false} />
+                    <span className={s.autocompleteEmojiName}>:{entry.name}:</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* ── Composer — sits in front of reply card ── */}
             <div className={s.composer}>
               {fmtBar && (
@@ -348,16 +509,16 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
                   style={{ top: fmtBar.top, left: fmtBar.left }}
                   onMouseDown={e => e.preventDefault()}
                 >
-                  <button className={s.fmtBtn} title="Bold" onClick={() => wrapSelection('**', '**')}>
+                  <button className={s.fmtBtn} title="Bold (Ctrl+B)" onClick={() => insertFormatting('**', '**')}>
                     <Bold size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Italic" onClick={() => wrapSelection('*', '*')}>
+                  <button className={s.fmtBtn} title="Italic (Ctrl+I)" onClick={() => insertFormatting('*', '*')}>
                     <Italic size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Strikethrough" onClick={() => wrapSelection('~~', '~~')}>
+                  <button className={s.fmtBtn} title="Strikethrough" onClick={() => insertFormatting('~~', '~~')}>
                     <Strikethrough size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Code" onClick={() => wrapSelection('`', '`')}>
+                  <button className={s.fmtBtn} title="Code" onClick={() => insertFormatting('`', '`')}>
                     <Code size={14} strokeWidth={2} />
                   </button>
                 </div>
@@ -381,24 +542,41 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
                   <EmojiPickerPopup
                     position={composerEmojiPos}
                     onSelect={(emoji) => {
-                      if (inputRef.current) {
-                        inputRef.current.innerText += emoji
-                        inputRef.current.focus()
-                      }
+                      setContent((prev) => prev + emoji)
+                      inputRef.current?.focus()
                     }}
                     onClose={() => setShowComposerEmoji(false)}
                   />
                 )}
               </div>
-              <div
-                ref={inputRef}
-                className={`${s.input} txt-body`}
-                contentEditable
-                suppressContentEditableWarning
-                data-placeholder={inputPlaceholder}
-                onKeyDown={handleKeyDown}
-                onInput={() => onTyping?.()}
-              />
+              <div className={s.inputWrap}>
+                {/* Emoji image overlay — shows rendered content with pretty emoji images */}
+                {content && (
+                  <div
+                    ref={overlayRef}
+                    className={s.inputOverlay}
+                    dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
+                  />
+                )}
+                <textarea
+                  ref={inputRef}
+                  value={content}
+                  onChange={(e) => handleInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onSelect={checkSelection}
+                  placeholder={inputPlaceholder}
+                  rows={1}
+                  className={s.textarea}
+                  onInput={(e) => {
+                    const el = e.currentTarget
+                    el.style.height = 'auto'
+                    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+                  }}
+                  onScroll={(e) => {
+                    if (overlayRef.current) overlayRef.current.scrollTop = e.currentTarget.scrollTop
+                  }}
+                />
+              </div>
               <div className={s.composerActions}>
                 <button className={s.composerBtn} title="Attach file"><AttachIcon /></button>
                 <button className={s.composerBtn} title="GIF"><GifIcon /></button>
@@ -427,3 +605,15 @@ function EmojiIcon()      { return <Smile         size={15} strokeWidth={1.25} /
 function AttachIcon()     { return <Paperclip     size={15} strokeWidth={1.25} /> }
 function GifIcon()        { return <ImagePlay     size={15} strokeWidth={1.25} /> }
 function SendIcon()       { return <SendHorizontal size={15} strokeWidth={1.5} /> }
+
+/** Render input text with Unicode emojis replaced by CDN images */
+function renderInputEmojis(text: string): string {
+  if (!text) return ''
+  let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  html = html.replace(/\n/g, '<br>')
+  html = renderUnicodeEmojis(html, 20)
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['img', 'br'],
+    ALLOWED_ATTR: ['src', 'alt', 'class', 'style', 'loading', 'draggable'],
+  })
+}

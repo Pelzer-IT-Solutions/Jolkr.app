@@ -11,6 +11,7 @@ import { renderMarkdown } from '../../utils/markdown'
 import { useMenuPosition } from '../../utils/position'
 import EmojiPickerPopup from '../EmojiPickerPopup'
 import Avatar from '../Avatar'
+import { emojiToImgUrl } from '../../utils/emoji'
 import s from './Message.module.css'
 
 interface Props {
@@ -137,7 +138,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           className={`${s.reaction} ${r.me ? s.active : ''}`}
           onClick={() => onToggleReaction?.(r.emoji)}
         >
-          <span>{r.emoji}</span>
+          <img src={emojiToImgUrl(r.emoji)} alt={r.emoji} className={s.reactionEmoji} draggable={false} />
           <span className={`${s.reactionCount} txt-tiny txt-medium`}>{r.count}</span>
         </button>
       ))}
