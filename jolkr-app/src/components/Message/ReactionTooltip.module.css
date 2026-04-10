@@ -1,0 +1,106 @@
+.trigger {
+  display: inline-flex; /* Wrap the button properly */
+}
+
+.tooltip {
+  background: var(--background-tooltip, rgba(30, 30, 35, 0.98));
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-width: 140px;
+  max-width: 220px;
+  z-index: 10000;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.15s ease-out;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+}
+
+.emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.userList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.userItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+.userName {
+  font-size: 12px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.isMe {
+  color: var(--text-primary, #fff);
+  font-weight: 600;
+}
+
+/* Scrollbar styling for the user list */
+.userList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.userList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.userList::-webkit-scrollbar-thumb {
+  background: var(--border-subtle, rgba(255, 255, 255, 0.2));
+  border-radius: 2px;
+}
+
+.userList::-webkit-scrollbar-thumb:hover {
+  background: var(--border-default, rgba(255, 255, 255, 0.3));
+}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   DndContext, DragOverlay, closestCenter,
   PointerSensor, useSensor, useSensors,
@@ -11,12 +12,10 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, PanelLeftClose, ChevronDown, FolderPlus, Hash } from 'lucide-react'
-import { Menu, MenuItem, MenuSection } from '../Menu'
+import { Plus, PanelLeftClose, ChevronDown, FolderPlus, Hash, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
 import type { Server, Channel, Category, ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
-import { getSafePosition } from '../../utils/position'
 import { ThemePicker } from '../ThemePicker/ThemePicker'
 import s from './ChannelSidebar.module.css'
 
@@ -41,7 +40,7 @@ interface Props {
   onCollapse:      () => void
   collapsed:       boolean
   theme:           ServerTheme
-  onThemeChange?:  (theme: ServerTheme) => void
+  onThemeChange:   (theme: ServerTheme) => void
   isDark:          boolean
   colorPref:       ColorPreference
   onSetColorPref:  (pref: ColorPreference) => void
@@ -51,28 +50,25 @@ interface Props {
   onCreateCategory?:  (name: string) => Promise<void>
   onDeleteChannel?:   (channelId: string) => Promise<void>
   onDeleteCategory?:  (categoryId: string) => Promise<void>
-  onRenameChannel?:   (channelId: string, newName: string) => Promise<void>
-  onRenameCategory?:  (categoryId: string, newName: string) => Promise<void>
+  onArchiveChannel?:  (channelId: string) => Promise<void>
+  onOpenChannelSettings?: (channelId: string) => void
 }
 
-export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, canManageChannels, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory }: Props) {
+export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onArchiveChannel, onOpenChannelSettings }: Props) {
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
   const [localCats,          setLocalCats]           = useState<Category[]>(server.categories)
   const [localExtraChannels, setLocalExtraChannels]  = useState<Channel[]>([])
   const [activeDragId,       setActiveDragId]        = useState<string | null>(null)
   const [isRevealing,        setIsRevealing]         = useState(false)
 
-  // ── Context menus ──
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
-  const [channelContextMenu, setChannelContextMenu] = useState<{ x: number; y: number; channelId: string } | null>(null)
-  const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; categoryId: string } | null>(null)
-
-  // ── Inline creation ──
-  const [creating, setCreating] = useState<'folder' | 'channel' | null>(null)
-  const [newName, setNewName] = useState('')
+  // ── Context menu ──
+  const ctxMenuRef = useRef<HTMLDivElement>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'empty' | 'channel' | 'folder'; target?: string } | null>(null)
+  const [creating,    setCreating]    = useState<'folder' | 'channel' | null>(null)
+  const [newName,     setNewName]     = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // ── Channel rename ──
+  // ── Inline rename ──
   const [editingChannelId, setEditingChannelId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
@@ -82,22 +78,20 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [editingCatName, setEditingCatName] = useState('')
   const catRenameInputRef = useRef<HTMLInputElement>(null)
 
-  // Reset reveal + collapsed state only when switching servers
-  useLayoutEffect(() => {
-    setCollapsedCats(new Set())
-    setLocalExtraChannels([])
-  }, [server.id])
-
-  // Sync local categories whenever the server's categories change (initial fetch, WS updates, etc.)
+  // Reset all server-specific state synchronously before paint so there is
+  // no flash of the previous server's content, and simultaneously kick off
+  // the staggered reveal animation for the incoming server's channels.
   useLayoutEffect(() => {
     setLocalCats(server.categories)
+    setCollapsedCats(new Set())
+    setLocalExtraChannels([])
     setIsRevealing(true)
     const totalItems =
       server.categories.length +
       server.categories.reduce((sum, c) => sum + c.channels.length, 0)
     const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
     return () => clearTimeout(timer)
-  }, [server.id, server.categories])
+  }, [server.id])
 
   useEffect(() => {
     if (creating) setTimeout(() => inputRef.current?.focus(), 0)
@@ -139,60 +133,23 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     })
   }
 
-  const addBtnRef = useRef<HTMLButtonElement>(null)
-
-  // ── Context menu helpers ──
-  function handleContextMenu(e: React.MouseEvent) {
-    if (!canManageChannels) return
-    e.preventDefault()
-    setContextMenu({ x: e.clientX, y: e.clientY })
-  }
-
-  function handleAddClick() {
-    if (contextMenu !== null) {
-      setContextMenu(null)
-      return
-    }
-    const rect = addBtnRef.current?.getBoundingClientRect()
-    if (rect) setContextMenu({ x: rect.left, y: rect.bottom + 4 })
-  }
-
-  function handleChannelContextMenu(e: React.MouseEvent, channelId: string) {
-    if (!canManageChannels) return
-    e.preventDefault()
-    e.stopPropagation()
-    const safePos = getSafePosition(
-      { x: e.clientX, y: e.clientY },
-      { width: 184, height: 80 },
-      { width: window.innerWidth, height: window.innerHeight },
-      8
-    )
-    setChannelContextMenu({ x: safePos.x, y: safePos.y, channelId })
-  }
-
-  function handleCategoryContextMenu(e: React.MouseEvent, categoryId: string) {
-    if (!canManageChannels) return
-    e.preventDefault()
-    e.stopPropagation()
-    const safePos = getSafePosition(
-      { x: e.clientX, y: e.clientY },
-      { width: 184, height: 80 },
-      { width: window.innerWidth, height: window.innerHeight },
-      8
-    )
-    setCategoryContextMenu({ x: safePos.x, y: safePos.y, categoryId })
-  }
-
   // ── Inline rename handlers ──
   function startChannelRename(channel: Channel) {
+    if (!canManageChannels) return
     setEditingChannelId(channel.id)
     setEditingName(channel.name)
   }
 
-  async function saveChannelRename(channelId: string) {
+  function saveChannelRename(channelId: string) {
     const name = editingName.trim()
-    if (name && onRenameChannel) {
-      try { await onRenameChannel(channelId, name) } catch (e) { console.error('Rename failed:', e) }
+    if (name && name !== channelMap[channelId]?.name) {
+      // Update local state immediately for responsiveness
+      setLocalExtraChannels(prev => prev.map(ch =>
+        ch.id === channelId ? { ...ch, name } : ch
+      ))
+      // Update in the server channels map (this is a local-only change for now)
+      const ch = channelMap[channelId]
+      if (ch) ch.name = name
     }
     setEditingChannelId(null)
     setEditingName('')
@@ -204,19 +161,30 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   function handleRenameKeyDown(e: React.KeyboardEvent<HTMLInputElement>, channelId: string) {
-    if (e.key === 'Enter') { e.preventDefault(); saveChannelRename(channelId) }
-    else if (e.key === 'Escape') cancelChannelRename()
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveChannelRename(channelId)
+    } else if (e.key === 'Escape') {
+      cancelChannelRename()
+    }
   }
 
+  // ── Category rename handlers ──
   function startCategoryRename(category: Category) {
-    setEditingCategoryId(category.id)
+    if (!canManageChannels) return
+    // Find the actual category ID from server data
+    const serverCat = server.categories.find(c => c.name === category.name)
+    if (!serverCat) return
+    setEditingCategoryId(serverCat.name) // Using name as ID for now since UI Category doesn't have ID
     setEditingCatName(category.name)
   }
 
-  async function saveCategoryRename(categoryId: string) {
+  function saveCategoryRename(categoryId: string) {
     const name = editingCatName.trim()
-    if (name && onRenameCategory) {
-      try { await onRenameCategory(categoryId, name) } catch (e) { console.error('Category rename failed:', e) }
+    if (name && name !== categoryId) {
+      setLocalCats(prev => prev.map(cat =>
+        cat.name === categoryId ? { ...cat, name } : cat
+      ))
     }
     setEditingCategoryId(null)
     setEditingCatName('')
@@ -228,11 +196,53 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   function handleCatRenameKeyDown(e: React.KeyboardEvent<HTMLInputElement>, categoryId: string) {
-    if (e.key === 'Enter') { e.preventDefault(); saveCategoryRename(categoryId) }
-    else if (e.key === 'Escape') cancelCategoryRename()
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveCategoryRename(categoryId)
+    } else if (e.key === 'Escape') {
+      cancelCategoryRename()
+    }
   }
 
-  // ── Creation ──
+  const addBtnRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!contextMenu) return
+    function handleMouseDown(e: MouseEvent) {
+      if (ctxMenuRef.current && !ctxMenuRef.current.contains(e.target as Node)) setContextMenu(null)
+    }
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') setContextMenu(null) }
+    document.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [contextMenu])
+
+  // ── Context menu helpers ──
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, type: 'empty' })
+  }
+
+  function handleChannelContextMenu(e: React.MouseEvent, channelId: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, type: 'channel', target: channelId })
+  }
+
+  function handleFolderContextMenu(e: React.MouseEvent, folderName: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, type: 'folder', target: folderName })
+  }
+
+  function handleAddClick() {
+    const rect = addBtnRef.current?.getBoundingClientRect()
+    if (rect) setContextMenu({ x: rect.left, y: rect.bottom + 4, type: 'empty' })
+  }
+
   function startCreating(type: 'folder' | 'channel') {
     setContextMenu(null)
     setCreating(type)
@@ -247,7 +257,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
     // Optimistic local update
     if (creating === 'folder') {
-      setLocalCats(prev => [...prev, { id: `cat-${Date.now()}`, name, channels: [] }])
+      setLocalCats(prev => [...prev, { name, channels: [] }])
     } else {
       const tempId = `ch-${Date.now()}`
       setLocalExtraChannels(prev => [...prev, { id: tempId, name, icon: '#', desc: '', unread: 0 }])
@@ -256,9 +266,13 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     setCreating(null)
     setNewName('')
 
+    // Fire API call — on error, the next fetchChannels will correct state
     try {
-      if (creatingType === 'folder') await onCreateCategory?.(name)
-      else await onCreateChannel?.(name, 'text')
+      if (creatingType === 'folder') {
+        await onCreateCategory?.(name)
+      } else {
+        await onCreateChannel?.(name, 'text')
+      }
     } catch (err) {
       console.error('Failed to create:', err)
     }
@@ -331,7 +345,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const activeCatName = activeDragId?.startsWith('cat:') ? activeDragId.slice(4) : null
   const catIds        = localCats.map(c => `cat:${c.name}`)
 
-  // Pre-compute flat stagger indices
+  // Pre-compute flat stagger indices so each category header and each channel
+  // within that category receives a unique, monotonically-increasing index.
   let flatIdx = 0
   const catMeta = localCats.map(cat => {
     const catStaggerIdx    = flatIdx++
@@ -347,28 +362,17 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         <span className={`${s.title} txt-small txt-semibold`}>Channels</span>
         <div className={s.actions}>
           {canManageChannels && (
-            <button
-              ref={addBtnRef}
-              className={s.iconBtn}
-              title={contextMenu !== null ? 'Close menu' : 'New channel'}
-              onMouseDown={(e) => { e.stopPropagation(); handleAddClick() }}
-            >
-              <span className={contextMenu !== null ? s.rotated : ''}>
-                <Plus size={16} strokeWidth={2} />
-              </span>
-            </button>
+            <button ref={addBtnRef} className={s.iconBtn} title="New channel" onClick={handleAddClick}><PlusIcon /></button>
           )}
-          {onThemeChange && (
-            <ThemePicker
-              theme={theme}
-              onChange={onThemeChange}
-              isDark={isDark}
-              colorPref={colorPref}
-              onSetColorPref={onSetColorPref}
-            />
-          )}
+          <ThemePicker
+            theme={theme}
+            onChange={onThemeChange}
+            isDark={isDark}
+            colorPref={colorPref}
+            onSetColorPref={onSetColorPref}
+          />
           <button className={s.iconBtn} title="Collapse sidebar" onClick={onCollapse}>
-            <PanelLeftClose size={14} strokeWidth={1.5} />
+            <CollapseIcon />
           </button>
         </div>
       </div>
@@ -399,22 +403,24 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                 isRevealing={isRevealing}
                 catStaggerIdx={catMeta[i].catStaggerIdx}
                 chanStaggerStart={catMeta[i].chanStaggerStart}
+                onChannelContextMenu={handleChannelContextMenu}
+                onFolderContextMenu={handleFolderContextMenu}
+                isCatEditing={editingCategoryId === cat.name}
+                editingCatName={editingCatName}
+                onStartCatRename={() => startCategoryRename(cat)}
+                onSaveCatRename={() => saveCategoryRename(cat.name)}
+                onCatRenameKeyDown={(e) => handleCatRenameKeyDown(e, cat.name)}
+                onCatRenameChange={setEditingCatName}
+                catRenameInputRef={catRenameInputRef}
                 editingChannelId={editingChannelId}
                 editingName={editingName}
-                onStartChannelRename={canManageChannels ? startChannelRename : undefined}
+                onStartChannelRename={startChannelRename}
                 onSaveChannelRename={saveChannelRename}
                 onRenameKeyDown={handleRenameKeyDown}
                 onRenameChange={setEditingName}
                 renameInputRef={renameInputRef}
-                editingCategoryId={editingCategoryId}
-                editingCatName={editingCatName}
-                onStartCategoryRename={canManageChannels ? startCategoryRename : undefined}
-                onSaveCategoryRename={saveCategoryRename}
-                onCatRenameKeyDown={handleCatRenameKeyDown}
-                onCatRenameChange={setEditingCatName}
-                catRenameInputRef={catRenameInputRef}
-                onCategoryContextMenu={handleCategoryContextMenu}
-                onChannelContextMenu={handleChannelContextMenu}
+                onOpenChannelSettings={onOpenChannelSettings}
+                canManageChannels={canManageChannels}
               />
             ))}
           </SortableContext>
@@ -432,16 +438,18 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                     channel={ch}
                     active={ch.id === activeChannelId}
                     onClick={() => onSwitch(ch.id)}
-                    onContextMenu={(e) => handleChannelContextMenu(e, ch.id)}
                     isRevealing={isRevealing}
                     staggerIdx={uncatStaggerStart + i}
+                    onContextMenu={handleChannelContextMenu}
                     isEditing={editingChannelId === ch.id}
                     editingName={editingName}
-                    onStartRename={canManageChannels ? () => startChannelRename(ch) : undefined}
+                    onStartRename={() => startChannelRename(ch)}
                     onSaveRename={() => saveChannelRename(ch.id)}
                     onRenameKeyDown={(e) => handleRenameKeyDown(e, ch.id)}
                     onRenameChange={setEditingName}
                     renameInputRef={renameInputRef}
+                    onOpenChannelSettings={onOpenChannelSettings}
+                    canManageChannels={canManageChannels}
                   />
                 )
               })}
@@ -482,155 +490,245 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         </DragOverlay>
       </DndContext>
 
-      {/* ── "+" context menu ── */}
-      <Menu
-        isOpen={contextMenu !== null}
-        position={contextMenu ?? { x: 0, y: 0 }}
-        onClose={() => setContextMenu(null)}
-        minWidth="11.5rem"
-      >
-        <MenuSection>
-          <MenuItem
-            icon={<FolderPlus size={13} strokeWidth={1.5} />}
-            label="New Folder"
-            onClick={() => startCreating('folder')}
-          />
-          <MenuItem
-            icon={<Hash size={13} strokeWidth={1.5} />}
-            label="New Channel"
-            onClick={() => startCreating('channel')}
-          />
-        </MenuSection>
-      </Menu>
-
-      {/* ── Channel context menu ── */}
-      <Menu
-        isOpen={channelContextMenu !== null}
-        position={channelContextMenu ?? { x: 0, y: 0 }}
-        onClose={() => setChannelContextMenu(null)}
-        minWidth="11.5rem"
-      >
-        <MenuSection>
-          <MenuItem
-            label="Rename Channel"
-            onClick={() => {
-              if (channelContextMenu) startChannelRename(channelMap[channelContextMenu.channelId]!)
-              setChannelContextMenu(null)
-            }}
-          />
-          {canManageChannels && (
-            <MenuItem
-              label="Delete Channel"
-              onClick={() => {
-                if (channelContextMenu) {
-                  onDeleteChannel?.(channelContextMenu.channelId)
-                }
-                setChannelContextMenu(null)
-              }}
-              danger
-            />
-          )}
-        </MenuSection>
-      </Menu>
-
-      {/* ── Category context menu ── */}
-      <Menu
-        isOpen={categoryContextMenu !== null}
-        position={categoryContextMenu ?? { x: 0, y: 0 }}
-        onClose={() => setCategoryContextMenu(null)}
-        minWidth="11.5rem"
-      >
-        <MenuSection>
-          <MenuItem
-            label="Rename Category"
-            onClick={() => {
-              if (categoryContextMenu) {
-                const cat = localCats.find(c => c.id === categoryContextMenu.categoryId)
-                if (cat) startCategoryRename(cat)
-              }
-              setCategoryContextMenu(null)
-            }}
-          />
-          {canManageChannels && (
-            <MenuItem
-              label="Delete Category"
-              onClick={() => {
-                if (categoryContextMenu) {
-                  onDeleteCategory?.(categoryContextMenu.categoryId)
-                }
-                setCategoryContextMenu(null)
-              }}
-              danger
-            />
-          )}
-        </MenuSection>
-      </Menu>
+      {/* ── Context menu portal ── */}
+      {contextMenu && createPortal(
+          <div ref={ctxMenuRef} className={s.ctxMenu} style={{ top: contextMenu.y, left: contextMenu.x }}>
+            {contextMenu.type === 'empty' && (
+              <>
+                <button className={s.ctxItem} onClick={() => startCreating('folder')}>
+                  <FolderPlus size={13} strokeWidth={1.5} />
+                  <span>New Folder</span>
+                </button>
+                <button className={s.ctxItem} onClick={() => startCreating('channel')}>
+                  <Hash size={13} strokeWidth={1.5} />
+                  <span>New Channel</span>
+                </button>
+              </>
+            )}
+            {contextMenu.type === 'channel' && contextMenu.target && (
+              <>
+                {onOpenChannelSettings && (
+                  <button
+                    className={s.ctxItem}
+                    onClick={() => {
+                      if (contextMenu.target) {
+                        onOpenChannelSettings(contextMenu.target)
+                        setContextMenu(null)
+                      }
+                    }}
+                  >
+                    <Settings size={13} strokeWidth={1.5} />
+                    <span>Channel Settings</span>
+                  </button>
+                )}
+                <button
+                  className={s.ctxItem}
+                  onClick={() => {
+                    const channel = channelMap[contextMenu.target!]
+                    if (channel && canManageChannels) {
+                      startChannelRename(channel)
+                      setContextMenu(null)
+                    }
+                  }}
+                >
+                  <Edit3 size={13} strokeWidth={1.5} />
+                  <span>Rename Channel</span>
+                </button>
+                <button
+                  className={s.ctxItem}
+                  onClick={() => {
+                    if (onArchiveChannel && contextMenu.target) {
+                      onArchiveChannel(contextMenu.target)
+                      setContextMenu(null)
+                    }
+                  }}
+                >
+                  <Archive size={13} strokeWidth={1.5} />
+                  <span>Archive Channel</span>
+                </button>
+                <button
+                  className={`${s.ctxItem} ${s.ctxItemDanger}`}
+                  onClick={() => {
+                    if (onDeleteChannel && contextMenu.target) {
+                      if (window.confirm(`Delete this channel? This cannot be undone.`)) {
+                        onDeleteChannel(contextMenu.target)
+                        setContextMenu(null)
+                      }
+                    }
+                  }}
+                >
+                  <Trash2 size={13} strokeWidth={1.5} />
+                  <span>Delete Channel</span>
+                </button>
+              </>
+            )}
+            {contextMenu.type === 'folder' && contextMenu.target && (
+              <>
+                <button
+                  className={s.ctxItem}
+                  onClick={() => {
+                    const category = localCats.find(c => c.name === contextMenu.target)
+                    if (category && canManageChannels) {
+                      startCategoryRename(category)
+                      setContextMenu(null)
+                    }
+                  }}
+                >
+                  <Edit3 size={13} strokeWidth={1.5} />
+                  <span>Rename Folder</span>
+                </button>
+                <button
+                  className={`${s.ctxItem} ${s.ctxItemDanger}`}
+                  onClick={() => {
+                    if (onDeleteCategory && contextMenu.target) {
+                      if (window.confirm(`Delete this folder? Channels inside will not be deleted.`)) {
+                        const category = localCats.find(c => c.name === contextMenu.target)
+                        if (category) {
+                          // Find the category ID - we need to look it up from the server
+                          const serverCat = server.categories.find(c => c.name === category.name)
+                          if (serverCat) {
+                            onDeleteCategory(serverCat.name) // Using name as ID for now
+                            setContextMenu(null)
+                          }
+                        }
+                      }
+                    }
+                  }}
+                >
+                  <Trash2 size={13} strokeWidth={1.5} />
+                  <span>Delete Folder</span>
+                </button>
+              </>
+            )}
+          </div>,
+        document.body
+      )}
     </aside>
   )
 }
 
 /* ── Sortable category wrapper ── */
-function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapsed, onToggle, activeDragId: _activeDragId, isRevealing, catStaggerIdx, chanStaggerStart, editingChannelId, editingName, onStartChannelRename, onSaveChannelRename, onRenameKeyDown, onRenameChange, renameInputRef, editingCategoryId, editingCatName, onStartCategoryRename, onSaveCategoryRename, onCatRenameKeyDown, onCatRenameChange, catRenameInputRef, onCategoryContextMenu, onChannelContextMenu }: {
-  cat:                 Category
-  channelMap:          Record<string, Channel>
-  activeChannelId:     string
-  onSwitch:            (id: string) => void
-  collapsed:           boolean
-  onToggle:            () => void
-  activeDragId:        string | null
-  isRevealing:         boolean
-  catStaggerIdx:       number
-  chanStaggerStart:    number
-  editingChannelId:    string | null
-  editingName:         string
-  onStartChannelRename?: (ch: Channel) => void
-  onSaveChannelRename:  (id: string) => void
-  onRenameKeyDown:      (e: React.KeyboardEvent<HTMLInputElement>, id: string) => void
-  onRenameChange:       (value: string) => void
-  renameInputRef:       React.RefObject<HTMLInputElement | null>
-  editingCategoryId:   string | null
-  editingCatName:      string
-  onStartCategoryRename?: (cat: Category) => void
-  onSaveCategoryRename:  (id: string) => void
-  onCatRenameKeyDown:    (e: React.KeyboardEvent<HTMLInputElement>, id: string) => void
-  onCatRenameChange:     (value: string) => void
-  catRenameInputRef:     React.RefObject<HTMLInputElement | null>
-  onCategoryContextMenu?: (e: React.MouseEvent, id: string) => void
-  onChannelContextMenu?: (e: React.MouseEvent, id: string) => void
+function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapsed, onToggle, activeDragId: _activeDragId, isRevealing, catStaggerIdx, chanStaggerStart, onChannelContextMenu, onFolderContextMenu, isCatEditing, editingCatName, onStartCatRename, onSaveCatRename, onCatRenameKeyDown, onCatRenameChange, catRenameInputRef, editingChannelId, editingName, onStartChannelRename, onSaveChannelRename, onRenameKeyDown, onRenameChange, renameInputRef, onOpenChannelSettings, canManageChannels }: {
+  cat:             Category
+  channelMap:      Record<string, Channel>
+  activeChannelId: string
+  onSwitch:        (id: string) => void
+  collapsed:       boolean
+  onToggle:        () => void
+  activeDragId:    string | null
+  isRevealing:     boolean
+  catStaggerIdx:   number
+  chanStaggerStart: number
+  onChannelContextMenu?: (e: React.MouseEvent, channelId: string) => void
+  onFolderContextMenu?: (e: React.MouseEvent, folderName: string) => void
+  isCatEditing?:   boolean
+  editingCatName?: string
+  onStartCatRename?: () => void
+  onSaveCatRename?: () => void
+  onCatRenameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  onCatRenameChange?: (value: string) => void
+  catRenameInputRef?: React.RefObject<HTMLInputElement | null>
+  editingChannelId?: string | null
+  editingName?: string
+  onStartChannelRename?: (channel: Channel) => void
+  onSaveChannelRename?: (channelId: string) => void
+  onRenameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>, channelId: string) => void
+  onRenameChange?: (value: string) => void
+  renameInputRef?: React.RefObject<HTMLInputElement | null>
+  onOpenChannelSettings?: (channelId: string) => void
+  canManageChannels?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `cat:${cat.name}`,
   })
 
+  // Don't allow dragging while editing
+  if (isCatEditing) {
+    return (
+      <div
+        ref={setNodeRef}
+        className={`${s.category} ${isDragging ? s.draggingPlaceholder : ''}`}
+      >
+        {/* Category header — editing mode */}
+        <div className={`${s.categoryHeader} ${s.editing} ${isRevealing ? 'revealing' : ''}`}
+          style={isRevealing ? { '--reveal-delay': `${revealDelay(catStaggerIdx)}ms` } as React.CSSProperties : undefined}
+        >
+          <input
+            ref={catRenameInputRef}
+            className={`${s.categoryRenameInput} txt-tiny txt-semibold`}
+            value={editingCatName}
+            onChange={e => onCatRenameChange?.(e.target.value)}
+            onKeyDown={onCatRenameKeyDown}
+            onBlur={onSaveCatRename}
+            maxLength={100}
+          />
+          <ChevronDown
+            size={11} strokeWidth={2}
+            className={`${s.chevron} ${collapsed ? s.chevronCollapsed : ''}`}
+          />
+        </div>
+
+        <div className={`${s.channelList} ${collapsed ? s.channelListCollapsed : ''}`}>
+          <div className={s.channelListInner}>
+            <SortableContext items={cat.channels} strategy={verticalListSortingStrategy}>
+              {cat.channels.map((id, i) => {
+                const ch = channelMap[id]
+                if (!ch) return null
+                return (
+                  <SortableChannelRow
+                    key={ch.id}
+                    id={ch.id}
+                    channel={ch}
+                    active={ch.id === activeChannelId}
+                    onClick={() => onSwitch(ch.id)}
+                    isRevealing={isRevealing}
+                    staggerIdx={chanStaggerStart + i}
+                    onContextMenu={onChannelContextMenu}
+                    isEditing={editingChannelId === ch.id}
+                    editingName={editingName || ''}
+                    onStartRename={() => onStartChannelRename?.(ch)}
+                    onSaveRename={() => onSaveChannelRename?.(ch.id)}
+                    onRenameKeyDown={(e) => onRenameKeyDown?.(e, ch.id)}
+                    onRenameChange={onRenameChange}
+                    renameInputRef={renameInputRef}
+                    onOpenChannelSettings={onOpenChannelSettings}
+                    canManageChannels={canManageChannels}
+                  />
+                )
+              })}
+            </SortableContext>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
+    // DnD wrapper — transform/transition from dnd-kit live here, never animated by us
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`${s.category} ${isDragging ? s.draggingPlaceholder : ''}`}
     >
+      {/* Category header — receives the reveal animation */}
       <div
-        className={`${s.categoryHeader} ${isRevealing ? 'revealing' : ''} ${editingCategoryId === cat.id ? s.editing : ''}`}
+        className={`${s.categoryHeader} ${isRevealing ? 'revealing' : ''}`}
         style={isRevealing ? { '--reveal-delay': `${revealDelay(catStaggerIdx)}ms` } as React.CSSProperties : undefined}
-        onClick={editingCategoryId === cat.id ? undefined : onToggle}
-        onDoubleClick={onStartCategoryRename ? () => onStartCategoryRename(cat) : undefined}
-        onContextMenu={(e) => onCategoryContextMenu?.(e, cat.id)}
+        onClick={onToggle}
+        onDoubleClick={(e) => {
+          if (!onStartCatRename) return
+          e.preventDefault()
+          e.stopPropagation()
+          onStartCatRename()
+        }}
+        onContextMenu={(e) => {
+          if (!onFolderContextMenu) return
+          onFolderContextMenu(e, cat.name)
+        }}
         {...attributes}
         {...listeners}
       >
-        {editingCategoryId === cat.id ? (
-          <input
-            ref={catRenameInputRef}
-            className={`${s.categoryRenameInput} txt-tiny txt-semibold`}
-            value={editingCatName}
-            onChange={e => onCatRenameChange(e.target.value)}
-            onKeyDown={(e) => onCatRenameKeyDown(e, cat.id)}
-            onBlur={() => onSaveCategoryRename(cat.id)}
-            maxLength={50}
-            onClick={e => e.stopPropagation()}
-          />
-        ) : (
-          <span className={`${s.categoryName} txt-tiny txt-semibold`}>{cat.name}</span>
-        )}
+        <span className={`${s.categoryName} txt-tiny txt-semibold`}>{cat.name}</span>
         <ChevronDown
           size={11} strokeWidth={2}
           className={`${s.chevron} ${collapsed ? s.chevronCollapsed : ''}`}
@@ -650,14 +748,14 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
                   channel={ch}
                   active={ch.id === activeChannelId}
                   onClick={() => onSwitch(ch.id)}
-                  onContextMenu={(e) => onChannelContextMenu?.(e, ch.id)}
                   isRevealing={isRevealing}
                   staggerIdx={chanStaggerStart + i}
+                  onContextMenu={onChannelContextMenu}
                   isEditing={editingChannelId === ch.id}
-                  editingName={editingName}
-                  onStartRename={onStartChannelRename ? () => onStartChannelRename(ch) : undefined}
-                  onSaveRename={() => onSaveChannelRename(ch.id)}
-                  onRenameKeyDown={(e) => onRenameKeyDown(e, ch.id)}
+                  editingName={editingName || ''}
+                  onStartRename={() => onStartChannelRename?.(ch)}
+                  onSaveRename={() => onSaveChannelRename?.(ch.id)}
+                  onRenameKeyDown={(e) => onRenameKeyDown?.(e, ch.id)}
                   onRenameChange={onRenameChange}
                   renameInputRef={renameInputRef}
                 />
@@ -671,24 +769,51 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
 }
 
 /* ── Sortable channel row wrapper ── */
-function SortableChannelRow({ id, channel, active, onClick, onContextMenu, isRevealing, staggerIdx, isEditing, editingName, onStartRename, onSaveRename, onRenameKeyDown, onRenameChange, renameInputRef }: {
-  id:              string
-  channel:         Channel
-  active:          boolean
-  onClick:         () => void
-  onContextMenu?:  (e: React.MouseEvent) => void
-  isRevealing:     boolean
-  staggerIdx:      number
-  isEditing:       boolean
-  editingName:     string
-  onStartRename?:  () => void
-  onSaveRename:    () => void
-  onRenameKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  onRenameChange:  (value: string) => void
-  renameInputRef:  React.RefObject<HTMLInputElement | null>
+function SortableChannelRow({ id, channel, active, onClick, isRevealing, staggerIdx, onContextMenu, isEditing, editingName, onStartRename, onSaveRename, onRenameKeyDown, onRenameChange, renameInputRef, onOpenChannelSettings, canManageChannels }: {
+  id:               string
+  channel:          Channel
+  active:           boolean
+  onClick:          () => void
+  isRevealing:      boolean
+  staggerIdx:       number
+  onContextMenu?:   (e: React.MouseEvent, channelId: string) => void
+  isEditing?:       boolean
+  editingName?:     string
+  onStartRename?:   () => void
+  onSaveRename?:    () => void
+  onRenameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  onRenameChange?:  (value: string) => void
+  renameInputRef?:  React.RefObject<HTMLInputElement | null>
+  onOpenChannelSettings?: (channelId: string) => void
+  canManageChannels?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+
+  // Don't allow dragging while editing
+  if (isEditing) {
+    return (
+      <div ref={setNodeRef}>
+        <ChannelRow
+          channel={channel}
+          active={active}
+          onClick={onClick}
+          isRevealing={isRevealing}
+          staggerIdx={staggerIdx}
+          isEditing={isEditing}
+          editingName={editingName}
+          onSaveRename={onSaveRename}
+          onRenameKeyDown={onRenameKeyDown}
+          onRenameChange={onRenameChange}
+          renameInputRef={renameInputRef}
+          onOpenChannelSettings={onOpenChannelSettings}
+          canManageChannels={canManageChannels}
+        />
+      </div>
+    )
+  }
+
   return (
+    // DnD wrapper — transform/transition from dnd-kit live here, never animated by us
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
@@ -700,16 +825,12 @@ function SortableChannelRow({ id, channel, active, onClick, onContextMenu, isRev
         channel={channel}
         active={active}
         onClick={onClick}
-        onContextMenu={onContextMenu}
         isRevealing={isRevealing}
         staggerIdx={staggerIdx}
-        isEditing={isEditing}
-        editingName={editingName}
+        onContextMenu={onContextMenu}
         onStartRename={onStartRename}
-        onSaveRename={onSaveRename}
-        onRenameKeyDown={onRenameKeyDown}
-        onRenameChange={onRenameChange}
-        renameInputRef={renameInputRef}
+        onOpenChannelSettings={onOpenChannelSettings}
+        canManageChannels={canManageChannels}
       />
     </div>
   )
@@ -722,20 +843,22 @@ function UncategorizedZone({ children }: { children: React.ReactNode }) {
 }
 
 /* ── Presentational channel row ── */
-function ChannelRow({ channel, active, onClick, onContextMenu, isRevealing, staggerIdx, isEditing, editingName, onStartRename, onSaveRename, onRenameKeyDown, onRenameChange, renameInputRef }: {
-  channel:         Channel
-  active:          boolean
-  onClick:         () => void
-  onContextMenu?:  (e: React.MouseEvent) => void
-  isRevealing?:    boolean
-  staggerIdx?:     number
-  isEditing?:      boolean
-  editingName?:    string
-  onStartRename?:  () => void
-  onSaveRename?:   () => void
+function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx, onContextMenu, isEditing, editingName, onStartRename, onSaveRename, onRenameKeyDown, onRenameChange, renameInputRef }: {
+  channel:          Channel
+  active:           boolean
+  onClick:          () => void
+  isRevealing?:     boolean
+  staggerIdx?:      number
+  onContextMenu?:   (e: React.MouseEvent, channelId: string) => void
+  isEditing?:       boolean
+  editingName?:     string
+  onStartRename?:   () => void
+  onSaveRename?:    () => void
   onRenameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  onRenameChange?: (value: string) => void
-  renameInputRef?: React.RefObject<HTMLInputElement | null>
+  onRenameChange?:  (value: string) => void
+  renameInputRef?:  React.RefObject<HTMLInputElement | null>
+  onOpenChannelSettings?: (channelId: string) => void
+  canManageChannels?: boolean
 }) {
   const isText = channel.icon === '#'
 
@@ -763,19 +886,52 @@ function ChannelRow({ channel, active, onClick, onContextMenu, isRevealing, stag
   }
 
   return (
-    <button
+    <div
       className={`${s.channel} ${active ? s.active : ''} ${isRevealing ? 'revealing' : ''}`}
       style={isRevealing && staggerIdx != null
         ? { '--reveal-delay': `${revealDelay(staggerIdx)}ms` } as React.CSSProperties
         : undefined
       }
       onClick={onClick}
-      onDoubleClick={onStartRename}
-      onContextMenu={onContextMenu}
+      onDoubleClick={(e) => {
+        if (!onStartRename) return
+        e.preventDefault()
+        e.stopPropagation()
+        onStartRename()
+      }}
+      onContextMenu={(e) => {
+        if (!onContextMenu) return
+        onContextMenu(e, channel.id)
+      }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
     >
       <span className={s.channelIcon}>{isText ? '#' : channel.icon}</span>
       <span className={`${s.channelName} txt-small txt-medium txt-truncate`}>{channel.name}</span>
       {channel.unread > 0 && <span className={s.badge}>{channel.unread}</span>}
-    </button>
+      {onContextMenu && (
+        <button
+          className={s.channelMenuBtn}
+          title="Channel options"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onContextMenu(e, channel.id)
+          }}
+        >
+          <MoreHorizontal size={14} strokeWidth={1.5} />
+        </button>
+      )}
+    </div>
   )
 }
+
+/* ── Icons ── */
+function PlusIcon()     { return <Plus size={14} strokeWidth={1.5} /> }
+function CollapseIcon() { return <PanelLeftClose size={14} strokeWidth={1.5} /> }

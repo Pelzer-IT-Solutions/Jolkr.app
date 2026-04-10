@@ -132,11 +132,12 @@ export function transformMessage(
     }
   }
 
-  // Reactions — backend format is already compatible
+  // Reactions — map to UI format with userIds for tooltip
   const reactions: Reaction[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
     me: r.me,
+    userIds: r.user_ids ?? [],
   }))
 
   return {
@@ -216,6 +217,7 @@ export function transformServer(
       icon: channelIcon(ch.kind),
       desc: ch.topic || '',
       unread: channelUnreads?.[ch.id] ?? 0,
+      is_system: ch.is_system,
     }))
 
   return {

@@ -1,9 +1,10 @@
 export interface Channel {
-  id:     string
-  name:   string
-  icon:   string
-  desc:   string
-  unread: number
+  id:        string
+  name:      string
+  icon:      string
+  desc:      string
+  unread:    number
+  is_system?: boolean
 }
 
 export interface Category {
@@ -62,9 +63,10 @@ export interface MemberGroup {
 }
 
 export interface Reaction {
-  emoji: string
-  count: number
-  me:    boolean
+  emoji:   string
+  count:   number
+  me:      boolean
+  userIds: string[]  // List of user IDs who reacted (for tooltip)
 }
 
 export interface ReplyRef {

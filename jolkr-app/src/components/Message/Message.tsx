@@ -10,34 +10,33 @@ import { useAuthStore } from '../../stores/auth'
 import { renderMarkdown } from '../../utils/markdown'
 import { useMenuPosition } from '../../utils/position'
 import EmojiPickerPopup from '../EmojiPickerPopup'
-import Avatar from '../Avatar'
-import { emojiToImgUrl } from '../../utils/emoji'
+import { ReactionTooltip } from './ReactionTooltip'
 import s from './Message.module.css'
 
 interface Props {
-  message:          MessageType
-  onToggleReaction?: (emoji: string) => void
-  onDelete?:         () => void
-  onReply?:          () => void
-  onEdit?:           (newText: string) => void
-  onPin?:            () => void
-  isDm?:            boolean
+  message:               MessageType
+  onToggleReaction?:     (emoji: string) => void
+  onDelete?:             () => void
+  onReply?:              () => void
+  onEdit?:               (newText: string) => void
+  onPin?:                () => void
+  isDm?:                 boolean
+  serverId?:             string
+  dmParticipantNames?:   Record<string, string>
 }
 
-export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false }: Props) {
+export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false, serverId, dmParticipantNames }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
 
   // Decrypt E2EE content
-  const { displayContent, isEncrypted, decrypting } = useDecryptedContent(
+  const { displayContent, decrypting } = useDecryptedContent(
     message.content,
     message.nonce,
     message.isDm ?? isDm,
     message.channel_id,
   )
   const messageContent = displayContent || message.content
-  // Webhook messages have no nonce → isEncrypted=false, but only show badge if content exists
-  const showUnencryptedBadge = !isEncrypted && !!message.content
   const [showEmoji, setShowEmoji] = useState(false)
   const [showMore,  setShowMore]  = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -133,14 +132,20 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   const reactionsBlock = message.reactions.length > 0 ? (
     <div className={s.reactions}>
       {message.reactions.map((r, i) => (
-        <button
+        <ReactionTooltip
           key={i}
-          className={`${s.reaction} ${r.me ? s.active : ''}`}
-          onClick={() => onToggleReaction?.(r.emoji)}
+          reaction={r}
+          serverId={serverId}
+          dmParticipantNames={dmParticipantNames}
         >
-          <img src={emojiToImgUrl(r.emoji)} alt={r.emoji} className={s.reactionEmoji} draggable={false} />
-          <span className={`${s.reactionCount} txt-tiny txt-medium`}>{r.count}</span>
-        </button>
+          <button
+            className={`${s.reaction} ${r.me ? s.active : ''}`}
+            onClick={() => onToggleReaction?.(r.emoji)}
+          >
+            <span>{r.emoji}</span>
+            <span className={`${s.reactionCount} txt-tiny txt-medium`}>{r.count}</span>
+          </button>
+        </ReactionTooltip>
       ))}
     </div>
   ) : null
@@ -265,7 +270,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           {/* Header: sender on left, actions on right */}
           <div className={s.dmHeader}>
             <div className={s.dmHeaderSender}>
-              <Avatar url={message.avatarUrl} name={message.author} size="xs" userId={message.author_id} className={s.dmAvatar} color={message.color} />
+              <div className={s.dmAvatar} style={{ background: message.color }}>{message.letter}</div>
               <span className={`${s.dmAuthor} txt-body txt-semibold`}>{message.author}</span>
               <span className={`${s.dmTimeBadge} txt-tiny`}>{message.time}</span>
             </div>
@@ -398,7 +403,6 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           <span className={`${s.author} txt-body txt-semibold`}>{message.author}</span>
           <span className={`${s.time} txt-tiny`}>{message.time}</span>
           {message.is_pinned && <Pin size={11} strokeWidth={1.4} className={s.pinnedBadge} />}
-          {showUnencryptedBadge && <span className={`${s.unencryptedBadge} txt-tiny`}>unencrypted</span>}
         </div>
         {body}
       </div>
@@ -409,7 +413,26 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 
 /* ─── Icons ─── */
 function MessageAvatar({ message }: { message: MessageType }) {
-  return <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} color={message.color} />
+  const [imgErr, setImgErr] = useState(false)
+  const src = message.avatarUrl
+  if (!src || imgErr) {
+    return (
+      <div className={s.avatar} style={{ background: message.color }}>
+        {message.letter}
+      </div>
+    )
+  }
+  return (
+    <div className={s.avatar}>
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+        onError={() => setImgErr(true)}
+      />
+    </div>
+  )
 }
 
 function EmojiAddIcon() { return <SmilePlus      size={14} strokeWidth={1.4} /> }

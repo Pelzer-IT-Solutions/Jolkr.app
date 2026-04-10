@@ -22,17 +22,22 @@ export const ADD_REACTIONS = 1 << 13;
 export const MENTION_EVERYONE = 1 << 14;
 export const MANAGE_MESSAGES = 1 << 15;
 export const READ_MESSAGE_HISTORY = 1 << 16;
-
-// Extended Moderation
-export const MODERATE_MEMBERS = 1 << 28;
-export const MANAGE_WEBHOOKS = 1 << 29;
+export const USE_EXTERNAL_EMOJIS = 1 << 17;
+export const SEND_TTS_MESSAGES = 1 << 18;
 
 // Voice
 export const CONNECT = 1 << 20;
 export const SPEAK = 1 << 21;
+export const VIDEO = 1 << 22;
 export const MUTE_MEMBERS = 1 << 23;
 export const DEAFEN_MEMBERS = 1 << 24;
 export const MOVE_MEMBERS = 1 << 25;
+export const USE_VOICE_ACTIVITY = 1 << 26;
+export const PRIORITY_SPEAKER = 1 << 27;
+
+// Extended Moderation
+export const MODERATE_MEMBERS = 1 << 28;
+export const MANAGE_WEBHOOKS = 1 << 29;
 
 /** Check if a permissions bitfield has a specific permission. ADMINISTRATOR bypasses all. */
 export function hasPermission(perms: number, permission: number): boolean {
@@ -51,11 +56,16 @@ export const CHANNEL_PERMISSION_LABELS: Array<{ key: string; flag: number; label
   { key: 'mention_everyone', flag: MENTION_EVERYONE, label: 'Mention Everyone', category: 'Text' },
   { key: 'manage_messages', flag: MANAGE_MESSAGES, label: 'Manage Messages', category: 'Text' },
   { key: 'read_message_history', flag: READ_MESSAGE_HISTORY, label: 'Read Message History', category: 'Text' },
+  { key: 'use_external_emojis', flag: USE_EXTERNAL_EMOJIS, label: 'Use External Emojis', category: 'Text' },
+  { key: 'send_tts_messages', flag: SEND_TTS_MESSAGES, label: 'Send TTS Messages', category: 'Text' },
   { key: 'connect', flag: CONNECT, label: 'Connect', category: 'Voice' },
   { key: 'speak', flag: SPEAK, label: 'Speak', category: 'Voice' },
+  { key: 'video', flag: VIDEO, label: 'Video', category: 'Voice' },
   { key: 'mute_members', flag: MUTE_MEMBERS, label: 'Mute Members', category: 'Voice' },
   { key: 'deafen_members', flag: DEAFEN_MEMBERS, label: 'Deafen Members', category: 'Voice' },
   { key: 'move_members', flag: MOVE_MEMBERS, label: 'Move Members', category: 'Voice' },
+  { key: 'use_voice_activity', flag: USE_VOICE_ACTIVITY, label: 'Use Voice Activity', category: 'Voice' },
+  { key: 'priority_speaker', flag: PRIORITY_SPEAKER, label: 'Priority Speaker', category: 'Voice' },
 ];
 
 /** Named permission labels for the role editor UI */
@@ -64,20 +74,26 @@ export const PERMISSION_LABELS: Array<{ key: string; flag: number; label: string
   { key: 'manage_server', flag: MANAGE_SERVER, label: 'Manage Server', category: 'General' },
   { key: 'manage_channels', flag: MANAGE_CHANNELS, label: 'Manage Channels', category: 'General' },
   { key: 'manage_roles', flag: MANAGE_ROLES, label: 'Manage Roles', category: 'General' },
+  { key: 'manage_webhooks', flag: MANAGE_WEBHOOKS, label: 'Manage Webhooks', category: 'General' },
   { key: 'kick_members', flag: KICK_MEMBERS, label: 'Kick Members', category: 'Membership' },
   { key: 'ban_members', flag: BAN_MEMBERS, label: 'Ban Members', category: 'Membership' },
   { key: 'create_invite', flag: CREATE_INVITE, label: 'Create Invite', category: 'Membership' },
+  { key: 'change_nickname', flag: CHANGE_NICKNAME, label: 'Change Nickname', category: 'Membership' },
   { key: 'manage_nicknames', flag: MANAGE_NICKNAMES, label: 'Manage Nicknames', category: 'Membership' },
   { key: 'moderate_members', flag: MODERATE_MEMBERS, label: 'Timeout Members', category: 'Membership' },
-  { key: 'manage_webhooks', flag: MANAGE_WEBHOOKS, label: 'Manage Webhooks', category: 'General' },
   { key: 'send_messages', flag: SEND_MESSAGES, label: 'Send Messages', category: 'Text' },
   { key: 'manage_messages', flag: MANAGE_MESSAGES, label: 'Manage Messages', category: 'Text' },
   { key: 'attach_files', flag: ATTACH_FILES, label: 'Attach Files', category: 'Text' },
   { key: 'add_reactions', flag: ADD_REACTIONS, label: 'Add Reactions', category: 'Text' },
   { key: 'mention_everyone', flag: MENTION_EVERYONE, label: 'Mention Everyone', category: 'Text' },
+  { key: 'use_external_emojis', flag: USE_EXTERNAL_EMOJIS, label: 'Use External Emojis', category: 'Text' },
+  { key: 'send_tts_messages', flag: SEND_TTS_MESSAGES, label: 'Send TTS Messages', category: 'Text' },
   { key: 'connect', flag: CONNECT, label: 'Connect', category: 'Voice' },
   { key: 'speak', flag: SPEAK, label: 'Speak', category: 'Voice' },
+  { key: 'video', flag: VIDEO, label: 'Video', category: 'Voice' },
   { key: 'mute_members', flag: MUTE_MEMBERS, label: 'Mute Members', category: 'Voice' },
   { key: 'deafen_members', flag: DEAFEN_MEMBERS, label: 'Deafen Members', category: 'Voice' },
   { key: 'move_members', flag: MOVE_MEMBERS, label: 'Move Members', category: 'Voice' },
+  { key: 'use_voice_activity', flag: USE_VOICE_ACTIVITY, label: 'Use Voice Activity', category: 'Voice' },
+  { key: 'priority_speaker', flag: PRIORITY_SPEAKER, label: 'Priority Speaker', category: 'Voice' },
 ];
