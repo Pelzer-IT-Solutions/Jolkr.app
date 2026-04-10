@@ -41,7 +41,7 @@ interface Props {
   onCollapse:      () => void
   collapsed:       boolean
   theme:           ServerTheme
-  onThemeChange:   (theme: ServerTheme) => void
+  onThemeChange?:  (theme: ServerTheme) => void
   isDark:          boolean
   colorPref:       ColorPreference
   onSetColorPref:  (pref: ColorPreference) => void
@@ -358,13 +358,15 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               </span>
             </button>
           )}
-          <ThemePicker
-            theme={theme}
-            onChange={onThemeChange}
-            isDark={isDark}
-            colorPref={colorPref}
-            onSetColorPref={onSetColorPref}
-          />
+          {onThemeChange && (
+            <ThemePicker
+              theme={theme}
+              onChange={onThemeChange}
+              isDark={isDark}
+              colorPref={colorPref}
+              onSetColorPref={onSetColorPref}
+            />
+          )}
           <button className={s.iconBtn} title="Collapse sidebar" onClick={onCollapse}>
             <PanelLeftClose size={14} strokeWidth={1.5} />
           </button>

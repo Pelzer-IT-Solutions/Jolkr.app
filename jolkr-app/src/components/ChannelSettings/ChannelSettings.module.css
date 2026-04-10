@@ -1,0 +1,485 @@
+/* ── Overlay ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* ── Modal shell ── */
+.modal {
+  display: flex;
+  width: 56rem;
+  height: 36rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px var(--jolkr-neutral-dark-8),
+    0 24px 48px rgba(0, 0, 0, 0.24);
+  animation: popIn 200ms var(--ease-out-quart) both;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+/* ── Left nav ── */
+.nav {
+  display: flex;
+  flex-direction: column;
+  width: 14rem;
+  background: var(--bg-loud);
+  border-right: 1px solid var(--border-muted);
+  padding: 0.75rem;
+}
+
+.navHeader {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-strong);
+}
+
+.navGroup {
+  margin-bottom: 1rem;
+}
+
+.navGroupLabel {
+  display: block;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem 0.5rem;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  transition: background-color var(--transition), color var(--transition);
+}
+.navItem:hover {
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+}
+.navItem.active {
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+}
+
+/* ── Main content ── */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-default);
+  overflow-y: auto;
+  position: relative;
+}
+
+.closeBtn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  transition: background-color var(--transition), color var(--transition);
+  z-index: 10;
+}
+.closeBtn:hover {
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+}
+
+/* ── Section ── */
+.section {
+  padding: 2rem;
+  max-width: 48rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.sectionHeader h2 {
+  color: var(--text-strong);
+}
+
+/* ── Form fields ── */
+.field {
+  margin-bottom: 1.25rem;
+}
+
+.label {
+  display: block;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--bg-dark-muted);
+  border: 1px solid var(--border-muted);
+  color: var(--text-strong);
+  font-size: 0.9375rem;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-dark-default);
+}
+.input:disabled,
+.textarea:disabled,
+.select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 4rem;
+  font-family: inherit;
+}
+
+.fieldHint {
+  display: block;
+  color: var(--text-faint);
+  margin-top: 0.375rem;
+}
+
+/* ── Toggle row ── */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  margin-bottom: 1rem;
+}
+
+.toggleInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.toggleDesc {
+  color: var(--text-faint);
+}
+
+.toggle {
+  position: relative;
+  width: 2.5rem;
+  height: 1.5rem;
+  cursor: pointer;
+}
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggleSlider {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-dark-muted);
+  border-radius: 1rem;
+  transition: background-color var(--transition);
+}
+.toggleSlider::before {
+  content: '';
+  position: absolute;
+  height: 1.125rem;
+  width: 1.125rem;
+  left: 0.1875rem;
+  bottom: 0.1875rem;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform var(--transition);
+}
+.toggle input:checked + .toggleSlider {
+  background: var(--accent);
+}
+.toggle input:checked + .toggleSlider::before {
+  transform: translateX(1rem);
+}
+.toggle input:disabled + .toggleSlider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── System notice ── */
+.systemNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-dark-muted);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+/* ── Buttons ── */
+.saveBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  transition: opacity var(--transition);
+}
+.saveBtn:hover {
+  opacity: 0.9;
+}
+
+.addBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: opacity var(--transition);
+}
+.addBtn:hover {
+  opacity: 0.9;
+}
+
+/* ── Permissions layout ── */
+.permissionsLayout {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.overwritesList {
+  flex: 0 0 16rem;
+  background: var(--bg-dark-muted);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.overwritesHeader {
+  padding: 0.75rem 1rem;
+  background: var(--bg-loud);
+  border-bottom: 1px solid var(--border-muted);
+  color: var(--text-faint);
+}
+
+.overwriteItem {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-muted);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+}
+.overwriteItem:hover {
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+}
+.overwriteItem.selected {
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+  border-left: 2px solid var(--accent);
+}
+.overwriteItem:last-child {
+  border-bottom: none;
+}
+
+.permissionsPanel {
+  flex: 1;
+  background: var(--bg-dark-muted);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.permissionsPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg-loud);
+  border-bottom: 1px solid var(--border-muted);
+  color: var(--text-strong);
+}
+
+.deleteOverwriteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  color: oklch(55% 0.2 25);
+  transition: background-color var(--transition);
+}
+.deleteOverwriteBtn:hover {
+  background: oklch(55% 0.2 25 / 0.12);
+}
+
+.permissionsList {
+  padding: 0.5rem;
+}
+
+.permissionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.375rem;
+  color: var(--text-muted);
+  transition: background-color var(--transition);
+}
+.permissionRow:hover {
+  background: var(--bg-dark-default);
+}
+
+.permissionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-dark-default);
+  color: var(--text-muted);
+  transition: all var(--transition);
+}
+.permissionToggle:hover {
+  border-color: var(--accent);
+}
+.permissionToggle.allow {
+  background: oklch(65% 0.18 145);
+  border-color: oklch(65% 0.18 145);
+  color: #fff;
+}
+.permissionToggle.deny {
+  background: oklch(55% 0.2 25);
+  border-color: oklch(55% 0.2 25);
+  color: #fff;
+}
+.permissionToggle.neutral {
+  background: var(--bg-dark-default);
+  border-color: var(--border-muted);
+}
+.permissionToggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.neutralDash {
+  font-size: 0.875rem;
+  color: var(--text-faint);
+}
+
+/* ── Add overwrite modal ── */
+.addOverwriteModal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.addOverwriteContent {
+  background: var(--bg-default);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  width: 24rem;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+}
+
+.addOverwriteContent h3 {
+  color: var(--text-strong);
+  margin-bottom: 1rem;
+}
+
+.addOverwriteActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.cancelBtn {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--bg-dark-muted);
+  color: var(--text-muted);
+  font-weight: 600;
+  transition: background-color var(--transition), color var(--transition);
+}
+.cancelBtn:hover {
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+}
+
+.addOverwriteBtn {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  transition: opacity var(--transition);
+}
+.addOverwriteBtn:hover {
+  opacity: 0.9;
+}
+
+/* ── Reveal animation ── */
+.reveal {
+  animation: slideIn 300ms var(--ease-out-quart) both;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

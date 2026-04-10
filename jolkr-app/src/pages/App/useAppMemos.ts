@@ -104,6 +104,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const myPerms = serverPermissions[activeServerId] ?? 0
   const canAccessSettings = isServerOwner || hasPermission(myPerms, MANAGE_SERVER) || hasPermission(myPerms, MANAGE_CHANNELS) || hasPermission(myPerms, MANAGE_ROLES)
   const canManageChannels = isServerOwner || hasPermission(myPerms, MANAGE_CHANNELS)
+  const canEditTheme = isServerOwner || hasPermission(myPerms, MANAGE_SERVER)
   const ownerServerIds = useMemo(() => user ? servers.filter(s => s.owner_id === user.id).map(s => s.id) : [], [servers, user])
   const settingsServerIds = useMemo(() => servers.filter(srv => {
     if (user && srv.owner_id === user.id) return true
@@ -165,7 +166,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     presenceMap, userInfo, userProfile, userMap,
     uiServers, effectiveChannelId, currentApiMessages, uiMessages, uiDmList,
     tabbedServers, activeServer, activeRawServer, isServerOwner, myPerms,
-    canAccessSettings, canManageChannels, ownerServerIds, settingsServerIds,
+    canAccessSettings, canManageChannels, canEditTheme, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, fallbackMessages, displayMessages,
     mentionableUsers,

@@ -139,6 +139,7 @@ impl ServerRepo {
         icon_url: Option<&str>,
         banner_url: Option<&str>,
         is_public: Option<bool>,
+        theme: Option<&serde_json::Value>,
     ) -> Result<ServerRow, JolkrError> {
         let now = Utc::now();
         let server = sqlx::query_as::<_, ServerRow>(
@@ -149,7 +150,8 @@ impl ServerRepo {
                 icon_url    = COALESCE($4, icon_url),
                 banner_url  = COALESCE($5, banner_url),
                 is_public   = COALESCE($6, is_public),
-                updated_at  = $7
+                theme       = COALESCE($7, theme),
+                updated_at  = $8
             WHERE id = $1
             RETURNING *
             "#,
@@ -160,6 +162,7 @@ impl ServerRepo {
         .bind(icon_url)
         .bind(banner_url)
         .bind(is_public)
+        .bind(theme)
         .bind(now)
         .fetch_optional(pool)
         .await?

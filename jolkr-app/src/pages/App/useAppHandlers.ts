@@ -30,6 +30,9 @@ export function useAppHandlers(
 
   const { uiServers, effectiveChannelId, currentApiMessages } = memos
 
+  // ── Theme save debounce ──
+  const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // ── Muted servers (UI-only local state) ──
   const [mutedServerIds, setMutedServerIds] = useState<string[]>([])
   // Counter to trigger PinnedMessagesPanel refetch after pin/unpin
@@ -237,6 +240,11 @@ export function useAppHandlers(
 
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
+    // Debounce the API save — orb drags fire many rapid updates
+    if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current)
+    themeSaveTimer.current = setTimeout(() => {
+      api.updateServer(activeServerId, { theme } as Parameters<typeof api.updateServer>[1])
+    }, 500)
   }
 
   // ── Channel CRUD handlers ──
@@ -297,6 +305,10 @@ export function useAppHandlers(
         ? { hue: data.hue, orbs: orbsForHue(data.hue) }
         : { hue: null, orbs: [] }
       setServerThemes(prev => ({ ...prev, [server.id]: newTheme }))
+      // Persist theme to backend
+      if (data.hue != null) {
+        api.updateServer(server.id, { theme: newTheme } as Parameters<typeof api.updateServer>[1])
+      }
       setTabbedIds(prev => [...prev, server.id])
       setDmActive(false)
       setActiveServerId(server.id)

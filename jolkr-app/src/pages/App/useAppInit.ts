@@ -101,7 +101,13 @@ export function useAppInit() {
 
       const srvs = useServersStore.getState().servers
       const themes: Record<string, ServerTheme> = {}
-      srvs.forEach(srv => { themes[srv.id] = { hue: null, orbs: [] } })
+      srvs.forEach(srv => {
+        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
+          themes[srv.id] = srv.theme as unknown as ServerTheme
+        } else {
+          themes[srv.id] = { hue: null, orbs: [] }
+        }
+      })
       setServerThemes(themes)
 
       const ids = srvs.slice(0, 5).map(s => s.id)
@@ -253,6 +259,24 @@ export function useAppInit() {
     wsClient.subscribe(channelId)
     return () => { wsClient.unsubscribe(channelId) }
   }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
+  useEffect(() => {
+    setServerThemes(prev => {
+      const next = { ...prev }
+      let changed = false
+      for (const srv of servers) {
+        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
+          const t = srv.theme as unknown as ServerTheme
+          if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
+            next[srv.id] = t
+            changed = true
+          }
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [servers])
 
   return {
     navigate, location,

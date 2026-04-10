@@ -53,7 +53,7 @@ export default function AppShell() {
     userInfo, userProfile, userMap,
     uiServers, effectiveChannelId, uiDmList,
     tabbedServers, activeServer, isServerOwner, myPerms,
-    canAccessSettings, canManageChannels, ownerServerIds, settingsServerIds,
+    canAccessSettings, canManageChannels, canEditTheme, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
     mentionableUsers,
@@ -151,7 +151,7 @@ export default function AppShell() {
                   onCollapse={() => setSidebarCollapsed(true)}
                   collapsed={sidebarCollapsed}
                   theme={activeTheme}
-                  onThemeChange={handleThemeChange}
+                  onThemeChange={canEditTheme ? handleThemeChange : undefined}
                   isDark={isDark}
                   colorPref={colorPref}
                   onSetColorPref={setColorPref}

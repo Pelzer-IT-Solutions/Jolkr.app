@@ -999,6 +999,7 @@ interface Server {
   icon_url?: string | null; banner_url?: string | null;
   owner_id: string; is_public?: boolean;
   member_count?: number;
+  theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null;
   created_at?: string | null;
 }
 

@@ -21,6 +21,7 @@ export interface Server {
   description?: string | null;
   is_public?: boolean;
   member_count?: number;
+  theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null;
   created_at?: string | null;
 }
 

@@ -20,6 +20,8 @@ pub struct ServerInfo {
     pub is_public: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub member_count: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme: Option<serde_json::Value>,
 }
 
 impl From<ServerRow> for ServerInfo {
@@ -33,6 +35,7 @@ impl From<ServerRow> for ServerInfo {
             owner_id: row.owner_id,
             is_public: row.is_public,
             member_count: None,
+            theme: row.theme,
         }
     }
 }
@@ -50,6 +53,7 @@ pub struct UpdateServerRequest {
     pub icon_url: Option<String>,
     pub banner_url: Option<String>,
     pub is_public: Option<bool>,
+    pub theme: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -183,6 +187,7 @@ impl ServerService {
             req.icon_url.as_deref(),
             req.banner_url.as_deref(),
             req.is_public,
+            req.theme.as_ref(),
         )
         .await?;
 

@@ -56,6 +56,7 @@ pub struct ServerRow {
     pub banner_url: Option<String>,
     pub owner_id: Uuid,
     pub is_public: bool,
+    pub theme: Option<serde_json::Value>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

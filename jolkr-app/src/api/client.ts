@@ -314,7 +314,7 @@ export const getServers = () => request<Server[]>('/servers', {}, 'servers');
 export const createServer = (body: { name: string; description?: string }) =>
   request<Server>('/servers', { method: 'POST', body: JSON.stringify(body) }, 'server');
 export const getServer = (id: string) => request<Server>(`/servers/${id}`, {}, 'server');
-export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean }) =>
+export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean; theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null }) =>
   request<Server>(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'server');
 export const deleteServer = (id: string) =>
   request<void>(`/servers/${id}`, { method: 'DELETE' });
