@@ -300,11 +300,13 @@ export async function changePassword(currentPassword: string, newPassword: strin
 
 // Users
 export const getMe = () => request<User>('/users/@me', {}, 'user');
-export const updateMe = (body: { display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean }) =>
+export const updateMe = (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean }) =>
   request<User>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
 export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
-export const getUsersBatch = (ids: string[]) =>
-  request<User[]>('/users/batch', { method: 'POST', body: JSON.stringify({ ids }) }, 'users');
+export const getUsersBatch = async (ids: string[]): Promise<User[]> => {
+  const results = await Promise.all(ids.map((id) => getUser(id).catch(() => null)));
+  return results.filter((u): u is User => u !== null);
+};
 export const searchUsers = (q: string) => request<User[]>(`/users/search?q=${encodeURIComponent(q)}`, {}, 'users');
 
 // Servers
@@ -384,7 +386,7 @@ export const getChannels = (serverId: string) =>
 export const createChannel = (serverId: string, body: { name: string; kind: string; topic?: string; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
 export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
-export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
+export const updateChannel = (id: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
 export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>
   request<Channel[]>(`/servers/${serverId}/channels/reorder`, {
@@ -419,15 +421,12 @@ export const getMessages = (channelId: string, limit = 50, before?: string) => {
 export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string) =>
   request<Message>(`/channels/${channelId}/messages`, {
     method: 'POST',
-    // content is always encrypted — send as encrypted_content to match backend API
-    body: JSON.stringify(nonce
-      ? { encrypted_content: content, nonce, reply_to_id }
-      : { content, reply_to_id }),
+    body: JSON.stringify({ content, nonce, reply_to_id }),
   }, 'message');
-export const editMessage = (messageId: string, content: string) =>
+export const editMessage = (messageId: string, content: string, nonce?: string) =>
   request<Message>(`/messages/${messageId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, nonce }),
   }, 'message');
 export const deleteMessage = (messageId: string) =>
   request<void>(`/messages/${messageId}`, { method: 'DELETE' });
@@ -483,15 +482,12 @@ export const sendDmMessage = (dmId: string, body: {
 }) =>
   request<Message>(`/dms/${dmId}/messages`, {
     method: 'POST',
-    // content is always encrypted — send as encrypted_content to match backend API
-    body: JSON.stringify(body.nonce
-      ? { encrypted_content: body.content, nonce: body.nonce, reply_to_id: body.reply_to_id }
-      : body),
+    body: JSON.stringify(body),
   }, 'message');
-export const editDmMessage = (messageId: string, content: string) =>
+export const editDmMessage = (messageId: string, content: string, nonce?: string) =>
   request<Message>(`/dms/messages/${messageId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, nonce }),
   }, 'message');
 export const deleteDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}`, { method: 'DELETE' });
@@ -640,16 +636,6 @@ export const declineFriend = (id: string) =>
 export const blockUser = (userId: string) =>
   request<Friendship>('/friends/block', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'friendship');
 
-// Remove a friend by user ID (resolves friendship ID internally)
-export const removeFriendByUserId = async (userId: string): Promise<void> => {
-  const friendships = await getFriends();
-  const friendship = friendships.find(
-    f => f.status === 'accepted' && (f.requester_id === userId || f.addressee_id === userId)
-  );
-  if (!friendship) throw new Error('Friendship not found');
-  return declineFriend(friendship.id);
-};
-
 // General file upload (avatars, server icons, etc.)
 // When purpose is 'avatar' or 'icon', the backend converts to WebP and resizes.
 export const uploadFile = async (file: File, purpose?: 'avatar' | 'icon'): Promise<{ key: string; url: string }> => {
@@ -741,10 +727,7 @@ export const getThreadMessages = (threadId: string, limit = 50, before?: string)
 export const sendThreadMessage = (threadId: string, content: string, nonce?: string, replyToId?: string) =>
   request<Message>(`/threads/${threadId}/messages`, {
     method: 'POST',
-    // content is always encrypted — send as encrypted_content to match backend API
-    body: JSON.stringify(nonce
-      ? { encrypted_content: content, nonce, reply_to_id: replyToId }
-      : { content, reply_to_id: replyToId }),
+    body: JSON.stringify({ content, nonce, reply_to_id: replyToId }),
   }, 'message');
 
 // ── Server Emojis ──────────────────────────────────────────────────────

@@ -64,8 +64,7 @@ function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
     id: m.id as string,
     channel_id: (m.dm_channel_id as string) ?? dmId,
     author_id: m.author_id as string,
-    // content = encrypted_content from backend (all messages are E2EE)
-    content: (m.encrypted_content as string) ?? (m.content as string) ?? '',
+    content: (m.content as string) ?? '',
     nonce: (m.nonce as string) ?? null,
     created_at: m.created_at as string,
     updated_at: (m.updated_at as string) ?? null,
@@ -336,8 +335,7 @@ function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
     id: raw.id as string,
     channel_id: channelId,
     author_id: (raw.author_id as string) ?? '',
-    // content = encrypted_content from backend (all messages are E2EE)
-    content: (raw.encrypted_content as string) ?? (raw.content as string) ?? '',
+    content: (raw.content as string) ?? '',
     nonce: (raw.nonce as string) ?? null,
     created_at: (raw.created_at as string) ?? new Date().toISOString(),
     updated_at: (raw.updated_at as string) ?? null,

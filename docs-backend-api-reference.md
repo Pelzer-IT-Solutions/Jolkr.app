@@ -1,5 +1,7 @@
 # Jolkr Backend API Reference
 
+> **Version**: 0.10.0
+>
 > Complete API reference for building frontend clients. All endpoints, WebSocket events, environment variables, database models, and architectural patterns.
 
 ---
@@ -35,6 +37,7 @@
 27. [Database Models](#27-database-models)
 28. [Rate Limiting](#28-rate-limiting)
 29. [Error Responses](#29-error-responses)
+30. [Public Endpoints (No Auth)](#30-public-endpoints-no-auth)
 
 ---
 
@@ -44,6 +47,7 @@
 - **Auth header**: `Authorization: Bearer <access_token>` (marked as "JWT" below)
 - **Content-Type**: `application/json` unless noted otherwise
 - **UUIDs**: All IDs are UUID v4
+- **E2EE**: The `encrypted_content` column has been removed. Encrypted messages use the `content` field (base64-encoded ciphertext) with a non-null `nonce` to indicate encryption
 
 ---
 
@@ -184,7 +188,7 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 
 ### POST `/api/users/batch`
 ```json
-// Request
+// Request — max 100 user IDs per request
 { "ids": ["uuid1", "uuid2", "uuid3"] }
 
 // Response 200
@@ -192,7 +196,7 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 ```
 
 ### GET `/api/users/search?q=john`
-- **Query param**: `q` (min 3 characters, exact match on username/email)
+- **Query param**: `q` (min 3 characters, exact match on username only — email excluded for privacy)
 - Returns max 3 results
 ```json
 { "users": [ { "id": "...", "username": "...", ... } ] }
@@ -234,6 +238,8 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 - `"accepted"` — mutual friendship
 - `"blocked"` — user blocked
 
+> **Note**: Enforced via CHECK constraint on `friendships.status` — only these three values are allowed.
+
 ---
 
 ## 4. Direct Messages (DMs)
@@ -267,15 +273,15 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 | PATCH | `/api/dms/messages/:id` | JWT | Edit DM message |
 | DELETE | `/api/dms/messages/:id` | JWT | Delete DM message |
 
-**Query params for GET messages**: `limit` (default 50), `before` (UUID cursor)
+**Query params for GET messages**: `limit` (default 50), `before` (ISO 8601 datetime cursor)
 
 ### POST `/api/dms/:dm_id/messages`
 ```json
 // Plaintext
 { "content": "Hello!" }
 
-// Encrypted (E2EE)
-{ "encrypted_content": "<base64-bytes>", "nonce": "<base64-bytes>" }
+// Encrypted (E2EE) — content holds base64-encoded ciphertext, nonce indicates encryption
+{ "content": "<base64-ciphertext>", "nonce": "<base64-nonce>" }
 ```
 
 ### DM Reactions
@@ -308,6 +314,8 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 ```json
 { "message_id": "uuid-of-last-read-message" }
 ```
+
+Broadcasts `DmMessagesRead` WS event to all DM members.
 
 ### DM Calls
 
@@ -361,12 +369,10 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 
 ### POST `/api/servers`
 ```json
-// Request
+// Request — only name is required; icon/banner set via separate upload + PATCH
 {
   "name": "My Server",
-  "description": "A cool server",
-  "icon_url": "https://...",
-  "banner_url": "https://..."
+  "description": "A cool server"
 }
 
 // Response 200
@@ -375,12 +381,11 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
     "id": "uuid",
     "name": "My Server",
     "description": "A cool server",
-    "icon_url": "https://...",
-    "banner_url": "https://...",
+    "icon_url": null,
+    "banner_url": null,
     "owner_id": "uuid",
-    "discoverable": false,
-    "created_at": "...",
-    "updated_at": "..."
+    "is_public": false,
+    "member_count": 1
   }
 }
 ```
@@ -393,7 +398,7 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
   "description": "Updated description",
   "icon_url": "https://...",
   "banner_url": "https://...",
-  "discoverable": true
+  "is_public": true
 }
 ```
 
@@ -404,8 +409,9 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 
 ### PUT `/api/users/@me/servers/reorder`
 ```json
-{ "server_positions": [{ "id": "uuid", "position": 0 }, { "id": "uuid", "position": 1 }] }
+{ "server_ids": ["uuid-1", "uuid-2", "uuid-3"] }
 ```
+Order of `server_ids` determines display position (index = position).
 
 ### Server Members
 
@@ -417,13 +423,19 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 | PATCH | `/api/servers/:id/members/:user_id/nickname` | JWT | Set member nickname |
 | POST | `/api/servers/:id/members/:user_id/timeout` | JWT | Timeout member |
 | DELETE | `/api/servers/:id/members/:user_id/timeout` | JWT | Remove timeout |
+| POST | `/api/servers/:id/read-all` | JWT | Mark all channels as read |
 
 **Query params for GET members**: `limit`, `offset`
 
+### POST `/api/servers/:id/read-all`
+Marks all channels in the server as read for the current user. Broadcasts `ServerMessagesRead` WS event.
+No request body needed.
+
 ### POST `/api/servers/:id/members/:user_id/timeout`
 ```json
-{ "seconds": 3600, "reason": "Spamming" }
+{ "timeout_until": "2026-04-08T12:00:00Z" }
 ```
+Must be a future datetime, max 28 days from now.
 
 ### PATCH `/api/servers/:id/members/:user_id/nickname`
 ```json
@@ -462,19 +474,15 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 ```json
 {
   "name": "general",
-  "topic": "General discussion",
   "kind": "text",
-  "category_id": "uuid-or-null",
-  "is_nsfw": false,
-  "slowmode_seconds": 0
+  "category_id": "uuid-or-null"
 }
 ```
+> Note: `topic`, `is_nsfw`, `slowmode_seconds` are set via PATCH after creation.
 
 ### Channel Types (`kind`)
 - `"text"` — Standard text channel
 - `"voice"` — Voice channel
-- `"announcement"` — Announcement channel
-- `"category"` — Category container
 
 ### Channel Response
 ```json
@@ -489,9 +497,7 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
     "position": 0,
     "is_nsfw": false,
     "slowmode_seconds": 0,
-    "e2ee_key_generation": 0,
-    "created_at": "...",
-    "updated_at": "..."
+    "e2ee_key_generation": 0
   }
 }
 ```
@@ -500,6 +506,18 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 ```json
 { "channel_positions": [{ "id": "uuid", "position": 0 }, { "id": "uuid", "position": 1 }] }
 ```
+
+### Channel Read State
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/channels/:id/read` | JWT | Mark channel as read |
+
+```json
+{ "message_id": "uuid-of-last-read-message" }
+```
+
+Broadcasts `ChannelMessagesRead` WS event to all server members.
 
 ### Channel Permission Overwrites
 
@@ -552,7 +570,7 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 | DELETE | `/api/messages/:id` | JWT | Delete message |
 
 ### GET `/api/channels/:id/messages`
-**Query params**: `limit` (default 50), `before` (UUID), `after` (UUID)
+**Query params**: `limit` (default 50), `before` (ISO 8601 datetime cursor)
 
 ### POST `/api/channels/:id/messages`
 ```json
@@ -562,11 +580,17 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 // Reply to another message
 { "content": "I agree!", "reply_to_id": "uuid-of-original-message" }
 
-// Message in thread
-{ "content": "Thread reply", "thread_id": "uuid-of-thread" }
+// Encrypted message — content holds base64-encoded ciphertext, nonce indicates encryption
+{ "content": "<base64-ciphertext>", "nonce": "<base64-nonce>" }
+```
 
-// Encrypted message
-{ "encrypted_content": "<base64-bytes>", "nonce": "<base64-bytes>" }
+### PATCH `/api/messages/:id` — Edit Message
+```json
+// Plaintext edit
+{ "content": "Updated text" }
+
+// Encrypted edit — include updated nonce
+{ "content": "<base64-ciphertext>", "nonce": "<base64-nonce>" }
 ```
 
 ### Message Response
@@ -577,21 +601,27 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
     "channel_id": "uuid",
     "author_id": "uuid",
     "content": "Hello!",
-    "encrypted_content": null,
     "nonce": null,
-    "reply_to_id": null,
-    "thread_id": null,
-    "webhook_id": null,
     "is_edited": false,
     "is_pinned": false,
-    "created_at": "...",
-    "updated_at": "..."
+    "reply_to_id": null,
+    "thread_id": null,
+    "thread_reply_count": null,
+    "webhook_id": null,
+    "webhook_name": null,
+    "webhook_avatar": null,
+    "attachments": [],
+    "reactions": [],
+    "embeds": [],
+    "poll": null,
+    "created_at": "2026-04-01T00:00:00Z",
+    "updated_at": "2026-04-01T00:00:00Z"
   }
 }
 ```
 
-### GET `/api/channels/:id/messages/search?q=keyword`
-**Query params**: `q` (search term), `limit`, `offset`
+### GET `/api/channels/:id/messages/search`
+**Query params**: `q` (search term), `from` (username), `has` (attachment type), `before` (datetime), `after` (datetime), `limit`
 ```json
 { "messages": [...], "total": 15 }
 ```
@@ -618,17 +648,18 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 
 ### POST `/api/channels/:channel_id/threads`
 ```json
-// Request
-{ "name": "Discussion about feature X" }
+// Request — message_id is required (starts thread from that message)
+{ "message_id": "uuid-of-starter-message", "name": "Discussion about feature X" }
 
 // Response 200
 {
   "thread": {
     "id": "uuid",
     "channel_id": "uuid",
-    "starter_msg_id": "uuid|null",
+    "starter_msg_id": "uuid",
     "name": "Discussion about feature X",
     "is_archived": false,
+    "message_count": 0,
     "created_at": "...",
     "updated_at": "..."
   },
@@ -677,8 +708,7 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
     "color": 3447003,
     "position": 1,
     "permissions": 1099511627775,
-    "is_default": false,
-    "created_at": "..."
+    "is_default": false
   }
 }
 ```
@@ -732,7 +762,7 @@ Permissions are stored as a 64-bit integer (bitfield). Each bit represents a per
 // Request — all fields optional
 {
   "max_uses": 10,
-  "expires_in_hours": 24
+  "max_age_seconds": 86400
 }
 
 // Response 200
@@ -744,8 +774,7 @@ Permissions are stored as a 64-bit integer (bitfield). Each bit represents a per
     "code": "abc123XYZ",
     "max_uses": 10,
     "use_count": 0,
-    "expires_at": "2026-04-01T00:00:00Z",
-    "created_at": "..."
+    "expires_at": "2026-04-01T00:00:00Z"
   }
 }
 ```
@@ -769,10 +798,11 @@ No request body needed. Returns the invite info on success.
 // Add reaction
 { "emoji": "🔥" }
 
-// List reactions response
+// List reactions response — raw rows (client aggregates into count/me format)
 {
   "reactions": [
-    { "emoji": "🔥", "count": 3, "users": ["uuid1", "uuid2", "uuid3"] }
+    { "id": "uuid", "message_id": "uuid", "user_id": "uuid1", "emoji": "🔥", "created_at": "..." },
+    { "id": "uuid", "message_id": "uuid", "user_id": "uuid2", "emoji": "🔥", "created_at": "..." }
   ]
 }
 ```
@@ -812,7 +842,9 @@ Same pattern at `/api/dms/:dm_id/pins/...` (see section 4).
 {
   "question": "What should we build next?",
   "options": ["Feature A", "Feature B", "Feature C"],
-  "duration_seconds": 86400
+  "multi_select": false,
+  "anonymous": false,
+  "expires_at": "2026-04-08T12:00:00Z"
 }
 
 // Response 200
@@ -820,13 +852,19 @@ Same pattern at `/api/dms/:dm_id/pins/...` (see section 4).
   "poll": {
     "id": "uuid",
     "message_id": "uuid",
+    "channel_id": "uuid",
     "question": "What should we build next?",
+    "multi_select": false,
+    "anonymous": false,
+    "expires_at": "2026-04-08T12:00:00Z",
     "options": [
-      { "id": "uuid", "text": "Feature A", "position": 0, "votes": 0 },
-      { "id": "uuid", "text": "Feature B", "position": 1, "votes": 0 },
-      { "id": "uuid", "text": "Feature C", "position": 2, "votes": 0 }
+      { "id": "uuid", "text": "Feature A", "position": 0 },
+      { "id": "uuid", "text": "Feature B", "position": 1 },
+      { "id": "uuid", "text": "Feature C", "position": 2 }
     ],
-    "duration_seconds": 86400,
+    "votes": {},
+    "my_votes": [],
+    "total_votes": 0,
     "created_at": "..."
   },
   "message": { ... }
@@ -858,8 +896,9 @@ Same pattern at `/api/dms/:dm_id/pins/...` (see section 4).
 
 ### POST `/api/webhooks/:id/:token` — Execute (no auth needed)
 ```json
-{ "content": "New commit pushed!", "embeds": [] }
+{ "content": "New commit pushed!", "username": "GitHub Bot", "avatar_url": "https://..." }
 ```
+> `username` and `avatar_url` are optional overrides for the webhook's defaults.
 
 **Rate limit**: 5 executions per second per webhook (distributed via Redis).
 
@@ -883,9 +922,9 @@ Multipart form data with fields: `name` (string), `file` (image file).
     "id": "uuid",
     "server_id": "uuid",
     "name": "pepe_happy",
-    "url": "https://...",
-    "creator_id": "uuid",
-    "created_at": "..."
+    "image_url": "https://...",
+    "uploader_id": "uuid",
+    "animated": false
   }
 }
 ```
@@ -1126,6 +1165,11 @@ Returns JSON or HTML (based on Accept header) with database connection pool stat
 ### GET `/metrics`
 Returns OpenMetrics/Prometheus format (`text/plain`).
 
+**Access restricted** to internal networks only (nginx-enforced):
+- `127.0.0.1` (localhost)
+- `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` (private ranges)
+- All other IPs receive `403 Forbidden`
+
 ---
 
 ## 25. WebSocket Gateway
@@ -1173,7 +1217,7 @@ ws://localhost:8080/ws
 | `ChannelDelete` | `{ channel_id, server_id }` | Channel deleted |
 | `MemberJoin` | `{ server_id, user_id }` | User joined server |
 | `MemberLeave` | `{ server_id, user_id }` | User left/kicked from server |
-| `MemberUpdate` | `{ server_id, user_id, timeout_until? }` | Member updated (timeout, etc.) |
+| `MemberUpdate` | `{ server_id, user_id, timeout_until? }` | Member updated (timeout changed) |
 | `ServerUpdate` | `{ server: ServerInfo }` | Server settings updated |
 | `ServerDelete` | `{ server_id }` | Server deleted |
 | `ReactionUpdate` | `{ channel_id, message_id, reactions }` | Reactions changed on message |
@@ -1183,6 +1227,11 @@ ws://localhost:8080/ws
 | `DmCallReject` | `{ dm_id, user_id }` | Call rejected |
 | `DmCallEnd` | `{ dm_id, user_id }` | Call ended |
 | `UserUpdate` | `{ user_id, status?, display_name?, avatar_url?, bio? }` | User profile updated |
+| `CategoryCreate` | `{ category: CategoryInfo }` | New category created |
+| `CategoryUpdate` | `{ category: CategoryInfo }` | Category updated |
+| `CategoryDelete` | `{ category_id, server_id }` | Category deleted |
+| `ChannelMessagesRead` | `{ channel_id, user_id, message_id }` | Channel read receipt |
+| `ServerMessagesRead` | `{ server_id, user_id }` | All server channels marked read |
 | `Error` | `{ message: string }` | Error occurred |
 
 ### WebSocket Message Format
@@ -1215,17 +1264,30 @@ ws://localhost:8080/ws
 | `MINIO_SECRET_KEY` | `jolkr_dev_secret` | Yes | S3/MinIO secret key |
 | `MINIO_BUCKET` | `jolkr` | Yes | S3/MinIO bucket name |
 | `NATS_URL` | `nats://localhost:4222` | Yes | NATS event bus URL |
-| `NATS_USER` | — | No | NATS auth username |
-| `NATS_PASSWORD` | — | No | NATS auth password |
+| `NATS_USER` | — | No | NATS auth username (optional, but recommended for production) |
+| `NATS_PASSWORD` | — | No | NATS auth password (optional, but recommended for production) |
 | `VAPID_PRIVATE_KEY` | — | No | Web Push VAPID private key |
-| `VAPID_PUBLIC_KEY` | — | No | Web Push VAPID public key |
+| `VAPID_PUBLIC_KEY` | — | No | Web Push VAPID public key (exposed via `/api/push/vapid-key`) |
 | `VAPID_SUBJECT` | `mailto:admin@jolkr.app` | No | Web Push subject |
 | `SMTP_HOST` | — | No | SMTP server for password reset emails |
 | `SMTP_PORT` | `1025` | No | SMTP port |
 | `SMTP_FROM` | `noreply@jolkr.app` | No | Email sender address |
 | `APP_URL` | `http://localhost/app` | No | Frontend URL (used in reset email links) |
-| `CORS_ORIGINS` | `localhost:1420, localhost, tauri.localhost` | No | Comma-separated CORS origins |
+| `CORS_ORIGINS` | `http://localhost:1420, http://localhost, https://tauri.localhost` | No | Comma-separated CORS origins (full URLs with protocol) |
 | `RUST_LOG` | `info` | No | Log level filter (e.g., `debug`, `info,sqlx=warn`) |
+| `ACCESS_TOKEN_EXPIRY` | — | No | Access token expiry duration |
+| `REFRESH_TOKEN_EXPIRY` | — | No | Refresh token expiry duration |
+| `ADMIN_SECRET` | — | No | Admin secret for admin-only endpoints (e.g., admin password reset) |
+| `API_HOST` | — | No | API server bind host |
+| `API_PORT` | — | No | API server bind port |
+| `API_WORKERS` | — | No | Number of API worker threads |
+| `LOCAL_IP` | — | No | Local IP address for internal networking |
+| `PUBLIC_IP` | — | No | Public IP address for external access |
+| `MEDIA_HOST` | — | No | Media server bind host |
+| `MEDIA_PORT` | — | No | Media server bind port |
+| `MINIO_URL` | — | No | MinIO/S3 internal URL (used for presigned URL generation) |
+| `REDIS_PASSWORD` | — | No | Redis authentication password |
+| `STUN_SERVER` | — | No | STUN server address for WebRTC ICE |
 
 ---
 
@@ -1236,17 +1298,17 @@ ws://localhost:8080/ws
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
 | `users` | User accounts | id, email, username, display_name, avatar_url, status, bio, password_hash, show_read_receipts |
-| `servers` | Server/guild entities | id, name, description, icon_url, banner_url, owner_id, discoverable |
+| `servers` | Server/guild entities | id, name, description, icon_url, banner_url, owner_id, is_public |
 | `channels` | Server channels | id, server_id, category_id, name, topic, kind, position, is_nsfw, slowmode_seconds, e2ee_key_generation |
 | `categories` | Channel categories | id, server_id, name, position |
-| `messages` | Channel messages | id, channel_id, author_id, content, encrypted_content, nonce, reply_to_id, thread_id, webhook_id, is_edited, is_pinned |
+| `messages` | Channel messages | id, channel_id, author_id, content, nonce, reply_to_id, thread_id, webhook_id, is_edited, is_pinned |
 | `members` | Server membership | id, server_id, user_id, nickname, joined_at |
 | `roles` | Server roles | id, server_id, name, color, position, permissions (BIGINT), is_default |
 | `member_roles` | Role assignments | member_id, role_id |
 | `threads` | Channel threads | id, channel_id, starter_msg_id, name, is_archived |
 | `dm_channels` | DM channels | id, is_group, name |
 | `dm_members` | DM membership | id, dm_channel_id, user_id |
-| `dm_messages` | DM messages | id, dm_channel_id, author_id, content, encrypted_content, nonce, is_edited |
+| `dm_messages` | DM messages | id, dm_channel_id, author_id, content, nonce, is_edited |
 | `friendships` | Friend relationships | id, requester_id, addressee_id, status (pending/accepted/blocked) |
 | `devices` | Registered devices | id, user_id, device_name, device_type, push_token |
 | `sessions` | Auth sessions | id, user_id, device_id, refresh_token_hash, expires_at |
@@ -1254,27 +1316,38 @@ ws://localhost:8080/ws
 | `channel_encryption_keys` | Channel E2EE keys | id, channel_id, recipient_user_id, encrypted_key, nonce, key_generation |
 | `reactions` | Message reactions | id, message_id, user_id, emoji |
 | `pins` | Pinned messages | id, channel_id, message_id, pinned_by |
-| `webhooks` | Channel webhooks | id, channel_id, server_id, creator_id, name, avatar_url, token |
+| `webhooks` | Channel webhooks | id, channel_id, server_id, creator_id, name, avatar_url, token_hash (SHA-256) |
 | `invites` | Server invites | id, server_id, creator_id, code, max_uses, use_count, expires_at |
 | `polls` | Channel polls | id, message_id, question, duration_seconds |
 | `poll_options` | Poll options | id, poll_id, text, position |
 | `poll_votes` | Poll votes | id, poll_id, option_id, user_id |
+| `channel_read_states` | Channel read tracking | user_id, channel_id, last_read_message_id, updated_at |
 | `notification_settings` | Mute/notification prefs | id, user_id, target_type, target_id, muted, mute_until, suppress_everyone |
 | `audit_log` | Server audit trail | id, server_id, user_id, action_type, target_id, changes (JSONB), reason |
+| `attachments` | Message file attachments | id, message_id, filename, content_type, size_bytes, url |
+| `dm_attachments` | DM message file attachments | id, dm_message_id, filename, content_type, size_bytes, url |
+| `channel_permission_overwrites` | Channel permission overwrites | id, channel_id, target_type, target_id, allow, deny |
+| `dm_message_embeds` | DM message link embeds | id, dm_message_id, url, title, description, image_url |
+| `dm_pins` | Pinned DM messages | id, dm_channel_id, message_id, pinned_by |
+| `dm_reactions` | DM message reactions | id, dm_message_id, user_id, emoji |
+| `message_embeds` | Channel message link embeds | id, message_id, url, title, description, image_url |
+| `password_reset_tokens` | Password reset tokens | id, user_id, token_hash, expires_at |
+| `server_bans` | Server ban records | id, server_id, user_id, banned_by, reason |
+| `server_emojis` | Custom server emojis | id, server_id, name, image_url, uploader_id, animated |
 
 ---
 
 ## 28. Rate Limiting
 
-Distributed rate limiting via Redis with local DashMap fallback.
+Distributed rate limiting via Redis with local DashMap fallback. All use token bucket algorithm.
 
-| Endpoint Group | Limit | Window | Notes |
-|----------------|-------|--------|-------|
-| Auth routes | 2 req | 5 sec | Strict — prevents brute force |
-| General API | 30 req | 60 sec | Default for all authenticated routes |
-| Webhook execution | 10 req | 20 sec | Per webhook |
-| WebSocket messages | 30 msg/sec | Token bucket | Burst capacity = 30 |
-| Presence query | 100 user IDs | Per request | Hard limit on batch size |
+| Endpoint Group | Burst (max tokens) | Refill rate | Notes |
+|----------------|---------------------|-------------|-------|
+| Auth routes | 5 | 2/sec | Strict — prevents brute force |
+| General API | 60 | 30/sec | Default for all authenticated routes |
+| Webhook execution | 20 | 10/sec | Per webhook (distributed via Redis) |
+| WebSocket messages | 30 | 30/sec | Token bucket per connection |
+| Presence query | — | — | Max 100 user IDs per request (hard limit) |
 
 ---
 
@@ -1294,6 +1367,7 @@ All API errors follow a consistent format:
 | Status Code | Meaning |
 |-------------|---------|
 | `200` | Success with response body |
+| `201` | Created — resource successfully created |
 | `204` | Success, no response body |
 | `400` | Bad request / validation error |
 | `401` | Unauthorized — missing or invalid JWT |
@@ -1302,6 +1376,17 @@ All API errors follow a consistent format:
 | `429` | Rate limit exceeded |
 | `500` | Internal server error |
 | `503` | Service unavailable (DB/Redis down) |
+
+---
+
+## 30. Public Endpoints (No Auth)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/avatars/:user_id` | None | Get user avatar (7-day cache) |
+| GET | `/api/icons/:server_id` | None | Get server icon (7-day cache) |
+
+These endpoints return cached avatar/icon images with `Cache-Control: max-age=604800` headers.
 
 ---
 
@@ -1317,3 +1402,5 @@ All API errors follow a consistent format:
 | Push Notifications | Web Push (VAPID) | Browser/device notifications |
 | Email | SMTP | Password reset emails |
 | Metrics | Prometheus | Monitoring via `/metrics` |
+| Docker: `jolkr-media` | Media server container | Voice/media SFU service |
+| Docker: `nginx` | Nginx reverse proxy | Request routing, static files, SSL termination |

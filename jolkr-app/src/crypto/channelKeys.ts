@@ -183,8 +183,18 @@ export async function encryptChannelMessage(
 
   if (!channelKey) {
     // No key exists yet — we generate and distribute
+    // Query the server's current key generation to avoid creating orphaned keys
+    let generation = 0;
+    try {
+      if (!isDm) {
+        const genResp = await api.getChannelKeyGeneration(channelId);
+        generation = genResp.key_generation;
+      }
+    } catch {
+      // Fallback to 0 if endpoint fails
+    }
     const memberIds = await getMemberIds();
-    channelKey = await generateAndDistributeChannelKey(channelId, memberIds, 0, isDm);
+    channelKey = await generateAndDistributeChannelKey(channelId, memberIds, generation, isDm);
     if (!channelKey) return null;
   }
 

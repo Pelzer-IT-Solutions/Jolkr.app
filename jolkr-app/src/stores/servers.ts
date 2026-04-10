@@ -417,5 +417,41 @@ wsClient.on((op, d) => {
       useServersStore.setState(removeServerState(serverId, store));
       break;
     }
+    case 'CategoryCreate': {
+      const category = d.category as Category;
+      if (!category?.id || !category?.server_id) break;
+      if (!store.servers.some((s) => s.id === category.server_id)) break;
+      const current = store.categories[category.server_id] ?? [];
+      if (!current.some((c) => c.id === category.id)) {
+        useServersStore.setState({
+          categories: { ...store.categories, [category.server_id]: [...current, category] },
+        });
+      }
+      break;
+    }
+    case 'CategoryUpdate': {
+      const category = d.category as Category;
+      if (!category?.id || !category?.server_id) break;
+      if (!store.servers.some((s) => s.id === category.server_id)) break;
+      const current = store.categories[category.server_id] ?? [];
+      useServersStore.setState({
+        categories: {
+          ...store.categories,
+          [category.server_id]: current.map((c) => (c.id === category.id ? category : c)),
+        },
+      });
+      break;
+    }
+    case 'CategoryDelete': {
+      const categoryId = d.category_id as string;
+      const serverId = d.server_id as string;
+      if (!categoryId || !serverId) break;
+      if (!store.servers.some((s) => s.id === serverId)) break;
+      const current = store.categories[serverId] ?? [];
+      useServersStore.setState({
+        categories: { ...store.categories, [serverId]: current.filter((c) => c.id !== categoryId) },
+      });
+      break;
+    }
   }
 });
