@@ -257,7 +257,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
     // Optimistic local update
     if (creating === 'folder') {
-      setLocalCats(prev => [...prev, { name, channels: [] }])
+      const tempId = `cat-${Date.now()}`
+      setLocalCats(prev => [...prev, { id: tempId, name, channels: [] }])
     } else {
       const tempId = `ch-${Date.now()}`
       setLocalExtraChannels(prev => [...prev, { id: tempId, name, icon: '#', desc: '', unread: 0 }])

@@ -348,6 +348,29 @@
   background: oklch(65% 0.15 250 / 0.3);
 }
 
+/* ─── Content-editable input (design branch) ─── */
+.input {
+  flex: 1;
+  min-height: 1.5rem;
+  max-height: 7.5rem;
+  overflow-y: auto;
+  word-break: break-word;
+  outline: none;
+  padding: 0.0625rem 0;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  scrollbar-width: none;
+}
+.input::-webkit-scrollbar { display: none; }
+.input:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
 .composerActions {
   display: flex;
   align-items: center;
