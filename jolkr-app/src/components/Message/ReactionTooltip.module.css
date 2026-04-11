@@ -3,16 +3,16 @@
 }
 
 .tooltip {
-  background: var(--background-tooltip, rgba(30, 30, 35, 0.98));
+  background: var(--bg-loud);
   border-radius: 8px;
   padding: 8px 12px;
   min-width: 140px;
   max-width: 220px;
   z-index: 10000;
   pointer-events: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 16px oklch(0% 0 0 / 0.14), 0 1px 4px oklch(0% 0 0 / 0.08);
   animation: fadeIn 0.15s ease-out;
-  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  border: 1px solid var(--border-muted);
 }
 
 @keyframes fadeIn {
@@ -32,7 +32,7 @@
   gap: 6px;
   padding-bottom: 8px;
   margin-bottom: 6px;
-  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .emoji {
@@ -43,7 +43,7 @@
 .count {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-primary, #fff);
+  color: var(--text-strong);
 }
 
 .userList {
@@ -76,14 +76,14 @@
 
 .userName {
   font-size: 12px;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .isMe {
-  color: var(--text-primary, #fff);
+  color: var(--text-strong);
   font-weight: 600;
 }
 
@@ -97,10 +97,10 @@
 }
 
 .userList::-webkit-scrollbar-thumb {
-  background: var(--border-subtle, rgba(255, 255, 255, 0.2));
+  background: var(--border-muted);
   border-radius: 2px;
 }
 
 .userList::-webkit-scrollbar-thumb:hover {
-  background: var(--border-default, rgba(255, 255, 255, 0.3));
+  background: var(--border-strong);
 }

@@ -87,8 +87,12 @@ export function ReactionTooltip({ reaction, children, serverId, dmParticipantNam
     if (!triggerRef.current || sortedUsers.length === 0) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const tooltipHeight = Math.min(sortedUsers.length * 24 + 40, 200); // Estimate with header
-    const top = rect.top - tooltipHeight - 8;
+    let top = rect.top - tooltipHeight - 8;
     const left = rect.left + rect.width / 2;
+    // If tooltip would go above viewport, show below trigger instead
+    if (top < 8) {
+      top = rect.bottom + 8;
+    }
     setPosition({ top, left });
     setIsVisible(true);
   };
