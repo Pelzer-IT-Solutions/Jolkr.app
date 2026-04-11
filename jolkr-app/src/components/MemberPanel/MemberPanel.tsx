@@ -1,8 +1,8 @@
-import { useState, useLayoutEffect, useEffect } from 'react'
-import { X } from 'lucide-react'
-import type { MemberGroup, MemberStatus, Member } from '../../types'
-import type { Message } from '../../api/types'
-import * as api from '../../api/client'
+import { useState, useLayoutEffect } from 'react'
+import type { MemberGroup, Member } from '../../types'
+import type { User } from '../../api/types'
+import Avatar from '../Avatar'
+import { PinnedMessagesPanel } from '../PinnedMessagesPanel/PinnedMessagesPanel'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import s from './MemberPanel.module.css'
 
@@ -14,29 +14,11 @@ interface Props {
   isDm?: boolean
   onMemberClick?: (member: Member, e: React.MouseEvent) => void
   onUnpin?: (messageId: string) => void
+  users?: Map<string, User>
 }
 
-export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onUnpin }: Props) {
+export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onUnpin, users }: Props) {
   const visible = mode !== null
-  const [pinnedMessages, setPinnedMessages] = useState<Message[]>([])
-  const [loadingPinned, setLoadingPinned] = useState(false)
-
-  // Fetch pinned messages when mode changes to 'pinned'
-  useEffect(() => {
-    if (mode !== 'pinned') return
-    setLoadingPinned(true)
-    const fetch = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
-    fetch.then(msgs => {
-      setPinnedMessages(msgs)
-      setLoadingPinned(false)
-    }).catch(() => setLoadingPinned(false))
-  }, [mode, channelId, isDm])
-
-  // Handle unpin
-  function handleUnpin(msgId: string) {
-    onUnpin?.(msgId)
-    setPinnedMessages(prev => prev.filter(m => m.id !== msgId))
-  }
 
   const total = members.online.length + members.offline.length
 
@@ -65,28 +47,13 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
     switch (mode) {
       case 'pinned':
         return (
-          <div className={`${s.scroll} scrollbar-thin scroll-view-y`}>
-            {loadingPinned && <div className={`${s.empty} txt-small`}>Loading...</div>}
-            {!loadingPinned && pinnedMessages.length === 0 && (
-              <div className={`${s.empty} txt-small`}>No pinned messages</div>
-            )}
-            {pinnedMessages.map(msg => (
-              <div key={msg.id} className={s.pinnedItem}>
-                <div className={`${s.pinnedItemAuthor} txt-tiny txt-semibold`}>
-                  {(msg.author as { display_name?: string; username?: string })?.display_name
-                    ?? (msg.author as { username?: string })?.username ?? 'Unknown'}
-                </div>
-                <div className={`${s.pinnedItemContent} txt-small`}>
-                  {(msg.content || '').slice(0, 200)}
-                </div>
-                {onUnpin && (
-                  <button className={s.unpinBtn} title="Unpin" onClick={() => handleUnpin(msg.id)}>
-                    <X size={12} strokeWidth={1.5} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+          <PinnedMessagesPanel
+            channelId={channelId}
+            isDm={isDm}
+            onClose={() => {/* handled by parent */}}
+            onUnpin={onUnpin}
+            users={users}
+          />
         )
 
       case 'threads':
@@ -113,7 +80,14 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
                 style={revealStyle(1 + i)}
                 onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
               >
-                <MemberAvatar m={m} />
+                <Avatar
+                  url={m.avatarUrl}
+                  name={m.name}
+                  size="sm"
+                  status={m.status}
+                  userId={m.userId}
+                  color={m.color}
+                />
                 <span className={`${s.name} txt-small txt-medium txt-truncate`}>{m.name}</span>
               </button>
             ))}
@@ -131,7 +105,14 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
                 style={revealStyle(offlineStart + i)}
                 onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
               >
-                <MemberAvatar m={m} offline />
+                <Avatar
+                  url={m.avatarUrl}
+                  name={m.name}
+                  size="sm"
+                  status={m.status}
+                  userId={m.userId}
+                  color={m.color}
+                />
                 <span className={`${s.name} txt-small txt-medium txt-truncate`}>{m.name}</span>
               </button>
             ))}
@@ -162,23 +143,3 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
   )
 }
 
-function MemberAvatar({ m, offline }: { m: MemberGroup['online'][0]; offline?: boolean }) {
-  const bgStyle = offline
-    ? { background: 'var(--jolkr-neutral-dark-10)', color: 'var(--text-faint)' }
-    : { background: m.color }
-
-  return (
-    <div className={s.avatarWrap}>
-      <div className={`${s.avatar} hasActivityAvatarFace`} style={m.avatarUrl ? undefined : bgStyle}>
-        {m.avatarUrl
-          ? <img src={m.avatarUrl} alt="" loading="lazy" className={s.avatarImg} />
-          : m.letter}
-      </div>
-      <StatusDot status={m.status} />
-    </div>
-  )
-}
-
-function StatusDot({ status }: { status: MemberStatus }) {
-  return <span className={`${s.statusDot} ${s[status]}`} />
-}

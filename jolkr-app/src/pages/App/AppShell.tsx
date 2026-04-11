@@ -897,6 +897,7 @@ export default function AppShell() {
                     })
                   }}
                   onUnpin={handleUnpinMessage}
+                  users={userMap}
                 />
               ) : null}
             </div>
