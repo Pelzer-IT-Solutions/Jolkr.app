@@ -18,25 +18,21 @@ export function useAppHandlers(
   memos: ReturnType<typeof useAppMemos>,
 ) {
   const {
-    navigate, user, membersByServer,
+    navigate, user, membersByServer, categoriesByServer,
     dmList, dmActive, activeDmId, activeServerId, activeChannelId,
     tabbedIds, setTabbedIds, setActiveServerId, setActiveChannelId,
     setDmActive, setActiveDmId, setDmList, setDmUsers,
     setNewDmOpen, setJoinServerOpen, setCreateServerOpen,
-    setServerThemes, lastChannelPerServer,
+    setServerThemes, lastChannelPerServer, themeSaveTimer,
     fetchServers, fetchChannels, fetchCategories,
     sendMessage, sendDmMessage, editMessage, deleteMessage,
+    setPinnedCount,
   } = init
 
   const { uiServers, effectiveChannelId, currentApiMessages } = memos
 
-  // ── Theme save debounce ──
-  const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   // ── Muted servers (UI-only local state) ──
   const [mutedServerIds, setMutedServerIds] = useState<string[]>([])
-  // Counter to trigger PinnedMessagesPanel refetch after pin/unpin
-  const [pinVersion, setPinVersion] = useState(0)
   const handleToggleMuteServer = useCallback((serverId: string) => {
     setMutedServerIds(prev =>
       prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
@@ -56,7 +52,7 @@ export function useAppHandlers(
   }, [user?.id])
 
   // ── Profile update handler ──
-  const handleUpdateProfile = useCallback(async (data: { display_name?: string; username?: string }) => {
+  const handleUpdateProfile = useCallback(async (data: { display_name?: string; username?: string; bio?: string; banner_color?: string }) => {
     await useAuthStore.getState().updateProfile(data)
   }, [])
 
@@ -191,12 +187,11 @@ export function useAppHandlers(
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    // Read fresh from store to avoid stale closure (preserves reactions etc.)
     const store = useMessagesStore.getState()
     const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
     if (!msg) return
     const newPinned = !msg.is_pinned
-    // Optimistically update local store immediately
+    // Optimistic update
     store.updateMessage(channelId, { ...msg, is_pinned: newPinned })
     try {
       if (newPinned) {
@@ -206,37 +201,40 @@ export function useAppHandlers(
         if (dmActive) await api.unpinDmMessage(channelId, msgId)
         else await api.unpinMessage(channelId, msgId)
       }
-      // Bump pin version so PinnedMessagesPanel refetches
-      setPinVersion(v => v + 1)
+      const pinned = dmActive
+        ? await api.getDmPinnedMessages(channelId)
+        : await api.getPinnedMessages(channelId)
+      setPinnedCount(pinned.length)
     } catch (err) {
       console.error('Pin toggle failed:', err)
-      // Revert optimistic update on failure
+      // Revert on failure
       const revertStore = useMessagesStore.getState()
       const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
       if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned })
     }
-  }, [dmActive, activeDmId, activeChannelId])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    // Optimistically update local store
-    const store = useMessagesStore.getState()
-    const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
-    if (msg) store.updateMessage(channelId, { ...msg, is_pinned: false })
     try {
       if (dmActive) await api.unpinDmMessage(channelId, msgId)
       else await api.unpinMessage(channelId, msgId)
-      setPinVersion(v => v + 1)
+      // Refresh pinned count
+      const pinned = dmActive
+        ? await api.getDmPinnedMessages(channelId)
+        : await api.getPinnedMessages(channelId)
+      setPinnedCount(pinned.length)
+      // Find and update the message's is_pinned status in the store
+      const store = useMessagesStore.getState()
+      const channelMsgs = store.messages[channelId] ?? []
+      const msg = channelMsgs.find(m => m.id === msgId)
+      if (msg) {
+        store.updateMessage(channelId, { ...msg, is_pinned: false })
+      }
     } catch (err) {
       console.error('Unpin failed:', err)
-      // Revert on failure
-      if (msg) {
-        const revertStore = useMessagesStore.getState()
-        const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
-        if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: true })
-      }
     }
-  }, [dmActive, activeDmId, activeChannelId])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
 
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
@@ -268,9 +266,19 @@ export function useAppHandlers(
     }
   }, [activeServerId, activeChannelId])
 
-  const handleDeleteCategory = useCallback(async (categoryId: string) => {
-    await api.deleteCategory(categoryId)
+  const handleDeleteCategory = useCallback(async (categoryName: string) => {
+    // Find the category by name to get its ID
+    const categories = categoriesByServer[activeServerId] ?? []
+    const category = categories.find(c => c.name === categoryName)
+    if (!category) return
+
+    await api.deleteCategory(category.id)
     await fetchCategories(activeServerId)
+    await fetchChannels(activeServerId)
+  }, [activeServerId, categoriesByServer])
+
+  const handleArchiveChannel = useCallback(async (channelId: string) => {
+    await api.updateChannel(channelId, { is_system: true })
     await fetchChannels(activeServerId)
   }, [activeServerId])
 
@@ -285,9 +293,14 @@ export function useAppHandlers(
   }, [activeServerId])
 
   // ── Server management ──
-  async function handleJoinServer(serverId: string, _accessCode: string): Promise<boolean> {
+  async function handleJoinServer(serverId: string, accessCode: string): Promise<boolean> {
     try {
-      await api.useInvite(serverId)
+      // If access code is provided, use invite code path; otherwise join public server directly
+      if (accessCode && accessCode.trim()) {
+        await api.useInvite(accessCode.trim())
+      } else {
+        await api.joinPublicServer(serverId)
+      }
       await fetchServers()
       handleOpenServer(serverId)
       setJoinServerOpen(false)
@@ -359,9 +372,10 @@ export function useAppHandlers(
     handleUploadAvatar, handleChangePassword, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,
     handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
-    handlePinMessage, handleUnpinMessage, pinVersion, handleThemeChange,
+    handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
-    handleDeleteCategory, handleRenameChannel, handleRenameCategory,
+    handleDeleteCategory, handleArchiveChannel,
+    handleRenameChannel, handleRenameCategory,
     handleJoinServer, handleCreateServer, handleCreateDm,
   }
 }

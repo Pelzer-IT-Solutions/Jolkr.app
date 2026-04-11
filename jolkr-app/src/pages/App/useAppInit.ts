@@ -39,7 +39,7 @@ export function useAppInit() {
   const [activeServerId, setActiveServerId] = useState('')
   const [activeChannelId, setActiveChannelId] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [membersVisible, setMembersVisible] = useState(true)
+  const [rightPanelMode, setRightPanelMode] = useState<'members' | 'pinned' | 'threads' | null>('members')
   const [dmActive, setDmActive] = useState(false)
   const [activeDmId, setActiveDmId] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -50,11 +50,16 @@ export function useAppInit() {
   const [notificationsActive, setNotificationsActive] = useState(false)
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
   const [serverSettingsOpen, setServerSettingsOpen] = useState(false)
+  const [channelSettingsOpen, setChannelSettingsOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<MemberDisplay | null>(null)
   const [userContextMenu, setUserContextMenu] = useState<UserContextMenuState | null>(null)
-  const [pinnedPanelOpen, setPinnedPanelOpen] = useState(false)
+
+  // ── Content availability for conditional icon display ──
+  const [pinnedCount, setPinnedCount] = useState(0)
+  const [threadsCount, setThreadsCount] = useState(0)
 
   const lastChannelPerServer = useRef<Record<string, string>>({})
+  const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
 
   // ── Per-server themes ──
@@ -247,6 +252,21 @@ export function useAppInit() {
       }
     }
 
+    // Fetch pinned count and threads count for conditional icon display
+    const fetchCounts = async () => {
+      try {
+        const pinned = dmActive
+          ? await api.getDmPinnedMessages(channelId)
+          : await api.getPinnedMessages(channelId)
+        setPinnedCount(pinned.length)
+      } catch {
+        setPinnedCount(0)
+      }
+      // TODO: Fetch threads count when API is available
+      setThreadsCount(0)
+    }
+    fetchCounts()
+
     return () => {
       useUnreadStore.getState().setActiveChannel(null)
     }
@@ -287,13 +307,16 @@ export function useAppInit() {
     dmList, setDmList, dmUsers, setDmUsers,
     tabbedIds, setTabbedIds, activeServerId, setActiveServerId,
     activeChannelId, setActiveChannelId, sidebarCollapsed, setSidebarCollapsed,
-    membersVisible, setMembersVisible, dmActive, setDmActive,
+    rightPanelMode, setRightPanelMode, dmActive, setDmActive,
     activeDmId, setActiveDmId, settingsOpen, setSettingsOpen,
     newDmOpen, setNewDmOpen, joinServerOpen, setJoinServerOpen,
     createServerOpen, setCreateServerOpen, searchActive, setSearchActive,
     notificationsActive, setNotificationsActive, friendsPanelOpen, setFriendsPanelOpen,
-    serverSettingsOpen, setServerSettingsOpen, reportTarget, setReportTarget,
-    userContextMenu, setUserContextMenu, pinnedPanelOpen, setPinnedPanelOpen,
-    lastChannelPerServer, ready, serverThemes, setServerThemes,
+    serverSettingsOpen, setServerSettingsOpen,
+    channelSettingsOpen, setChannelSettingsOpen,
+    reportTarget, setReportTarget,
+    userContextMenu, setUserContextMenu,
+    pinnedCount, setPinnedCount, threadsCount, setThreadsCount,
+    lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
   }
 }
