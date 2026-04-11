@@ -46,6 +46,7 @@ import type { MemberDisplay } from '../../types/ui'
 
 import type { DmChannel, User, Message as ApiMessage } from '../../api/types'
 
+import appIconUrl from '/icon.png?url'
 import s from '../../components/AppShell/AppShell.module.css'
 
 export default function AppShell() {
@@ -95,6 +96,7 @@ export default function AppShell() {
   const [threadsCount, setThreadsCount] = useState(0)
 
   const lastChannelPerServer = useRef<Record<string, string>>({})
+  const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
 
   // ── Per-server themes ──
@@ -462,13 +464,15 @@ export default function AppShell() {
     author: 'Jolkr',
     color: 'oklch(60% 0.18 136.69)',
     letter: 'J',
+    avatarUrl: appIconUrl,
     time: 'Today',
     content: dmActive
       ? `Start a conversation with ${activeDmConv?.name ?? activeDmConv?.participants[0]?.name ?? 'someone'}!`
-      : `Welcome to #${activeChannelId}! Be the first to say something.`,
+      : `Welcome to #${activeChannel.name}! Be the first to say something.`,
     reactions: [],
     edited: false,
-  }], [dmActive, activeDmConv, activeChannelId])
+    is_system: true,
+  }], [dmActive, activeDmConv, activeChannel.name])
 
   const displayMessages = uiMessages.length > 0 ? uiMessages : fallbackMessages
 
@@ -544,49 +548,68 @@ export default function AppShell() {
   }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleReaction = useCallback((msgId: string, emoji: string) => {
-    // Check if user already reacted
     const msg = currentApiMessages.find(m => m.id === msgId)
     const existing = msg?.reactions?.find(r => r.emoji === emoji)
     if (existing?.me) {
-      api.removeReaction(msgId, emoji).catch(console.error)
+      (dmActive ? api.removeDmReaction : api.removeReaction)(msgId, emoji).catch(console.error)
     } else {
-      api.addReaction(msgId, emoji).catch(console.error)
+      (dmActive ? api.addDmReaction : api.addReaction)(msgId, emoji).catch(console.error)
     }
-  }, [currentApiMessages])
+  }, [currentApiMessages, dmActive])
 
   const handleDeleteMessage = useCallback((msgId: string) => {
     deleteMessage(msgId, effectiveChannelId, dmActive)
   }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleEditMessage = useCallback((msgId: string, newText: string) => {
-    editMessage(msgId, effectiveChannelId, newText, dmActive)
-  }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  const handleEditMessage = useCallback(async (msgId: string, newText: string) => {
+    const channelId = dmActive ? activeDmId : activeChannelId
+    const isDm = dmActive
+    const localKeys = getLocalKeys()
+    if (!localKeys) return
+
+    const getMemberIds = async () => {
+      if (isDm) {
+        const dm = dmList.find(d => d.id === channelId)
+        return dm?.members ?? []
+      }
+      const members = membersByServer[activeServerId] ?? []
+      return members.map(m => m.user_id)
+    }
+
+    const encrypted = await encryptChannelMessage(channelId, localKeys, newText, getMemberIds, isDm)
+    if (!encrypted) return
+
+    editMessage(msgId, effectiveChannelId, encrypted.encryptedContent, isDm, encrypted.nonce)
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    const msg = currentApiMessages.find(m => m.id === msgId)
+    const store = useMessagesStore.getState()
+    const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
     if (!msg) return
+    const newPinned = !msg.is_pinned
+    // Optimistic update
+    store.updateMessage(channelId, { ...msg, is_pinned: newPinned })
     try {
-      if (msg.is_pinned) {
-        if (dmActive) await api.unpinDmMessage(channelId, msgId)
-        else await api.unpinMessage(channelId, msgId)
-      } else {
+      if (newPinned) {
         if (dmActive) await api.pinDmMessage(channelId, msgId)
         else await api.pinMessage(channelId, msgId)
+      } else {
+        if (dmActive) await api.unpinDmMessage(channelId, msgId)
+        else await api.unpinMessage(channelId, msgId)
       }
-      // Refresh pinned count and messages to update UI
       const pinned = dmActive
         ? await api.getDmPinnedMessages(channelId)
         : await api.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
-      // Update the message's is_pinned status in the store
-      const store = useMessagesStore.getState()
-      const updatedMsg = { ...msg, is_pinned: !msg.is_pinned }
-      store.updateMessage(channelId, updatedMsg)
     } catch (err) {
       console.error('Pin toggle failed:', err)
+      // Revert on failure
+      const revertStore = useMessagesStore.getState()
+      const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
+      if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned })
     }
-  }, [dmActive, activeDmId, activeChannelId, currentApiMessages])
+  }, [dmActive, activeDmId, activeChannelId])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
@@ -612,6 +635,10 @@ export default function AppShell() {
 
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
+    if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current)
+    themeSaveTimer.current = setTimeout(() => {
+      api.updateServer(activeServerId, { theme } as Parameters<typeof api.updateServer>[1])
+    }, 500)
   }
 
   // ── Channel CRUD handlers ──
