@@ -61,8 +61,9 @@ export default function AppShell() {
     userInfo, userProfile, userMap,
     uiServers, uiDmList,
     tabbedServers, activeServer, isServerOwner, myPerms,
-    canAccessSettings, canManageChannels,
-    ownerServerIds, settingsServerIds,
+    canAccessSettings, canManageChannels, canEditTheme,
+    canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
+    inviteableServerIds, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
     mentionableUsers,
@@ -134,6 +135,14 @@ export default function AppShell() {
           }}
           settingsServerIds={settingsServerIds}
           onOpenServerSettings={serverId => { handleSwitchServer(serverId); setServerSettingsOpen(true) }}
+          onLeaveServer={async (serverId) => {
+            try {
+              await api.leaveServer(serverId)
+              await fetchServers()
+            } catch (err) {
+              console.error('Leave server failed:', err)
+            }
+          }}
         />
 
         <div className={s.contentRow}>
@@ -167,6 +176,7 @@ export default function AppShell() {
                   onSetColorPref={setColorPref}
                   onOpenSettings={canAccessSettings ? () => setServerSettingsOpen(true) : undefined}
                   canManageChannels={canManageChannels}
+                  canEditTheme={canEditTheme}
                   onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
                   onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
                   onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
@@ -197,6 +207,7 @@ export default function AppShell() {
                 hasPinnedMessages={pinnedCount > 0}
                 hasThreads={threadsCount > 0}
                 serverId={dmActive ? undefined : activeServerId}
+                userMap={userMap}
                 onLoadOlder={() => {
                   const { fetchOlder, loadingOlder } = useMessagesStore.getState()
                   const channelId = dmActive ? activeDmId : activeChannelId
@@ -206,6 +217,10 @@ export default function AppShell() {
                 readOnly={isDmWithSystemUser}
                 onPinMessage={handlePinMessage}
                 mentionableUsers={mentionableUsers}
+                canManageMessages={canManageMessages}
+                canAddReactions={canAddReactions}
+                canSendMessages={canSendMessages}
+                canAttachFiles={canAttachFiles}
               />
 
               {dmActive ? (
@@ -394,7 +409,7 @@ export default function AppShell() {
           if (activeServerId) await api.banMember(activeServerId, userId).catch(console.warn)
           setUserContextMenu(null)
         }}
-        servers={servers.map(s => ({ ...s, hue: serverThemes[s.id]?.hue ?? null }))}
+        servers={servers.filter(s => inviteableServerIds.includes(s.id)).map(s => ({ ...s, hue: serverThemes[s.id]?.hue ?? null }))}
       />
     </>
   )

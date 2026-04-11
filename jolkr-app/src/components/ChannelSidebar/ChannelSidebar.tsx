@@ -46,6 +46,7 @@ interface Props {
   onSetColorPref:  (pref: ColorPreference) => void
   onOpenSettings?: () => void
   canManageChannels?: boolean
+  canEditTheme?:      boolean
   onCreateChannel?:   (name: string, kind: 'text' | 'voice') => Promise<void>
   onCreateCategory?:  (name: string) => Promise<void>
   onDeleteChannel?:   (channelId: string) => Promise<void>
@@ -56,7 +57,7 @@ interface Props {
   onOpenChannelSettings?: (channelId: string) => void
 }
 
-export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings }: Props) {
+export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, canEditTheme, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings }: Props) {
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
   const [localCats,          setLocalCats]           = useState<Category[]>(server.categories)
   const [localExtraChannels, setLocalExtraChannels]  = useState<Channel[]>([])
@@ -215,12 +216,14 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   function handleContextMenu(e: React.MouseEvent) {
+    if (!canManageChannels) return          // nothing to show without permissions
     e.preventDefault()
     closeAllMenus()
     setContextMenu({ x: e.clientX, y: e.clientY })
   }
 
   function handleChannelContextMenu(e: React.MouseEvent, channelId: string) {
+    if (!canManageChannels) return          // nothing to show without permissions
     e.preventDefault()
     e.stopPropagation()
     closeAllMenus()
@@ -228,6 +231,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   function handleFolderContextMenu(e: React.MouseEvent, folderName: string) {
+    if (!canManageChannels) return          // nothing to show without permissions
     e.preventDefault()
     e.stopPropagation()
     closeAllMenus()
@@ -278,13 +282,14 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     }
   }
 
-  // ── DnD handlers ──
+  // ── DnD handlers (require MANAGE_CHANNELS) ──
   function handleDragStart({ active }: DragStartEvent) {
+    if (!canManageChannels) return
     setActiveDragId(active.id as string)
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
-    if (!over) return
+    if (!canManageChannels || !over) return
     const activeId = active.id as string
     const overId   = over.id   as string
     if (activeId.startsWith('cat:')) return
@@ -314,7 +319,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     setActiveDragId(null)
-    if (!over || active.id === over.id) return
+    if (!canManageChannels || !over || active.id === over.id) return
     const activeId = active.id as string
     const overId   = over.id   as string
 
@@ -364,13 +369,15 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
           {canManageChannels && (
             <button ref={addBtnRef} className={s.iconBtn} title="New channel" onClick={handleAddClick}><PlusIcon /></button>
           )}
-          <ThemePicker
-            theme={theme}
-            onChange={onThemeChange}
-            isDark={isDark}
-            colorPref={colorPref}
-            onSetColorPref={onSetColorPref}
-          />
+          {canEditTheme && (
+            <ThemePicker
+              theme={theme}
+              onChange={onThemeChange}
+              isDark={isDark}
+              colorPref={colorPref}
+              onSetColorPref={onSetColorPref}
+            />
+          )}
           <button className={s.iconBtn} title="Collapse sidebar" onClick={onCollapse}>
             <CollapseIcon />
           </button>
@@ -404,8 +411,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                 isRevealing={isRevealing}
                 catStaggerIdx={catMeta[i].catStaggerIdx}
                 chanStaggerStart={catMeta[i].chanStaggerStart}
-                onChannelContextMenu={handleChannelContextMenu}
-                onFolderContextMenu={handleFolderContextMenu}
+                onChannelContextMenu={canManageChannels ? handleChannelContextMenu : undefined}
+                onFolderContextMenu={canManageChannels ? handleFolderContextMenu : undefined}
                 isCatEditing={editingCategoryId === cat.name}
                 editingCatName={editingCatName}
                 onStartCatRename={() => startCategoryRename(cat)}
@@ -441,7 +448,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                     onClick={() => onSwitch(ch.id)}
                     isRevealing={isRevealing}
                     staggerIdx={uncatStaggerStart + i}
-                    onContextMenu={handleChannelContextMenu}
+                    onContextMenu={canManageChannels ? handleChannelContextMenu : undefined}
                     isEditing={editingChannelId === ch.id}
                     editingName={editingName}
                     onStartRename={() => startChannelRename(ch)}

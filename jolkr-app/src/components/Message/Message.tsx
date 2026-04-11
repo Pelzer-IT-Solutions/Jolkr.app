@@ -5,6 +5,7 @@ import {
   Copy, Pin, Trash2, Flag,
 } from 'lucide-react'
 import type { Message as MessageType } from '../../types'
+import type { User } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useAuthStore } from '../../stores/auth'
 import { useMenuPosition } from '../../utils/position'
@@ -24,10 +25,13 @@ interface Props {
   onPin?:                () => void
   isDm?:                 boolean
   serverId?:             string
+  userMap?:              Map<string, User>
   dmParticipantNames?:   Record<string, string>
+  canManageMessages?:    boolean
+  canAddReactions?:      boolean
 }
 
-export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false, serverId, dmParticipantNames }: Props) {
+export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
 
@@ -139,6 +143,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           key={i}
           reaction={r}
           serverId={serverId}
+          userMap={userMap}
           dmParticipantNames={dmParticipantNames}
         >
           <button
@@ -185,7 +190,8 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 
   const toolbar = !hasActions ? null : (
     <div className={`${s.actions} ${anyOpen ? s.actionsVisible : ''} ${isDm ? s.actionsDm : ''}`}>
-      {/* ── Add reaction ── */}
+      {/* ── Add reaction (requires ADD_REACTIONS permission) ── */}
+      {canAddReactions && (
       <div className={s.actionWrap}>
         <button
           ref={emojiTriggerRef}
@@ -203,6 +209,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           <EmojiAddIcon />
         </button>
       </div>
+      )}
       {showEmoji && (
         <EmojiPickerPopup
           position={{ top: pickerPos.top, left: pickerPos.left }}
@@ -249,11 +256,17 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
               <CopyIcon /><span>Copy Text</span>
             </button>
-            <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
-              <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
-            </button>
+            {canManageMessages && onPin && (
+              <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
+                <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
+              </button>
+            )}
             <div className={s.menuDivider} />
             {isOwn ? (
+              <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+                <TrashIcon /><span>Delete Message</span>
+              </button>
+            ) : canManageMessages ? (
               <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
                 <TrashIcon /><span>Delete Message</span>
               </button>
@@ -283,6 +296,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             </div>
 
             <div className={`${s.dmActions} ${anyOpen ? s.dmActionsVisible : ''}`}>
+              {canAddReactions && (
               <div className={s.actionWrap}>
                 <button
                   ref={emojiTriggerRef}
@@ -300,6 +314,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                   <EmojiAddIcon />
                 </button>
               </div>
+              )}
               {showEmoji && (
                 <EmojiPickerPopup
                   position={{ top: pickerPos.top, left: pickerPos.left }}
@@ -340,11 +355,17 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                     <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
                       <CopyIcon /><span>Copy Text</span>
                     </button>
-                    <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
-                      <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
-                    </button>
+                    {canManageMessages && onPin && (
+                      <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
+                        <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
+                      </button>
+                    )}
                     <div className={s.menuDivider} />
                     {isOwn ? (
+                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+                        <TrashIcon /><span>Delete Message</span>
+                      </button>
+                    ) : canManageMessages ? (
                       <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
                         <TrashIcon /><span>Delete Message</span>
                       </button>

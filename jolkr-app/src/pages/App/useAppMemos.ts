@@ -13,7 +13,10 @@ import {
 } from '../../adapters/transforms'
 import { useAnimatedTheme } from '../../utils/useAnimatedTheme'
 import { useColorMode } from '../../utils/colorMode'
-import { hasPermission, MANAGE_CHANNELS, MANAGE_ROLES, MANAGE_SERVER } from '../../utils/permissions'
+import {
+  hasPermission, MANAGE_CHANNELS, MANAGE_ROLES, MANAGE_SERVER,
+  MANAGE_MESSAGES, ADD_REACTIONS, SEND_MESSAGES, ATTACH_FILES, CREATE_INVITE,
+} from '../../utils/permissions'
 
 import type { User, Message as ApiMessage } from '../../api/types'
 import type { useAppInit } from './useAppInit'
@@ -25,7 +28,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     user, servers, channelsByServer, membersByServer, categoriesByServer,
     storeMessages, presences, unreadCounts, serverPermissions,
     dmList, dmUsers, activeServerId, activeChannelId, dmActive, activeDmId,
-    tabbedIds, serverThemes,
+    tabbedIds, serverThemes, channelPermissions,
   } = init
 
   // ── Presence map ──
@@ -105,17 +108,35 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const canAccessSettings = isServerOwner || hasPermission(myPerms, MANAGE_SERVER) || hasPermission(myPerms, MANAGE_CHANNELS) || hasPermission(myPerms, MANAGE_ROLES)
   const canManageChannels = isServerOwner || hasPermission(myPerms, MANAGE_CHANNELS)
   const canEditTheme = isServerOwner || hasPermission(myPerms, MANAGE_SERVER)
+
+  // Channel-level permissions (account for channel overwrites, fall back to server perms)
+  const chanPerms = (!dmActive && activeChannelId) ? (channelPermissions[activeChannelId] ?? myPerms) : 0
+  const canManageMessages = dmActive || isServerOwner || hasPermission(chanPerms, MANAGE_MESSAGES)
+  const canAddReactions   = dmActive || isServerOwner || hasPermission(chanPerms, ADD_REACTIONS)
+  const canSendMessages   = dmActive || isServerOwner || hasPermission(chanPerms, SEND_MESSAGES)
+  const canAttachFiles    = dmActive || isServerOwner || hasPermission(chanPerms, ATTACH_FILES)
+
+  // Per-server invite permission for the "invite to server" list in UserContextMenu
+  const inviteableServerIds = useMemo(() => servers.filter(srv => {
+    if (user && srv.owner_id === user.id) return true
+    const p = serverPermissions[srv.id] ?? 0
+    return hasPermission(p, CREATE_INVITE)
+  }).map(s => s.id), [servers, user, serverPermissions])
+
   const ownerServerIds = useMemo(() => user ? servers.filter(s => s.owner_id === user.id).map(s => s.id) : [], [servers, user])
   const settingsServerIds = useMemo(() => servers.filter(srv => {
     if (user && srv.owner_id === user.id) return true
     const p = serverPermissions[srv.id] ?? 0
     return hasPermission(p, MANAGE_SERVER) || hasPermission(p, MANAGE_CHANNELS) || hasPermission(p, MANAGE_ROLES)
   }).map(s => s.id), [servers, user, serverPermissions])
-  const activeTheme = serverThemes[activeServerId] ?? { hue: null, orbs: [] }
+  const activeTheme = dmActive
+    ? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] }
+    : (serverThemes[activeServerId] ?? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] })
+  const themeKey = dmActive ? '__dm__' : activeServerId
   const chatAnimKey = dmActive ? activeDmId : `${activeServerId}:${activeChannelId}`
   const typingUsers = useTypingUsers(effectiveChannelId, user?.id)
 
-  const appStyle = useAnimatedTheme(activeServerId, activeTheme, isDark)
+  const appStyle = useAnimatedTheme(themeKey, activeTheme, isDark)
 
   const activeDmConv = uiDmList.find(d => d.id === activeDmId)
 
@@ -166,7 +187,9 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     presenceMap, userInfo, userProfile, userMap,
     uiServers, effectiveChannelId, currentApiMessages, uiMessages, uiDmList,
     tabbedServers, activeServer, activeRawServer, isServerOwner, myPerms,
-    canAccessSettings, canManageChannels, canEditTheme, ownerServerIds, settingsServerIds,
+    canAccessSettings, canManageChannels, canEditTheme,
+    canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
+    inviteableServerIds, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, fallbackMessages, displayMessages,
     mentionableUsers,

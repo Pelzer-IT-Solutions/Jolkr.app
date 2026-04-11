@@ -27,7 +27,8 @@ export function useAppInit() {
   const presences = usePresenceStore(s => s.statuses)
   const unreadCounts = useUnreadStore(s => s.counts)
   const serverPermissions = useServersStore(s => s.permissions)
-  const { fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions } = useServersStore.getState()
+  const channelPermissions = useServersStore(s => s.channelPermissions)
+  const { fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions, fetchChannelPermissions } = useServersStore.getState()
   const { fetchMessages, sendMessage, sendDmMessage, editMessage, deleteMessage } = useMessagesStore.getState()
 
   // ── DMs ──
@@ -239,6 +240,9 @@ export function useAppInit() {
     if (!channelId) return
     fetchMessages(channelId, dmActive)
 
+    // Fetch channel-level permissions (accounts for channel overwrites)
+    if (!dmActive) fetchChannelPermissions(channelId)
+
     // Mark as read locally
     const prevUnread = useUnreadStore.getState().counts[channelId] ?? 0
     useUnreadStore.getState().setActiveChannel(channelId)
@@ -301,8 +305,8 @@ export function useAppInit() {
   return {
     navigate, location,
     user, servers, channelsByServer, membersByServer, categoriesByServer,
-    storeMessages, presences, unreadCounts, serverPermissions,
-    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions,
+    storeMessages, presences, unreadCounts, serverPermissions, channelPermissions,
+    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions, fetchChannelPermissions,
     fetchMessages, sendMessage, sendDmMessage, editMessage, deleteMessage,
     dmList, setDmList, dmUsers, setDmUsers,
     tabbedIds, setTabbedIds, activeServerId, setActiveServerId,

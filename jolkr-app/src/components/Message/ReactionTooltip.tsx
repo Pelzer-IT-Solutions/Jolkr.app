@@ -1,15 +1,19 @@
 import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { Reaction } from '../../types';
+import type { User } from '../../api/types';
 import { useAuthStore } from '../../stores/auth';
 import { useServersStore } from '../../stores/servers';
 import { hashColor } from '../../adapters/transforms';
+import { emojiToImgUrl } from '../../utils/emoji';
+import Avatar from '../Avatar';
 import s from './ReactionTooltip.module.css';
 
 interface Props {
   reaction: Reaction;
   children: React.ReactNode;
   serverId?: string;
+  userMap?: Map<string, User>;
   dmParticipantNames?: Record<string, string>; // userId -> display name for DMs
 }
 
@@ -17,29 +21,38 @@ interface UserInfo {
   id: string;
   name: string;
   color: string;
+  avatarUrl: string | null;
   isMe: boolean;
 }
 
-function getInitials(name: string): string {
-  return (name?.[0] ?? '?').toUpperCase();
-}
-
-export function ReactionTooltip({ reaction, children, serverId, dmParticipantNames }: Props) {
+export function ReactionTooltip({ reaction, children, serverId, userMap, dmParticipantNames }: Props) {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
-  const currentUserId = useAuthStore((state) => state.user?.id);
+  const currentUser = useAuthStore((state) => state.user);
+  const currentUserId = currentUser?.id;
   const serverMembers = useServersStore((state) =>
     serverId ? state.members[serverId] : undefined
   );
 
-  // Resolve userIds from reaction to display names
+  // Resolve userIds to display names + avatars
   const users: UserInfo[] = useMemo(() => {
     const userIds = reaction.userIds ?? [];
     if (!userIds.length) return [];
 
     return userIds.map((userId) => {
       const isMe = userId === currentUserId;
+
+      // Current user — use own profile
+      if (isMe && currentUser) {
+        return {
+          id: userId,
+          name: currentUser.display_name || currentUser.username,
+          color: hashColor(userId),
+          avatarUrl: currentUser.avatar_url ?? null,
+          isMe: true,
+        };
+      }
 
       // For server channels: look up in server members
       if (serverId && serverMembers) {
@@ -49,30 +62,45 @@ export function ReactionTooltip({ reaction, children, serverId, dmParticipantNam
             id: userId,
             name: member.nickname || member.user.display_name || member.user.username,
             color: hashColor(userId),
+            avatarUrl: member.user.avatar_url ?? null,
             isMe,
           };
         }
       }
 
-      // For DMs: look up in provided participant names
+      // Fallback: look up in userMap (covers all loaded users incl. DM partners)
+      const mapUser = userMap?.get(userId);
+      if (mapUser) {
+        return {
+          id: userId,
+          name: mapUser.display_name || mapUser.username,
+          color: hashColor(userId),
+          avatarUrl: mapUser.avatar_url ?? null,
+          isMe,
+        };
+      }
+
+      // For DMs: look up in provided participant names (name-only fallback)
       if (dmParticipantNames?.[userId]) {
         return {
           id: userId,
           name: dmParticipantNames[userId],
           color: hashColor(userId),
+          avatarUrl: null,
           isMe,
         };
       }
 
-      // Fallback: use "Unknown" with generated color
+      // Last resort
       return {
         id: userId,
-        name: isMe ? 'You' : 'Unknown User',
+        name: `User ${userId.slice(0, 6)}`,
         color: hashColor(userId),
-        isMe,
+        avatarUrl: null,
+        isMe: false,
       };
     });
-  }, [reaction.userIds, currentUserId, serverId, serverMembers, dmParticipantNames]);
+  }, [reaction.userIds, currentUserId, currentUser, serverId, serverMembers, userMap, dmParticipantNames]);
 
   // Sort: current user first, then by name
   const sortedUsers = useMemo(() => {
@@ -86,10 +114,9 @@ export function ReactionTooltip({ reaction, children, serverId, dmParticipantNam
   const handleMouseEnter = () => {
     if (!triggerRef.current || sortedUsers.length === 0) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const tooltipHeight = Math.min(sortedUsers.length * 24 + 40, 200); // Estimate with header
+    const tooltipHeight = Math.min(sortedUsers.length * 28 + 44, 200);
     let top = rect.top - tooltipHeight - 8;
     const left = rect.left + rect.width / 2;
-    // If tooltip would go above viewport, show below trigger instead
     if (top < 8) {
       top = rect.bottom + 8;
     }
@@ -106,7 +133,6 @@ export function ReactionTooltip({ reaction, children, serverId, dmParticipantNam
     return <>{children}</>;
   }
 
-  // Build tooltip content
   const tooltipContent = (
     <div
       className={s.tooltip}
@@ -118,17 +144,21 @@ export function ReactionTooltip({ reaction, children, serverId, dmParticipantNam
       }}
     >
       <div className={s.header}>
-        <span className={s.emoji}>{reaction.emoji}</span>
+        <img src={emojiToImgUrl(reaction.emoji)} alt={reaction.emoji} className={s.emojiImg} draggable={false} />
         <span className={s.count}>{reaction.count} reaction{reaction.count !== 1 ? 's' : ''}</span>
       </div>
-      <div className={s.userList}>
+      <div className={`${s.userList}${sortedUsers.length > 6 ? ` ${s.userListScrollable}` : ''}`}>
         {sortedUsers.map((user) => (
           <div key={user.id} className={s.userItem}>
-            <div className={s.avatar} style={{ background: user.color }}>
-              {getInitials(user.name)}
-            </div>
+            <Avatar
+              url={user.avatarUrl}
+              name={user.name}
+              size="xs"
+              userId={user.id}
+              color={user.color}
+            />
             <span className={`${s.userName} ${user.isMe ? s.isMe : ''}`}>
-              {user.isMe ? 'You' : user.name}
+              {user.name}
             </span>
           </div>
         ))}

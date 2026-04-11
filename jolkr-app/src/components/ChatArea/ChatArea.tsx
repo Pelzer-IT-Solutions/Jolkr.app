@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import type { Channel, DMConversation, Message as MessageType, ReplyRef } from '../../types'
+import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { Message } from '../Message/Message'
 import EmojiPickerPopup from '../EmojiPickerPopup'
@@ -41,16 +42,21 @@ interface Props {
   hasPinnedMessages?: boolean
   hasThreads?:        boolean
   serverId?:          string
+  userMap?:           Map<string, User>
   mentionableUsers?:  MentionableUser[]
+  canManageMessages?: boolean
+  canAddReactions?:   boolean
+  canSendMessages?:   boolean
+  canAttachFiles?:    boolean
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, serverId, mentionableUsers = [] }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true }: Props) {
   const listRef    = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLTextAreaElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
 
-  // System channels are read-only
-  const isReadOnly = readOnly || channel.is_system
+  // System channels are read-only; also hide composer if user lacks SEND_MESSAGES
+  const isReadOnly = readOnly || channel.is_system || !canSendMessages
 
   const [content,     setContent]     = useState('')
   const [replyingTo,  setReplyingTo]  = useState<MessageType | null>(null)
@@ -387,16 +393,19 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 >
                   <Message
                     message={msg}
-                    onToggleReaction={isReadOnly ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
-                    onDelete={isReadOnly ? undefined : () => onDeleteMessage(msg.id)}
-                    onEdit={isReadOnly ? undefined : (newText) => onEditMessage(msg.id, newText)}
+                    onToggleReaction={readOnly || channel.is_system || !canAddReactions ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
+                    onDelete={() => onDeleteMessage(msg.id)}
+                    onEdit={readOnly || channel.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
                     onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
-                    onPin={isReadOnly ? undefined : () => onPinMessage?.(msg.id)}
+                    onPin={() => onPinMessage?.(msg.id)}
                     isDm={isDm}
                     serverId={isDm ? undefined : serverId}
+                    userMap={userMap}
                     dmParticipantNames={isDm && dmConversation
                       ? Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
                       : undefined}
+                    canManageMessages={canManageMessages}
+                    canAddReactions={canAddReactions}
                   />
                 </div>
               )
@@ -427,7 +436,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           <div className={s.composerWrap}>
             <div className={`${s.composer} ${s.readOnly}`} style={{ padding: '.725rem .625rem' }}>
               <span className="txt-small" style={{ opacity: 0.4, textAlign: 'center', width: '100%' }}>
-                {channel.is_system ? 'This is a system channel' : 'This is a read-only channel'}
+                {channel.is_system ? 'This is a system channel' : !canSendMessages ? 'You do not have permission to send messages in this channel' : 'This is a read-only channel'}
               </span>
             </div>
           </div>
@@ -562,8 +571,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 />
               </div>
               <div className={s.composerActions}>
-                <button className={s.composerBtn} title="Attach file"><AttachIcon /></button>
-                <button className={s.composerBtn} title="GIF"><GifIcon /></button>
+                {canAttachFiles && <button className={s.composerBtn} title="Attach file"><AttachIcon /></button>}
+                {canAttachFiles && <button className={s.composerBtn} title="GIF"><GifIcon /></button>}
                 <button className={s.sendBtn} title="Send (Enter)" onClick={send}>
                   <SendIcon />
                 </button>
