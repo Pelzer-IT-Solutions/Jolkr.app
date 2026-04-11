@@ -359,7 +359,7 @@ export default function AppShell() {
   }, [user?.id])
 
   // ── Profile update handler ──
-  const handleUpdateProfile = useCallback(async (data: { display_name?: string; username?: string }) => {
+  const handleUpdateProfile = useCallback(async (data: { display_name?: string; username?: string; bio?: string; banner_color?: string }) => {
     await useAuthStore.getState().updateProfile(data)
   }, [])
 

@@ -148,7 +148,7 @@ function SectionContent({ section, isDark, colorPref, onSetColorPref, user, onLo
   user?:          UserInfo
   onLogout?:      () => void
   onClose:        () => void
-  onUpdateProfile?: (data: { display_name?: string; username?: string }) => Promise<void>
+  onUpdateProfile?: (data: { display_name?: string; username?: string; bio?: string; banner_color?: string }) => Promise<void>
   onUploadAvatar?:  (file: File) => Promise<void>
 }) {
   switch (section) {
@@ -633,7 +633,7 @@ const KEYBINDS = [
   { action: 'Toggle Deafen',         keys: ['⌘', 'Shift', 'D'] },
   { action: 'Mark Server as Read',   keys: ['Escape'] },
   { action: 'Jump to Oldest Unread', keys: ['⌘', 'Shift', 'U'] },
-  { action: 'Upload a File',         keys: ['⌘', 'Shift', 'U'] },
+  { action: 'Upload a File',         keys: ['⌘', 'Shift', 'F'] },
   { action: 'Search',                keys: ['⌘', 'F'] },
   { action: 'Focus Chat Input',      keys: ['⌘', 'L'] },
   { action: 'Edit Last Message',     keys: ['↑'] },
