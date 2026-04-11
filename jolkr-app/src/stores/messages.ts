@@ -40,7 +40,7 @@ interface MessagesState {
   fetchOlder: (channelId: string, isDm?: boolean) => Promise<void>;
   sendMessage: (channelId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   sendDmMessage: (dmId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
-  editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean) => Promise<void>;
+  editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean, nonce?: string) => Promise<void>;
   deleteMessage: (messageId: string, channelId: string, isDm?: boolean) => Promise<void>;
   addMessage: (channelId: string, message: Message) => void;
   updateMessage: (channelId: string, message: Message) => void;
@@ -69,7 +69,7 @@ function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
     created_at: m.created_at as string,
     updated_at: (m.updated_at as string) ?? null,
     is_edited: (m.is_edited as boolean) ?? false,
-    is_pinned: false,
+    is_pinned: (m.is_pinned as boolean) ?? false,
     reply_to_id: (m.reply_to_id as string) ?? null,
     author: (m.author as Message['author']) ?? (m.sender as Message['author']) ?? null,
     attachments: (m.attachments as Message['attachments']) ?? [],
@@ -163,13 +163,13 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     return api.sendDmMessage(dmId, { content, nonce, reply_to_id: replyToId });
   },
 
-  editMessage: async (messageId, channelId, content, isDm) => {
+  editMessage: async (messageId, channelId, content, isDm, nonce) => {
     if (isDm) {
-      const raw = await api.editDmMessage(messageId, content);
+      const raw = await api.editDmMessage(messageId, content, nonce);
       const normalized = normalizeDmMessages([raw], channelId)[0];
       get().updateMessage(channelId, normalized);
     } else {
-      const updated = await api.editMessage(messageId, content);
+      const updated = await api.editMessage(messageId, content, nonce);
       get().updateMessage(channelId, updated);
     }
   },
