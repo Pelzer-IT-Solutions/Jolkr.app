@@ -386,7 +386,7 @@ export const getChannels = (serverId: string) =>
 export const createChannel = (serverId: string, body: { name: string; kind: string; topic?: string; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
 export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
-export const updateChannel = (id: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) =>
+export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
 export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>
   request<Channel[]>(`/servers/${serverId}/channels/reorder`, {
@@ -635,6 +635,8 @@ export const declineFriend = (id: string) =>
   request<void>(`/friends/${id}`, { method: 'DELETE' });
 export const blockUser = (userId: string) =>
   request<Friendship>('/friends/block', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'friendship');
+export const removeFriendByUserId = (userId: string) =>
+  request<void>(`/friends/user/${userId}`, { method: 'DELETE' });
 
 // General file upload (avatars, server icons, etc.)
 // When purpose is 'avatar' or 'icon', the backend converts to WebP and resizes.
