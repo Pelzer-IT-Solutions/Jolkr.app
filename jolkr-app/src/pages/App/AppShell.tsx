@@ -65,6 +65,7 @@ export default function AppShell() {
     ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
+    mentionableUsers,
   } = memos
 
   // ── Destructure handlers ──
@@ -76,7 +77,7 @@ export default function AppShell() {
     handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
     handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
-    handleDeleteCategory, handleArchiveChannel,
+    handleDeleteCategory, handleRenameChannel, handleRenameCategory, handleArchiveChannel,
     handleJoinServer, handleCreateServer, handleCreateDm,
   } = handlers
 
@@ -170,6 +171,8 @@ export default function AppShell() {
                   onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
                   onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
                   onDeleteCategory={canManageChannels ? handleDeleteCategory : undefined}
+                  onRenameChannel={canManageChannels ? handleRenameChannel : undefined}
+                  onRenameCategory={canManageChannels ? handleRenameCategory : undefined}
                   onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
                   onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
                 />
@@ -202,6 +205,7 @@ export default function AppShell() {
                 hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
                 readOnly={isDmWithSystemUser}
                 onPinMessage={handlePinMessage}
+                mentionableUsers={mentionableUsers}
               />
 
               {dmActive ? (

@@ -1,5 +1,4 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import {
   DndContext, DragOverlay, closestCenter,
   PointerSensor, useSensor, useSensors,
@@ -16,6 +15,7 @@ import { Plus, PanelLeftClose, ChevronDown, FolderPlus, Hash, Trash2, Archive, E
 import type { Server, Channel, Category, ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
+import { Menu, MenuItem, MenuDivider } from '../Menu'
 import { ThemePicker } from '../ThemePicker/ThemePicker'
 import s from './ChannelSidebar.module.css'
 
@@ -50,20 +50,23 @@ interface Props {
   onCreateCategory?:  (name: string) => Promise<void>
   onDeleteChannel?:   (channelId: string) => Promise<void>
   onDeleteCategory?:  (categoryId: string) => Promise<void>
+  onRenameChannel?:   (channelId: string, newName: string) => Promise<void>
+  onRenameCategory?:  (categoryId: string, newName: string) => Promise<void>
   onArchiveChannel?:  (channelId: string) => Promise<void>
   onOpenChannelSettings?: (channelId: string) => void
 }
 
-export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onArchiveChannel, onOpenChannelSettings }: Props) {
+export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings }: Props) {
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
   const [localCats,          setLocalCats]           = useState<Category[]>(server.categories)
   const [localExtraChannels, setLocalExtraChannels]  = useState<Channel[]>([])
   const [activeDragId,       setActiveDragId]        = useState<string | null>(null)
   const [isRevealing,        setIsRevealing]         = useState(false)
 
-  // ── Context menu ──
-  const ctxMenuRef = useRef<HTMLDivElement>(null)
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; type: 'empty' | 'channel' | 'folder'; target?: string } | null>(null)
+  // ── Context menus ──
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [channelContextMenu, setChannelContextMenu] = useState<{ x: number; y: number; channelId: string } | null>(null)
+  const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; categoryId: string } | null>(null)
   const [creating,    setCreating]    = useState<'folder' | 'channel' | null>(null)
   const [newName,     setNewName]     = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -143,10 +146,10 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   function saveChannelRename(channelId: string) {
     const name = editingName.trim()
     if (name && name !== channelMap[channelId]?.name) {
-      // Update local state immediately for responsiveness
       setLocalExtraChannels(prev => prev.map(ch =>
         ch.id === channelId ? { ...ch, name } : ch
       ))
+      onRenameChannel?.(channelId, name)
     }
     setEditingChannelId(null)
     setEditingName('')
@@ -182,6 +185,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       setLocalCats(prev => prev.map(cat =>
         cat.name === categoryId ? { ...cat, name } : cat
       ))
+      onRenameCategory?.(categoryId, name)
     }
     setEditingCategoryId(null)
     setEditingCatName('')
@@ -203,41 +207,39 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
   const addBtnRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    if (!contextMenu) return
-    function handleMouseDown(e: MouseEvent) {
-      if (ctxMenuRef.current && !ctxMenuRef.current.contains(e.target as Node)) setContextMenu(null)
-    }
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') setContextMenu(null) }
-    document.addEventListener('mousedown', handleMouseDown)
-    document.addEventListener('keydown', handleKey)
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown)
-      document.removeEventListener('keydown', handleKey)
-    }
-  }, [contextMenu])
-
   // ── Context menu helpers ──
+  function closeAllMenus() {
+    setContextMenu(null)
+    setChannelContextMenu(null)
+    setCategoryContextMenu(null)
+  }
+
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault()
-    setContextMenu({ x: e.clientX, y: e.clientY, type: 'empty' })
+    closeAllMenus()
+    setContextMenu({ x: e.clientX, y: e.clientY })
   }
 
   function handleChannelContextMenu(e: React.MouseEvent, channelId: string) {
     e.preventDefault()
     e.stopPropagation()
-    setContextMenu({ x: e.clientX, y: e.clientY, type: 'channel', target: channelId })
+    closeAllMenus()
+    setChannelContextMenu({ x: e.clientX, y: e.clientY, channelId })
   }
 
   function handleFolderContextMenu(e: React.MouseEvent, folderName: string) {
     e.preventDefault()
     e.stopPropagation()
-    setContextMenu({ x: e.clientX, y: e.clientY, type: 'folder', target: folderName })
+    closeAllMenus()
+    setCategoryContextMenu({ x: e.clientX, y: e.clientY, categoryId: folderName })
   }
 
   function handleAddClick() {
     const rect = addBtnRef.current?.getBoundingClientRect()
-    if (rect) setContextMenu({ x: rect.left, y: rect.bottom + 4, type: 'empty' })
+    if (rect) {
+      closeAllMenus()
+      setContextMenu({ x: rect.left, y: rect.bottom + 4 })
+    }
   }
 
   function startCreating(type: 'folder' | 'channel') {
@@ -383,7 +385,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div
+        <nav
+          aria-label="Server channels"
           className={`${s.scroll} scrollbar-thin scroll-view-y`}
           onContextMenu={handleContextMenu}
         >
@@ -471,7 +474,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               />
             </div>
           )}
-        </div>
+        </nav>
 
         <DragOverlay dropAnimation={{ duration: 150, easing: 'ease' }}>
           {activeChannel && (
@@ -488,119 +491,97 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         </DragOverlay>
       </DndContext>
 
-      {/* ── Context menu portal ── */}
-      {contextMenu && createPortal(
-          <div ref={ctxMenuRef} className={s.ctxMenu} style={{ top: contextMenu.y, left: contextMenu.x }}>
-            {contextMenu.type === 'empty' && (
-              <>
-                <button className={s.ctxItem} onClick={() => startCreating('folder')}>
-                  <FolderPlus size={13} strokeWidth={1.5} />
-                  <span>New Folder</span>
-                </button>
-                <button className={s.ctxItem} onClick={() => startCreating('channel')}>
-                  <Hash size={13} strokeWidth={1.5} />
-                  <span>New Channel</span>
-                </button>
-              </>
-            )}
-            {contextMenu.type === 'channel' && contextMenu.target && (
-              <>
-                {onOpenChannelSettings && (
-                  <button
-                    className={s.ctxItem}
-                    onClick={() => {
-                      if (contextMenu.target) {
-                        onOpenChannelSettings(contextMenu.target)
-                        setContextMenu(null)
-                      }
-                    }}
-                  >
-                    <Settings size={13} strokeWidth={1.5} />
-                    <span>Channel Settings</span>
-                  </button>
-                )}
-                <button
-                  className={s.ctxItem}
-                  onClick={() => {
-                    const channel = channelMap[contextMenu.target!]
-                    if (channel && canManageChannels) {
-                      startChannelRename(channel)
-                      setContextMenu(null)
-                    }
-                  }}
-                >
-                  <Edit3 size={13} strokeWidth={1.5} />
-                  <span>Rename Channel</span>
-                </button>
-                <button
-                  className={s.ctxItem}
-                  onClick={() => {
-                    if (onArchiveChannel && contextMenu.target) {
-                      onArchiveChannel(contextMenu.target)
-                      setContextMenu(null)
-                    }
-                  }}
-                >
-                  <Archive size={13} strokeWidth={1.5} />
-                  <span>Archive Channel</span>
-                </button>
-                <button
-                  className={`${s.ctxItem} ${s.ctxItemDanger}`}
-                  onClick={() => {
-                    if (onDeleteChannel && contextMenu.target) {
-                      if (window.confirm(`Delete this channel? This cannot be undone.`)) {
-                        onDeleteChannel(contextMenu.target)
-                        setContextMenu(null)
-                      }
-                    }
-                  }}
-                >
-                  <Trash2 size={13} strokeWidth={1.5} />
-                  <span>Delete Channel</span>
-                </button>
-              </>
-            )}
-            {contextMenu.type === 'folder' && contextMenu.target && (
-              <>
-                <button
-                  className={s.ctxItem}
-                  onClick={() => {
-                    const category = localCats.find(c => c.name === contextMenu.target)
-                    if (category && canManageChannels) {
-                      startCategoryRename(category)
-                      setContextMenu(null)
-                    }
-                  }}
-                >
-                  <Edit3 size={13} strokeWidth={1.5} />
-                  <span>Rename Folder</span>
-                </button>
-                <button
-                  className={`${s.ctxItem} ${s.ctxItemDanger}`}
-                  onClick={() => {
-                    if (onDeleteCategory && contextMenu.target) {
-                      if (window.confirm(`Delete this folder? Channels inside will not be deleted.`)) {
-                        const category = localCats.find(c => c.name === contextMenu.target)
-                        if (category) {
-                          // Find the category ID - we need to look it up from the server
-                          const serverCat = server.categories.find(c => c.name === category.name)
-                          if (serverCat) {
-                            onDeleteCategory(serverCat.name) // Using name as ID for now
-                            setContextMenu(null)
-                          }
-                        }
-                      }
-                    }
-                  }}
-                >
-                  <Trash2 size={13} strokeWidth={1.5} />
-                  <span>Delete Folder</span>
-                </button>
-              </>
-            )}
-          </div>,
-        document.body
-      )}
+      {/* ── Add / empty-space menu ── */}
+      <Menu isOpen={contextMenu !== null} position={contextMenu ?? { x: 0, y: 0 }} onClose={() => setContextMenu(null)}>
+        <MenuItem icon={<FolderPlus size={13} strokeWidth={1.5} />} label="New Folder" onClick={() => startCreating('folder')} />
+        <MenuItem icon={<Hash size={13} strokeWidth={1.5} />} label="New Channel" onClick={() => startCreating('channel')} />
+      </Menu>
+
+      {/* ── Channel context menu ── */}
+      <Menu isOpen={channelContextMenu !== null} position={channelContextMenu ?? { x: 0, y: 0 }} onClose={() => setChannelContextMenu(null)}>
+        {onOpenChannelSettings && channelContextMenu && (
+          <MenuItem
+            icon={<Settings size={13} strokeWidth={1.5} />}
+            label="Channel Settings"
+            onClick={() => {
+              onOpenChannelSettings(channelContextMenu.channelId)
+              setChannelContextMenu(null)
+            }}
+          />
+        )}
+        {canManageChannels && channelContextMenu && (
+          <MenuItem
+            icon={<Edit3 size={13} strokeWidth={1.5} />}
+            label="Rename Channel"
+            onClick={() => {
+              const channel = channelMap[channelContextMenu.channelId]
+              if (channel) startChannelRename(channel)
+              setChannelContextMenu(null)
+            }}
+          />
+        )}
+        {onArchiveChannel && channelContextMenu && (
+          <MenuItem
+            icon={<Archive size={13} strokeWidth={1.5} />}
+            label="Archive Channel"
+            onClick={() => {
+              onArchiveChannel(channelContextMenu.channelId)
+              setChannelContextMenu(null)
+            }}
+          />
+        )}
+        {onDeleteChannel && channelContextMenu && (
+          <>
+            <MenuDivider />
+            <MenuItem
+              icon={<Trash2 size={13} strokeWidth={1.5} />}
+              label="Delete Channel"
+              danger
+              onClick={() => {
+                if (window.confirm('Delete this channel? This cannot be undone.')) {
+                  onDeleteChannel(channelContextMenu.channelId)
+                }
+                setChannelContextMenu(null)
+              }}
+            />
+          </>
+        )}
+      </Menu>
+
+      {/* ── Category/folder context menu ── */}
+      <Menu isOpen={categoryContextMenu !== null} position={categoryContextMenu ?? { x: 0, y: 0 }} onClose={() => setCategoryContextMenu(null)}>
+        {canManageChannels && categoryContextMenu && (
+          <MenuItem
+            icon={<Edit3 size={13} strokeWidth={1.5} />}
+            label="Rename Folder"
+            onClick={() => {
+              const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
+              if (category) startCategoryRename(category)
+              setCategoryContextMenu(null)
+            }}
+          />
+        )}
+        {onDeleteCategory && categoryContextMenu && (
+          <>
+            <MenuDivider />
+            <MenuItem
+              icon={<Trash2 size={13} strokeWidth={1.5} />}
+              label="Delete Folder"
+              danger
+              onClick={() => {
+                if (window.confirm('Delete this folder? Channels inside will not be deleted.')) {
+                  const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
+                  if (category) {
+                    const serverCat = server.categories.find(c => c.name === category.name)
+                    if (serverCat) onDeleteCategory(serverCat.name)
+                  }
+                }
+                setCategoryContextMenu(null)
+              }}
+            />
+          </>
+        )}
+      </Menu>
     </aside>
   )
 }

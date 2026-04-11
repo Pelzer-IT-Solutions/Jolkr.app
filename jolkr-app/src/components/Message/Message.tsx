@@ -7,9 +7,11 @@ import {
 import type { Message as MessageType } from '../../types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useAuthStore } from '../../stores/auth'
-import { renderMarkdown } from '../../utils/markdown'
 import { useMenuPosition } from '../../utils/position'
+import { emojiToImgUrl } from '../../utils/emoji'
 import EmojiPickerPopup from '../EmojiPickerPopup'
+import MessageContent from '../MessageContent'
+import Avatar from '../Avatar'
 import { ReactionTooltip } from './ReactionTooltip'
 import s from './Message.module.css'
 
@@ -30,13 +32,14 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   const isOwn = message.author_id === currentUserId || message.author === 'You'
 
   // Decrypt E2EE content
-  const { displayContent, decrypting } = useDecryptedContent(
+  const { displayContent, isEncrypted, decrypting } = useDecryptedContent(
     message.content,
     message.nonce,
     message.isDm ?? isDm,
     message.channel_id,
   )
   const messageContent = displayContent || message.content
+  const showUnencryptedBadge = !isEncrypted && !!message.content
   const [showEmoji, setShowEmoji] = useState(false)
   const [showMore,  setShowMore]  = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -142,7 +145,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             className={`${s.reaction} ${r.me ? s.active : ''}`}
             onClick={() => onToggleReaction?.(r.emoji)}
           >
-            <span>{r.emoji}</span>
+            <img src={emojiToImgUrl(r.emoji)} alt={r.emoji} className={s.reactionEmoji} draggable={false} />
             <span className={`${s.reactionCount} txt-tiny txt-medium`}>{r.count}</span>
           </button>
         </ReactionTooltip>
@@ -164,7 +167,10 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
       </span>
     </div>
   ) : (
-    <div className={`${s.text} txt-body`}>{renderMarkdown(decrypting ? '...' : messageContent)}{editedTag}</div>
+    <div className={`${s.text} txt-body`}>
+      <MessageContent content={decrypting ? '...' : messageContent} serverId={serverId} />
+      {editedTag}
+    </div>
   )
 
   const body = (
@@ -229,29 +235,30 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           <div
             ref={moreMenuRef}
             className={s.moreMenu}
+            role="menu"
             style={{ position: 'fixed', top: morePos.y, left: morePos.x - 184 }}
           >
-            <button className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
+            <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
               <ReplyIcon /><span>Reply</span>
             </button>
             {isOwn && (
-              <button className={s.menuItem} onClick={startEdit}>
+              <button role="menuitem" className={s.menuItem} onClick={startEdit}>
                 <EditIcon /><span>Edit Message</span>
               </button>
             )}
-            <button className={s.menuItem} onClick={handleCopyText}>
+            <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
               <CopyIcon /><span>Copy Text</span>
             </button>
-            <button className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
+            <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
               <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
             </button>
             <div className={s.menuDivider} />
             {isOwn ? (
-              <button className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+              <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
                 <TrashIcon /><span>Delete Message</span>
               </button>
             ) : (
-              <button className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
+              <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
                 <FlagIcon /><span>Report Message</span>
               </button>
             )}
@@ -265,12 +272,12 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   /* ─── DM card layout ─── */
   if (isDm) {
     return (
-      <div className={`${s.dmRow} ${isOwn ? s.dmRowOwn : ''}`}>
+      <article className={`${s.dmRow} ${isOwn ? s.dmRowOwn : ''}`}>
         <div className={`${s.dmCard} ${isOwn ? s.dmCardOwn : ''}`}>
           {/* Header: sender on left, actions on right */}
           <div className={s.dmHeader}>
             <div className={s.dmHeaderSender}>
-              <div className={s.dmAvatar} style={{ background: message.color }}>{message.letter}</div>
+              <Avatar url={message.avatarUrl} name={message.author} size="xs" userId={message.author_id} className={s.dmAvatar} color={message.color} />
               <span className={`${s.dmAuthor} txt-body txt-semibold`}>{message.author}</span>
               <span className={`${s.dmTimeBadge} txt-tiny`}>{message.time}</span>
             </div>
@@ -301,7 +308,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                 />
               )}
 
-              <button className={s.dmActionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>
+              {onReply && <button className={s.dmActionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>}
 
               <div ref={moreRef} className={s.actionWrap}>
                 <button
@@ -322,27 +329,27 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                     className={s.moreMenu}
                     style={{ position: 'fixed', top: morePos.y, left: morePos.x - 184 }}
                   >
-                    <button className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
+                    <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
                       <ReplyIcon /><span>Reply</span>
                     </button>
                     {isOwn && (
-                      <button className={s.menuItem} onClick={startEdit}>
+                      <button role="menuitem" className={s.menuItem} onClick={startEdit}>
                         <EditIcon /><span>Edit Message</span>
                       </button>
                     )}
-                    <button className={s.menuItem} onClick={handleCopyText}>
+                    <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
                       <CopyIcon /><span>Copy Text</span>
                     </button>
-                    <button className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
+                    <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
                       <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
                     </button>
                     <div className={s.menuDivider} />
                     {isOwn ? (
-                      <button className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
                         <TrashIcon /><span>Delete Message</span>
                       </button>
                     ) : (
-                      <button className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
+                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
                         <FlagIcon /><span>Report Message</span>
                       </button>
                     )}
@@ -370,7 +377,10 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                 </span>
               </div>
             ) : (
-              <div className={`${s.text} txt-body`}>{renderMarkdown(decrypting ? '...' : messageContent)}{editedTag}</div>
+              <div className={`${s.text} txt-body`}>
+                <MessageContent content={decrypting ? '...' : messageContent} serverId={serverId} />
+                {editedTag}
+              </div>
             )}
           </div>
 
@@ -381,58 +391,40 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             </div>
           )}
         </div>
-      </div>
+      </article>
     )
   }
 
   /* ─── Standard channel layout ─── */
   if (message.continued) {
     return (
-      <div className={`${s.msg} ${s.continued} ${anyOpen ? s.hasMenu : ''}`}>
+      <article className={`${s.msg} ${s.continued} ${anyOpen ? s.hasMenu : ''}`}>
         <div className={s.body}>{body}</div>
         {toolbar}
-      </div>
+      </article>
     )
   }
 
   return (
-    <div className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
+    <article className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
       <MessageAvatar message={message} />
       <div className={s.body}>
         <div className={s.meta}>
           <span className={`${s.author} txt-body txt-semibold`}>{message.author}</span>
-          <span className={`${s.time} txt-tiny`}>{message.time}</span>
+          <time className={`${s.time} txt-tiny`}>{message.time}</time>
           {message.is_pinned && <Pin size={11} strokeWidth={1.4} className={s.pinnedBadge} />}
+          {showUnencryptedBadge && <span className={`${s.unencryptedBadge} txt-tiny`}>unencrypted</span>}
         </div>
         {body}
       </div>
       {toolbar}
-    </div>
+    </article>
   )
 }
 
 /* ─── Icons ─── */
 function MessageAvatar({ message }: { message: MessageType }) {
-  const [imgErr, setImgErr] = useState(false)
-  const src = message.avatarUrl
-  if (!src || imgErr) {
-    return (
-      <div className={s.avatar} style={{ background: message.color }}>
-        {message.letter}
-      </div>
-    )
-  }
-  return (
-    <div className={s.avatar}>
-      <img
-        src={src}
-        alt=""
-        loading="lazy"
-        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-        onError={() => setImgErr(true)}
-      />
-    </div>
-  )
+  return <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} color={message.color} />
 }
 
 function EmojiAddIcon() { return <SmilePlus      size={14} strokeWidth={1.4} /> }
