@@ -91,7 +91,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       server.categories.reduce((sum, c) => sum + c.channels.length, 0)
     const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
     return () => clearTimeout(timer)
-  }, [server.id])
+  }, [server.id, server.categories])
 
   useEffect(() => {
     if (creating) setTimeout(() => inputRef.current?.focus(), 0)
@@ -147,9 +147,6 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       setLocalExtraChannels(prev => prev.map(ch =>
         ch.id === channelId ? { ...ch, name } : ch
       ))
-      // Update in the server channels map (this is a local-only change for now)
-      const ch = channelMap[channelId]
-      if (ch) ch.name = name
     }
     setEditingChannelId(null)
     setEditingName('')
@@ -759,6 +756,8 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
                   onRenameKeyDown={(e) => onRenameKeyDown?.(e, ch.id)}
                   onRenameChange={onRenameChange}
                   renameInputRef={renameInputRef}
+                  onOpenChannelSettings={onOpenChannelSettings}
+                  canManageChannels={canManageChannels}
                 />
               )
             })}
