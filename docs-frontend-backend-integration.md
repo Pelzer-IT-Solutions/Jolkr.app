@@ -380,6 +380,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `acceptFriend` | POST | `/friends/{id}/accept` | — | `{friendship: Friendship}` |
 | `declineFriend` | DELETE | `/friends/{id}` | — | void |
 | `blockUser` | POST | `/friends/block` | `{user_id}` | `{friendship: Friendship}` |
+| `removeFriendByUserId` | DELETE | `/friends/user/{userId}` | — | void | ⚠️ Geen backend route — client-only |
 
 ---
 
@@ -1007,7 +1008,8 @@ interface Channel {
   id: string; server_id: string; name: string;
   kind: 'text' | 'voice' | 'category'; topic?: string | null;
   category_id?: string | null; position: number;
-  is_nsfw?: boolean; slowmode_seconds?: number;
+  is_nsfw?: boolean; is_system?: boolean;
+  slowmode_seconds?: number;
   e2ee_key_generation?: number;
   created_at?: string | null;
 }
@@ -1153,6 +1155,7 @@ interface Reaction {
   emoji: string;
   count: number;
   me: boolean;
+  user_ids?: string[];
 }
 ```
 
