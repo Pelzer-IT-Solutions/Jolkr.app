@@ -86,7 +86,6 @@ function ChangePasswordBlock() {
 }
 
 export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountTabProps) {
-  const [username, setUsername] = useState(user?.username ?? '');
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
   const [saving, setSaving] = useState(false);
@@ -103,7 +102,6 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
     setSaveError('');
     try {
       await onProfileUpdate({
-        username: username.trim(),
         display_name: displayName.trim() || undefined,
         bio: bio.trim(),
         avatar_url: avatarKey || undefined,
@@ -179,8 +177,8 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
           <Input
             id="settings-username"
             label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={user?.username ?? ''}
+            disabled
           />
           <Input
             id="settings-displayname"

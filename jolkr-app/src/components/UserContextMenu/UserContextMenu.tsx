@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { VolumeX, Flag, UserPlus, Link2, CircleSlash, UserMinus, Gavel } from 'lucide-react'
+import { VolumeX, Flag, UserPlus, Link2, CircleSlash, UserMinus, Gavel, Shield } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
-import type { Server as ApiServer } from '../../api/types'
+import type { Server as ApiServer, Role } from '../../api/types'
 import Avatar from '../Avatar'
 import ServerIconComp from '../ServerIcon'
 import s from './UserContextMenu.module.css'
@@ -26,7 +26,11 @@ interface Props {
   onKick?: (userId: string) => void
   onBan?: (userId: string) => void
   onInviteToServer?: (userId: string, serverId: string) => void
+  onToggleRole?: (userId: string, roleId: string, hasRole: boolean) => void
   servers?: Server[]
+  roles?: Role[]
+  userRoleIds?: string[]
+  canManageRoles?: boolean
   canKick?: boolean
   canBan?: boolean
   isBlocked?: boolean
@@ -44,7 +48,11 @@ export function UserContextMenu({
   onKick,
   onBan,
   onInviteToServer,
+  onToggleRole,
   servers = [],
+  roles = [],
+  userRoleIds = [],
+  canManageRoles = false,
   canKick = false,
   canBan = false,
   isBlocked = false,
@@ -164,6 +172,35 @@ export function UserContextMenu({
                 <span className="txt-small">Ban</span>
               </button>
             )}
+          </>
+        )}
+
+        {canManageRoles && roles.length > 0 && onToggleRole && (
+          <>
+            <div className={s.divider} />
+            <div className={s.sectionLabel}>
+              <Shield size={12} strokeWidth={1.5} />
+              <span className="txt-tiny">Assign Role</span>
+            </div>
+            <div className={s.serverList}>
+              {roles.filter(r => !r.is_default).map(role => {
+                const hasRole = userRoleIds.includes(role.id)
+                return (
+                  <button
+                    key={role.id}
+                    className={`${s.roleItem} ${hasRole ? s.roleActive : ''}`}
+                    onClick={() => { onToggleRole(menu.user.user_id, role.id, hasRole); onClose() }}
+                  >
+                    <span
+                      className={s.roleDot}
+                      style={{ background: role.color ? `#${role.color.toString(16).padStart(6, '0')}` : 'var(--text-faint)' }}
+                    />
+                    <span className={`${s.serverName} txt-small txt-truncate`}>{role.name}</span>
+                    {hasRole && <span className={`${s.roleCheck} txt-tiny`}>✓</span>}
+                  </button>
+                )
+              })}
+            </div>
           </>
         )}
 

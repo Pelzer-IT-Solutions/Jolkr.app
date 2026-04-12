@@ -624,8 +624,13 @@ impl MessageService {
 
         PinRepo::pin(pool, channel_id, message_id, caller_id).await?;
         let updated = MessageRepo::set_pinned(pool, message_id, true).await?;
+        let mut msgs = vec![MessageInfo::from(updated)];
+        enrich_with_reactions(pool, &mut msgs).await?;
+        enrich_with_attachments(pool, &mut msgs).await?;
+        enrich_with_embeds(pool, &mut msgs).await?;
+        enrich_with_polls(pool, &mut msgs).await?;
         info!(message_id = %message_id, channel_id = %channel_id, "Message pinned");
-        Ok(MessageInfo::from(updated))
+        Ok(msgs.into_iter().next().unwrap())
     }
 
     /// Unpin a message. Requires MANAGE_MESSAGES channel permission.
@@ -657,8 +662,13 @@ impl MessageService {
 
         PinRepo::unpin(pool, channel_id, message_id).await?;
         let updated = MessageRepo::set_pinned(pool, message_id, false).await?;
+        let mut msgs = vec![MessageInfo::from(updated)];
+        enrich_with_reactions(pool, &mut msgs).await?;
+        enrich_with_attachments(pool, &mut msgs).await?;
+        enrich_with_embeds(pool, &mut msgs).await?;
+        enrich_with_polls(pool, &mut msgs).await?;
         info!(message_id = %message_id, channel_id = %channel_id, "Message unpinned");
-        Ok(MessageInfo::from(updated))
+        Ok(msgs.into_iter().next().unwrap())
     }
 
     /// List pinned messages for a channel. Requires VIEW_CHANNELS.

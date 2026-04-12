@@ -115,7 +115,7 @@ export function useAppHandlers(
   }
 
   // ── Message handlers ──
-  const handleSend = useCallback(async (text: string, replyTo?: ReplyRef) => {
+  const handleSend = useCallback(async (text: string, replyTo?: ReplyRef, files?: File[]) => {
     const channelId = dmActive ? activeDmId : activeChannelId
     const isDm = dmActive
     const localKeys = getLocalKeys()
@@ -135,17 +135,33 @@ export function useAppHandlers(
       return members.map(m => m.user_id)
     }
 
-    const encrypted = await encryptChannelMessage(channelId, localKeys, text, getMemberIds, isDm)
+    const encrypted = await encryptChannelMessage(channelId, localKeys, text || ' ', getMemberIds, isDm)
     if (!encrypted) {
       console.error('E2EE encryption failed — cannot send message')
       return
     }
 
     // content = encrypted ciphertext, nonce = encryption nonce
+    let msg
     if (isDm) {
-      sendDmMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
+      msg = await sendDmMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
     } else {
-      sendMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
+      msg = await sendMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
+    }
+
+    // Upload attachments after message is created
+    if (files?.length && msg?.id) {
+      for (const file of files) {
+        try {
+          if (isDm) {
+            await api.uploadDmAttachment(channelId, msg.id, file)
+          } else {
+            await api.uploadAttachment(channelId, msg.id, file)
+          }
+        } catch (err) {
+          console.error('Attachment upload failed:', err)
+        }
+      }
     }
   }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
 

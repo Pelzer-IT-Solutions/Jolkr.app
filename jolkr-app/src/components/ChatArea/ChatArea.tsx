@@ -26,7 +26,7 @@ interface Props {
   rightPanelMode:     'members' | 'pinned' | 'threads' | null
   onExpandSidebar:    () => void
   onSetRightPanelMode: (mode: 'members' | 'pinned' | 'threads' | null) => void
-  onSend:             (text: string, replyTo?: ReplyRef) => void
+  onSend:             (text: string, replyTo?: ReplyRef, files?: File[]) => void
   onToggleReaction:   (msgId: string, emoji: string) => void
   onDeleteMessage:    (msgId: string) => void
   onEditMessage:      (msgId: string, newText: string) => void
@@ -50,10 +50,11 @@ interface Props {
   canAttachFiles?:    boolean
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false }: Props) {
   const listRef    = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLTextAreaElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // System channels are read-only; also hide composer if user lacks SEND_MESSAGES
   const isReadOnly = readOnly || channel.is_system || !canSendMessages
@@ -69,6 +70,9 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   // Mention autocomplete state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionIndex, setMentionIndex] = useState(0)
+
+  // File attachment state
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
   // Tracks previous values to distinguish navigation from message sends
   const prevAnimKeyRef    = useRef<string | null>(null)
@@ -255,10 +259,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
   function send() {
     const text = content.trim()
-    if (!text) return
+    if (!text && pendingFiles.length === 0) return
     const replyRef = replyingTo ? { id: replyingTo.id, author: replyingTo.author, text: replyingTo.content } : undefined
-    onSend(text, replyRef)
+    onSend(text || '', replyRef, pendingFiles.length > 0 ? pendingFiles : undefined)
     setContent('')
+    setPendingFiles([])
     setReplyingTo(null)
     if (inputRef.current) inputRef.current.style.height = 'auto'
   }
@@ -343,20 +348,24 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
             </>
           ) : (
             <>
-              <button
-                className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
-                title="Threads"
-                onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
-              >
-                <ThreadsIcon />
-              </button>
-              <button
-                className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
-                title="Pinned messages"
-                onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
-              >
-                <Pin size={14} strokeWidth={1.5} />
-              </button>
+              {hasThreads && (
+                <button
+                  className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
+                  title="Threads"
+                  onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
+                >
+                  <ThreadsIcon />
+                </button>
+              )}
+              {hasPinnedMessages && (
+                <button
+                  className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
+                  title="Pinned messages"
+                  onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
+                >
+                  <Pin size={14} strokeWidth={1.5} />
+                </button>
+              )}
             </>
           )}
           <button
@@ -517,6 +526,26 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                   </button>
                 </div>
               )}
+              {pendingFiles.length > 0 && (
+                <div className={s.pendingFiles}>
+                  {pendingFiles.map((file, i) => (
+                    <div key={`${file.name}-${i}`} className={s.pendingFile}>
+                      {file.type.startsWith('image/') ? (
+                        <img src={URL.createObjectURL(file)} alt={file.name} className={s.pendingFileThumb} />
+                      ) : (
+                        <div className={s.pendingFileIcon}><AttachIcon /></div>
+                      )}
+                      <span className={`${s.pendingFileName} txt-tiny`}>{file.name}</span>
+                      <button
+                        className={s.pendingFileRemove}
+                        onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div style={{ position: 'relative' }}>
                 <button
                   ref={composerEmojiBtnRef}
@@ -571,8 +600,34 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 />
               </div>
               <div className={s.composerActions}>
-                {canAttachFiles && <button className={s.composerBtn} title="Attach file"><AttachIcon /></button>}
-                {canAttachFiles && <button className={s.composerBtn} title="GIF"><GifIcon /></button>}
+                {canAttachFiles && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*,.pdf,.txt,.zip,.doc,.docx"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? [])
+                        if (files.length) setPendingFiles(prev => [...prev, ...files])
+                        e.target.value = ''
+                      }}
+                    />
+                    <button className={s.composerBtn} title="Attach file" onClick={() => fileInputRef.current?.click()}>
+                      <AttachIcon />
+                    </button>
+                    <button className={s.composerBtn} title="GIF" onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = 'image/gif'
+                        fileInputRef.current.click()
+                        fileInputRef.current.accept = 'image/*,video/*,.pdf,.txt,.zip,.doc,.docx'
+                      }
+                    }}>
+                      <GifIcon />
+                    </button>
+                  </>
+                )}
                 <button className={s.sendBtn} title="Send (Enter)" onClick={send}>
                   <SendIcon />
                 </button>

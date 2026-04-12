@@ -205,6 +205,11 @@ export function useAppInit() {
       fetchCategories(activeServerId),
       fetchPermissions(activeServerId),
     ]).then(() => {
+      // Auto-select first text channel if none is active (e.g. first visit to this server)
+      const chs = useServersStore.getState().channels[activeServerId]
+      if (chs?.length && (!activeChannelId || !chs.some(c => c.id === activeChannelId))) {
+        setActiveChannelId(chs.find(c => c.kind === 'text')?.id ?? chs[0].id)
+      }
       const mems = useServersStore.getState().members[activeServerId]
       if (mems?.length) {
         api.queryPresence(mems.map(m => m.user_id)).then(p => {

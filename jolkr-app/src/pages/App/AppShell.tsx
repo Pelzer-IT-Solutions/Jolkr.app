@@ -1,6 +1,8 @@
-import { hasPermission, KICK_MEMBERS, BAN_MEMBERS } from '../../utils/permissions'
+import { useCallback, useEffect, useState } from 'react'
+import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
 import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
+import { useServersStore } from '../../stores/servers'
 import * as api from '../../api/client'
 
 import { TabBar } from '../../components/TabBar/TabBar'
@@ -82,6 +84,38 @@ export default function AppShell() {
     handleJoinServer, handleCreateServer, handleCreateDm,
   } = handlers
 
+  // ── Role assignment for context menu ──
+  const serverRoles = useServersStore(s => s.roles[activeServerId] ?? [])
+  const serverMembers = useServersStore(s => s.members[activeServerId] ?? [])
+  const fetchRoles = useServersStore(s => s.fetchRoles)
+  const canManageRoles = !dmActive && (isServerOwner || hasPermission(myPerms, MANAGE_ROLES))
+
+  // Fetch roles when context menu opens on a server (lazy load)
+  useEffect(() => {
+    if (userContextMenu && canManageRoles && activeServerId && serverRoles.length === 0) {
+      fetchRoles(activeServerId).catch(console.warn)
+    }
+  }, [userContextMenu, canManageRoles, activeServerId, serverRoles.length, fetchRoles])
+
+  const contextMenuUserRoleIds = userContextMenu
+    ? serverMembers.find(m => m.user_id === userContextMenu.user.user_id)?.role_ids ?? []
+    : []
+
+  const handleToggleRole = useCallback(async (userId: string, roleId: string, hasRole: boolean) => {
+    if (!activeServerId) return
+    try {
+      if (hasRole) {
+        await api.removeRole(activeServerId, roleId, userId)
+      } else {
+        await api.assignRole(activeServerId, roleId, userId)
+      }
+      // Refresh members to get updated role_ids
+      useServersStore.getState().fetchMembersWithRoles(activeServerId).catch(console.warn)
+    } catch (err) {
+      console.error('Role toggle failed:', err)
+    }
+  }, [activeServerId])
+
   // ── Render ──
 
   if (!ready) {
@@ -115,7 +149,7 @@ export default function AppShell() {
           onClose={handleCloseTab}
           onReorder={setTabbedIds}
           onOpenServer={id => { setDmActive(false); handleOpenServer(id) }}
-          onDmClick={() => { setDmActive(v => !v); setNotificationsActive(false) }}
+          onDmClick={() => { setDmActive(v => !v) }}
           onSearchClick={() => setSearchActive(v => !v)}
           onNotificationsClick={() => setNotificationsActive(v => !v)}
           onOpenSettings={() => setSettingsOpen(true)}
@@ -410,6 +444,10 @@ export default function AppShell() {
           setUserContextMenu(null)
         }}
         servers={servers.filter(s => inviteableServerIds.includes(s.id)).map(s => ({ ...s, hue: serverThemes[s.id]?.hue ?? null }))}
+        roles={serverRoles}
+        userRoleIds={contextMenuUserRoleIds}
+        canManageRoles={canManageRoles}
+        onToggleRole={handleToggleRole}
       />
     </>
   )
