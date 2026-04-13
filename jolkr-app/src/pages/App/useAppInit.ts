@@ -205,9 +205,11 @@ export function useAppInit() {
       fetchCategories(activeServerId),
       fetchPermissions(activeServerId),
     ]).then(() => {
-      // Auto-select first text channel if none is active (e.g. first visit to this server)
+      // Ensure a valid channel is selected after fresh channel data arrives
       const chs = useServersStore.getState().channels[activeServerId]
-      if (chs?.length && (!activeChannelId || !chs.some(c => c.id === activeChannelId))) {
+      if (!chs?.length) return
+      const currentValid = activeChannelId && chs.some(c => c.id === activeChannelId)
+      if (!currentValid) {
         setActiveChannelId(chs.find(c => c.kind === 'text')?.id ?? chs[0].id)
       }
       const mems = useServersStore.getState().members[activeServerId]

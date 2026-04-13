@@ -44,6 +44,8 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
       avatarLetter: avatarLetter(user),
       avatarColor: hashColor(user.id),
       avatarUrl: user.avatar_url ? `${getApiBaseUrl()}/avatars/${user.id}` : null,
+      bio: user.bio ?? undefined,
+      bannerColor: user.banner_color ?? undefined,
     }
   }, [user])
 
@@ -53,7 +55,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     return {
       display_name: user.display_name || user.username,
       username: user.username,
-      banner_color: hashColor(user.id),
+      banner_color: user.banner_color ?? hashColor(user.id),
       avatar_url: user.avatar_url ? `${getApiBaseUrl()}/avatars/${user.id}` : null,
     }
   }, [user])
@@ -129,9 +131,12 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     const p = serverPermissions[srv.id] ?? 0
     return hasPermission(p, MANAGE_SERVER) || hasPermission(p, MANAGE_CHANNELS) || hasPermission(p, MANAGE_ROLES)
   }).map(s => s.id), [servers, user, serverPermissions])
-  const activeTheme = dmActive
-    ? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] }
-    : (serverThemes[activeServerId] ?? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] })
+  const activeTheme = useMemo(() =>
+    dmActive
+      ? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] }
+      : (serverThemes[activeServerId] ?? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] }),
+    [dmActive, activeServerId, serverThemes]
+  )
   const themeKey = dmActive ? '__dm__' : activeServerId
   const chatAnimKey = dmActive ? activeDmId : `${activeServerId}:${activeChannelId}`
   const typingUsers = useTypingUsers(effectiveChannelId, user?.id)

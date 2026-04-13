@@ -668,14 +668,24 @@
   box-shadow: 0 0 0 3px var(--accent-muted);
 }
 
-.displayNameInput {
-  font-size: 1.125rem;
-  font-weight: 600;
+.editFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.usernameInput {
-  font-size: 0.875rem;
+.editLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
+}
+
+.editReadonly {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
 }
 
 .editTextarea {

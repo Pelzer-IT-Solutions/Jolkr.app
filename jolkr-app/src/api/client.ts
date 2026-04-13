@@ -300,7 +300,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
 
 // Users
 export const getMe = () => request<User>('/users/@me', {}, 'user');
-export const updateMe = (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean }) =>
+export const updateMe = (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean; banner_color?: string }) =>
   request<User>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
 export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
 export const getUsersBatch = async (ids: string[]): Promise<User[]> => {

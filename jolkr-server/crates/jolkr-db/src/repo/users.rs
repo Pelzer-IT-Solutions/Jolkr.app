@@ -91,6 +91,7 @@ impl UserRepo {
         status: Option<&str>,
         bio: Option<&str>,
         show_read_receipts: Option<bool>,
+        banner_color: Option<&str>,
     ) -> Result<UserRow, JolkrError> {
         let now = Utc::now();
         let user = sqlx::query_as::<_, UserRow>(
@@ -101,7 +102,8 @@ impl UserRepo {
                 status             = COALESCE($4, status),
                 bio                = COALESCE($5, bio),
                 show_read_receipts = COALESCE($6, show_read_receipts),
-                updated_at         = $7
+                banner_color       = COALESCE($7, banner_color),
+                updated_at         = $8
             WHERE id = $1
             RETURNING *
             "#,
@@ -112,6 +114,7 @@ impl UserRepo {
         .bind(status)
         .bind(bio)
         .bind(show_read_receipts)
+        .bind(banner_color)
         .bind(now)
         .fetch_optional(pool)
         .await?

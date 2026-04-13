@@ -30,7 +30,7 @@ interface Props {
   onSetColorPref:(pref: ColorPreference) => void
   user?:         UserInfo
   onLogout?:     () => void
-  onUpdateProfile?: (data: { display_name?: string; username?: string; bio?: string; banner_color?: string }) => Promise<void>
+  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string }) => Promise<void>
   onUploadAvatar?:  (file: File) => Promise<void>
 }
 
@@ -148,7 +148,7 @@ function SectionContent({ section, isDark, colorPref, onSetColorPref, user, onLo
   user?:          UserInfo
   onLogout?:      () => void
   onClose:        () => void
-  onUpdateProfile?: (data: { display_name?: string; username?: string; bio?: string; banner_color?: string }) => Promise<void>
+  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string }) => Promise<void>
   onUploadAvatar?:  (file: File) => Promise<void>
 }) {
   switch (section) {
@@ -176,36 +176,28 @@ const BANNER_COLORS = [
   { name: 'Coral', value: 'oklch(60% 0.15 25)' },
 ]
 
-const MOCK_ROLES = [
-  { name: 'Admin', color: '#e64343' },
-  { name: 'Moderator', color: '#72da7a' },
-  { name: 'Designer', color: '#6d62ed' },
-]
-
 function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvatar }: {
   user?: UserInfo
   onLogout?: () => void
   onClose: () => void
-  onUpdateProfile?: (data: { display_name?: string; username?: string; bio?: string; banner_color?: string }) => Promise<void>
+  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string }) => Promise<void>
   onUploadAvatar?: (file: File) => Promise<void>
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [editedProfile, setEditedProfile] = useState({
     display_name: user?.displayName ?? '',
-    username: user?.username ?? '',
     bio: user?.bio ?? '',
     banner_color: user?.bannerColor ?? user?.avatarColor ?? '',
     avatar_url: user?.avatarUrl ?? null,
   })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Sync editedProfile when user prop changes (e.g., after avatar upload)
+  // Sync editedProfile when user prop changes (e.g., after save)
   useEffect(() => {
     if (!isEditing) {
       setEditedProfile({
         display_name: user?.displayName ?? '',
-        username: user?.username ?? '',
         bio: user?.bio ?? '',
         banner_color: user?.bannerColor ?? user?.avatarColor ?? '',
         avatar_url: user?.avatarUrl ?? null,
@@ -217,11 +209,11 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
     try {
       await onUpdateProfile?.({
         display_name: editedProfile.display_name,
-        username: editedProfile.username,
         bio: editedProfile.bio,
         banner_color: editedProfile.banner_color,
       })
       setIsEditing(false)
+      setShowColorPicker(false)
     } catch (e) {
       console.error('Failed to update profile:', e)
     }
@@ -230,33 +222,38 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   const handleCancel = () => {
     setEditedProfile({
       display_name: user?.displayName ?? '',
-      username: user?.username ?? '',
       bio: user?.bio ?? '',
       banner_color: user?.bannerColor ?? user?.avatarColor ?? '',
       avatar_url: user?.avatarUrl ?? null,
     })
     setIsEditing(false)
+    setShowColorPicker(false)
   }
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    // Reset so re-selecting the same file triggers onChange again
+    e.target.value = ''
+    // Show local preview immediately
+    const previewUrl = URL.createObjectURL(file)
+    setEditedProfile(p => ({ ...p, avatar_url: previewUrl }))
     try {
-      // Upload avatar - the user prop will update via useEffect when the upload completes
       await onUploadAvatar?.(file)
+      // After successful upload, the user prop will update with the real URL
+      // Sync avatar_url from the updated user prop
+      URL.revokeObjectURL(previewUrl)
     } catch (err) {
       console.error('Avatar upload failed:', err)
+      // Revert preview on failure
+      URL.revokeObjectURL(previewUrl)
+      setEditedProfile(p => ({ ...p, avatar_url: user?.avatarUrl ?? null }))
     }
   }
 
-  const handleBannerColorChange = async (color: string) => {
+  const handleBannerColorChange = (color: string) => {
     setEditedProfile(p => ({ ...p, banner_color: color }))
-    try {
-      await onUpdateProfile?.({ banner_color: color })
-      setShowColorPicker(false)
-    } catch (e) {
-      console.error('Failed to update banner color:', e)
-    }
+    setShowColorPicker(false)
   }
 
   return (
@@ -267,29 +264,31 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       <div className={s.profilePreviewCard}>
         {/* Actions Bar */}
         <div className={s.profileActions}>
-          {/* Color Picker - Inline */}
-          <div className={s.colorPickerInline}>
-            <button
-              className={`${s.colorPickerBtn} ${showColorPicker ? s.colorPickerActive : ''}`}
-              onClick={() => setShowColorPicker(!showColorPicker)}
-              title="Change banner color"
-            >
-              <Palette size={16} strokeWidth={1.5} />
-            </button>
-            {showColorPicker && (
-              <div className={s.colorPickerSwatchesInline}>
-                {BANNER_COLORS.map((c) => (
-                  <button
-                    key={c.value}
-                    className={`${s.colorPickerSwatch} ${editedProfile.banner_color === c.value ? s.colorPickerSwatchActive : ''}`}
-                    style={{ background: c.value }}
-                    onClick={() => handleBannerColorChange(c.value)}
-                    title={c.name}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Color Picker - Only visible when editing */}
+          {isEditing && (
+            <div className={s.colorPickerInline}>
+              <button
+                className={`${s.colorPickerBtn} ${showColorPicker ? s.colorPickerActive : ''}`}
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                title="Change banner color"
+              >
+                <Palette size={16} strokeWidth={1.5} />
+              </button>
+              {showColorPicker && (
+                <div className={s.colorPickerSwatchesInline}>
+                  {BANNER_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      className={`${s.colorPickerSwatch} ${editedProfile.banner_color === c.value ? s.colorPickerSwatchActive : ''}`}
+                      style={{ background: c.value }}
+                      onClick={() => handleBannerColorChange(c.value)}
+                      title={c.name}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Edit Button */}
           {isEditing ? (
@@ -309,8 +308,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
 
         {/* Profile Content */}
         <div className={s.previewContent}>
-          {/* Avatar - Click to change */}
-          <div className={s.previewAvatarWrap} onClick={() => fileInputRef.current?.click()}>
+          {/* Avatar - Click to change only when editing */}
+          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined} style={isEditing ? { cursor: 'pointer' } : undefined}>
             <input
               ref={fileInputRef}
               type="file"
@@ -325,64 +324,58 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                 editedProfile.display_name.charAt(0).toUpperCase()
               )}
             </div>
-            <div className={s.avatarChangeOverlay}>
-              <Camera size={20} strokeWidth={1.5} />
-            </div>
+            {isEditing && (
+              <div className={s.avatarChangeOverlay}>
+                <Camera size={20} strokeWidth={1.5} />
+              </div>
+            )}
           </div>
 
           {/* Profile Info */}
           <div className={s.previewInfo}>
             {isEditing ? (
               <>
-                <input
-                  type="text"
-                  className={`${s.editInput} ${s.displayNameInput}`}
-                  value={editedProfile.display_name}
-                  onChange={(e) => setEditedProfile(p => ({ ...p, display_name: e.target.value }))}
-                  placeholder="Display Name"
-                />
-                <input
-                  type="text"
-                  className={`${s.editInput} ${s.usernameInput}`}
-                  value={editedProfile.username}
-                  onChange={(e) => setEditedProfile(p => ({ ...p, username: e.target.value }))}
-                  placeholder="Username"
-                />
+                <div className={s.editFieldGroup}>
+                  <label className={s.editLabel}>Display Name</label>
+                  <input
+                    type="text"
+                    className={s.editInput}
+                    value={editedProfile.display_name}
+                    onChange={(e) => setEditedProfile(p => ({ ...p, display_name: e.target.value }))}
+                    placeholder="How others see you"
+                  />
+                </div>
+                <div className={s.editFieldGroup}>
+                  <label className={s.editLabel}>Username</label>
+                  <span className={s.editReadonly}>{user?.username}</span>
+                </div>
               </>
             ) : (
               <>
                 <h3 className={s.previewDisplayName}>{editedProfile.display_name}</h3>
-                <p className={s.previewUsername}>{editedProfile.username}</p>
+                <p className={s.previewUsername}>{user?.username}</p>
               </>
             )}
 
             <div className={s.previewDivider} />
 
             {isEditing ? (
-              <textarea
-                className={`${s.editTextarea} ${s.bioInput}`}
-                value={editedProfile.bio}
-                onChange={(e) => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
-                placeholder="Tell others about yourself..."
-                rows={3}
-              />
+              <div className={s.editFieldGroup}>
+                <label className={s.editLabel}>Bio</label>
+                <textarea
+                  className={s.editTextarea}
+                  value={editedProfile.bio}
+                  onChange={(e) => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
+                  placeholder="Tell others about yourself..."
+                  rows={3}
+                  maxLength={500}
+                />
+              </div>
             ) : (
-              <p className={s.previewBio}>{editedProfile.bio}</p>
+              <p className={s.previewBio}>{editedProfile.bio || 'No bio set'}</p>
             )}
           </div>
 
-          {/* Roles Section */}
-          <div className={s.previewRolesSection}>
-            <h4 className={s.previewRolesTitle}>Roles</h4>
-            <div className={s.previewRolesList}>
-              {MOCK_ROLES.map((role) => (
-                <div key={role.name} className={s.previewRoleBadge}>
-                  <span className={s.roleDot} style={{ background: role.color }} />
-                  <span className={s.roleName}>{role.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 

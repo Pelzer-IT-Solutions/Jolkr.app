@@ -27,6 +27,7 @@ pub struct UpdateMeRequest {
     pub status: Option<String>,
     pub bio: Option<String>,
     pub show_read_receipts: Option<bool>,
+    pub banner_color: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -97,6 +98,7 @@ pub async fn update_me(
             status: body.status,
             bio: body.bio,
             show_read_receipts: body.show_read_receipts,
+            banner_color: body.banner_color,
         },
     )
     .await?;

@@ -18,6 +18,7 @@ pub struct UserProfile {
     pub is_online: bool,
     pub show_read_receipts: bool,
     pub is_system: bool,
+    pub banner_color: Option<String>,
 }
 
 impl From<UserRow> for UserProfile {
@@ -32,6 +33,7 @@ impl From<UserRow> for UserProfile {
             is_online: row.is_online,
             show_read_receipts: row.show_read_receipts,
             is_system: row.is_system,
+            banner_color: row.banner_color,
         }
     }
 }
@@ -44,6 +46,7 @@ pub struct UpdateProfileRequest {
     pub status: Option<String>,
     pub bio: Option<String>,
     pub show_read_receipts: Option<bool>,
+    pub banner_color: Option<String>,
 }
 
 pub struct UserService;
@@ -84,6 +87,7 @@ impl UserService {
             req.status.as_deref(),
             req.bio.as_deref(),
             req.show_read_receipts,
+            req.banner_color.as_deref(),
         )
         .await?;
         Ok(UserProfile::from(row))

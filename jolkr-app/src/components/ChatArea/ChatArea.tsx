@@ -505,6 +505,26 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               </div>
             )}
 
+            {pendingFiles.length > 0 && (
+              <div className={s.pendingFiles}>
+                {pendingFiles.map((file, i) => (
+                  <div key={`${file.name}-${i}`} className={s.pendingFile}>
+                    {file.type.startsWith('image/') ? (
+                      <img src={URL.createObjectURL(file)} alt={file.name} className={s.pendingFileThumb} />
+                    ) : (
+                      <div className={s.pendingFileIcon}><AttachIcon /></div>
+                    )}
+                    <span className={`${s.pendingFileName} txt-tiny`}>{file.name}</span>
+                    <button
+                      className={s.pendingFileRemove}
+                      onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className={s.composer}>
               {fmtBar && (
                 <div
@@ -524,26 +544,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                   <button className={s.fmtBtn} title="Code" onClick={() => insertFormatting('`', '`')}>
                     <Code size={14} strokeWidth={2} />
                   </button>
-                </div>
-              )}
-              {pendingFiles.length > 0 && (
-                <div className={s.pendingFiles}>
-                  {pendingFiles.map((file, i) => (
-                    <div key={`${file.name}-${i}`} className={s.pendingFile}>
-                      {file.type.startsWith('image/') ? (
-                        <img src={URL.createObjectURL(file)} alt={file.name} className={s.pendingFileThumb} />
-                      ) : (
-                        <div className={s.pendingFileIcon}><AttachIcon /></div>
-                      )}
-                      <span className={`${s.pendingFileName} txt-tiny`}>{file.name}</span>
-                      <button
-                        className={s.pendingFileRemove}
-                        onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))}
                 </div>
               )}
               <div style={{ position: 'relative' }}>
@@ -607,7 +607,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       type="file"
                       accept="image/*,video/*,.pdf,.txt,.zip,.doc,.docx"
                       multiple
-                      className="hidden"
+                      style={{ display: 'none' }}
                       onChange={(e) => {
                         const files = Array.from(e.target.files ?? [])
                         if (files.length) setPendingFiles(prev => [...prev, ...files])

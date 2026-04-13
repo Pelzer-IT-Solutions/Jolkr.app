@@ -992,6 +992,7 @@ interface User {
   avatar_url?: string | null; status?: string | null;
   bio?: string | null; is_online?: boolean;
   show_read_receipts?: boolean; is_system?: boolean;
+  banner_color?: string | null;
   created_at?: string | null;
 }
 

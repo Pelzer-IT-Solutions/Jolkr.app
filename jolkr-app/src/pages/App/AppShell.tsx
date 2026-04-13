@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
 import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
@@ -85,8 +85,8 @@ export default function AppShell() {
   } = handlers
 
   // ── Role assignment for context menu ──
-  const serverRoles = useServersStore(s => s.roles[activeServerId] ?? [])
-  const serverMembers = useServersStore(s => s.members[activeServerId] ?? [])
+  const serverRoles = useServersStore(s => s.roles[activeServerId]) ?? []
+  const serverMembers = useServersStore(s => s.members[activeServerId]) ?? []
   const fetchRoles = useServersStore(s => s.fetchRoles)
   const canManageRoles = !dmActive && (isServerOwner || hasPermission(myPerms, MANAGE_ROLES))
 
@@ -258,7 +258,7 @@ export default function AppShell() {
               />
 
               {dmActive ? (
-                <DMInfoPanel visible={rightPanelMode !== null} />
+                <DMInfoPanel visible={rightPanelMode !== null} dmId={activeDmId} onUnpin={handleUnpinMessage} users={userMap} />
               ) : activeServer ? (
                 <MemberPanel
                   members={activeServer.members}
@@ -299,6 +299,7 @@ export default function AppShell() {
                 }
                 setActiveServerId(serverId)
                 setActiveChannelId(channelId)
+                setNotificationsActive(false)
               }}
             />
           )}

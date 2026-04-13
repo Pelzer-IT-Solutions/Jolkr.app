@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import {
   DndContext, DragOverlay, closestCenter,
   PointerSensor, useSensor, useSensors,
@@ -85,17 +85,27 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   // Reset all server-specific state synchronously before paint so there is
   // no flash of the previous server's content, and simultaneously kick off
   // the staggered reveal animation for the incoming server's channels.
+  // Use JSON key to avoid resetting on presence-only changes (categories reference changes)
+  const categoriesKey = useMemo(
+    () => server.categories.map(c => `${c.name}:${c.channels.join(',')}`).join('|'),
+    [server.categories],
+  )
+  const prevServerRef = useRef(server.id)
   useLayoutEffect(() => {
     setLocalCats(server.categories)
-    setCollapsedCats(new Set())
     setLocalExtraChannels([])
-    setIsRevealing(true)
-    const totalItems =
-      server.categories.length +
-      server.categories.reduce((sum, c) => sum + c.channels.length, 0)
-    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
-    return () => clearTimeout(timer)
-  }, [server.id, server.categories])
+    // Only reset collapsed + reveal animation when switching servers
+    if (prevServerRef.current !== server.id) {
+      setCollapsedCats(new Set())
+      setIsRevealing(true)
+      const totalItems =
+        server.categories.length +
+        server.categories.reduce((sum, c) => sum + c.channels.length, 0)
+      const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
+      prevServerRef.current = server.id
+      return () => clearTimeout(timer)
+    }
+  }, [server.id, categoriesKey])
 
   useEffect(() => {
     if (creating) setTimeout(() => inputRef.current?.focus(), 0)
@@ -626,6 +636,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `cat:${cat.name}`,
+    disabled: !canManageChannels,
   })
 
   // Don't allow dragging while editing
@@ -775,7 +786,7 @@ function SortableChannelRow({ id, channel, active, onClick, isRevealing, stagger
   onOpenChannelSettings?: (channelId: string) => void
   canManageChannels?: boolean
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !canManageChannels })
 
   // Don't allow dragging while editing
   if (isEditing) {

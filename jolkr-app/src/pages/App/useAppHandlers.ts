@@ -52,8 +52,9 @@ export function useAppHandlers(
   }, [user?.id])
 
   // ── Profile update handler ──
-  const handleUpdateProfile = useCallback(async (data: { display_name?: string; username?: string; bio?: string; banner_color?: string }) => {
-    await useAuthStore.getState().updateProfile(data)
+  const handleUpdateProfile = useCallback(async (data: { display_name?: string; bio?: string; banner_color?: string }) => {
+    const { banner_color, ...rest } = data
+    await useAuthStore.getState().updateProfile({ ...rest, ...(banner_color ? { banner_color } : {}) })
   }, [])
 
   // ── Avatar upload handler ──
@@ -82,11 +83,16 @@ export function useAppHandlers(
   function handleSwitchServer(id: string) {
     if (id === activeServerId) return
     lastChannelPerServer.current[activeServerId] = activeChannelId
+    setDmActive(false)
     setActiveServerId(id)
-    const srv = uiServers.find(s => s.id === id)
+    // Try to restore last-used channel for this server, but only if we have fresh data
+    const channels = useServersStore.getState().channels[id]
     const saved = lastChannelPerServer.current[id]
-    const channelExists = saved && srv?.channels.some(c => c.id === saved)
-    setActiveChannelId(channelExists ? saved : (srv?.channels[0]?.id ?? ''))
+    if (channels?.length) {
+      const channelExists = saved && channels.some(c => c.id === saved)
+      setActiveChannelId(channelExists ? saved : (channels.find(c => c.kind === 'text')?.id ?? channels[0].id))
+    }
+    // If no cached channels, activeChannelId will be set by the fetch effect in useAppInit
   }
 
   function handleCloseTab(id: string) {
@@ -207,8 +213,8 @@ export function useAppHandlers(
     const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
     if (!msg) return
     const newPinned = !msg.is_pinned
-    // Optimistic update
-    store.updateMessage(channelId, { ...msg, is_pinned: newPinned })
+    // Optimistic update — only change is_pinned, preserve reactions and other fields
+    store.updateMessage(channelId, { ...msg, is_pinned: newPinned, reactions: undefined } as typeof msg)
     try {
       if (newPinned) {
         if (dmActive) await api.pinDmMessage(channelId, msgId)
@@ -226,7 +232,7 @@ export function useAppHandlers(
       // Revert on failure
       const revertStore = useMessagesStore.getState()
       const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
-      if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned })
+      if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned, reactions: undefined } as typeof revertMsg)
     }
   }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
 
@@ -241,11 +247,12 @@ export function useAppHandlers(
         : await api.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       // Find and update the message's is_pinned status in the store
+      // Pass reactions: undefined so updateMessage preserves existing reactions
       const store = useMessagesStore.getState()
       const channelMsgs = store.messages[channelId] ?? []
       const msg = channelMsgs.find(m => m.id === msgId)
       if (msg) {
-        store.updateMessage(channelId, { ...msg, is_pinned: false })
+        store.updateMessage(channelId, { ...msg, is_pinned: false, reactions: undefined } as typeof msg)
       }
     } catch (err) {
       console.error('Unpin failed:', err)

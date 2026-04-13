@@ -226,7 +226,7 @@ export function transformServer(
     icon: (server.name?.[0] ?? '?').toUpperCase(),
     color: hashColor(server.id),
     unread: unreadCount > 0,
-    iconUrl: server.icon_url ? iconEndpoint(server.id) : null,
+    iconUrl: server.icon_url ? `${iconEndpoint(server.id)}?v=${encodeURIComponent(server.icon_url.slice(-8))}` : null,
     categories: uiCategories,
     channels: uiChannels,
     members: memberGroup,

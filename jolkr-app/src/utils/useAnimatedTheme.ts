@@ -146,6 +146,10 @@ export function useAnimatedTheme(
     () => makeStyle(current.current, isDark),
   )
 
+  // Stable content key — prevents infinite re-render when theme is a new
+  // object reference with identical content (e.g. inline { hue: null, orbs: [] }).
+  const themeKey = `${theme.hue}|${theme.orbs.map(o => `${o.x},${o.y},${o.hue},${o.scale ?? 1}`).join(';')}`
+
   useEffect(() => {
     const switched = prevServerId.current !== serverId
     prevServerId.current = serverId
@@ -175,7 +179,8 @@ export function useAnimatedTheme(
 
     raf.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf.current)
-  }, [serverId, theme])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverId, themeKey])
 
   // Rebuild when dark-mode toggles so colours stay correct mid-animation
   useEffect(() => {
