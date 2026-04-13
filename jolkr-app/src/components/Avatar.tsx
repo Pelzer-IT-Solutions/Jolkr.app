@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { getApiBaseUrl } from '../platform/config'
+import { useAuthStore } from '../stores/auth'
 import s from './Avatar.module.css'
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
@@ -50,7 +51,14 @@ const statusColorClass: Record<string, string> = {
 }
 
 export default function Avatar({ url, name, size = 'lg', status, userId, className, color }: AvatarProps) {
-  const imgSrc = userId && url ? avatarEndpoint(userId, url) : (url ?? undefined)
+  // For the current user, always use the auth store's avatar_url as version
+  // hint so ALL Avatar instances refresh immediately after an avatar change,
+  // regardless of whether the caller's data (member list, DM list, etc.) is stale.
+  const currentUser = useAuthStore(s => s.user)
+  const versionHint = (userId && currentUser && userId === currentUser.id)
+    ? currentUser.avatar_url
+    : url
+  const imgSrc = userId && (url || versionHint) ? avatarEndpoint(userId, versionHint) : (url ?? undefined)
   const [imgError, setImgError] = useState(false)
   const prevKeyRef = useRef(userId ?? url)
 
