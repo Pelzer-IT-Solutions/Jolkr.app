@@ -8,7 +8,6 @@ use uuid::Uuid;
 use jolkr_db::repo::UserRepo;
 use jolkr_db::repo::ServerRepo;
 
-use crate::image_processing::{convert_to_webp, ImagePurpose};
 use crate::routes::AppState;
 
 /// Max avatar size served to clients (2x retina of 56px max display = 112, round to 128).

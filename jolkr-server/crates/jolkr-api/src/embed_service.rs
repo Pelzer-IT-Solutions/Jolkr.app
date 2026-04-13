@@ -124,20 +124,11 @@ fn is_public_ip(ip: IpAddr) -> bool {
 
 /// Service for fetching link previews and storing them as embeds.
 #[derive(Clone)]
-pub struct LinkEmbedService {
-    client: Client,
-}
+pub struct LinkEmbedService {}
 
 impl LinkEmbedService {
     pub fn new() -> Self {
-        let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .user_agent("JolkrBot/1.0 (link preview)")
-            .redirect(reqwest::redirect::Policy::limited(3))
-            .build()
-            .unwrap_or_else(|_| Client::new());
-
-        Self { client }
+        Self {}
     }
 
     /// Resolve DNS and build a one-shot client pinned to validated IPs.
