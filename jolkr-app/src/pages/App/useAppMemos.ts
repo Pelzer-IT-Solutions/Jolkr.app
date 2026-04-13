@@ -168,7 +168,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     id: 'welcome',
     continued: false,
     author: 'Jolkr',
-    color: 'oklch(60% 0.18 136.69)',
+    color: 'var(--accent)',
     letter: 'J',
     avatarUrl: appIconUrl,
     time: 'Today',

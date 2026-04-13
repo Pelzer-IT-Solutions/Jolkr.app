@@ -34,11 +34,9 @@ const NEUTRAL_ORBS: OrbSnap[] = [
 ]
 
 function getNeutralOrbPosition(x: number, y: number): { x: number; y: number } {
-  // Determine nearest corner based on orb position
-  // Push far outside viewport so gradients are completely invisible
   const toLeft = x < 0.5
   const toTop = y < 0.5
-  
+
   return {
     x: toLeft ? -2 : 3,
     y: toTop ? -2 : 3,
@@ -58,7 +56,7 @@ function snap(theme: ServerTheme, fallbackOrbs?: OrbSnap[]): ThemeSnap {
           const pos = getNeutralOrbPosition(o.x, o.y)
           return { ...o, x: pos.x, y: pos.y }
         })
-    
+
     return {
       baseHue: 0,
       intensity: 0,
@@ -100,35 +98,58 @@ function buildBg(st: ThemeSnap, dark: boolean): string {
 
   const grads = st.orbs.map(o => {
     const spread = 72 * o.scale
-    // Use farthest-corner with scale to create circular gradients
-    // Fade from full opacity to 0% of the same color (not transparent black)
     return `radial-gradient(circle farthest-corner at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / ${blendOrbA.toFixed(4)}) 0%, oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / 0) ${spread.toFixed(1)}%)`
   })
   return [...grads, `oklch(${baseL} ${baseC.toFixed(4)} ${st.baseHue.toFixed(1)})`].join(', ')
 }
 
-function makeStyle(st: ThemeSnap, dark: boolean): React.CSSProperties {
-  const h   = st.baseHue
+/* ── Token computation + :root sync ── */
+
+const ROOT_KEYS = [
+  '--theme-hue',
+  '--accent',
+  '--accent-muted',
+  '--accent-strong',
+  '--accent-text',
+] as const
+
+/**
+ * Compute accent tokens. When targetHue is provided, the accent uses that hue
+ * with the current intensity as chroma — so the transition is gray → target
+ * color with no intermediate hues.
+ */
+function computeTokens(st: ThemeSnap, dark: boolean, targetHue?: number): Record<string, string> {
+  const h   = targetHue ?? st.baseHue
   const acC = 0.18 * st.intensity
   const atC = 0.14 * st.intensity
   const atL = dark ? 72 : 42 - 4 * st.intensity
 
   return {
-    '--theme-hue':     h,
+    '--theme-hue':     String(h),
     '--accent':        `oklch(55% ${acC.toFixed(4)} ${h})`,
     '--accent-muted':  `oklch(55% ${acC.toFixed(4)} ${h} / 0.12)`,
     '--accent-strong': `oklch(55% ${acC.toFixed(4)} ${h} / 0.24)`,
     '--accent-text':   `oklch(${atL.toFixed(1)}% ${atC.toFixed(4)} ${h})`,
-    background:        buildBg(st, dark),
-  } as React.CSSProperties
+  }
+}
+
+/** Sync tokens to :root so portals (createPortal) inherit them */
+function syncToRoot(tokens: Record<string, string>) {
+  const rs = document.documentElement.style
+  for (const key of ROOT_KEYS) rs.setProperty(key, tokens[key])
+}
+
+function makeStyle(tokens: Record<string, string>, bg: string): React.CSSProperties {
+  return { ...tokens, background: bg } as React.CSSProperties
 }
 
 /**
- * Animates the app-root background + accent tokens when switching servers.
+ * Animates the app-root background when switching servers.
  *
- * - Server switch (serverId changes) → 1200 ms cross-fade of orb positions,
- *   hues, and base tint via requestAnimationFrame.
- * - Theme-picker edits (same server) → instant update (no animation).
+ * - Server switch → 1200 ms cross-fade of background orbs.
+ *   Accent tokens jump instantly to the target (no colour-flash).
+ * - Theme-picker edits (same server) → instant update.
+ * - Tokens are synced to :root so createPortal modals pick them up.
  */
 export function useAnimatedTheme(
   serverId: string,
@@ -142,30 +163,44 @@ export function useAnimatedTheme(
   const raf          = useRef(0)
   const prevServerId = useRef(serverId)
 
-  const [style, setStyle] = useState<React.CSSProperties>(
-    () => makeStyle(current.current, isDark),
-  )
+  const [style, setStyle] = useState<React.CSSProperties>(() => {
+    const tokens = computeTokens(current.current, isDark)
+    syncToRoot(tokens)
+    return makeStyle(tokens, buildBg(current.current, isDark))
+  })
 
   // Stable content key — prevents infinite re-render when theme is a new
   // object reference with identical content (e.g. inline { hue: null, orbs: [] }).
   const themeKey = `${theme.hue}|${theme.orbs.map(o => `${o.x},${o.y},${o.hue},${o.scale ?? 1}`).join(';')}`
 
   useEffect(() => {
-    const switched = prevServerId.current !== serverId
+    const prev = prevServerId.current
+    const switched = prev !== serverId
     prevServerId.current = serverId
 
+    // Same server — instant update (theme picker, etc.)
     if (!switched) {
       cancelAnimationFrame(raf.current)
       current.current = snap(theme)
-      setStyle(makeStyle(current.current, isDarkRef.current))
+      const tokens = computeTokens(current.current, isDarkRef.current)
+      syncToRoot(tokens)
+      setStyle(makeStyle(tokens, buildBg(current.current, isDarkRef.current)))
       return
     }
 
+    const to = snap(theme, current.current.orbs)
+
+    // Animate everything (accent + background) from current state to target
     const from = { ...current.current, orbs: current.current.orbs.map(o => ({ ...o })) }
-    const to   = snap(theme, from.orbs)
 
     cancelAnimationFrame(raf.current)
     let start: number | null = null
+
+    // Pick the hue from whichever side has color (intensity > 0).
+    // Fading TO neutral: keep the source hue → [color] → faint [color] → gray.
+    // Fading FROM neutral: use the target hue → gray → faint [color] → [color].
+    // Both have color: use target hue.
+    const accentHue = to.intensity > 0 ? to.baseHue : from.baseHue
 
     function tick(now: number) {
       if (start === null) start = now
@@ -173,7 +208,9 @@ export function useAnimatedTheme(
       const eased = easeInOutCubic(p)
       const state = tween(from, to, eased)
       current.current = state
-      setStyle(makeStyle(state, isDarkRef.current))
+      const tokens = computeTokens(state, isDarkRef.current, accentHue)
+      syncToRoot(tokens)
+      setStyle(makeStyle(tokens, buildBg(state, isDarkRef.current)))
       if (p < 1) raf.current = requestAnimationFrame(tick)
     }
 
@@ -182,9 +219,11 @@ export function useAnimatedTheme(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverId, themeKey])
 
-  // Rebuild when dark-mode toggles so colours stay correct mid-animation
+  // Rebuild when dark-mode toggles
   useEffect(() => {
-    setStyle(makeStyle(current.current, isDark))
+    const tokens = computeTokens(current.current, isDark)
+    syncToRoot(tokens)
+    setStyle(makeStyle(tokens, buildBg(current.current, isDark)))
   }, [isDark])
 
   return style
