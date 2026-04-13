@@ -134,10 +134,10 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
     setAvatarUploading(false);
   };
 
-  // Show preview from new upload, otherwise existing avatar
-  const displayAvatarUrl = avatarPreviewUrl
-    ? rewriteStorageUrl(avatarPreviewUrl)
-    : user?.avatar_url;
+  // Show preview from new upload, otherwise existing avatar.
+  // Both paths need rewriteStorageUrl because presigned URLs contain the
+  // Docker-internal "minio:9000" host which isn't reachable from browser/Tauri.
+  const displayAvatarUrl = rewriteStorageUrl(avatarPreviewUrl || user?.avatar_url);
 
   return (
     <>
@@ -199,7 +199,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
           </div>
           {saveError && <div className="bg-danger/10 text-danger text-sm p-2 rounded">{saveError}</div>}
           <div>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={handleSave} disabled={saving || avatarUploading}>
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
             </Button>
           </div>

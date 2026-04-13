@@ -240,12 +240,10 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
     setEditedProfile(p => ({ ...p, avatar_url: previewUrl }))
     try {
       await onUploadAvatar?.(file)
-      // After successful upload, the user prop will update with the real URL
-      // Sync avatar_url from the updated user prop
-      URL.revokeObjectURL(previewUrl)
+      // Upload + profile update succeeded. The blob preview stays visible
+      // during editing; the real URL syncs when editing ends (via useEffect).
     } catch (err) {
       console.error('Avatar upload failed:', err)
-      // Revert preview on failure
       URL.revokeObjectURL(previewUrl)
       setEditedProfile(p => ({ ...p, avatar_url: user?.avatarUrl ?? null }))
     }

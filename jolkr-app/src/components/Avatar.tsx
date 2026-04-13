@@ -14,9 +14,16 @@ interface AvatarProps {
   color?: string
 }
 
-function avatarEndpoint(userId: string): string {
+function avatarEndpoint(userId: string, versionHint?: string | null): string {
   const base = getApiBaseUrl()
-  return `${base}/avatars/${userId}`
+  if (!versionHint) return `${base}/avatars/${userId}`
+  // Append cache-buster so the browser fetches the new image when the
+  // avatar changes (the endpoint responds with max-age=86400).
+  // Accept both ?v=<id> query params and S3 key paths (uploads/UUID.webp).
+  const vParam = versionHint.match(/[?&]v=([^&]+)/)?.[1]
+  if (vParam) return `${base}/avatars/${userId}?v=${vParam}`
+  const v = versionHint.split('/').pop()?.split('.')[0]
+  return v ? `${base}/avatars/${userId}?v=${v}` : `${base}/avatars/${userId}`
 }
 
 function resolveSize(size: AvatarSize | number): AvatarSize {
@@ -43,7 +50,7 @@ const statusColorClass: Record<string, string> = {
 }
 
 export default function Avatar({ url, name, size = 'lg', status, userId, className, color }: AvatarProps) {
-  const imgSrc = userId && url ? avatarEndpoint(userId) : (url ?? undefined)
+  const imgSrc = userId && url ? avatarEndpoint(userId, url) : (url ?? undefined)
   const [imgError, setImgError] = useState(false)
   const prevKeyRef = useRef(userId ?? url)
 

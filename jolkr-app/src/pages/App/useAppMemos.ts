@@ -43,7 +43,9 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
       email: user.email ?? '',
       avatarLetter: avatarLetter(user),
       avatarColor: hashColor(user.id),
-      avatarUrl: user.avatar_url ? `${getApiBaseUrl()}/avatars/${user.id}` : null,
+      avatarUrl: user.avatar_url
+        ? `${getApiBaseUrl()}/avatars/${user.id}?v=${user.avatar_url.split('/').pop()?.split('.')[0] ?? ''}`
+        : null,
       bio: user.bio ?? undefined,
       bannerColor: user.banner_color ?? undefined,
     }
@@ -56,7 +58,9 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
       display_name: user.display_name || user.username,
       username: user.username,
       banner_color: user.banner_color ?? hashColor(user.id),
-      avatar_url: user.avatar_url ? `${getApiBaseUrl()}/avatars/${user.id}` : null,
+      avatar_url: user.avatar_url
+        ? `${getApiBaseUrl()}/avatars/${user.id}?v=${user.avatar_url.split('/').pop()?.split('.')[0] ?? ''}`
+        : null,
     }
   }, [user])
 
