@@ -15,7 +15,7 @@ interface AuthState {
   register: (email: string, username: string, password: string) => Promise<void>;
   loadUser: () => Promise<void>;
   updateProfile: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean; banner_color?: string }) => Promise<void>;
-  _applyUserUpdate: (data: Record<string, unknown>) => void;
+  applyUserUpdate: (data: Record<string, unknown>) => void;
   logout: () => Promise<void>;
 }
 
@@ -73,7 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
 
-  _applyUserUpdate: (data: Record<string, unknown>) => {
+  applyUserUpdate: (data: Record<string, unknown>) => {
     set((state) => {
       if (!state.user) return state;
       return {
@@ -104,6 +104,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 // Sync profile updates from other sessions
 wsClient.on((op, d) => {
   if (op === 'UserUpdate') {
-    useAuthStore.getState()._applyUserUpdate(d as Record<string, unknown>);
+    useAuthStore.getState().applyUserUpdate(d as Record<string, unknown>);
   }
 });

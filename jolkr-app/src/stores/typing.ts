@@ -12,6 +12,7 @@ interface TypingState {
   typing: Record<string, Record<string, TypingEntry>>
   setTyping: (channelId: string, userId: string, username: string) => void
   clearTyping: (channelId: string, userId: string) => void
+  reset: () => void
 }
 
 const TYPING_TIMEOUT = 5000
@@ -52,6 +53,14 @@ export const useTypingStore = create<TypingState>((set, get) => ({
         },
       }
     })
+  },
+
+  reset: () => {
+    const { typing } = get()
+    for (const channel of Object.values(typing))
+      for (const entry of Object.values(channel))
+        clearTimeout(entry.timeoutId)
+    set({ typing: {} })
   },
 }))
 

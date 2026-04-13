@@ -355,7 +355,7 @@ wsClient.on((op, d) => {
         }
         break;
       }
-      store.fetchMembers(serverId).catch(() => {});
+      store.fetchMembers(serverId).catch(e => console.warn('Failed to fetch members:', e));
       break;
     }
     case 'MemberLeave': {

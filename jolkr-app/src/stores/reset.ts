@@ -4,6 +4,7 @@ import { useMessagesStore } from './messages';
 import { useUnreadStore } from './unread';
 import { useCallStore } from './call';
 import { useDmReadsStore } from './dm-reads';
+import { useTypingStore } from './typing';
 
 /** Reset all stores to initial state — call on logout to prevent stale data on re-login */
 export function resetAllStores() {
@@ -13,4 +14,5 @@ export function resetAllStores() {
   useUnreadStore.getState().reset();
   useCallStore.getState().reset();
   useDmReadsStore.getState().reset();
+  useTypingStore.getState().reset();
 }

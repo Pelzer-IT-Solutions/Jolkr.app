@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay-backdrop);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -138,7 +138,7 @@
   justify-content: center;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--jolkr-neutral-light-1000);
   position: relative;
   flex-shrink: 0;
 }
@@ -153,9 +153,9 @@
   border: 2px solid var(--bg-default);
 }
 
-.online { background: #3ba55c; }
-.idle { background: #faa61a; }
-.dnd { background: #ed4245; }
+.online { background: var(--status-online); }
+.idle { background: var(--status-idle); }
+.dnd { background: var(--status-dnd); }
 .offline { background: var(--jolkr-neutral-dark-30); }
 
 .names {
@@ -222,21 +222,21 @@
 }
 
 .acceptBtn {
-  background: rgba(59, 165, 92, 0.15);
-  color: #3ba55c;
+  background: var(--success-muted);
+  color: var(--success-default);
 }
 
 .acceptBtn:hover {
-  background: rgba(59, 165, 92, 0.25);
+  background: var(--success-strong);
 }
 
 .rejectBtn {
-  background: rgba(235, 75, 75, 0.15);
+  background: var(--danger-muted);
   color: var(--danger-default);
 }
 
 .rejectBtn:hover {
-  background: rgba(235, 75, 75, 0.25);
+  background: oklch(55% 0.2 25 / 0.24);
 }
 
 .cancelBtn {

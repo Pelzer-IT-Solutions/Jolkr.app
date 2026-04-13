@@ -175,6 +175,19 @@
   --danger-default: oklch(55% 0.2 25);
   --danger-strong:  oklch(62% 0.22 25);
   --danger-muted:   oklch(55% 0.2 25 / 0.12);
+
+  /* Success / allow — fixed green, not theme-driven */
+  --success-default: oklch(65% 0.18 145);
+  --success-muted:   oklch(65% 0.18 145 / 0.12);
+  --success-strong:  oklch(65% 0.18 145 / 0.24);
+
+  /* Status indicator colors — fixed, not theme-driven */
+  --status-online: oklch(65% 0.18 143);
+  --status-idle:   oklch(75% 0.18 65);
+  --status-dnd:    oklch(55% 0.2 25);
+
+  /* Overlay backdrop */
+  --overlay-backdrop: oklch(25% 0 0 / 0.5);
 }
 
 /* ─── Dark mode overrides ────────────────────────────────────────────── */

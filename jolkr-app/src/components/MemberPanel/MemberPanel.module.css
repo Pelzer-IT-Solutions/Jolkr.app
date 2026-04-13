@@ -88,7 +88,7 @@
   justify-content: center;
   font-size: 0.5625rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--jolkr-neutral-light-1000);
   overflow: hidden;
 }
 
@@ -108,9 +108,9 @@
   border-radius: 50%;
   border: 1.5px solid var(--bg-muted);
 }
-.online  { background: #3ba55c; }
-.idle    { background: #faa61a; }
-.dnd     { background: #ed4245; }
+.online  { background: var(--status-online); }
+.idle    { background: var(--status-idle);   }
+.dnd     { background: var(--status-dnd);    }
 .offline { background: var(--jolkr-neutral-dark-30); }
 
 .name { color: var(--text-muted); flex: 1; }

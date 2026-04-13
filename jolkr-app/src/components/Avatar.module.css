@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--jolkr-neutral-light-1000);
   font-weight: 600;
   user-select: none;
 }
@@ -54,7 +54,7 @@
 .statusXl  { width: 0.875rem;  height: 0.875rem;  }
 .statusXxl { width: 1rem;      height: 1rem;      }
 
-.online  { background: oklch(65% 0.18 143); }
-.idle    { background: oklch(75% 0.18 65);  }
-.dnd     { background: oklch(55% 0.2 25);   }
+.online  { background: var(--status-online); }
+.idle    { background: var(--status-idle);   }
+.dnd     { background: var(--status-dnd);    }
 .offline { background: var(--jolkr-neutral-dark-20); }

@@ -5,7 +5,8 @@ import {
   Mic, Bell, Keyboard, Globe, ChevronRight, Camera,
 } from 'lucide-react'
 import type { ColorPreference } from '../../utils/colorMode'
-import { revealDelay, revealWindowMs } from '../../utils/animations'
+import { revealDelay } from '../../utils/animations'
+import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './Settings.module.css'
 
 type Section =
@@ -61,12 +62,7 @@ export function Settings({ onClose, isDark, colorPref, onSetColorPref, user, onL
 
   // Settings mounts fresh on every open, so start revealing immediately.
   const navTotal = NAV.reduce((sum, g) => sum + 1 + g.items.length, 0)
-  const [isRevealing, setIsRevealing] = useState(true)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(navTotal))
-    return () => clearTimeout(timer)
-  }, [])
+  const isRevealing = useRevealAnimation(navTotal, [])
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }

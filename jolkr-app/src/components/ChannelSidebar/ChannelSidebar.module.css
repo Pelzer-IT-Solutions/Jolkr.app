@@ -253,7 +253,7 @@
   line-height: 1;
   border-radius: 100px;
   background: var(--accent);
-  color: #fff;
+  color: var(--jolkr-neutral-light-1000);
   flex-shrink: 0;
   width: 1.25rem;
   height: 1.25rem;

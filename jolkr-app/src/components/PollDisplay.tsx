@@ -16,7 +16,7 @@ function PollDisplayInner({ pollId, initialPoll }: PollDisplayProps) {
 
   useEffect(() => {
     if (!initialPoll) {
-      api.getPoll(pollId).then(setPoll).catch(() => {}).finally(() => setLoading(false));
+      api.getPoll(pollId).then(setPoll).catch(e => console.warn('Failed to fetch poll:', e)).finally(() => setLoading(false));
     }
   }, [pollId, initialPoll]);
 

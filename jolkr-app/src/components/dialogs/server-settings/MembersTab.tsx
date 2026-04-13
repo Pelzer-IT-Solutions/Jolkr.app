@@ -43,8 +43,8 @@ export default function MembersTab({ server }: MembersTabProps) {
   const fetchedIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
-    fetchMembersWithRoles(server.id).catch(() => {});
-    fetchRoles(server.id).catch(() => {});
+    fetchMembersWithRoles(server.id).catch(e => console.warn('Failed to fetch members:', e));
+    fetchRoles(server.id).catch(e => console.warn('Failed to fetch roles:', e));
   }, [server.id, fetchMembersWithRoles, fetchRoles]);
 
   // Fetch user details for all members

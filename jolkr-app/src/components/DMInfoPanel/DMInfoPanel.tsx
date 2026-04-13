@@ -1,8 +1,9 @@
-import { useState, useEffect, useLayoutEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import * as api from '../../api/client'
 import type { Message, User } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './DMInfoPanel.module.css'
 
 interface Props {
@@ -36,16 +37,9 @@ function PinnedItem({ msg, dmId, onUnpin, users }: {
 }
 
 export function DMInfoPanel({ visible, dmId, onUnpin, users, pinnedVersion }: Props) {
-  const [isRevealing, setIsRevealing] = useState(() => visible)
+  const isRevealing = useRevealAnimation(0, [visible], visible, 300)
   const [pinned, setPinned] = useState<Message[]>([])
   const [loadingPins, setLoadingPins] = useState(false)
-
-  useLayoutEffect(() => {
-    if (!visible) return
-    setIsRevealing(true)
-    const timer = setTimeout(() => setIsRevealing(false), 300)
-    return () => clearTimeout(timer)
-  }, [visible])
 
   // Fetch pinned messages when panel becomes visible or dmId changes
   useEffect(() => {

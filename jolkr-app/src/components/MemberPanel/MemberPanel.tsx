@@ -1,9 +1,9 @@
-import { useState, useLayoutEffect } from 'react'
 import type { MemberGroup, Member } from '../../types'
 import type { User } from '../../api/types'
 import Avatar from '../Avatar'
 import { PinnedMessagesPanel } from '../PinnedMessagesPanel/PinnedMessagesPanel'
-import { revealDelay, revealWindowMs } from '../../utils/animations'
+import { revealDelay } from '../../utils/animations'
+import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './MemberPanel.module.css'
 
 interface Props {
@@ -26,15 +26,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
   // 2 group headers + all member rows
   const totalRevealItems = 2 + total
 
-  const [isRevealing, setIsRevealing] = useState(() => visible)
-
-  // Trigger on panel open (visible) AND on server/mode switch
-  useLayoutEffect(() => {
-    if (!visible) return
-    setIsRevealing(true)
-    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalRevealItems))
-    return () => clearTimeout(timer)
-  }, [visible, serverId, mode])
+  const isRevealing = useRevealAnimation(totalRevealItems, [visible, serverId, mode], visible)
 
   // Pre-compute stagger offsets
   const offlineHeaderIdx = 1 + members.online.length
@@ -77,7 +69,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
             </div>
             {members.online.map((m, i) => (
               <button
-                key={i}
+                key={m.userId}
                 className={`${s.member} ${isRevealing ? 'revealing' : ''}`}
                 style={revealStyle(1 + i)}
                 onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
@@ -102,7 +94,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
             </div>
             {members.offline.map((m, i) => (
               <button
-                key={i}
+                key={m.userId}
                 className={`${s.member} ${s.memberOffline} ${isRevealing ? 'revealing' : ''}`}
                 style={revealStyle(offlineStart + i)}
                 onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}

@@ -5,6 +5,7 @@ import type { User } from '../../api/types';
 import { useAuthStore } from '../../stores/auth';
 import { useServersStore } from '../../stores/servers';
 import { hashColor } from '../../adapters/transforms';
+import { displayName } from '../../utils/format';
 import { emojiToImgUrl } from '../../utils/emoji';
 import Avatar from '../Avatar';
 import s from './ReactionTooltip.module.css';
@@ -47,7 +48,7 @@ export function ReactionTooltip({ reaction, children, serverId, userMap, dmParti
       if (isMe && currentUser) {
         return {
           id: userId,
-          name: currentUser.display_name || currentUser.username,
+          name: displayName(currentUser),
           color: hashColor(userId),
           avatarUrl: currentUser.avatar_url ?? null,
           isMe: true,
@@ -60,7 +61,7 @@ export function ReactionTooltip({ reaction, children, serverId, userMap, dmParti
         if (member?.user) {
           return {
             id: userId,
-            name: member.nickname || member.user.display_name || member.user.username,
+            name: member.nickname || displayName(member.user),
             color: hashColor(userId),
             avatarUrl: member.user.avatar_url ?? null,
             isMe,
@@ -73,7 +74,7 @@ export function ReactionTooltip({ reaction, children, serverId, userMap, dmParti
       if (mapUser) {
         return {
           id: userId,
-          name: mapUser.display_name || mapUser.username,
+          name: displayName(mapUser),
           color: hashColor(userId),
           avatarUrl: mapUser.avatar_url ?? null,
           isMe,

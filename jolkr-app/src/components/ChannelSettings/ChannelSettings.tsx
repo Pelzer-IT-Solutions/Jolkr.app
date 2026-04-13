@@ -6,7 +6,8 @@ import {
 import type { Channel as ApiChannel, Role, ChannelOverwrite } from '../../api/types'
 import * as api from '../../api/client'
 import * as P from '../../utils/permissions'
-import { revealDelay, revealWindowMs } from '../../utils/animations'
+import { revealDelay } from '../../utils/animations'
+import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './ChannelSettings.module.css'
 
 type Section = 'overview' | 'permissions'
@@ -35,8 +36,6 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
   const [section, setSection] = useState<Section>('overview')
   const [editedChannel, setEditedChannel] = useState<Partial<ApiChannel>>({})
   const [hasChanges, setHasChanges] = useState(false)
-  const [isRevealing, setIsRevealing] = useState(true)
-
   // Permissions state
   const [roles, setRoles] = useState<Role[]>([])
   const [overwrites, setOverwrites] = useState<ChannelOverwrite[]>([])
@@ -46,11 +45,7 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
   const [newOverwriteTargetId, setNewOverwriteTargetId] = useState('')
 
   const navTotal = NAV.reduce((sum, g) => sum + 1 + g.items.length, 0)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(navTotal))
-    return () => clearTimeout(timer)
-  }, [navTotal])
+  const isRevealing = useRevealAnimation(navTotal, [navTotal])
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }

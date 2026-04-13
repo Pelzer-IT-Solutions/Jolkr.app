@@ -12,7 +12,8 @@ import ServerIcon from '../ServerIcon'
 
 // Extend API Server with frontend-only display fields
 type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
-import { revealDelay, revealWindowMs } from '../../utils/animations'
+import { revealDelay } from '../../utils/animations'
+import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './ServerSettings.module.css'
 
 type Section = 'overview' | 'roles' | 'invites' | 'bans' | 'audit' | 'delete'
@@ -55,7 +56,6 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [section, setSection] = useState<Section>('overview')
   const [editedServer, setEditedServer] = useState<Partial<Server>>({})
   const [hasChanges, setHasChanges] = useState(false)
-  const [isRevealing, setIsRevealing] = useState(true)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [iconUploading, setIconUploading] = useState(false)
@@ -80,11 +80,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
 
   const navTotal = NAV.reduce((sum, g) => sum + 1 + g.items.length, 0)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(navTotal))
-    return () => clearTimeout(timer)
-  }, [navTotal])
+  const isRevealing = useRevealAnimation(navTotal, [navTotal])
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }

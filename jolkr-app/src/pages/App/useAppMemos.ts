@@ -11,6 +11,7 @@ import {
   hashColor,
   avatarLetter,
 } from '../../adapters/transforms'
+import { displayName } from '../../utils/format'
 import { useAnimatedTheme } from '../../utils/useAnimatedTheme'
 import { useColorMode } from '../../utils/colorMode'
 import {
@@ -38,7 +39,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const userInfo = useMemo(() => {
     if (!user) return undefined
     return {
-      displayName: user.display_name || user.username,
+      displayName: displayName(user),
       username: user.username,
       email: user.email ?? '',
       avatarLetter: avatarLetter(user),
@@ -55,7 +56,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const userProfile = useMemo(() => {
     if (!user) return undefined
     return {
-      display_name: user.display_name || user.username,
+      display_name: displayName(user),
       username: user.username,
       banner_color: user.banner_color ?? hashColor(user.id),
       avatar_url: user.avatar_url

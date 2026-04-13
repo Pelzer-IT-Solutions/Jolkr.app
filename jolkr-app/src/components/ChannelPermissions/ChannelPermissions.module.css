@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-backdrop);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -177,7 +177,7 @@
 }
 
 .removeBtn:hover {
-  background: rgba(235, 75, 75, 0.1);
+  background: var(--danger-muted);
   color: var(--danger-default);
 }
 
@@ -250,9 +250,9 @@
 }
 
 .toggleBtn.allow {
-  background: rgba(59, 165, 92, 0.2);
-  border-color: #3ba55c;
-  color: #3ba55c;
+  background: var(--success-strong);
+  border-color: var(--success-default);
+  color: var(--success-default);
 }
 
 .toggleBtn.neutral {
@@ -261,7 +261,7 @@
 }
 
 .toggleBtn.deny {
-  background: rgba(235, 75, 75, 0.2);
+  background: oklch(55% 0.2 25 / 0.2);
   border-color: var(--danger-default);
   color: var(--danger-default);
 }
@@ -289,7 +289,7 @@
   border-radius: 50%;
 }
 
-.allowDot { background: #3ba55c; }
+.allowDot { background: var(--success-default); }
 .neutralDot { background: var(--text-faint); }
 .denyDot { background: var(--danger-default); }
 
@@ -362,7 +362,7 @@
 .addModalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: oklch(25% 0 0 / 0.4);
   z-index: 1002;
   display: flex;
   align-items: center;
@@ -439,7 +439,7 @@
   justify-content: center;
   font-size: 0.625rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--jolkr-neutral-light-1000);
   flex-shrink: 0;
 }
 

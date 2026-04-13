@@ -4,6 +4,7 @@
  * This adapter layer bridges the two type systems.
  */
 
+import { displayName } from '../utils/format'
 import type {
   User,
   Server as ApiServer,
@@ -43,8 +44,7 @@ export function hashColor(input: string): string {
 
 /** First letter of display name or username, uppercased. */
 export function avatarLetter(user: User): string {
-  const name = user.display_name || user.username
-  return (name?.[0] ?? '?').toUpperCase()
+  return (displayName(user)?.[0] ?? '?').toUpperCase()
 }
 
 /** Build the cached avatar endpoint URL for a user (no presigned S3 needed). */
@@ -113,7 +113,7 @@ export function transformMessage(
 ): UiMessage {
   const author = users.get(msg.author_id) ?? msg.author
   const { color, letter, avatarUrl } = author ? userToAvatar(author) : { color: 'oklch(50% 0 0)', letter: '?', avatarUrl: null }
-  const displayName = author?.display_name || author?.username || 'Unknown'
+  const authorName = displayName(author)
 
   // Continued = same author as previous message
   const continued = !!prevMsg && prevMsg.author_id === msg.author_id
@@ -125,7 +125,7 @@ export function transformMessage(
     if (replyMsg) {
       const replyAuthor = replyMsg.author ?? users.get(replyMsg.author_id)
       replyTo = {
-        author: replyAuthor?.display_name || replyAuthor?.username || 'Unknown',
+        author: displayName(replyAuthor),
         // If the reply has a nonce, it's encrypted — show placeholder (content is raw ciphertext)
         text: replyMsg.nonce ? 'Encrypted message' : (replyMsg.content?.slice(0, 100) || 'Encrypted message'),
       }
@@ -142,7 +142,7 @@ export function transformMessage(
 
   return {
     id: msg.id,
-    author: displayName,
+    author: authorName,
     color,
     letter,
     avatarUrl,
@@ -250,7 +250,7 @@ export function transformMemberGroup(
     const status = toMemberStatus(presences.get(user.id) ?? user.status)
     const { color, letter, avatarUrl } = userToAvatar(user)
     const uiMember: UiMember = {
-      name: member.nickname || user.display_name || user.username,
+      name: member.nickname || displayName(user),
       status,
       color,
       letter,
@@ -287,7 +287,7 @@ export function transformDmConversation(
       const status = toMemberStatus(presences.get(id) ?? user.status)
       const { color, letter, avatarUrl } = userToAvatar(user)
       return {
-        name: user.display_name || user.username,
+        name: displayName(user),
         status,
         color,
         letter,
