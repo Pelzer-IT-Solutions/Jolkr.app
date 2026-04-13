@@ -26,7 +26,7 @@ export function useAppHandlers(
     setServerThemes, lastChannelPerServer, themeSaveTimer,
     fetchServers, fetchChannels, fetchCategories,
     sendMessage, sendDmMessage, editMessage, deleteMessage,
-    setPinnedCount,
+    setPinnedCount, setPinnedVersion,
   } = init
 
   const { uiServers, effectiveChannelId, currentApiMessages } = memos
@@ -227,6 +227,7 @@ export function useAppHandlers(
         ? await api.getDmPinnedMessages(channelId)
         : await api.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
+      setPinnedVersion(v => v + 1)
     } catch (err) {
       console.error('Pin toggle failed:', err)
       // Revert on failure
@@ -246,6 +247,7 @@ export function useAppHandlers(
         ? await api.getDmPinnedMessages(channelId)
         : await api.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
+      setPinnedVersion(v => v + 1)
       // Find and update the message's is_pinned status in the store
       // Pass reactions: undefined so updateMessage preserves existing reactions
       const store = useMessagesStore.getState()

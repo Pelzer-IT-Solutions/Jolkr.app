@@ -12,6 +12,7 @@ interface Props {
   onClose: () => void
   onUnpin?: (messageId: string) => void
   users?: Map<string, User>
+  pinnedVersion?: number
 }
 
 /** Single pinned message item — uses hook for E2EE decryption. */
@@ -43,7 +44,7 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
   )
 }
 
-export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin, users }: Props) {
+export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin, users, pinnedVersion }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -59,7 +60,7 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin,
       setMessages(normalized)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [channelId, isDm])
+  }, [channelId, isDm, pinnedVersion])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)

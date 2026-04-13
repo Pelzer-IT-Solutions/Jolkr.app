@@ -57,6 +57,7 @@ export function useAppInit() {
 
   // ── Content availability for conditional icon display ──
   const [pinnedCount, setPinnedCount] = useState(0)
+  const [pinnedVersion, setPinnedVersion] = useState(0)
   const [threadsCount, setThreadsCount] = useState(0)
 
   const lastChannelPerServer = useRef<Record<string, string>>({})
@@ -327,7 +328,7 @@ export function useAppInit() {
     channelSettingsOpen, setChannelSettingsOpen,
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
-    pinnedCount, setPinnedCount, threadsCount, setThreadsCount,
+    pinnedCount, setPinnedCount, pinnedVersion, setPinnedVersion, threadsCount, setThreadsCount,
     lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
   }
 }

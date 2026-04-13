@@ -52,7 +52,7 @@ export default function AppShell() {
     channelSettingsOpen, setChannelSettingsOpen,
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
-    pinnedCount, threadsCount,
+    pinnedCount, pinnedVersion, threadsCount,
     ready, serverThemes,
     fetchServers,
   } = init
@@ -258,7 +258,7 @@ export default function AppShell() {
               />
 
               {dmActive ? (
-                <DMInfoPanel visible={rightPanelMode !== null} dmId={activeDmId} onUnpin={handleUnpinMessage} users={userMap} />
+                <DMInfoPanel visible={rightPanelMode !== null} dmId={activeDmId} onUnpin={handleUnpinMessage} users={userMap} pinnedVersion={pinnedVersion} />
               ) : activeServer ? (
                 <MemberPanel
                   members={activeServer.members}
@@ -285,6 +285,7 @@ export default function AppShell() {
                   }}
                   onUnpin={handleUnpinMessage}
                   users={userMap}
+                  pinnedVersion={pinnedVersion}
                 />
               ) : null}
             </div>

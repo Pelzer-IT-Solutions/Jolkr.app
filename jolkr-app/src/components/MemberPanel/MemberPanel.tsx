@@ -15,9 +15,10 @@ interface Props {
   onMemberClick?: (member: Member, e: React.MouseEvent) => void
   onUnpin?: (messageId: string) => void
   users?: Map<string, User>
+  pinnedVersion?: number
 }
 
-export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onUnpin, users }: Props) {
+export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onUnpin, users, pinnedVersion }: Props) {
   const visible = mode !== null
 
   const total = members.online.length + members.offline.length
@@ -53,6 +54,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
             onClose={() => {/* handled by parent */}}
             onUnpin={onUnpin}
             users={users}
+            pinnedVersion={pinnedVersion}
           />
         )
 

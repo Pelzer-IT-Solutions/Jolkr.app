@@ -10,6 +10,7 @@ interface Props {
   dmId: string
   onUnpin?: (messageId: string) => void
   users?: Map<string, User>
+  pinnedVersion?: number
 }
 
 function PinnedItem({ msg, dmId, onUnpin, users }: {
@@ -34,7 +35,7 @@ function PinnedItem({ msg, dmId, onUnpin, users }: {
   )
 }
 
-export function DMInfoPanel({ visible, dmId, onUnpin, users }: Props) {
+export function DMInfoPanel({ visible, dmId, onUnpin, users, pinnedVersion }: Props) {
   const [isRevealing, setIsRevealing] = useState(() => visible)
   const [pinned, setPinned] = useState<Message[]>([])
   const [loadingPins, setLoadingPins] = useState(false)
@@ -57,7 +58,7 @@ export function DMInfoPanel({ visible, dmId, onUnpin, users }: Props) {
       }))
       setPinned(normalized)
     }).catch(() => setPinned([])).finally(() => setLoadingPins(false))
-  }, [visible, dmId])
+  }, [visible, dmId, pinnedVersion])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)
