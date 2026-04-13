@@ -30,8 +30,8 @@ interface Props {
   onSetColorPref:(pref: ColorPreference) => void
   user?:         UserInfo
   onLogout?:     () => void
-  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string }) => Promise<void>
-  onUploadAvatar?:  (file: File) => Promise<void>
+  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string; avatar_url?: string }) => Promise<void>
+  onUploadAvatar?:  (file: File) => Promise<string>
 }
 
 const NAV: { group: string; items: { id: Section; label: string; icon: React.ReactNode }[] }[] = [
@@ -148,8 +148,8 @@ function SectionContent({ section, isDark, colorPref, onSetColorPref, user, onLo
   user?:          UserInfo
   onLogout?:      () => void
   onClose:        () => void
-  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string }) => Promise<void>
-  onUploadAvatar?:  (file: File) => Promise<void>
+  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string; avatar_url?: string }) => Promise<void>
+  onUploadAvatar?:  (file: File) => Promise<string>
 }) {
   switch (section) {
     case 'account':     return <AccountSection user={user} onLogout={onLogout} onClose={onClose} onUpdateProfile={onUpdateProfile} onUploadAvatar={onUploadAvatar} />
@@ -180,8 +180,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   user?: UserInfo
   onLogout?: () => void
   onClose: () => void
-  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string }) => Promise<void>
-  onUploadAvatar?: (file: File) => Promise<void>
+  onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string; avatar_url?: string }) => Promise<void>
+  onUploadAvatar?: (file: File) => Promise<string>
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
@@ -191,6 +191,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
     banner_color: user?.bannerColor ?? user?.avatarColor ?? '',
     avatar_url: user?.avatarUrl ?? null,
   })
+  // S3 key from upload — only persisted on Save, discarded on Cancel
+  const [pendingAvatarKey, setPendingAvatarKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Sync editedProfile when user prop changes (e.g., after save)
@@ -202,6 +204,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
         banner_color: user?.bannerColor ?? user?.avatarColor ?? '',
         avatar_url: user?.avatarUrl ?? null,
       })
+      setPendingAvatarKey(null)
     }
   }, [user, isEditing])
 
@@ -211,7 +214,9 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
         display_name: editedProfile.display_name,
         bio: editedProfile.bio,
         banner_color: editedProfile.banner_color,
+        ...(pendingAvatarKey ? { avatar_url: pendingAvatarKey } : {}),
       })
+      setPendingAvatarKey(null)
       setIsEditing(false)
       setShowColorPicker(false)
     } catch (e) {
@@ -220,6 +225,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   }
 
   const handleCancel = () => {
+    // Discard pending avatar — it was only uploaded to S3, not saved to profile
+    setPendingAvatarKey(null)
     setEditedProfile({
       display_name: user?.displayName ?? '',
       bio: user?.bio ?? '',
@@ -233,18 +240,17 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Reset so re-selecting the same file triggers onChange again
     e.target.value = ''
     // Show local preview immediately
     const previewUrl = URL.createObjectURL(file)
     setEditedProfile(p => ({ ...p, avatar_url: previewUrl }))
     try {
-      await onUploadAvatar?.(file)
-      // Upload + profile update succeeded. The blob preview stays visible
-      // during editing; the real URL syncs when editing ends (via useEffect).
+      const key = await onUploadAvatar?.(file)
+      if (key) setPendingAvatarKey(key)
     } catch (err) {
       console.error('Avatar upload failed:', err)
       URL.revokeObjectURL(previewUrl)
+      setPendingAvatarKey(null)
       setEditedProfile(p => ({ ...p, avatar_url: user?.avatarUrl ?? null }))
     }
   }

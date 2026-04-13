@@ -52,16 +52,16 @@ export function useAppHandlers(
   }, [user?.id])
 
   // ── Profile update handler ──
-  const handleUpdateProfile = useCallback(async (data: { display_name?: string; bio?: string; banner_color?: string }) => {
+  const handleUpdateProfile = useCallback(async (data: { display_name?: string; bio?: string; banner_color?: string; avatar_url?: string }) => {
     const { banner_color, ...rest } = data
     await useAuthStore.getState().updateProfile({ ...rest, ...(banner_color ? { banner_color } : {}) })
   }, [])
 
-  // ── Avatar upload handler ──
-  const handleUploadAvatar = useCallback(async (file: File) => {
+  // ── Avatar upload handler — only uploads to S3, returns the key.
+  //    The key is persisted to the profile only when the user clicks Save. ──
+  const handleUploadAvatar = useCallback(async (file: File): Promise<string> => {
     const { key } = await api.uploadFile(file, 'avatar')
-    // Store the S3 key — the avatar is served via /api/avatars/:userId (no presigned URL)
-    await useAuthStore.getState().updateProfile({ avatar_url: key })
+    return key
   }, [])
 
   // ── Password change handler ──
