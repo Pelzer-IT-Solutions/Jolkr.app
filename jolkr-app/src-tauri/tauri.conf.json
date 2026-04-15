@@ -42,7 +42,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://jolkr.app https://*.jolkr.app https://img.youtube.com https://i.ytimg.com https://cdn.jsdelivr.net; media-src 'self' blob: https://jolkr.app https://*.jolkr.app; connect-src 'self' https://jolkr.app https://*.jolkr.app wss://jolkr.app wss://*.jolkr.app; frame-src https://www.youtube.com https://player.vimeo.com https://player.twitch.tv https://www.tiktok.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; base-uri 'self'",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://jolkr.app https://*.jolkr.app https://img.youtube.com https://i.ytimg.com https://cdn.jsdelivr.net; media-src 'self' blob: https://jolkr.app https://*.jolkr.app; connect-src 'self' https://jolkr.app https://*.jolkr.app wss://jolkr.app wss://*.jolkr.app; frame-src https://www.youtube.com https://player.vimeo.com https://player.twitch.tv https://www.tiktok.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; base-uri 'self'",
       "dangerousDisableAssetCspModification": ["style-src"]
     }
   },
