@@ -9,6 +9,7 @@ pub mod channels;
 pub mod devices;
 pub mod dms;
 pub mod emojis;
+pub mod files;
 pub mod friends;
 pub mod invites;
 pub mod keys;
@@ -306,6 +307,8 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/channels/:id/e2ee/distribute", post(channel_encryption::distribute_keys))
         .route("/api/channels/:id/e2ee/my-key", get(channel_encryption::get_my_key))
         .route("/api/channels/:id/e2ee/generation", get(channel_encryption::get_key_generation))
+        // ── File proxy (replaces presigned S3 URLs) ─────────────────────
+        .route("/api/files/:attachment_id", get(files::serve_file))
         // ── E2EE Keys ─────────────────────────────────────────────────
         .route("/api/keys/upload", post(keys::upload_prekeys))
         .route("/api/keys/count/:device_id", get(keys::get_prekey_count))

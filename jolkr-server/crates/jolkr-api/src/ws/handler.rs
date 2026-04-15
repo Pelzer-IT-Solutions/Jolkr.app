@@ -31,19 +31,27 @@ const MAX_WS_PER_IP: u32 = 10;
 static WS_CONNECTIONS: LazyLock<DashMap<IpAddr, AtomicU32>> = LazyLock::new(DashMap::new);
 
 /// Extract the real client IP from the request, considering trusted proxies.
-fn resolve_client_ip(connect_addr: std::net::SocketAddr, headers: &HeaderMap) -> IpAddr {
-    let connect_ip = connect_addr.ip();
-    // Trust X-Forwarded-For only from loopback or Docker network (172.16.0.0/12)
-    let is_trusted = match connect_ip {
+fn is_trusted_proxy_ip(ip: IpAddr) -> bool {
+    match ip {
         IpAddr::V4(v4) => v4.is_loopback() || (v4.octets()[0] == 172 && (v4.octets()[1] & 0xF0) == 16),
         IpAddr::V6(v6) => v6.is_loopback(),
-    };
-    if is_trusted {
+    }
+}
+
+fn resolve_client_ip(connect_addr: std::net::SocketAddr, headers: &HeaderMap) -> IpAddr {
+    let connect_ip = connect_addr.ip();
+    if is_trusted_proxy_ip(connect_ip) {
+        // Take the rightmost non-trusted IP (attacker can't control it)
         headers
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.split(',').next())
-            .and_then(|s| s.trim().parse::<IpAddr>().ok())
+            .and_then(|s| {
+                s.split(',')
+                    .rev()
+                    .map(|p| p.trim())
+                    .filter_map(|p| p.parse::<IpAddr>().ok())
+                    .find(|ip| !is_trusted_proxy_ip(*ip))
+            })
             .unwrap_or(connect_ip)
     } else {
         connect_ip

@@ -11,7 +11,7 @@ use jolkr_db::repo::{
 };
 
 use super::message::{
-    enrich_with_reactions, AttachmentInfo, MessageInfo,
+    enrich_with_reactions, attachment_proxy_url, AttachmentInfo, MessageInfo,
     MessageService, SendMessageRequest,
 };
 
@@ -358,7 +358,7 @@ impl ThreadService {
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
-                    url: att.url,
+                    url: attachment_proxy_url(att.id),
                 });
             }
         }

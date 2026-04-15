@@ -11,7 +11,6 @@ use jolkr_db::repo::DmRepo;
 
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
-use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use crate::routes::AppState;
 use crate::storage::MAX_FILE_SIZE;
 
@@ -76,6 +75,9 @@ pub async fn upload_dm_attachment(
             )));
         }
 
+        // Validate actual file bytes match claimed MIME type (same as channel attachments)
+        let content_type = crate::routes::attachments::validate_content_type(&content_type, &data)?;
+
         let size_bytes = data.len() as i64;
 
         // Upload to S3
@@ -100,12 +102,7 @@ pub async fn upload_dm_attachment(
         )
         .await?;
 
-        // Presign the URL for the response
-        let url = state
-            .storage
-            .presign_get(&row.url, PRESIGN_EXPIRY_SECS)
-            .await
-            .unwrap_or(row.url);
+        let proxy_url = jolkr_core::services::message::attachment_proxy_url(row.id);
 
         // Broadcast MessageUpdate so other clients see the new attachment
         if let Ok(row) = DmRepo::get_message(&state.pool, message_id).await {
@@ -115,17 +112,12 @@ pub async fn upload_dm_attachment(
                 .await
                 .unwrap_or_default();
             for att in atts {
-                let att_url = state
-                    .storage
-                    .presign_get(&att.url, PRESIGN_EXPIRY_SECS)
-                    .await
-                    .unwrap_or(att.url);
                 dm_msg.attachments.push(AttachmentInfo {
                     id: att.id,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
-                    url: att_url,
+                    url: jolkr_core::services::message::attachment_proxy_url(att.id),
                 });
             }
             // Enrich with reactions
@@ -163,7 +155,7 @@ pub async fn upload_dm_attachment(
                 filename: row.filename,
                 content_type: row.content_type,
                 size_bytes: row.size_bytes,
-                url,
+                url: proxy_url,
             },
         }));
     }

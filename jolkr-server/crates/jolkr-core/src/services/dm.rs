@@ -9,7 +9,7 @@ use jolkr_common::JolkrError;
 use jolkr_db::models::DmMessageRow;
 use jolkr_db::repo::{DmRepo, UserRepo};
 
-use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo};
+use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, attachment_proxy_url};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DmChannelInfo {
@@ -518,7 +518,7 @@ impl DmService {
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
-                    url: att.url,
+                    url: attachment_proxy_url(att.id),
                 });
             }
         }
@@ -651,7 +651,7 @@ impl DmService {
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
-                    url: att.url,
+                    url: attachment_proxy_url(att.id),
                 });
             }
         }

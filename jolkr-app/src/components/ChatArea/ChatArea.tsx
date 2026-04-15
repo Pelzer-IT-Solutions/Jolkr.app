@@ -609,8 +609,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       multiple
                       style={{ display: 'none' }}
                       onChange={(e) => {
+                        const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB (matches server limit)
                         const files = Array.from(e.target.files ?? [])
-                        if (files.length) setPendingFiles(prev => [...prev, ...files])
+                        const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
+                        if (oversized.length) {
+                          alert(`File too large (max 25 MB): ${oversized.map(f => f.name).join(', ')}`);
+                        }
+                        const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
+                        if (valid.length) setPendingFiles(prev => [...prev, ...valid])
                         e.target.value = ''
                       }}
                     />

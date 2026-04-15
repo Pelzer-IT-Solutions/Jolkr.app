@@ -70,7 +70,7 @@ export async function getChannelKey(
       'raw',
       toArrayBuffer(rawKeyBytes),
       { name: 'AES-GCM' },
-      true,
+      false,
       ['encrypt', 'decrypt'],
     );
 
@@ -144,7 +144,7 @@ export async function generateAndDistributeChannelKey(
     'raw',
     toArrayBuffer(rawKeyBytes),
     { name: 'AES-GCM' },
-    true,
+    false,
     ['encrypt', 'decrypt'],
   );
 

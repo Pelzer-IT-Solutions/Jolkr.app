@@ -21,6 +21,11 @@ pub struct AttachmentInfo {
     pub url: String,
 }
 
+/// Generate the proxy URL for an attachment (served via /api/files/:id with auth).
+pub fn attachment_proxy_url(id: Uuid) -> String {
+    format!("/api/files/{id}")
+}
+
 /// Reaction info included in message responses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReactionInfo {
@@ -229,7 +234,7 @@ pub(crate) async fn enrich_with_attachments(pool: &PgPool, messages: &mut [Messa
             filename: att.filename,
             content_type: att.content_type,
             size_bytes: att.size_bytes,
-            url: att.url,
+            url: attachment_proxy_url(att.id),
         });
     }
 
@@ -454,7 +459,7 @@ impl MessageService {
                 filename: att.filename,
                 content_type: att.content_type,
                 size_bytes: att.size_bytes,
-                url: att.url,
+                url: attachment_proxy_url(att.id),
             });
         }
 

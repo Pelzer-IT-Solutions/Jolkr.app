@@ -39,7 +39,7 @@ pub fn is_allowed_content_type(ct: &str) -> bool {
 
 /// Validate that actual file bytes match the claimed MIME type via magic bytes.
 /// Returns the effective content type to use for storage.
-fn validate_content_type(claimed: &str, data: &[u8]) -> Result<String, AppError> {
+pub fn validate_content_type(claimed: &str, data: &[u8]) -> Result<String, AppError> {
     // For binary formats, verify magic bytes match the claimed type
     let dominated = match &data[..data.len().min(12)] {
         // JPEG: FF D8 FF
@@ -68,7 +68,9 @@ fn validate_content_type(claimed: &str, data: &[u8]) -> Result<String, AppError>
     // If we detected a type from magic bytes, use it (more trustworthy than client header).
     // If not detected (text/plain, octet-stream, audio/mpeg etc.), trust the claimed type
     // since it already passed the allowlist check.
-    Ok(dominated.unwrap_or(claimed).to_string())
+    let effective = dominated.unwrap_or(claimed);
+
+    Ok(effective.to_string())
 }
 
 pub fn sanitize_filename(raw: &str) -> String {
@@ -209,17 +211,6 @@ pub async fn upload_attachment(
             )))
         })?;
 
-    // Generate a presigned download URL (valid for 7 days)
-    let download_url = state
-        .storage
-        .presign_get(&object_key, PRESIGN_EXPIRY_SECS)
-        .await
-        .map_err(|e| {
-            AppError(jolkr_common::JolkrError::Internal(format!(
-                "Failed to generate download URL: {e}"
-            )))
-        })?;
-
     // Save metadata to DB
     let row = AttachmentRepo::create(
         &state.pool,
@@ -233,13 +224,10 @@ pub async fn upload_attachment(
     )
     .await?;
 
+    let proxy_url = jolkr_core::services::message::attachment_proxy_url(row.id);
+
     // Broadcast MessageUpdate so other clients see the new attachment
-    if let Ok(mut enriched) = MessageService::get_message_by_id(&state.pool, message_id).await {
-        for att in &mut enriched.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
+    if let Ok(enriched) = MessageService::get_message_by_id(&state.pool, message_id).await {
         let event = crate::ws::events::GatewayEvent::MessageUpdate { message: enriched };
         state.nats.publish_to_channel(channel_id, &event).await;
     }
@@ -251,7 +239,7 @@ pub async fn upload_attachment(
             filename: row.filename,
             content_type: row.content_type,
             size_bytes: row.size_bytes,
-            url: download_url,
+            url: proxy_url,
             created_at: row.created_at,
         },
     }))
@@ -284,19 +272,13 @@ pub async fn list_attachments(
 
     let mut attachments = Vec::with_capacity(rows.len());
     for row in rows {
-        let url = state
-            .storage
-            .presign_get(&row.url, PRESIGN_EXPIRY_SECS)
-            .await
-            .unwrap_or_else(|_| row.url.clone());
-
         attachments.push(AttachmentInfo {
             id: row.id,
             message_id: row.message_id,
             filename: row.filename,
             content_type: row.content_type,
             size_bytes: row.size_bytes,
-            url,
+            url: jolkr_core::services::message::attachment_proxy_url(row.id),
             created_at: row.created_at,
         });
     }
@@ -405,19 +387,9 @@ pub async fn upload_file(
             )))
         })?;
 
-    let download_url = state
-        .storage
-        .presign_get(&object_key, PRESIGN_EXPIRY_SECS)
-        .await
-        .map_err(|e| {
-            AppError(jolkr_common::JolkrError::Internal(format!(
-                "Failed to generate download URL: {e}"
-            )))
-        })?;
-
     Ok(Json(serde_json::json!({
         "key": object_key,
-        "url": download_url,
+        "url": object_key,
         "filename": upload_filename,
         "content_type": upload_content_type,
         "size_bytes": upload_data.len(),

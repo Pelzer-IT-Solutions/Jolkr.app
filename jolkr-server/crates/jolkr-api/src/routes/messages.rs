@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
-use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::MessageService;
 use jolkr_core::services::message::{
     EditMessageRequest, MessageInfo, MessageQuery, SendMessageRequest,
@@ -167,16 +166,7 @@ pub async fn get_messages(
         }
     }
 
-    let mut messages = MessageService::get_messages(&state.pool, channel_id, query).await?;
-
-    // Presign attachment URLs so clients can download them
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
+    let messages = MessageService::get_messages(&state.pool, channel_id, query).await?;
 
     Ok(Json(MessagesResponse { messages }))
 }
@@ -256,7 +246,7 @@ pub async fn search_messages(
     let has_advanced = params.from.is_some() || params.has.is_some()
         || params.before.is_some() || params.after.is_some();
 
-    let mut messages = if has_advanced {
+    let messages = if has_advanced {
         // H9: Resolve from:username → user_id using exact match
         let from_user_id = if let Some(ref from_name) = params.from {
             UserRepo::get_by_username(&state.pool, from_name).await.ok().map(|u| u.id)
@@ -293,14 +283,6 @@ pub async fn search_messages(
         }
         MessageService::search_messages(&state.pool, channel_id, q, limit).await?
     };
-
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
 
     Ok(Json(MessagesResponse { messages }))
 }
@@ -345,15 +327,7 @@ pub async fn list_pins(
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
 ) -> Result<Json<MessagesResponse>, AppError> {
-    let mut messages = MessageService::list_pinned(&state.pool, channel_id, auth.user_id).await?;
-
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
+    let messages = MessageService::list_pinned(&state.pool, channel_id, auth.user_id).await?;
 
     Ok(Json(MessagesResponse { messages }))
 }

@@ -8,7 +8,6 @@ use jolkr_core::DmService;
 
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
-use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use crate::routes::AppState;
 
 use super::types::*;
@@ -51,16 +50,7 @@ pub async fn list_dm_pins(
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
 ) -> Result<Json<DmMessagesResponse>, AppError> {
-    let mut messages = DmService::list_pinned(&state.pool, dm_id, auth.user_id).await?;
-
-    // Presign attachment URLs
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
+    let messages = DmService::list_pinned(&state.pool, dm_id, auth.user_id).await?;
 
     Ok(Json(DmMessagesResponse { messages }))
 }

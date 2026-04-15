@@ -54,7 +54,14 @@ async fn clear_login_lockout(state: &AppState, email: &str) {
 // Admin secret for password reset (cached via OnceLock, read from env once)
 fn admin_secret() -> Option<&'static String> {
     static ADMIN_SECRET: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
-    ADMIN_SECRET.get_or_init(|| std::env::var("ADMIN_SECRET").ok()).as_ref()
+    ADMIN_SECRET.get_or_init(|| {
+        std::env::var("ADMIN_SECRET").ok().map(|s| {
+            if s.len() < 32 {
+                tracing::error!("ADMIN_SECRET is too short ({} chars). Minimum 32 required for security.", s.len());
+            }
+            s
+        })
+    }).as_ref()
 }
 
 // ── Request / Response types ───────────────────────────────────────────

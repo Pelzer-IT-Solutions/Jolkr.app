@@ -132,11 +132,18 @@ pub async fn rate_limit_middleware(
         .map(|ci| ci.0.ip());
 
     let ip = if connect_ip.map_or(false, is_trusted_proxy) {
+        // Take the rightmost non-trusted IP — that's the one added by our outermost proxy.
+        // The leftmost IP is attacker-controlled and must not be trusted.
         req.headers()
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.split(',').next())
-            .and_then(|s| s.trim().parse::<IpAddr>().ok())
+            .and_then(|s| {
+                s.split(',')
+                    .rev()
+                    .map(|p| p.trim())
+                    .filter_map(|p| p.parse::<IpAddr>().ok())
+                    .find(|ip| !is_trusted_proxy(*ip))
+            })
             .or(connect_ip)
             .unwrap_or_else(|| "127.0.0.1".parse().unwrap())
     } else {
