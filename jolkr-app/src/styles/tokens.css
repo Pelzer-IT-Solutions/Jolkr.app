@@ -2,7 +2,7 @@
 :root {
   /* ── Theme hue — drives the entire palette tint ── */
   /* Overridden at runtime by useAnimatedTheme (synced to :root) */
-  --theme-hue: 0;
+  --theme-hue: 182;
 
   /* Base palette — tinted neutrals that respond to theme-hue */
   /* Low chroma creates "neutral with character" - subtle tint matching the theme */

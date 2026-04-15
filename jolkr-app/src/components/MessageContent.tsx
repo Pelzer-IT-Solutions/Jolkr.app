@@ -46,7 +46,7 @@ marked.use({
       return `<del class="line-through">${body}</del>`;
     },
     codespan({ text }) {
-      return `<code class="px-1 py-0.5 bg-black/30 rounded text-sm text-pink-300 font-mono">${text}</code>`;
+      return `<code class="px-1 py-0.5 bg-black/30 rounded text-sm text-teal-300 font-mono">${text}</code>`;
     },
     code({ text, lang }) {
       const raw = unescapeHtml(text);

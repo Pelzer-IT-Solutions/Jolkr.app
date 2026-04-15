@@ -28,9 +28,9 @@ interface ThemeSnap {
 }
 
 const NEUTRAL_ORBS: OrbSnap[] = [
-  { x: 0.22, y: 0.72, hue: 0, scale: 1 },
-  { x: 0.74, y: 0.28, hue: 22, scale: 1 },
-  { x: 0.12, y: 0.22, hue: 342, scale: 1 },
+  { x: 0.22, y: 0.72, hue: 182, scale: 1 },
+  { x: 0.74, y: 0.28, hue: 204, scale: 1 },
+  { x: 0.12, y: 0.22, hue: 164, scale: 1 },
 ]
 
 function getNeutralOrbPosition(x: number, y: number): { x: number; y: number } {

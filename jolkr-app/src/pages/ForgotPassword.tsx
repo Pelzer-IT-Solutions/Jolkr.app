@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../api/client';
+import { resetAuthTheme } from '../utils/resetAuthTheme';
 
 const s: Record<string, React.CSSProperties> = {
   page: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-default)' },
@@ -17,6 +18,7 @@ const s: Record<string, React.CSSProperties> = {
 };
 
 export default function ForgotPassword() {
+  useEffect(resetAuthTheme, []);
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   if (token) return <ResetPasswordForm token={token} />;
