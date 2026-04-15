@@ -345,7 +345,16 @@ function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
     thread_id: (raw.thread_id as string) ?? null,
     thread_reply_count: (raw.thread_reply_count as number) ?? null,
     attachments: (raw.attachments as Message['attachments']) ?? [],
-    reactions: (raw.reactions as Message['reactions']) ?? [],
+    reactions: (() => {
+      const currentUserId = useAuthStore.getState().user?.id;
+      const rawReactions = (raw.reactions as Array<Record<string, unknown>>) ?? [];
+      return rawReactions.map((r) => ({
+        emoji: (r.emoji as string) ?? '',
+        count: (r.count as number) ?? 0,
+        me: currentUserId ? ((r.user_ids as string[]) ?? []).includes(currentUserId) : (r.me as boolean) ?? false,
+        user_ids: (r.user_ids as string[]) ?? [],
+      }));
+    })(),
     embeds: (raw.embeds as Message['embeds']) ?? [],
   };
 }

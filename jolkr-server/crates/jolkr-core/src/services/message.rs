@@ -133,24 +133,23 @@ pub(crate) async fn enrich_with_reactions(pool: &PgPool, messages: &mut [Message
     let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
     let all_reactions = ReactionRepo::list_for_messages(pool, &msg_ids).await?;
 
-    // Group by message_id, then by emoji
-    let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
+    // Group by message_id, then by emoji (preserving order by first created_at)
+    let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
     for r in all_reactions {
-        let entry = by_msg.entry(r.message_id).or_default();
-        let emoji_entry = entry.entry(r.emoji).or_insert((0, Vec::new()));
+        let (order, map) = by_msg.entry(r.message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
+        if !map.contains_key(&r.emoji) {
+            order.push(r.emoji.clone());
+        }
+        let emoji_entry = map.entry(r.emoji).or_insert((0, Vec::new()));
         emoji_entry.0 += 1;
         emoji_entry.1.push(r.user_id);
     }
 
     for msg in messages.iter_mut() {
-        if let Some(emojis) = by_msg.remove(&msg.id) {
-            msg.reactions = emojis
+        if let Some((order, mut map)) = by_msg.remove(&msg.id) {
+            msg.reactions = order
                 .into_iter()
-                .map(|(emoji, (count, user_ids))| ReactionInfo {
-                    emoji,
-                    count,
-                    user_ids,
-                })
+                .filter_map(|emoji| map.remove(&emoji).map(|(count, user_ids)| ReactionInfo { emoji, count, user_ids }))
                 .collect();
         }
     }

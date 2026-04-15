@@ -533,22 +533,21 @@ impl DmService {
         };
         {
             use std::collections::HashMap;
-            let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
+            let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
             for r in all_reactions {
-                let entry = by_msg.entry(r.dm_message_id).or_default();
-                let emoji_entry = entry.entry(r.emoji).or_insert((0, Vec::new()));
+                let (order, map) = by_msg.entry(r.dm_message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
+                if !map.contains_key(&r.emoji) {
+                    order.push(r.emoji.clone());
+                }
+                let emoji_entry = map.entry(r.emoji).or_insert((0, Vec::new()));
                 emoji_entry.0 += 1;
                 emoji_entry.1.push(r.user_id);
             }
             for msg in messages.iter_mut() {
-                if let Some(emojis) = by_msg.remove(&msg.id) {
-                    msg.reactions = emojis
+                if let Some((order, mut map)) = by_msg.remove(&msg.id) {
+                    msg.reactions = order
                         .into_iter()
-                        .map(|(emoji, (count, user_ids))| ReactionInfo {
-                            emoji,
-                            count,
-                            user_ids,
-                        })
+                        .filter_map(|emoji| map.remove(&emoji).map(|(count, user_ids)| ReactionInfo { emoji, count, user_ids }))
                         .collect();
                 }
             }
@@ -586,6 +585,79 @@ impl DmService {
         Ok(messages)
     }
 
+    // ── Enrichment helper ──────────────────────────────────────────
+
+    /// Enrich DM messages with reactions, attachments, and embeds.
+    async fn enrich_dm_messages(pool: &PgPool, messages: &mut Vec<DmMessageInfo>) -> Result<(), JolkrError> {
+        if messages.is_empty() { return Ok(()); }
+
+        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
+
+        // Attachments
+        let all_atts = DmRepo::list_attachments_for_messages(pool, &msg_ids).await.unwrap_or_default();
+        for att in all_atts {
+            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
+                msg.attachments.push(AttachmentInfo {
+                    id: att.id,
+                    filename: att.filename,
+                    content_type: att.content_type,
+                    size_bytes: att.size_bytes,
+                    url: attachment_proxy_url(att.id),
+                });
+            }
+        }
+
+        // Reactions (preserving order by first created_at — DB returns ORDER BY created_at ASC)
+        let all_reactions = DmRepo::list_reactions_for_messages(pool, &msg_ids).await.unwrap_or_default();
+        {
+            use std::collections::HashMap;
+            // Track per-message: emoji insertion order + aggregated data
+            let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
+            for r in all_reactions {
+                let (order, map) = by_msg.entry(r.dm_message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
+                if !map.contains_key(&r.emoji) {
+                    order.push(r.emoji.clone());
+                }
+                let emoji_entry = map.entry(r.emoji).or_insert((0, Vec::new()));
+                emoji_entry.0 += 1;
+                emoji_entry.1.push(r.user_id);
+            }
+            for msg in messages.iter_mut() {
+                if let Some((order, mut map)) = by_msg.remove(&msg.id) {
+                    msg.reactions = order
+                        .into_iter()
+                        .filter_map(|emoji| map.remove(&emoji).map(|(count, user_ids)| ReactionInfo { emoji, count, user_ids }))
+                        .collect();
+                }
+            }
+        }
+
+        // Embeds
+        {
+            use jolkr_db::repo::EmbedRepo;
+            use std::collections::HashMap;
+            let all_embeds = EmbedRepo::list_for_dm_messages(pool, &msg_ids).await.unwrap_or_default();
+            let mut by_msg: HashMap<Uuid, Vec<EmbedInfo>> = HashMap::new();
+            for e in all_embeds {
+                by_msg.entry(e.dm_message_id).or_default().push(EmbedInfo {
+                    url: e.url,
+                    title: e.title,
+                    description: e.description,
+                    image_url: e.image_url,
+                    site_name: e.site_name,
+                    color: e.color,
+                });
+            }
+            for msg in messages.iter_mut() {
+                if let Some(embeds) = by_msg.remove(&msg.id) {
+                    msg.embeds = embeds;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     // ── Pins ─────────────────────────────────────────────────────────
 
     /// Pin a message in a DM channel.
@@ -605,9 +677,11 @@ impl DmService {
 
         DmRepo::pin_message(pool, dm_channel_id, message_id, caller_id).await?;
 
-        // Re-fetch to get updated is_pinned flag
+        // Re-fetch and enrich with reactions/attachments/embeds
         let row = DmRepo::get_message(pool, message_id).await?;
-        Ok(DmMessageInfo::from(row))
+        let mut msgs = vec![DmMessageInfo::from(row)];
+        Self::enrich_dm_messages(pool, &mut msgs).await?;
+        Ok(msgs.into_iter().next().unwrap())
     }
 
     /// Unpin a message in a DM channel.
@@ -623,8 +697,11 @@ impl DmService {
 
         DmRepo::unpin_message(pool, dm_channel_id, message_id).await?;
 
+        // Re-fetch and enrich with reactions/attachments/embeds
         let row = DmRepo::get_message(pool, message_id).await?;
-        Ok(DmMessageInfo::from(row))
+        let mut msgs = vec![DmMessageInfo::from(row)];
+        Self::enrich_dm_messages(pool, &mut msgs).await?;
+        Ok(msgs.into_iter().next().unwrap())
     }
 
     /// List pinned messages in a DM channel (enriched with attachments, reactions, embeds).
@@ -639,43 +716,7 @@ impl DmService {
 
         let rows = DmRepo::list_pinned(pool, dm_channel_id).await?;
         let mut messages: Vec<DmMessageInfo> = rows.into_iter().map(DmMessageInfo::from).collect();
-
-        // Enrich with attachments, reactions, embeds (same pattern as get_messages)
-        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-
-        let all_atts = DmRepo::list_attachments_for_messages(pool, &msg_ids).await.unwrap_or_default();
-        for att in all_atts {
-            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
-                msg.attachments.push(AttachmentInfo {
-                    id: att.id,
-                    filename: att.filename,
-                    content_type: att.content_type,
-                    size_bytes: att.size_bytes,
-                    url: attachment_proxy_url(att.id),
-                });
-            }
-        }
-
-        let all_reactions = DmRepo::list_reactions_for_messages(pool, &msg_ids).await.unwrap_or_default();
-        {
-            use std::collections::HashMap;
-            let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
-            for r in all_reactions {
-                let entry = by_msg.entry(r.dm_message_id).or_default();
-                let emoji_entry = entry.entry(r.emoji).or_insert((0, Vec::new()));
-                emoji_entry.0 += 1;
-                emoji_entry.1.push(r.user_id);
-            }
-            for msg in messages.iter_mut() {
-                if let Some(emojis) = by_msg.remove(&msg.id) {
-                    msg.reactions = emojis
-                        .into_iter()
-                        .map(|(emoji, (count, user_ids))| ReactionInfo { emoji, count, user_ids })
-                        .collect();
-                }
-            }
-        }
-
+        Self::enrich_dm_messages(pool, &mut messages).await?;
         Ok(messages)
     }
 }
