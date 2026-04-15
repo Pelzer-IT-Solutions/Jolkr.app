@@ -6,83 +6,15 @@ export interface SecureStorage {
   remove(key: string): Promise<void>;
 }
 
-/** Keys that contain sensitive cryptographic material and must be encrypted at rest. */
-const SENSITIVE_KEYS = new Set([
-  'e2ee_identity_pub', 'e2ee_identity_priv',
-  'e2ee_signed_prekey_pub', 'e2ee_signed_prekey_priv', 'e2ee_signed_prekey_sig',
-  'e2ee_pq_encapsulation_key', 'e2ee_pq_decapsulation_key', 'e2ee_pq_signature',
-]);
-
-const STORAGE_KEY_SESSION = 'jolkr_storage_enc_key';
-const ENCRYPTED_PREFIX = 'enc:';
-
+/** Simple localStorage wrapper. E2EE keys are no longer stored here —
+ *  only the seed lives in localStorage and keys are derived in memory. */
 class WebStorage implements SecureStorage {
-  private encKey: CryptoKey | null = null;
-
-  /** Import the storage encryption key from sessionStorage, if available. */
-  private async getEncKey(): Promise<CryptoKey | null> {
-    if (this.encKey) return this.encKey;
-    const raw = sessionStorage.getItem(STORAGE_KEY_SESSION);
-    if (!raw) return null;
-    const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
-    this.encKey = await crypto.subtle.importKey(
-      'raw', bytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'],
-    );
-    return this.encKey;
-  }
-
-  private async encryptValue(value: string, storageKey: string): Promise<string> {
-    const key = await this.getEncKey();
-    if (!key) {
-      // For sensitive keys, refuse to store plaintext — defer until encryption key is available
-      if (SENSITIVE_KEYS.has(storageKey)) {
-        throw new Error(`Cannot store sensitive key "${storageKey}" without encryption — re-login required`);
-      }
-      return value;
-    }
-    const nonce = crypto.getRandomValues(new Uint8Array(12));
-    const ct = new Uint8Array(await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce }, key, new TextEncoder().encode(value),
-    ));
-    // Pack as base64(nonce || ciphertext)
-    const packed = new Uint8Array(12 + ct.length);
-    packed.set(nonce);
-    packed.set(ct, 12);
-    let b64 = '';
-    for (let i = 0; i < packed.length; i++) b64 += String.fromCharCode(packed[i]);
-    return ENCRYPTED_PREFIX + btoa(b64);
-  }
-
-  private async decryptValue(stored: string): Promise<string> {
-    if (!stored.startsWith(ENCRYPTED_PREFIX)) return stored; // Legacy plaintext
-    const key = await this.getEncKey();
-    if (!key) throw new Error('Storage encryption key not available — re-login required');
-    const raw = atob(stored.slice(ENCRYPTED_PREFIX.length));
-    const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
-    const nonce = bytes.slice(0, 12);
-    const ct = bytes.slice(12);
-    const pt = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: nonce }, key, ct,
-    );
-    return new TextDecoder().decode(pt);
-  }
-
   async get(key: string): Promise<string | null> {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return null;
-    if (SENSITIVE_KEYS.has(key) && raw.startsWith(ENCRYPTED_PREFIX)) {
-      try { return await this.decryptValue(raw); }
-      catch { return null; } // Key not available — user must re-login
-    }
-    return raw;
+    return localStorage.getItem(key);
   }
 
   async set(key: string, value: string): Promise<void> {
-    if (SENSITIVE_KEYS.has(key)) {
-      localStorage.setItem(key, await this.encryptValue(value, key));
-    } else {
-      localStorage.setItem(key, value);
-    }
+    localStorage.setItem(key, value);
   }
 
   async remove(key: string): Promise<void> {
