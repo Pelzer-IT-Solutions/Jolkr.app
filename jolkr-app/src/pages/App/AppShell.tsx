@@ -291,19 +291,18 @@ export default function AppShell() {
             </div>
           </div>
 
-          {notificationsActive && (
-            <NotificationsPanel
-              onNavigate={(serverId, channelId) => {
-                setDmActive(false)
-                if (!tabbedIds.includes(serverId)) {
-                  setTabbedIds(prev => [serverId, ...prev])
-                }
-                setActiveServerId(serverId)
-                setActiveChannelId(channelId)
-                setNotificationsActive(false)
-              }}
-            />
-          )}
+          <NotificationsPanel
+            visible={notificationsActive}
+            onNavigate={(serverId, channelId) => {
+              setDmActive(false)
+              if (!tabbedIds.includes(serverId)) {
+                setTabbedIds(prev => [serverId, ...prev])
+              }
+              setActiveServerId(serverId)
+              setActiveChannelId(channelId)
+              setNotificationsActive(false)
+            }}
+          />
         </div>
       </div>
 

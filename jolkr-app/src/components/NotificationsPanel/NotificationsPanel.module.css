@@ -8,11 +8,22 @@
   box-shadow: var(--shadow-panel);
   overflow: hidden;
 
-  /* Smooth enter: width + opacity + slide in from right */
+  /* Smooth slide in/out */
   transition:
-    width     400ms var(--ease-out-expo),
-    opacity   300ms var(--ease-out-expo),
-    transform 400ms var(--ease-out-expo);
+    width       400ms var(--ease-out-expo),
+    opacity     300ms var(--ease-out-expo),
+    transform   400ms var(--ease-out-expo),
+    margin-left 400ms var(--ease-out-expo),
+    visibility  400ms;
+}
+
+.panel.hidden {
+  width: 0;
+  opacity: 0;
+  transform: translateX(20px);
+  margin-left: calc(-1 * var(--gap));
+  pointer-events: none;
+  visibility: hidden;
 }
 
 /* Define the "just inserted" state — browsers animate FROM here TO the rule above */
@@ -21,6 +32,7 @@
     width: 0;
     opacity: 0;
     transform: translateX(20px);
+    margin-left: calc(-1 * var(--gap));
   }
 }
 
