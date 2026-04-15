@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Edit2, Check, XCircle, Camera
+  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Check, XCircle, Camera
 } from 'lucide-react'
 import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
 import type { Server as ApiServer, Member } from '../../api/types'
@@ -74,6 +74,10 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [editingRoleName, setEditingRoleName] = useState('')
   const [editingRoleColor, setEditingRoleColor] = useState('#000000')
   const [editingRolePermissions, setEditingRolePermissions] = useState<number>(0)
+  // Store original values to detect changes and support cancel
+  const [originalRoleName, setOriginalRoleName] = useState('')
+  const [originalRoleColor, setOriginalRoleColor] = useState('#000000')
+  const [originalRolePermissions, setOriginalRolePermissions] = useState<number>(0)
   const [showCreateRole, setShowCreateRole] = useState(false)
   const [newRoleName, setNewRoleName] = useState('')
   const [newRoleColor, setNewRoleColor] = useState('#5865F2')
@@ -91,7 +95,13 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   // Load real data from API
   useEffect(() => {
     const id = server.id
-    api.getRoles(id).then(setRoles).catch(() => setRoles([]))
+    api.getRoles(id).then((loadedRoles) => {
+      setRoles(loadedRoles)
+      // Auto-select first role when roles are loaded and none is selected
+      if (loadedRoles.length > 0 && !selectedRoleId) {
+        setSelectedRoleId(loadedRoles[0].id)
+      }
+    }).catch(() => setRoles([]))
     api.getMembersWithRoles(id).then(setMembers).catch(() => setMembers([]))
     api.getInvites(id).then(setInvites).catch(() => setInvites([]))
     api.getBans(id).then(setBans).catch(() => setBans([]))
@@ -155,38 +165,6 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     } catch (e) { console.warn('Failed to create role:', e) }
   }
 
-  const handleStartEditRole = (role: Role) => {
-    setEditingRoleId(role.id)
-    setEditingRoleName(role.name)
-    setEditingRoleColor(`#${role.color.toString(16).padStart(6, '0')}`)
-    setEditingRolePermissions(role.permissions)
-    setSelectedRoleId(role.id)
-  }
-
-  const handleSaveRole = async () => {
-    if (!editingRoleId || !editingRoleName.trim()) return
-    try {
-      const updated = await api.updateRole(editingRoleId, {
-        name: editingRoleName.trim(),
-        color: parseInt(editingRoleColor.replace('#', ''), 16),
-        permissions: editingRolePermissions,
-      })
-      setRoles(prev => prev.map(r => r.id === editingRoleId ? updated : r))
-    } catch (e) { console.warn('Failed to update role:', e) }
-    setEditingRoleId(null)
-    setEditingRoleName('')
-    setEditingRoleColor('#000000')
-    setEditingRolePermissions(0)
-  }
-
-  const handleCancelEditRole = () => {
-    setEditingRoleId(null)
-    setEditingRoleName('')
-    setEditingRoleColor('#000000')
-    setEditingRolePermissions(0)
-    setSelectedRoleId(null)
-  }
-
   const handlePermissionToggle = (permissionFlag: number) => {
     setEditingRolePermissions(prev => {
       const hasPerm = (prev & permissionFlag) === permissionFlag
@@ -199,25 +177,82 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   }
 
   const handleSelectRole = (roleId: string) => {
-    setSelectedRoleId(selectedRoleId === roleId ? null : roleId)
-    if (editingRoleId && editingRoleId !== roleId) {
+    const isDeselecting = selectedRoleId === roleId
+    setSelectedRoleId(isDeselecting ? null : roleId)
+
+    if (isDeselecting) {
+      // Clear editing state when deselecting
       setEditingRoleId(null)
       setEditingRoleName('')
       setEditingRoleColor('#000000')
       setEditingRolePermissions(0)
+      setOriginalRoleName('')
+      setOriginalRoleColor('#000000')
+      setOriginalRolePermissions(0)
+    } else {
+      // Initialize editing state for the selected role
+      const role = roles.find(r => r.id === roleId)
+      if (role) {
+        const colorHex = `#${role.color.toString(16).padStart(6, '0')}`
+        setEditingRoleId(roleId)
+        setEditingRoleName(role.name)
+        setEditingRoleColor(colorHex)
+        setEditingRolePermissions(role.permissions)
+        // Store original values for change detection and cancel
+        setOriginalRoleName(role.name)
+        setOriginalRoleColor(colorHex)
+        setOriginalRolePermissions(role.permissions)
+      }
     }
   }
 
   const handleDeleteRole = async (roleId: string) => {
     try {
       await api.deleteRole(roleId)
-      setRoles(prev => prev.filter(r => r.id !== roleId))
+      setRoles(prev => {
+        const newRoles = prev.filter(r => r.id !== roleId)
+        // Select another role if the deleted one was selected
+        if (selectedRoleId === roleId) {
+          setSelectedRoleId(newRoles.length > 0 ? newRoles[0].id : null)
+        }
+        return newRoles
+      })
       setMembers(prev => prev.map(m => ({
         ...m,
         role_ids: (m.role_ids ?? []).filter((id: string) => id !== roleId)
       })))
     } catch (e) { console.warn('Failed to delete role:', e) }
   }
+
+  const handleSaveRoleInfo = async () => {
+    if (!editingRoleId || !editingRoleName.trim()) return
+    try {
+      const updated = await api.updateRole(editingRoleId, {
+        name: editingRoleName.trim(),
+        color: parseInt(editingRoleColor.replace('#', ''), 16),
+        permissions: editingRolePermissions,
+      })
+      setRoles(prev => prev.map(r => r.id === editingRoleId ? updated : r))
+      // Update original values after successful save
+      setOriginalRoleName(editingRoleName.trim())
+      setOriginalRoleColor(editingRoleColor)
+      setOriginalRolePermissions(editingRolePermissions)
+    } catch (e) { console.warn('Failed to update role:', e) }
+  }
+
+  const handleCancelEditRoleInfo = () => {
+    // Revert to original values instead of closing
+    setEditingRoleName(originalRoleName)
+    setEditingRoleColor(originalRoleColor)
+    setEditingRolePermissions(originalRolePermissions)
+  }
+
+  // Check if there are any unsaved changes
+  const hasRoleChanges = editingRoleId && (
+    editingRoleName !== originalRoleName ||
+    editingRoleColor !== originalRoleColor ||
+    editingRolePermissions !== originalRolePermissions
+  )
 
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -302,7 +337,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             </button>
           </div>
 
-          <div className={`${s.scroll} scrollbar-thin`}>
+          <div className={`${s.scroll} ${section === 'roles' ? s.scrollNoPadding : ''} scrollbar-thin`}>
             {/* Overview Section */}
             {section === 'overview' && (
               <div className={s.section}>
@@ -389,19 +424,39 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
 
             {/* Roles Section */}
             {section === 'roles' && (
-              <div className={s.section}>
+              <div className={s.sectionFull}>
                 <div className={s.rolesLayout}>
                   {/* Left: Role List */}
                   <div className={s.rolesLeftPanel}>
-                    <div className={s.sectionHeader}>
-                      <h3 className="txt-small txt-semibold">Server Roles</h3>
-                      <button
-                        className={s.createBtn}
-                        onClick={() => setShowCreateRole(true)}
-                      >
-                        <Plus size={14} strokeWidth={1.5} /> Create Role
-                      </button>
+                    <div className={s.rolesListHeader}>
+                      <h3 className="txt-small txt-semibold">Roles</h3>
+                      <span className={s.rolesCount}>{roles.length}</span>
                     </div>
+
+                    <div className={`${s.rolesList} scrollbar-thin`}>
+                      {roles.map(role => (
+                        <button
+                          key={role.id}
+                          className={`${s.roleItem} ${selectedRoleId === role.id ? s.roleItemSelected : ''}`}
+                          onClick={() => handleSelectRole(role.id)}
+                        >
+                          <div
+                            className={s.roleColorDot}
+                            style={{ background: `#${role.color.toString(16).padStart(6, '0')}` }}
+                          />
+                          <span className={`${s.roleName} txt-small`}>{role.name}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Create Role Button */}
+                    <button
+                      className={s.createRoleBtn}
+                      onClick={() => setShowCreateRole(true)}
+                    >
+                      <Plus size={14} strokeWidth={1.5} />
+                      <span>Create Role</span>
+                    </button>
 
                     {/* Create Role Form */}
                     {showCreateRole && (
@@ -420,7 +475,18 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                             placeholder="Role name"
                             className={`${s.roleInput} txt-small`}
                             maxLength={32}
+                            autoFocus
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleCreateRole()
+                              if (e.key === 'Escape') {
+                                setShowCreateRole(false)
+                                setNewRoleName('')
+                                setNewRoleColor('#5865F2')
+                              }
+                            }}
                           />
+                        </div>
+                        <div className={s.roleFormActions}>
                           <button
                             className={s.saveRoleBtn}
                             onClick={handleCreateRole}
@@ -441,178 +507,168 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                         </div>
                       </div>
                     )}
-
-                    <div className={`${s.rolesList} scrollbar-thin`}>
-                      {roles.map(role => (
-                        <div
-                          key={role.id}
-                          className={`${s.roleItem} ${selectedRoleId === role.id ? s.roleItemSelected : ''}`}
-                          onClick={() => handleSelectRole(role.id)}
-                        >
-                          {editingRoleId === role.id ? (
-                            <div className={s.roleEditRow}>
-                              <input
-                                type="color"
-                                value={editingRoleColor}
-                                onChange={e => setEditingRoleColor(e.target.value)}
-                                className={s.colorPicker}
-                              />
-                              <input
-                                type="text"
-                                value={editingRoleName}
-                                onChange={e => setEditingRoleName(e.target.value)}
-                                className={`${s.roleInput} txt-small`}
-                                maxLength={32}
-                                autoFocus
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') handleSaveRole()
-                                  if (e.key === 'Escape') handleCancelEditRole()
-                                }}
-                              />
-                              <button className={s.saveRoleBtn} onClick={handleSaveRole}>
-                                <Check size={16} strokeWidth={1.5} />
-                              </button>
-                              <button className={s.cancelRoleBtn} onClick={handleCancelEditRole}>
-                                <XCircle size={16} strokeWidth={1.5} />
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <div className={s.roleInfo}>
-                                <div
-                                  className={s.roleColor}
-                                  style={{ background: `#${role.color.toString(16).padStart(6, '0')}` }}
-                                />
-                                <span className={`${s.roleName} txt-small`}>{role.name}</span>
-                                {role.is_default && <span className={s.defaultBadge}>Default</span>}
-                              </div>
-                              <div className={s.roleActions}>
-                                <button
-                                  className={s.editRoleBtn}
-                                  onClick={e => { e.stopPropagation(); handleStartEditRole(role); }}
-                                >
-                                  <Edit2 size={14} strokeWidth={1.5} />
-                                </button>
-                                {!role.is_default && (
-                                  <button
-                                    className={s.deleteRoleBtn}
-                                    onClick={e => { e.stopPropagation(); handleDeleteRole(role.id); }}
-                                  >
-                                    <Trash2 size={14} strokeWidth={1.5} />
-                                  </button>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
                   </div>
 
-                  {/* Right: Permissions Editor */}
-                  {selectedRoleId && (
-                    <div className={s.rolesRightPanel}>
-                      {(() => {
-                        const role = roles.find(r => r.id === selectedRoleId)
-                        if (!role) return null
-                        const isEditing = editingRoleId === role.id
-                        const currentPermissions = isEditing ? editingRolePermissions : role.permissions
+                  {/* Right: Role Editor */}
+                  <div className={s.rolesRightPanel}>
+                    {selectedRoleId && (() => {
+                      const role = roles.find(r => r.id === selectedRoleId)
+                      if (!role) return null
+                      const isRoleSelected = editingRoleId === role.id
+                      const currentPermissions = editingRolePermissions
 
-                        return (
-                          <>
-                            <div className={s.permissionsHeader}>
-                              <div>
-                                <h4 className={`${s.permissionsTitle} txt-small txt-semibold`}>
-                                  {role.name} Permissions
-                                </h4>
-                                <p className={`${s.permissionsSubtitle} txt-tiny`}>
-                                  {members.filter(m => (m.role_ids ?? []).includes(role.id)).length} members
-                                </p>
+                      return (
+                        <>
+                          {/* Role Info Header */}
+                          <div className={s.roleInfoHeader}>
+                            <div className={s.roleInfoTitle}>
+                              <div className={s.roleInfoEditRow}>
+                                <input
+                                  type="color"
+                                  value={editingRoleColor}
+                                  onChange={e => setEditingRoleColor(e.target.value)}
+                                  className={s.colorPickerInline}
+                                />
+                                <input
+                                  type="text"
+                                  value={editingRoleName}
+                                  onChange={e => setEditingRoleName(e.target.value)}
+                                  className={s.roleNameInput}
+                                  maxLength={32}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveRoleInfo()
+                                    if (e.key === 'Escape') handleCancelEditRoleInfo()
+                                  }}
+                                />
                               </div>
-                              {!isEditing && (
-                                <button
-                                  className={s.editPermsBtn}
-                                  onClick={() => handleStartEditRole(role)}
-                                >
-                                  <Edit2 size={14} strokeWidth={1.5} />
-                                  <span className="txt-small">Edit</span>
-                                </button>
-                              )}
                             </div>
+                            <div className={s.roleInfoActions}>
+                              <button
+                                className={s.cancelBtn}
+                                onClick={handleCancelEditRoleInfo}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                className={s.saveBtn}
+                                onClick={handleSaveRoleInfo}
+                                disabled={!hasRoleChanges}
+                              >
+                                <Save size={14} strokeWidth={1.5} />
+                                <span>Save</span>
+                              </button>
+                            </div>
+                          </div>
 
-                            <div className={`${s.permissionsList} scrollbar-thin`}>
+                          {/* Permissions Section */}
+                          <div className={s.permissionsSection}>
+                            <div className={s.permissionsSectionHeader}>
+                              <h4 className={`${s.permissionsSectionTitle} txt-small txt-semibold`}>Permissions</h4>
+                              <button
+                                className={s.clearPermsBtn}
+                                onClick={() => setEditingRolePermissions(0)}
+                              >
+                                Clear permissions
+                              </button>
+                            </div>
+                            <div className={`${s.permissionsList} scrollbar-thin scroll-view-y`}>
                               <PermissionGroup
                                 title="General Server Permissions"
                                 permissions={[
-                                  { flag: P.VIEW_CHANNELS, label: 'View Channels', description: 'Allows members to view channels' },
-                                  { flag: P.MANAGE_CHANNELS, label: 'Manage Channels', description: 'Allows members to create, edit, and delete channels' },
-                                  { flag: P.MANAGE_SERVER, label: 'Manage Server', description: 'Allows members to change server name, icon, and other settings' },
+                                  { flag: P.VIEW_CHANNELS, label: 'View Channels', description: 'Allows members to view channels by default (excluding private channels).' },
+                                  { flag: P.MANAGE_CHANNELS, label: 'Manage Channels', description: 'Allows members to create, edit, or delete channels.' },
+                                  { flag: P.MANAGE_SERVER, label: 'Manage Server', description: 'Allows members to change server name, icon, and other settings.' },
                                 ]}
                                 currentPermissions={currentPermissions}
-                                isEditing={isEditing}
+                                isEditing={isRoleSelected}
                                 onToggle={handlePermissionToggle}
                               />
 
                               <PermissionGroup
                                 title="Member Permissions"
                                 permissions={[
-                                  { flag: P.KICK_MEMBERS, label: 'Kick Members', description: 'Allows members to kick other members' },
-                                  { flag: P.BAN_MEMBERS, label: 'Ban Members', description: 'Allows members to ban other members' },
-                                  { flag: P.MANAGE_ROLES, label: 'Manage Roles', description: 'Allows members to create and manage roles' },
-                                  { flag: P.CREATE_INVITE, label: 'Create Invites', description: 'Allows members to create invite links' },
+                                  { flag: P.KICK_MEMBERS, label: 'Kick Members', description: 'Allows members to kick other members from the server.' },
+                                  { flag: P.BAN_MEMBERS, label: 'Ban Members', description: 'Allows members to ban other members from the server.' },
+                                  { flag: P.MANAGE_ROLES, label: 'Manage Roles', description: 'Allows members to create new roles and edit or delete roles lower than their highest role.' },
+                                  { flag: P.CREATE_INVITE, label: 'Create Invites', description: 'Allows members to create invite links to the server.' },
                                 ]}
                                 currentPermissions={currentPermissions}
-                                isEditing={isEditing}
+                                isEditing={isRoleSelected}
                                 onToggle={handlePermissionToggle}
                               />
 
                               <PermissionGroup
                                 title="Text Channel Permissions"
                                 permissions={[
-                                  { flag: P.SEND_MESSAGES, label: 'Send Messages', description: 'Allows members to send messages' },
-                                  { flag: P.MANAGE_MESSAGES, label: 'Manage Messages', description: 'Allows members to delete and pin messages' },
+                                  { flag: P.SEND_MESSAGES, label: 'Send Messages', description: 'Allows members to send messages in text channels.' },
+                                  { flag: P.MANAGE_MESSAGES, label: 'Manage Messages', description: 'Allows members to delete and pin messages in text channels.' },
+                                  { flag: P.EMBED_LINKS, label: 'Embed Links', description: 'Allows members to embed links in messages.' },
+                                  { flag: P.ATTACH_FILES, label: 'Attach Files', description: 'Allows members to attach files to messages.' },
                                 ]}
                                 currentPermissions={currentPermissions}
-                                isEditing={isEditing}
+                                isEditing={isRoleSelected}
+                                onToggle={handlePermissionToggle}
+                              />
+
+                              <PermissionGroup
+                                title="Voice Channel Permissions"
+                                permissions={[
+                                  { flag: P.CONNECT, label: 'Connect', description: 'Allows members to connect to voice channels.' },
+                                  { flag: P.SPEAK, label: 'Speak', description: 'Allows members to speak in voice channels.' },
+                                  { flag: P.VIDEO, label: 'Video', description: 'Allows members to share video in voice channels.' },
+                                  { flag: P.MUTE_MEMBERS, label: 'Mute Members', description: 'Allows members to mute other members in voice channels.' },
+                                  { flag: P.DEAFEN_MEMBERS, label: 'Deafen Members', description: 'Allows members to deafen other members in voice channels.' },
+                                ]}
+                                currentPermissions={currentPermissions}
+                                isEditing={isRoleSelected}
                                 onToggle={handlePermissionToggle}
                               />
 
                               <div className={s.permissionItem}>
                                 <div className={s.permissionInfo}>
                                   <span className={`${s.permissionLabel} txt-small txt-medium`}>Administrator</span>
-                                  <span className={`${s.permissionDesc} txt-tiny`}>Grants all permissions and bypasses channel permissions</span>
+                                  <span className={`${s.permissionDesc} txt-tiny`}>Grants all permissions and bypasses channel permissions. This is a dangerous permission!</span>
                                 </div>
-                                {isEditing ? (
+                                <div className={s.permToggleGroup}>
                                   <button
-                                    className={`${s.permToggle} ${(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? s.permToggleActive : ''}`}
-                                    onClick={() => handlePermissionToggle(P.ADMINISTRATOR)}
+                                    className={`${s.permToggleBtn} ${(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? s.permToggleBtnActive : ''}`}
+                                    onClick={isRoleSelected && (currentPermissions & P.ADMINISTRATOR) !== P.ADMINISTRATOR ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
+                                    disabled={!isRoleSelected || (currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR}
+                                    aria-label="Enable Administrator"
                                   >
-                                    <Shield size={14} strokeWidth={1.5} />
+                                    <Check size={16} strokeWidth={2.5} />
                                   </button>
-                                ) : (
-                                  <span className={`${s.permStatus} txt-tiny ${(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? s.permStatusGranted : s.permStatusDenied}`}>
-                                    {(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? 'Granted' : 'Not Granted'}
-                                  </span>
-                                )}
+                                  <button
+                                    className={`${s.permToggleBtn} ${(currentPermissions & P.ADMINISTRATOR) !== P.ADMINISTRATOR ? s.permToggleBtnDeny : ''}`}
+                                    onClick={isRoleSelected && (currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
+                                    disabled={!isRoleSelected || (currentPermissions & P.ADMINISTRATOR) !== P.ADMINISTRATOR}
+                                    aria-label="Disable Administrator"
+                                  >
+                                    <X size={16} strokeWidth={2.5} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
+                          </div>
 
-                            {isEditing && (
-                              <div className={s.permissionsFooter}>
-                                <button className={s.cancelBtn} onClick={handleCancelEditRole}>
-                                  <span className="txt-small">Cancel</span>
-                                </button>
-                                <button className={s.saveBtn} onClick={handleSaveRole}>
-                                  <Save size={14} strokeWidth={1.5} />
-                                  <span className="txt-small">Save Changes</span>
-                                </button>
-                              </div>
+                          {/* Delete Role */}
+                          <div className={s.deleteRoleSection}>
+                            {!role.is_default ? (
+                              <button
+                                className={s.deleteRoleLink}
+                                onClick={() => handleDeleteRole(role.id)}
+                              >
+                                <Trash2 size={14} strokeWidth={1.5} />
+                                <span>Delete Role</span>
+                              </button>
+                            ) : (
+                              <div className={s.deleteRolePlaceholder} />
                             )}
-                          </>
-                        )
-                      })()}
-                    </div>
-                  )}
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </div>
                 </div>
               </div>
             )}
@@ -878,26 +934,35 @@ function PermissionGroup({
   return (
     <div className={s.permissionGroup}>
       <h5 className={`${s.permissionGroupTitle} txt-tiny txt-semibold`}>{title}</h5>
-      {permissions.map(perm => (
-        <div key={perm.flag} className={s.permissionItem}>
-          <div className={s.permissionInfo}>
-            <span className={`${s.permissionLabel} txt-small txt-medium`}>{perm.label}</span>
-            <span className={`${s.permissionDesc} txt-tiny`}>{perm.description}</span>
+      {permissions.map(perm => {
+        const isGranted = (currentPermissions & perm.flag) === perm.flag
+        return (
+          <div key={perm.flag} className={s.permissionItem}>
+            <div className={s.permissionInfo}>
+              <span className={`${s.permissionLabel} txt-small txt-medium`}>{perm.label}</span>
+              <span className={`${s.permissionDesc} txt-tiny`}>{perm.description}</span>
+            </div>
+            <div className={s.permToggleGroup}>
+              <button
+                className={`${s.permToggleBtn} ${isGranted ? s.permToggleBtnActive : ''}`}
+                onClick={isEditing && !isGranted ? () => onToggle(perm.flag) : undefined}
+                disabled={!isEditing || isGranted}
+                aria-label={`Enable ${perm.label}`}
+              >
+                <Check size={16} strokeWidth={2.5} />
+              </button>
+              <button
+                className={`${s.permToggleBtn} ${!isGranted ? s.permToggleBtnDeny : ''}`}
+                onClick={isEditing && isGranted ? () => onToggle(perm.flag) : undefined}
+                disabled={!isEditing || !isGranted}
+                aria-label={`Disable ${perm.label}`}
+              >
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
           </div>
-          {isEditing ? (
-            <button
-              className={`${s.permToggle} ${(currentPermissions & perm.flag) === perm.flag ? s.permToggleActive : ''}`}
-              onClick={() => onToggle(perm.flag)}
-            >
-              {(currentPermissions & perm.flag) === perm.flag ? '\u2713' : '\u2715'}
-            </button>
-          ) : (
-            <span className={`${s.permStatus} txt-tiny ${(currentPermissions & perm.flag) === perm.flag ? s.permStatusGranted : s.permStatusDenied}`}>
-              {(currentPermissions & perm.flag) === perm.flag ? 'Granted' : 'Not Granted'}
-            </span>
-          )}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -15,6 +15,7 @@
   display: flex;
   width: 56rem;
   height: 36rem;
+  flex-shrink: 0;
   border-radius: 0.75rem;
   overflow: hidden;
   box-shadow:
@@ -33,6 +34,7 @@
   display: flex;
   flex-direction: column;
   width: 14rem;
+  flex-shrink: 0;
   background: var(--bg-loud);
   border-right: 1px solid var(--border-muted);
 }
@@ -160,6 +162,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   background: var(--bg-shout);
 }
 
@@ -196,8 +199,19 @@
   padding: 1.25rem;
 }
 
+.scrollNoPadding {
+  padding: 0;
+}
+
 .section {
   max-width: 40rem;
+  height: 100%;
+}
+
+.sectionFull {
+  max-width: none;
+  height: 100%;
+  padding: 0;
 }
 
 /* ── Form fields ── */
@@ -264,16 +278,27 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1rem;
+  padding: 0 0.875rem;
+  height: 2rem;
   border-radius: 0.5rem;
   background: var(--accent);
   color: #fff;
   font-weight: 500;
-  transition: background-color var(--transition), transform var(--transition);
+  transition: background-color var(--transition);
+  border: none;
+  cursor: pointer;
 }
 .saveBtn:hover {
   background: var(--accent-strong);
-  transform: translateY(-1px);
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveBtn:disabled:hover {
+  background: var(--accent);
 }
 
 /* ── Section headers ── */
@@ -304,57 +329,171 @@
 /* ── Roles ── */
 .rolesLayout {
   display: flex;
-  gap: 1.5rem;
   height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
+/* Left Panel - Role List */
 .rolesLeftPanel {
-  width: 18rem;
+  width: 14rem;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid var(--border-muted);
+  padding: 1.25rem 0.75rem;
 }
 
-.rolesRightPanel {
-  flex: 1;
+.rolesListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding: 0 0.25rem;
+}
+
+.rolesListHeader h3 {
+  color: var(--text-strong);
+}
+
+.rolesCount {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--bg-dark-muted);
+  padding: 0.125rem 0.5rem;
+  border-radius: 100px;
+}
+
+.rolesList {
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--border-muted);
-  padding-left: 1.5rem;
+  gap: 0.125rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.roleItem {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+
+.roleItem:hover {
+  background: var(--bg-dark-muted);
+}
+
+.roleItemSelected {
+  background: var(--bg-dark-default);
+}
+
+.roleItemSelected .roleName {
+  color: var(--text-strong);
+}
+
+.roleColorDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.roleName {
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.defaultBadge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.125rem 0.375rem;
+  border-radius: 100px;
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  flex-shrink: 0;
+  min-width: 2.75rem;
+  text-align: center;
+}
+
+.createRoleBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  background: transparent;
+  border: 1px dashed var(--border-muted);
+  color: var(--accent-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.createRoleBtn:hover {
+  background: var(--accent-muted);
+  border-style: solid;
 }
 
 .createRoleForm {
-  padding: 0.75rem;
-  background: var(--bg-loud);
+  margin-top: 0.75rem;
+  padding: 0.625rem;
+  background: var(--bg-subtle);
   border-radius: 0.5rem;
   border: 1px solid var(--border-muted);
-  margin-bottom: 0.75rem;
 }
 
-.roleFormRow,
-.roleEditRow {
+.roleFormRow {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
+.roleFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
 .colorPicker {
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border: none;
   border-radius: 0.25rem;
   cursor: pointer;
   background: none;
   padding: 0;
+  flex-shrink: 0;
 }
 
 .roleInput {
   flex: 1;
-  background: var(--bg-subtle);
+  background: var(--bg-loud);
   border: 1px solid var(--border-muted);
   border-radius: 0.375rem;
-  padding: 0.5rem 0.625rem;
+  padding: 0.375rem 0.5rem;
   color: var(--text-default);
   font-family: inherit;
+  font-size: 0.8125rem;
 }
 
 .roleInput:focus {
@@ -367,8 +506,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.625rem;
+  height: 1.625rem;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
@@ -390,144 +529,187 @@
 }
 
 .cancelRoleBtn {
-  background: var(--bg-subtle);
-  color: var(--text-default);
+  background: var(--bg-dark-muted);
+  color: var(--text-muted);
 }
 
 .cancelRoleBtn:hover {
   background: var(--bg-dark-default);
+  color: var(--text-default);
 }
 
-.rolesList {
+/* Right Panel - Role Editor */
+.rolesRightPanel {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  overflow-y: auto;
-  max-height: 20rem;
+  padding: 1.25rem;
+  overflow: hidden;
+  min-width: 0;
 }
 
-.roleItem {
+/* Role Info Header */
+.roleInfoHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.5rem;
-  background: var(--bg-loud);
-  border: 1px solid var(--border-muted);
-  cursor: pointer;
-  transition: all 0.15s ease;
+  min-height: 2.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-muted);
+  margin-bottom: 1.25rem;
+  flex-shrink: 0;
 }
 
-.roleItem:hover {
-  background: var(--bg-subtle);
-}
-
-.roleItemSelected {
-  background: var(--accent-soft);
-  border-color: var(--accent-default);
-}
-
-.roleInfo {
+.roleInfoTitle {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex: 1;
+  min-width: 0;
+  min-height: 2rem;
 }
 
-.roleColor {
-  width: 1rem;
-  height: 1rem;
+.roleInfoViewRow,
+.roleInfoEditRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.roleInfoColor,
+.colorPickerInline {
+  width: 1.25rem;
+  height: 1.25rem;
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-.roleName {
-  color: var(--text-strong);
-}
-
-.roleCount {
-  font-size: 0.75rem;
-  color: var(--text-faint);
-  margin-left: auto;
-}
-
-.roleActions {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.editRoleBtn,
-.deleteRoleBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  padding: 0;
   border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--text-faint);
+  overflow: hidden;
+}
+
+.colorPickerInline {
   cursor: pointer;
-  transition: all 0.15s ease;
 }
 
-.editRoleBtn:hover {
-  background: var(--bg-subtle);
-  color: var(--text-default);
+.colorPickerInline::-webkit-color-swatch-wrapper {
+  padding: 0;
 }
 
-.deleteRoleBtn:hover {
-  background: rgba(235, 75, 75, 0.15);
-  color: var(--danger-default);
+.colorPickerInline::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
 }
 
-.defaultBadge {
+.roleInfoName {
+  color: var(--text-strong);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.roleNameInput {
+  flex: 1;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-strong);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  min-width: 0;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.roleNameInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.defaultBadgeLarge {
   font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0.25rem 0.5rem;
   border-radius: 100px;
-  background: var(--bg-dark-default);
-  color: var(--text-faint);
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  flex-shrink: 0;
 }
 
-/* ── Role Permissions ── */
-.permissionsHeader {
+.defaultBadgePlaceholder {
+  visibility: hidden;
+}
+
+.roleInfoActions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-muted);
+  gap: 0.5rem;
+  flex-shrink: 0;
+  min-height: 2rem;
 }
 
-.permissionsTitle {
-  color: var(--text-strong);
+.clearPermsBtn {
+  font-size: 0.8125rem;
+  color: var(--accent-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+  height: 2rem;
+  display: flex;
+  align-items: center;
 }
 
-.permissionsSubtitle {
-  color: var(--text-faint);
-  margin-top: 0.125rem;
+.clearPermsBtn:hover {
+  background: var(--accent-muted);
 }
 
-.editPermsBtn {
+.editRoleInfoBtn {
   display: flex;
   align-items: center;
   gap: 0.375rem;
   padding: 0.375rem 0.75rem;
   border-radius: 0.375rem;
   border: none;
-  background: var(--accent-default);
-  color: white;
+  background: var(--bg-dark-muted);
+  color: var(--text-default);
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+  height: 2rem;
 }
 
-.editPermsBtn:hover {
-  background: var(--accent-strong);
+.editRoleInfoBtn:hover {
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+}
+
+/* ── Role Permissions ── */
+.permissionsSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.permissionsSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.permissionsSectionTitle {
+  color: var(--text-strong);
 }
 
 .permissionsList {
@@ -535,7 +717,9 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
+  min-height: 0;
+  /* scroll-view-y class handles the edge fade effect */
 }
 
 .permissionGroup {
@@ -548,8 +732,9 @@
   color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-muted);
+  font-size: 0.6875rem;
 }
 
 .permissionItem {
@@ -557,15 +742,21 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease;
+  min-height: 3.5rem;
+}
+
+.permissionItem:hover {
   background: var(--bg-loud);
 }
 
 .permissionInfo {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.25rem;
+  flex: 1;
 }
 
 .permissionLabel {
@@ -574,38 +765,75 @@
 
 .permissionDesc {
   color: var(--text-faint);
+  line-height: 1.4;
+  max-width: 24rem;
 }
 
-.permToggle {
-  width: 2.5rem;
-  height: 1.75rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--border-muted);
-  background: var(--bg-subtle);
-  color: var(--text-muted);
+/* Toggle Checkbox Group */
+.permToggleGroup {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.permToggleBtn {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: var(--bg-dark-muted);
   cursor: pointer;
   transition: all 0.15s ease;
-  font-size: 0.875rem;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  opacity: 0.48;
 }
 
-.permToggle:hover {
-  background: var(--bg-dark-muted);
+.permToggleBtn:first-child {
+  border-radius: 8px 2px 2px 8px;
 }
 
-.permToggleActive {
-  background: rgba(59, 165, 92, 0.2);
-  border-color: #3ba55c;
+.permToggleBtn:last-child {
+  border-radius: 2px 8px 8px 2px;
+}
+
+.permToggleBtn:hover:not(:disabled):not(.permToggleBtnActive):not(.permToggleBtnDeny) {
+  opacity: 0.8;
+}
+
+.permToggleBtnActive {
+  background: rgba(59, 165, 92, 0.32);
   color: #3ba55c;
+  opacity: 1;
+}
+
+.permToggleBtnDeny {
+  background: rgba(235, 75, 75, 0.32);
+  color: #eb4b4b;
+  opacity: 1;
+}
+
+.permToggleBtn:disabled {
+  cursor: not-allowed;
 }
 
 .permStatus {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.625rem;
   border-radius: 0.25rem;
   font-weight: 500;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .permStatusGranted {
-  background: rgba(59, 165, 92, 0.1);
+  background: rgba(59, 165, 92, 0.15);
   color: #3ba55c;
 }
 
@@ -614,13 +842,36 @@
   color: var(--text-faint);
 }
 
-.permissionsFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
+/* Delete Role Section */
+.deleteRoleSection {
+  margin-top: 1.5rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-muted);
+  flex-shrink: 0;
+  min-height: 2.5rem;
+}
+
+.deleteRoleLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: oklch(55% 0.2 25);
+  font-size: 0.8125rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.375rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.15s ease;
+  height: 1.75rem;
+}
+
+.deleteRoleLink:hover {
+  background: oklch(55% 0.2 25 / 0.1);
+}
+
+.deleteRolePlaceholder {
+  height: 1.75rem;
 }
 
 /* ── Audit Log ── */
@@ -904,10 +1155,17 @@
 }
 
 .cancelBtn {
-  padding: 0.5rem 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.875rem;
+  height: 2rem;
   border-radius: 0.5rem;
   font-size: 0.8125rem;
   color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
   transition: background-color var(--transition), color var(--transition);
 }
 .cancelBtn:hover {
