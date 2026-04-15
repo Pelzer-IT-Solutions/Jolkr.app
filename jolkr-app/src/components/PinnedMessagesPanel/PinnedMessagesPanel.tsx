@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Pin, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import * as api from '../../api/client'
 import type { Message } from '../../api/types'
 import type { User } from '../../api/types'
@@ -69,11 +69,6 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin,
 
   return (
     <div className={s.panel}>
-      <div className={s.header}>
-        <Pin size={14} strokeWidth={1.5} />
-        <span className="txt-body txt-semibold">Pinned Messages</span>
-        <button className={s.closeBtn} onClick={onClose}><X size={14} strokeWidth={1.5} /></button>
-      </div>
       <div className={`${s.list} scrollbar-thin scroll-view-y`}>
         {loading && <div className={`${s.empty} txt-small`}>Loading...</div>}
         {!loading && messages.length === 0 && (

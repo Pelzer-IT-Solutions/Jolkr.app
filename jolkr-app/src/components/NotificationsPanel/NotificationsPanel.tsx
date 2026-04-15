@@ -9,12 +9,11 @@ export function NotificationsPanel({ onNavigate: _onNavigate }: Props) {
   return (
     <aside className={s.panel}>
       <div className={s.header}>
-        <Bell size={14} strokeWidth={1.5} />
-        <span className={`${s.title} txt-small txt-semibold`}>Notifications</span>
+        <span className={`${s.title} txt-tiny txt-semibold`}>Notifications</span>
       </div>
-      <div className={s.emptyState} style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <Bell size={32} strokeWidth={1} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
-        <div className="txt-small">No notifications yet</div>
+      <div className={s.emptyState}>
+        <Bell size={98} strokeWidth={1} className={s.emptyIcon} />
+        <div className={`${s.emptyText} txt-small`}>No notifications yet</div>
       </div>
     </aside>
   )
