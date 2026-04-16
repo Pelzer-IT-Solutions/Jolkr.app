@@ -94,9 +94,19 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     const id = server.id
     api.getRoles(id).then((loadedRoles) => {
       setRoles(loadedRoles)
-      // Auto-select first role when roles are loaded and none is selected
-      if (loadedRoles.length > 0 && !selectedRoleId) {
-        setSelectedRoleId(loadedRoles[0].id)
+      // Always auto-select first role when roles are loaded
+      if (loadedRoles.length > 0) {
+        const firstRole = loadedRoles[0]
+        setSelectedRoleId(firstRole.id)
+        // Initialize editing state for the first role
+        const colorHex = `#${firstRole.color.toString(16).padStart(6, '0')}`
+        setEditingRoleId(firstRole.id)
+        setEditingRoleName(firstRole.name)
+        setEditingRoleColor(colorHex)
+        setEditingRolePermissions(firstRole.permissions)
+        setOriginalRoleName(firstRole.name)
+        setOriginalRoleColor(colorHex)
+        setOriginalRolePermissions(firstRole.permissions)
       }
     }).catch(() => setRoles([]))
     api.getMembersWithRoles(id).then(setMembers).catch(() => setMembers([]))
@@ -190,32 +200,27 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   }
 
   const handleSelectRole = (roleId: string) => {
-    const isDeselecting = selectedRoleId === roleId
-    setSelectedRoleId(isDeselecting ? null : roleId)
+    // Radio button behavior: always have one selected, can't unselect
+    if (selectedRoleId === roleId) {
+      // Clicking already selected role does nothing
+      return
+    }
 
-    if (isDeselecting) {
-      // Clear editing state when deselecting
-      setEditingRoleId(null)
-      setEditingRoleName('')
-      setEditingRoleColor('#000000')
-      setEditingRolePermissions(0)
-      setOriginalRoleName('')
-      setOriginalRoleColor('#000000')
-      setOriginalRolePermissions(0)
-    } else {
-      // Initialize editing state for the selected role
-      const role = roles.find(r => r.id === roleId)
-      if (role) {
-        const colorHex = `#${role.color.toString(16).padStart(6, '0')}`
-        setEditingRoleId(roleId)
-        setEditingRoleName(role.name)
-        setEditingRoleColor(colorHex)
-        setEditingRolePermissions(role.permissions)
-        // Store original values for change detection and cancel
-        setOriginalRoleName(role.name)
-        setOriginalRoleColor(colorHex)
-        setOriginalRolePermissions(role.permissions)
-      }
+    // Select the new role
+    setSelectedRoleId(roleId)
+
+    // Initialize editing state for the selected role
+    const role = roles.find(r => r.id === roleId)
+    if (role) {
+      const colorHex = `#${role.color.toString(16).padStart(6, '0')}`
+      setEditingRoleId(roleId)
+      setEditingRoleName(role.name)
+      setEditingRoleColor(colorHex)
+      setEditingRolePermissions(role.permissions)
+      // Store original values for change detection and cancel
+      setOriginalRoleName(role.name)
+      setOriginalRoleColor(colorHex)
+      setOriginalRolePermissions(role.permissions)
     }
   }
 
@@ -225,8 +230,18 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
       setRoles(prev => {
         const newRoles = prev.filter(r => r.id !== roleId)
         // Select another role if the deleted one was selected
-        if (selectedRoleId === roleId) {
-          setSelectedRoleId(newRoles.length > 0 ? newRoles[0].id : null)
+        if (selectedRoleId === roleId && newRoles.length > 0) {
+          const newSelectedRole = newRoles[0]
+          setSelectedRoleId(newSelectedRole.id)
+          // Initialize editing state for the new selected role
+          const colorHex = `#${newSelectedRole.color.toString(16).padStart(6, '0')}`
+          setEditingRoleId(newSelectedRole.id)
+          setEditingRoleName(newSelectedRole.name)
+          setEditingRoleColor(colorHex)
+          setEditingRolePermissions(newSelectedRole.permissions)
+          setOriginalRoleName(newSelectedRole.name)
+          setOriginalRoleColor(colorHex)
+          setOriginalRolePermissions(newSelectedRole.permissions)
         }
         return newRoles
       })
@@ -579,17 +594,17 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                                 <div className={s.permToggleGroup}>
                                   <button
                                     className={`${s.permToggleBtn} ${(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? s.permToggleBtnActive : ''}`}
-                                    onClick={isRoleSelected && (currentPermissions & P.ADMINISTRATOR) !== P.ADMINISTRATOR ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
-                                    disabled={!isRoleSelected || (currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR}
-                                    aria-label="Enable Administrator"
+                                    onClick={isRoleSelected ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
+                                    disabled={!isRoleSelected}
+                                    aria-label={(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? 'Disable Administrator' : 'Enable Administrator'}
                                   >
                                     <Check size={16} strokeWidth={2.5} />
                                   </button>
                                   <button
                                     className={`${s.permToggleBtn} ${(currentPermissions & P.ADMINISTRATOR) !== P.ADMINISTRATOR ? s.permToggleBtnDeny : ''}`}
-                                    onClick={isRoleSelected && (currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
-                                    disabled={!isRoleSelected || (currentPermissions & P.ADMINISTRATOR) !== P.ADMINISTRATOR}
-                                    aria-label="Disable Administrator"
+                                    onClick={isRoleSelected ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
+                                    disabled={!isRoleSelected}
+                                    aria-label={(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? 'Disable Administrator' : 'Enable Administrator'}
                                   >
                                     <X size={16} strokeWidth={2.5} />
                                   </button>
@@ -908,17 +923,17 @@ function PermissionGroup({
             <div className={s.permToggleGroup}>
               <button
                 className={`${s.permToggleBtn} ${isGranted ? s.permToggleBtnActive : ''}`}
-                onClick={isEditing && !isGranted ? () => onToggle(perm.flag) : undefined}
-                disabled={!isEditing || isGranted}
-                aria-label={`Enable ${perm.label}`}
+                onClick={isEditing ? () => onToggle(perm.flag) : undefined}
+                disabled={!isEditing}
+                aria-label={isGranted ? `Disable ${perm.label}` : `Enable ${perm.label}`}
               >
                 <Check size={16} strokeWidth={2.5} />
               </button>
               <button
                 className={`${s.permToggleBtn} ${!isGranted ? s.permToggleBtnDeny : ''}`}
-                onClick={isEditing && isGranted ? () => onToggle(perm.flag) : undefined}
-                disabled={!isEditing || !isGranted}
-                aria-label={`Disable ${perm.label}`}
+                onClick={isEditing ? () => onToggle(perm.flag) : undefined}
+                disabled={!isEditing}
+                aria-label={isGranted ? `Disable ${perm.label}` : `Enable ${perm.label}`}
               >
                 <X size={16} strokeWidth={2.5} />
               </button>
