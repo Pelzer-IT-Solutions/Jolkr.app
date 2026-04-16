@@ -191,6 +191,8 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `forgotPassword` | POST | `/auth/forgot-password` | `{email}` | void |
 | `resetPasswordConfirm` | POST | `/auth/reset-password-confirm` | `{token, new_password}` | void |
 | `changePassword` | POST | `/auth/change-password` | `{current_password, new_password}` | void |
+| `verifyEmail` | POST | `/auth/verify-email` | `{token}` | void |
+| `resendVerification` | POST | `/auth/resend-verification` | — | void |
 
 ---
 
@@ -306,6 +308,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `uploadAttachment` | POST | `/channels/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
 | `uploadDmAttachment` | POST | `/dms/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
 | `uploadFile` | POST | `/upload?purpose={avatar\|icon}` | `FormData {file}` | `{key: string, url: string}` |
+| `getFileUrl` | GET | `/files/{attachmentId}` | — | Binary file (streamed) |
 
 ---
 
@@ -991,6 +994,7 @@ interface User {
   display_name?: string | null; email?: string | null;
   avatar_url?: string | null; status?: string | null;
   bio?: string | null; is_online?: boolean;
+  email_verified?: boolean;
   show_read_receipts?: boolean; is_system?: boolean;
   banner_color?: string | null;
   created_at?: string | null;
