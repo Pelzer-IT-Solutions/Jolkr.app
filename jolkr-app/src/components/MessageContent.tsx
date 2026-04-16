@@ -60,6 +60,11 @@ marked.use({
       const langLabel = safeLang ? `<div class="text-xs text-text-tertiary">${safeLang}</div>` : '';
       return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-sm font-mono hljs !p-0">${highlighted}</code></pre>`;
     },
+    image({ href, title }) {
+      const safeHref = /^(https?:\/\/|\/api\/)/i.test(href ?? '') ? escapeAttr(href ?? '') : '#';
+      const safeTitle = title ? ` title="${escapeAttr(title)}"` : '';
+      return `<img src="${safeHref}" alt="GIF"${safeTitle} style="max-width:100%;max-height:300px;border-radius:0.5rem;margin:0.25rem 0" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
+    },
     heading({ tokens, depth }) {
       const body = this.parser.parseInline(tokens);
       return `<h${depth} class="font-bold">${body}</h${depth}>`;
@@ -75,13 +80,22 @@ marked.use({
   },
 });
 
+// Image URL patterns — render as <img> instead of <a>
+const IMAGE_URL_RE = /\.(gif|png|jpe?g|webp)(\?[^\s]*)?$/i;
+const GIF_PROXY_RE = /\/api\/gifs\/media\?url=/;
+
 // Auto-detect URLs in plain text that aren't already links
 function autoLinkUrls(text: string): string {
   // Don't process if it already contains markdown links or HTML
   if (/\[.*?\]\(.*?\)/.test(text) || /<a\s/.test(text)) return text;
   return text.replace(
-    /(https?:\/\/[^\s<>)"]+)/gi,
-    '[$1]($1)',
+    /((?:https?:\/\/[^\s<>)"]+)|(?:\/api\/gifs\/media\?url=[^\s<>)"]+))/gi,
+    (url) => {
+      if (IMAGE_URL_RE.test(url) || GIF_PROXY_RE.test(url)) {
+        return `![GIF](${url})`;
+      }
+      return `[${url}](${url})`;
+    },
   );
 }
 
