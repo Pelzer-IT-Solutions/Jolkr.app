@@ -11,6 +11,7 @@ import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { Message } from '../Message/Message'
 import EmojiPickerPopup from '../EmojiPickerPopup'
+import GifPickerPopup from '../GifPickerPopup'
 import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../../utils/emoji'
 import s from './ChatArea.module.css'
 
@@ -125,6 +126,9 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const [showComposerEmoji, setShowComposerEmoji] = useState(false)
   const [composerEmojiPos, setComposerEmojiPos] = useState<{ top: number; left: number } | null>(null)
   const composerEmojiBtnRef = useRef<HTMLButtonElement>(null)
+  const [showGifPicker, setShowGifPicker] = useState(false)
+  const [gifPickerPos, setGifPickerPos] = useState<{ top: number; left: number } | null>(null)
+  const gifBtnRef = useRef<HTMLButtonElement>(null)
 
   // Clear reply context + content when channel changes
   useEffect(() => { setReplyingTo(null); setContent('') }, [channel.id])
@@ -623,15 +627,30 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                     <button className={s.composerBtn} title="Attach file" onClick={() => fileInputRef.current?.click()}>
                       <AttachIcon />
                     </button>
-                    <button className={s.composerBtn} title="GIF" onClick={() => {
-                      if (fileInputRef.current) {
-                        fileInputRef.current.accept = 'image/gif'
-                        fileInputRef.current.click()
-                        fileInputRef.current.accept = 'image/*,video/*,.pdf,.txt,.zip,.doc,.docx'
-                      }
-                    }}>
+                    <button
+                      ref={gifBtnRef}
+                      className={s.composerBtn}
+                      title="GIF"
+                      onClick={() => {
+                        if (!showGifPicker && gifBtnRef.current) {
+                          const r = gifBtnRef.current.getBoundingClientRect()
+                          setGifPickerPos({ top: r.top, left: r.left + r.width / 2 })
+                        }
+                        setShowGifPicker(v => !v)
+                      }}
+                    >
                       <GifIcon />
                     </button>
+                    {showGifPicker && gifPickerPos && (
+                      <GifPickerPopup
+                        position={gifPickerPos}
+                        onSelect={(gifUrl) => {
+                          onSend(gifUrl)
+                          inputRef.current?.focus()
+                        }}
+                        onClose={() => setShowGifPicker(false)}
+                      />
+                    )}
                   </>
                 )}
                 <button className={s.sendBtn} title="Send (Enter)" onClick={send}>

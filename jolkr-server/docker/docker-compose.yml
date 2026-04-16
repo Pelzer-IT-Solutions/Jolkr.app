@@ -42,6 +42,7 @@ services:
       MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
       APP_URL: "${APP_URL:-http://localhost/app}"
       CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost,http://localhost:1420,https://tauri.localhost,https://jolkr.app}"
+      GIPHY_API_KEY: "${GIPHY_API_KEY:-}"
       RUST_LOG: "${RUST_LOG:-info}"
     networks:
       - jolkr-net

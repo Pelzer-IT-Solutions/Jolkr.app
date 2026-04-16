@@ -883,3 +883,4 @@ export const unvotePoll = (pollId: string, optionId: string) =>
 
 export const getPoll = (pollId: string) =>
   request<Poll>(`/polls/${pollId}`, {}, 'poll');
+

@@ -36,6 +36,7 @@ subtle = "2"
 sha2 = "0.10"
 hmac = "0.12"
 reqwest = { workspace = true }
+urlencoding = { workspace = true }
 scraper = { workspace = true }
 regex = "1"
 url = "2"

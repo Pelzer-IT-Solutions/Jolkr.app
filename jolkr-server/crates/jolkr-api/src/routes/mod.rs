@@ -11,6 +11,7 @@ pub mod dms;
 pub mod emojis;
 pub mod files;
 pub mod friends;
+pub mod gifs;
 pub mod invites;
 pub mod keys;
 pub mod messages;
@@ -358,6 +359,11 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/servers/:server_id/audit-log", get(audit_log::get_audit_log))
         // ── Presence ──────────────────────────────────────────────────
         .route("/api/presence/query", post(presence::query_presence))
+        // ── GIFs (proxied via GIPHY, Tenor v2-compatible for gif-picker-react) ──
+        .route("/api/gifs/search", get(gifs::search_gifs))
+        .route("/api/gifs/featured", get(gifs::featured_gifs))
+        .route("/api/gifs/categories", get(gifs::categories))
+        .route("/api/gifs/media", get(gifs::proxy_media))
         // ── Push ────────────────────────────────────────────────────
         .route("/api/push/vapid-key", get(push::vapid_key))
         .layer(axum_mw::from_fn(rate_limit_middleware))
