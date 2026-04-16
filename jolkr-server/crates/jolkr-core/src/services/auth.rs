@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use jolkr_common::JolkrError;
 use jolkr_db::models::UserRow;
-use jolkr_db::repo::{PasswordResetRepo, SessionRepo, UserRepo};
+use jolkr_db::repo::{EmailVerificationRepo, PasswordResetRepo, SessionRepo, UserRepo};
 
 // ── Public types ───────────────────────────────────────────────────────
 
@@ -47,6 +47,7 @@ pub struct AuthUser {
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
     pub is_system: bool,
+    pub email_verified: bool,
 }
 
 impl From<UserRow> for AuthUser {
@@ -58,6 +59,7 @@ impl From<UserRow> for AuthUser {
             display_name: row.display_name,
             avatar_url: row.avatar_url,
             is_system: row.is_system,
+            email_verified: row.email_verified,
         }
     }
 }
@@ -275,6 +277,53 @@ impl AuthService {
         Ok(())
     }
 
+    // ── Email verification ────────────────────────────────────────────
+
+    /// Generate an email verification token for a user.
+    /// Returns the plaintext token to include in the verification URL.
+    pub async fn request_email_verification(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<String, JolkrError> {
+        // Delete any existing verification tokens for this user
+        EmailVerificationRepo::delete_for_user(pool, user_id).await?;
+
+        let plaintext_token = Self::generate_reset_token();
+        let token_hash = Self::hash_reset_token(&plaintext_token);
+
+        // Token expires in 24 hours
+        let expires_at = Utc::now() + Duration::hours(24);
+
+        EmailVerificationRepo::create(pool, user_id, &token_hash, expires_at).await?;
+        info!(user_id = %user_id, "Email verification token generated");
+
+        Ok(plaintext_token)
+    }
+
+    /// Confirm email verification: validate token, mark user as verified.
+    pub async fn confirm_email_verification(
+        pool: &PgPool,
+        token: &str,
+    ) -> Result<(), JolkrError> {
+        let token_hash = Self::hash_reset_token(token);
+        let row = EmailVerificationRepo::get_by_token_hash(pool, &token_hash).await.map_err(|_| {
+            warn!("Invalid or expired email verification token used");
+            JolkrError::Validation("Invalid or expired verification link".into())
+        })?;
+
+        // Mark user as verified
+        EmailVerificationRepo::verify_user(pool, row.user_id).await?;
+
+        // Mark token as used
+        EmailVerificationRepo::mark_used(pool, row.id).await?;
+
+        // Delete all remaining tokens for this user
+        EmailVerificationRepo::delete_for_user(pool, row.user_id).await?;
+
+        info!(user_id = %row.user_id, "Email verified successfully");
+        Ok(())
+    }
+
     // ── Token validation ───────────────────────────────────────────────
 
     /// Validate an access token and return the embedded claims.
@@ -374,7 +423,7 @@ impl AuthService {
     }
 
     /// Generate a cryptographically random password reset token (48 bytes, base64url).
-    fn generate_reset_token() -> String {
+    pub(crate) fn generate_reset_token() -> String {
         use base64::Engine;
         use rand::RngCore;
         let mut bytes = [0u8; 48];
@@ -383,7 +432,7 @@ impl AuthService {
     }
 
     /// Hash a reset token with SHA-256 for safe DB storage.
-    fn hash_reset_token(token: &str) -> String {
+    pub(crate) fn hash_reset_token(token: &str) -> String {
         use sha2::{Sha256, Digest};
         let hash = Sha256::digest(token.as_bytes());
         hex::encode(hash)

@@ -127,6 +127,7 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/auth/reset-password", post(auth::reset_password))
         .route("/api/auth/forgot-password", post(auth::forgot_password))
         .route("/api/auth/reset-password-confirm", post(auth::reset_password_confirm))
+        .route("/api/auth/verify-email", post(auth::verify_email))
         .layer(axum_mw::from_fn(rate_limit_middleware))
         .layer(Extension(auth_limiter));
 
@@ -136,6 +137,7 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/auth/change-password", post(auth::change_password))
         .route("/api/auth/logout", post(auth::logout))
         .route("/api/auth/logout-all", post(auth::logout_all))
+        .route("/api/auth/resend-verification", post(auth::resend_verification))
         // ── Users ───────────────────────────────────────────────────
         .route("/api/users/@me", get(users::get_me).patch(users::update_me))
         .route("/api/users/batch", post(users::get_users_batch))

@@ -185,6 +185,8 @@ export function useAppInit() {
     let target: string
     if (dmActive && activeDmId) {
       target = `/dm/${activeDmId}`
+    } else if (dmActive) {
+      target = `/dm`
     } else if (activeServerId && activeChannelId) {
       target = `/servers/${activeServerId}/channels/${activeChannelId}`
     } else if (activeServerId) {

@@ -40,7 +40,7 @@ export default function AppShell() {
     tabbedIds, setTabbedIds, setActiveServerId, setActiveChannelId,
     sidebarCollapsed, setSidebarCollapsed,
     rightPanelMode, setRightPanelMode,
-    setDmActive, setActiveDmId, setDmList,
+    setDmActive, setActiveDmId, dmList, setDmList,
     settingsOpen, setSettingsOpen,
     newDmOpen, setNewDmOpen,
     joinServerOpen, setJoinServerOpen,
@@ -149,7 +149,17 @@ export default function AppShell() {
           onClose={handleCloseTab}
           onReorder={setTabbedIds}
           onOpenServer={id => { setDmActive(false); handleOpenServer(id) }}
-          onDmClick={() => { setDmActive(v => !v) }}
+          onDmClick={() => {
+            setDmActive(v => {
+              if (!v) {
+                // Switching TO DM mode: select last active DM or first available
+                if (!activeDmId && dmList.length > 0) {
+                  setActiveDmId(dmList[0].id)
+                }
+              }
+              return !v
+            })
+          }}
           onSearchClick={() => setSearchActive(v => !v)}
           onNotificationsClick={() => setNotificationsActive(v => !v)}
           onOpenSettings={() => setSettingsOpen(true)}

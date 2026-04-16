@@ -31,7 +31,7 @@ export default function Register() {
         initE2EE(deviceId, seed).catch(console.warn);
       }
 
-      navigate('/');
+      navigate('/verify-email');
     } catch { /* error is in store */ }
   };
 

@@ -43,7 +43,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.register(email, username, password);
       const user = await api.getMe();
       set({ user, loading: false });
-      wsClient.connect();
+      if (user.email_verified) {
+        wsClient.connect();
+      }
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
       throw e;
@@ -57,7 +59,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await api.getMe();
       set({ user, loading: false });
-      wsClient.connect();
+      if (user.email_verified) {
+        wsClient.connect();
+      }
     } catch (e) {
       // Only clear tokens on auth errors (401/403), not transient network errors
       const status = (e as { status?: number }).status;

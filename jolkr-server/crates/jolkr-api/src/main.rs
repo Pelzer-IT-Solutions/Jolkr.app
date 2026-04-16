@@ -87,11 +87,13 @@ async fn main() {
         config.vapid_subject.clone(),
     );
 
-    // Email service (SMTP for password resets)
+    // Email service (SMTP for password resets + email verification)
     let email = email_service::EmailService::new(
-        config.smtp_host.as_deref(),
-        config.smtp_port,
-        &config.smtp_from,
+        config.mail_host.as_deref(),
+        config.mail_port,
+        &config.mail_from,
+        config.mail_username.as_deref(),
+        config.mail_password.as_deref(),
     );
 
     // Link embed service (fetches URL previews async)

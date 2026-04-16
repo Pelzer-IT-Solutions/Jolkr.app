@@ -291,6 +291,19 @@ export async function resetPasswordConfirm(token: string, newPassword: string): 
   });
 }
 
+export async function verifyEmail(token: string): Promise<void> {
+  await request<void>('/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function resendVerification(): Promise<void> {
+  await request<void>('/auth/resend-verification', {
+    method: 'POST',
+  });
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   await request<void>('/auth/change-password', {
     method: 'POST',

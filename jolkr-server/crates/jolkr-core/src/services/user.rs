@@ -18,6 +18,7 @@ pub struct UserProfile {
     pub is_online: bool,
     pub show_read_receipts: bool,
     pub is_system: bool,
+    pub email_verified: bool,
     pub banner_color: Option<String>,
 }
 
@@ -33,6 +34,7 @@ impl From<UserRow> for UserProfile {
             is_online: row.is_online,
             show_read_receipts: row.show_read_receipts,
             is_system: row.is_system,
+            email_verified: row.email_verified,
             banner_color: row.banner_color,
         }
     }

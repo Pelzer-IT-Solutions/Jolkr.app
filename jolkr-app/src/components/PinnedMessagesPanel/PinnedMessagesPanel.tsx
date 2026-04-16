@@ -44,7 +44,7 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
   )
 }
 
-export function PinnedMessagesPanel({ channelId, isDm = false, onClose, onUnpin, users, pinnedVersion }: Props) {
+export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, users, pinnedVersion }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
 

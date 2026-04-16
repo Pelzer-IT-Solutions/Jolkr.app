@@ -161,8 +161,10 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     return otherUser?.is_system === true
   }, [dmActive, activeDmId, dmList, user, userMap])
 
-  const activeChannel: Channel = dmActive && activeDmConv
-    ? { id: 'main', name: activeDmConv.name ?? activeDmConv.participants[0]?.name ?? 'DM', icon: '@', desc: '', unread: 0 }
+  const activeChannel: Channel = dmActive
+    ? (activeDmConv
+      ? { id: 'main', name: activeDmConv.name ?? activeDmConv.participants[0]?.name ?? 'DM', icon: '@', desc: '', unread: 0 }
+      : { id: '', name: 'Direct Messages', icon: '@', desc: '', unread: 0 })
     : (activeServer?.channels.find(c => c.id === activeChannelId) ?? activeServer?.channels[0] ?? { id: '', name: 'No channel', icon: '#', desc: '', unread: 0 })
 
   const fallbackMessages = useMemo(() => [{

@@ -35,9 +35,11 @@ services:
       VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
       VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@jolkr.app}"
       MEDIA_SERVER_URL: "http://jolkr-media:8081"
-      SMTP_HOST: "mailhog"
-      SMTP_PORT: "1025"
-      SMTP_FROM: "${SMTP_FROM:-noreply@jolkr.app}"
+      MAIL_HOST: "${MAIL_HOST:-}"
+      MAIL_PORT: "${MAIL_PORT:-587}"
+      MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-noreply@jolkr.app}"
+      MAIL_USERNAME: "${MAIL_USERNAME:-}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
       APP_URL: "${APP_URL:-http://localhost/app}"
       CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost,http://localhost:1420,https://tauri.localhost,https://jolkr.app}"
       RUST_LOG: "${RUST_LOG:-info}"
@@ -211,18 +213,6 @@ services:
       - jolkr-net
     restart: unless-stopped
 
-  # =============================================================================
-  # Mailhog — dev SMTP catch-all (emails visible at http://localhost:8025)
-  # =============================================================================
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: jolkr-mailhog
-    ports:
-      - "127.0.0.1:1025:1025"
-      - "127.0.0.1:8025:8025"
-    networks:
-      - jolkr-net
-    restart: unless-stopped
 
   # =============================================================================
   # Nginx — reverse proxy & TLS termination
@@ -247,7 +237,7 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 128M
+          memory: 512M
     networks:
       - jolkr-net
     restart: unless-stopped

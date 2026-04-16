@@ -20,6 +20,7 @@ pub struct UserRow {
     pub last_seen_at: Option<DateTime<Utc>>,
     pub show_read_receipts: bool,
     pub is_system: bool,
+    pub email_verified: bool,
     pub banner_color: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -291,6 +292,18 @@ pub struct FriendshipRow {
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct PasswordResetRow {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub token_hash: String,
+    pub expires_at: DateTime<Utc>,
+    pub used_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+// ── Email Verification Tokens ──────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct EmailVerificationRow {
     pub id: Uuid,
     pub user_id: Uuid,
     pub token_hash: String,

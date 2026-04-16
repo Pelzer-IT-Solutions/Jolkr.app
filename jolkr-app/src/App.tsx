@@ -25,6 +25,7 @@ import NotFound from './pages/NotFound';
 import AppShell from './pages/App/AppShell';
 import InviteAccept from './pages/InviteAccept';
 import ServerSetup from './pages/ServerSetup';
+import VerifyEmail from './pages/VerifyEmail';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -33,6 +34,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) return null; // Splash from index.html covers this
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!user.email_verified) return <Navigate to="/verify-email" replace />;
   return <>{children}</>;
 }
 
@@ -200,6 +202,7 @@ export default function App() {
             <Route path="/login" element={<GuestGuard><Login /></GuestGuard>} />
             <Route path="/register" element={<GuestGuard><Register /></GuestGuard>} />
             <Route path="/forgot-password" element={<GuestGuard><ForgotPassword /></GuestGuard>} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/invite/:code" element={<InviteAccept />} />
             <Route path="/*" element={<AuthGuard><AppShell /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />

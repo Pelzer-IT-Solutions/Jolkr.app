@@ -16,9 +16,11 @@ pub struct Config {
     pub vapid_private_key: Option<String>,
     pub vapid_public_key: Option<String>,
     pub vapid_subject: String,
-    pub smtp_host: Option<String>,
-    pub smtp_port: u16,
-    pub smtp_from: String,
+    pub mail_host: Option<String>,
+    pub mail_port: u16,
+    pub mail_from: String,
+    pub mail_username: Option<String>,
+    pub mail_password: Option<String>,
     pub app_url: String,
 }
 
@@ -60,11 +62,13 @@ impl Config {
             vapid_private_key: std::env::var("VAPID_PRIVATE_KEY").ok(),
             vapid_public_key: std::env::var("VAPID_PUBLIC_KEY").ok(),
             vapid_subject: env_or("VAPID_SUBJECT", "mailto:admin@jolkr.app"),
-            smtp_host: std::env::var("SMTP_HOST").ok(),
-            smtp_port: env_or("SMTP_PORT", "1025")
+            mail_host: std::env::var("MAIL_HOST").ok(),
+            mail_port: env_or("MAIL_PORT", "587")
                 .parse()
-                .expect("SMTP_PORT must be a valid u16"),
-            smtp_from: env_or("SMTP_FROM", "noreply@jolkr.app"),
+                .expect("MAIL_PORT must be a valid u16"),
+            mail_from: env_or("MAIL_FROM_ADDRESS", "noreply@jolkr.app"),
+            mail_username: std::env::var("MAIL_USERNAME").ok(),
+            mail_password: std::env::var("MAIL_PASSWORD").ok(),
             app_url: env_or("APP_URL", "http://localhost/app"),
         }
     }

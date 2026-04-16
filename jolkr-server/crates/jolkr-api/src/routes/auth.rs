@@ -112,6 +112,11 @@ pub struct LogoutRequest {
     pub refresh_token: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct VerifyEmailRequest {
+    pub token: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct AuthResponse {
     pub user: UserDto,
@@ -126,6 +131,7 @@ pub struct UserDto {
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
     pub is_system: bool,
+    pub email_verified: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -171,6 +177,12 @@ pub async fn register(
         _ => AppError(e),
     })?;
 
+    // Send verification email
+    if let Ok(token) = AuthService::request_email_verification(&state.pool, user.id).await {
+        let verify_url = format!("{}/verify-email?token={}", state.app_url, token);
+        state.email.send_verification_email(&body.email, &user.username, &verify_url);
+    }
+
     Ok(Json(AuthResponse {
         user: UserDto {
             id: user.id.to_string(),
@@ -179,6 +191,7 @@ pub async fn register(
             display_name: user.display_name,
             avatar_url: user.avatar_url,
             is_system: user.is_system,
+            email_verified: user.email_verified,
         },
         tokens,
     }))
@@ -204,6 +217,7 @@ pub async fn login(
                     display_name: user.display_name,
                     avatar_url: user.avatar_url,
                     is_system: user.is_system,
+                    email_verified: user.email_verified,
                 },
                 tokens,
             }))
@@ -372,5 +386,34 @@ pub async fn logout_all(
     }
 
     info!(user_id = %auth.user_id, "User logged out of all sessions");
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/auth/verify-email
+pub async fn verify_email(
+    State(state): State<AppState>,
+    Json(body): Json<VerifyEmailRequest>,
+) -> Result<StatusCode, AppError> {
+    AuthService::confirm_email_verification(&state.pool, &body.token).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/auth/resend-verification
+/// Authenticated: resends the verification email for the current user.
+pub async fn resend_verification(
+    auth: AuthUser,
+    State(state): State<AppState>,
+) -> Result<StatusCode, AppError> {
+    let user = jolkr_db::repo::UserRepo::get_by_id(&state.pool, auth.user_id).await
+        .map_err(AppError)?;
+
+    if user.email_verified {
+        return Err(AppError(jolkr_common::JolkrError::Validation("Email already verified".into())));
+    }
+
+    let token = AuthService::request_email_verification(&state.pool, auth.user_id).await?;
+    let verify_url = format!("{}/verify-email?token={}", state.app_url, token);
+    state.email.send_verification_email(&user.email, &user.username, &verify_url);
+
     Ok(StatusCode::NO_CONTENT)
 }
