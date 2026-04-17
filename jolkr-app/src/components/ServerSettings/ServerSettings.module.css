@@ -17,11 +17,12 @@
   height: 36rem;
   flex-shrink: 0;
   border-radius: 0.75rem;
-  overflow: hidden;
+  overflow: visible;
   box-shadow:
     0 0 0 1px var(--jolkr-neutral-dark-8),
     0 24px 48px rgba(0, 0, 0, 0.24);
   animation: popIn 200ms var(--ease-out-quart) both;
+  position: relative;
 }
 
 @keyframes popIn {
@@ -37,6 +38,8 @@
   flex-shrink: 0;
   background: var(--bg-loud);
   border-right: 1px solid var(--border-muted);
+  border-radius: 0.75rem 0 0 0.75rem;
+  overflow: hidden;
 }
 
 .navScroll {
@@ -113,8 +116,14 @@
 .navItem.navItemDanger {
   color: oklch(55% 0.2 25);
 }
+.navItem.navItemDanger .navIcon {
+  color: oklch(55% 0.2 25);
+}
 .navItem.navItemDanger:hover {
   background: oklch(55% 0.2 25 / 0.12);
+}
+.navItem.navItemDanger:hover .navIcon {
+  color: oklch(55% 0.2 25);
 }
 
 .navIcon {
@@ -129,12 +138,37 @@
 }
 
 .navLabel {
-  flex: 1;
   text-align: left;
+}
+
+.navBadge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--bg-dark-muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: 100px;
+  line-height: 1;
+  min-width: 1.25rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.navItem:hover .navBadge,
+.navItem.navItemActive .navBadge {
+  background: var(--bg-dark-default);
+  color: var(--text-muted);
+}
+
+/* Spacer to push chevron to the right */
+.navSpacer {
+  flex: 1;
 }
 
 .navChevron {
   color: var(--accent);
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .navFooter {
@@ -164,45 +198,40 @@
   flex-direction: column;
   min-width: 0;
   background: var(--bg-shout);
+  position: relative;
+  border-radius: 0 0.75rem 0.75rem 0;
+  overflow: hidden;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border-muted);
-}
-
-.title {
-  color: var(--text-strong);
-}
-
-.headerTitleRow {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.closeBtn {
+/* ── Floating close button (half in, half out) ── */
+.closeBtnOverlay {
+  position: absolute;
+  top: -0.75rem;
+  right: -0.75rem;
   width: 2rem;
   height: 2rem;
-  border-radius: 0.5rem;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
   color: var(--icon-muted);
-  transition: background-color var(--transition), color var(--transition);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  z-index: 10;
+  transition: background-color var(--transition), color var(--transition), transform var(--transition);
 }
-.closeBtn:hover {
+.closeBtnOverlay:hover {
   background: var(--bg-dark-default);
   color: var(--icon-default);
+  transform: scale(1.05);
 }
 
 .scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 1.25rem;
+  padding: 1.5rem 1.25rem 1.25rem;
 }
 
 .scrollNoPadding {
@@ -315,6 +344,26 @@
   margin-bottom: 1rem;
 }
 
+.sectionHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.sectionHeaderWithTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .createBtn {
   display: flex;
   align-items: center;
@@ -348,16 +397,16 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border-muted);
-  padding: 1.25rem 0.75rem;
+  padding: 0.75rem;
 }
 
-.rolesCount {
-  font-size: 0.75rem;
-  font-weight: 600;
+.rolesListHeader {
+  display: block;
   color: var(--text-faint);
-  background: var(--bg-dark-muted);
-  padding: 0.125rem 0.5rem;
-  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .rolesList {
@@ -790,6 +839,28 @@
 .auditList {
   display: flex;
   flex-direction: column;
+  gap: 1rem;
+}
+
+.auditDayGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auditDayHeader {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.auditDayEntries {
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
 }
 
@@ -993,6 +1064,35 @@
   text-align: center;
 }
 
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  gap: 0.5rem;
+  flex: 1;
+  min-height: 100%;
+}
+
+.emptyStateIcon {
+  color: var(--text-faint);
+  opacity: 0.5;
+  margin-bottom: 0.5rem;
+}
+
+.emptyStateTitle {
+  color: var(--text-muted);
+}
+
+.emptyStateDesc {
+  color: var(--text-faint);
+  max-width: 18rem;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
 /* ── Danger Zone ── */
 .dangerZone {
   padding: 1rem;
@@ -1109,4 +1209,374 @@
 }
 .confirmDeleteBtn:hover {
   background: oklch(40% 0.28 25);
+}
+
+/* ── Overview Section: Visual Editor ── */
+.serverPreviewCard {
+  background: var(--bg-loud);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-muted);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+/* Banner Editor */
+.bannerEditor {
+  height: 7rem;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.bannerOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 0.75rem;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent 50%);
+}
+
+.bannerLabel {
+  color: rgba(255,255,255,0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Preview Content */
+.previewContent {
+  display: flex;
+  gap: 1rem;
+  padding: 0 1rem 1.25rem;
+  position: relative;
+}
+
+.previewAvatarWrap {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: -2.5rem;
+  cursor: pointer;
+  width: 5rem;
+  height: 5rem;
+}
+
+.previewAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 1rem;
+  background: var(--bg-loud);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 4px solid var(--bg-loud);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.previewAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarChangeOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.previewAvatarWrap:hover .avatarChangeOverlay {
+  opacity: 1;
+}
+
+/* Inline Edit Info */
+.previewInfo {
+  flex: 1;
+  min-width: 0;
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inlineNameInput {
+  width: 100%;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: -0.5rem;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.inlineNameInput:hover {
+  background: var(--bg-dark-muted);
+  border-color: var(--border-muted);
+}
+
+.inlineNameInput:focus {
+  outline: none;
+  background: var(--bg-dark-muted);
+  border-color: var(--accent);
+}
+
+.inlineDescInput {
+  width: 100%;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  margin-left: -0.5rem;
+  font-family: inherit;
+  resize: none;
+  line-height: 1.5;
+  transition: all 0.15s ease;
+}
+
+.inlineDescInput:hover {
+  background: var(--bg-dark-muted);
+  border-color: var(--border-muted);
+}
+
+.inlineDescInput:focus {
+  outline: none;
+  background: var(--bg-dark-muted);
+  border-color: var(--accent);
+}
+
+.inlineDescInput::placeholder {
+  color: var(--text-faint);
+}
+
+/* Banner Editor Section */
+.bannerEditorSection {
+  background: var(--bg-loud);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-muted);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.editorSectionLabel {
+  display: block;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.75rem;
+}
+
+/* Banner Tabs */
+.bannerTabs {
+  display: flex;
+  gap: 0.375rem;
+  margin-bottom: 1rem;
+}
+
+.bannerTab {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-dark-muted);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bannerTab:hover {
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+}
+
+.bannerTabActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.gradientIcon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, oklch(60% 0.12 215), oklch(55% 0.18 340));
+}
+
+/* Preset Grid */
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.colorPreset,
+.gradientPreset {
+  aspect-ratio: 16/10;
+  border-radius: 0.5rem;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.colorPreset:hover,
+.gradientPreset:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.presetCheck {
+  color: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+
+/* Image Input */
+.imageInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.imageUrlInput {
+  width: 100%;
+  padding: 0.625rem 2.5rem 0.625rem 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+  font-family: inherit;
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease;
+}
+
+.imageUrlInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.clearImageBtn {
+  position: absolute;
+  right: 0.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clearImageBtn:hover {
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+}
+
+/* Simple Field Row */
+.simpleFieldRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-loud);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  margin-bottom: 1rem;
+}
+
+/* Save Actions */
+.saveActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+.saveChangesBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.saveChangesBtn:hover {
+  background: var(--accent-strong);
+}
+
+/* Toggle Switch */
+.toggle {
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 0.75rem;
+  background: var(--bg-dark-muted);
+  border: none;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggleOn {
+  background: var(--accent);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggleOn .toggleThumb {
+  transform: translateX(1.25rem);
+}
+
+.toggleMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.toggleLabel {
+  color: var(--text-strong);
+}
+
+.toggleDesc {
+  color: var(--text-faint);
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Check, Camera
+  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Check, Camera, Palette
 } from 'lucide-react'
 import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
 import type { Server as ApiServer, Member } from '../../api/types'
@@ -58,9 +58,8 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [hasChanges, setHasChanges] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [iconUploading, setIconUploading] = useState(false)
   const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null)
-  const iconFileRef = useRef<HTMLInputElement>(null)
+  const iconFileRef = useRef<HTMLInputElement | null>(null)
 
   // TODO: Replace with real API data
   const [invites, setInvites] = useState<Invite[]>([])
@@ -114,17 +113,6 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     api.getBans(id).then(setBans).catch(() => setBans([]))
     api.getAuditLog(id).then(setAuditLog).catch(() => setAuditLog([]))
   }, [server.id])
-
-  const handleFieldChange = (field: keyof Server, value: unknown) => {
-    setEditedServer(prev => ({ ...prev, [field]: value }))
-    setHasChanges(true)
-  }
-
-  const handleSave = () => {
-    onUpdate(server.id, editedServer)
-    setHasChanges(false)
-    setEditedServer({})
-  }
 
   const handleCreateInvite = () => {
     const newInvite: Invite = {
@@ -285,25 +273,24 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setIconUploading(true)
     try {
       const result = await api.uploadFile(file, 'icon')
-      handleFieldChange('icon_url', result.key)
+      setEditedServer(prev => ({ ...prev, icon_url: result.key }))
+      setHasChanges(true)
       setIconPreviewUrl(URL.createObjectURL(file))
     } catch { /* ignore */ }
-    setIconUploading(false)
   }
-
-  const currentName = editedServer.name ?? server.name
-  const currentDescription = editedServer.description ?? server.description ?? ''
-  const currentBannerUrl = editedServer.banner_url ?? server.banner_url ?? ''
-  const currentDiscoverable = editedServer.discoverable ?? server.discoverable ?? false
 
   let navIdx = 0
 
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={s.modal}>
+        {/* Floating close button - positioned outside modal */}
+        <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
+          <X size={18} strokeWidth={1.5} />
+        </button>
+
         {/* Left nav */}
         <aside className={s.nav}>
           <div className={`${s.navScroll} scrollbar-thin`}>
@@ -324,6 +311,13 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                 </span>
                 {group.items.map(item => {
                   const itemIdx = navIdx++
+                  // Get count for sections with lists
+                  let count: number | null = null
+                  if (item.id === 'roles') count = roles.length
+                  else if (item.id === 'invites') count = invites.length
+                  else if (item.id === 'bans') count = bans.length
+                  else if (item.id === 'audit') count = auditLog.length
+
                   return (
                   <button
                     key={item.id}
@@ -333,6 +327,8 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                   >
                     <span className={s.navIcon}>{item.icon}</span>
                     <span className={`${s.navLabel} txt-small txt-medium`}>{item.label}</span>
+                    {count !== null && count > 0 && <span className={s.navBadge}>{count}</span>}
+                    <span className={s.navSpacer} />
                     {section === item.id && <ChevronRight size={12} strokeWidth={2} className={s.navChevron} />}
                   </button>
                   )
@@ -355,104 +351,21 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
 
         {/* Right content */}
         <main className={s.content}>
-          {/* Header */}
-          <div className={s.header}>
-            <div className={s.headerTitleRow}>
-              <h2 className={`${s.title} txt-title`}>
-                {NAV.flatMap(g => g.items).find(i => i.id === section)?.label}
-              </h2>
-              {section === 'roles' && (
-                <span className={s.rolesCount}>{roles.length}</span>
-              )}
-            </div>
-            <button className={s.closeBtn} onClick={onClose}>
-              <X size={18} strokeWidth={1.5} />
-            </button>
-          </div>
-
           <div className={`${s.scroll} ${section === 'roles' ? s.scrollNoPadding : ''} scrollbar-thin`}>
             {/* Overview Section */}
             {section === 'overview' && (
-              <div className={s.section}>
-                <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Server Name</label>
-                  <input
-                    type="text"
-                    className={`${s.input} txt-small`}
-                    value={currentName}
-                    onChange={e => handleFieldChange('name', e.target.value)}
-                    maxLength={100}
-                  />
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Description</label>
-                  <textarea
-                    className={`${s.textarea} txt-small`}
-                    value={currentDescription}
-                    onChange={e => handleFieldChange('description', e.target.value)}
-                    rows={3}
-                    maxLength={500}
-                    placeholder="What's your server about?"
-                  />
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Server Icon</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="group"
-                      style={{ position: 'relative', cursor: 'pointer', borderRadius: '50%', overflow: 'hidden', width: 64, height: 64, flexShrink: 0 }}
-                      onClick={() => iconFileRef.current?.click()}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); iconFileRef.current?.click() }}}
-                    >
-                      {iconPreviewUrl ? (
-                        <img src={iconPreviewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <ServerIcon name={currentName} iconUrl={server.icon_url} serverId={server.id} size="lg" />
-                      )}
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        {iconUploading ? <span style={{ color: '#fff', fontSize: 11 }}>...</span> : <Camera size={20} color="#aaa" />}
-                      </div>
-                    </div>
-                    <span className="txt-tiny" style={{ color: 'var(--text-tertiary)' }}>Click to upload<br />Recommended: 128x128</span>
-                    <input ref={iconFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleIconUpload} />
-                  </div>
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Banner URL</label>
-                  <input
-                    type="text"
-                    className={`${s.input} txt-small`}
-                    value={currentBannerUrl}
-                    onChange={e => handleFieldChange('banner_url', e.target.value)}
-                    placeholder="https://..."
-                  />
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={s.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={currentDiscoverable}
-                      onChange={e => handleFieldChange('discoverable', e.target.checked)}
-                    />
-                    <span className="txt-small">Make server discoverable in server browser</span>
-                  </label>
-                </div>
-
-                {hasChanges && (
-                  <div className={s.actions}>
-                    <button className={s.saveBtn} onClick={handleSave}>
-                      <Save size={14} strokeWidth={1.5} />
-                      <span className="txt-small">Save Changes</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <OverviewSection
+                server={server}
+                editedServer={editedServer}
+                setEditedServer={setEditedServer}
+                hasChanges={hasChanges}
+                setHasChanges={setHasChanges}
+                iconPreviewUrl={iconPreviewUrl}
+                setIconPreviewUrl={setIconPreviewUrl}
+                iconFileRef={iconFileRef}
+                onUpdate={onUpdate}
+                onIconUpload={handleIconUpload}
+              />
             )}
 
             {/* Roles Section */}
@@ -461,6 +374,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                 <div className={s.rolesLayout}>
                   {/* Left: Role List */}
                   <div className={s.rolesLeftPanel}>
+                    <span className={`${s.rolesListHeader} txt-tiny txt-semibold`}>All Roles</span>
                     <div className={`${s.rolesList} scrollbar-thin`}>
                       {roles.map(role => (
                         <button
@@ -654,32 +568,44 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             {/* Invites Section */}
             {section === 'invites' && (
               <div className={s.section}>
-                <div className={s.sectionHeader}>
-                  <h3 className="txt-small txt-semibold">Active Invites</h3>
-                  <button className={s.createBtn} onClick={handleCreateInvite}>Create Invite</button>
-                </div>
                 {invites.length === 0 ? (
-                  <p className={`${s.empty} txt-small`}>No active invites. Create one to invite people!</p>
-                ) : (
-                  <div className={s.invitesList}>
-                    {invites.map(invite => (
-                      <div key={invite.id} className={s.inviteItem}>
-                        <div className={s.inviteInfo}>
-                          <code className={s.inviteCode}>{invite.code}</code>
-                          <span className={`${s.inviteMeta} txt-tiny`}>
-                            {invite.use_count} / {invite.max_uses ?? '\u221E'} uses
-                            {invite.expires_at && ` \u00B7 Expires ${new Date(invite.expires_at).toLocaleDateString()}`}
-                          </span>
-                        </div>
-                        <button
-                          className={s.revokeBtn}
-                          onClick={() => handleDeleteInvite(invite.id)}
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    ))}
+                  <div className={s.emptyState}>
+                    <div className={s.emptyStateIcon}>
+                      <Link2 size={32} strokeWidth={1.5} />
+                    </div>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Invites Yet</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>Create an invite to start inviting people to your server.</span>
+                    <button className={`${s.createBtn} ${s.emptyStateBtn}`} onClick={handleCreateInvite}>
+                      <Link2 size={14} strokeWidth={1.5} />
+                      Create Invite
+                    </button>
                   </div>
+                ) : (
+                  <>
+                    <div className={s.sectionHeaderWithTitle}>
+                      <span className={`${s.sectionTitle} txt-tiny txt-semibold`}>All Invites</span>
+                      <button className={s.createBtn} onClick={handleCreateInvite}>Create Invite</button>
+                    </div>
+                    <div className={s.invitesList}>
+                      {invites.map(invite => (
+                        <div key={invite.id} className={s.inviteItem}>
+                          <div className={s.inviteInfo}>
+                            <code className={s.inviteCode}>{invite.code}</code>
+                            <span className={`${s.inviteMeta} txt-tiny`}>
+                              {invite.use_count} / {invite.max_uses ?? '\u221E'} uses
+                              {invite.expires_at && ` \u00B7 Expires ${new Date(invite.expires_at).toLocaleDateString()}`}
+                            </span>
+                          </div>
+                          <button
+                            className={s.revokeBtn}
+                            onClick={() => handleDeleteInvite(invite.id)}
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -687,11 +613,14 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             {/* Bans Section */}
             {section === 'bans' && (
               <div className={s.section}>
-                <div className={s.sectionHeader}>
-                  <h3 className="txt-small txt-semibold">Banned Users ({bans.length})</h3>
-                </div>
                 {bans.length === 0 ? (
-                  <p className={`${s.empty} txt-small`}>No banned users. Bans will appear here.</p>
+                  <div className={s.emptyState}>
+                    <div className={s.emptyStateIcon}>
+                      <Shield size={32} strokeWidth={1.5} />
+                    </div>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Banned Users</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>Your server is clean! Banned users will appear here.</span>
+                  </div>
                 ) : (
                   <div className={s.bansList}>
                     {bans.map(ban => (
@@ -727,14 +656,30 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             {/* Audit Log Section */}
             {section === 'audit' && (
               <div className={s.section}>
-                <div className={s.sectionHeader}>
-                  <h3 className="txt-small txt-semibold">Audit Log ({auditLog.length} entries)</h3>
-                </div>
                 {auditLog.length === 0 ? (
-                  <p className={`${s.empty} txt-small`}>No audit log entries yet.</p>
+                  <div className={s.emptyState}>
+                    <div className={s.emptyStateIcon}>
+                      <ScrollText size={32} strokeWidth={1.5} />
+                    </div>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Activity Yet</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>Audit log entries will appear here when server actions are performed.</span>
+                  </div>
                 ) : (
                   <div className={s.auditList}>
-                    {auditLog.map(entry => (
+                    {(() => {
+                      // Group entries by day
+                      const grouped = auditLog.reduce((acc, entry) => {
+                        const date = new Date(entry.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                        if (!acc[date]) acc[date] = []
+                        acc[date].push(entry)
+                        return acc
+                      }, {} as Record<string, typeof auditLog>)
+
+                      return Object.entries(grouped).map(([date, entries]) => (
+                        <div key={date} className={s.auditDayGroup}>
+                          <div className={s.auditDayHeader}>{date}</div>
+                          <div className={s.auditDayEntries}>
+                            {entries.map(entry => (
                       <div key={entry.id} className={s.auditItem}>
                         <div className={s.auditIcon}>
                           <AuditIcon actionType={entry.action_type} />
@@ -775,6 +720,10 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                         </div>
                       </div>
                     ))}
+                          </div>
+                        </div>
+                      ))
+                    })()}
                   </div>
                 )}
               </div>
@@ -845,6 +794,284 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
       </div>
     </div>,
     document.body
+  )
+}
+
+// Overview Section Component - Visual Editor
+const BANNER_PRESETS = {
+  colors: [
+    { name: 'Ocean', value: 'oklch(60% 0.12 215)' },
+    { name: 'Sage', value: 'oklch(60% 0.1 136)' },
+    { name: 'Gold', value: 'oklch(65% 0.12 85)' },
+    { name: 'Royal', value: 'oklch(55% 0.18 280)' },
+    { name: 'Berry', value: 'oklch(55% 0.18 340)' },
+    { name: 'Coral', value: 'oklch(60% 0.15 25)' },
+    { name: 'Slate', value: 'oklch(55% 0.05 250)' },
+    { name: 'Sunset', value: 'oklch(65% 0.15 45)' },
+  ],
+  gradients: [
+    { name: 'Ocean Breeze', value: 'linear-gradient(135deg, oklch(60% 0.12 215), oklch(55% 0.1 180))' },
+    { name: 'Sunset Glow', value: 'linear-gradient(135deg, oklch(65% 0.15 45), oklch(55% 0.18 340))' },
+    { name: 'Forest Mist', value: 'linear-gradient(135deg, oklch(60% 0.1 136), oklch(55% 0.08 160))' },
+    { name: 'Royal Velvet', value: 'linear-gradient(135deg, oklch(55% 0.18 280), oklch(50% 0.15 320))' },
+    { name: 'Berry Burst', value: 'linear-gradient(135deg, oklch(55% 0.18 340), oklch(60% 0.12 25))' },
+    { name: 'Midnight', value: 'linear-gradient(135deg, oklch(40% 0.05 250), oklch(35% 0.08 280))' },
+  ],
+}
+
+type BannerType = 'color' | 'gradient' | 'image'
+
+interface OverviewSectionProps {
+  server: Server
+  editedServer: Partial<Server>
+  setEditedServer: (data: Partial<Server>) => void
+  hasChanges: boolean
+  setHasChanges: (has: boolean) => void
+  iconPreviewUrl: string | null
+  setIconPreviewUrl: (url: string | null) => void
+  iconFileRef: React.RefObject<HTMLInputElement | null>
+  onUpdate: (serverId: string, data: Partial<Server>) => void
+  onIconUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
+}
+
+function OverviewSection({
+  server,
+  editedServer,
+  setEditedServer,
+  hasChanges,
+  setHasChanges,
+  iconPreviewUrl,
+  iconFileRef,
+  onUpdate,
+  onIconUpload,
+}: OverviewSectionProps) {
+  const [activeBannerTab, setActiveBannerTab] = useState<BannerType>('color')
+  // Store banner gradient in local state since it's not in Server type
+  const [bannerGradient, setBannerGradient] = useState<string | null>(null)
+
+  // Compute current values (edited or original)
+  const currentName = editedServer.name ?? server.name
+  const currentDescription = editedServer.description ?? server.description ?? ''
+  const currentBannerUrl = editedServer.banner_url ?? server.banner_url ?? ''
+  const currentDiscoverable = editedServer.discoverable ?? server.discoverable ?? false
+  const currentHue = editedServer.hue ?? server.hue ?? null
+  const currentGradient = bannerGradient
+
+  // Determine current banner background
+  const getBannerBackground = () => {
+    if (currentBannerUrl) return `url(${currentBannerUrl}) center/cover`
+    if (currentGradient) return currentGradient
+    if (currentHue) return `oklch(60% 0.12 ${currentHue})`
+    return BANNER_PRESETS.colors[0].value
+  }
+
+  const handleFieldChange = (field: keyof Server, value: unknown) => {
+    setEditedServer({ ...editedServer, [field]: value })
+    setHasChanges(true)
+  }
+
+  const handleSave = () => {
+    onUpdate(server.id, editedServer)
+    setHasChanges(false)
+    setEditedServer({})
+  }
+
+  const handleBannerColorSelect = (colorValue: string) => {
+    const hueMatch = colorValue.match(/oklch\([^\s]+\s+[^\s]+\s+(\d+)/)
+    if (hueMatch) {
+      handleFieldChange('hue', parseInt(hueMatch[1], 10))
+      setBannerGradient(null)
+      handleFieldChange('banner_url', null)
+    }
+  }
+
+  const handleGradientSelect = (gradientValue: string) => {
+    setBannerGradient(gradientValue)
+    handleFieldChange('hue', null)
+    handleFieldChange('banner_url', null)
+    setHasChanges(true)
+  }
+
+  const handleImageUrlChange = (url: string) => {
+    handleFieldChange('banner_url', url)
+    handleFieldChange('hue', null)
+    setBannerGradient(null)
+  }
+
+  return (
+    <div className={s.section}>
+      {/* Server Preview Card - Visual Editor */}
+      <div className={s.serverPreviewCard}>
+        {/* Banner with Overlay Controls */}
+        <div className={s.bannerEditor} style={{ background: getBannerBackground() }}>
+          <div className={s.bannerOverlay}>
+            <span className={`${s.bannerLabel} txt-tiny txt-semibold`}>Server Banner</span>
+          </div>
+        </div>
+
+        {/* Server Content */}
+        <div className={s.previewContent}>
+          {/* Server Icon with Upload */}
+          <div
+            className={s.previewAvatarWrap}
+            onClick={() => iconFileRef.current?.click()}
+          >
+            <input
+              ref={iconFileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={onIconUpload}
+            />
+            <div className={s.previewAvatar}>
+              {iconPreviewUrl ? (
+                <img src={iconPreviewUrl} alt="Server Icon" className={s.previewAvatarImg} />
+              ) : (
+                <ServerIcon name={currentName} iconUrl={server.icon_url} serverId={server.id} size="lg" />
+              )}
+            </div>
+            <div className={s.avatarChangeOverlay}>
+              <Camera size={20} strokeWidth={1.5} />
+            </div>
+          </div>
+
+          {/* Direct Edit Fields */}
+          <div className={s.previewInfo}>
+            <input
+              type="text"
+              className={s.inlineNameInput}
+              value={currentName}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+              placeholder="Server Name"
+              maxLength={100}
+            />
+            <textarea
+              className={s.inlineDescInput}
+              value={currentDescription}
+              onChange={(e) => handleFieldChange('description', e.target.value)}
+              placeholder="What's your server about?"
+              rows={2}
+              maxLength={500}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Banner Editor Section */}
+      <div className={s.bannerEditorSection}>
+        <span className={`${s.editorSectionLabel} txt-tiny txt-semibold`}>Banner Style</span>
+
+        {/* Tab Buttons */}
+        <div className={s.bannerTabs}>
+          <button
+            className={`${s.bannerTab} ${activeBannerTab === 'color' ? s.bannerTabActive : ''}`}
+            onClick={() => setActiveBannerTab('color')}
+          >
+            <Palette size={14} strokeWidth={1.5} />
+            Color
+          </button>
+          <button
+            className={`${s.bannerTab} ${activeBannerTab === 'gradient' ? s.bannerTabActive : ''}`}
+            onClick={() => setActiveBannerTab('gradient')}
+          >
+            <div className={s.gradientIcon} />
+            Gradient
+          </button>
+          <button
+            className={`${s.bannerTab} ${activeBannerTab === 'image' ? s.bannerTabActive : ''}`}
+            onClick={() => setActiveBannerTab('image')}
+          >
+            <Camera size={14} strokeWidth={1.5} />
+            Image
+          </button>
+        </div>
+
+        {/* Color Presets */}
+        {activeBannerTab === 'color' && (
+          <div className={s.presetGrid}>
+            {BANNER_PRESETS.colors.map((color) => (
+              <button
+                key={color.name}
+                className={s.colorPreset}
+                style={{ background: color.value }}
+                onClick={() => handleBannerColorSelect(color.value)}
+                title={color.name}
+              >
+                {currentHue && color.value.includes(currentHue.toString()) && (
+                  <Check size={16} strokeWidth={2.5} className={s.presetCheck} />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Gradient Presets */}
+        {activeBannerTab === 'gradient' && (
+          <div className={s.presetGrid}>
+            {BANNER_PRESETS.gradients.map((gradient) => (
+              <button
+                key={gradient.name}
+                className={s.gradientPreset}
+                style={{ background: gradient.value }}
+                onClick={() => handleGradientSelect(gradient.value)}
+                title={gradient.name}
+              >
+                {currentGradient === gradient.value && (
+                  <Check size={16} strokeWidth={2.5} className={s.presetCheck} />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Image URL Input */}
+        {activeBannerTab === 'image' && (
+          <div className={s.imageInputWrap}>
+            <input
+              type="text"
+              className={s.imageUrlInput}
+              value={currentBannerUrl}
+              onChange={(e) => handleImageUrlChange(e.target.value)}
+              placeholder="Enter image URL (https://...)"
+            />
+            {currentBannerUrl && (
+              <button
+                className={s.clearImageBtn}
+                onClick={() => handleImageUrlChange('')}
+              >
+                <X size={14} strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Discoverable Toggle */}
+      <div className={s.simpleFieldRow}>
+        <div className={s.toggleMeta}>
+          <span className={`${s.toggleLabel} txt-small txt-medium`}>Server Discovery</span>
+          <span className={`${s.toggleDesc} txt-tiny`}>Make server discoverable in server browser</span>
+        </div>
+        <button
+          className={`${s.toggle} ${currentDiscoverable ? s.toggleOn : ''}`}
+          onClick={() => handleFieldChange('discoverable', !currentDiscoverable)}
+          role="switch"
+          aria-checked={currentDiscoverable}
+        >
+          <span className={s.toggleThumb} />
+        </button>
+      </div>
+
+      {/* Save Button */}
+      {hasChanges && (
+        <div className={s.saveActions}>
+          <button className={s.saveChangesBtn} onClick={handleSave}>
+            <Save size={14} strokeWidth={1.5} />
+            Save Changes
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
