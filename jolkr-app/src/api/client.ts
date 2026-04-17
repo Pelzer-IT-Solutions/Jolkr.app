@@ -3,6 +3,7 @@ import type {
   DmChannel, Friendship, Invite, TokenPair, Attachment,
   PreKeyBundleResponse, Role, Category, ChannelOverwrite, Thread,
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
+  GifFavorite,
 } from './types';
 import { getApiBaseUrl } from '../platform/config';
 import { storage } from '../platform/storage';
@@ -883,4 +884,15 @@ export const unvotePoll = (pollId: string, optionId: string) =>
 
 export const getPoll = (pollId: string) =>
   request<Poll>(`/polls/${pollId}`, {}, 'poll');
+
+// ── GIF Favorites ───────────────────────────────────────────────────
+
+export const getGifFavorites = () =>
+  request<GifFavorite[]>('/gifs/favorites', {}, 'favorites')
+
+export const addGifFavorite = (data: { gif_id: string; gif_url?: string; preview_url?: string; title?: string }) =>
+  request<void>('/gifs/favorites', { method: 'POST', body: JSON.stringify(data) })
+
+export const removeGifFavorite = (gifId: string) =>
+  request<void>(`/gifs/favorites/${encodeURIComponent(gifId)}`, { method: 'DELETE' })
 

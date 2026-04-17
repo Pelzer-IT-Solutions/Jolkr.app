@@ -249,3 +249,11 @@ export interface PreKeyBundleResponse {
   pq_signed_prekey?: string | null;
   pq_signed_prekey_signature?: string | null;
 }
+
+export interface GifFavorite {
+  gif_id: string
+  gif_url: string
+  preview_url: string
+  title: string
+  added_at: string
+}

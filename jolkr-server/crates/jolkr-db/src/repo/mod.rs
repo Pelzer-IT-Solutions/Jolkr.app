@@ -12,6 +12,7 @@ pub mod channels;
 pub mod devices;
 pub mod dms;
 pub mod friendships;
+pub mod gif_favorites;
 pub mod invites;
 pub mod keys;
 pub mod members;

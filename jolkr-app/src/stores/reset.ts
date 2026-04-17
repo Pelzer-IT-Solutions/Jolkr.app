@@ -5,6 +5,7 @@ import { useUnreadStore } from './unread';
 import { useCallStore } from './call';
 import { useDmReadsStore } from './dm-reads';
 import { useTypingStore } from './typing';
+import { useGifFavoritesStore } from './gif-favorites';
 
 /** Reset all stores to initial state — call on logout to prevent stale data on re-login */
 export function resetAllStores() {
@@ -15,4 +16,5 @@ export function resetAllStores() {
   useCallStore.getState().reset();
   useDmReadsStore.getState().reset();
   useTypingStore.getState().reset();
+  useGifFavoritesStore.setState({ ids: new Set(), loaded: false });
 }

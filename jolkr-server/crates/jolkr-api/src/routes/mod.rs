@@ -364,6 +364,8 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/gifs/featured", get(gifs::featured_gifs))
         .route("/api/gifs/categories", get(gifs::categories))
         .route("/api/gifs/media", get(gifs::proxy_media))
+        .route("/api/gifs/favorites", get(gifs::list_favorites).post(gifs::add_favorite))
+        .route("/api/gifs/favorites/:gif_id", delete(gifs::remove_favorite))
         // ── Push ────────────────────────────────────────────────────
         .route("/api/push/vapid-key", get(push::vapid_key))
         .layer(axum_mw::from_fn(rate_limit_middleware))

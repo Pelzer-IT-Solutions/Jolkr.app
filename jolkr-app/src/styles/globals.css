@@ -159,5 +159,44 @@ svg { display: block; flex-shrink: 0; }
   );
 }
 
+/* ─── GIF embed favorite heart ─── */
+.gif-embed {
+  position: relative;
+  display: inline-block;
+}
+
+.gif-embed-heart {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  padding: 0;
+  z-index: 1;
+}
+
+.gif-embed:hover .gif-embed-heart {
+  opacity: 1;
+}
+
+.gif-embed-heart[data-fav='true'] {
+  opacity: 1;
+  color: #ff4757;
+}
+
+.gif-embed-heart:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
 /* ─── Scroll edge fades ─── */
 /* See scroll-fade.css (imported in main.tsx) for .scroll-view-y, .scroll-view-x, .scroll-view-y-chat */

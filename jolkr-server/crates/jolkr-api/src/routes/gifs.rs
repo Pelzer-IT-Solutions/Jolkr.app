@@ -9,6 +9,10 @@ use axum::response::Response;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
+use crate::errors::AppError;
+use crate::middleware::auth::AuthUser;
+use jolkr_db::repo::gif_favorites::GifFavoritesRepo;
+
 use super::AppState;
 
 const GIPHY_BASE: &str = "https://api.giphy.com/v1/gifs";
@@ -84,6 +88,11 @@ struct GiphyResponse {
 struct GiphyPagination {
     count: u32,
     offset: u32,
+}
+
+#[derive(Deserialize)]
+struct GiphySingleResponse {
+    data: GiphyGif,
 }
 
 #[derive(Deserialize)]
@@ -342,4 +351,124 @@ pub async fn proxy_media(
         .header(header::CACHE_CONTROL, "public, max-age=86400, immutable")
         .body(Body::from(bytes))
         .unwrap())
+}
+
+// ── Favorites ──────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct AddFavoriteRequest {
+    pub gif_id: String,
+    #[serde(default)]
+    pub gif_url: Option<String>,
+    #[serde(default)]
+    pub preview_url: Option<String>,
+    #[serde(default)]
+    pub title: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct FavoritesResponse {
+    pub favorites: Vec<FavoriteItem>,
+}
+
+#[derive(Serialize)]
+pub struct FavoriteItem {
+    pub gif_id: String,
+    pub gif_url: String,
+    pub preview_url: String,
+    pub title: String,
+    pub added_at: String,
+}
+
+/// Fetch a single GIF from GIPHY by ID.
+async fn fetch_giphy_gif(gif_id: &str) -> Result<GiphyGif, (StatusCode, &'static str)> {
+    let key = giphy_api_key()?;
+    let client = reqwest::Client::new();
+    let url = format!("{GIPHY_BASE}/{gif_id}");
+    tracing::debug!("Fetching GIF from GIPHY: {url}");
+    let resp = client
+        .get(&url)
+        .query(&[("api_key", key.as_str())])
+        .send()
+        .await
+        .map_err(|e| {
+            tracing::error!("GIPHY request failed: {e}");
+            (StatusCode::BAD_GATEWAY, "Failed to reach GIF service")
+        })?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        tracing::error!("GIPHY returned {status}: {body}");
+        return Err((StatusCode::NOT_FOUND, "GIF not found"));
+    }
+    let text = resp.text().await.map_err(|e| {
+        tracing::error!("Failed to read GIPHY response body: {e}");
+        (StatusCode::BAD_GATEWAY, "Failed to read GIF service response")
+    })?;
+    let single: GiphySingleResponse = serde_json::from_str(&text).map_err(|e| {
+        tracing::error!("Failed to deserialize GIPHY response: {e}, body: {}", &text[..text.len().min(500)]);
+        (StatusCode::BAD_GATEWAY, "Invalid GIF service response")
+    })?;
+    Ok(single.data)
+}
+
+/// GET /api/gifs/favorites — returns proxy URLs ready for display
+pub async fn list_favorites(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<FavoritesResponse>, AppError> {
+    let rows = GifFavoritesRepo::list(&state.pool, auth.user_id).await?;
+    let favorites = rows
+        .into_iter()
+        .map(|r| FavoriteItem {
+            gif_id: r.gif_id,
+            gif_url: proxy_url(&r.gif_url),
+            preview_url: proxy_url(&r.preview_url),
+            title: r.title,
+            added_at: r.added_at.to_rfc3339(),
+        })
+        .collect();
+    Ok(Json(FavoritesResponse { favorites }))
+}
+
+/// POST /api/gifs/favorites — stores a GIF favorite.
+/// If gif_url/preview_url are provided, stores them directly.
+/// Otherwise falls back to looking up the GIF via GIPHY API.
+pub async fn add_favorite(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(body): Json<AddFavoriteRequest>,
+) -> Result<StatusCode, AppError> {
+    let (gif_url, preview_url, title) = if let (Some(url), Some(prev)) = (&body.gif_url, &body.preview_url) {
+        (url.clone(), prev.clone(), body.title.clone().unwrap_or_default())
+    } else {
+        // Fallback: look up from GIPHY API
+        let gif = fetch_giphy_gif(&body.gif_id)
+            .await
+            .map_err(|(_status, msg)| {
+                AppError(jolkr_common::JolkrError::BadRequest(msg.to_string()))
+            })?;
+        (gif.images.original.url, gif.images.fixed_width_small.url, gif.title)
+    };
+
+    GifFavoritesRepo::add(
+        &state.pool,
+        auth.user_id,
+        &body.gif_id,
+        &gif_url,
+        &preview_url,
+        &title,
+    )
+    .await?;
+    Ok(StatusCode::CREATED)
+}
+
+/// DELETE /api/gifs/favorites/:gif_id
+pub async fn remove_favorite(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    axum::extract::Path(gif_id): axum::extract::Path<String>,
+) -> Result<StatusCode, AppError> {
+    GifFavoritesRepo::remove(&state.pool, auth.user_id, &gif_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

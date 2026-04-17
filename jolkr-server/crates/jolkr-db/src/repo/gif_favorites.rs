@@ -1,0 +1,63 @@
+use sqlx::PgPool;
+use uuid::Uuid;
+use jolkr_common::JolkrError;
+
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
+pub struct GifFavoriteRow {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub gif_id: String,
+    pub gif_url: String,
+    pub preview_url: String,
+    pub title: String,
+    pub added_at: chrono::DateTime<chrono::Utc>,
+}
+
+pub struct GifFavoritesRepo;
+
+impl GifFavoritesRepo {
+    pub async fn list(pool: &PgPool, user_id: Uuid) -> Result<Vec<GifFavoriteRow>, JolkrError> {
+        let rows = sqlx::query_as::<_, GifFavoriteRow>(
+            "SELECT * FROM gif_favorites WHERE user_id = $1 ORDER BY added_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
+    pub async fn add(
+        pool: &PgPool,
+        user_id: Uuid,
+        gif_id: &str,
+        gif_url: &str,
+        preview_url: &str,
+        title: &str,
+    ) -> Result<GifFavoriteRow, JolkrError> {
+        let id = Uuid::new_v4();
+        let row = sqlx::query_as::<_, GifFavoriteRow>(
+            r#"INSERT INTO gif_favorites (id, user_id, gif_id, gif_url, preview_url, title)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               ON CONFLICT (user_id, gif_id) DO UPDATE SET id = gif_favorites.id
+               RETURNING *"#,
+        )
+        .bind(id)
+        .bind(user_id)
+        .bind(gif_id)
+        .bind(gif_url)
+        .bind(preview_url)
+        .bind(title)
+        .fetch_one(pool)
+        .await?;
+        Ok(row)
+    }
+
+    pub async fn remove(pool: &PgPool, user_id: Uuid, gif_id: &str) -> Result<(), JolkrError> {
+        sqlx::query("DELETE FROM gif_favorites WHERE user_id = $1 AND gif_id = $2")
+            .bind(user_id)
+            .bind(gif_id)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+}
