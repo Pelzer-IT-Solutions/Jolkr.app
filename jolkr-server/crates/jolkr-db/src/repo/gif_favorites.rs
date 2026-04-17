@@ -52,6 +52,17 @@ impl GifFavoritesRepo {
         Ok(row)
     }
 
+    /// Find any stored favorite by gif_id (any user). Used for URL resolution.
+    pub async fn find_by_gif_id(pool: &PgPool, gif_id: &str) -> Result<Option<GifFavoriteRow>, JolkrError> {
+        let row = sqlx::query_as::<_, GifFavoriteRow>(
+            "SELECT * FROM gif_favorites WHERE gif_id = $1 LIMIT 1",
+        )
+        .bind(gif_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row)
+    }
+
     pub async fn remove(pool: &PgPool, user_id: Uuid, gif_id: &str) -> Result<(), JolkrError> {
         sqlx::query("DELETE FROM gif_favorites WHERE user_id = $1 AND gif_id = $2")
             .bind(user_id)

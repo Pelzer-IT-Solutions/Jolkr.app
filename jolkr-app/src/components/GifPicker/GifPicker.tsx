@@ -159,12 +159,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
       setFavGifs((prev) => [newFav, ...prev])
     }
     // Toggle in the shared store (handles API call + optimistic update)
-    // Pass URLs so the backend doesn't need to call GIPHY API
-    toggleFav(gif.id, isFav ? undefined : {
-      gif_url: gif.gifUrl,
-      preview_url: gif.previewUrl,
-      title: gif.title,
-    })
+    toggleFav(gif.id)
   }
 
   // Resolve a proxy-relative URL to absolute

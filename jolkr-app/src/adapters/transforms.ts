@@ -157,6 +157,7 @@ export function transformMessage(
     author_id: msg.author_id,
     channel_id: msg.channel_id,
     is_pinned: msg.is_pinned,
+    embeds: msg.embeds,
   }
 }
 

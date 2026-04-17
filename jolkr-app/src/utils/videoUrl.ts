@@ -4,7 +4,7 @@ export interface VideoInfo {
   platform: VideoPlatform;
   id?: string;
   src?: string;
-  kind?: 'channel' | 'vod';
+  kind?: 'channel' | 'vod' | 'clip';
 }
 
 const DIRECT_VIDEO_EXTS = /\.(mp4|webm|ogg|mov)(\?.*)?$/i;
@@ -41,8 +41,15 @@ export function parseVideoUrl(url: string): VideoInfo | null {
     if (host === 'twitch.tv') {
       const vodMatch = u.pathname.match(/^\/videos\/(\d+)/);
       if (vodMatch) return { platform: 'twitch', id: vodMatch[1], kind: 'vod' };
+      // Clips: /channel/clip/ClipSlug or /clips.twitch.tv/ClipSlug
+      const clipMatch = u.pathname.match(/^\/[a-zA-Z0-9_]+\/clip\/([a-zA-Z0-9_-]+)/);
+      if (clipMatch) return { platform: 'twitch', id: clipMatch[1], kind: 'clip' };
       const channelMatch = u.pathname.match(/^\/([a-zA-Z0-9_]+)\/?$/);
       if (channelMatch) return { platform: 'twitch', id: channelMatch[1], kind: 'channel' };
+    }
+    if (host === 'clips.twitch.tv') {
+      const clipId = u.pathname.slice(1).split('/')[0];
+      if (clipId) return { platform: 'twitch', id: clipId, kind: 'clip' };
     }
 
     // TikTok

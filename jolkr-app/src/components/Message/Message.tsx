@@ -1,17 +1,20 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   SmilePlus, CornerUpLeft, Pencil, MoreHorizontal,
   Copy, Pin, Trash2, Flag,
 } from 'lucide-react'
 import type { Message as MessageType } from '../../types'
-import type { User } from '../../api/types'
+import type { User, MessageEmbed } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useAuthStore } from '../../stores/auth'
 import { useMenuPosition } from '../../utils/position'
 import { emojiToImgUrl } from '../../utils/emoji'
+import { parseVideoUrl, getYouTubeThumbnail, getPlatformName, getPlatformColor } from '../../utils/videoUrl'
 import EmojiPickerPopup from '../EmojiPickerPopup'
 import MessageContent from '../MessageContent'
+import VideoEmbed from '../VideoEmbed'
+import LinkEmbed from '../LinkEmbed'
 import Avatar from '../Avatar'
 import { ReactionTooltip } from './ReactionTooltip'
 import s from './Message.module.css'
@@ -44,6 +47,33 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   )
   const messageContent = displayContent || message.content
   const showUnencryptedBadge = !isEncrypted && !!message.content
+
+  // Client-side embed generation: extract URLs from displayed content and create
+  // video embeds for known platforms (essential for E2EE where server can't read content)
+  const clientEmbeds = useMemo<MessageEmbed[]>(() => {
+    if ((message.embeds ?? []).length > 0) return message.embeds!
+    if (!messageContent) return []
+    const urls = messageContent.match(/https?:\/\/[^\s<>)"]+/gi)
+    if (!urls) return []
+    const seen = new Set<string>()
+    const embeds: MessageEmbed[] = []
+    for (const url of urls.slice(0, 5)) {
+      if (seen.has(url)) continue
+      seen.add(url)
+      const info = parseVideoUrl(url)
+      if (info) {
+        embeds.push({
+          url,
+          title: null,
+          description: null,
+          image_url: info.platform === 'youtube' && info.id ? getYouTubeThumbnail(info.id) : null,
+          site_name: getPlatformName(info.platform),
+          color: getPlatformColor(info.platform),
+        })
+      }
+    }
+    return embeds
+  }, [messageContent, message.embeds])
   const [showEmoji, setShowEmoji] = useState(false)
   const [showMore,  setShowMore]  = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -178,10 +208,25 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
     </div>
   )
 
+  // Link/video embeds (server-side or client-side generated)
+  const embedsBlock = clientEmbeds.length > 0 ? (
+    <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+      {clientEmbeds.map((embed, i) => {
+        const videoInfo = parseVideoUrl(embed.url)
+        return videoInfo ? (
+          <VideoEmbed key={`${embed.url}-${i}`} embed={embed} videoInfo={videoInfo} />
+        ) : (
+          <LinkEmbed key={`${embed.url}-${i}`} embed={embed} />
+        )
+      })}
+    </div>
+  ) : null
+
   const body = (
     <>
       {replyBlock}
       {textContent}
+      {embedsBlock}
       {reactionsBlock}
     </>
   )
@@ -403,6 +448,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                 {editedTag}
               </div>
             )}
+            {embedsBlock}
           </div>
 
           {/* Reactions — overlaid on the card's bottom edge */}

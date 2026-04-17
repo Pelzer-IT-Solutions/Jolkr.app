@@ -94,6 +94,7 @@ export interface Message {
   isDm?:              boolean
   is_pinned?:         boolean
   is_system?:         boolean
+  embeds?:            import('../api/types').MessageEmbed[]
 }
 
 export type MessageStore = Record<string, Record<string, Message[]>>

@@ -8,6 +8,7 @@ import { usePresenceStore } from '../../stores/presence'
 import { useUnreadStore } from '../../stores/unread'
 import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
+import { useGifFavoritesStore } from '../../stores/gif-favorites'
 
 import type { DmChannel, User } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
@@ -78,10 +79,11 @@ export function useAppInit() {
       const urlServerId = path.match(/\/servers\/([^/]+)/)?.[1]
       const urlChannelId = path.match(/\/servers\/[^/]+\/channels\/([^/]+)/)?.[1]
 
-      // Fetch servers and DMs in parallel
+      // Fetch servers, DMs, and GIF favorites in parallel
       const [, dms] = await Promise.all([
         fetchServers(),
         api.getDms(),
+        useGifFavoritesStore.getState().load(),
       ])
       if (cancelled) return
 

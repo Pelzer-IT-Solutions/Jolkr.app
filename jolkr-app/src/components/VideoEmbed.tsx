@@ -6,6 +6,7 @@ import { useNMPlayer } from '../hooks/useNMPlayer';
 import Spinner from './ui/Spinner';
 import { isTauri } from '../platform/detect';
 import { Play, Pause, Volume2, VolumeX, Maximize, Video } from 'lucide-react';
+import s from './VideoEmbed.module.css';
 
 export interface VideoEmbedProps {
   embed: MessageEmbed;
@@ -13,50 +14,52 @@ export interface VideoEmbedProps {
 }
 
 function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
-  // Iframe platforms (YouTube, Vimeo, Twitch, TikTok) load the iframe directly
-  // so the user only needs one click (the platform's own play button).
-  // Direct/HLS videos use a thumbnail preview since NMPlayer auto-plays on expand.
   const isIframePlatform = ['youtube', 'vimeo', 'twitch', 'tiktok'].includes(videoInfo.platform);
   const [expanded, setExpanded] = useState(isIframePlatform);
   const borderColor = getPlatformColor(videoInfo.platform);
   const platformName = embed.site_name || getPlatformName(videoInfo.platform);
 
-  const thumbnailUrl =
-    embed.image_url ||
-    (videoInfo.platform === 'youtube' && videoInfo.id
-      ? getYouTubeThumbnail(videoInfo.id)
-      : null);
+  const [resolvedTitle, setResolvedTitle] = useState<string | null>(embed.title ?? null);
+  useEffect(() => {
+    if (embed.title) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        let title: string | null = null;
+        if (videoInfo.platform === 'youtube' && videoInfo.id) {
+          const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoInfo.id}`);
+          title = (await res.json()).title ?? null;
+        } else if (videoInfo.platform === 'twitch' && videoInfo.id) {
+          title = videoInfo.kind === 'channel' ? videoInfo.id : null;
+        } else if (videoInfo.platform === 'vimeo' && videoInfo.id) {
+          const res = await fetch(`https://noembed.com/embed?url=https://vimeo.com/${videoInfo.id}`);
+          title = (await res.json()).title ?? null;
+        }
+        if (title && !cancelled) setResolvedTitle(title);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [embed.title, videoInfo.platform, videoInfo.id, videoInfo.kind]);
+
+  const thumbnailUrl = embed.image_url || (videoInfo.platform === 'youtube' && videoInfo.id ? getYouTubeThumbnail(videoInfo.id) : null);
 
   return (
-    <div
-      className="mt-1 max-w-100 rounded-md overflow-hidden bg-zinc-800/50 border-l-4"
-      style={{ borderLeftColor: borderColor }}
-    >
-      {/* Header */}
-      <div className="px-3 pt-2 pb-1">
-        <div className="text-xs text-zinc-400 flex items-center gap-1.5">
-          <span
-            className="w-2 h-2 rounded-full inline-block shrink-0"
-            style={{ backgroundColor: borderColor }}
-          />
+    <div className={s.card} style={{ '--embed-color': borderColor } as React.CSSProperties}>
+      <div className={s.header}>
+        <div className={s.siteName}>
+          <span className={s.dot} style={{ backgroundColor: borderColor }} />
           {platformName}
         </div>
-        {embed.title && (
-          <div className="text-sm font-semibold text-blue-400 mt-0.5 line-clamp-1">
-            {embed.title}
-          </div>
+        {resolvedTitle && (
+          <a href={embed.url} target="_blank" rel="noopener noreferrer" className={s.title}>
+            {resolvedTitle}
+          </a>
         )}
       </div>
-
-      {/* Player area */}
       {expanded ? (
         <PlayerArea videoInfo={videoInfo} embed={embed} />
       ) : (
-        <Thumbnail
-          url={thumbnailUrl}
-          platform={videoInfo.platform}
-          onClick={() => setExpanded(true)}
-        />
+        <Thumbnail url={thumbnailUrl} platform={videoInfo.platform} onClick={() => setExpanded(true)} />
       )}
     </div>
   );
@@ -65,144 +68,81 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
 const VideoEmbed = memo(VideoEmbedInner);
 export default VideoEmbed;
 
-/* ── Thumbnail (collapsed state) ── */
+/* ── Thumbnail ── */
 
-function Thumbnail({
-  url,
-  platform,
-  onClick,
-}: {
-  url: string | null;
-  platform: string;
-  onClick: () => void;
-}) {
+function Thumbnail({ url, platform, onClick }: { url: string | null; platform: string; onClick: () => void }) {
   const [imgErr, setImgErr] = useState(false);
 
   return (
-    <button
-      onClick={onClick}
-      className="relative w-full aspect-video bg-black flex items-center justify-center cursor-pointer group/thumb"
-    >
+    <button className={s.thumb} onClick={onClick}>
       {url && !imgErr ? (
-        <img
-          src={url}
-          alt=""
-          className="w-full h-full object-cover"
-          loading="lazy"
-          onError={() => setImgErr(true)}
-        />
+        <img className={s.thumbImg} src={url} alt="" loading="lazy" onError={() => setImgErr(true)} />
       ) : (
-        <VideoPlaceholder platform={platform} />
+        <div className={s.placeholder}>
+          <Video size={40} strokeWidth={1.5} />
+          <span>{platform}</span>
+        </div>
       )}
-      {/* Play overlay */}
-      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover/thumb:bg-black/40 transition-colors">
-        <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover/thumb:scale-110 transition-transform">
-          <Play className="w-7 h-7 text-black ml-1" fill="currentColor" />
+      <div className={s.thumbOverlay}>
+        <div className={s.playCircle}>
+          <Play size={28} color="black" fill="black" style={{ marginLeft: '0.125rem' }} />
         </div>
       </div>
     </button>
   );
 }
 
-function VideoPlaceholder({ platform }: { platform: string }) {
-  return (
-    <div className="flex flex-col items-center gap-2 text-zinc-500">
-      <Video className="w-10 h-10" strokeWidth={1.5} />
-      <span className="text-xs">{platform}</span>
-    </div>
-  );
-}
-
-/* ── Player Area (expanded state) ── */
+/* ── Player Area ── */
 
 function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: MessageEmbed }) {
   const { platform, id, src, kind } = videoInfo;
 
-  if (platform === 'youtube' && id) {
-    return (
-      <IframePlayer
-        src={`https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`}
-        title="YouTube video"
-      />
-    );
-  }
+  if (platform === 'youtube' && id)
+    return <IframePlayer src={`https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`} title="YouTube video" />;
 
-  if (platform === 'vimeo' && id) {
-    return (
-      <IframePlayer
-        src={`https://player.vimeo.com/video/${id}`}
-        title="Vimeo video"
-      />
-    );
-  }
+  if (platform === 'vimeo' && id)
+    return <IframePlayer src={`https://player.vimeo.com/video/${id}`} title="Vimeo video" />;
 
   if (platform === 'twitch' && id) {
-    const twitchUrl = kind === 'vod'
-      ? `https://www.twitch.tv/videos/${id}`
-      : `https://www.twitch.tv/${id}`;
+    const twitchUrl = kind === 'vod' ? `https://www.twitch.tv/videos/${id}` : kind === 'clip' ? `https://clips.twitch.tv/${id}` : `https://www.twitch.tv/${id}`;
 
-    // Tauri: iframe embedding fails due to origin mismatch — open in browser
     if (isTauri) {
       return (
-        <div className="aspect-video bg-black flex flex-col items-center justify-center gap-3 p-4">
-          <svg className="w-10 h-10 text-[#9146FF]" viewBox="0 0 24 24" fill="currentColor">
+        <div className={s.tauriFallback}>
+          <svg style={{ width: '2.5rem', height: '2.5rem', color: '#9146FF' }} viewBox="0 0 24 24" fill="currentColor">
             <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
           </svg>
-          <span className="text-zinc-400 text-sm text-center">{embed.title || 'Twitch Stream'}</span>
-          <a
-            href={twitchUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 bg-[#9146FF] hover:bg-[#7C2BEA] text-white text-sm rounded font-medium no-underline"
-          >
-            Watch on Twitch
-          </a>
+          <span>{embed.title || 'Twitch'}</span>
+          <a href={twitchUrl} target="_blank" rel="noopener noreferrer">Watch on Twitch</a>
         </div>
       );
     }
 
-    // Web: embed normally
     const host = window.location.hostname;
-    const twitchSrc = kind === 'vod'
-      ? `https://player.twitch.tv/?video=${id}&parent=${host}`
-      : `https://player.twitch.tv/?channel=${id}&parent=${host}`;
-    return <IframePlayer src={twitchSrc} title="Twitch stream" />;
+    const twitchSrc = kind === 'clip' ? `https://clips.twitch.tv/embed?clip=${id}&parent=${host}` : kind === 'vod' ? `https://player.twitch.tv/?video=${id}&parent=${host}` : `https://player.twitch.tv/?channel=${id}&parent=${host}`;
+    return <IframePlayer src={twitchSrc} title={kind === 'clip' ? 'Twitch clip' : 'Twitch stream'} />;
   }
 
-  if (platform === 'tiktok' && id) {
-    return (
-      <IframePlayer
-        src={`https://www.tiktok.com/embed/v2/${id}`}
-        title="TikTok video"
-      />
-    );
-  }
+  if (platform === 'tiktok' && id)
+    return <IframePlayer src={`https://www.tiktok.com/embed/v2/${id}`} title="TikTok video" />;
 
-  if ((platform === 'direct' || platform === 'hls') && src) {
+  if ((platform === 'direct' || platform === 'hls') && src)
     return <NMVideoPlayer src={src} title={embed.title ?? ''} image={embed.image_url ?? ''} />;
-  }
 
   return null;
 }
 
-/* ── Iframe player (YouTube / Vimeo / Twitch / TikTok) ── */
+/* ── Iframe player ── */
 
 function IframePlayer({ src, title }: { src: string; title: string }) {
   return (
-    <div className="aspect-video bg-black">
-      <iframe
-        src={src}
-        title={title}
-        className="w-full h-full"
-        allow="fullscreen; encrypted-media"
-        allowFullScreen
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
-      />
+    <div className={s.playerWrap}>
+      <iframe src={src} title={title} allow="fullscreen; encrypted-media" allowFullScreen />
     </div>
   );
 }
 
-/* ── NoMercy Video Player (direct + HLS) ── */
+/* ── NoMercy Video Player ── */
 
 function NMVideoPlayer({ src, title, image }: { src: string; title: string; image: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -210,27 +150,18 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
   const [showControls, setShowControls] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  useEffect(() => {
-    return () => clearTimeout(hideTimerRef.current);
-  }, []);
+  useEffect(() => { return () => clearTimeout(hideTimerRef.current); }, []);
 
   const scheduleHide = useCallback(() => {
     clearTimeout(hideTimerRef.current);
     setShowControls(true);
-    if (player.isPlaying) {
-      hideTimerRef.current = setTimeout(() => setShowControls(false), 3000);
-    }
+    if (player.isPlaying) hideTimerRef.current = setTimeout(() => setShowControls(false), 3000);
   }, [player.isPlaying]);
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!player.duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    player.seek(frac * player.duration);
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    player.setVolume(parseFloat(e.target.value) * 100);
+    player.seek(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * player.duration);
   };
 
   const toggleFullscreen = () => {
@@ -240,180 +171,34 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
     else el.requestFullscreen().catch(() => {});
   };
 
-  if (player.error) {
-    return (
-      <div className="aspect-video bg-black flex items-center justify-center text-zinc-400 text-sm">
-        {player.error}
-      </div>
-    );
-  }
+  if (player.error) return <div className={s.errorMsg}>{player.error}</div>;
 
   const isLive = player.duration > 0 ? false : player.isReady;
 
   return (
-    <div
-      ref={wrapperRef}
-      className="relative aspect-video bg-black"
-      onMouseMove={scheduleHide}
-      onMouseLeave={() => { if (player.isPlaying) setShowControls(false); }}
-    >
-      {/* NMPlayer renders its <video> + overlay inside this div */}
-      <div
-        ref={player.containerRef}
-        className="w-full h-full [&_.nomercyplayer]:!aspect-auto [&_video]:w-full [&_video]:h-full [&_video]:object-contain cursor-pointer"
-        onClick={player.togglePlay}
-      />
-
-      {/* Buffering spinner */}
-      {player.isBuffering && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <Spinner size="lg" colors="border-white/30 border-t-white" />
-        </div>
-      )}
-
-      {/* Live badge */}
-      {isLive && (
-        <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-2xs font-bold px-1.5 py-0.5 rounded">
-          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-          LIVE
-        </div>
-      )}
-
-      {/* Custom controls overlay */}
-      <VideoControls
-        visible={showControls}
-        playing={player.isPlaying}
-        currentTime={player.currentTime}
-        duration={isLive ? 0 : player.duration}
-        volume={player.volume / 100}
-        muted={player.isMuted}
-        onTogglePlay={player.togglePlay}
-        onSeek={isLive ? undefined : handleSeek}
-        onVolumeChange={handleVolumeChange}
-        onToggleMute={player.toggleMute}
-        onToggleFullscreen={toggleFullscreen}
-        isLive={isLive}
-      />
-    </div>
-  );
-}
-
-/* ── Shared custom controls ── */
-
-interface ControlsProps {
-  visible: boolean;
-  playing: boolean;
-  currentTime: number;
-  duration: number;
-  volume: number;
-  muted: boolean;
-  onTogglePlay: () => void;
-  onSeek?: (e: React.MouseEvent<HTMLDivElement>) => void;
-  onVolumeChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onToggleMute: () => void;
-  onToggleFullscreen: () => void;
-  isLive?: boolean;
-}
-
-function VideoControls({
-  visible,
-  playing,
-  currentTime,
-  duration,
-  volume,
-  muted,
-  onTogglePlay,
-  onSeek,
-  onVolumeChange,
-  onToggleMute,
-  onToggleFullscreen,
-  isLive,
-}: ControlsProps) {
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  return (
-    <div
-      className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-6 pb-1 px-2 transition-opacity duration-200 ${
-        visible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-      }`}
-    >
-      {/* Progress bar */}
-      {!isLive && onSeek && (
-        <div
-          className="h-1 bg-white/20 rounded-full mb-1.5 cursor-pointer group/seek"
-          onClick={onSeek}
-        >
-          <div
-            className="h-full bg-white rounded-full relative"
-            style={{ width: `${progress}%` }}
-          >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full opacity-0 group-hover/seek:opacity-100 group-focus-within/seek:opacity-100 transition-opacity" />
+    <div ref={wrapperRef} className={s.nmWrap} onMouseMove={scheduleHide} onMouseLeave={() => { if (player.isPlaying) setShowControls(false); }}>
+      <div ref={player.containerRef} className={s.nmContainer} onClick={player.togglePlay} />
+      {player.isBuffering && <div className={s.bufferOverlay}><Spinner size="lg" /></div>}
+      {isLive && <div className={s.liveBadge}><span className={s.liveDot} />LIVE</div>}
+      <div className={s.controls} data-hidden={!showControls}>
+        {!isLive && (
+          <div className={s.progressBar} onClick={handleSeek}>
+            <div className={s.progressFill} style={{ width: `${player.duration > 0 ? (player.currentTime / player.duration) * 100 : 0}%` }} />
           </div>
+        )}
+        <div className={s.controlsRow}>
+          <button className={s.controlBtn} onClick={player.togglePlay}>{player.isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}</button>
+          <span className={s.timeLabel}>{isLive ? 'LIVE' : `${fmt(player.currentTime)} / ${fmt(player.duration)}`}</span>
+          <div className={s.spacer} />
+          <button className={s.controlBtn} onClick={player.toggleMute}>{player.isMuted || player.volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
+          <button className={s.controlBtn} onClick={toggleFullscreen}><Maximize size={16} /></button>
         </div>
-      )}
-
-      <div className="flex items-center gap-1.5">
-        {/* Play/Pause */}
-        <button
-          onClick={onTogglePlay}
-          className="text-white p-1 hover:text-white/80"
-          aria-label={playing ? 'Pause' : 'Play'}
-        >
-          {playing ? (
-            <Pause className="w-4 h-4" fill="currentColor" />
-          ) : (
-            <Play className="w-4 h-4" fill="currentColor" />
-          )}
-        </button>
-
-        {/* Time */}
-        <span className="text-xs text-white/80 tabular-nums min-w-0">
-          {isLive ? 'LIVE' : `${formatTime(currentTime)} / ${formatTime(duration)}`}
-        </span>
-
-        <div className="flex-1" />
-
-        {/* Volume */}
-        <div className="flex items-center gap-1 group/vol">
-          <button
-            onClick={onToggleMute}
-            className="text-white p-1 hover:text-white/80"
-            aria-label={muted ? 'Unmute' : 'Mute'}
-          >
-            {muted || volume === 0 ? (
-              <VolumeX className="w-4 h-4" />
-            ) : (
-              <Volume2 className="w-4 h-4" />
-            )}
-          </button>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={muted ? 0 : volume}
-            onChange={onVolumeChange}
-            className="w-0 group-hover/vol:w-16 transition-all duration-200 accent-white h-1 cursor-pointer"
-            aria-label="Volume"
-          />
-        </div>
-
-        {/* Fullscreen */}
-        <button
-          onClick={onToggleFullscreen}
-          className="text-white p-1 hover:text-white/80"
-          aria-label="Fullscreen"
-        >
-          <Maximize className="w-4 h-4" />
-        </button>
       </div>
     </div>
   );
 }
 
-function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
+function fmt(sec: number): string {
+  if (!isFinite(sec) || sec < 0) return '0:00';
+  return `${Math.floor(sec / 60)}:${Math.floor(sec % 60).toString().padStart(2, '0')}`;
 }

@@ -364,6 +364,7 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/gifs/featured", get(gifs::featured_gifs))
         .route("/api/gifs/categories", get(gifs::categories))
         .route("/api/gifs/media", get(gifs::proxy_media))
+        .route("/api/gifs/i/:gif_id/:size", get(gifs::proxy_gif_image))
         .route("/api/gifs/favorites", get(gifs::list_favorites).post(gifs::add_favorite))
         .route("/api/gifs/favorites/:gif_id", delete(gifs::remove_favorite))
         // ── Push ────────────────────────────────────────────────────

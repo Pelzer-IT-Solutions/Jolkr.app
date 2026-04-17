@@ -890,8 +890,8 @@ export const getPoll = (pollId: string) =>
 export const getGifFavorites = () =>
   request<GifFavorite[]>('/gifs/favorites', {}, 'favorites')
 
-export const addGifFavorite = (data: { gif_id: string; gif_url?: string; preview_url?: string; title?: string }) =>
-  request<void>('/gifs/favorites', { method: 'POST', body: JSON.stringify(data) })
+export const addGifFavorite = (gifId: string) =>
+  request<void>('/gifs/favorites', { method: 'POST', body: JSON.stringify({ gif_id: gifId }) })
 
 export const removeGifFavorite = (gifId: string) =>
   request<void>(`/gifs/favorites/${encodeURIComponent(gifId)}`, { method: 'DELETE' })
