@@ -500,6 +500,13 @@ De volgende backend routes bestaan maar hebben geen dedicated wrapper in `src/ap
 | POST | `/presence/query` | Presence opvragen (client gebruikt `queryPresence`) |
 | POST | `/users/batch` | Meerdere users ophalen (client gebruikt parallel `getUser` calls) |
 | POST | `/webhooks/{id}/{token}` | Webhook uitvoeren (geen auth, extern aangeroepen) |
+| GET | `/files/{attachmentId}` | File serving by attachment ID (client gebruikt `getFileUrl`) |
+| GET | `/gifs/search` | GIF zoeken (geen dedicated client wrapper, direct URL) |
+| GET | `/gifs/featured` | Trending GIFs (geen dedicated client wrapper, direct URL) |
+| GET | `/gifs/categories` | GIF categorieën (geen dedicated client wrapper, direct URL) |
+| GET | `/gifs/i/{gifId}/{size}` | GIF image proxy (geen dedicated client wrapper, direct URL) |
+| GET | `/gifs/media` | GIF media proxy (geen dedicated client wrapper, direct URL) |
+| GET | `/oembed` | oEmbed proxy (geen dedicated client wrapper, direct URL) |
 
 ---
 
@@ -1076,10 +1083,19 @@ interface ChannelOverwrite {
   allow: number; deny: number;
 }
 
+interface DmLastMessage {
+  id: string;
+  author_id: string;
+  content?: string | null;
+  nonce?: string | null;
+  created_at: string;
+}
+
 interface DmChannel {
   id: string; is_group: boolean; name?: string | null;
   members: string[];           // UUID array (not full User objects)
   created_at: string;
+  last_message?: DmLastMessage | null;
 }
 
 interface Friendship {
@@ -1154,6 +1170,14 @@ interface PreKeyBundleResponse {
   one_time_prekey?: string | null;
   pq_signed_prekey?: string | null;
   pq_signed_prekey_signature?: string | null;
+}
+
+interface GifFavorite {
+  gif_id: string;
+  gif_url: string;
+  preview_url: string;
+  title: string;
+  added_at: string;
 }
 
 interface Reaction {

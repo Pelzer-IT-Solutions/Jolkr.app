@@ -1155,6 +1155,22 @@ Used for end-to-end encryption in server channels and group DMs using the Sender
 
 ---
 
+## 23b. GIFs & oEmbed
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/gifs/search` | None | Search GIFs (GIPHY proxy) |
+| GET | `/api/gifs/featured` | None | Get featured/trending GIFs |
+| GET | `/api/gifs/categories` | None | Get GIF categories (30min cache) |
+| GET | `/api/gifs/i/:gif_id/:size` | None | Proxy GIF image by ID and size |
+| GET | `/api/gifs/media` | None | Proxy GIF media |
+| GET | `/api/gifs/favorites` | JWT | List user's favorite GIFs |
+| POST | `/api/gifs/favorites` | JWT | Add GIF to favorites |
+| DELETE | `/api/gifs/favorites/:gif_id` | JWT | Remove GIF from favorites |
+| GET | `/api/oembed` | None | oEmbed proxy for link previews |
+
+---
+
 ## 24. Health & Metrics
 
 | Method | Path | Auth | Description |
@@ -1296,6 +1312,7 @@ ws://localhost:8080/ws
 | `MAIL_USERNAME` | — | No | Mail server authentication username |
 | `MAIL_PASSWORD` | — | No | Mail server authentication password |
 | `MAIL_FROM_ADDRESS` | `noreply@jolkr.app` | No | Sender address for outgoing emails |
+| `GIPHY_API_KEY` | — | No | GIPHY API key for GIF search/featured/categories (503 if not set) |
 
 ---
 
@@ -1342,6 +1359,7 @@ ws://localhost:8080/ws
 | `password_reset_tokens` | Password reset tokens | id, user_id, token_hash, expires_at |
 | `email_verification_tokens` | Email verification tokens | id, user_id, token_hash, expires_at, used_at |
 | `server_bans` | Server ban records | id, server_id, user_id, banned_by, reason |
+| `gif_favorites` | User GIF favorites | id, user_id, gif_id, gif_url, preview_url, title, added_at |
 | `server_emojis` | Custom server emojis | id, server_id, name, image_url, uploader_id, animated |
 
 ---
