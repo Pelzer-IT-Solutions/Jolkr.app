@@ -11,6 +11,16 @@ use jolkr_db::repo::{DmRepo, UserRepo};
 
 use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, attachment_proxy_url};
 
+/// Lightweight last-message preview included in the DM channel list.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DmLastMessage {
+    pub id: Uuid,
+    pub author_id: Uuid,
+    pub content: Option<String>,
+    pub nonce: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DmChannelInfo {
     pub id: Uuid,
@@ -18,6 +28,8 @@ pub struct DmChannelInfo {
     pub name: Option<String>,
     pub members: Vec<Uuid>,
     pub created_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_message: Option<DmLastMessage>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,6 +140,7 @@ impl DmService {
             name: channel.name,
             members: member_ids,
             created_at: channel.created_at,
+            last_message: None,
         })
     }
 
@@ -138,9 +151,12 @@ impl DmService {
     ) -> Result<Vec<DmChannelInfo>, JolkrError> {
         let channels = DmRepo::list_dm_channels(pool, user_id).await?;
 
-        // Batch load all members in one query
+        // Batch load members + last messages in parallel
         let channel_ids: Vec<Uuid> = channels.iter().map(|ch| ch.id).collect();
-        let all_members = DmRepo::get_members_for_channels(pool, &channel_ids).await?;
+        let (all_members, last_messages) = tokio::try_join!(
+            DmRepo::get_members_for_channels(pool, &channel_ids),
+            DmRepo::get_last_messages(pool, &channel_ids),
+        )?;
 
         let result = channels
             .into_iter()
@@ -150,12 +166,24 @@ impl DmService {
                     .filter(|m| m.dm_channel_id == ch.id)
                     .map(|m| m.user_id)
                     .collect();
+                let last_msg = last_messages.iter().find(|m| m.dm_channel_id == ch.id).map(|m| {
+                    use base64::Engine;
+                    let engine = base64::engine::general_purpose::STANDARD;
+                    DmLastMessage {
+                        id: m.id,
+                        author_id: m.author_id,
+                        content: m.content.clone(),
+                        nonce: m.nonce.as_ref().map(|n| engine.encode(n)),
+                        created_at: m.created_at,
+                    }
+                });
                 DmChannelInfo {
                     id: ch.id,
                     is_group: ch.is_group,
                     name: ch.name,
                     members: member_ids,
                     created_at: ch.created_at,
+                    last_message: last_msg,
                 }
             })
             .collect();
@@ -209,6 +237,7 @@ impl DmService {
             name: channel.name,
             members: member_ids,
             created_at: channel.created_at,
+            last_message: None,
         })
     }
 
@@ -248,6 +277,7 @@ impl DmService {
             name: channel.name,
             members: member_ids,
             created_at: channel.created_at,
+            last_message: None,
         })
     }
 
@@ -276,6 +306,7 @@ impl DmService {
             name: channel.name,
             members: member_ids,
             created_at: channel.created_at,
+            last_message: None,
         })
     }
 
@@ -315,6 +346,7 @@ impl DmService {
             name: updated.name,
             members: member_ids,
             created_at: updated.created_at,
+            last_message: None,
         })
     }
 

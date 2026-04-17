@@ -1,4 +1,4 @@
-export type VideoPlatform = 'youtube' | 'vimeo' | 'twitch' | 'tiktok' | 'direct' | 'hls';
+export type VideoPlatform = 'youtube' | 'vimeo' | 'twitch' | 'tiktok' | 'vidmount' | 'facebook' | 'dailymotion' | 'bitchute' | 'vidyard' | 'direct' | 'hls';
 
 export interface VideoInfo {
   platform: VideoPlatform;
@@ -58,6 +58,41 @@ export function parseVideoUrl(url: string): VideoInfo | null {
       if (tiktokMatch) return { platform: 'tiktok', id: tiktokMatch[1] };
     }
 
+    // Facebook
+    if (host === 'facebook.com' || host === 'fb.watch') {
+      const fbVideoMatch = u.pathname.match(/\/(?:watch\/?\?v=|videos\/|reel\/)(\d+)/);
+      if (fbVideoMatch) return { platform: 'facebook', id: fbVideoMatch[1], src: url };
+      if (host === 'fb.watch') return { platform: 'facebook', id: u.pathname.slice(1), src: url };
+    }
+
+    // Dailymotion
+    if (host === 'dailymotion.com' || host === 'dai.ly') {
+      if (host === 'dai.ly') {
+        const id = u.pathname.slice(1).split('/')[0];
+        if (id) return { platform: 'dailymotion', id };
+      }
+      const dmMatch = u.pathname.match(/^\/video\/([a-z0-9]+)/i);
+      if (dmMatch) return { platform: 'dailymotion', id: dmMatch[1] };
+    }
+
+    // Bitchute
+    if (host === 'bitchute.com') {
+      const bcMatch = u.pathname.match(/^\/video\/([a-zA-Z0-9_-]+)/);
+      if (bcMatch) return { platform: 'bitchute', id: bcMatch[1], src: url };
+    }
+
+    // Vidyard
+    if (host === 'vidyard.com' || host.endsWith('.vidyard.com')) {
+      const vyMatch = u.pathname.match(/^\/watch\/([a-zA-Z0-9_-]+)/);
+      if (vyMatch) return { platform: 'vidyard', id: vyMatch[1] };
+    }
+
+    // VidMount
+    if (host === 'vidmount.com') {
+      const watchMatch = u.pathname.match(/^\/watch\/([a-zA-Z0-9_-]+)/);
+      if (watchMatch) return { platform: 'vidmount', id: watchMatch[1], src: url };
+    }
+
     // HLS
     if (HLS_EXT.test(u.pathname)) {
       return { platform: 'hls', src: url };
@@ -87,6 +122,11 @@ const PLATFORM_COLORS: Record<VideoPlatform, string> = {
   vimeo: '#1AB7EA',
   twitch: '#9146FF',
   tiktok: '#EE1D52',
+  vidmount: '#1570ef',
+  facebook: '#1877F2',
+  dailymotion: '#00AAFF',
+  bitchute: '#EF4136',
+  vidyard: '#00BF6F',
   direct: '#5865F2',
   hls: '#00E5A0',
 };
@@ -100,6 +140,11 @@ const PLATFORM_NAMES: Record<VideoPlatform, string> = {
   vimeo: 'Vimeo',
   twitch: 'Twitch',
   tiktok: 'TikTok',
+  vidmount: 'VidMount',
+  facebook: 'Facebook',
+  dailymotion: 'Dailymotion',
+  bitchute: 'BitChute',
+  vidyard: 'Vidyard',
   direct: 'Video',
   hls: 'Live Stream',
 };

@@ -70,6 +70,26 @@ impl DmRepo {
         Ok(rows)
     }
 
+    /// Get the last message for each of the given DM channels in a single query.
+    pub async fn get_last_messages(
+        pool: &PgPool,
+        channel_ids: &[Uuid],
+    ) -> Result<Vec<DmMessageRow>, JolkrError> {
+        if channel_ids.is_empty() {
+            return Ok(vec![]);
+        }
+        let rows = sqlx::query_as::<_, DmMessageRow>(
+            r#"SELECT DISTINCT ON (dm_channel_id) *
+               FROM dm_messages
+               WHERE dm_channel_id = ANY($1)
+               ORDER BY dm_channel_id, created_at DESC"#,
+        )
+        .bind(channel_ids)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
     /// Close (hide) a DM channel for a specific user.
     pub async fn close_dm(
         pool: &PgPool,

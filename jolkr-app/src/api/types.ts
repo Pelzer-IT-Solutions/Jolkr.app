@@ -168,12 +168,21 @@ export interface ChannelOverwrite {
   deny: number;
 }
 
+export interface DmLastMessage {
+  id: string;
+  author_id: string;
+  content?: string | null;
+  nonce?: string | null;
+  created_at: string;
+}
+
 export interface DmChannel {
   id: string;
   is_group: boolean;
   name?: string | null;
   members: string[];
   created_at: string;
+  last_message?: DmLastMessage | null;
 }
 
 export interface Friendship {

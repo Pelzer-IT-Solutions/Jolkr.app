@@ -5,14 +5,15 @@ import {
   Paperclip, ImagePlay, SendHorizontal,
   Bold, Italic, Strikethrough, Code, Pin,
 } from 'lucide-react'
-import DOMPurify from 'dompurify'
 import type { Channel, DMConversation, Message as MessageType, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { Message } from '../Message/Message'
 import EmojiPickerPopup from '../EmojiPickerPopup'
 import GifPickerPopup from '../GifPickerPopup'
-import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../../utils/emoji'
+import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
+import { RichInput, type RichInputHandle } from './RichInput'
+import { createEmojiImg } from './richInputHelpers'
 import s from './ChatArea.module.css'
 
 export interface MentionableUser {
@@ -53,14 +54,13 @@ interface Props {
 
 export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false }: Props) {
   const listRef    = useRef<HTMLDivElement>(null)
-  const inputRef   = useRef<HTMLTextAreaElement>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
+  const inputRef   = useRef<RichInputHandle>(null)
+  const contentRef = useRef('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // System channels are read-only; also hide composer if user lacks SEND_MESSAGES
   const isReadOnly = readOnly || channel.is_system || !canSendMessages
 
-  const [content,     setContent]     = useState('')
   const [replyingTo,  setReplyingTo]  = useState<MessageType | null>(null)
   const [isRevealing, setIsRevealing] = useState(false)
 
@@ -90,7 +90,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
     if (animationKey !== prevAnimKey) {
       if (navTimerRef.current) clearTimeout(navTimerRef.current)
-      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+      if (listRef.current) listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
       setIsRevealing(true)
       const animCount = Math.min(messages.length, CHAT_REVEAL_LIMIT)
       navTimerRef.current = setTimeout(() => {
@@ -107,7 +107,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
   useEffect(() => {
     if (!listRef.current || scrollBehaviorRef.current !== 'smooth') return
-    listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+    listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     scrollBehaviorRef.current = 'auto'
   }, [messages])
 
@@ -131,9 +131,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const gifBtnRef = useRef<HTMLButtonElement>(null)
 
   // Clear reply context + content when channel changes
-  useEffect(() => { setReplyingTo(null); setContent('') }, [channel.id])
+  useEffect(() => {
+    setReplyingTo(null)
+    contentRef.current = ''
+    inputRef.current?.clear()
+  }, [channel.id])
 
-  // Auto-focus textarea on channel switch
+  // Auto-focus input on channel switch
   useEffect(() => { inputRef.current?.focus() }, [channel.id])
 
   // ── Emoji autocomplete ──
@@ -142,37 +146,17 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     return searchEmojis(emojiQuery, 8)
   }, [emojiQuery])
 
-  const getEmojiContext = useCallback(() => {
-    const el = inputRef.current
-    if (!el) return null
-    const cursor = el.selectionStart
-    const text = el.value.slice(0, cursor)
-    const lastColon = text.lastIndexOf(':')
-    if (lastColon === -1) return null
-    if (lastColon > 0 && !/\s/.test(text[lastColon - 1])) return null
-    const query = text.slice(lastColon + 1)
-    if (/\s/.test(query) || query.length < 2 || !/^[a-zA-Z0-9_]+$/.test(query)) return null
-    return { start: lastColon, query }
-  }, [])
-
   const insertEmoji = useCallback((emoji: string) => {
-    const el = inputRef.current
-    if (!el) return
-    const cursor = el.selectionStart
-    const text = el.value
-    const before = text.slice(0, cursor)
-    const lastColon = before.lastIndexOf(':')
+    const handle = inputRef.current
+    if (!handle) return
+    const text = handle.getTextBeforeCursor()
+    if (!text) return
+    const lastColon = text.lastIndexOf(':')
     if (lastColon === -1) return
-    const after = text.slice(cursor)
-    const newContent = text.slice(0, lastColon) + emoji + ' ' + after
-    setContent(newContent)
+    const charCount = text.length - lastColon
+    handle.replaceBeforeCursor(charCount, createEmojiImg(emoji))
     setEmojiQuery(null)
     setEmojiIndex(0)
-    setTimeout(() => {
-      const newPos = lastColon + emoji.length + 1
-      el.selectionStart = el.selectionEnd = newPos
-      el.focus()
-    }, 0)
   }, [])
 
   // ── Mention autocomplete ──
@@ -182,97 +166,92 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     return mentionableUsers.filter((u) => u.username.toLowerCase().includes(q)).slice(0, 8)
   }, [mentionQuery, mentionableUsers])
 
-  const getMentionContext = useCallback(() => {
-    const el = inputRef.current
-    if (!el) return null
-    const cursor = el.selectionStart
-    const text = el.value.slice(0, cursor)
-    const lastAt = text.lastIndexOf('@')
-    if (lastAt === -1) return null
-    if (lastAt > 0 && !/\s/.test(text[lastAt - 1])) return null
-    const query = text.slice(lastAt + 1)
-    if (/\s/.test(query)) return null
-    return { start: lastAt, query }
-  }, [])
-
   const insertMention = useCallback((username: string) => {
-    const el = inputRef.current
-    if (!el) return
-    const cursor = el.selectionStart
-    const text = el.value
-    const before = text.slice(0, cursor)
-    const lastAt = before.lastIndexOf('@')
+    const handle = inputRef.current
+    if (!handle) return
+    const text = handle.getTextBeforeCursor()
+    if (!text) return
+    const lastAt = text.lastIndexOf('@')
     if (lastAt === -1) return
-    const after = text.slice(cursor)
-    const newContent = text.slice(0, lastAt) + `@${username} ` + after
-    setContent(newContent)
+    const charCount = text.length - lastAt
+    handle.replaceBeforeCursor(charCount, `@${username} `)
     setMentionQuery(null)
     setMentionIndex(0)
-    setTimeout(() => {
-      const newPos = lastAt + username.length + 2
-      el.selectionStart = el.selectionEnd = newPos
-      el.focus()
-    }, 0)
   }, [])
 
-  // ── Formatting (selection-based on textarea) ──
+  // ── Formatting (selection-based on contentEditable) ──
   const insertFormatting = useCallback((prefix: string, suffix: string) => {
-    const el = inputRef.current
-    if (!el) return
-    const start = el.selectionStart
-    const end = el.selectionEnd
-    const text = el.value
-    const selected = text.slice(start, end)
-    const newContent = text.slice(0, start) + prefix + selected + suffix + text.slice(end)
-    setContent(newContent)
-    setTimeout(() => {
-      if (selected) {
-        el.selectionStart = start + prefix.length
-        el.selectionEnd = end + prefix.length
-      } else {
-        el.selectionStart = el.selectionEnd = start + prefix.length
-      }
-      el.focus()
-    }, 0)
+    inputRef.current?.focus()
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    const selectedText = range.toString()
+    range.deleteContents()
+    const textNode = document.createTextNode(prefix + selectedText + suffix)
+    range.insertNode(textNode)
+    const newRange = document.createRange()
+    if (selectedText) {
+      newRange.setStart(textNode, prefix.length)
+      newRange.setEnd(textNode, prefix.length + selectedText.length)
+    } else {
+      newRange.setStart(textNode, prefix.length)
+      newRange.collapse(true)
+    }
+    sel.removeAllRanges()
+    sel.addRange(newRange)
   }, [])
 
   const checkSelection = useCallback(() => {
-    const el = inputRef.current
-    if (!el || el.selectionStart === el.selectionEnd) {
-      setFmtBar(null)
-      return
-    }
-    const rect = el.getBoundingClientRect()
-    setFmtBar({ top: rect.top - 6, left: rect.left + rect.width / 2 })
+    const sel = window.getSelection()
+    if (!sel || sel.isCollapsed) { setFmtBar(null); return }
+    const range = sel.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+    if (rect.width > 0) {
+      setFmtBar({ top: rect.top - 6, left: rect.left + rect.width / 2 })
+    } else { setFmtBar(null) }
   }, [])
 
-  const handleInput = useCallback((val: string) => {
-    setContent(val)
+  const syncContent = useCallback((plainText: string) => {
+    contentRef.current = plainText
     if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
     mentionTimerRef.current = setTimeout(() => {
-      const emojiCtx = getEmojiContext()
-      if (emojiCtx) { setEmojiQuery(emojiCtx.query); setEmojiIndex(0) }
-      else setEmojiQuery(null)
+      const text = inputRef.current?.getTextBeforeCursor() ?? null
+      if (text) {
+        const lastColon = text.lastIndexOf(':')
+        if (lastColon !== -1 && (lastColon === 0 || /\s/.test(text[lastColon - 1]))) {
+          const query = text.slice(lastColon + 1)
+          if (query.length >= 2 && /^[a-zA-Z0-9_]+$/.test(query)) {
+            setEmojiQuery(query); setEmojiIndex(0)
+          } else { setEmojiQuery(null) }
+        } else { setEmojiQuery(null) }
 
-      const mentionCtx = getMentionContext()
-      if (mentionCtx) { setMentionQuery(mentionCtx.query); setMentionIndex(0) }
-      else setMentionQuery(null)
+        const lastAt = text.lastIndexOf('@')
+        if (lastAt !== -1 && (lastAt === 0 || /\s/.test(text[lastAt - 1]))) {
+          const mQuery = text.slice(lastAt + 1)
+          if (!/\s/.test(mQuery)) {
+            setMentionQuery(mQuery); setMentionIndex(0)
+          } else { setMentionQuery(null) }
+        } else { setMentionQuery(null) }
+      } else {
+        setEmojiQuery(null)
+        setMentionQuery(null)
+      }
     }, 0)
     onTyping?.()
-  }, [getEmojiContext, getMentionContext, onTyping])
+  }, [onTyping])
 
   function send() {
-    const text = content.trim()
+    const text = contentRef.current.trim()
     if (!text && pendingFiles.length === 0) return
     const replyRef = replyingTo ? { id: replyingTo.id, author: replyingTo.author, text: replyingTo.content } : undefined
     onSend(text || '', replyRef, pendingFiles.length > 0 ? pendingFiles : undefined)
-    setContent('')
+    inputRef.current?.clear()
+    contentRef.current = ''
     setPendingFiles([])
     setReplyingTo(null)
-    if (inputRef.current) inputRef.current.style.height = 'auto'
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (emojiQuery !== null && emojiMatches.length > 0) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setEmojiIndex((i) => (i + 1) % emojiMatches.length); return }
       if (e.key === 'ArrowUp')   { e.preventDefault(); setEmojiIndex((i) => (i - 1 + emojiMatches.length) % emojiMatches.length); return }
@@ -569,38 +548,19 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                   <EmojiPickerPopup
                     position={composerEmojiPos}
                     onSelect={(emoji) => {
-                      setContent((prev) => prev + emoji)
-                      inputRef.current?.focus()
+                      inputRef.current?.insertEmojiAtCursor(emoji)
                     }}
                     onClose={() => setShowComposerEmoji(false)}
                   />
                 )}
               </div>
               <div className={s.inputWrap}>
-                {content && (
-                  <div
-                    ref={overlayRef}
-                    className={s.inputOverlay}
-                    dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
-                  />
-                )}
-                <textarea
+                <RichInput
                   ref={inputRef}
-                  value={content}
-                  onChange={(e) => handleInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onSelect={checkSelection}
                   placeholder={inputPlaceholder}
-                  rows={1}
-                  className={s.textarea}
-                  onInput={(e) => {
-                    const el = e.currentTarget
-                    el.style.height = 'auto'
-                    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
-                  }}
-                  onScroll={(e) => {
-                    if (overlayRef.current) overlayRef.current.scrollTop = e.currentTarget.scrollTop
-                  }}
+                  onInput={syncContent}
+                  onKeyDown={handleKeyDown}
+                  onSelectionChange={checkSelection}
                 />
               </div>
               <div className={s.composerActions}>
@@ -678,14 +638,3 @@ function EmojiIcon()      { return <Smile         size={15} strokeWidth={1.25} /
 function AttachIcon()     { return <Paperclip     size={15} strokeWidth={1.25} /> }
 function GifIcon()        { return <ImagePlay     size={15} strokeWidth={1.25} /> }
 function SendIcon()       { return <SendHorizontal size={15} strokeWidth={1.5} /> }
-
-function renderInputEmojis(text: string): string {
-  if (!text) return ''
-  let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  html = html.replace(/\n/g, '<br>')
-  html = renderUnicodeEmojis(html, 20)
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['img', 'br'],
-    ALLOWED_ATTR: ['src', 'alt', 'class', 'style', 'loading', 'draggable'],
-  })
-}

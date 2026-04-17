@@ -139,6 +139,7 @@
   position: absolute;
   inset: 0;
   overflow-y: auto;
+  overflow-anchor: auto;
   padding: 2rem 0 5.5rem; /* bottom pad keeps last msg above the composer */
   display: flex;
   flex-direction: column-reverse; /* native chat scroll: anchored at bottom */
@@ -399,11 +400,14 @@
   pointer-events: none;
   overflow: hidden;
 }
-.inputOverlay img {
-  display: inline-block;
-  vertical-align: text-bottom;
-  width: 1.25rem;
-  height: 1.25rem;
+
+/* Emoji span in overlay: same character as textarea (same width!), but visually
+   replaced by Apple emoji via background-image. This guarantees zero cursor drift. */
+:global(.emoji-overlay) {
+  color: transparent;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .textarea {

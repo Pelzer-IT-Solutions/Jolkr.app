@@ -519,3 +519,75 @@ pub async fn remove_favorite(
     GifFavoritesRepo::remove(&state.pool, auth.user_id, &gif_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
+
+// ── oEmbed proxy ────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct OembedParams {
+    url: String,
+}
+
+#[derive(Serialize)]
+pub struct OembedResponse {
+    pub title: Option<String>,
+    pub author_name: Option<String>,
+    pub thumbnail_url: Option<String>,
+}
+
+/// GET /api/oembed?url=<video_url> — Proxy oEmbed metadata (avoids CORS issues).
+/// Tries the provider's own oEmbed endpoint first (via oembed.com discovery),
+/// then falls back to noembed.com.
+pub async fn oembed_proxy(
+    Query(params): Query<OembedParams>,
+) -> Result<Json<OembedResponse>, (StatusCode, &'static str)> {
+    let url = &params.url;
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err((StatusCode::BAD_REQUEST, "Invalid URL"));
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Client error"))?;
+
+    // 1. Try the provider's own oEmbed endpoint (extract host, try /oembed?url=...)
+    if let Ok(parsed) = reqwest::Url::parse(url) {
+        let provider_oembed = format!("{}://{}/oembed?url={}&format=json",
+            parsed.scheme(), parsed.host_str().unwrap_or(""), urlencoding::encode(url));
+        if let Ok(resp) = client.get(&provider_oembed).send().await {
+            if resp.status().is_success() {
+                if let Ok(data) = resp.json::<serde_json::Value>().await {
+                    if data["title"].is_string() {
+                        return Ok(Json(OembedResponse {
+                            title: data["title"].as_str().map(String::from),
+                            author_name: data["author_name"].as_str().map(String::from),
+                            thumbnail_url: data["thumbnail_url"].as_str().map(String::from),
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Fallback: noembed.com (supports 100+ providers)
+    let noembed_url = format!("https://noembed.com/embed?url={}", urlencoding::encode(url));
+    let resp = client.get(&noembed_url).send().await
+        .map_err(|_| (StatusCode::BAD_GATEWAY, "Failed to fetch oEmbed"))?;
+
+    if !resp.status().is_success() {
+        return Err((StatusCode::BAD_GATEWAY, "oEmbed service error"));
+    }
+
+    let data: serde_json::Value = resp.json().await
+        .map_err(|_| (StatusCode::BAD_GATEWAY, "Invalid oEmbed response"))?;
+
+    if data.get("error").is_some() {
+        return Err((StatusCode::NOT_FOUND, "No oEmbed data found"));
+    }
+
+    Ok(Json(OembedResponse {
+        title: data["title"].as_str().map(String::from),
+        author_name: data["author_name"].as_str().map(String::from),
+        thumbnail_url: data["thumbnail_url"].as_str().map(String::from),
+    }))
+}

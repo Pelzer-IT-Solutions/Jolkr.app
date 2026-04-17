@@ -27,7 +27,7 @@ export default function EmojiPickerPopup({ position, onSelect, onClose }: Props)
       }>
         <LazyEmojiPicker
           theme={theme}
-          onEmojiClick={(emojiData) => { onSelect(emojiData.emoji); onClose(); }}
+          onEmojiClick={(emojiData) => { onSelect(emojiData.emoji); }}
           width={300}
           height={350}
           lazyLoadEmojis

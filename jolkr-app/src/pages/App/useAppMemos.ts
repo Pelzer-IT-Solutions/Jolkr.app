@@ -101,7 +101,15 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     if (!user) return []
     return dmList.map(dm => {
       const msgs = storeMessages[dm.id]
-      const lastMsg = msgs?.[msgs.length - 1] as ApiMessage | undefined
+      const storeLastMsg = msgs?.[msgs.length - 1] as ApiMessage | undefined
+      // Use store message if loaded, otherwise fall back to API's last_message preview
+      const lastMsg = storeLastMsg ?? (dm.last_message ? {
+        id: dm.last_message.id,
+        author_id: dm.last_message.author_id,
+        content: dm.last_message.content ?? '',
+        nonce: dm.last_message.nonce ?? null,
+        created_at: dm.last_message.created_at,
+      } as ApiMessage : undefined)
       return transformDmConversation(dm, userMap, presenceMap, user.id, lastMsg, unreadCounts[dm.id])
     })
   }, [dmList, userMap, presenceMap, user, storeMessages, unreadCounts])

@@ -2,7 +2,10 @@ import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import type { MessageEmbed } from '../api/types';
 import type { VideoInfo } from '../utils/videoUrl';
 import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../utils/videoUrl';
+import { getApiBaseUrl } from '../platform/config';
 import { useNMPlayer } from '../hooks/useNMPlayer';
+
+const apiBase = getApiBaseUrl().replace(/\/api$/, '');
 import Spinner from './ui/Spinner';
 import { isTauri } from '../platform/detect';
 import { Play, Pause, Volume2, VolumeX, Maximize, Video } from 'lucide-react';
@@ -14,7 +17,7 @@ export interface VideoEmbedProps {
 }
 
 function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
-  const isIframePlatform = ['youtube', 'vimeo', 'twitch', 'tiktok'].includes(videoInfo.platform);
+  const isIframePlatform = ['youtube', 'vimeo', 'twitch', 'tiktok', 'vidmount', 'facebook', 'dailymotion', 'vidyard'].includes(videoInfo.platform);
   const [expanded, setExpanded] = useState(isIframePlatform);
   const borderColor = getPlatformColor(videoInfo.platform);
   const platformName = embed.site_name || getPlatformName(videoInfo.platform);
@@ -25,17 +28,17 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
     let cancelled = false;
     (async () => {
       try {
-        let title: string | null = null;
-        if (videoInfo.platform === 'youtube' && videoInfo.id) {
-          const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoInfo.id}`);
-          title = (await res.json()).title ?? null;
-        } else if (videoInfo.platform === 'twitch' && videoInfo.id) {
-          title = videoInfo.kind === 'channel' ? videoInfo.id : null;
-        } else if (videoInfo.platform === 'vimeo' && videoInfo.id) {
-          const res = await fetch(`https://noembed.com/embed?url=https://vimeo.com/${videoInfo.id}`);
-          title = (await res.json()).title ?? null;
+        // Twitch channels: use channel name directly
+        if (videoInfo.platform === 'twitch' && videoInfo.id && videoInfo.kind === 'channel') {
+          if (!cancelled) setResolvedTitle(videoInfo.id);
+          return;
         }
-        if (title && !cancelled) setResolvedTitle(title);
+        // All platforms: fetch title via our oEmbed proxy
+        const res = await fetch(`${apiBase}/api/oembed?url=${encodeURIComponent(embed.url)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.title && !cancelled) setResolvedTitle(data.title);
+        }
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
@@ -125,6 +128,21 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
 
   if (platform === 'tiktok' && id)
     return <IframePlayer src={`https://www.tiktok.com/embed/v2/${id}`} title="TikTok video" />;
+
+  if (platform === 'vidmount' && id)
+    return <IframePlayer src={`https://vidmount.com/embed/${id}`} title="VidMount video" />;
+
+  if (platform === 'facebook' && src)
+    return <IframePlayer src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(src)}&show_text=false`} title="Facebook video" />;
+
+  if (platform === 'dailymotion' && id)
+    return <IframePlayer src={`https://www.dailymotion.com/embed/video/${id}`} title="Dailymotion video" />;
+
+  if (platform === 'bitchute' && id)
+    return <IframePlayer src={`https://www.bitchute.com/embed/${id}/`} title="BitChute video" />;
+
+  if (platform === 'vidyard' && id)
+    return <IframePlayer src={`https://play.vidyard.com/${id}`} title="Vidyard video" />;
 
   if ((platform === 'direct' || platform === 'hls') && src)
     return <NMVideoPlayer src={src} title={embed.title ?? ''} image={embed.image_url ?? ''} />;
