@@ -36,6 +36,7 @@
   flex-direction: column;
   width: 14rem;
   flex-shrink: 0;
+  min-height: 0;
   background: var(--bg-loud);
   border-right: 1px solid var(--border-muted);
   border-radius: 0.75rem 0 0 0.75rem;
@@ -44,6 +45,7 @@
 
 .navScroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0.75rem;
 }
@@ -197,6 +199,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   background: var(--bg-shout);
   position: relative;
   border-radius: 0 0.75rem 0.75rem 0;
@@ -230,30 +233,45 @@
 
 .scroll {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
-  /* Horizontal + top only: bottom inset is unreliable on overflow containers (padding scrolls away).
-     Use .section padding-bottom for end-of-scroll breathing room. */
-  padding: 1.25rem 1.25rem 0;
+  overflow-x: hidden;
+  padding: 1.25rem;
   scroll-padding-bottom: 2rem;
 }
 
 .scrollNoPadding {
   padding: 0;
+  scroll-padding-bottom: 0;
 }
 
 .section {
+  display: flex;
+  flex-direction: column;
+  /* shrink: 1 so tall content can live inside .scroll instead of stretching past the modal */
+  flex: 1 1 auto;
+  width: 100%;
   max-width: 40rem;
-  min-height: 100%;
+  min-height: 0;
   box-sizing: border-box;
-  /* Ensures visible gap when scrolled to the end (unlike padding on .scroll) */
   padding-bottom: 2rem;
 }
 
 .sectionFull {
+  display: flex;
+  flex-direction: column;
+  /* basis 0 + shrink so this panel never exceeds the scroll viewport (roles layout stays inside modal) */
+  flex: 1 1 0%;
+  width: 100%;
   max-width: none;
-  min-height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
   box-sizing: border-box;
-  padding: 0 0 2rem;
+  /* No extra bottom inset — roles panel fills the modal; overview uses .section padding-bottom instead */
+  padding: 0;
 }
 
 /* ── Form fields ── */
@@ -391,7 +409,7 @@
 /* ── Roles ── */
 .rolesLayout {
   display: flex;
-  height: 100%;
+  flex: 1;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -403,6 +421,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   border-right: 1px solid var(--border-muted);
   padding: 0.75rem;
 }
@@ -508,6 +527,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   padding: 1.25rem;
   overflow: hidden;
   min-width: 0;
@@ -1080,7 +1100,8 @@
   padding: 3rem 1.5rem;
   gap: 0.5rem;
   flex: 1;
-  min-height: 100%;
+  min-height: 0;
+  width: 100%;
 }
 
 .emptyStateIcon {

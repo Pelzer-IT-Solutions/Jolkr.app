@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -18,6 +18,14 @@ import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './ServerSettings.module.css'
 
 type Section = 'overview' | 'roles' | 'invites' | 'bans' | 'audit' | 'delete'
+
+/** API returns roles by position DESC; UI shows oldest / lowest position first (new roles at the end). */
+function sortRolesByPosition(roles: Role[]): Role[] {
+  return [...roles].sort((a, b) => {
+    if (a.position !== b.position) return a.position - b.position
+    return a.name.localeCompare(b.name)
+  })
+}
 
 interface Props {
   server: Server
@@ -94,9 +102,10 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     const id = server.id
     api.getRoles(id).then((loadedRoles) => {
       setRoles(loadedRoles)
-      // Always auto-select first role when roles are loaded
-      if (loadedRoles.length > 0) {
-        const firstRole = loadedRoles[0]
+      // Always auto-select first role when roles are loaded (oldest / lowest position, e.g. @everyone)
+      const ordered = sortRolesByPosition(loadedRoles)
+      if (ordered.length > 0) {
+        const firstRole = ordered[0]
         setSelectedRoleId(firstRole.id)
         // Initialize editing state for the first role
         const colorHex = `#${firstRole.color.toString(16).padStart(6, '0')}`
@@ -114,6 +123,8 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     api.getBans(id).then(setBans).catch(() => setBans([]))
     api.getAuditLog(id).then(setAuditLog).catch(() => setAuditLog([]))
   }, [server.id])
+
+  const rolesOrdered = useMemo(() => sortRolesByPosition(roles), [roles])
 
   const handleCreateInvite = () => {
     const newInvite: Invite = {
@@ -218,9 +229,9 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
       await api.deleteRole(roleId)
       setRoles(prev => {
         const newRoles = prev.filter(r => r.id !== roleId)
-        // Select another role if the deleted one was selected
+        // Select another role if the deleted one was selected (first in display order)
         if (selectedRoleId === roleId && newRoles.length > 0) {
-          const newSelectedRole = newRoles[0]
+          const newSelectedRole = sortRolesByPosition(newRoles)[0]
           setSelectedRoleId(newSelectedRole.id)
           // Initialize editing state for the new selected role
           const colorHex = `#${newSelectedRole.color.toString(16).padStart(6, '0')}`
@@ -377,7 +388,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                   <div className={s.rolesLeftPanel}>
                     <span className={`${s.rolesListHeader} txt-tiny txt-semibold`}>All Roles</span>
                     <div className={`${s.rolesList} scrollbar-thin`}>
-                      {roles.map(role => (
+                      {rolesOrdered.map(role => (
                         <button
                           key={role.id}
                           className={`${s.roleItem} ${selectedRoleId === role.id ? s.roleItemSelected : ''}`}
