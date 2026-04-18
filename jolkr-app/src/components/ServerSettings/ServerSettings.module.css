@@ -231,7 +231,10 @@
 .scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem 1.25rem 1.25rem;
+  /* Horizontal + top only: bottom inset is unreliable on overflow containers (padding scrolls away).
+     Use .section padding-bottom for end-of-scroll breathing room. */
+  padding: 1.25rem 1.25rem 0;
+  scroll-padding-bottom: 2rem;
 }
 
 .scrollNoPadding {
@@ -240,13 +243,17 @@
 
 .section {
   max-width: 40rem;
-  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  /* Ensures visible gap when scrolled to the end (unlike padding on .scroll) */
+  padding-bottom: 2rem;
 }
 
 .sectionFull {
   max-width: none;
-  height: 100%;
-  padding: 0;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 0 0 2rem;
 }
 
 /* ── Form fields ── */
@@ -1216,39 +1223,201 @@
   background: var(--bg-loud);
   border-radius: 0.75rem;
   border: 1px solid var(--border-muted);
-  overflow: hidden;
+  overflow: visible;
   margin-bottom: 1rem;
+  position: relative;
+}
+
+.bannerEditorWrap {
+  position: relative;
+}
+
+/* Palette trigger (popover content is portaled to body) */
+.serverPreviewActions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.colorPickerBtn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-loud);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition), transform 120ms;
+}
+
+.colorPickerBtn:hover {
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+  transform: scale(1.05);
+}
+
+.colorPickerActive {
+  background: var(--accent);
+  color: #fff;
+}
+
+.bannerPopover {
+  position: fixed;
+  z-index: 10050;
+  width: min(20rem, calc(100vw - 1rem));
+  max-height: min(70vh, 28rem);
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.bannerPopoverSection {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.bannerPopoverSection:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.bannerPopoverLabel {
+  display: block;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.bannerPopoverSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.bannerPopoverImageRow {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.bannerPopoverUrlInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+  font-family: inherit;
+  font-size: 0.8125rem;
+}
+
+.bannerPopoverUrlInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.bannerPopoverFileInput {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.bannerPopoverUploadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition), border-color var(--transition);
+}
+
+.bannerPopoverUploadBtn:hover:not(:disabled) {
+  background: var(--bg-dark-default);
+  border-color: var(--border-strong);
+}
+
+.bannerPopoverUploadBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bannerPopoverClearImage {
+  margin-top: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.bannerPopoverClearImage:hover {
+  color: var(--text-strong);
+}
+
+.colorPickerSwatch {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform 120ms, border-color var(--transition);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.colorPickerSwatch:hover {
+  transform: scale(1.15);
+}
+
+.colorPickerSwatchActive {
+  border-color: var(--text-strong);
+  box-shadow: 0 0 0 1px var(--bg-loud), 0 0 0 3px var(--accent);
 }
 
 /* Banner Editor */
 .bannerEditor {
-  height: 7rem;
+  height: 11rem;
+  min-height: 11rem;
   position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem 0.75rem 0 0;
   transition: all 0.2s ease;
-}
-
-.bannerOverlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 0.75rem;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent 50%);
-}
-
-.bannerLabel {
-  color: rgba(255,255,255,0.9);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 /* Preview Content */
 .previewContent {
   display: flex;
   gap: 1rem;
-  padding: 0 1rem 1.25rem;
+  padding: 0 1rem 1rem;
   position: relative;
 }
 
@@ -1360,139 +1529,6 @@
 
 .inlineDescInput::placeholder {
   color: var(--text-faint);
-}
-
-/* Banner Editor Section */
-.bannerEditorSection {
-  background: var(--bg-loud);
-  border-radius: 0.75rem;
-  border: 1px solid var(--border-muted);
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.editorSectionLabel {
-  display: block;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 0.75rem;
-}
-
-/* Banner Tabs */
-.bannerTabs {
-  display: flex;
-  gap: 0.375rem;
-  margin-bottom: 1rem;
-}
-
-.bannerTab {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--border-muted);
-  background: var(--bg-dark-muted);
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.bannerTab:hover {
-  background: var(--bg-dark-default);
-  color: var(--text-strong);
-}
-
-.bannerTabActive {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.gradientIcon {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, oklch(60% 0.12 215), oklch(55% 0.18 340));
-}
-
-/* Preset Grid */
-.presetGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
-}
-
-.colorPreset,
-.gradientPreset {
-  aspect-ratio: 16/10;
-  border-radius: 0.5rem;
-  border: 2px solid transparent;
-  cursor: pointer;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.colorPreset:hover,
-.gradientPreset:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.presetCheck {
-  color: #fff;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-}
-
-/* Image Input */
-.imageInputWrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.imageUrlInput {
-  width: 100%;
-  padding: 0.625rem 2.5rem 0.625rem 0.875rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--border-muted);
-  background: var(--bg-dark-muted);
-  color: var(--text-strong);
-  font-family: inherit;
-  font-size: 0.875rem;
-  transition: border-color 0.15s ease;
-}
-
-.imageUrlInput:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.clearImageBtn {
-  position: absolute;
-  right: 0.5rem;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.375rem;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.clearImageBtn:hover {
-  background: var(--bg-dark-default);
-  color: var(--text-strong);
 }
 
 /* Simple Field Row */

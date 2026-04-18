@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Check, Camera, Palette
+  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Check, Camera, Palette, Upload
 } from 'lucide-react'
 import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
 import type { Server as ApiServer, Member } from '../../api/types'
@@ -797,18 +798,22 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   )
 }
 
-// Overview Section Component - Visual Editor
+// Overview — solid colors match Settings.tsx AccountSection (BANNER_COLORS)
+const BANNER_COLORS = [
+  { name: 'Sage', value: 'oklch(60% 0.1 136)' },
+  { name: 'Gold', value: 'oklch(65% 0.12 85)' },
+  { name: 'Ocean', value: 'oklch(60% 0.12 215)' },
+  { name: 'Royal', value: 'oklch(55% 0.18 280)' },
+  { name: 'Berry', value: 'oklch(55% 0.18 340)' },
+  { name: 'Coral', value: 'oklch(60% 0.15 25)' },
+]
+
+function hueFromOklch(oklch: string): number | null {
+  const m = oklch.match(/oklch\([^\s]+\s+[^\s]+\s+(\d+)/)
+  return m ? parseInt(m[1], 10) : null
+}
+
 const BANNER_PRESETS = {
-  colors: [
-    { name: 'Ocean', value: 'oklch(60% 0.12 215)' },
-    { name: 'Sage', value: 'oklch(60% 0.1 136)' },
-    { name: 'Gold', value: 'oklch(65% 0.12 85)' },
-    { name: 'Royal', value: 'oklch(55% 0.18 280)' },
-    { name: 'Berry', value: 'oklch(55% 0.18 340)' },
-    { name: 'Coral', value: 'oklch(60% 0.15 25)' },
-    { name: 'Slate', value: 'oklch(55% 0.05 250)' },
-    { name: 'Sunset', value: 'oklch(65% 0.15 45)' },
-  ],
   gradients: [
     { name: 'Ocean Breeze', value: 'linear-gradient(135deg, oklch(60% 0.12 215), oklch(55% 0.1 180))' },
     { name: 'Sunset Glow', value: 'linear-gradient(135deg, oklch(65% 0.15 45), oklch(55% 0.18 340))' },
@@ -819,12 +824,10 @@ const BANNER_PRESETS = {
   ],
 }
 
-type BannerType = 'color' | 'gradient' | 'image'
-
 interface OverviewSectionProps {
   server: Server
   editedServer: Partial<Server>
-  setEditedServer: (data: Partial<Server>) => void
+  setEditedServer: Dispatch<SetStateAction<Partial<Server>>>
   hasChanges: boolean
   setHasChanges: (has: boolean) => void
   iconPreviewUrl: string | null
@@ -845,7 +848,12 @@ function OverviewSection({
   onUpdate,
   onIconUpload,
 }: OverviewSectionProps) {
-  const [activeBannerTab, setActiveBannerTab] = useState<BannerType>('color')
+  const [showBannerMenu, setShowBannerMenu] = useState(false)
+  const [bannerPopoverPos, setBannerPopoverPos] = useState({ top: 0, left: 0 })
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const bannerMenuBtnRef = useRef<HTMLButtonElement>(null)
+  const bannerPopoverRef = useRef<HTMLDivElement>(null)
+  const bannerFileInputRef = useRef<HTMLInputElement>(null)
   // Store banner gradient in local state since it's not in Server type
   const [bannerGradient, setBannerGradient] = useState<string | null>(null)
 
@@ -854,19 +862,63 @@ function OverviewSection({
   const currentDescription = editedServer.description ?? server.description ?? ''
   const currentBannerUrl = editedServer.banner_url ?? server.banner_url ?? ''
   const currentDiscoverable = editedServer.discoverable ?? server.discoverable ?? false
-  const currentHue = editedServer.hue ?? server.hue ?? null
+  const currentHue =
+    editedServer.hue ?? server.hue ?? server.theme?.hue ?? null
   const currentGradient = bannerGradient
 
-  // Determine current banner background
+  const updateBannerPopoverPosition = useCallback(() => {
+    const btn = bannerMenuBtnRef.current
+    if (!btn) return
+    const r = btn.getBoundingClientRect()
+    const panelWidth = 320
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - panelWidth - 8))
+    setBannerPopoverPos({ top: r.bottom + 8, left })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!showBannerMenu) return
+    updateBannerPopoverPosition()
+    const onScrollOrResize = () => updateBannerPopoverPosition()
+    window.addEventListener('scroll', onScrollOrResize, true)
+    window.addEventListener('resize', onScrollOrResize)
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true)
+      window.removeEventListener('resize', onScrollOrResize)
+    }
+  }, [showBannerMenu, updateBannerPopoverPosition])
+
+  useEffect(() => {
+    if (!showBannerMenu) return
+    const onPointerDown = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (bannerPopoverRef.current?.contains(t)) return
+      if (bannerMenuBtnRef.current?.contains(t)) return
+      setShowBannerMenu(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [showBannerMenu])
+
+  // Solid fill: use exact preset string when hue matches Settings palette (same as profile banner)
   const getBannerBackground = () => {
     if (currentBannerUrl) return `url(${currentBannerUrl}) center/cover`
     if (currentGradient) return currentGradient
-    if (currentHue) return `oklch(60% 0.12 ${currentHue})`
-    return BANNER_PRESETS.colors[0].value
+    if (currentHue != null) {
+      const preset = BANNER_COLORS.find(c => hueFromOklch(c.value) === currentHue)
+      if (preset) return preset.value
+      return `oklch(60% 0.12 ${currentHue})`
+    }
+    return BANNER_COLORS[2].value
+  }
+
+  const isSolidColorActive = (presetValue: string) => {
+    if (currentBannerUrl || currentGradient || currentHue == null) return false
+    return hueFromOklch(presetValue) === currentHue
   }
 
   const handleFieldChange = (field: keyof Server, value: unknown) => {
-    setEditedServer({ ...editedServer, [field]: value })
+    // Functional update so sequential calls (e.g. hue + banner_url) don't clobber each other
+    setEditedServer(prev => ({ ...prev, [field]: value }))
     setHasChanges(true)
   }
 
@@ -877,9 +929,9 @@ function OverviewSection({
   }
 
   const handleBannerColorSelect = (colorValue: string) => {
-    const hueMatch = colorValue.match(/oklch\([^\s]+\s+[^\s]+\s+(\d+)/)
-    if (hueMatch) {
-      handleFieldChange('hue', parseInt(hueMatch[1], 10))
+    const h = hueFromOklch(colorValue)
+    if (h != null) {
+      handleFieldChange('hue', h)
       setBannerGradient(null)
       handleFieldChange('banner_url', null)
     }
@@ -898,16 +950,125 @@ function OverviewSection({
     setBannerGradient(null)
   }
 
+  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBannerUploading(true)
+    try {
+      const result = await api.uploadFile(file)
+      const url = result.url ?? result.key
+      handleImageUrlChange(url)
+    } catch {
+      /* ignore */
+    } finally {
+      setBannerUploading(false)
+    }
+  }
+
   return (
     <div className={s.section}>
       {/* Server Preview Card - Visual Editor */}
       <div className={s.serverPreviewCard}>
-        {/* Banner with Overlay Controls */}
-        <div className={s.bannerEditor} style={{ background: getBannerBackground() }}>
-          <div className={s.bannerOverlay}>
-            <span className={`${s.bannerLabel} txt-tiny txt-semibold`}>Server Banner</span>
+        <div className={s.bannerEditorWrap}>
+          <div className={s.bannerEditor} style={{ background: getBannerBackground() }} />
+          <div className={s.serverPreviewActions}>
+            <button
+              ref={bannerMenuBtnRef}
+              type="button"
+              className={`${s.colorPickerBtn} ${showBannerMenu ? s.colorPickerActive : ''}`}
+              onClick={() => setShowBannerMenu(v => !v)}
+              title="Banner background"
+              aria-expanded={showBannerMenu}
+              aria-haspopup="dialog"
+            >
+              <Palette size={16} strokeWidth={1.5} />
+            </button>
           </div>
         </div>
+
+        {showBannerMenu &&
+          createPortal(
+            <div
+              ref={bannerPopoverRef}
+              className={s.bannerPopover}
+              style={{ top: bannerPopoverPos.top, left: bannerPopoverPos.left }}
+              role="dialog"
+              aria-label="Banner background"
+            >
+              <div className={s.bannerPopoverSection}>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Solid colors</span>
+                <div className={s.bannerPopoverSwatches}>
+                  {BANNER_COLORS.map(c => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      className={`${s.colorPickerSwatch} ${isSolidColorActive(c.value) ? s.colorPickerSwatchActive : ''}`}
+                      style={{ background: c.value }}
+                      onClick={() => handleBannerColorSelect(c.value)}
+                      title={c.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className={s.bannerPopoverSection}>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Gradients</span>
+                <div className={s.bannerPopoverSwatches}>
+                  {BANNER_PRESETS.gradients.map(g => (
+                    <button
+                      key={g.name}
+                      type="button"
+                      className={`${s.colorPickerSwatch} ${currentGradient === g.value ? s.colorPickerSwatchActive : ''}`}
+                      style={{ background: g.value }}
+                      onClick={() => handleGradientSelect(g.value)}
+                      title={g.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className={s.bannerPopoverSection}>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Image</span>
+                <div className={s.bannerPopoverImageRow}>
+                  <input
+                    type="text"
+                    className={s.bannerPopoverUrlInput}
+                    value={currentBannerUrl}
+                    onChange={e => handleImageUrlChange(e.target.value)}
+                    placeholder="Image URL (https://…)"
+                    autoComplete="off"
+                  />
+                  <input
+                    ref={bannerFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className={s.bannerPopoverFileInput}
+                    onChange={handleBannerFileChange}
+                  />
+                  <button
+                    type="button"
+                    className={s.bannerPopoverUploadBtn}
+                    disabled={bannerUploading}
+                    onClick={() => bannerFileInputRef.current?.click()}
+                  >
+                    <Upload size={14} strokeWidth={1.5} />
+                    {bannerUploading ? 'Uploading…' : 'Upload'}
+                  </button>
+                </div>
+                {currentBannerUrl ? (
+                  <button
+                    type="button"
+                    className={s.bannerPopoverClearImage}
+                    onClick={() => handleImageUrlChange('')}
+                  >
+                    Remove image banner
+                  </button>
+                ) : null}
+              </div>
+            </div>,
+            document.body
+          )}
 
         {/* Server Content */}
         <div className={s.previewContent}>
@@ -955,95 +1116,6 @@ function OverviewSection({
             />
           </div>
         </div>
-      </div>
-
-      {/* Banner Editor Section */}
-      <div className={s.bannerEditorSection}>
-        <span className={`${s.editorSectionLabel} txt-tiny txt-semibold`}>Banner Style</span>
-
-        {/* Tab Buttons */}
-        <div className={s.bannerTabs}>
-          <button
-            className={`${s.bannerTab} ${activeBannerTab === 'color' ? s.bannerTabActive : ''}`}
-            onClick={() => setActiveBannerTab('color')}
-          >
-            <Palette size={14} strokeWidth={1.5} />
-            Color
-          </button>
-          <button
-            className={`${s.bannerTab} ${activeBannerTab === 'gradient' ? s.bannerTabActive : ''}`}
-            onClick={() => setActiveBannerTab('gradient')}
-          >
-            <div className={s.gradientIcon} />
-            Gradient
-          </button>
-          <button
-            className={`${s.bannerTab} ${activeBannerTab === 'image' ? s.bannerTabActive : ''}`}
-            onClick={() => setActiveBannerTab('image')}
-          >
-            <Camera size={14} strokeWidth={1.5} />
-            Image
-          </button>
-        </div>
-
-        {/* Color Presets */}
-        {activeBannerTab === 'color' && (
-          <div className={s.presetGrid}>
-            {BANNER_PRESETS.colors.map((color) => (
-              <button
-                key={color.name}
-                className={s.colorPreset}
-                style={{ background: color.value }}
-                onClick={() => handleBannerColorSelect(color.value)}
-                title={color.name}
-              >
-                {currentHue && color.value.includes(currentHue.toString()) && (
-                  <Check size={16} strokeWidth={2.5} className={s.presetCheck} />
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Gradient Presets */}
-        {activeBannerTab === 'gradient' && (
-          <div className={s.presetGrid}>
-            {BANNER_PRESETS.gradients.map((gradient) => (
-              <button
-                key={gradient.name}
-                className={s.gradientPreset}
-                style={{ background: gradient.value }}
-                onClick={() => handleGradientSelect(gradient.value)}
-                title={gradient.name}
-              >
-                {currentGradient === gradient.value && (
-                  <Check size={16} strokeWidth={2.5} className={s.presetCheck} />
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Image URL Input */}
-        {activeBannerTab === 'image' && (
-          <div className={s.imageInputWrap}>
-            <input
-              type="text"
-              className={s.imageUrlInput}
-              value={currentBannerUrl}
-              onChange={(e) => handleImageUrlChange(e.target.value)}
-              placeholder="Enter image URL (https://...)"
-            />
-            {currentBannerUrl && (
-              <button
-                className={s.clearImageBtn}
-                onClick={() => handleImageUrlChange('')}
-              >
-                <X size={14} strokeWidth={1.5} />
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Discoverable Toggle */}
