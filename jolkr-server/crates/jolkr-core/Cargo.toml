@@ -26,3 +26,6 @@ ed25519-dalek = { version = "2", features = ["rand_core"] }
 curve25519-dalek = "4"
 aes-gcm = "0.10"
 subtle = "2"
+
+[lints]
+workspace = true
