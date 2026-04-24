@@ -18,3 +18,6 @@ uuid = { workspace = true }
 jsonwebtoken = { workspace = true }
 str0m = { workspace = true }
 futures-util = "0.3"
+
+[lints]
+workspace = true

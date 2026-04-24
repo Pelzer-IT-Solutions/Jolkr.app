@@ -10,3 +10,6 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 thiserror = { workspace = true }
 sqlx = { workspace = true }
+
+[lints]
+workspace = true
