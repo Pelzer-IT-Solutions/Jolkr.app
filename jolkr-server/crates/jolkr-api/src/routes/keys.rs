@@ -17,7 +17,7 @@ use crate::routes::AppState;
 
 /// Client sends base64-encoded keys in JSON.
 #[derive(Debug, Deserialize)]
-pub struct UploadPreKeysBody {
+pub(crate) struct UploadPreKeysBody {
     pub device_id: Uuid,
     /// Base64-encoded Ed25519 public key (32 bytes).
     pub identity_key: String,
@@ -34,13 +34,13 @@ pub struct UploadPreKeysBody {
 }
 
 #[derive(Debug, Serialize)]
-pub struct UploadPreKeysResponse {
+pub(crate) struct UploadPreKeysResponse {
     pub message: String,
     pub prekey_count: usize,
 }
 
 #[derive(Debug, Serialize)]
-pub struct PreKeyBundleResponse {
+pub(crate) struct PreKeyBundleResponse {
     pub user_id: Uuid,
     pub device_id: Uuid,
     pub identity_key: String,
@@ -54,7 +54,7 @@ pub struct PreKeyBundleResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct PreKeyCountResponse {
+pub(crate) struct PreKeyCountResponse {
     pub device_id: Uuid,
     pub remaining: i64,
 }
@@ -62,7 +62,7 @@ pub struct PreKeyCountResponse {
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/keys/upload — Upload prekey bundle for the authenticated user's device.
-pub async fn upload_prekeys(
+pub(crate) async fn upload_prekeys(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<UploadPreKeysBody>,
@@ -124,7 +124,7 @@ pub async fn upload_prekeys(
 }
 
 /// GET /api/keys/:user_id/:device_id — Fetch a prekey bundle for initiating E2EE.
-pub async fn get_prekey_bundle(
+pub(crate) async fn get_prekey_bundle(
     State(state): State<AppState>,
     _auth: AuthUser,
     Path((target_user_id, target_device_id)): Path<(Uuid, Uuid)>,
@@ -148,7 +148,7 @@ pub async fn get_prekey_bundle(
 }
 
 /// GET /api/keys/:user_id — Fetch a prekey bundle by user_id only (auto-selects device).
-pub async fn get_prekey_bundle_by_user(
+pub(crate) async fn get_prekey_bundle_by_user(
     State(state): State<AppState>,
     _auth: AuthUser,
     Path(target_user_id): Path<Uuid>,
@@ -172,7 +172,7 @@ pub async fn get_prekey_bundle_by_user(
 }
 
 /// GET /api/keys/count/:device_id — Check remaining one-time prekeys for the authenticated user.
-pub async fn get_prekey_count(
+pub(crate) async fn get_prekey_count(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(device_id): Path<Uuid>,

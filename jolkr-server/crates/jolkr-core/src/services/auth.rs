@@ -33,20 +33,30 @@ pub struct Claims {
 /// An access + refresh token pair returned after login / register / refresh.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenPair {
+    /// Access token string.
     pub access_token: String,
+    /// Refresh token string.
     pub refresh_token: String,
+    /// Lifetime in seconds.
     pub expires_in: i64,
 }
 
 /// Lightweight user DTO returned alongside tokens.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthUser {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Email address.
     pub email: String,
+    /// Login username.
     pub username: String,
+    /// Optional display name shown in the UI.
     pub display_name: Option<String>,
+    /// Avatar image URL.
     pub avatar_url: Option<String>,
+    /// Whether this is a system-generated entity.
     pub is_system: bool,
+    /// Email verified.
     pub email_verified: bool,
 }
 
@@ -66,6 +76,7 @@ impl From<UserRow> for AuthUser {
 
 // ── Service ────────────────────────────────────────────────────────────
 
+/// Domain service for `auth` operations.
 pub struct AuthService;
 
 impl AuthService {
@@ -411,6 +422,7 @@ impl AuthService {
     }
 
     /// Public wrapper for hashing a refresh token (used by logout endpoints).
+    #[must_use] 
     pub fn hash_refresh_token_pub(token: &str) -> String {
         Self::hash_refresh_token(token)
     }
@@ -467,11 +479,11 @@ impl AuthService {
             return Err(JolkrError::Validation("Invalid email format".into()));
         }
         // Domain parts must each be non-empty
-        if domain.split('.').any(|p| p.is_empty()) {
+        if domain.split('.').any(str::is_empty) {
             return Err(JolkrError::Validation("Invalid email format".into()));
         }
         // TLD must be at least 2 chars
-        if domain.split('.').last().map_or(true, |tld| tld.len() < 2) {
+        if domain.split('.').next_back().is_none_or(|tld| tld.len() < 2) {
             return Err(JolkrError::Validation("Invalid email format".into()));
         }
         Ok(())
@@ -510,12 +522,12 @@ impl AuthService {
                 "Password must be at most 128 characters".into(),
             ));
         }
-        if !password.chars().any(|c| c.is_uppercase()) {
+        if !password.chars().any(char::is_uppercase) {
             return Err(JolkrError::Validation(
                 "Password must contain at least one uppercase letter".into(),
             ));
         }
-        if !password.chars().any(|c| c.is_lowercase()) {
+        if !password.chars().any(char::is_lowercase) {
             return Err(JolkrError::Validation(
                 "Password must contain at least one lowercase letter".into(),
             ));

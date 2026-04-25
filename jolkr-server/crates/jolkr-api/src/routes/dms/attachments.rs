@@ -17,12 +17,12 @@ use crate::storage::MAX_FILE_SIZE;
 use super::types::dm_to_message_info;
 
 #[derive(Serialize)]
-pub struct DmAttachmentResponse {
+pub(crate) struct DmAttachmentResponse {
     pub attachment: AttachmentInfo,
 }
 
 /// POST /api/dms/:dm_id/messages/:message_id/attachments
-pub async fn upload_dm_attachment(
+pub(crate) async fn upload_dm_attachment(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((dm_id, message_id)): Path<(Uuid, Uuid)>,

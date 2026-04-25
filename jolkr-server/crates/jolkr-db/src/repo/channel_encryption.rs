@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::models::ChannelEncryptionKeyRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `channelencryption` persistence.
 pub struct ChannelEncryptionRepo;
 
 impl ChannelEncryptionRepo {
@@ -17,7 +18,7 @@ impl ChannelEncryptionRepo {
     ) -> Result<(), JolkrError> {
         for (recipient_id, encrypted_key, nonce) in recipients {
             sqlx::query(
-                r#"
+                "
                 INSERT INTO channel_encryption_keys
                     (id, channel_id, recipient_user_id, encrypted_key, nonce, key_generation, distributor_user_id)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -27,7 +28,7 @@ impl ChannelEncryptionRepo {
                     nonce = EXCLUDED.nonce,
                     distributor_user_id = EXCLUDED.distributor_user_id,
                     created_at = now()
-                "#,
+                ",
             )
             .bind(Uuid::new_v4())
             .bind(channel_id)
@@ -49,12 +50,12 @@ impl ChannelEncryptionRepo {
         recipient_user_id: Uuid,
     ) -> Result<Option<ChannelEncryptionKeyRow>, JolkrError> {
         let row = sqlx::query_as::<_, ChannelEncryptionKeyRow>(
-            r#"
+            "
             SELECT * FROM channel_encryption_keys
             WHERE channel_id = $1 AND recipient_user_id = $2
             ORDER BY key_generation DESC
             LIMIT 1
-            "#,
+            ",
         )
         .bind(channel_id)
         .bind(recipient_user_id)
@@ -70,7 +71,7 @@ impl ChannelEncryptionRepo {
         keep_generation: i32,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"DELETE FROM channel_encryption_keys WHERE channel_id = $1 AND key_generation < $2"#,
+            "DELETE FROM channel_encryption_keys WHERE channel_id = $1 AND key_generation < $2",
         )
         .bind(channel_id)
         .bind(keep_generation)
@@ -85,11 +86,11 @@ impl ChannelEncryptionRepo {
         channel_id: Uuid,
     ) -> Result<i32, JolkrError> {
         let row: (i32,) = sqlx::query_as(
-            r#"
+            "
             UPDATE channels SET e2ee_key_generation = e2ee_key_generation + 1
             WHERE id = $1
             RETURNING e2ee_key_generation
-            "#,
+            ",
         )
         .bind(channel_id)
         .fetch_one(pool)
@@ -103,7 +104,7 @@ impl ChannelEncryptionRepo {
         channel_id: Uuid,
     ) -> Result<i32, JolkrError> {
         let row: (i32,) = sqlx::query_as(
-            r#"SELECT e2ee_key_generation FROM channels WHERE id = $1"#,
+            "SELECT e2ee_key_generation FROM channels WHERE id = $1",
         )
         .bind(channel_id)
         .fetch_one(pool)

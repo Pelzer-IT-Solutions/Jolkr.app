@@ -17,7 +17,7 @@ use crate::sfu::types::{SfuCommand, SignalOut};
 
 /// Shared state for voice WebSocket handlers.
 #[derive(Clone)]
-pub struct VoiceState {
+pub(crate) struct VoiceState {
     pub sfu_tx: std::sync::mpsc::Sender<SfuCommand>,
     pub jwt_secret: String,
 }
@@ -25,7 +25,7 @@ pub struct VoiceState {
 /// Events sent from the client to the server over the voice WebSocket.
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", content = "d")]
-pub enum VoiceClientEvent {
+pub(crate) enum VoiceClientEvent {
     /// Authenticate with a JWT access token.
     Identify { token: String },
     /// Join a voice channel.
@@ -43,7 +43,7 @@ pub enum VoiceClientEvent {
 }
 
 /// HTTP handler that upgrades to a voice WebSocket.
-pub async fn ws_voice_upgrade(
+pub(crate) async fn ws_voice_upgrade(
     State(state): State<VoiceState>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
@@ -63,7 +63,7 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
 
     // Spawn a task that forwards SFU events + periodic pings to the WebSocket
     let send_task = tokio::spawn(async move {
-        let mut ping_interval = tokio::time::interval(std::time::Duration::from_secs(20));
+        let mut ping_interval = tokio::time::interval(core::time::Duration::from_secs(20));
         ping_interval.tick().await; // skip first immediate tick
 
         loop {
@@ -78,7 +78,7 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
                                     continue;
                                 }
                             };
-                            if ws_sender.send(Message::Text(json.into())).await.is_err() {
+                            if ws_sender.send(Message::Text(json)).await.is_err() {
                                 break;
                             }
                         }
@@ -86,7 +86,7 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
                     }
                 }
                 _ = ping_interval.tick() => {
-                    if ws_sender.send(Message::Ping(vec![].into())).await.is_err() {
+                    if ws_sender.send(Message::Ping(vec![])).await.is_err() {
                         break;
                     }
                 }
@@ -97,7 +97,7 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
     // Main receive loop
     while let Some(Ok(msg)) = ws_receiver.next().await {
         let text = match msg {
-            Message::Text(t) => t.to_string(),
+            Message::Text(t) => t.clone(),
             Message::Close(_) => break,
             _ => continue,
         };
@@ -105,9 +105,9 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
         let event: VoiceClientEvent = match serde_json::from_str(&text) {
             Ok(e) => e,
             Err(e) => {
-                let _ = signal_tx.send(SignalOut::Error {
-                    message: format!("Invalid message: {}", e),
-                });
+                drop(signal_tx.send(SignalOut::Error {
+                    message: format!("Invalid message: {e}"),
+                }));
                 continue;
             }
         };
@@ -120,73 +120,70 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
                         info!(user_id = %claims.sub, "Voice WS identified");
                     }
                     Err(e) => {
-                        let _ = signal_tx.send(SignalOut::Error {
-                            message: format!("Authentication failed: {}", e),
-                        });
+                        drop(signal_tx.send(SignalOut::Error {
+                            message: format!("Authentication failed: {e}"),
+                        }));
                     }
                 }
             }
 
             VoiceClientEvent::Join { channel_id } => {
-                let uid = match user_id {
-                    Some(id) => id,
-                    None => {
-                        let _ = signal_tx.send(SignalOut::Error {
-                            message: "Not authenticated".into(),
-                        });
-                        continue;
-                    }
+                let uid = if let Some(id) = user_id { id } else {
+                    drop(signal_tx.send(SignalOut::Error {
+                        message: "Not authenticated".into(),
+                    }));
+                    continue;
                 };
 
                 joined = true;
 
-                let _ = state.sfu_tx.send(SfuCommand::AddPeer {
+                drop(state.sfu_tx.send(SfuCommand::AddPeer {
                     user_id: uid,
                     channel_id,
                     signal_tx: signal_tx.clone(),
-                });
+                }));
             }
 
             VoiceClientEvent::Answer { sdp } => {
                 if let Some(uid) = user_id {
-                    let _ = state.sfu_tx.send(SfuCommand::Answer {
+                    drop(state.sfu_tx.send(SfuCommand::Answer {
                         user_id: uid,
                         sdp,
-                    });
+                    }));
                 }
             }
 
             VoiceClientEvent::IceCandidate { candidate } => {
                 if let Some(uid) = user_id {
-                    let _ = state.sfu_tx.send(SfuCommand::IceCandidate {
+                    drop(state.sfu_tx.send(SfuCommand::IceCandidate {
                         user_id: uid,
                         candidate,
-                    });
+                    }));
                 }
             }
 
             VoiceClientEvent::Leave => {
                 if let Some(uid) = user_id {
-                    let _ = state.sfu_tx.send(SfuCommand::Leave { user_id: uid });
+                    drop(state.sfu_tx.send(SfuCommand::Leave { user_id: uid }));
                     joined = false;
                 }
             }
 
             VoiceClientEvent::Mute { muted } => {
                 if let Some(uid) = user_id {
-                    let _ = state.sfu_tx.send(SfuCommand::Mute {
+                    drop(state.sfu_tx.send(SfuCommand::Mute {
                         user_id: uid,
                         muted,
-                    });
+                    }));
                 }
             }
 
             VoiceClientEvent::Deafen { deafened } => {
                 if let Some(uid) = user_id {
-                    let _ = state.sfu_tx.send(SfuCommand::Deafen {
+                    drop(state.sfu_tx.send(SfuCommand::Deafen {
                         user_id: uid,
                         deafened,
-                    });
+                    }));
                 }
             }
         }
@@ -194,7 +191,7 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
 
     // Cleanup: leave room if still joined
     if let (Some(uid), true) = (user_id, joined) {
-        let _ = state.sfu_tx.send(SfuCommand::Leave { user_id: uid });
+        drop(state.sfu_tx.send(SfuCommand::Leave { user_id: uid }));
         info!(user_id = %uid, "Voice WS disconnected, sent Leave");
     }
 
@@ -205,7 +202,7 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
 #[derive(Debug, Deserialize)]
 struct Claims {
     sub: Uuid,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     exp: i64,
 }
 

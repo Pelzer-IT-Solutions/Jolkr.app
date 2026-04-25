@@ -6,19 +6,30 @@ use jolkr_common::JolkrError;
 use jolkr_db::models::UserRow;
 use jolkr_db::repo::UserRepo;
 
-/// Public user profile DTO (hides password_hash and other internals).
+/// Public user profile DTO (hides `password_hash` and other internals).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserProfile {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Login username.
     pub username: String,
+    /// Optional display name shown in the UI.
     pub display_name: Option<String>,
+    /// Avatar image URL.
     pub avatar_url: Option<String>,
+    /// Current status.
     pub status: Option<String>,
+    /// Bio.
     pub bio: Option<String>,
+    /// Whether the user is currently online.
     pub is_online: bool,
+    /// Show read receipts.
     pub show_read_receipts: bool,
+    /// Whether this is a system-generated entity.
     pub is_system: bool,
+    /// Email verified.
     pub email_verified: bool,
+    /// Banner color.
     pub banner_color: Option<String>,
 }
 
@@ -43,14 +54,21 @@ impl From<UserRow> for UserProfile {
 /// Fields that may be updated on a user profile.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateProfileRequest {
+    /// Optional display name shown in the UI.
     pub display_name: Option<String>,
+    /// Avatar image URL.
     pub avatar_url: Option<String>,
+    /// Current status.
     pub status: Option<String>,
+    /// Bio.
     pub bio: Option<String>,
+    /// Show read receipts.
     pub show_read_receipts: Option<bool>,
+    /// Banner color.
     pub banner_color: Option<String>,
 }
 
+/// Domain service for `user` operations.
 pub struct UserService;
 
 impl UserService {

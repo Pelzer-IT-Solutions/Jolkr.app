@@ -15,7 +15,7 @@ use crate::routes::AppState;
 
 use super::types::*;
 
-pub async fn send_dm_message(
+pub(crate) async fn send_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -113,7 +113,7 @@ pub async fn send_dm_message(
     Ok(Json(DmMessageResponse { message }))
 }
 
-pub async fn get_dm_messages(
+pub(crate) async fn get_dm_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -125,7 +125,7 @@ pub async fn get_dm_messages(
 }
 
 /// PATCH /api/dms/messages/:id
-pub async fn edit_dm_message(
+pub(crate) async fn edit_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,
@@ -163,7 +163,7 @@ pub async fn edit_dm_message(
 }
 
 /// DELETE /api/dms/messages/:id
-pub async fn delete_dm_message(
+pub(crate) async fn delete_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,

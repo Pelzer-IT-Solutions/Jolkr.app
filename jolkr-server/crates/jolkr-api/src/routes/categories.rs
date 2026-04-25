@@ -16,19 +16,19 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct CategoryResponse {
+pub(crate) struct CategoryResponse {
     pub category: CategoryInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct CategoriesResponse {
+pub(crate) struct CategoriesResponse {
     pub categories: Vec<CategoryInfo>,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/servers/:server_id/categories
-pub async fn create_category(
+pub(crate) async fn create_category(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -44,7 +44,7 @@ pub async fn create_category(
 }
 
 /// GET /api/servers/:server_id/categories — requires membership
-pub async fn list_categories(
+pub(crate) async fn list_categories(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -57,7 +57,7 @@ pub async fn list_categories(
 }
 
 /// PATCH /api/categories/:id
-pub async fn update_category(
+pub(crate) async fn update_category(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -73,7 +73,7 @@ pub async fn update_category(
 }
 
 /// DELETE /api/categories/:id
-pub async fn delete_category(
+pub(crate) async fn delete_category(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,

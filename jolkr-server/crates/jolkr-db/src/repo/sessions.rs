@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::SessionRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `session` persistence.
 pub struct SessionRepo;
 
 impl SessionRepo {
@@ -19,11 +20,11 @@ impl SessionRepo {
     ) -> Result<SessionRow, JolkrError> {
         let now = Utc::now();
         let session = sqlx::query_as::<_, SessionRow>(
-            r#"
+            "
             INSERT INTO sessions (id, user_id, device_id, refresh_token_hash, expires_at, created_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(user_id)
@@ -43,10 +44,10 @@ impl SessionRepo {
         refresh_token_hash: &str,
     ) -> Result<SessionRow, JolkrError> {
         let session = sqlx::query_as::<_, SessionRow>(
-            r#"
+            "
             SELECT * FROM sessions
             WHERE refresh_token_hash = $1 AND expires_at > NOW()
-            "#,
+            ",
         )
         .bind(refresh_token_hash)
         .fetch_optional(pool)
@@ -58,7 +59,7 @@ impl SessionRepo {
 
     /// Delete a single session.
     pub async fn delete_session(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
-        sqlx::query(r#"DELETE FROM sessions WHERE id = $1"#)
+        sqlx::query("DELETE FROM sessions WHERE id = $1")
             .bind(id)
             .execute(pool)
             .await?;
@@ -67,7 +68,7 @@ impl SessionRepo {
 
     /// Delete all sessions for a given user (e.g. password change, logout-all).
     pub async fn delete_all_for_user(pool: &PgPool, user_id: Uuid) -> Result<(), JolkrError> {
-        sqlx::query(r#"DELETE FROM sessions WHERE user_id = $1"#)
+        sqlx::query("DELETE FROM sessions WHERE user_id = $1")
             .bind(user_id)
             .execute(pool)
             .await?;
@@ -79,7 +80,7 @@ impl SessionRepo {
     /// didn't receive the new token pair (network hiccup, app backgrounded, etc.).
     pub async fn expire_session(pool: &PgPool, id: Uuid, grace_seconds: i64) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"UPDATE sessions SET expires_at = NOW() + make_interval(secs => $2) WHERE id = $1"#,
+            "UPDATE sessions SET expires_at = NOW() + make_interval(secs => $2) WHERE id = $1",
         )
         .bind(id)
         .bind(grace_seconds as f64)
@@ -90,7 +91,7 @@ impl SessionRepo {
 
     /// Delete all expired sessions for a user to prevent session accumulation.
     pub async fn cleanup_expired(pool: &PgPool, user_id: Uuid) -> Result<(), JolkrError> {
-        sqlx::query(r#"DELETE FROM sessions WHERE user_id = $1 AND expires_at < NOW()"#)
+        sqlx::query("DELETE FROM sessions WHERE user_id = $1 AND expires_at < NOW()")
             .bind(user_id)
             .execute(pool)
             .await?;

@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::ChannelOverwriteRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `channeloverwrite` persistence.
 pub struct ChannelOverwriteRepo;
 
 impl ChannelOverwriteRepo {
@@ -14,7 +15,7 @@ impl ChannelOverwriteRepo {
         channel_id: Uuid,
     ) -> Result<Vec<ChannelOverwriteRow>, JolkrError> {
         let rows = sqlx::query_as::<_, ChannelOverwriteRow>(
-            r#"SELECT * FROM channel_permission_overwrites WHERE channel_id = $1 ORDER BY target_type, created_at"#,
+            "SELECT * FROM channel_permission_overwrites WHERE channel_id = $1 ORDER BY target_type, created_at",
         )
         .bind(channel_id)
         .fetch_all(pool)
@@ -28,12 +29,12 @@ impl ChannelOverwriteRepo {
         server_id: Uuid,
     ) -> Result<Vec<ChannelOverwriteRow>, JolkrError> {
         let rows = sqlx::query_as::<_, ChannelOverwriteRow>(
-            r#"
+            "
             SELECT cpo.*
             FROM channel_permission_overwrites cpo
             JOIN channels c ON c.id = cpo.channel_id
             WHERE c.server_id = $1
-            "#,
+            ",
         )
         .bind(server_id)
         .fetch_all(pool)
@@ -52,13 +53,13 @@ impl ChannelOverwriteRepo {
     ) -> Result<ChannelOverwriteRow, JolkrError> {
         let now = Utc::now();
         let row = sqlx::query_as::<_, ChannelOverwriteRow>(
-            r#"
+            "
             INSERT INTO channel_permission_overwrites (channel_id, target_type, target_id, allow, deny, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $6)
             ON CONFLICT (channel_id, target_type, target_id)
             DO UPDATE SET allow = $4, deny = $5, updated_at = $6
             RETURNING *
-            "#,
+            ",
         )
         .bind(channel_id)
         .bind(target_type)
@@ -79,7 +80,7 @@ impl ChannelOverwriteRepo {
         target_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"DELETE FROM channel_permission_overwrites WHERE channel_id = $1 AND target_type = $2 AND target_id = $3"#,
+            "DELETE FROM channel_permission_overwrites WHERE channel_id = $1 AND target_type = $2 AND target_id = $3",
         )
         .bind(channel_id)
         .bind(target_type)
@@ -96,7 +97,7 @@ impl ChannelOverwriteRepo {
         target_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"DELETE FROM channel_permission_overwrites WHERE target_type = $1 AND target_id = $2"#,
+            "DELETE FROM channel_permission_overwrites WHERE target_type = $1 AND target_id = $2",
         )
         .bind(target_type)
         .bind(target_id)

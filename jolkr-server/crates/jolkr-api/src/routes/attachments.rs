@@ -31,15 +31,15 @@ const ALLOWED_MIME_TYPES: &[&str] = &[
 ];
 
 /// Presigned URL lifetime in seconds (4 hours).
-pub const PRESIGN_EXPIRY_SECS: u32 = 4 * 3600;
+pub(crate) const PRESIGN_EXPIRY_SECS: u32 = 4 * 3600;
 
-pub fn is_allowed_content_type(ct: &str) -> bool {
+pub(crate) fn is_allowed_content_type(ct: &str) -> bool {
     ALLOWED_MIME_TYPES.iter().any(|allowed| ct.eq_ignore_ascii_case(allowed))
 }
 
 /// Validate that actual file bytes match the claimed MIME type via magic bytes.
 /// Returns the effective content type to use for storage.
-pub fn validate_content_type(claimed: &str, data: &[u8]) -> Result<String, AppError> {
+pub(crate) fn validate_content_type(claimed: &str, data: &[u8]) -> Result<String, AppError> {
     // For binary formats, verify magic bytes match the claimed type
     let dominated = match &data[..data.len().min(12)] {
         // JPEG: FF D8 FF
@@ -73,7 +73,7 @@ pub fn validate_content_type(claimed: &str, data: &[u8]) -> Result<String, AppEr
     Ok(effective.to_string())
 }
 
-pub fn sanitize_filename(raw: &str) -> String {
+pub(crate) fn sanitize_filename(raw: &str) -> String {
     // Take only the final path component (basename) BEFORE stripping separators,
     // so that "../../etc/passwd" becomes "passwd".
     let name = raw.rsplit('/').next().unwrap_or(raw);
@@ -95,7 +95,7 @@ pub fn sanitize_filename(raw: &str) -> String {
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct AttachmentInfo {
+pub(crate) struct AttachmentInfo {
     pub id: Uuid,
     pub message_id: Uuid,
     pub filename: String,
@@ -106,12 +106,12 @@ pub struct AttachmentInfo {
 }
 
 #[derive(Debug, Serialize)]
-pub struct UploadResponse {
+pub(crate) struct UploadResponse {
     pub attachment: AttachmentInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct AttachmentsResponse {
+pub(crate) struct AttachmentsResponse {
     pub attachments: Vec<AttachmentInfo>,
 }
 
@@ -120,7 +120,7 @@ pub struct AttachmentsResponse {
 /// POST /api/channels/:channel_id/messages/:message_id/attachments
 ///
 /// Multipart upload: expects a single `file` field.
-pub async fn upload_attachment(
+pub(crate) async fn upload_attachment(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((channel_id, message_id)): Path<(Uuid, Uuid)>,
@@ -246,7 +246,7 @@ pub async fn upload_attachment(
 }
 
 /// GET /api/messages/:message_id/attachments
-pub async fn list_attachments(
+pub(crate) async fn list_attachments(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,
@@ -288,7 +288,7 @@ pub async fn list_attachments(
 
 /// Query parameters for the upload endpoint.
 #[derive(Debug, Deserialize)]
-pub struct UploadQuery {
+pub(crate) struct UploadQuery {
     /// When set to "avatar" or "icon", the image is converted to WebP and resized.
     pub purpose: Option<String>,
 }
@@ -301,7 +301,7 @@ pub struct UploadQuery {
 /// Query params:
 ///   - `?purpose=avatar` — convert to 256×256 WebP
 ///   - `?purpose=icon`   — convert to 256×256 WebP
-pub async fn upload_file(
+pub(crate) async fn upload_file(
     State(state): State<AppState>,
     _auth: AuthUser,
     Query(query): Query<UploadQuery>,

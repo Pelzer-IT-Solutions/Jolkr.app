@@ -10,15 +10,25 @@ use jolkr_db::repo::{ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, Se
 /// Public channel DTO.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChannelInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning server identifier.
     pub server_id: Uuid,
+    /// Owning category identifier.
     pub category_id: Option<Uuid>,
+    /// Display name.
     pub name: String,
+    /// Topic.
     pub topic: Option<String>,
+    /// Discriminator describing the variant.
     pub kind: String,
+    /// Sort position.
     pub position: i32,
+    /// Whether nsfw.
     pub is_nsfw: bool,
+    /// Slowmode seconds.
     pub slowmode_seconds: i32,
+    /// Active E2EE key rotation generation.
     pub e2ee_key_generation: i32,
 }
 
@@ -39,39 +49,61 @@ impl From<ChannelRow> for ChannelInfo {
     }
 }
 
+/// Request payload for the `CreateChannel` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateChannelRequest {
+    /// Display name.
     pub name: String,
+    /// Discriminator describing the variant.
     pub kind: Option<String>,
+    /// Owning category identifier.
     pub category_id: Option<Uuid>,
 }
 
+/// Request payload for the `UpdateChannel` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateChannelRequest {
+    /// Display name.
     pub name: Option<String>,
+    /// Topic.
     pub topic: Option<String>,
+    /// Sort position.
     pub position: Option<i32>,
+    /// Whether nsfw.
     pub is_nsfw: Option<bool>,
+    /// Slowmode seconds.
     pub slowmode_seconds: Option<i32>,
+    /// Owning category identifier.
     pub category_id: Option<Uuid>,
 }
 
 /// Channel overwrite DTO.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChannelOverwriteInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning channel identifier.
     pub channel_id: Uuid,
+    /// Target type.
     pub target_type: String,
+    /// Target identifier.
     pub target_id: Uuid,
+    /// Allow.
     pub allow: i64,
+    /// Deny.
     pub deny: i64,
 }
 
+/// Request payload for the `UpsertOverwrite` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpsertOverwriteRequest {
+    /// Target type.
     pub target_type: String,
+    /// Target identifier.
     pub target_id: Uuid,
+    /// Allow.
     pub allow: i64,
+    /// Deny.
     pub deny: i64,
 }
 
@@ -84,10 +116,11 @@ const MAX_SLOWMODE_SECONDS: i32 = 21600;
 /// Maximum topic length.
 const MAX_TOPIC_LENGTH: usize = 1024;
 
+/// Domain service for `channel` operations.
 pub struct ChannelService;
 
 impl ChannelService {
-    /// Create a new channel in a server. Requires MANAGE_CHANNELS or server owner.
+    /// Create a new channel in a server. Requires `MANAGE_CHANNELS` or server owner.
     pub async fn create_channel(
         pool: &PgPool,
         server_id: Uuid,
@@ -147,7 +180,7 @@ impl ChannelService {
         Ok(ChannelInfo::from(row))
     }
 
-    /// List all channels in a server, filtered by VIEW_CHANNELS permission.
+    /// List all channels in a server, filtered by `VIEW_CHANNELS` permission.
     /// Server owner always sees all channels.
     pub async fn list_channels(
         pool: &PgPool,
@@ -199,7 +232,7 @@ impl ChannelService {
             .collect())
     }
 
-    /// Update channel metadata. Requires MANAGE_CHANNELS or server owner.
+    /// Update channel metadata. Requires `MANAGE_CHANNELS` or server owner.
     pub async fn update_channel(
         pool: &PgPool,
         channel_id: Uuid,
@@ -238,7 +271,7 @@ impl ChannelService {
 
         // Validate slowmode range
         if let Some(seconds) = req.slowmode_seconds {
-            if seconds < 0 || seconds > MAX_SLOWMODE_SECONDS {
+            if !(0..=MAX_SLOWMODE_SECONDS).contains(&seconds) {
                 return Err(JolkrError::Validation(
                     format!("Slowmode must be between 0 and {MAX_SLOWMODE_SECONDS} seconds"),
                 ));
@@ -264,7 +297,7 @@ impl ChannelService {
         Ok(ChannelInfo::from(updated))
     }
 
-    /// Delete a channel. Requires MANAGE_CHANNELS or server owner.
+    /// Delete a channel. Requires `MANAGE_CHANNELS` or server owner.
     pub async fn delete_channel(
         pool: &PgPool,
         channel_id: Uuid,
@@ -301,7 +334,7 @@ impl ChannelService {
         RoleRepo::compute_channel_permissions(pool, channel.server_id, channel_id, member.id).await
     }
 
-    /// List all overwrites for a channel. Requires MANAGE_CHANNELS.
+    /// List all overwrites for a channel. Requires `MANAGE_CHANNELS`.
     pub async fn list_overwrites(
         pool: &PgPool,
         channel_id: Uuid,
@@ -324,7 +357,7 @@ impl ChannelService {
         }).collect())
     }
 
-    /// Upsert a channel overwrite. Requires MANAGE_ROLES.
+    /// Upsert a channel overwrite. Requires `MANAGE_ROLES`.
     pub async fn upsert_overwrite(
         pool: &PgPool,
         channel_id: Uuid,
@@ -388,7 +421,7 @@ impl ChannelService {
         })
     }
 
-    /// Delete a channel overwrite. Requires MANAGE_ROLES.
+    /// Delete a channel overwrite. Requires `MANAGE_ROLES`.
     pub async fn delete_overwrite(
         pool: &PgPool,
         channel_id: Uuid,
@@ -414,7 +447,7 @@ impl ChannelService {
         Ok(())
     }
 
-    /// Reorder channels in a server. Requires MANAGE_CHANNELS or server owner.
+    /// Reorder channels in a server. Requires `MANAGE_CHANNELS` or server owner.
     pub async fn reorder_channels(
         pool: &PgPool,
         server_id: Uuid,
@@ -440,7 +473,7 @@ impl ChannelService {
         for (channel_id, _) in channel_positions {
             if !existing_ids.contains(channel_id) {
                 return Err(JolkrError::Validation(
-                    format!("Channel {} does not belong to server {}", channel_id, server_id),
+                    format!("Channel {channel_id} does not belong to server {server_id}"),
                 ));
             }
         }

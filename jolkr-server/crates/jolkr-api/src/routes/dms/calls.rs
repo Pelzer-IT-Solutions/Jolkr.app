@@ -34,7 +34,7 @@ async fn validate_dm_call(
 }
 
 /// POST /api/dms/:dm_id/call — initiate a call (ring the other user).
-pub async fn initiate_call(
+pub(crate) async fn initiate_call(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -51,7 +51,7 @@ pub async fn initiate_call(
 }
 
 /// POST /api/dms/:dm_id/call/accept — accept an incoming call.
-pub async fn accept_call(
+pub(crate) async fn accept_call(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -68,7 +68,7 @@ pub async fn accept_call(
 }
 
 /// POST /api/dms/:dm_id/call/reject — reject an incoming call.
-pub async fn reject_call(
+pub(crate) async fn reject_call(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -85,7 +85,7 @@ pub async fn reject_call(
 }
 
 /// POST /api/dms/:dm_id/call/end — end an active call.
-pub async fn end_call(
+pub(crate) async fn end_call(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,

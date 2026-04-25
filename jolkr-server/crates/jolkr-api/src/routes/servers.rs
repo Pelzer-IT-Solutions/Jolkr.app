@@ -22,32 +22,32 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct ServerResponse {
+pub(crate) struct ServerResponse {
     pub server: ServerInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ServersResponse {
+pub(crate) struct ServersResponse {
     pub servers: Vec<ServerInfo>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct MembersResponse {
+pub(crate) struct MembersResponse {
     pub members: Vec<MemberRow>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct BanResponse {
+pub(crate) struct BanResponse {
     pub ban: BanInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct BansResponse {
+pub(crate) struct BansResponse {
     pub bans: Vec<BanInfo>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct NicknameBody {
+pub(crate) struct NicknameBody {
     pub nickname: Option<String>,
 }
 
@@ -56,7 +56,7 @@ pub struct NicknameBody {
 /// Re-presign icon_url/banner_url if they look like S3 keys (not full URLs).
 async fn presign_server_urls(state: &AppState, server: &mut ServerInfo) {
     for url_opt in [&mut server.icon_url, &mut server.banner_url] {
-        if let Some(ref key) = url_opt {
+        if let Some(key) = url_opt.as_deref() {
             if !key.starts_with("http") {
                 if let Ok(url) = state.storage.presign_get(key, PRESIGN_EXPIRY_SECS).await {
                     *url_opt = Some(url);
@@ -69,7 +69,7 @@ async fn presign_server_urls(state: &AppState, server: &mut ServerInfo) {
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/servers
-pub async fn create_server(
+pub(crate) async fn create_server(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<CreateServerRequest>,
@@ -80,7 +80,7 @@ pub async fn create_server(
 }
 
 /// GET /api/servers
-pub async fn list_servers(
+pub(crate) async fn list_servers(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<ServersResponse>, AppError> {
@@ -92,7 +92,7 @@ pub async fn list_servers(
 }
 
 /// GET /api/servers/:id — requires membership
-pub async fn get_server(
+pub(crate) async fn get_server(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -107,7 +107,7 @@ pub async fn get_server(
 }
 
 /// PATCH /api/servers/:id
-pub async fn update_server(
+pub(crate) async fn update_server(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -126,7 +126,7 @@ pub async fn update_server(
 }
 
 /// DELETE /api/servers/:id
-pub async fn delete_server(
+pub(crate) async fn delete_server(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -140,7 +140,7 @@ pub async fn delete_server(
 }
 
 /// GET /api/servers/:id/members — requires membership
-pub async fn list_members(
+pub(crate) async fn list_members(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -154,7 +154,7 @@ pub async fn list_members(
 }
 
 /// DELETE /api/servers/:id/members/@me — leave the server
-pub async fn leave_server(
+pub(crate) async fn leave_server(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -173,7 +173,7 @@ pub async fn leave_server(
 // ── Moderation Handlers ────────────────────────────────────────────────
 
 /// DELETE /api/servers/:id/members/:user_id — kick a member
-pub async fn kick_member(
+pub(crate) async fn kick_member(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
@@ -193,17 +193,17 @@ pub async fn kick_member(
     let pool = state.pool.clone();
     let caller = auth.user_id;
     tokio::spawn(async move {
-        let _ = jolkr_db::repo::AuditLogRepo::create(
+        drop(jolkr_db::repo::AuditLogRepo::create(
             &pool, server_id, caller, "member_kick",
             Some(user_id), Some("user"), None, None,
-        ).await;
+        ).await);
     });
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 /// POST /api/servers/:id/bans — ban a member
-pub async fn ban_member(
+pub(crate) async fn ban_member(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -226,17 +226,17 @@ pub async fn ban_member(
     let pool = state.pool.clone();
     let caller = auth.user_id;
     tokio::spawn(async move {
-        let _ = jolkr_db::repo::AuditLogRepo::create(
+        drop(jolkr_db::repo::AuditLogRepo::create(
             &pool, server_id, caller, "member_ban",
             Some(banned_user_id), Some("user"), None, reason.as_deref(),
-        ).await;
+        ).await);
     });
 
     Ok(Json(BanResponse { ban }))
 }
 
 /// DELETE /api/servers/:id/bans/:user_id — unban a user
-pub async fn unban_member(
+pub(crate) async fn unban_member(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
@@ -247,17 +247,17 @@ pub async fn unban_member(
     let pool = state.pool.clone();
     let caller = auth.user_id;
     tokio::spawn(async move {
-        let _ = jolkr_db::repo::AuditLogRepo::create(
+        drop(jolkr_db::repo::AuditLogRepo::create(
             &pool, server_id, caller, "member_unban",
             Some(user_id), Some("user"), None, None,
-        ).await;
+        ).await);
     });
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 /// GET /api/servers/:id/bans — list all bans
-pub async fn list_bans(
+pub(crate) async fn list_bans(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -269,12 +269,12 @@ pub async fn list_bans(
 // ── Timeout Handlers ──────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
-pub struct TimeoutBody {
+pub(crate) struct TimeoutBody {
     pub timeout_until: DateTime<Utc>,
 }
 
 /// POST /api/servers/:id/members/:user_id/timeout — timeout a member
-pub async fn timeout_member(
+pub(crate) async fn timeout_member(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
@@ -306,17 +306,17 @@ pub async fn timeout_member(
     let pool = state.pool.clone();
     let caller = auth.user_id;
     tokio::spawn(async move {
-        let _ = jolkr_db::repo::AuditLogRepo::create(
+        drop(jolkr_db::repo::AuditLogRepo::create(
             &pool, server_id, caller, "member_timeout",
             Some(user_id), Some("user"), None, None,
-        ).await;
+        ).await);
     });
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 /// DELETE /api/servers/:id/members/:user_id/timeout — remove timeout
-pub async fn remove_timeout(
+pub(crate) async fn remove_timeout(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
@@ -336,7 +336,7 @@ pub async fn remove_timeout(
 }
 
 /// PATCH /api/servers/:id/members/:user_id/nickname — set nickname
-pub async fn set_nickname(
+pub(crate) async fn set_nickname(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
@@ -356,12 +356,12 @@ pub async fn set_nickname(
 // ── Server Reordering ────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
-pub struct ReorderServersRequest {
+pub(crate) struct ReorderServersRequest {
     pub server_ids: Vec<Uuid>,
 }
 
 /// PUT /api/users/@me/servers/reorder
-pub async fn reorder_servers(
+pub(crate) async fn reorder_servers(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<ReorderServersRequest>,
@@ -373,13 +373,13 @@ pub async fn reorder_servers(
 // ── Discovery Handlers ────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
-pub struct DiscoverQuery {
+pub(crate) struct DiscoverQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
 
 /// GET /api/servers/discover — list public servers
-pub async fn discover_servers(
+pub(crate) async fn discover_servers(
     State(state): State<AppState>,
     _auth: AuthUser,
     Query(query): Query<DiscoverQuery>,
@@ -394,7 +394,7 @@ pub async fn discover_servers(
 }
 
 /// POST /api/servers/:id/join — join a public server
-pub async fn join_public_server(
+pub(crate) async fn join_public_server(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -413,7 +413,7 @@ pub async fn join_public_server(
 // ── Mark server as read ─────────────────────────────────────────────
 
 /// POST /api/servers/:server_id/read-all
-pub async fn mark_server_read(
+pub(crate) async fn mark_server_read(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,

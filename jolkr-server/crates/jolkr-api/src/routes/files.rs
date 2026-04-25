@@ -13,7 +13,7 @@ use crate::routes::AppState;
 /// verifies the caller has access, then streams the file from S3 with safe headers.
 ///
 /// GET /api/files/:attachment_id
-pub async fn serve_file(
+pub(crate) async fn serve_file(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(attachment_id): Path<Uuid>,

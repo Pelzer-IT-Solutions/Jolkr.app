@@ -15,16 +15,16 @@ use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Serialize)]
-pub struct ReactionsResponse {
+pub(crate) struct ReactionsResponse {
     pub reactions: Vec<ReactionRow>,
 }
 
 #[derive(Deserialize)]
-pub struct AddReactionRequest {
+pub(crate) struct AddReactionRequest {
     pub emoji: String,
 }
 
-pub async fn add_reaction(
+pub(crate) async fn add_reaction(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,
@@ -68,7 +68,7 @@ pub async fn add_reaction(
         .unwrap_or_default();
     {
         use std::collections::HashMap;
-        let mut by_emoji: HashMap<String, (i64, Vec<uuid::Uuid>)> = HashMap::new();
+        let mut by_emoji: HashMap<String, (i64, Vec<Uuid>)> = HashMap::new();
         for r in rows {
             let entry = by_emoji.entry(r.emoji).or_insert((0, Vec::new()));
             entry.0 += 1;
@@ -93,7 +93,7 @@ pub async fn add_reaction(
     Ok(StatusCode::CREATED)
 }
 
-pub async fn remove_reaction(
+pub(crate) async fn remove_reaction(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((message_id, emoji)): Path<(Uuid, String)>,
@@ -115,7 +115,7 @@ pub async fn remove_reaction(
         .unwrap_or_default();
     {
         use std::collections::HashMap;
-        let mut by_emoji: HashMap<String, (i64, Vec<uuid::Uuid>)> = HashMap::new();
+        let mut by_emoji: HashMap<String, (i64, Vec<Uuid>)> = HashMap::new();
         for r in rows {
             let entry = by_emoji.entry(r.emoji).or_insert((0, Vec::new()));
             entry.0 += 1;
@@ -140,7 +140,7 @@ pub async fn remove_reaction(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn list_reactions(
+pub(crate) async fn list_reactions(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,

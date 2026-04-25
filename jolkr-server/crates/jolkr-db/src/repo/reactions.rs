@@ -4,9 +4,11 @@ use uuid::Uuid;
 use crate::models::ReactionRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `reaction` persistence.
 pub struct ReactionRepo;
 
 impl ReactionRepo {
+    /// Add reaction.
     pub async fn add_reaction(
         pool: &PgPool,
         message_id: Uuid,
@@ -15,10 +17,10 @@ impl ReactionRepo {
     ) -> Result<ReactionRow, JolkrError> {
         let id = Uuid::new_v4();
         let row = sqlx::query_as::<_, ReactionRow>(
-            r#"INSERT INTO reactions (id, message_id, user_id, emoji)
+            "INSERT INTO reactions (id, message_id, user_id, emoji)
                VALUES ($1, $2, $3, $4)
                ON CONFLICT (message_id, user_id, emoji) DO UPDATE SET id = reactions.id
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(id)
         .bind(message_id)
@@ -29,6 +31,7 @@ impl ReactionRepo {
         Ok(row)
     }
 
+    /// Removes reaction.
     pub async fn remove_reaction(
         pool: &PgPool,
         message_id: Uuid,
@@ -36,8 +39,8 @@ impl ReactionRepo {
         emoji: &str,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"DELETE FROM reactions
-               WHERE message_id = $1 AND user_id = $2 AND emoji = $3"#,
+            "DELETE FROM reactions
+               WHERE message_id = $1 AND user_id = $2 AND emoji = $3",
         )
         .bind(message_id)
         .bind(user_id)
@@ -47,14 +50,15 @@ impl ReactionRepo {
         Ok(())
     }
 
+    /// Lists for message.
     pub async fn list_for_message(
         pool: &PgPool,
         message_id: Uuid,
     ) -> Result<Vec<ReactionRow>, JolkrError> {
         let rows = sqlx::query_as::<_, ReactionRow>(
-            r#"SELECT * FROM reactions
+            "SELECT * FROM reactions
                WHERE message_id = $1
-               ORDER BY created_at ASC"#,
+               ORDER BY created_at ASC",
         )
         .bind(message_id)
         .fetch_all(pool)
@@ -71,9 +75,9 @@ impl ReactionRepo {
             return Ok(Vec::new());
         }
         let rows = sqlx::query_as::<_, ReactionRow>(
-            r#"SELECT * FROM reactions
+            "SELECT * FROM reactions
                WHERE message_id = ANY($1)
-               ORDER BY created_at ASC"#,
+               ORDER BY created_at ASC",
         )
         .bind(message_ids)
         .fetch_all(pool)

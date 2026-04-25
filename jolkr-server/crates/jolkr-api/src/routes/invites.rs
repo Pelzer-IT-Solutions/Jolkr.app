@@ -14,16 +14,16 @@ use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Serialize)]
-pub struct InviteResponse {
+pub(crate) struct InviteResponse {
     pub invite: InviteInfo,
 }
 
 #[derive(Serialize)]
-pub struct InvitesResponse {
+pub(crate) struct InvitesResponse {
     pub invites: Vec<InviteInfo>,
 }
 
-pub async fn create_invite(
+pub(crate) async fn create_invite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -34,7 +34,7 @@ pub async fn create_invite(
     Ok(Json(InviteResponse { invite }))
 }
 
-pub async fn use_invite(
+pub(crate) async fn use_invite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(code): Path<String>,
@@ -62,7 +62,7 @@ pub async fn use_invite(
     Ok(Json(InviteResponse { invite }))
 }
 
-pub async fn list_invites(
+pub(crate) async fn list_invites(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -72,7 +72,7 @@ pub async fn list_invites(
     Ok(Json(InvitesResponse { invites }))
 }
 
-pub async fn delete_invite(
+pub(crate) async fn delete_invite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, invite_id)): Path<(Uuid, Uuid)>,

@@ -13,6 +13,7 @@ fn escape_like(input: &str) -> String {
         .replace('_', "\\_")
 }
 
+/// Repository for `user` persistence.
 pub struct UserRepo;
 
 impl UserRepo {
@@ -26,11 +27,11 @@ impl UserRepo {
     ) -> Result<UserRow, JolkrError> {
         let now = Utc::now();
         let user = sqlx::query_as::<_, UserRow>(
-            r#"
+            "
             INSERT INTO users (id, email, username, password_hash, is_online, created_at, updated_at)
             VALUES ($1, $2, $3, $4, false, $5, $5)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(email)
@@ -46,7 +47,7 @@ impl UserRepo {
     /// Find a user by their UUID.
     pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<UserRow, JolkrError> {
         let user = sqlx::query_as::<_, UserRow>(
-            r#"SELECT * FROM users WHERE id = $1"#,
+            "SELECT * FROM users WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -59,7 +60,7 @@ impl UserRepo {
     /// Find a user by email address (case-insensitive).
     pub async fn get_by_email(pool: &PgPool, email: &str) -> Result<UserRow, JolkrError> {
         let user = sqlx::query_as::<_, UserRow>(
-            r#"SELECT * FROM users WHERE LOWER(email) = LOWER($1)"#,
+            "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
         )
         .bind(email)
         .fetch_optional(pool)
@@ -72,7 +73,7 @@ impl UserRepo {
     /// Find a user by username.
     pub async fn get_by_username(pool: &PgPool, username: &str) -> Result<UserRow, JolkrError> {
         let user = sqlx::query_as::<_, UserRow>(
-            r#"SELECT * FROM users WHERE username = $1"#,
+            "SELECT * FROM users WHERE username = $1",
         )
         .bind(username)
         .fetch_optional(pool)
@@ -95,7 +96,7 @@ impl UserRepo {
     ) -> Result<UserRow, JolkrError> {
         let now = Utc::now();
         let user = sqlx::query_as::<_, UserRow>(
-            r#"
+            "
             UPDATE users
             SET display_name       = COALESCE($2, display_name),
                 avatar_url         = COALESCE($3, avatar_url),
@@ -106,7 +107,7 @@ impl UserRepo {
                 updated_at         = $8
             WHERE id = $1
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(display_name)
@@ -131,7 +132,7 @@ impl UserRepo {
     ) -> Result<(), JolkrError> {
         let now = Utc::now();
         let result = sqlx::query(
-            r#"UPDATE users SET password_hash = $2, updated_at = $3 WHERE id = $1"#,
+            "UPDATE users SET password_hash = $2, updated_at = $3 WHERE id = $1",
         )
         .bind(id)
         .bind(password_hash)
@@ -147,7 +148,7 @@ impl UserRepo {
 
     /// Delete a user (hard delete).
     pub async fn delete_user(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
-        let result = sqlx::query(r#"DELETE FROM users WHERE id = $1"#)
+        let result = sqlx::query("DELETE FROM users WHERE id = $1")
             .bind(id)
             .execute(pool)
             .await?;
@@ -164,7 +165,7 @@ impl UserRepo {
             return Ok(vec![]);
         }
         let users = sqlx::query_as::<_, UserRow>(
-            r#"SELECT * FROM users WHERE id = ANY($1)"#,
+            "SELECT * FROM users WHERE id = ANY($1)",
         )
         .bind(ids)
         .fetch_all(pool)
@@ -181,12 +182,12 @@ impl UserRepo {
     ) -> Result<Vec<UserRow>, JolkrError> {
         let pattern = format!("{}%", escape_like(query));
         let users = sqlx::query_as::<_, UserRow>(
-            r#"
+            "
             SELECT * FROM users
             WHERE LOWER(username) LIKE LOWER($1)
             ORDER BY username ASC
             LIMIT 4
-            "#,
+            ",
         )
         .bind(&pattern)
         .fetch_all(pool)
@@ -200,7 +201,7 @@ impl UserRepo {
         Ok(users)
     }
 
-    /// Set the online status and last_seen timestamp.
+    /// Set the online status and `last_seen` timestamp.
     pub async fn set_online_status(
         pool: &PgPool,
         id: Uuid,
@@ -208,10 +209,10 @@ impl UserRepo {
     ) -> Result<(), JolkrError> {
         let now = Utc::now();
         sqlx::query(
-            r#"
+            "
             UPDATE users SET is_online = $2, last_seen_at = $3, updated_at = $3
             WHERE id = $1
-            "#,
+            ",
         )
         .bind(id)
         .bind(is_online)

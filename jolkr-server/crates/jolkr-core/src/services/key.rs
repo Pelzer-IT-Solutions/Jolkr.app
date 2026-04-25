@@ -7,17 +7,25 @@ use jolkr_db::repo::keys::PreKeyBundle;
 
 use crate::crypto;
 
+/// Domain service for `key` operations.
 pub struct KeyService;
 
 /// Request payload for uploading prekeys.
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct UploadPreKeysRequest {
+    /// Device identifier.
     pub device_id: Uuid,
+    /// Identity key.
     pub identity_key: Vec<u8>,
+    /// Signed prekey.
     pub signed_prekey: Vec<u8>,
+    /// Signed prekey signature.
     pub signed_prekey_signature: Vec<u8>,
+    /// One time prekeys.
     pub one_time_prekeys: Vec<Vec<u8>>,
+    /// Pq signed prekey.
     pub pq_signed_prekey: Option<Vec<u8>>,
+    /// Pq signed prekey signature.
     pub pq_signed_prekey_signature: Option<Vec<u8>>,
 }
 
@@ -114,7 +122,7 @@ impl KeyService {
         KeyRepo::get_prekey_bundle(pool, target_user_id, target_device_id).await
     }
 
-    /// Fetch a prekey bundle by user_id only (auto-selects most recent device).
+    /// Fetch a prekey bundle by `user_id` only (auto-selects most recent device).
     pub async fn get_prekey_bundle_for_user(
         pool: &PgPool,
         target_user_id: Uuid,

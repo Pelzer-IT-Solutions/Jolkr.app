@@ -6,14 +6,22 @@ use jolkr_common::{JolkrError, Permissions};
 use jolkr_db::models::InviteRow;
 use jolkr_db::repo::{InviteRepo, MemberRepo, RoleRepo, ServerRepo};
 
+/// Public information about `invite`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InviteInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning server identifier.
     pub server_id: Uuid,
+    /// Status or error code.
     pub code: String,
+    /// Creator user identifier.
     pub creator_id: Uuid,
+    /// Maximum allowed uses (None = unlimited).
     pub max_uses: Option<i32>,
+    /// Number of times this entry has been used.
     pub use_count: i32,
+    /// Expiration timestamp.
     pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -31,15 +39,20 @@ impl From<InviteRow> for InviteInfo {
     }
 }
 
+/// Request payload for the `CreateInvite` operation.
 #[derive(Debug, Deserialize)]
 pub struct CreateInviteRequest {
+    /// Maximum allowed uses (None = unlimited).
     pub max_uses: Option<i32>,
+    /// Lifetime in seconds.
     pub max_age_seconds: Option<i64>,
 }
 
+/// Domain service for `invite` operations.
 pub struct InviteService;
 
 impl InviteService {
+    /// Creates invite.
     pub async fn create_invite(
         pool: &PgPool,
         server_id: Uuid,
@@ -82,6 +95,7 @@ impl InviteService {
         Ok(InviteInfo::from(row))
     }
 
+    /// Use invite.
     pub async fn use_invite(
         pool: &PgPool,
         code: &str,
@@ -95,7 +109,7 @@ impl InviteService {
 
         // Check if user is banned from this server
         let is_banned: bool = sqlx::query_scalar(
-            r#"SELECT EXISTS(SELECT 1 FROM server_bans WHERE server_id = $1 AND user_id = $2)"#,
+            "SELECT EXISTS(SELECT 1 FROM server_bans WHERE server_id = $1 AND user_id = $2)",
         )
         .bind(invite.server_id)
         .bind(user_id)
@@ -108,10 +122,10 @@ impl InviteService {
 
         // Atomically increment use count — returns false if invite is exhausted/expired
         let result = sqlx::query(
-            r#"UPDATE invites SET use_count = use_count + 1
+            "UPDATE invites SET use_count = use_count + 1
                WHERE id = $1
                  AND (max_uses IS NULL OR use_count < max_uses)
-                 AND (expires_at IS NULL OR expires_at > NOW())"#,
+                 AND (expires_at IS NULL OR expires_at > NOW())",
         )
         .bind(invite.id)
         .execute(&mut *tx)
@@ -125,9 +139,9 @@ impl InviteService {
 
         // Add user as member
         let member_result = sqlx::query(
-            r#"INSERT INTO members (id, server_id, user_id, joined_at)
+            "INSERT INTO members (id, server_id, user_id, joined_at)
                VALUES ($1, $2, $3, NOW())
-               ON CONFLICT (server_id, user_id) DO NOTHING"#,
+               ON CONFLICT (server_id, user_id) DO NOTHING",
         )
         .bind(Uuid::new_v4())
         .bind(invite.server_id)
@@ -145,6 +159,7 @@ impl InviteService {
         Ok(InviteInfo::from(invite))
     }
 
+    /// Lists invites.
     pub async fn list_invites(
         pool: &PgPool,
         server_id: Uuid,
@@ -157,6 +172,7 @@ impl InviteService {
         Ok(rows.into_iter().map(InviteInfo::from).collect())
     }
 
+    /// Deletes invite.
     pub async fn delete_invite(
         pool: &PgPool,
         invite_id: Uuid,

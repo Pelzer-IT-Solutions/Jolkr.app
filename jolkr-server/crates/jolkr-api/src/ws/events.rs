@@ -11,7 +11,7 @@ use jolkr_core::services::thread::ThreadInfo;
 /// Events sent FROM the client TO the server over the WebSocket.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "op", content = "d")]
-pub enum ClientEvent {
+pub(crate) enum ClientEvent {
     /// First message after connecting; includes the access token.
     Identify {
         token: String,

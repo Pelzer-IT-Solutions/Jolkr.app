@@ -12,22 +12,22 @@ use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Deserialize)]
-pub struct AddReactionRequest {
+pub(crate) struct AddReactionRequest {
     pub emoji: String,
 }
 
 #[derive(Serialize)]
-pub struct DmReactionResponse {
+pub(crate) struct DmReactionResponse {
     pub reaction: DmReactionInfo,
 }
 
 #[derive(Serialize)]
-pub struct DmReactionsResponse {
+pub(crate) struct DmReactionsResponse {
     pub reactions: Vec<DmReactionInfo>,
 }
 
 #[derive(Serialize)]
-pub struct DmReactionInfo {
+pub(crate) struct DmReactionInfo {
     pub id: Uuid,
     pub message_id: Uuid,
     pub user_id: Uuid,
@@ -62,7 +62,7 @@ async fn broadcast_reactions(state: &AppState, dm_channel_id: Uuid, message_id: 
 }
 
 /// POST /api/dms/messages/:id/reactions
-pub async fn add_dm_reaction(
+pub(crate) async fn add_dm_reaction(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,
@@ -95,7 +95,7 @@ pub async fn add_dm_reaction(
 }
 
 /// DELETE /api/dms/messages/:id/reactions/:emoji
-pub async fn remove_dm_reaction(
+pub(crate) async fn remove_dm_reaction(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((message_id, emoji)): Path<(Uuid, String)>,
@@ -114,7 +114,7 @@ pub async fn remove_dm_reaction(
 }
 
 /// GET /api/dms/messages/:id/reactions
-pub async fn list_dm_reactions(
+pub(crate) async fn list_dm_reactions(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,

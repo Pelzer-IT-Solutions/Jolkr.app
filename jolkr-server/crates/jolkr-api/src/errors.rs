@@ -7,7 +7,7 @@ use serde_json::json;
 use jolkr_common::JolkrError;
 
 /// Wrapper around `JolkrError` that implements Axum's `IntoResponse`.
-pub struct AppError(pub JolkrError);
+pub(crate) struct AppError(pub JolkrError);
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {

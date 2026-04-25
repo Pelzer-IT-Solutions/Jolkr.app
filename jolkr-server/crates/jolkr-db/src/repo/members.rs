@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::MemberRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `member` persistence.
 pub struct MemberRepo;
 
 impl MemberRepo {
@@ -19,12 +20,12 @@ impl MemberRepo {
 
         // Use INSERT ON CONFLICT to avoid TOCTOU race condition
         let member = sqlx::query_as::<_, MemberRow>(
-            r#"
+            "
             INSERT INTO members (id, server_id, user_id, joined_at)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (server_id, user_id) DO NOTHING
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(server_id)
@@ -46,7 +47,7 @@ impl MemberRepo {
         user_id: Uuid,
     ) -> Result<(), JolkrError> {
         let result = sqlx::query(
-            r#"DELETE FROM members WHERE server_id = $1 AND user_id = $2"#,
+            "DELETE FROM members WHERE server_id = $1 AND user_id = $2",
         )
         .bind(server_id)
         .bind(user_id)
@@ -66,7 +67,7 @@ impl MemberRepo {
         user_id: Uuid,
     ) -> Result<MemberRow, JolkrError> {
         let member = sqlx::query_as::<_, MemberRow>(
-            r#"SELECT * FROM members WHERE server_id = $1 AND user_id = $2"#,
+            "SELECT * FROM members WHERE server_id = $1 AND user_id = $2",
         )
         .bind(server_id)
         .bind(user_id)
@@ -83,11 +84,11 @@ impl MemberRepo {
         server_id: Uuid,
     ) -> Result<Vec<MemberRow>, JolkrError> {
         let members = sqlx::query_as::<_, MemberRow>(
-            r#"
+            "
             SELECT * FROM members
             WHERE server_id = $1
             ORDER BY joined_at ASC
-            "#,
+            ",
         )
         .bind(server_id)
         .fetch_all(pool)
@@ -119,11 +120,11 @@ impl MemberRepo {
         nickname: Option<&str>,
     ) -> Result<MemberRow, JolkrError> {
         let member = sqlx::query_as::<_, MemberRow>(
-            r#"
+            "
             UPDATE members SET nickname = $3
             WHERE server_id = $1 AND user_id = $2
             RETURNING *
-            "#,
+            ",
         )
         .bind(server_id)
         .bind(user_id)
@@ -143,11 +144,11 @@ impl MemberRepo {
         timeout_until: Option<DateTime<Utc>>,
     ) -> Result<MemberRow, JolkrError> {
         let member = sqlx::query_as::<_, MemberRow>(
-            r#"
+            "
             UPDATE members SET timeout_until = $3
             WHERE server_id = $1 AND user_id = $2
             RETURNING *
-            "#,
+            ",
         )
         .bind(server_id)
         .bind(user_id)
@@ -168,10 +169,10 @@ impl MemberRepo {
         let mut tx = pool.begin().await?;
         for (server_id, position) in positions {
             sqlx::query(
-                r#"
+                "
                 UPDATE members SET server_position = $3
                 WHERE user_id = $1 AND server_id = $2
-                "#,
+                ",
             )
             .bind(user_id)
             .bind(server_id)
@@ -190,17 +191,17 @@ impl MemberRepo {
         user_id: Uuid,
     ) -> Result<bool, JolkrError> {
         let row: Option<(bool,)> = sqlx::query_as(
-            r#"
+            "
             SELECT timeout_until IS NOT NULL AND timeout_until > NOW() as timed_out
             FROM members
             WHERE server_id = $1 AND user_id = $2
-            "#,
+            ",
         )
         .bind(server_id)
         .bind(user_id)
         .fetch_optional(pool)
         .await?;
 
-        Ok(row.map(|r| r.0).unwrap_or(false))
+        Ok(row.is_some_and(|r| r.0))
     }
 }

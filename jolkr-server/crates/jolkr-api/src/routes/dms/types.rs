@@ -5,34 +5,34 @@ use jolkr_core::services::dm::{DmChannelInfo, DmMessageInfo};
 use jolkr_core::services::message::MessageInfo;
 
 #[derive(Serialize)]
-pub struct DmChannelResponse {
+pub(crate) struct DmChannelResponse {
     pub channel: DmChannelInfo,
 }
 
 #[derive(Serialize)]
-pub struct DmChannelsResponse {
+pub(crate) struct DmChannelsResponse {
     pub channels: Vec<DmChannelInfo>,
 }
 
 #[derive(Serialize)]
-pub struct DmMessageResponse {
+pub(crate) struct DmMessageResponse {
     pub message: DmMessageInfo,
 }
 
 #[derive(Serialize)]
-pub struct DmMessagesResponse {
+pub(crate) struct DmMessagesResponse {
     pub messages: Vec<DmMessageInfo>,
 }
 
 /// Accept either `{ "user_id": "..." }` for 1-on-1 or `{ "user_ids": [...], "name"?: "..." }` for group DM.
 #[derive(Deserialize)]
 #[serde(untagged)]
-pub enum CreateDmRequest {
+pub(crate) enum CreateDmRequest {
     Group { user_ids: Vec<Uuid>, name: Option<String> },
     OneOnOne { user_id: Uuid },
 }
 
-pub fn dm_to_message_info(msg: &DmMessageInfo) -> MessageInfo {
+pub(crate) fn dm_to_message_info(msg: &DmMessageInfo) -> MessageInfo {
     MessageInfo {
         id: msg.id,
         channel_id: msg.dm_channel_id,

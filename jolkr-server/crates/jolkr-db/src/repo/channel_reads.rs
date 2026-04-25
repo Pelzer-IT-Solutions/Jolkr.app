@@ -1,9 +1,11 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
+/// Repository for `channelreads` persistence.
 pub struct ChannelReadsRepo;
 
 impl ChannelReadsRepo {
+    /// Mark read.
     pub async fn mark_read(
         pool: &PgPool,
         user_id: Uuid,
@@ -25,6 +27,7 @@ impl ChannelReadsRepo {
         Ok(())
     }
 
+    /// Mark server read.
     pub async fn mark_server_read(
         pool: &PgPool,
         user_id: Uuid,

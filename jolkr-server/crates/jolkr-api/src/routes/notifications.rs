@@ -13,7 +13,7 @@ use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Debug, Serialize)]
-pub struct NotificationSettingResponse {
+pub(crate) struct NotificationSettingResponse {
     pub target_type: String,
     pub target_id: Uuid,
     pub muted: bool,
@@ -22,12 +22,12 @@ pub struct NotificationSettingResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct NotificationSettingsListResponse {
+pub(crate) struct NotificationSettingsListResponse {
     pub settings: Vec<NotificationSettingResponse>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UpdateNotificationSettingRequest {
+pub(crate) struct UpdateNotificationSettingRequest {
     pub muted: bool,
     #[serde(default)]
     pub mute_until: Option<DateTime<Utc>>,
@@ -36,7 +36,7 @@ pub struct UpdateNotificationSettingRequest {
 }
 
 /// GET /api/users/me/notifications — list all notification settings
-pub async fn list_notification_settings(
+pub(crate) async fn list_notification_settings(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<NotificationSettingsListResponse>, AppError> {
@@ -56,7 +56,7 @@ pub async fn list_notification_settings(
 }
 
 /// GET /api/users/me/notifications/:target_type/:target_id
-pub async fn get_notification_setting(
+pub(crate) async fn get_notification_setting(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((target_type, target_id)): Path<(String, Uuid)>,
@@ -88,7 +88,7 @@ pub async fn get_notification_setting(
 }
 
 /// PUT /api/users/me/notifications/:target_type/:target_id
-pub async fn update_notification_setting(
+pub(crate) async fn update_notification_setting(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((target_type, target_id)): Path<(String, Uuid)>,

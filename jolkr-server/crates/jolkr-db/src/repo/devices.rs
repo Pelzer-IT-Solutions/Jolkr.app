@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::models::DeviceRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `device` persistence.
 pub struct DeviceRepo;
 
 impl DeviceRepo {
@@ -17,7 +18,7 @@ impl DeviceRepo {
         push_token: Option<&str>,
     ) -> Result<DeviceRow, JolkrError> {
         let row = sqlx::query_as::<_, DeviceRow>(
-            r#"
+            "
             INSERT INTO devices (id, user_id, device_name, device_type, push_token, last_active_at)
             VALUES ($1, $2, $3, $4, $5, now())
             ON CONFLICT (id) DO UPDATE
@@ -26,7 +27,7 @@ impl DeviceRepo {
                 last_active_at = now()
             WHERE devices.user_id = $2
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(user_id)
@@ -47,12 +48,12 @@ impl DeviceRepo {
         push_token: &str,
     ) -> Result<DeviceRow, JolkrError> {
         let row = sqlx::query_as::<_, DeviceRow>(
-            r#"
+            "
             UPDATE devices
             SET push_token = $3, last_active_at = now()
             WHERE id = $1 AND user_id = $2
             RETURNING *
-            "#,
+            ",
         )
         .bind(device_id)
         .bind(user_id)
@@ -70,7 +71,7 @@ impl DeviceRepo {
         user_id: Uuid,
     ) -> Result<Vec<DeviceRow>, JolkrError> {
         let rows = sqlx::query_as::<_, DeviceRow>(
-            r#"SELECT * FROM devices WHERE user_id = $1 ORDER BY last_active_at DESC NULLS LAST"#,
+            "SELECT * FROM devices WHERE user_id = $1 ORDER BY last_active_at DESC NULLS LAST",
         )
         .bind(user_id)
         .fetch_all(pool)
@@ -85,7 +86,7 @@ impl DeviceRepo {
         user_id: Uuid,
     ) -> Result<Vec<DeviceRow>, JolkrError> {
         let rows = sqlx::query_as::<_, DeviceRow>(
-            r#"SELECT * FROM devices WHERE user_id = $1 AND push_token IS NOT NULL"#,
+            "SELECT * FROM devices WHERE user_id = $1 AND push_token IS NOT NULL",
         )
         .bind(user_id)
         .fetch_all(pool)
@@ -103,7 +104,7 @@ impl DeviceRepo {
             return Ok(Vec::new());
         }
         let rows = sqlx::query_as::<_, DeviceRow>(
-            r#"SELECT * FROM devices WHERE user_id = ANY($1) AND push_token IS NOT NULL"#,
+            "SELECT * FROM devices WHERE user_id = ANY($1) AND push_token IS NOT NULL",
         )
         .bind(user_ids)
         .fetch_all(pool)
@@ -119,7 +120,7 @@ impl DeviceRepo {
         user_id: Uuid,
     ) -> Result<(), JolkrError> {
         let result = sqlx::query(
-            r#"DELETE FROM devices WHERE id = $1 AND user_id = $2"#,
+            "DELETE FROM devices WHERE id = $1 AND user_id = $2",
         )
         .bind(device_id)
         .bind(user_id)

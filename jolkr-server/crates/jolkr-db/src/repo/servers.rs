@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::ServerRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `server` persistence.
 pub struct ServerRepo;
 
 impl ServerRepo {
@@ -20,11 +21,11 @@ impl ServerRepo {
 
         // Create the server row
         let server = sqlx::query_as::<_, ServerRow>(
-            r#"
+            "
             INSERT INTO servers (id, name, description, owner_id, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $5)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(name)
@@ -37,10 +38,10 @@ impl ServerRepo {
         // Also create a membership record for the owner
         let member_id = Uuid::new_v4();
         sqlx::query(
-            r#"
+            "
             INSERT INTO members (id, server_id, user_id, joined_at)
             VALUES ($1, $2, $3, $4)
-            "#,
+            ",
         )
         .bind(member_id)
         .bind(id)
@@ -55,7 +56,7 @@ impl ServerRepo {
     /// Fetch a server by ID.
     pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<ServerRow, JolkrError> {
         let server = sqlx::query_as::<_, ServerRow>(
-            r#"SELECT * FROM servers WHERE id = $1"#,
+            "SELECT * FROM servers WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -71,12 +72,12 @@ impl ServerRepo {
         user_id: Uuid,
     ) -> Result<Vec<ServerRow>, JolkrError> {
         let servers = sqlx::query_as::<_, ServerRow>(
-            r#"
+            "
             SELECT s.* FROM servers s
             INNER JOIN members m ON m.server_id = s.id
             WHERE m.user_id = $1
             ORDER BY m.server_position ASC, s.name ASC
-            "#,
+            ",
         )
         .bind(user_id)
         .fetch_all(pool)
@@ -92,13 +93,13 @@ impl ServerRepo {
         offset: i64,
     ) -> Result<Vec<ServerRow>, JolkrError> {
         let rows = sqlx::query_as::<_, ServerRow>(
-            r#"
+            "
             SELECT s.*
             FROM servers s
             WHERE s.is_public = true
             ORDER BY s.created_at DESC
             LIMIT $1 OFFSET $2
-            "#,
+            ",
         )
         .bind(limit)
         .bind(offset)
@@ -111,7 +112,7 @@ impl ServerRepo {
     /// Count members for a server.
     pub async fn count_members(pool: &PgPool, server_id: Uuid) -> Result<i64, JolkrError> {
         let count: (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM members WHERE server_id = $1"#,
+            "SELECT COUNT(*) FROM members WHERE server_id = $1",
         )
         .bind(server_id)
         .fetch_one(pool)
@@ -122,7 +123,7 @@ impl ServerRepo {
     /// Count members for multiple servers in one query.
     pub async fn count_members_batch(pool: &PgPool, server_ids: &[Uuid]) -> Result<std::collections::HashMap<Uuid, i64>, JolkrError> {
         let rows: Vec<(Uuid, i64)> = sqlx::query_as(
-            r#"SELECT server_id, COUNT(*) FROM members WHERE server_id = ANY($1) GROUP BY server_id"#,
+            "SELECT server_id, COUNT(*) FROM members WHERE server_id = ANY($1) GROUP BY server_id",
         )
         .bind(server_ids)
         .fetch_all(pool)
@@ -143,7 +144,7 @@ impl ServerRepo {
     ) -> Result<ServerRow, JolkrError> {
         let now = Utc::now();
         let server = sqlx::query_as::<_, ServerRow>(
-            r#"
+            "
             UPDATE servers
             SET name        = COALESCE($2, name),
                 description = COALESCE($3, description),
@@ -154,7 +155,7 @@ impl ServerRepo {
                 updated_at  = $8
             WHERE id = $1
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(name)
@@ -173,7 +174,7 @@ impl ServerRepo {
 
     /// Delete a server.
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
-        let result = sqlx::query(r#"DELETE FROM servers WHERE id = $1"#)
+        let result = sqlx::query("DELETE FROM servers WHERE id = $1")
             .bind(id)
             .execute(pool)
             .await?;

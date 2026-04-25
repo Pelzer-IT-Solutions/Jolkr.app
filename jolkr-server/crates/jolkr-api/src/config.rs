@@ -1,6 +1,6 @@
 /// Application configuration, loaded from environment variables.
 #[derive(Debug, Clone)]
-pub struct Config {
+pub(crate) struct Config {
     pub database_url: String,
     pub redis_url: String,
     pub jwt_secret: String,
@@ -26,7 +26,7 @@ pub struct Config {
 
 impl Config {
     /// Read config from environment variables with sensible defaults for local development.
-    pub fn from_env() -> Self {
+    pub(crate) fn from_env() -> Self {
         Self {
             database_url: env_or(
                 "DATABASE_URL",

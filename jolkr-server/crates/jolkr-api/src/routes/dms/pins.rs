@@ -13,7 +13,7 @@ use crate::routes::AppState;
 use super::types::*;
 
 /// POST /api/dms/:dm_id/pins/:message_id — pin a DM message
-pub async fn pin_dm_message(
+pub(crate) async fn pin_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((dm_id, message_id)): Path<(Uuid, Uuid)>,
@@ -29,7 +29,7 @@ pub async fn pin_dm_message(
 }
 
 /// DELETE /api/dms/:dm_id/pins/:message_id — unpin a DM message
-pub async fn unpin_dm_message(
+pub(crate) async fn unpin_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((dm_id, message_id)): Path<(Uuid, Uuid)>,
@@ -45,7 +45,7 @@ pub async fn unpin_dm_message(
 }
 
 /// GET /api/dms/:dm_id/pins — list pinned DM messages
-pub async fn list_dm_pins(
+pub(crate) async fn list_dm_pins(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,

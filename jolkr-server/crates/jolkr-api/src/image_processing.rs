@@ -12,11 +12,14 @@ const ICON_MAX_PX: u32 = 256;
 /// The purpose of the uploaded image — determines the max output size.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImagePurpose {
+    /// `Avatar` variant.
     Avatar,
+    /// `Icon` variant.
     Icon,
 }
 
 impl ImagePurpose {
+    /// Max px.
     pub fn max_px(self) -> u32 {
         match self {
             Self::Avatar => AVATAR_MAX_PX,
@@ -24,6 +27,7 @@ impl ImagePurpose {
         }
     }
 
+    /// Parses from a string.
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "avatar" => Some(Self::Avatar),
@@ -96,8 +100,8 @@ fn rasterize_svg(data: &[u8], max_px: u32) -> Result<DynamicImage, String> {
         .map_err(|e| format!("Failed to parse SVG: {e}"))?;
 
     let svg_size = tree.size;
-    let sw = svg_size.width() as f32;
-    let sh = svg_size.height() as f32;
+    let sw = svg_size.width();
+    let sh = svg_size.height();
 
     // Compute scale to fit within max_px × max_px
     let max_dim = if sw > sh { sw } else { sh };

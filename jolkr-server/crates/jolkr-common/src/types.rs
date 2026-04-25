@@ -43,11 +43,15 @@ pub type Timestamp = DateTime<Utc>;
 // ── Constructor helpers ────────────────────────────────────────────────
 
 impl UserId {
+    /// Creates a new instance.
+    #[must_use] 
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
-    pub fn from_uuid(id: Uuid) -> Self {
+    /// Wraps an existing UUID into the strongly-typed identifier.
+    #[must_use] 
+    pub const fn from_uuid(id: Uuid) -> Self {
         Self(id)
     }
 }
@@ -59,11 +63,15 @@ impl Default for UserId {
 }
 
 impl ServerId {
+    /// Creates a new instance.
+    #[must_use] 
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
-    pub fn from_uuid(id: Uuid) -> Self {
+    /// Wraps an existing UUID into the strongly-typed identifier.
+    #[must_use] 
+    pub const fn from_uuid(id: Uuid) -> Self {
         Self(id)
     }
 }
@@ -75,11 +83,15 @@ impl Default for ServerId {
 }
 
 impl ChannelId {
+    /// Creates a new instance.
+    #[must_use] 
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
-    pub fn from_uuid(id: Uuid) -> Self {
+    /// Wraps an existing UUID into the strongly-typed identifier.
+    #[must_use] 
+    pub const fn from_uuid(id: Uuid) -> Self {
         Self(id)
     }
 }
@@ -91,11 +103,15 @@ impl Default for ChannelId {
 }
 
 impl MessageId {
+    /// Creates a new instance.
+    #[must_use] 
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
-    pub fn from_uuid(id: Uuid) -> Self {
+    /// Wraps an existing UUID into the strongly-typed identifier.
+    #[must_use] 
+    pub const fn from_uuid(id: Uuid) -> Self {
         Self(id)
     }
 }
@@ -107,11 +123,15 @@ impl Default for MessageId {
 }
 
 impl DeviceId {
+    /// Creates a new instance.
+    #[must_use] 
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
-    pub fn from_uuid(id: Uuid) -> Self {
+    /// Wraps an existing UUID into the strongly-typed identifier.
+    #[must_use] 
+    pub const fn from_uuid(id: Uuid) -> Self {
         Self(id)
     }
 }
@@ -123,11 +143,15 @@ impl Default for DeviceId {
 }
 
 impl RoleId {
+    /// Creates a new instance.
+    #[must_use] 
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
-    pub fn from_uuid(id: Uuid) -> Self {
+    /// Wraps an existing UUID into the strongly-typed identifier.
+    #[must_use] 
+    pub const fn from_uuid(id: Uuid) -> Self {
         Self(id)
     }
 }
@@ -139,11 +163,15 @@ impl Default for RoleId {
 }
 
 impl InviteId {
+    /// Creates a new instance.
+    #[must_use] 
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
-    pub fn from_uuid(id: Uuid) -> Self {
+    /// Wraps an existing UUID into the strongly-typed identifier.
+    #[must_use] 
+    pub const fn from_uuid(id: Uuid) -> Self {
         Self(id)
     }
 }
@@ -159,8 +187,8 @@ impl Default for InviteId {
 macro_rules! impl_display {
     ($($t:ty),+) => {
         $(
-            impl std::fmt::Display for $t {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            impl core::fmt::Display for $t {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                     write!(f, "{}", self.0)
                 }
             }
@@ -175,9 +203,13 @@ impl_display!(UserId, ServerId, ChannelId, MessageId, DeviceId, RoleId, InviteId
 #[sqlx(type_name = "channel_kind", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum ChannelKind {
+    /// `Text` variant.
     Text,
+    /// `Voice` variant.
     Voice,
+    /// `Announcement` variant.
     Announcement,
+    /// `Category` variant.
     Category,
 }
 
@@ -186,7 +218,10 @@ pub enum ChannelKind {
 #[sqlx(type_name = "friendship_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum FriendshipStatus {
+    /// `Pending` variant.
     Pending,
+    /// `Accepted` variant.
     Accepted,
+    /// `Blocked` variant.
     Blocked,
 }

@@ -13,7 +13,7 @@ use super::AppState;
 static START_TIME: OnceLock<Instant> = OnceLock::new();
 
 /// Call once at startup to record the start time.
-pub fn init_start_time() {
+pub(crate) fn init_start_time() {
     START_TIME.get_or_init(Instant::now);
 }
 
@@ -130,7 +130,7 @@ fn check_nats(state: &AppState) -> ServiceStatus {
     }
 }
 
-pub async fn health_check(
+pub(crate) async fn health_check(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Response {

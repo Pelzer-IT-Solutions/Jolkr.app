@@ -13,6 +13,7 @@ fn escape_like(input: &str) -> String {
         .replace('_', "\\_")
 }
 
+/// Repository for `message` persistence.
 pub struct MessageRepo;
 
 impl MessageRepo {
@@ -28,13 +29,13 @@ impl MessageRepo {
     ) -> Result<MessageRow, JolkrError> {
         let now = Utc::now();
         let msg = sqlx::query_as::<_, MessageRow>(
-            r#"
+            "
             INSERT INTO messages
                 (id, channel_id, author_id, content, nonce,
                  is_edited, is_pinned, reply_to_id, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, $7)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(channel_id)
@@ -52,7 +53,7 @@ impl MessageRepo {
     /// Get a single message by ID.
     pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<MessageRow, JolkrError> {
         let msg = sqlx::query_as::<_, MessageRow>(
-            r#"SELECT * FROM messages WHERE id = $1"#,
+            "SELECT * FROM messages WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -68,7 +69,7 @@ impl MessageRepo {
             return Ok(Vec::new());
         }
         let rows = sqlx::query_as::<_, MessageRow>(
-            r#"SELECT * FROM messages WHERE id = ANY($1)"#,
+            "SELECT * FROM messages WHERE id = ANY($1)",
         )
         .bind(ids)
         .fetch_all(pool)
@@ -90,12 +91,12 @@ impl MessageRepo {
 
         let messages = if let Some(before_ts) = before {
             sqlx::query_as::<_, MessageRow>(
-                r#"
+                "
                 SELECT * FROM messages
                 WHERE channel_id = $1 AND created_at < $2 AND thread_id IS NULL
                 ORDER BY created_at DESC
                 LIMIT $3
-                "#,
+                ",
             )
             .bind(channel_id)
             .bind(before_ts)
@@ -104,12 +105,12 @@ impl MessageRepo {
             .await?
         } else {
             sqlx::query_as::<_, MessageRow>(
-                r#"
+                "
                 SELECT * FROM messages
                 WHERE channel_id = $1 AND thread_id IS NULL
                 ORDER BY created_at DESC
                 LIMIT $2
-                "#,
+                ",
             )
             .bind(channel_id)
             .bind(limit)
@@ -128,12 +129,12 @@ impl MessageRepo {
         author_id: Uuid,
     ) -> Result<Option<MessageRow>, JolkrError> {
         let msg = sqlx::query_as::<_, MessageRow>(
-            r#"
+            "
             SELECT * FROM messages
             WHERE channel_id = $1 AND author_id = $2 AND thread_id IS NULL
             ORDER BY created_at DESC
             LIMIT 1
-            "#,
+            ",
         )
         .bind(channel_id)
         .bind(author_id)
@@ -143,7 +144,7 @@ impl MessageRepo {
         Ok(msg)
     }
 
-    /// Edit the content of a message (sets is_edited = true).
+    /// Edit the content of a message (sets `is_edited` = true).
     pub async fn update(
         pool: &PgPool,
         id: Uuid,
@@ -152,12 +153,12 @@ impl MessageRepo {
     ) -> Result<MessageRow, JolkrError> {
         let now = Utc::now();
         let msg = sqlx::query_as::<_, MessageRow>(
-            r#"
+            "
             UPDATE messages
             SET content = $1, nonce = $2, is_edited = true, updated_at = $3
             WHERE id = $4
             RETURNING *
-            "#,
+            ",
         )
         .bind(content)
         .bind(nonce)
@@ -181,7 +182,7 @@ impl MessageRepo {
         let pattern = format!("%{}%", escape_like(query));
 
         let messages = sqlx::query_as::<_, MessageRow>(
-            r#"
+            "
             SELECT * FROM messages
             WHERE channel_id = $1
               AND content IS NOT NULL
@@ -189,7 +190,7 @@ impl MessageRepo {
               AND thread_id IS NULL
             ORDER BY created_at DESC
             LIMIT $3
-            "#,
+            ",
         )
         .bind(channel_id)
         .bind(pattern)
@@ -227,38 +228,38 @@ impl MessageRepo {
 
         if text_query.is_some() {
             conditions.push(format!(
-                "m.content IS NOT NULL AND LOWER(m.content) LIKE LOWER(${})", param_idx
+                "m.content IS NOT NULL AND LOWER(m.content) LIKE LOWER(${param_idx})"
             ));
             param_idx += 1;
         }
 
         if from_user_id.is_some() {
-            conditions.push(format!("m.author_id = ${}", param_idx));
+            conditions.push(format!("m.author_id = ${param_idx}"));
             param_idx += 1;
         }
 
         if let Some(has) = has_filter {
             match has {
                 "file" => conditions.push(
-                    "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)".to_string()
+                    "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)".to_owned()
                 ),
                 "image" => conditions.push(
-                    "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.content_type LIKE 'image/%')".to_string()
+                    "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.content_type LIKE 'image/%')".to_owned()
                 ),
                 "link" => conditions.push(
-                    "m.content IS NOT NULL AND m.content ~ 'https?://'".to_string()
+                    "m.content IS NOT NULL AND m.content ~ 'https?://'".to_owned()
                 ),
                 _ => {} // ignore unknown has values
             }
         }
 
         if before.is_some() {
-            conditions.push(format!("m.created_at < ${}", param_idx));
+            conditions.push(format!("m.created_at < ${param_idx}"));
             param_idx += 1;
         }
 
         if after.is_some() {
-            conditions.push(format!("m.created_at > ${}", param_idx));
+            conditions.push(format!("m.created_at > ${param_idx}"));
             param_idx += 1;
         }
 
@@ -267,7 +268,7 @@ impl MessageRepo {
             sql.push_str(cond);
         }
 
-        sql.push_str(&format!(" ORDER BY m.created_at DESC LIMIT ${}", param_idx));
+        sql.push_str(&format!(" ORDER BY m.created_at DESC LIMIT ${param_idx}"));
 
         // Build the query with dynamic bindings
         let mut q = sqlx::query_as::<_, MessageRow>(&sql)
@@ -291,15 +292,15 @@ impl MessageRepo {
         Ok(messages)
     }
 
-    /// Set the is_pinned flag on a message.
+    /// Set the `is_pinned` flag on a message.
     pub async fn set_pinned(pool: &PgPool, id: Uuid, pinned: bool) -> Result<MessageRow, JolkrError> {
         let now = Utc::now();
         let msg = sqlx::query_as::<_, MessageRow>(
-            r#"
+            "
             UPDATE messages SET is_pinned = $2, updated_at = $3
             WHERE id = $1
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(pinned)
@@ -310,7 +311,7 @@ impl MessageRepo {
         Ok(msg)
     }
 
-    /// Insert a message with a thread_id.
+    /// Insert a message with a `thread_id`.
     pub async fn create_message_in_thread(
         pool: &PgPool,
         id: Uuid,
@@ -323,13 +324,13 @@ impl MessageRepo {
     ) -> Result<MessageRow, JolkrError> {
         let now = Utc::now();
         let msg = sqlx::query_as::<_, MessageRow>(
-            r#"
+            "
             INSERT INTO messages
                 (id, channel_id, author_id, content, nonce,
                  is_edited, is_pinned, reply_to_id, thread_id, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, $8, $8)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(channel_id)
@@ -354,12 +355,12 @@ impl MessageRepo {
         let limit = limit.min(100).max(1);
         let messages = if let Some(before_ts) = before {
             sqlx::query_as::<_, MessageRow>(
-                r#"
+                "
                 SELECT * FROM messages
                 WHERE thread_id = $1 AND created_at < $2
                 ORDER BY created_at DESC
                 LIMIT $3
-                "#,
+                ",
             )
             .bind(thread_id)
             .bind(before_ts)
@@ -368,12 +369,12 @@ impl MessageRepo {
             .await?
         } else {
             sqlx::query_as::<_, MessageRow>(
-                r#"
+                "
                 SELECT * FROM messages
                 WHERE thread_id = $1
                 ORDER BY created_at DESC
                 LIMIT $2
-                "#,
+                ",
             )
             .bind(thread_id)
             .bind(limit)
@@ -383,7 +384,7 @@ impl MessageRepo {
         Ok(messages)
     }
 
-    /// Set thread_id on a message (used when creating a thread from an existing message).
+    /// Set `thread_id` on a message (used when creating a thread from an existing message).
     /// Accepts both `&PgPool` and `&mut PgConnection` (for transactions).
     pub async fn set_thread_id<'e, E: sqlx::PgExecutor<'e>>(
         executor: E,
@@ -392,7 +393,7 @@ impl MessageRepo {
     ) -> Result<MessageRow, JolkrError> {
         let now = Utc::now();
         let msg = sqlx::query_as::<_, MessageRow>(
-            r#"UPDATE messages SET thread_id = $2, updated_at = $3 WHERE id = $1 RETURNING *"#,
+            "UPDATE messages SET thread_id = $2, updated_at = $3 WHERE id = $1 RETURNING *",
         )
         .bind(id)
         .bind(thread_id)
@@ -405,7 +406,7 @@ impl MessageRepo {
 
     /// Delete a message.
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
-        let result = sqlx::query(r#"DELETE FROM messages WHERE id = $1"#)
+        let result = sqlx::query("DELETE FROM messages WHERE id = $1")
             .bind(id)
             .execute(pool)
             .await?;

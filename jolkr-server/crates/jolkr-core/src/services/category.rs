@@ -10,9 +10,13 @@ use jolkr_db::repo::{CategoryRepo, ServerRepo};
 /// Public category DTO.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning server identifier.
     pub server_id: Uuid,
+    /// Display name.
     pub name: String,
+    /// Sort position.
     pub position: i32,
 }
 
@@ -27,21 +31,27 @@ impl From<CategoryRow> for CategoryInfo {
     }
 }
 
+/// Request payload for the `CreateCategory` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateCategoryRequest {
+    /// Display name.
     pub name: String,
 }
 
+/// Request payload for the `UpdateCategory` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateCategoryRequest {
+    /// Display name.
     pub name: Option<String>,
+    /// Sort position.
     pub position: Option<i32>,
 }
 
+/// Domain service for `category` operations.
 pub struct CategoryService;
 
 impl CategoryService {
-    /// Create a new category. Requires MANAGE_CHANNELS or server owner.
+    /// Create a new category. Requires `MANAGE_CHANNELS` or server owner.
     pub async fn create_category(
         pool: &PgPool,
         server_id: Uuid,
@@ -54,7 +64,7 @@ impl CategoryService {
             Self::check_permission(pool, server_id, caller_id, jolkr_common::Permissions::MANAGE_CHANNELS).await?;
         }
 
-        let name = req.name.trim().to_string();
+        let name = req.name.trim().to_owned();
         if name.is_empty() || name.len() > 100 {
             return Err(JolkrError::Validation(
                 "Category name must be between 1 and 100 characters".into(),
@@ -81,7 +91,7 @@ impl CategoryService {
         Ok(rows.into_iter().map(CategoryInfo::from).collect())
     }
 
-    /// Update a category. Requires MANAGE_CHANNELS or server owner.
+    /// Update a category. Requires `MANAGE_CHANNELS` or server owner.
     pub async fn update_category(
         pool: &PgPool,
         category_id: Uuid,

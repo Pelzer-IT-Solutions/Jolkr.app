@@ -17,37 +17,37 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct ChannelResponse {
+pub(crate) struct ChannelResponse {
     pub channel: ChannelInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ChannelsResponse {
+pub(crate) struct ChannelsResponse {
     pub channels: Vec<ChannelInfo>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct PermissionsResponse {
+pub(crate) struct PermissionsResponse {
     pub permissions: i64,
 }
 
 #[derive(Debug, Serialize)]
-pub struct OverwritesResponse {
+pub(crate) struct OverwritesResponse {
     pub overwrites: Vec<ChannelOverwriteInfo>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct OverwriteResponse {
+pub(crate) struct OverwriteResponse {
     pub overwrite: ChannelOverwriteInfo,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ReorderChannelsRequest {
+pub(crate) struct ReorderChannelsRequest {
     pub channel_positions: Vec<ChannelPositionEntry>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ChannelPositionEntry {
+pub(crate) struct ChannelPositionEntry {
     pub id: Uuid,
     pub position: i32,
 }
@@ -55,7 +55,7 @@ pub struct ChannelPositionEntry {
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// PUT /api/servers/:server_id/channels/reorder
-pub async fn reorder_channels(
+pub(crate) async fn reorder_channels(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -87,7 +87,7 @@ pub async fn reorder_channels(
 }
 
 /// POST /api/servers/:server_id/channels
-pub async fn create_channel(
+pub(crate) async fn create_channel(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -108,18 +108,18 @@ pub async fn create_channel(
     let ch_id = channel.id;
     let ch_name = channel.name.clone();
     tokio::spawn(async move {
-        let _ = jolkr_db::repo::AuditLogRepo::create(
+        drop(jolkr_db::repo::AuditLogRepo::create(
             &pool, server_id, caller, "channel_create",
             Some(ch_id), Some("channel"),
             Some(serde_json::json!({"name": ch_name})), None,
-        ).await;
+        ).await);
     });
 
     Ok(Json(ChannelResponse { channel }))
 }
 
 /// GET /api/servers/:server_id/channels/list — requires membership, filters by VIEW_CHANNELS
-pub async fn list_channels(
+pub(crate) async fn list_channels(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -129,7 +129,7 @@ pub async fn list_channels(
 }
 
 /// GET /api/channels/:id — requires membership + VIEW_CHANNELS
-pub async fn get_channel(
+pub(crate) async fn get_channel(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -152,7 +152,7 @@ pub async fn get_channel(
 }
 
 /// PATCH /api/channels/:id
-pub async fn update_channel(
+pub(crate) async fn update_channel(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -170,7 +170,7 @@ pub async fn update_channel(
 }
 
 /// DELETE /api/channels/:id
-pub async fn delete_channel(
+pub(crate) async fn delete_channel(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -192,18 +192,18 @@ pub async fn delete_channel(
     let caller = auth.user_id;
     let ch_name = channel.name.clone();
     tokio::spawn(async move {
-        let _ = jolkr_db::repo::AuditLogRepo::create(
+        drop(jolkr_db::repo::AuditLogRepo::create(
             &pool, server_id, caller, "channel_delete",
             Some(id), Some("channel"),
             Some(serde_json::json!({"name": ch_name})), None,
-        ).await;
+        ).await);
     });
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 /// GET /api/channels/:id/permissions/@me
-pub async fn get_my_channel_permissions(
+pub(crate) async fn get_my_channel_permissions(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -213,7 +213,7 @@ pub async fn get_my_channel_permissions(
 }
 
 /// GET /api/channels/:id/overwrites
-pub async fn list_overwrites(
+pub(crate) async fn list_overwrites(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -223,7 +223,7 @@ pub async fn list_overwrites(
 }
 
 /// PUT /api/channels/:id/overwrites
-pub async fn upsert_overwrite(
+pub(crate) async fn upsert_overwrite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -235,13 +235,13 @@ pub async fn upsert_overwrite(
 
 /// DELETE /api/channels/:id/overwrites/:target_type/:target_id
 #[derive(Deserialize)]
-pub struct OverwritePathParams {
+pub(crate) struct OverwritePathParams {
     pub id: Uuid,
     pub target_type: String,
     pub target_id: Uuid,
 }
 
-pub async fn delete_overwrite(
+pub(crate) async fn delete_overwrite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(params): Path<OverwritePathParams>,
@@ -259,12 +259,12 @@ pub async fn delete_overwrite(
 // ── Mark channel as read ────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
-pub struct MarkChannelReadRequest {
+pub(crate) struct MarkChannelReadRequest {
     pub message_id: Uuid,
 }
 
 /// POST /api/channels/:channel_id/read
-pub async fn mark_channel_read(
+pub(crate) async fn mark_channel_read(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,

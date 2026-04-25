@@ -10,12 +10,19 @@ use jolkr_db::repo::{MemberRepo, RoleRepo, ServerRepo};
 /// Public role DTO.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoleInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning server identifier.
     pub server_id: Uuid,
+    /// Display name.
     pub name: String,
+    /// Color value (RGB).
     pub color: i32,
+    /// Sort position.
     pub position: i32,
+    /// Permission bitmask.
     pub permissions: i64,
+    /// Whether this is the default entry.
     pub is_default: bool,
 }
 
@@ -33,21 +40,31 @@ impl From<RoleRow> for RoleInfo {
     }
 }
 
+/// Request payload for the `CreateRole` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateRoleRequest {
+    /// Display name.
     pub name: String,
+    /// Color value (RGB).
     pub color: Option<i32>,
+    /// Permission bitmask.
     pub permissions: Option<i64>,
 }
 
+/// Request payload for the `UpdateRole` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateRoleRequest {
+    /// Display name.
     pub name: Option<String>,
+    /// Color value (RGB).
     pub color: Option<i32>,
+    /// Sort position.
     pub position: Option<i32>,
+    /// Permission bitmask.
     pub permissions: Option<i64>,
 }
 
+/// Domain service for `role` operations.
 pub struct RoleService;
 
 impl RoleService {
@@ -72,7 +89,7 @@ impl RoleService {
         Ok(RoleInfo::from(row))
     }
 
-    /// Create a new custom role. Requires MANAGE_ROLES or server owner.
+    /// Create a new custom role. Requires `MANAGE_ROLES` or server owner.
     pub async fn create_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -84,7 +101,7 @@ impl RoleService {
             check_permission(pool, server_id, caller_id, Permissions::MANAGE_ROLES).await?;
         }
 
-        let name = req.name.trim().to_string();
+        let name = req.name.trim().to_owned();
         if name.is_empty() || name.len() > 100 {
             return Err(JolkrError::Validation(
                 "Role name must be between 1 and 100 characters".into(),
@@ -120,7 +137,7 @@ impl RoleService {
         Ok(rows.into_iter().map(RoleInfo::from).collect())
     }
 
-    /// Update a role. Cannot change @everyone's is_default status.
+    /// Update a role. Cannot change @everyone's `is_default` status.
     pub async fn update_role(
         pool: &PgPool,
         role_id: Uuid,

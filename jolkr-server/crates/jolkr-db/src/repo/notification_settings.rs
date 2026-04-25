@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::NotificationSettingRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `notificationsetting` persistence.
 pub struct NotificationSettingRepo;
 
 impl NotificationSettingRepo {
@@ -16,7 +17,7 @@ impl NotificationSettingRepo {
         target_id: Uuid,
     ) -> Result<Option<NotificationSettingRow>, JolkrError> {
         let row = sqlx::query_as::<_, NotificationSettingRow>(
-            r#"SELECT * FROM notification_settings WHERE user_id = $1 AND target_type = $2 AND target_id = $3"#,
+            "SELECT * FROM notification_settings WHERE user_id = $1 AND target_type = $2 AND target_id = $3",
         )
         .bind(user_id)
         .bind(target_type)
@@ -40,13 +41,13 @@ impl NotificationSettingRepo {
         let id = Uuid::new_v4();
         let now = Utc::now();
         let row = sqlx::query_as::<_, NotificationSettingRow>(
-            r#"
+            "
             INSERT INTO notification_settings (id, user_id, target_type, target_id, muted, mute_until, suppress_everyone, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
             ON CONFLICT (user_id, target_type, target_id)
             DO UPDATE SET muted = $5, mute_until = $6, suppress_everyone = $7, updated_at = $8
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(user_id)
@@ -70,7 +71,7 @@ impl NotificationSettingRepo {
         target_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"DELETE FROM notification_settings WHERE user_id = $1 AND target_type = $2 AND target_id = $3"#,
+            "DELETE FROM notification_settings WHERE user_id = $1 AND target_type = $2 AND target_id = $3",
         )
         .bind(user_id)
         .bind(target_type)
@@ -87,11 +88,11 @@ impl NotificationSettingRepo {
         user_id: Uuid,
     ) -> Result<Vec<NotificationSettingRow>, JolkrError> {
         let rows = sqlx::query_as::<_, NotificationSettingRow>(
-            r#"
+            "
             SELECT * FROM notification_settings
             WHERE user_id = $1 AND muted = TRUE
             AND (mute_until IS NULL OR mute_until > NOW())
-            "#,
+            ",
         )
         .bind(user_id)
         .fetch_all(pool)
@@ -106,7 +107,7 @@ impl NotificationSettingRepo {
         user_id: Uuid,
     ) -> Result<Vec<NotificationSettingRow>, JolkrError> {
         let rows = sqlx::query_as::<_, NotificationSettingRow>(
-            r#"SELECT * FROM notification_settings WHERE user_id = $1"#,
+            "SELECT * FROM notification_settings WHERE user_id = $1",
         )
         .bind(user_id)
         .fetch_all(pool)

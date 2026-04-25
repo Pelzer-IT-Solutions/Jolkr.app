@@ -30,7 +30,7 @@ async fn check_webhook_rate(state: &AppState, webhook_id: Uuid) -> bool {
         Ok(count) => {
             // Set 1-second expiry on first request in this window
             if count == 1 {
-                let _ = conn.expire::<_, ()>(&key, 1).await;
+                drop(conn.expire::<_, ()>(&key, 1).await);
             }
             count <= WEBHOOK_RATE_LIMIT
         }
@@ -42,22 +42,22 @@ async fn check_webhook_rate(state: &AppState, webhook_id: Uuid) -> bool {
 }
 
 #[derive(Debug, Serialize)]
-pub struct WebhookResponse {
+pub(crate) struct WebhookResponse {
     pub webhook: WebhookInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct WebhooksResponse {
+pub(crate) struct WebhooksResponse {
     pub webhooks: Vec<WebhookInfo>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct WebhookMessageResponse {
+pub(crate) struct WebhookMessageResponse {
     pub message: MessageInfo,
 }
 
 /// POST /api/channels/:id/webhooks — create a webhook
-pub async fn create_webhook(
+pub(crate) async fn create_webhook(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -68,7 +68,7 @@ pub async fn create_webhook(
 }
 
 /// GET /api/channels/:id/webhooks — list webhooks
-pub async fn list_webhooks(
+pub(crate) async fn list_webhooks(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -78,7 +78,7 @@ pub async fn list_webhooks(
 }
 
 /// PATCH /api/webhooks/:id — update a webhook
-pub async fn update_webhook(
+pub(crate) async fn update_webhook(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(webhook_id): Path<Uuid>,
@@ -89,7 +89,7 @@ pub async fn update_webhook(
 }
 
 /// DELETE /api/webhooks/:id — delete a webhook
-pub async fn delete_webhook(
+pub(crate) async fn delete_webhook(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(webhook_id): Path<Uuid>,
@@ -99,7 +99,7 @@ pub async fn delete_webhook(
 }
 
 /// POST /api/webhooks/:id/token — regenerate token
-pub async fn regenerate_token(
+pub(crate) async fn regenerate_token(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(webhook_id): Path<Uuid>,
@@ -109,7 +109,7 @@ pub async fn regenerate_token(
 }
 
 /// POST /api/webhooks/:id/:token — execute webhook (unauthenticated)
-pub async fn execute_webhook(
+pub(crate) async fn execute_webhook(
     State(state): State<AppState>,
     Path((webhook_id, token)): Path<(Uuid, String)>,
     Json(body): Json<ExecuteWebhookRequest>,

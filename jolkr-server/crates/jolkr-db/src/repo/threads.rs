@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::ThreadRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `thread` persistence.
 pub struct ThreadRepo;
 
 impl ThreadRepo {
@@ -19,11 +20,11 @@ impl ThreadRepo {
         let id = Uuid::new_v4();
         let now = Utc::now();
         let row = sqlx::query_as::<_, ThreadRow>(
-            r#"
+            "
             INSERT INTO threads (id, channel_id, starter_msg_id, name, is_archived, created_at, updated_at)
             VALUES ($1, $2, $3, $4, false, $5, $5)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(channel_id)
@@ -38,7 +39,7 @@ impl ThreadRepo {
     /// Get a thread by ID.
     pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<ThreadRow, JolkrError> {
         let row = sqlx::query_as::<_, ThreadRow>(
-            r#"SELECT * FROM threads WHERE id = $1"#,
+            "SELECT * FROM threads WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -53,7 +54,7 @@ impl ThreadRepo {
         starter_msg_id: Uuid,
     ) -> Result<Option<ThreadRow>, JolkrError> {
         let row = sqlx::query_as::<_, ThreadRow>(
-            r#"SELECT * FROM threads WHERE starter_msg_id = $1"#,
+            "SELECT * FROM threads WHERE starter_msg_id = $1",
         )
         .bind(starter_msg_id)
         .fetch_optional(pool)
@@ -69,14 +70,14 @@ impl ThreadRepo {
     ) -> Result<Vec<ThreadRow>, JolkrError> {
         let rows = if include_archived {
             sqlx::query_as::<_, ThreadRow>(
-                r#"SELECT * FROM threads WHERE channel_id = $1 ORDER BY updated_at DESC LIMIT 100"#,
+                "SELECT * FROM threads WHERE channel_id = $1 ORDER BY updated_at DESC LIMIT 100",
             )
             .bind(channel_id)
             .fetch_all(pool)
             .await?
         } else {
             sqlx::query_as::<_, ThreadRow>(
-                r#"SELECT * FROM threads WHERE channel_id = $1 AND is_archived = false ORDER BY updated_at DESC LIMIT 100"#,
+                "SELECT * FROM threads WHERE channel_id = $1 AND is_archived = false ORDER BY updated_at DESC LIMIT 100",
             )
             .bind(channel_id)
             .fetch_all(pool)
@@ -93,7 +94,7 @@ impl ThreadRepo {
     ) -> Result<ThreadRow, JolkrError> {
         let now = Utc::now();
         let row = sqlx::query_as::<_, ThreadRow>(
-            r#"UPDATE threads SET name = $2, updated_at = $3 WHERE id = $1 RETURNING *"#,
+            "UPDATE threads SET name = $2, updated_at = $3 WHERE id = $1 RETURNING *",
         )
         .bind(id)
         .bind(name)
@@ -112,7 +113,7 @@ impl ThreadRepo {
     ) -> Result<ThreadRow, JolkrError> {
         let now = Utc::now();
         let row = sqlx::query_as::<_, ThreadRow>(
-            r#"UPDATE threads SET is_archived = $2, updated_at = $3 WHERE id = $1 RETURNING *"#,
+            "UPDATE threads SET is_archived = $2, updated_at = $3 WHERE id = $1 RETURNING *",
         )
         .bind(id)
         .bind(archived)
@@ -123,10 +124,10 @@ impl ThreadRepo {
         Ok(row)
     }
 
-    /// Touch updated_at timestamp (e.g. when a new thread message is sent).
+    /// Touch `updated_at` timestamp (e.g. when a new thread message is sent).
     pub async fn touch(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
         let now = Utc::now();
-        sqlx::query(r#"UPDATE threads SET updated_at = $2 WHERE id = $1"#)
+        sqlx::query("UPDATE threads SET updated_at = $2 WHERE id = $1")
             .bind(id)
             .bind(now)
             .execute(pool)
@@ -137,7 +138,7 @@ impl ThreadRepo {
     /// Count messages in a single thread.
     pub async fn message_count(pool: &PgPool, thread_id: Uuid) -> Result<i64, JolkrError> {
         let row: (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM messages WHERE thread_id = $1"#,
+            "SELECT COUNT(*) FROM messages WHERE thread_id = $1",
         )
         .bind(thread_id)
         .fetch_one(pool)
@@ -154,12 +155,12 @@ impl ThreadRepo {
             return Ok(Vec::new());
         }
         let rows: Vec<(Uuid, i64)> = sqlx::query_as(
-            r#"
+            "
             SELECT thread_id, COUNT(*) as count
             FROM messages
             WHERE thread_id = ANY($1)
             GROUP BY thread_id
-            "#,
+            ",
         )
         .bind(thread_ids)
         .fetch_all(pool)

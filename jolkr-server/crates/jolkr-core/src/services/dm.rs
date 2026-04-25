@@ -14,40 +14,66 @@ use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, attachment_proxy_u
 /// Lightweight last-message preview included in the DM channel list.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DmLastMessage {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Author user identifier.
     pub author_id: Uuid,
+    /// Message content (may be encrypted).
     pub content: Option<String>,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,
+    /// Creation timestamp.
     pub created_at: DateTime<Utc>,
 }
 
+/// Public information about `dmchannel`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DmChannelInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Whether this is a group conversation.
     pub is_group: bool,
+    /// Display name.
     pub name: Option<String>,
+    /// Member list.
     pub members: Vec<Uuid>,
+    /// Creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last message.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<DmLastMessage>,
 }
 
+/// Public information about `dmmessage`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DmMessageInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// DM channel identifier.
     pub dm_channel_id: Uuid,
+    /// Author user identifier.
     pub author_id: Uuid,
+    /// Message content (may be encrypted).
     pub content: Option<String>,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,
+    /// Whether the message has been edited.
     pub is_edited: bool,
+    /// Whether the message is pinned.
     pub is_pinned: bool,
+    /// Reply to identifier.
     pub reply_to_id: Option<Uuid>,
+    /// Attached files.
     pub attachments: Vec<AttachmentInfo>,
+    /// Aggregated reactions.
     #[serde(default)]
     pub reactions: Vec<ReactionInfo>,
+    /// Attached embeds.
     #[serde(default)]
     pub embeds: Vec<EmbedInfo>,
+    /// Creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
     pub updated_at: DateTime<Utc>,
 }
 
@@ -73,22 +99,32 @@ impl From<DmMessageRow> for DmMessageInfo {
     }
 }
 
+/// Request payload for the `SendDm` operation.
 #[derive(Debug, Deserialize)]
 pub struct SendDmRequest {
+    /// Message content (may be encrypted).
     pub content: Option<String>,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,
+    /// Reply to identifier.
     pub reply_to_id: Option<Uuid>,
 }
 
+/// Request payload for the `EditDm` operation.
 #[derive(Debug, Deserialize)]
 pub struct EditDmRequest {
+    /// Message content (may be encrypted).
     pub content: String,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,  // base64-encoded; when provided, updates nonce in DB
 }
 
+/// `DmMessageQuery` value.
 #[derive(Debug, Deserialize)]
 pub struct DmMessageQuery {
+    /// Before.
     pub before: Option<DateTime<Utc>>,
+    /// Limit.
     pub limit: Option<i64>,
 }
 
@@ -101,22 +137,30 @@ const MAX_GROUP_DM_MEMBERS: usize = 10;
 /// Maximum length of a group DM name.
 const MAX_GROUP_NAME_LENGTH: usize = 100;
 
+/// Request payload for the `CreateGroupDm` operation.
 #[derive(Debug, Deserialize)]
 pub struct CreateGroupDmRequest {
+    /// User ids.
     pub user_ids: Vec<Uuid>,
+    /// Display name.
     pub name: Option<String>,
 }
 
+/// Request payload for the `AddMember` operation.
 #[derive(Debug, Deserialize)]
 pub struct AddMemberRequest {
+    /// Owning user identifier.
     pub user_id: Uuid,
 }
 
+/// Request payload for the `UpdateGroupDm` operation.
 #[derive(Debug, Deserialize)]
 pub struct UpdateGroupDmRequest {
+    /// Display name.
     pub name: Option<String>,
 }
 
+/// Domain service for `dm` operations.
 pub struct DmService;
 
 impl DmService {
@@ -215,7 +259,7 @@ impl DmService {
         }
 
         // Trim name, treat whitespace-only as None
-        let name = req.name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+        let name = req.name.map(|n| n.trim().to_owned()).filter(|n| !n.is_empty());
         if let Some(ref name) = name {
             if name.len() > MAX_GROUP_NAME_LENGTH {
                 return Err(JolkrError::Validation(
@@ -326,7 +370,7 @@ impl DmService {
         }
 
         // Trim name, treat whitespace-only as None
-        let name = req.name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+        let name = req.name.map(|n| n.trim().to_owned()).filter(|n| !n.is_empty());
         if let Some(ref name) = name {
             if name.len() > MAX_GROUP_NAME_LENGTH {
                 return Err(JolkrError::Validation(
@@ -364,7 +408,7 @@ impl DmService {
     }
 
     /// Mark messages as read up to a given message ID.
-    /// Returns `true` if the read receipt should be broadcast (user has show_read_receipts enabled).
+    /// Returns `true` if the read receipt should be broadcast (user has `show_read_receipts` enabled).
     pub async fn mark_as_read(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -482,7 +526,7 @@ impl DmService {
             return Err(JolkrError::Forbidden);
         }
 
-        let content = req.content.trim().to_string();
+        let content = req.content.trim().to_owned();
         if content.is_empty() {
             return Err(JolkrError::Validation("Message content cannot be empty".into()));
         }
@@ -575,7 +619,7 @@ impl DmService {
                 emoji_entry.0 += 1;
                 emoji_entry.1.push(r.user_id);
             }
-            for msg in messages.iter_mut() {
+            for msg in &mut messages {
                 if let Some((order, mut map)) = by_msg.remove(&msg.id) {
                     msg.reactions = order
                         .into_iter()
@@ -607,7 +651,7 @@ impl DmService {
                     color: e.color,
                 });
             }
-            for msg in messages.iter_mut() {
+            for msg in &mut messages {
                 if let Some(embeds) = by_msg.remove(&msg.id) {
                     msg.embeds = embeds;
                 }

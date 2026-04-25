@@ -18,40 +18,40 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct ThreadResponse {
+pub(crate) struct ThreadResponse {
     pub thread: ThreadInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ThreadsResponse {
+pub(crate) struct ThreadsResponse {
     pub threads: Vec<ThreadInfo>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ThreadCreatedResponse {
+pub(crate) struct ThreadCreatedResponse {
     pub thread: ThreadInfo,
     pub message: MessageInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct MessageResponse {
+pub(crate) struct MessageResponse {
     pub message: MessageInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct MessagesResponse {
+pub(crate) struct MessagesResponse {
     pub messages: Vec<MessageInfo>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ListThreadsQuery {
+pub(crate) struct ListThreadsQuery {
     pub include_archived: Option<bool>,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/channels/:channel_id/threads
-pub async fn create_thread(
+pub(crate) async fn create_thread(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -76,7 +76,7 @@ pub async fn create_thread(
 }
 
 /// GET /api/channels/:channel_id/threads
-pub async fn list_threads(
+pub(crate) async fn list_threads(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -90,7 +90,7 @@ pub async fn list_threads(
 }
 
 /// GET /api/threads/:thread_id
-pub async fn get_thread(
+pub(crate) async fn get_thread(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,
@@ -100,7 +100,7 @@ pub async fn get_thread(
 }
 
 /// PATCH /api/threads/:thread_id
-pub async fn update_thread(
+pub(crate) async fn update_thread(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,
@@ -119,7 +119,7 @@ pub async fn update_thread(
 }
 
 /// GET /api/threads/:thread_id/messages
-pub async fn get_thread_messages(
+pub(crate) async fn get_thread_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,
@@ -132,7 +132,7 @@ pub async fn get_thread_messages(
 }
 
 /// POST /api/threads/:thread_id/messages
-pub async fn send_thread_message(
+pub(crate) async fn send_thread_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,

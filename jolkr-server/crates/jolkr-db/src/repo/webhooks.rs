@@ -6,12 +6,14 @@ use crate::models::WebhookRow;
 use jolkr_common::JolkrError;
 
 /// Hash a token with SHA-256 and return hex string.
+#[must_use] 
 pub fn hash_token(token: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(token.as_bytes());
     format!("{:x}", hasher.finalize())
 }
 
+/// Repository for `webhook` persistence.
 pub struct WebhookRepo;
 
 impl WebhookRepo {
@@ -28,11 +30,11 @@ impl WebhookRepo {
     ) -> Result<WebhookRow, JolkrError> {
         let token_hash = hash_token(token);
         let webhook = sqlx::query_as::<_, WebhookRow>(
-            r#"
+            "
             INSERT INTO webhooks (id, channel_id, server_id, creator_id, name, avatar_url, token_hash)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(channel_id)
@@ -76,14 +78,14 @@ impl WebhookRepo {
     ) -> Result<WebhookRow, JolkrError> {
         let now = chrono::Utc::now();
         let webhook = sqlx::query_as::<_, WebhookRow>(
-            r#"
+            "
             UPDATE webhooks SET
                 name = COALESCE($2, name),
                 avatar_url = COALESCE($3, avatar_url),
                 updated_at = $4
             WHERE id = $1
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(name)
@@ -113,7 +115,7 @@ impl WebhookRepo {
         let token_hash = hash_token(new_token);
         let now = chrono::Utc::now();
         let webhook = sqlx::query_as::<_, WebhookRow>(
-            r#"UPDATE webhooks SET token_hash = $2, updated_at = $3 WHERE id = $1 RETURNING *"#,
+            "UPDATE webhooks SET token_hash = $2, updated_at = $3 WHERE id = $1 RETURNING *",
         )
         .bind(id)
         .bind(&token_hash)

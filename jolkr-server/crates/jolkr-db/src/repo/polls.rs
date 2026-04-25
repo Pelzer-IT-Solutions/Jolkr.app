@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use crate::models::{PollRow, PollOptionRow, PollVoteRow};
 use jolkr_common::JolkrError;
 
+/// Repository for `poll` persistence.
 pub struct PollRepo;
 
 impl PollRepo {
@@ -20,11 +21,11 @@ impl PollRepo {
         expires_at: Option<DateTime<Utc>>,
     ) -> Result<PollRow, JolkrError> {
         let poll = sqlx::query_as::<_, PollRow>(
-            r#"
+            "
             INSERT INTO polls (id, message_id, channel_id, question, multi_select, anonymous, expires_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(message_id)
@@ -48,11 +49,11 @@ impl PollRepo {
         text: &str,
     ) -> Result<PollOptionRow, JolkrError> {
         let opt = sqlx::query_as::<_, PollOptionRow>(
-            r#"
+            "
             INSERT INTO poll_options (id, poll_id, position, text)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(poll_id)
@@ -73,7 +74,7 @@ impl PollRepo {
             .ok_or(JolkrError::NotFound)
     }
 
-    /// Get a poll by message_id.
+    /// Get a poll by `message_id`.
     pub async fn get_by_message_id(pool: &PgPool, message_id: Uuid) -> Result<Option<PollRow>, JolkrError> {
         let poll = sqlx::query_as::<_, PollRow>("SELECT * FROM polls WHERE message_id = $1")
             .bind(message_id)
@@ -127,12 +128,12 @@ impl PollRepo {
         user_id: Uuid,
     ) -> Result<PollVoteRow, JolkrError> {
         let vote = sqlx::query_as::<_, PollVoteRow>(
-            r#"
+            "
             INSERT INTO poll_votes (id, poll_id, option_id, user_id)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (poll_id, option_id, user_id) DO NOTHING
             RETURNING *
-            "#,
+            ",
         )
         .bind(Uuid::new_v4())
         .bind(poll_id)
@@ -169,7 +170,7 @@ impl PollRepo {
         Ok(())
     }
 
-    /// Get vote counts grouped by option_id.
+    /// Get vote counts grouped by `option_id`.
     pub async fn get_vote_counts(pool: &PgPool, poll_id: Uuid) -> Result<Vec<(Uuid, i64)>, JolkrError> {
         let counts: Vec<(Uuid, i64)> = sqlx::query_as(
             "SELECT option_id, COUNT(*) as count FROM poll_votes WHERE poll_id = $1 GROUP BY option_id"

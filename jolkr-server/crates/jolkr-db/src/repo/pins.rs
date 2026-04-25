@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::models::PinRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `pin` persistence.
 pub struct PinRepo;
 
 impl PinRepo {
@@ -16,10 +17,10 @@ impl PinRepo {
     ) -> Result<PinRow, JolkrError> {
         let id = Uuid::new_v4();
         let row = sqlx::query_as::<_, PinRow>(
-            r#"INSERT INTO pins (id, channel_id, message_id, pinned_by)
+            "INSERT INTO pins (id, channel_id, message_id, pinned_by)
                VALUES ($1, $2, $3, $4)
                ON CONFLICT (channel_id, message_id) DO UPDATE SET id = pins.id
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(id)
         .bind(channel_id)
@@ -37,7 +38,7 @@ impl PinRepo {
         message_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"DELETE FROM pins WHERE channel_id = $1 AND message_id = $2"#,
+            "DELETE FROM pins WHERE channel_id = $1 AND message_id = $2",
         )
         .bind(channel_id)
         .bind(message_id)
@@ -52,9 +53,9 @@ impl PinRepo {
         channel_id: Uuid,
     ) -> Result<Vec<PinRow>, JolkrError> {
         let rows = sqlx::query_as::<_, PinRow>(
-            r#"SELECT * FROM pins
+            "SELECT * FROM pins
                WHERE channel_id = $1
-               ORDER BY pinned_at DESC"#,
+               ORDER BY pinned_at DESC",
         )
         .bind(channel_id)
         .fetch_all(pool)

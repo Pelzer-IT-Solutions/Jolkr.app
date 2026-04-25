@@ -52,20 +52,20 @@ fn proxy_url(gif_id: &str, size: &str) -> String {
 // ── Tenor v2-compatible response types ──────────────────────────
 
 #[derive(Serialize)]
-pub struct TenorMedia {
+pub(crate) struct TenorMedia {
     url: String,
     dims: [u32; 2],
     size: u32,
 }
 
 #[derive(Serialize)]
-pub struct TenorMediaFormats {
+pub(crate) struct TenorMediaFormats {
     gif: TenorMedia,
     tinygif: TenorMedia,
 }
 
 #[derive(Serialize)]
-pub struct TenorResult {
+pub(crate) struct TenorResult {
     id: String,
     title: String,
     media_formats: TenorMediaFormats,
@@ -76,13 +76,13 @@ pub struct TenorResult {
 }
 
 #[derive(Serialize)]
-pub struct TenorSearchResponse {
+pub(crate) struct TenorSearchResponse {
     results: Vec<TenorResult>,
     next: String,
 }
 
 #[derive(Serialize, Clone)]
-pub struct TenorCategory {
+pub(crate) struct TenorCategory {
     searchterm: String,
     path: String,
     image: String,
@@ -90,7 +90,7 @@ pub struct TenorCategory {
 }
 
 #[derive(Serialize, Clone)]
-pub struct TenorCategoriesResponse {
+pub(crate) struct TenorCategoriesResponse {
     tags: Vec<TenorCategory>,
 }
 
@@ -185,7 +185,7 @@ fn giphy_to_tenor(giphy: GiphyResponse) -> TenorSearchResponse {
 // ── Search / Featured / Categories handlers ─────────────────────
 
 #[derive(Deserialize)]
-pub struct SearchParams {
+pub(crate) struct SearchParams {
     q: Option<String>,
     #[serde(default)]
     limit: Option<u8>,
@@ -193,14 +193,14 @@ pub struct SearchParams {
 }
 
 #[derive(Deserialize)]
-pub struct TrendingParams {
+pub(crate) struct TrendingParams {
     #[serde(default)]
     limit: Option<u8>,
     pos: Option<String>,
 }
 
 /// GET /api/gifs/search
-pub async fn search_gifs(
+pub(crate) async fn search_gifs(
     State(_state): State<AppState>,
     Query(params): Query<SearchParams>,
 ) -> Result<Json<TenorSearchResponse>, (StatusCode, &'static str)> {
@@ -229,7 +229,7 @@ pub async fn search_gifs(
 }
 
 /// GET /api/gifs/featured
-pub async fn featured_gifs(
+pub(crate) async fn featured_gifs(
     State(_state): State<AppState>,
     Query(params): Query<TrendingParams>,
 ) -> Result<Json<TenorSearchResponse>, (StatusCode, &'static str)> {
@@ -257,7 +257,7 @@ pub async fn featured_gifs(
 }
 
 /// GET /api/gifs/categories — cached for 30 minutes to avoid rate limits
-pub async fn categories(
+pub(crate) async fn categories(
     State(_state): State<AppState>,
 ) -> Result<Json<TenorCategoriesResponse>, (StatusCode, &'static str)> {
     // Return cached response if fresh (< 30 minutes old)
@@ -376,7 +376,7 @@ async fn stream_giphy_url(url: &str) -> Result<Response, (StatusCode, &'static s
 
 /// GET /api/gifs/i/:gif_id/:size — Clean image proxy by GIF ID.
 /// Resolves the GIPHY CDN URL from cache or GIPHY API, then streams it.
-pub async fn proxy_gif_image(
+pub(crate) async fn proxy_gif_image(
     State(state): State<AppState>,
     Path((gif_id, size)): Path<(String, String)>,
 ) -> Result<Response, (StatusCode, &'static str)> {
@@ -415,11 +415,11 @@ async fn resolve_gif_url(
 
 /// GET /api/gifs/media?url=<encoded_giphy_url> — Legacy image proxy (for old messages).
 #[derive(Deserialize)]
-pub struct MediaParams {
+pub(crate) struct MediaParams {
     url: String,
 }
 
-pub async fn proxy_media(
+pub(crate) async fn proxy_media(
     State(_state): State<AppState>,
     Query(params): Query<MediaParams>,
 ) -> Result<Response, (StatusCode, &'static str)> {
@@ -447,17 +447,17 @@ async fn fetch_giphy_gif(gif_id: &str) -> Result<GiphyGif, (StatusCode, &'static
 // ── Favorites ──────────────────────────────────────────────────
 
 #[derive(Deserialize)]
-pub struct AddFavoriteRequest {
+pub(crate) struct AddFavoriteRequest {
     pub gif_id: String,
 }
 
 #[derive(Serialize)]
-pub struct FavoritesResponse {
+pub(crate) struct FavoritesResponse {
     pub favorites: Vec<FavoriteItem>,
 }
 
 #[derive(Serialize)]
-pub struct FavoriteItem {
+pub(crate) struct FavoriteItem {
     pub gif_id: String,
     pub gif_url: String,
     pub preview_url: String,
@@ -466,7 +466,7 @@ pub struct FavoriteItem {
 }
 
 /// GET /api/gifs/favorites — returns clean proxy URLs
-pub async fn list_favorites(
+pub(crate) async fn list_favorites(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<FavoritesResponse>, AppError> {
@@ -489,7 +489,7 @@ pub async fn list_favorites(
 }
 
 /// POST /api/gifs/favorites — only needs gif_id; URLs are resolved from cache.
-pub async fn add_favorite(
+pub(crate) async fn add_favorite(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<AddFavoriteRequest>,
@@ -511,7 +511,7 @@ pub async fn add_favorite(
 }
 
 /// DELETE /api/gifs/favorites/:gif_id
-pub async fn remove_favorite(
+pub(crate) async fn remove_favorite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(gif_id): Path<String>,
@@ -523,12 +523,12 @@ pub async fn remove_favorite(
 // ── oEmbed proxy ────────────────────────────────────────────────
 
 #[derive(Deserialize)]
-pub struct OembedParams {
+pub(crate) struct OembedParams {
     url: String,
 }
 
 #[derive(Serialize)]
-pub struct OembedResponse {
+pub(crate) struct OembedResponse {
     pub title: Option<String>,
     pub author_name: Option<String>,
     pub thumbnail_url: Option<String>,
@@ -537,7 +537,7 @@ pub struct OembedResponse {
 /// GET /api/oembed?url=<video_url> — Proxy oEmbed metadata (avoids CORS issues).
 /// Tries the provider's own oEmbed endpoint first (via oembed.com discovery),
 /// then falls back to noembed.com.
-pub async fn oembed_proxy(
+pub(crate) async fn oembed_proxy(
     Query(params): Query<OembedParams>,
 ) -> Result<Json<OembedResponse>, (StatusCode, &'static str)> {
     let url = &params.url;

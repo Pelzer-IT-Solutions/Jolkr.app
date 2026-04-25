@@ -5,13 +5,17 @@ use jolkr_common::JolkrError;
 use jolkr_db::repo::{ChannelEncryptionRepo, MemberRepo};
 use jolkr_db::models::ChannelEncryptionKeyRow;
 
+/// Domain service for `channelencryption` operations.
 pub struct ChannelEncryptionService;
 
 /// A single recipient's encrypted key copy.
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct RecipientKey {
+    /// Owning user identifier.
     pub user_id: Uuid,
+    /// Encrypted key.
     pub encrypted_key: String,
+    /// Encryption nonce when content is encrypted.
     pub nonce: String,
 }
 

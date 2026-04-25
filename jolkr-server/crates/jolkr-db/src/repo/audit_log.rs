@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::models::AuditLogRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `auditlog` persistence.
 pub struct AuditLogRepo;
 
 impl AuditLogRepo {
@@ -20,11 +21,11 @@ impl AuditLogRepo {
     ) -> Result<AuditLogRow, JolkrError> {
         let id = Uuid::new_v4();
         let row = sqlx::query_as::<_, AuditLogRow>(
-            r#"
+            "
             INSERT INTO audit_log (id, server_id, user_id, action_type, target_id, target_type, changes, reason)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(server_id)
@@ -51,12 +52,12 @@ impl AuditLogRepo {
         let rows = if let Some(action) = action_type {
             if let Some(before_ts) = before {
                 sqlx::query_as::<_, AuditLogRow>(
-                    r#"
+                    "
                     SELECT * FROM audit_log
                     WHERE server_id = $1 AND action_type = $2 AND created_at < $3
                     ORDER BY created_at DESC
                     LIMIT $4
-                    "#,
+                    ",
                 )
                 .bind(server_id)
                 .bind(action)
@@ -66,12 +67,12 @@ impl AuditLogRepo {
                 .await?
             } else {
                 sqlx::query_as::<_, AuditLogRow>(
-                    r#"
+                    "
                     SELECT * FROM audit_log
                     WHERE server_id = $1 AND action_type = $2
                     ORDER BY created_at DESC
                     LIMIT $3
-                    "#,
+                    ",
                 )
                 .bind(server_id)
                 .bind(action)
@@ -81,12 +82,12 @@ impl AuditLogRepo {
             }
         } else if let Some(before_ts) = before {
             sqlx::query_as::<_, AuditLogRow>(
-                r#"
+                "
                 SELECT * FROM audit_log
                 WHERE server_id = $1 AND created_at < $2
                 ORDER BY created_at DESC
                 LIMIT $3
-                "#,
+                ",
             )
             .bind(server_id)
             .bind(before_ts)
@@ -95,12 +96,12 @@ impl AuditLogRepo {
             .await?
         } else {
             sqlx::query_as::<_, AuditLogRow>(
-                r#"
+                "
                 SELECT * FROM audit_log
                 WHERE server_id = $1
                 ORDER BY created_at DESC
                 LIMIT $2
-                "#,
+                ",
             )
             .bind(server_id)
             .bind(limit)

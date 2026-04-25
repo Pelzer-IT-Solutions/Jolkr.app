@@ -20,15 +20,24 @@ const MAX_THREAD_NAME_CHARS: usize = 100;
 
 // ── DTOs ──────────────────────────────────────────────────────────────
 
+/// Public information about `thread`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning channel identifier.
     pub channel_id: Uuid,
+    /// Identifier of the message that started the thread.
     pub starter_msg_id: Option<Uuid>,
+    /// Display name.
     pub name: Option<String>,
+    /// Whether archived.
     pub is_archived: bool,
+    /// Cached message count.
     pub message_count: i64,
+    /// Creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
     pub updated_at: DateTime<Utc>,
 }
 
@@ -47,27 +56,36 @@ impl ThreadInfo {
     }
 }
 
+/// Request payload for the `CreateThread` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateThreadRequest {
+    /// Referenced message identifier.
     pub message_id: Uuid,
+    /// Display name.
     pub name: Option<String>,
 }
 
+/// Request payload for the `UpdateThread` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateThreadRequest {
+    /// Display name.
     pub name: Option<String>,
+    /// Whether archived.
     pub is_archived: Option<bool>,
 }
 
+/// `ThreadMessageQuery` value.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadMessageQuery {
+    /// Before.
     pub before: Option<DateTime<Utc>>,
+    /// Limit.
     pub limit: Option<i64>,
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-/// Check VIEW_CHANNELS permission for caller on a channel. Returns (server_id, member_id).
+/// Check `VIEW_CHANNELS` permission for caller on a channel. Returns (`server_id`, `member_id`).
 async fn check_view_permission(
     pool: &PgPool,
     channel_id: Uuid,
@@ -92,11 +110,12 @@ async fn check_view_permission(
 
 // ── Service ──────────────────────────────────────────────────────────
 
+/// Domain service for `thread` operations.
 pub struct ThreadService;
 
 impl ThreadService {
     /// Create a thread from an existing message.
-    /// Requires VIEW_CHANNELS + SEND_MESSAGES on the parent channel.
+    /// Requires `VIEW_CHANNELS` + `SEND_MESSAGES` on the parent channel.
     /// Uses a transaction to ensure atomicity and prevent race conditions.
     pub async fn create_thread(
         pool: &PgPool,
@@ -105,7 +124,7 @@ impl ThreadService {
         req: CreateThreadRequest,
     ) -> Result<(ThreadInfo, MessageInfo), JolkrError> {
         // Validate name (measure in chars, not bytes)
-        let name = req.name.as_deref().map(|n| n.trim()).filter(|n| !n.is_empty());
+        let name = req.name.as_deref().map(str::trim).filter(|n| !n.is_empty());
         if let Some(n) = name {
             if n.chars().count() > MAX_THREAD_NAME_CHARS {
                 return Err(JolkrError::Validation(
@@ -154,7 +173,7 @@ impl ThreadService {
             Ok(t) => t,
             Err(e) => {
                 // Unique constraint violation → thread already exists
-                let _ = tx.rollback().await;
+                drop(tx.rollback().await);
                 let msg = e.to_string();
                 if msg.contains("duplicate") || msg.contains("unique") || msg.contains("idx_threads_starter_msg_unique") {
                     return Err(JolkrError::Conflict(
@@ -179,7 +198,7 @@ impl ThreadService {
         Ok((thread_info, msg_info))
     }
 
-    /// Get a single thread with message count. Requires VIEW_CHANNELS.
+    /// Get a single thread with message count. Requires `VIEW_CHANNELS`.
     pub async fn get_thread(
         pool: &PgPool,
         thread_id: Uuid,
@@ -191,7 +210,7 @@ impl ThreadService {
         Ok(ThreadInfo::from_row(thread, count))
     }
 
-    /// List threads for a channel. Requires VIEW_CHANNELS.
+    /// List threads for a channel. Requires `VIEW_CHANNELS`.
     pub async fn list_threads(
         pool: &PgPool,
         channel_id: Uuid,
@@ -219,8 +238,8 @@ impl ThreadService {
     }
 
     /// Update thread name or archive status.
-    /// Allowed by: thread starter message author, MANAGE_MESSAGES holders, server owner.
-    /// Requires VIEW_CHANNELS on the parent channel.
+    /// Allowed by: thread starter message author, `MANAGE_MESSAGES` holders, server owner.
+    /// Requires `VIEW_CHANNELS` on the parent channel.
     pub async fn update_thread(
         pool: &PgPool,
         thread_id: Uuid,
@@ -290,7 +309,7 @@ impl ThreadService {
         Ok(info)
     }
 
-    /// Send a message to a thread. Requires SEND_MESSAGES on parent channel.
+    /// Send a message to a thread. Requires `SEND_MESSAGES` on parent channel.
     pub async fn send_thread_message(
         pool: &PgPool,
         thread_id: Uuid,
@@ -332,7 +351,7 @@ impl ThreadService {
         Ok(msg)
     }
 
-    /// Get paginated messages for a thread. Requires VIEW_CHANNELS on parent channel.
+    /// Get paginated messages for a thread. Requires `VIEW_CHANNELS` on parent channel.
     pub async fn get_thread_messages(
         pool: &PgPool,
         thread_id: Uuid,

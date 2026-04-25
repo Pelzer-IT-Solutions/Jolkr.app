@@ -7,45 +7,69 @@ use std::collections::HashMap;
 use jolkr_common::JolkrError;
 use jolkr_db::repo::{ChannelRepo, MemberRepo, PollRepo};
 
+/// Public information about `polloption`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PollOptionInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Poll identifier.
     pub poll_id: Uuid,
+    /// Sort position.
     pub position: i32,
+    /// Text.
     pub text: String,
 }
 
+/// Public information about `poll`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PollInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Referenced message identifier.
     pub message_id: Uuid,
+    /// Owning channel identifier.
     pub channel_id: Uuid,
+    /// Question.
     pub question: String,
+    /// Whether multiple options can be selected.
     pub multi_select: bool,
+    /// Whether votes are anonymous.
     pub anonymous: bool,
+    /// Expiration timestamp.
     pub expires_at: Option<DateTime<Utc>>,
+    /// Options list.
     pub options: Vec<PollOptionInfo>,
-    /// Map of option_id → vote count
+    /// Map of `option_id` → vote count
     pub votes: HashMap<String, i64>,
     /// Current user's voted option IDs
     pub my_votes: Vec<Uuid>,
+    /// Total votes.
     pub total_votes: i64,
 }
 
+/// Request payload for the `CreatePoll` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreatePollRequest {
+    /// Question.
     pub question: String,
+    /// Options list.
     pub options: Vec<String>,
+    /// Whether multiple options can be selected.
     pub multi_select: Option<bool>,
+    /// Whether votes are anonymous.
     pub anonymous: Option<bool>,
+    /// Expiration timestamp.
     pub expires_at: Option<DateTime<Utc>>,
 }
 
+/// Request payload for the `Vote` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoteRequest {
+    /// Option identifier.
     pub option_id: Uuid,
 }
 
+/// Domain service for `poll` operations.
 pub struct PollService;
 
 impl PollService {

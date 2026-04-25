@@ -19,7 +19,7 @@ static NUMERIC_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
 });
 
 /// Middleware that records HTTP request metrics (counter + latency histogram).
-pub async fn metrics_middleware(request: Request, next: Next) -> Response {
+pub(crate) async fn metrics_middleware(request: Request, next: Next) -> Response {
     let method = request.method().to_string();
     let path = request.uri().path().to_string();
 

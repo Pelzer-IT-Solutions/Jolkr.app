@@ -12,11 +12,17 @@ use jolkr_db::repo::EmbedRepo;
 /// Extracted metadata from a URL.
 #[derive(Debug, Clone, Serialize)]
 pub struct EmbedMetadata {
+    /// Resource URL.
     pub url: String,
+    /// Title text.
     pub title: Option<String>,
+    /// Description text.
     pub description: Option<String>,
+    /// Image URL.
     pub image_url: Option<String>,
+    /// Site name.
     pub site_name: Option<String>,
+    /// Color value (RGB).
     pub color: Option<String>,
 }
 
@@ -127,6 +133,7 @@ fn is_public_ip(ip: IpAddr) -> bool {
 pub struct LinkEmbedService {}
 
 impl LinkEmbedService {
+    /// Creates a new instance.
     pub fn new() -> Self {
         Self {}
     }

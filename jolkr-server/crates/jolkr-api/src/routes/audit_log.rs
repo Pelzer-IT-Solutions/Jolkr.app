@@ -14,7 +14,7 @@ use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Debug, Serialize)]
-pub struct AuditLogEntry {
+pub(crate) struct AuditLogEntry {
     pub id: Uuid,
     pub server_id: Uuid,
     pub user_id: Uuid,
@@ -27,19 +27,19 @@ pub struct AuditLogEntry {
 }
 
 #[derive(Debug, Serialize)]
-pub struct AuditLogResponse {
+pub(crate) struct AuditLogResponse {
     pub entries: Vec<AuditLogEntry>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AuditLogQuery {
+pub(crate) struct AuditLogQuery {
     pub action: Option<String>,
     pub limit: Option<i64>,
     pub before: Option<DateTime<Utc>>,
 }
 
 /// GET /api/servers/:server_id/audit-log — requires MANAGE_SERVER or owner
-pub async fn get_audit_log(
+pub(crate) async fn get_audit_log(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
