@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import {
-  X, Hash, Lock, Shield, Save, Plus, Trash2, Check, XCircle
+  Hash, Lock, Shield, Save, Plus, Trash2, Check, XCircle
 } from 'lucide-react'
 import type { Channel as ApiChannel, Role, ChannelOverwrite } from '../../api/types'
 import * as api from '../../api/client'
 import * as P from '../../utils/permissions'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import s from './ChannelSettings.module.css'
 
 type Section = 'overview' | 'permissions'
@@ -20,7 +20,7 @@ interface Props {
   onUpdate: (channelId: string, data: Partial<ApiChannel>) => void
 }
 
-const NAV: { group: string; items: { id: Section; label: string; icon: React.ReactNode }[] }[] = [
+const NAV: SettingsNavGroup<Section>[] = [
   {
     group: 'Channel Settings',
     items: [
@@ -44,14 +44,9 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
   const [newOverwriteType, setNewOverwriteType] = useState<'role' | 'member'>('role')
   const [newOverwriteTargetId, setNewOverwriteTargetId] = useState('')
 
-  const navTotal = NAV.reduce((sum, g) => sum + 1 + g.items.length, 0)
-  const isRevealing = useRevealAnimation(navTotal, [navTotal])
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
+  // Reveal animation for the overwrites list inside the Permissions section
+  // (the SettingsShell handles the nav reveal independently).
+  const isRevealing = useRevealAnimation(overwrites.length, [overwrites.length])
 
   // Load roles and overwrites
   useEffect(() => {
@@ -59,7 +54,7 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
     api.getChannelOverwrites(channel.id).then(setOverwrites).catch(() => setOverwrites([]))
   }, [serverId, channel.id])
 
-  const handleFieldChange = (field: keyof ApiChannel, value: any) => {
+  const handleFieldChange = <K extends keyof ApiChannel>(field: K, value: ApiChannel[K]) => {
     setEditedChannel(prev => ({ ...prev, [field]: value }))
     setHasChanges(true)
   }
@@ -88,14 +83,11 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
     const isDenied = (currentDeny & permission) !== 0
 
     if (!isAllowed && !isDenied) {
-      // neutral -> allow
       newAllow |= permission
     } else if (isAllowed) {
-      // allow -> deny
       newAllow &= ~permission
       newDeny |= permission
     } else {
-      // deny -> neutral
       newDeny &= ~permission
     }
 
@@ -356,52 +348,18 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
     )
   }
 
-  const renderSection = () => {
-    switch (section) {
-      case 'overview': return renderOverview()
-      case 'permissions': return renderPermissions()
-      default: return null
-    }
-  }
-
-  return createPortal(
-    <div className={s.overlay} onClick={onClose}>
-      <div className={s.modal} onClick={e => e.stopPropagation()}>
-        <aside className={s.nav}>
-          <div className={s.navHeader}>
-            <span className="txt-small txt-semibold">{channel.name}</span>
-          </div>
-          {NAV.map((group, gIdx) => (
-            <div key={group.group} className={s.navGroup}>
-              <div
-                className={`${s.navGroupLabel} txt-tiny txt-semibold ${isRevealing ? s.reveal : ''}`}
-                style={{ animationDelay: `${revealDelay(gIdx)}ms` }}
-              >
-                {group.group}
-              </div>
-              {group.items.map((item, iIdx) => (
-                <button
-                  key={item.id}
-                  className={`${s.navItem} ${section === item.id ? s.active : ''} ${isRevealing ? s.reveal : ''}`}
-                  style={{ animationDelay: `${revealDelay(gIdx + iIdx + 1)}ms` }}
-                  onClick={() => setSection(item.id)}
-                >
-                  {item.icon}
-                  <span className="txt-small">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </aside>
-
-        <main className={s.content}>
-          <button className={s.closeBtn} onClick={onClose} title="Close">
-            <X size={16} strokeWidth={1.5} />
-          </button>
-          {renderSection()}
-        </main>
-      </div>
-    </div>,
-    document.body
+  return (
+    <SettingsShell
+      section={section}
+      onSection={setSection}
+      onClose={onClose}
+      navGroups={NAV}
+      navHeader={
+        <span className="txt-small txt-semibold">{channel.name}</span>
+      }
+    >
+      {section === 'overview' && renderOverview()}
+      {section === 'permissions' && renderPermissions()}
+    </SettingsShell>
   )
 }

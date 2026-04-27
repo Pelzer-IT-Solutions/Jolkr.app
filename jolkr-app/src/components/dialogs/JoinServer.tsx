@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useServersStore } from '../../stores/servers';
+import { parseInviteInput } from '../../platform/config';
 import * as api from '../../api/client';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
@@ -18,13 +19,14 @@ export default function JoinServerDialog({ onClose }: JoinServerDialogProps) {
   const navigate = useNavigate();
 
   const handleJoin = async () => {
-    if (!code.trim()) {
+    const parsed = parseInviteInput(code);
+    if (!parsed) {
       setError('Invite code is required');
       return;
     }
     setLoading(true);
     try {
-      const invite = await api.useInvite(code.trim());
+      const invite = await api.useInvite(parsed);
       await fetchServers();
       onClose();
       navigate(`/servers/${invite.server_id}`);
@@ -41,10 +43,10 @@ export default function JoinServerDialog({ onClose }: JoinServerDialogProps) {
       {error && <div className="bg-danger/10 text-danger text-sm p-2 rounded-lg mb-3">{error}</div>}
 
       <Input
-        label="Invite Code"
+        label="Invite Code or Link"
         value={code}
         onChange={(e) => setCode(e.target.value)}
-        placeholder="Enter an invite code"
+        placeholder="ABC12345 or https://jolkr.app/app/invite/ABC12345"
         autoFocus
         onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
       />

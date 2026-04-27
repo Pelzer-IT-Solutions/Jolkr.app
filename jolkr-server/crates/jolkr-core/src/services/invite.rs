@@ -25,6 +25,16 @@ pub struct InviteInfo {
     pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+/// Result of a `use_invite` call. `freshly_joined` is `false` when the caller
+/// was already a member (idempotent navigation case).
+#[derive(Debug, Clone)]
+pub struct UseInviteResult {
+    /// The resolved invite.
+    pub invite: InviteInfo,
+    /// True if this call actually added the user to the server.
+    pub freshly_joined: bool,
+}
+
 impl From<InviteRow> for InviteInfo {
     fn from(row: InviteRow) -> Self {
         Self {
@@ -96,12 +106,31 @@ impl InviteService {
     }
 
     /// Use invite.
+    ///
+    /// Idempotent: if the caller is already a member of the target server, the
+    /// invite is returned without consuming a use slot — so following an invite
+    /// link to a server you've already joined just navigates you there instead
+    /// of returning an error.
     pub async fn use_invite(
         pool: &PgPool,
         code: &str,
         user_id: Uuid,
-    ) -> Result<InviteInfo, JolkrError> {
+    ) -> Result<UseInviteResult, JolkrError> {
         let invite = InviteRepo::get_by_code(pool, code).await?;
+
+        // Idempotent shortcut: already a member → just return the invite info.
+        // Done outside the transaction so we never even tentatively touch use_count.
+        let already_member: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM members WHERE server_id = $1 AND user_id = $2)",
+        )
+        .bind(invite.server_id)
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| JolkrError::Internal(e.to_string()))?;
+        if already_member {
+            return Ok(UseInviteResult { invite: InviteInfo::from(invite), freshly_joined: false });
+        }
 
         // Use a transaction so ban check + invite use + member add are atomic.
         // If any step fails, everything rolls back (no consumed invite slots on failure).
@@ -137,8 +166,10 @@ impl InviteService {
             ));
         }
 
-        // Add user as member
-        let member_result = sqlx::query(
+        // Add user as member. The pre-check above already handled the
+        // "already member" case, so a 0-row result here means a concurrent
+        // join landed first — also idempotent OK.
+        sqlx::query(
             "INSERT INTO members (id, server_id, user_id, joined_at)
                VALUES ($1, $2, $3, NOW())
                ON CONFLICT (server_id, user_id) DO NOTHING",
@@ -149,14 +180,10 @@ impl InviteService {
         .execute(&mut *tx)
         .await
         .map_err(|e| JolkrError::Internal(e.to_string()))?;
-        if member_result.rows_affected() == 0 {
-            // Already a member — rollback the invite use_count increment
-            return Err(JolkrError::Conflict("Already a member of this server".into()));
-        }
 
         tx.commit().await.map_err(|e| JolkrError::Internal(e.to_string()))?;
 
-        Ok(InviteInfo::from(invite))
+        Ok(UseInviteResult { invite: InviteInfo::from(invite), freshly_joined: true })
     }
 
     /// Lists invites.

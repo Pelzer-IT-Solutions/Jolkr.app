@@ -271,8 +271,8 @@ export function useAppHandlers(
   }
 
   // ── Channel CRUD handlers ──
-  const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice') => {
-    await api.createChannel(activeServerId, { name, kind })
+  const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice', categoryId?: string) => {
+    await api.createChannel(activeServerId, { name, kind, ...(categoryId ? { category_id: categoryId } : {}) })
     await fetchChannels(activeServerId)
   }, [activeServerId])
 
@@ -316,6 +316,30 @@ export function useAppHandlers(
     await api.updateCategory(categoryId, { name: newName })
     await fetchCategories(activeServerId)
   }, [activeServerId])
+
+  // ── Channel reorder (drag & drop persist) ──
+  // `positions` is the new global ordering across all categories + uncategorized.
+  // `moves` is the subset of channels whose category_id changed (cross-category drag).
+  const handleReorderChannels = useCallback(async (
+    positions: Array<{ id: string; position: number }>,
+    moves: Array<{ id: string; categoryId: string | null }>,
+  ) => {
+    if (!activeServerId) return
+    try {
+      // Apply category moves first so the reorder applies on top of the new layout
+      for (const m of moves) {
+        await api.updateChannel(m.id, { category_id: m.categoryId })
+      }
+      if (positions.length > 0) {
+        await api.reorderChannels(activeServerId, positions)
+      }
+      await fetchChannels(activeServerId)
+    } catch (e) {
+      console.warn('Channel reorder failed, refetching to recover:', e)
+      // On error, force a refetch so the UI snaps back to the server's truth
+      await fetchChannels(activeServerId).catch(() => {})
+    }
+  }, [activeServerId, fetchChannels])
 
   // ── Server management ──
   async function handleJoinServer(serverId: string, accessCode: string): Promise<boolean> {
@@ -401,6 +425,7 @@ export function useAppHandlers(
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleArchiveChannel,
     handleRenameChannel, handleRenameCategory,
+    handleReorderChannels,
     handleJoinServer, handleCreateServer, handleCreateDm,
   }
 }

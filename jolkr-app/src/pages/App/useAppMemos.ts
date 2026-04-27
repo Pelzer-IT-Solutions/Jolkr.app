@@ -183,6 +183,8 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     letter: 'J',
     avatarUrl: appIconUrl,
     time: 'Today',
+    // Synthetic system welcome — empty timestamp so it doesn't trigger a date separator
+    created_at: '',
     content: dmActive
       ? `Start a conversation with ${activeDmConv?.name ?? activeDmConv?.participants[0]?.name ?? 'someone'}!`
       : `Welcome to #${activeChannel.name}! Be the first to say something.`,

@@ -3,6 +3,9 @@ import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../ut
 import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
 import { useServersStore } from '../../stores/servers'
+import { useToast } from '../../components/Toast'
+import { buildInviteUrl } from '../../platform/config'
+import { orbsForHue } from '../../utils/theme'
 import * as api from '../../api/client'
 
 import { TabBar } from '../../components/TabBar/TabBar'
@@ -53,7 +56,7 @@ export default function AppShell() {
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
     pinnedCount, pinnedVersion, threadsCount,
-    ready, serverThemes,
+    ready, serverThemes, setServerThemes,
     fetchServers,
   } = init
 
@@ -81,6 +84,7 @@ export default function AppShell() {
     handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleRenameChannel, handleRenameCategory, handleArchiveChannel,
+    handleReorderChannels,
     handleJoinServer, handleCreateServer, handleCreateDm,
   } = handlers
 
@@ -229,6 +233,7 @@ export default function AppShell() {
                   onRenameCategory={canManageChannels ? handleRenameCategory : undefined}
                   onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
                   onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
+                  onReorderChannels={canManageChannels ? handleReorderChannels : undefined}
                 />
               ) : null}
 
@@ -375,11 +380,26 @@ export default function AppShell() {
           server={{
             ...rawServer,
             hue: serverThemes[activeServerId]?.hue ?? null,
-            discoverable: false,
+            discoverable: rawServer.is_public ?? false,
           }}
           onClose={() => setServerSettingsOpen(false)}
           onUpdate={async (serverId, data) => {
-            await api.updateServer(serverId, { name: data.name, description: data.description ?? undefined })
+            // Map editable Overview fields → backend updateServer body.
+            // Anything not provided in `data` is left unchanged on the server.
+            const body: Parameters<typeof api.updateServer>[1] = {}
+            if (data.name !== undefined) body.name = data.name
+            if (data.description !== undefined) body.description = data.description ?? undefined
+            if (data.icon_url !== undefined) body.icon_url = data.icon_url ?? undefined
+            if (data.discoverable !== undefined) body.is_public = data.discoverable
+            // `hue` (and any banner_url) are wrapped into the theme blob the backend stores.
+            if (data.hue !== undefined || data.banner_url !== undefined) {
+              const nextHue = data.hue ?? serverThemes[serverId]?.hue ?? null
+              const orbs = nextHue != null ? orbsForHue(nextHue) : []
+              body.theme = { hue: nextHue, orbs }
+              // Persist the new local theme so subsequent renders reflect the save
+              setServerThemes(prev => ({ ...prev, [serverId]: { hue: nextHue, orbs } }))
+            }
+            await api.updateServer(serverId, body)
             fetchServers()
           }}
           onDelete={async (serverId) => {
@@ -438,9 +458,15 @@ export default function AppShell() {
         onInviteToServer={async (_userId: string, serverId: string) => {
           const invite = await api.createInvite(serverId, { max_uses: 1 }).catch(() => null)
           if (invite) {
-            // Copy invite link to clipboard
-            const url = `${window.location.origin}/invite/${invite.code}`
-            navigator.clipboard.writeText(url).catch(console.warn)
+            const url = buildInviteUrl(invite.code)
+            try {
+              await navigator.clipboard.writeText(url)
+              useToast.getState().show('Invite link copied!', 'success')
+            } catch {
+              useToast.getState().show(`Copy failed — link: ${url}`, 'error', 6000)
+            }
+          } else {
+            useToast.getState().show('Failed to create invite', 'error')
           }
           setUserContextMenu(null)
         }}

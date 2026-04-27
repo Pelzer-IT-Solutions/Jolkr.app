@@ -2,19 +2,20 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } fr
 import type { Dispatch, SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Check, Camera, Palette, Upload
+  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, Plus, Check, Camera, Palette, Upload, Copy
 } from 'lucide-react'
 import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
 import type { Server as ApiServer, Member } from '../../api/types'
 import * as api from '../../api/client'
 import * as P from '../../utils/permissions'
 import { useAuthStore } from '../../stores/auth'
+import { buildInviteUrl } from '../../platform/config'
+import { useToast } from '../Toast'
 import ServerIcon from '../ServerIcon'
+import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 
 // Extend API Server with frontend-only display fields
 type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
-import { revealDelay } from '../../utils/animations'
-import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './ServerSettings.module.css'
 
 type Section = 'overview' | 'roles' | 'invites' | 'bans' | 'audit' | 'delete'
@@ -70,8 +71,13 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null)
   const iconFileRef = useRef<HTMLInputElement | null>(null)
 
-  // TODO: Replace with real API data
   const [invites, setInvites] = useState<Invite[]>([])
+  const [createInviteMaxAge, setCreateInviteMaxAge] = useState<number>(86400) // 1 day default
+  const [createInviteMaxUses, setCreateInviteMaxUses] = useState<number>(0) // 0 = unlimited
+  const [creatingInvite, setCreatingInvite] = useState(false)
+  const [createInviteError, setCreateInviteError] = useState('')
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
+  const showToast = useToast(s => s.show)
   const [roles, setRoles] = useState<Role[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [bans, setBans] = useState<Ban[]>([])
@@ -87,15 +93,6 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [originalRoleColor, setOriginalRoleColor] = useState('#000000')
   const [originalRolePermissions, setOriginalRolePermissions] = useState<number>(0)
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
-
-  const navTotal = NAV.reduce((sum, g) => sum + 1 + g.items.length, 0)
-  const isRevealing = useRevealAnimation(navTotal, [navTotal])
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
 
   // Load real data from API
   useEffect(() => {
@@ -126,17 +123,33 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
 
   const rolesOrdered = useMemo(() => sortRolesByPosition(roles), [roles])
 
-  const handleCreateInvite = () => {
-    const newInvite: Invite = {
-      id: `inv-${Date.now()}`,
-      server_id: server.id,
-      creator_id: 'me',
-      code: Math.random().toString(36).substring(2, 10).toUpperCase(),
-      max_uses: null,
-      use_count: 0,
-      expires_at: null,
+  const handleCreateInvite = async () => {
+    setCreatingInvite(true)
+    setCreateInviteError('')
+    try {
+      const body: { max_uses?: number; max_age_seconds?: number } = {}
+      if (createInviteMaxUses > 0) body.max_uses = createInviteMaxUses
+      if (createInviteMaxAge > 0) body.max_age_seconds = createInviteMaxAge
+      const created = await api.createInvite(server.id, Object.keys(body).length > 0 ? body : undefined)
+      setInvites(prev => [created, ...prev])
+    } catch (e) {
+      setCreateInviteError((e as Error).message || 'Failed to create invite')
+    } finally {
+      setCreatingInvite(false)
     }
-    setInvites(prev => [newInvite, ...prev])
+  }
+
+  const handleCopyInvite = async (invite: Invite) => {
+    const url = buildInviteUrl(invite.code)
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedInviteId(invite.id)
+      showToast('Invite link copied!', 'success')
+      setTimeout(() => setCopiedInviteId(prev => prev === invite.id ? null : prev), 2000)
+    } catch {
+      // Clipboard API can fail when the window isn't focused — show the URL so the user can copy manually
+      showToast(`Copy failed — link: ${url}`, 'error', 6000)
+    }
   }
 
   const handleDeleteInvite = async (inviteId: string) => {
@@ -293,77 +306,47 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     } catch { /* ignore */ }
   }
 
-  let navIdx = 0
+  // Compose nav groups for the shell — counts and the danger variant for
+  // Delete Server are computed per-render from the loaded data.
+  const navGroups: SettingsNavGroup<Section>[] = useMemo(() => NAV.map(group => ({
+    group: group.group,
+    items: group.items.map(item => {
+      let count: number | undefined
+      if (item.id === 'roles') count = roles.length
+      else if (item.id === 'invites') count = invites.length
+      else if (item.id === 'bans') count = bans.length
+      else if (item.id === 'audit') count = auditLog.length
+      return {
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        count,
+        variant: item.id === 'delete' ? ('danger' as const) : undefined,
+      }
+    }),
+  })), [roles.length, invites.length, bans.length, auditLog.length])
 
-  return createPortal(
-    <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={s.modal}>
-        {/* Floating close button - positioned outside modal */}
-        <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
-          <X size={18} strokeWidth={1.5} />
+  return (
+    <>
+    <SettingsShell
+      section={section}
+      onSection={setSection}
+      onClose={onClose}
+      navGroups={navGroups}
+      navHeader={
+        <div className={s.serverHeader}>
+          <ServerIcon name={server.name} iconUrl={server.icon_url} serverId={server.id} size="sm" />
+          <span className={`${s.serverName} txt-small txt-semibold`}>{server.name}</span>
+        </div>
+      }
+      navFooter={!isOwner ? (
+        <button className={s.leaveBtn} onClick={() => setShowLeaveConfirm(true)}>
+          <Users size={14} strokeWidth={1.5} />
+          <span className="txt-small">Leave Server</span>
         </button>
-
-        {/* Left nav */}
-        <aside className={s.nav}>
-          <div className={`${s.navScroll} scrollbar-thin`}>
-            <div className={s.serverHeader}>
-              <ServerIcon name={server.name} iconUrl={server.icon_url} serverId={server.id} size="sm" />
-              <span className={`${s.serverName} txt-small txt-semibold`}>{server.name}</span>
-            </div>
-            <div className={s.navDivider} />
-            {NAV.map(group => {
-              const groupIdx = navIdx++
-              return (
-              <div key={group.group} className={s.navGroup}>
-                <span
-                  className={`${s.navGroupLabel} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}
-                  style={isRevealing ? { '--reveal-delay': `${revealDelay(groupIdx)}ms` } as React.CSSProperties : undefined}
-                >
-                  {group.group}
-                </span>
-                {group.items.map(item => {
-                  const itemIdx = navIdx++
-                  // Get count for sections with lists
-                  let count: number | null = null
-                  if (item.id === 'roles') count = roles.length
-                  else if (item.id === 'invites') count = invites.length
-                  else if (item.id === 'bans') count = bans.length
-                  else if (item.id === 'audit') count = auditLog.length
-
-                  return (
-                  <button
-                    key={item.id}
-                    className={`${s.navItem} ${section === item.id ? s.navItemActive : ''} ${isRevealing ? 'revealing' : ''} ${item.id === 'delete' ? s.navItemDanger : ''}`}
-                    style={isRevealing ? { '--reveal-delay': `${revealDelay(itemIdx)}ms` } as React.CSSProperties : undefined}
-                    onClick={() => setSection(item.id)}
-                  >
-                    <span className={s.navIcon}>{item.icon}</span>
-                    <span className={`${s.navLabel} txt-small txt-medium`}>{item.label}</span>
-                    {count !== null && count > 0 && <span className={s.navBadge}>{count}</span>}
-                    <span className={s.navSpacer} />
-                    {section === item.id && <ChevronRight size={12} strokeWidth={2} className={s.navChevron} />}
-                  </button>
-                  )
-                })}
-              </div>
-              )
-            })}
-          </div>
-
-          {/* Leave Server Button (hidden for owner — must transfer or delete) */}
-          {!isOwner && (
-            <div className={s.navFooter}>
-              <button className={s.leaveBtn} onClick={() => setShowLeaveConfirm(true)}>
-                <Users size={14} strokeWidth={1.5} />
-                <span className="txt-small">Leave Server</span>
-              </button>
-            </div>
-          )}
-        </aside>
-
-        {/* Right content */}
-        <main className={s.content}>
-          <div className={`${s.scroll} ${section === 'roles' ? s.scrollNoPadding : ''} scrollbar-thin`}>
+      ) : undefined}
+      scrollNoPadding={section === 'roles'}
+    >
             {/* Overview Section */}
             {section === 'overview' && (
               <OverviewSection
@@ -580,32 +563,87 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             {/* Invites Section */}
             {section === 'invites' && (
               <div className={s.section}>
+                <div className={s.inviteCreateRow}>
+                  <div className={s.inviteCreateField}>
+                    <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>Expire after</label>
+                    <select
+                      className={s.inviteSelect}
+                      style={{ maxHeight: '32px' }}
+                      value={createInviteMaxAge}
+                      onChange={e => setCreateInviteMaxAge(Number(e.target.value))}
+                      disabled={creatingInvite}
+                    >
+                      <option value={0}>Never</option>
+                      <option value={1800}>30 minutes</option>
+                      <option value={3600}>1 hour</option>
+                      <option value={21600}>6 hours</option>
+                      <option value={43200}>12 hours</option>
+                      <option value={86400}>1 day</option>
+                      <option value={604800}>7 days</option>
+                    </select>
+                  </div>
+                  <div className={s.inviteCreateField}>
+                    <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>Max uses</label>
+                    <select
+                      className={s.inviteSelect}
+                      value={createInviteMaxUses}
+                      onChange={e => setCreateInviteMaxUses(Number(e.target.value))}
+                      disabled={creatingInvite}
+                    >
+                      <option value={0}>No limit</option>
+                      <option value={1}>1 use</option>
+                      <option value={5}>5 uses</option>
+                      <option value={10}>10 uses</option>
+                      <option value={25}>25 uses</option>
+                      <option value={50}>50 uses</option>
+                      <option value={100}>100 uses</option>
+                    </select>
+                  </div>
+                  <button
+                    className={`${s.createBtn} ${s.inviteRowBtn}`}
+                    onClick={handleCreateInvite}
+                    disabled={creatingInvite}
+                  >
+                    <Link2 size={14} strokeWidth={1.5} />
+                    {creatingInvite ? 'Creating…' : 'Create Invite'}
+                  </button>
+                </div>
+
+                {createInviteError && (
+                  <div className={s.inviteError}>{createInviteError}</div>
+                )}
+
                 {invites.length === 0 ? (
                   <div className={s.emptyState}>
                     <div className={s.emptyStateIcon}>
                       <Link2 size={32} strokeWidth={1.5} />
                     </div>
                     <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Invites Yet</span>
-                    <span className={`${s.emptyStateDesc} txt-small`}>Create an invite to start inviting people to your server.</span>
-                    <button className={`${s.createBtn} ${s.emptyStateBtn}`} onClick={handleCreateInvite}>
-                      <Link2 size={14} strokeWidth={1.5} />
-                      Create Invite
-                    </button>
+                    <span className={`${s.emptyStateDesc} txt-small`}>Create an invite above to start inviting people to your server.</span>
                   </div>
                 ) : (
                   <>
                     <div className={s.sectionHeaderWithTitle}>
                       <span className={`${s.sectionTitle} txt-tiny txt-semibold`}>All Invites</span>
-                      <button className={s.createBtn} onClick={handleCreateInvite}>Create Invite</button>
                     </div>
                     <div className={s.invitesList}>
                       {invites.map(invite => (
                         <div key={invite.id} className={s.inviteItem}>
                           <div className={s.inviteInfo}>
-                            <code className={s.inviteCode}>{invite.code}</code>
+                            <button
+                              type="button"
+                              className={s.inviteCopyBtn}
+                              onClick={() => handleCopyInvite(invite)}
+                              title="Click to copy invite link"
+                            >
+                              <code className={s.inviteCode}>{invite.code}</code>
+                              {copiedInviteId === invite.id
+                                ? <Check size={13} strokeWidth={1.75} />
+                                : <Copy size={13} strokeWidth={1.5} />}
+                            </button>
                             <span className={`${s.inviteMeta} txt-tiny`}>
                               {invite.use_count} / {invite.max_uses ?? '\u221E'} uses
-                              {invite.expires_at && ` \u00B7 Expires ${new Date(invite.expires_at).toLocaleDateString()}`}
+                              {invite.expires_at && ` \u00B7 Expires ${new Date(invite.expires_at).toLocaleString()}`}
                             </span>
                           </div>
                           <button
@@ -692,46 +730,46 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                           <div className={s.auditDayHeader}>{date}</div>
                           <div className={s.auditDayEntries}>
                             {entries.map(entry => (
-                      <div key={entry.id} className={s.auditItem}>
-                        <div className={s.auditIcon}>
-                          <AuditIcon actionType={entry.action_type} />
-                        </div>
-                        <div className={s.auditContent}>
-                          <div className={s.auditHeader}>
-                            <span className={`${s.auditAction} txt-small txt-medium`}>
-                              {formatActionType(entry.action_type)}
-                            </span>
-                            <span className={`${s.auditTime} txt-tiny`}>
-                              {new Date(entry.created_at).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className={s.auditDetails}>
-                            <span className={`${s.auditUser} txt-tiny`}>
-                              by {members.find(m => m.user_id === entry.user_id)?.nickname || entry.user_id}
-                            </span>
-                            {entry.target_type && entry.target_id && (
-                              <span className={`${s.auditTarget} txt-tiny`}>
-                                {' '}on {entry.target_type}: {entry.target_id.slice(0, 8)}...
-                              </span>
-                            )}
-                          </div>
-                          {entry.reason && (
-                            <span className={`${s.auditReason} txt-tiny`}>
-                              Reason: {entry.reason}
-                            </span>
-                          )}
-                          {entry.changes && Object.keys(entry.changes).length > 0 && (
-                            <div className={s.auditChanges}>
-                              {Object.entries(entry.changes).map(([key, value]) => (
-                                <span key={key} className={`${s.changeItem} txt-tiny`}>
-                                  {key}: {JSON.stringify(value)}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                              <div key={entry.id} className={s.auditItem}>
+                                <div className={s.auditIcon}>
+                                  <AuditIcon actionType={entry.action_type} />
+                                </div>
+                                <div className={s.auditContent}>
+                                  <div className={s.auditHeader}>
+                                    <span className={`${s.auditAction} txt-small txt-medium`}>
+                                      {formatActionType(entry.action_type)}
+                                    </span>
+                                    <span className={`${s.auditTime} txt-tiny`}>
+                                      {new Date(entry.created_at).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <div className={s.auditDetails}>
+                                    <span className={`${s.auditUser} txt-tiny`}>
+                                      by {members.find(m => m.user_id === entry.user_id)?.nickname || entry.user_id}
+                                    </span>
+                                    {entry.target_type && entry.target_id && (
+                                      <span className={`${s.auditTarget} txt-tiny`}>
+                                        {' '}on {entry.target_type}: {entry.target_id.slice(0, 8)}...
+                                      </span>
+                                    )}
+                                  </div>
+                                  {entry.reason && (
+                                    <span className={`${s.auditReason} txt-tiny`}>
+                                      Reason: {entry.reason}
+                                    </span>
+                                  )}
+                                  {entry.changes && Object.keys(entry.changes).length > 0 && (
+                                    <div className={s.auditChanges}>
+                                      {Object.entries(entry.changes).map(([key, value]) => (
+                                        <span key={key} className={`${s.changeItem} txt-tiny`}>
+                                          {key}: {JSON.stringify(value)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))
@@ -759,53 +797,53 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                 </div>
               </div>
             )}
-          </div>
-        </main>
+    </SettingsShell>
 
-        {/* Leave Confirmation Modal */}
-        {showLeaveConfirm && (
-          <div className={s.confirmOverlay} onClick={() => setShowLeaveConfirm(false)}>
-            <div className={s.confirmModal}>
-              <h3 className="txt-small txt-semibold">Leave Server</h3>
-              <p className={`${s.confirmText} txt-small`}>
-                Are you sure you want to leave <strong>{server.name}</strong>? You won't be able to rejoin unless you have an invite.
-              </p>
-              <div className={s.confirmActions}>
-                <button className={s.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>Cancel</button>
-                <button
-                  className={s.confirmLeaveBtn}
-                  onClick={() => { onLeave?.(server.id); onClose() }}
-                >
-                  Leave Server
-                </button>
-              </div>
-            </div>
+    {/* Leave Confirmation Modal — rendered as a separate portal sibling so it
+        floats on top of the SettingsShell modal with its own backdrop. */}
+    {showLeaveConfirm && createPortal(
+      <div className={s.confirmOverlay} onClick={() => setShowLeaveConfirm(false)}>
+        <div className={s.confirmModal}>
+          <h3 className="txt-small txt-semibold">Leave Server</h3>
+          <p className={`${s.confirmText} txt-small`}>
+            Are you sure you want to leave <strong>{server.name}</strong>? You won't be able to rejoin unless you have an invite.
+          </p>
+          <div className={s.confirmActions}>
+            <button className={s.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>Cancel</button>
+            <button
+              className={s.confirmLeaveBtn}
+              onClick={() => { onLeave?.(server.id); onClose() }}
+            >
+              Leave Server
+            </button>
           </div>
-        )}
+        </div>
+      </div>,
+      document.body,
+    )}
 
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className={s.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>
-            <div className={s.confirmModal}>
-              <h3 className="txt-small txt-semibold">Delete Server</h3>
-              <p className={`${s.confirmText} txt-small`}>
-                Are you sure you want to permanently delete <strong>{server.name}</strong>? This action cannot be undone.
-              </p>
-              <div className={s.confirmActions}>
-                <button className={s.cancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
-                <button
-                  className={s.confirmDeleteBtn}
-                  onClick={() => { onDelete?.(server.id); onClose() }}
-                >
-                  Delete Server
-                </button>
-              </div>
-            </div>
+    {/* Delete Confirmation Modal */}
+    {showDeleteConfirm && createPortal(
+      <div className={s.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>
+        <div className={s.confirmModal}>
+          <h3 className="txt-small txt-semibold">Delete Server</h3>
+          <p className={`${s.confirmText} txt-small`}>
+            Are you sure you want to permanently delete <strong>{server.name}</strong>? This action cannot be undone.
+          </p>
+          <div className={s.confirmActions}>
+            <button className={s.cancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+            <button
+              className={s.confirmDeleteBtn}
+              onClick={() => { onDelete?.(server.id); onClose() }}
+            >
+              Delete Server
+            </button>
           </div>
-        )}
-      </div>
-    </div>,
-    document.body
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   )
 }
 

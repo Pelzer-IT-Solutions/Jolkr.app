@@ -147,6 +147,7 @@ export function transformMessage(
     letter,
     avatarUrl,
     time: formatTimestamp(msg.created_at),
+    created_at: msg.created_at,
     content: msg.content || '',
     reactions,
     continued,

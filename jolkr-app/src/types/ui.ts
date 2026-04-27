@@ -82,6 +82,8 @@ export interface Message {
   letter:    string
   avatarUrl?: string | null
   time:      string
+  /** Raw ISO timestamp from the backend — used for day-boundary separators. */
+  created_at: string
   content:   string
   reactions: Reaction[]
   continued: boolean

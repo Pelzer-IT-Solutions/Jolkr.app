@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import {
-  X, User, Shield, Link, Palette, Accessibility,
-  Mic, Bell, Keyboard, Globe, ChevronRight, Camera,
+  User, Shield, Link, Palette, Accessibility,
+  Mic, Bell, Keyboard, Globe, Camera,
 } from 'lucide-react'
 import type { ColorPreference } from '../../utils/colorMode'
-import { revealDelay } from '../../utils/animations'
-import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import s from './Settings.module.css'
 
 type Section =
@@ -35,7 +33,7 @@ interface Props {
   onUploadAvatar?:  (file: File) => Promise<string>
 }
 
-const NAV: { group: string; items: { id: Section; label: string; icon: React.ReactNode }[] }[] = [
+const NAV: SettingsNavGroup<Section>[] = [
   {
     group: 'User Settings',
     items: [
@@ -60,78 +58,25 @@ const NAV: { group: string; items: { id: Section; label: string; icon: React.Rea
 export function Settings({ onClose, isDark, colorPref, onSetColorPref, user, onLogout, onUpdateProfile, onUploadAvatar }: Props) {
   const [section, setSection] = useState<Section>('account')
 
-  // Settings mounts fresh on every open, so start revealing immediately.
-  const navTotal = NAV.reduce((sum, g) => sum + 1 + g.items.length, 0)
-  const isRevealing = useRevealAnimation(navTotal, [])
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
-
-  // Compute flat stagger indices across all nav groups and their items
-  let navIdx = 0
-
-  return createPortal(
-    <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={s.modal}>
-        {/* ── Left nav ── */}
-        <aside className={s.nav}>
-          <div className={`${s.navScroll} scrollbar-thin scroll-view-y`}>
-            {NAV.map(group => {
-              const groupIdx = navIdx++
-              return (
-              <div key={group.group} className={s.navGroup}>
-                <span
-                  className={`${s.navGroupLabel} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}
-                  style={isRevealing ? { '--reveal-delay': `${revealDelay(groupIdx)}ms` } as React.CSSProperties : undefined}
-                >
-                  {group.group}
-                </span>
-                {group.items.map(item => {
-                  const itemIdx = navIdx++
-                  return (
-                  <button
-                    key={item.id}
-                    className={`${s.navItem} ${section === item.id ? s.navItemActive : ''} ${isRevealing ? 'revealing' : ''}`}
-                    style={isRevealing ? { '--reveal-delay': `${revealDelay(itemIdx)}ms` } as React.CSSProperties : undefined}
-                    onClick={() => setSection(item.id)}
-                  >
-                    <span className={s.navIcon}>{item.icon}</span>
-                    <span className={`${s.navLabel} txt-small txt-medium`}>{item.label}</span>
-                    {section === item.id && <ChevronRight size={12} strokeWidth={2} className={s.navChevron} />}
-                  </button>
-                  )
-                })}
-              </div>
-              )
-            })}
-          </div>
-        </aside>
-
-        {/* ── Content ── */}
-        <div className={s.content}>
-          <div className={`${s.contentScroll} scrollbar-thin scroll-view-y`}>
-            <SectionContent
-              section={section}
-              isDark={isDark}
-              colorPref={colorPref}
-              onSetColorPref={onSetColorPref}
-              user={user}
-              onLogout={onLogout}
-              onClose={onClose}
-              onUpdateProfile={onUpdateProfile}
-              onUploadAvatar={onUploadAvatar}
-            />
-          </div>
-          <button className={s.closeBtn} onClick={onClose} title="Close (Esc)">
-            <X size={18} strokeWidth={1.75} />
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+  return (
+    <SettingsShell
+      section={section}
+      onSection={setSection}
+      onClose={onClose}
+      navGroups={NAV}
+    >
+      <SectionContent
+        section={section}
+        isDark={isDark}
+        colorPref={colorPref}
+        onSetColorPref={onSetColorPref}
+        user={user}
+        onLogout={onLogout}
+        onClose={onClose}
+        onUpdateProfile={onUpdateProfile}
+        onUploadAvatar={onUploadAvatar}
+      />
+    </SettingsShell>
   )
 }
 

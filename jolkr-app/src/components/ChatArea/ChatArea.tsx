@@ -270,7 +270,25 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     if (e.key === 'Escape' && replyingTo) setReplyingTo(null)
   }
 
-  const dateLabel = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  // Format a message's day as a separator label. Locale-aware, weekday + date.
+  // Same format for every separator — no "Today" / "Yesterday" smartness.
+  const formatDayLabel = (iso: string) => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    return d.toLocaleDateString(undefined, {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    })
+  }
+
+  // Cheap day key: YYYY-MM-DD in local time. Used to detect day boundaries.
+  const dayKey = (iso: string) => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
 
   const dmName        = dmConversation?.name ?? (dmConversation ? `@${dmConversation.participants[0].name}` : '')
   const dmFirstP      = dmConversation?.participants[0]
@@ -364,41 +382,49 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
       <div className={s.chatBody}>
         <div className={`${s.messageList} scrollbar-thin scroll-view-y-chat`} ref={listRef} onScroll={handleScroll}>
           <div className={`${s.messageInner} ${isDm ? s.messageInnerDm : ''}`}>
-            <div className={s.dateSeparator}>
-              <div className={s.sepLine} />
-              <span className={`${s.sepLabel} txt-tiny txt-semibold`}>
-                Today · {dateLabel}
-              </span>
-              <div className={s.sepLine} />
-            </div>
             {messages.map((msg, i) => {
               const fromBottom   = messages.length - 1 - i
               const shouldReveal = isRevealing && fromBottom < CHAT_REVEAL_LIMIT
+              const prevDay = i > 0 ? dayKey(messages[i - 1].created_at) : ''
+              const thisDay = dayKey(msg.created_at)
+              // Insert a separator at the very first message and whenever the
+              // day changes between consecutive messages.
+              const showSeparator = thisDay !== '' && thisDay !== prevDay
               return (
-                <div
-                  key={msg.id}
-                  className={shouldReveal ? 'revealing' : undefined}
-                  style={shouldReveal
-                    ? { '--reveal-delay': `${revealDelay(fromBottom)}ms` } as React.CSSProperties
-                    : undefined
-                  }
-                >
-                  <Message
-                    message={msg}
-                    onToggleReaction={readOnly || channel.is_system || !canAddReactions ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
-                    onDelete={() => onDeleteMessage(msg.id)}
-                    onEdit={readOnly || channel.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
-                    onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
-                    onPin={() => onPinMessage?.(msg.id)}
-                    isDm={isDm}
-                    serverId={isDm ? undefined : serverId}
-                    userMap={userMap}
-                    dmParticipantNames={isDm && dmConversation
-                      ? Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
-                      : undefined}
-                    canManageMessages={canManageMessages}
-                    canAddReactions={canAddReactions}
-                  />
+                <div key={msg.id}>
+                  {showSeparator && (
+                    <div className={s.dateSeparator}>
+                      <div className={s.sepLine} />
+                      <span className={`${s.sepLabel} txt-tiny txt-semibold`}>
+                        {formatDayLabel(msg.created_at)}
+                      </span>
+                      <div className={s.sepLine} />
+                    </div>
+                  )}
+                  <div
+                    className={shouldReveal ? 'revealing' : undefined}
+                    style={shouldReveal
+                      ? { '--reveal-delay': `${revealDelay(fromBottom)}ms` } as React.CSSProperties
+                      : undefined
+                    }
+                  >
+                    <Message
+                      message={msg}
+                      onToggleReaction={readOnly || channel.is_system || !canAddReactions ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
+                      onDelete={() => onDeleteMessage(msg.id)}
+                      onEdit={readOnly || channel.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
+                      onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
+                      onPin={() => onPinMessage?.(msg.id)}
+                      isDm={isDm}
+                      serverId={isDm ? undefined : serverId}
+                      userMap={userMap}
+                      dmParticipantNames={isDm && dmConversation
+                        ? Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
+                        : undefined}
+                      canManageMessages={canManageMessages}
+                      canAddReactions={canAddReactions}
+                    />
+                  </div>
                 </div>
               )
             })}

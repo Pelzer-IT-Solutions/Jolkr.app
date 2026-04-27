@@ -7,7 +7,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use jolkr_core::InviteService;
-use jolkr_core::services::invite::{CreateInviteRequest, InviteInfo};
+use jolkr_core::services::invite::{CreateInviteRequest, InviteInfo, UseInviteResult};
 
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
@@ -39,24 +39,29 @@ pub(crate) async fn use_invite(
     auth: AuthUser,
     Path(code): Path<String>,
 ) -> Result<Json<InviteResponse>, AppError> {
-    let invite = InviteService::use_invite(&state.pool, &code, auth.user_id).await?;
+    let UseInviteResult { invite, freshly_joined } =
+        InviteService::use_invite(&state.pool, &code, auth.user_id).await?;
 
-    // Notify server members of the new member
-    let event = crate::ws::events::GatewayEvent::MemberJoin {
-        server_id: invite.server_id,
-        user_id: auth.user_id,
-    };
-    state.nats.publish_to_server(invite.server_id, &event).await;
+    // Only fan out the join + subscribe sessions on a fresh join. If the user
+    // was already a member, the call is idempotent — they're already
+    // subscribed and other members shouldn't see a phantom MemberJoin event.
+    if freshly_joined {
+        let event = crate::ws::events::GatewayEvent::MemberJoin {
+            server_id: invite.server_id,
+            user_id: auth.user_id,
+        };
+        state.nats.publish_to_server(invite.server_id, &event).await;
 
-    // Also auto-subscribe the joining user's WS sessions to this server.
-    // Collect session IDs first to avoid DashMap deadlock: iter() holds a
-    // read-lock on each shard, and subscribe_server() needs a write-lock.
-    let session_ids: Vec<Uuid> = state.gateway.clients.iter()
-        .filter(|entry| entry.value().user_id == auth.user_id)
-        .map(|entry| entry.value().session_id)
-        .collect();
-    for session_id in session_ids {
-        state.gateway.subscribe_server(&session_id, invite.server_id);
+        // Auto-subscribe the joining user's WS sessions to this server.
+        // Collect session IDs first to avoid DashMap deadlock: iter() holds a
+        // read-lock on each shard, and subscribe_server() needs a write-lock.
+        let session_ids: Vec<Uuid> = state.gateway.clients.iter()
+            .filter(|entry| entry.value().user_id == auth.user_id)
+            .map(|entry| entry.value().session_id)
+            .collect();
+        for session_id in session_ids {
+            state.gateway.subscribe_server(&session_id, invite.server_id);
+        }
     }
 
     Ok(Json(InviteResponse { invite }))
