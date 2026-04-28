@@ -58,12 +58,20 @@ export default function ImageLightbox(props: Props) {
 
   const [index, setIndex] = useState(props.initialIndex ?? 0)
   const [scale, setScale] = useState(1)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [naturalDims, setNaturalDims] = useState<{ w: number; h: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const moreRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
+  // Live drag state held in refs (no rerender per mousemove). Captures the
+  // cursor + offset at mousedown so the move handler can compute delta in O(1).
+  const panStartRef = useRef<{ cursorX: number; cursorY: number; offsetX: number; offsetY: number } | null>(null)
+  // Track whether mousedown actually moved — used to suppress the click-to-
+  // close that fires after a drag ends.
+  const dragMovedRef = useRef(false)
   useFocusTrap(containerRef)
 
   const current = items[index]
@@ -78,12 +86,65 @@ export default function ImageLightbox(props: Props) {
   const goPrev = useCallback(() => setIndex((i) => (i > 0 ? i - 1 : items.length - 1)), [items.length])
   const goNext = useCallback(() => setIndex((i) => (i < items.length - 1 ? i + 1 : 0)), [items.length])
   const clampScale = useCallback((v: number) => Math.round(Math.min(Math.max(v, MIN_SCALE), MAX_SCALE) * 10) / 10, [])
-  const zoomIn  = useCallback(() => setScale((v) => clampScale(v + SCALE_STEP)), [clampScale])
-  const zoomOut = useCallback(() => setScale((v) => clampScale(v - SCALE_STEP)), [clampScale])
+
+  // Pan offset is bounded so the image can't be dragged off-screen entirely —
+  // when we're zoomed in, the user can shift up to half of the *extra* pixels
+  // the zoom adds in each axis. At scale=1 the bounds are zero (pan is locked).
+  const clampOffset = useCallback((next: { x: number; y: number }, atScale: number) => {
+    const img = imgRef.current
+    if (!img) return next
+    // offsetWidth/Height ignore CSS transforms, so they give us the true
+    // pre-scale rendered size — exactly what we need for the bounds math.
+    const baseW = img.offsetWidth
+    const baseH = img.offsetHeight
+    const maxX = Math.max(0, (baseW * atScale - baseW) / 2)
+    const maxY = Math.max(0, (baseH * atScale - baseH) / 2)
+    return {
+      x: Math.min(maxX, Math.max(-maxX, next.x)),
+      y: Math.min(maxY, Math.max(-maxY, next.y)),
+    }
+  }, [])
+
+  // Centralised setter so every zoom path enforces the offset clamp. When the
+  // user zooms back to 1× we snap the offset back to centre — otherwise a
+  // tiny remainder leaves the image visibly nudged.
+  const applyScale = useCallback((nextScale: number, anchor?: { clientX: number; clientY: number }) => {
+    const clamped = clampScale(nextScale)
+    setScale((prev) => {
+      if (clamped === prev) return prev
+      // If we have an anchor (wheel zoom toward cursor), shift the offset so
+      // the point under the cursor stays put. Derivation: offset is added in
+      // post-scale viewport pixels, so `new = old + dx * (1 - ratio)` where
+      // dx is cursor distance from the displayed image centre.
+      if (anchor && imgRef.current) {
+        const rect = imgRef.current.getBoundingClientRect()
+        const cx = rect.left + rect.width / 2
+        const cy = rect.top  + rect.height / 2
+        const dx = anchor.clientX - cx
+        const dy = anchor.clientY - cy
+        const ratio = clamped / prev
+        setOffset((curr) => {
+          const next = clamped <= 1
+            ? { x: 0, y: 0 }
+            : { x: curr.x + dx * (1 - ratio), y: curr.y + dy * (1 - ratio) }
+          return clampOffset(next, clamped)
+        })
+      } else if (clamped <= 1) {
+        setOffset({ x: 0, y: 0 })
+      } else {
+        setOffset((curr) => clampOffset(curr, clamped))
+      }
+      return clamped
+    })
+  }, [clampScale, clampOffset])
+
+  const zoomIn  = useCallback(() => applyScale(scale + SCALE_STEP), [scale, applyScale])
+  const zoomOut = useCallback(() => applyScale(scale - SCALE_STEP), [scale, applyScale])
 
   // Reset per-image state when navigating
   useEffect(() => {
     setScale(1)
+    setOffset({ x: 0, y: 0 })
     setShowMore(false)
     setShowDetails(false)
     setNaturalDims(null)
@@ -114,8 +175,59 @@ export default function ImageLightbox(props: Props) {
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.stopPropagation()
-    setScale((prev) => clampScale(prev + (e.deltaY > 0 ? -0.1 : 0.1)))
-  }, [clampScale])
+    const delta = e.deltaY > 0 ? -SCALE_STEP : SCALE_STEP
+    applyScale(scale + delta, { clientX: e.clientX, clientY: e.clientY })
+  }, [scale, applyScale])
+
+  // ── Pan handlers (active when scale > 1) ──────────────────────────────
+  const handleImagePointerDown = useCallback((e: React.PointerEvent<HTMLImageElement>) => {
+    if (scale <= 1) return
+    // Left mouse / primary pointer only — we don't want to start a pan from
+    // a right-click or middle-click.
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    panStartRef.current = {
+      cursorX: e.clientX,
+      cursorY: e.clientY,
+      offsetX: offset.x,
+      offsetY: offset.y,
+    }
+    dragMovedRef.current = false
+    setIsPanning(true)
+    // Capture the pointer so we keep getting events even if the cursor
+    // strays outside the image (or the lightbox).
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }, [scale, offset])
+
+  const handleImagePointerMove = useCallback((e: React.PointerEvent<HTMLImageElement>) => {
+    const start = panStartRef.current
+    if (!start) return
+    const dx = e.clientX - start.cursorX
+    const dy = e.clientY - start.cursorY
+    if (Math.abs(dx) + Math.abs(dy) > 3) dragMovedRef.current = true
+    setOffset(clampOffset({ x: start.offsetX + dx, y: start.offsetY + dy }, scale))
+  }, [scale, clampOffset])
+
+  const handleImagePointerUp = useCallback((e: React.PointerEvent<HTMLImageElement>) => {
+    if (!panStartRef.current) return
+    panStartRef.current = null
+    setIsPanning(false)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }, [])
+
+  // Double-click toggles between 1× and 2× anchored on the cursor — quick
+  // shortcut so users don't have to click + + + + to zoom in.
+  const handleImageDoubleClick = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+    e.stopPropagation()
+    if (scale > 1) {
+      applyScale(1)
+    } else {
+      applyScale(2, { clientX: e.clientX, clientY: e.clientY })
+    }
+  }, [scale, applyScale])
 
   const handleDownload = useCallback(async () => {
     if (!displaySrc) return
@@ -240,12 +352,31 @@ export default function ImageLightbox(props: Props) {
       {displaySrc && (
         <img
           ref={imgRef}
-          className={s.image}
+          className={`${s.image} ${scale > 1 ? (isPanning ? s.imagePanning : s.imagePannable) : ''}`}
           src={displaySrc}
           alt={current.alt}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            // Suppress the click that fires after a drag — otherwise
+            // releasing a pan would also close the lightbox if we ever
+            // wired that path.
+            if (dragMovedRef.current) {
+              dragMovedRef.current = false
+              return
+            }
+          }}
+          onPointerDown={handleImagePointerDown}
+          onPointerMove={handleImagePointerMove}
+          onPointerUp={handleImagePointerUp}
+          onPointerCancel={handleImagePointerUp}
+          onDoubleClick={handleImageDoubleClick}
           onLoad={handleImageLoad}
-          style={{ transform: `scale(${scale})` }}
+          style={{
+            // Order matters: translate first, then scale, so the offset is
+            // applied in pre-scale image coordinates (matches the clamp).
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+            transition: isPanning ? 'none' : 'transform 150ms ease',
+          }}
           draggable={false}
         />
       )}

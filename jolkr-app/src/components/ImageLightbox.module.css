@@ -21,11 +21,17 @@
   max-height: 90vh;
   object-fit: contain;
   box-shadow: 0 20px 60px oklch(0% 0 0 / 0.5);
-  transition: transform 150ms ease;
   user-select: none;
   -webkit-user-drag: none;
+  /* The transform + transition are written by the React component so
+     panning can suppress the easing — this rule just owns layout. */
+  touch-action: none;
 }
 .imageHidden { opacity: 0; pointer-events: none; }
+/* Open hand when zoom > 1 means "you can grab this and pan around". */
+.imagePannable { cursor: grab; }
+/* Closed hand while actively panning. */
+.imagePanning  { cursor: grabbing; }
 
 /* ── Toolbar (top-right) ── */
 .toolbar {
