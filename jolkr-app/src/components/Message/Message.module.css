@@ -212,6 +212,16 @@
   background: var(--bg-dark-muted);
   color: var(--text-loud);
 }
+/* Shift-armed: the more-options affordance temporarily becomes an instant-
+   delete button. Stays styled even without hover so the swap is obvious
+   the moment Shift goes down. */
+.dangerBtn {
+  color: var(--danger-default);
+}
+.dangerBtn:hover {
+  background: var(--danger-muted);
+  color: var(--danger-default);
+}
 
 /* ─── Emoji picker popover (portalled to body, position: fixed) ─── */
 .emojiPicker {

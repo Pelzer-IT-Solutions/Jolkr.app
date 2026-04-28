@@ -7,6 +7,7 @@ import {
 import type { Message as MessageType } from '../../types'
 import type { User, MessageEmbed } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useShiftKey } from '../../hooks/useShiftKey'
 import { useAuthStore } from '../../stores/auth'
 import { useMenuPosition } from '../../utils/position'
 import { emojiToImgUrl } from '../../utils/emoji'
@@ -37,6 +38,12 @@ interface Props {
 export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
+  const shiftHeld = useShiftKey()
+  // Shift+click on the toolbar's "more" affordance acts as instant-delete
+  // when the viewer can actually delete this message. We don't gate on the
+  // toolbar being visible — pressing Shift while hovering swaps the icon.
+  const canDelete = !!onDelete && (isOwn || canManageMessages)
+  const shiftDeleteArmed = shiftHeld && canDelete
 
   // Decrypt E2EE content
   const { displayContent, isEncrypted, decrypting } = useDecryptedContent(
@@ -269,19 +276,24 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
       {/* ── Edit (own only) ── */}
       {isOwn && <button className={s.actionBtn} title="Edit message" onClick={startEdit}><EditIcon /></button>}
 
-      {/* ── More options ── */}
+      {/* ── More options (Shift swaps to instant-delete when user can delete) ── */}
       <div ref={moreRef} className={s.actionWrap}>
         <button
-          className={s.actionBtn}
-          title="More options"
+          className={`${s.actionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
+          title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
           onClick={(e) => {
+            if (shiftDeleteArmed) {
+              e.stopPropagation()
+              handleDelete()
+              return
+            }
             const r = e.currentTarget.getBoundingClientRect()
             setMoreTriggerPos({ x: r.right, y: r.bottom + 4 })
             setShowMore(v => !v)
             setShowEmoji(false)
           }}
         >
-          <MoreIcon />
+          {shiftDeleteArmed ? <TrashIcon /> : <MoreIcon />}
         </button>
         {showMore && createPortal(
           <div
@@ -372,16 +384,21 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 
               <div ref={moreRef} className={s.actionWrap}>
                 <button
-                  className={s.dmActionBtn}
-                  title="More options"
+                  className={`${s.dmActionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
+                  title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
                   onClick={(e) => {
+                    if (shiftDeleteArmed) {
+                      e.stopPropagation()
+                      handleDelete()
+                      return
+                    }
                     const r = e.currentTarget.getBoundingClientRect()
                     setMoreTriggerPos({ x: r.right, y: r.bottom + 4 })
                     setShowMore(v => !v)
                     setShowEmoji(false)
                   }}
                 >
-                  <MoreIcon />
+                  {shiftDeleteArmed ? <TrashIcon /> : <MoreIcon />}
                 </button>
                 {showMore && createPortal(
                   <div
