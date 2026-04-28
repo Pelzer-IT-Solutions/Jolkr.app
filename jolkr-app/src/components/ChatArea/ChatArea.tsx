@@ -353,7 +353,12 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   function handleDragOver(e: React.DragEvent) {
     if (!canAttachFiles || !dragHasFiles(e)) return
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
+    // 'move' suppresses the green "+ Copy" badge that Windows attaches when
+    // dropEffect is 'copy' — the OS still owns the cursor at the system
+    // level for native file drags, but we apply `cursor: grabbing` on the
+    // drop area below as a best-effort override (browsers honour it in some
+    // cases). 'none' would also remove the badge but blocks the drop.
+    e.dataTransfer.dropEffect = 'move'
   }
   function handleDragLeave(e: React.DragEvent) {
     if (!canAttachFiles || !dragHasFiles(e)) return
@@ -372,7 +377,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
   return (
     <main
-      className={s.area}
+      className={`${s.area} ${isDraggingFiles && canAttachFiles ? s.areaDragging : ''}`}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

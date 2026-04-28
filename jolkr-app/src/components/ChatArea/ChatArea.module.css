@@ -8,6 +8,15 @@
   position: relative;
 }
 
+/* While a file is being dragged over the area, force a closed-hand cursor.
+   For native OS file drags the system usually wins — this still helps in
+   browsers that honour CSS cursor during drop-target hover, and it always
+   applies to in-page drags. */
+.areaDragging,
+.areaDragging * {
+  cursor: grabbing !important;
+}
+
 /* ── Drag & drop overlay ── */
 .dropOverlay {
   position: absolute;
