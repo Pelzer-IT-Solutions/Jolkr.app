@@ -17,6 +17,7 @@ import MessageContent from '../MessageContent'
 import VideoEmbed from '../VideoEmbed'
 import LinkEmbed from '../LinkEmbed'
 import Avatar from '../Avatar'
+import { MessageAttachments } from '../MessageAttachments/MessageAttachments'
 import { ReactionTooltip } from './ReactionTooltip'
 import s from './Message.module.css'
 
@@ -229,10 +230,15 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
     </div>
   ) : null
 
+  const attachmentsBlock = (message.attachments?.length ?? 0) > 0 ? (
+    <MessageAttachments attachments={message.attachments!} />
+  ) : null
+
   const body = (
     <>
       {replyBlock}
       {textContent}
+      {attachmentsBlock}
       {embedsBlock}
       {reactionsBlock}
     </>
@@ -468,6 +474,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                 {editedTag}
               </div>
             )}
+            {attachmentsBlock}
             {embedsBlock}
           </div>
 

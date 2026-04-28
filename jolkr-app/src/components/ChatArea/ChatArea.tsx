@@ -77,6 +77,24 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   // File attachment state
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
+  // Drag & drop state. We use a counter to handle the dragenter/leave bubble
+  // pattern — a single ref-counted depth lets us correctly detect "actually
+  // left the chat area" vs. "moved between two child elements".
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false)
+  const dragDepthRef = useRef(0)
+
+  // Limit + filter helper shared by the file picker and drop handler.
+  const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB — matches server cap
+  const acceptValidFiles = useCallback((incoming: FileList | File[]) => {
+    const list = Array.from(incoming)
+    const oversized = list.filter((f) => f.size > MAX_FILE_SIZE)
+    if (oversized.length) {
+      alert(`File too large (max 25 MB): ${oversized.map((f) => f.name).join(', ')}`)
+    }
+    const valid = list.filter((f) => f.size <= MAX_FILE_SIZE)
+    if (valid.length) setPendingFiles((prev) => [...prev, ...valid])
+  }, [])
+
   // Tracks previous values to distinguish navigation from message sends
   const prevAnimKeyRef    = useRef<string | null>(null)
   const prevMsgCountRef   = useRef(0)
@@ -320,8 +338,55 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     void startCall(dmConversation.id, dmName, recipientUserId)
   }, [callDisabled, dmConversation, dmName, recipientUserId, startCall])
 
+  // Only treat drags that actually carry files as attachable — a regular
+  // text/HTML drag (e.g. dragging a message link around) shouldn't show the
+  // overlay.
+  const dragHasFiles = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer?.types ?? []).includes('Files')
+
+  function handleDragEnter(e: React.DragEvent) {
+    if (!canAttachFiles || !dragHasFiles(e)) return
+    e.preventDefault()
+    dragDepthRef.current += 1
+    setIsDraggingFiles(true)
+  }
+  function handleDragOver(e: React.DragEvent) {
+    if (!canAttachFiles || !dragHasFiles(e)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    if (!canAttachFiles || !dragHasFiles(e)) return
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+    if (dragDepthRef.current === 0) setIsDraggingFiles(false)
+  }
+  function handleDrop(e: React.DragEvent) {
+    if (!canAttachFiles || !dragHasFiles(e)) return
+    e.preventDefault()
+    dragDepthRef.current = 0
+    setIsDraggingFiles(false)
+    if (e.dataTransfer.files.length > 0) {
+      acceptValidFiles(e.dataTransfer.files)
+    }
+  }
+
   return (
-    <main className={s.area}>
+    <main
+      className={s.area}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDraggingFiles && canAttachFiles && (
+        <div className={s.dropOverlay} aria-hidden>
+          <div className={s.dropBox}>
+            <Paperclip size={28} strokeWidth={1.5} />
+            <span className="txt-body txt-semibold">Drop to attach</span>
+            <span className={`${s.dropHint} txt-small`}>Up to 25 MB per file</span>
+          </div>
+        </div>
+      )}
       <header className={s.header}>
         {sidebarCollapsed && (
           <button className={s.iconBtn} title="Expand channels" onClick={onExpandSidebar}>
@@ -636,14 +701,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       multiple
                       style={{ display: 'none' }}
                       onChange={(e) => {
-                        const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB (matches server limit)
-                        const files = Array.from(e.target.files ?? [])
-                        const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
-                        if (oversized.length) {
-                          alert(`File too large (max 25 MB): ${oversized.map(f => f.name).join(', ')}`);
-                        }
-                        const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
-                        if (valid.length) setPendingFiles(prev => [...prev, ...valid])
+                        if (e.target.files) acceptValidFiles(e.target.files)
                         e.target.value = ''
                       }}
                     />

@@ -1,0 +1,93 @@
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+  max-width: 100%;
+}
+
+/* ── Image / video tile ── */
+.media {
+  position: relative;
+  border-radius: 0.625rem;
+  overflow: hidden;
+  background: var(--bg-dark-muted);
+  border: 1px solid var(--border-muted);
+  cursor: pointer;
+  display: block;
+  max-width: 100%;
+  transition: filter var(--transition);
+  /* Cap the visual footprint of any single image. Vertical bound prevents
+     a tall portrait from dominating the message; horizontal bound keeps
+     wide panoramas from pushing the message wider than the column. */
+  max-height: 22rem;
+}
+.media:hover { filter: brightness(1.04); }
+.media img,
+.media video {
+  display: block;
+  max-width: 100%;
+  max-height: 22rem;
+  object-fit: contain;
+  background: oklch(0% 0 0);
+}
+.imgLoading {
+  filter: blur(8px);
+  transform: scale(1.04);
+}
+
+/* ── Generic file chip (non-media) ── */
+.file {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.625rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color var(--transition), border-color var(--transition);
+  min-width: 16rem;
+  max-width: 24rem;
+}
+.file:hover {
+  background: var(--bg-dark-muted);
+  border-color: var(--border-strong);
+}
+.fileIcon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.4375rem;
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fileMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+.fileName {
+  color: var(--text-strong);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fileSize {
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+}
+.fileDownload {
+  flex-shrink: 0;
+  color: var(--icon-muted);
+  transition: color var(--transition);
+}
+.file:hover .fileDownload { color: var(--icon-strong); }

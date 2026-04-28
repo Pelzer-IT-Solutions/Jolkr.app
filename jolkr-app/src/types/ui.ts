@@ -98,6 +98,7 @@ export interface Message {
   is_pinned?:         boolean
   is_system?:         boolean
   embeds?:            import('../api/types').MessageEmbed[]
+  attachments?:       import('../api/types').Attachment[]
 }
 
 export type MessageStore = Record<string, Record<string, Message[]>>
