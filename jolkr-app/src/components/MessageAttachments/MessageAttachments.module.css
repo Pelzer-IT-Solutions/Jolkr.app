@@ -15,11 +15,12 @@
   border: 1px solid var(--border-muted);
   cursor: pointer;
   display: block;
-  max-width: 100%;
+  /* Match the visual footprint of video / link embeds (480px) so a chat
+     thread with a mix of attachments and oEmbed previews lines up. */
+  max-width: 480px;
+  width: 100%;
   transition: filter var(--transition);
-  /* Cap the visual footprint of any single image. Vertical bound prevents
-     a tall portrait from dominating the message; horizontal bound keeps
-     wide panoramas from pushing the message wider than the column. */
+  /* Vertical cap prevents a tall portrait from eating the chat column. */
   max-height: 22rem;
 }
 .media:hover { filter: brightness(1.04); }
