@@ -1,50 +1,60 @@
+import { useEffect, useRef } from 'react';
+import { Phone, PhoneOff, User as UserIcon } from 'lucide-react';
 import { useCallStore } from '../stores/call';
 import { stopRingSound } from '../hooks/useCallEvents';
-import { User, Phone, PhoneOff } from 'lucide-react';
-import Modal from './ui/Modal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import s from './CallDialogs.module.css';
 
 export default function IncomingCallDialog() {
-  const incomingCall = useCallStore((s) => s.incomingCall);
+  const incomingCall   = useCallStore((s) => s.incomingCall);
   const acceptIncoming = useCallStore((s) => s.acceptIncoming);
   const rejectIncoming = useCallStore((s) => s.rejectIncoming);
+  const cardRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(cardRef);
+
+  useEffect(() => {
+    if (!incomingCall) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        stopRingSound();
+        rejectIncoming();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [incomingCall, rejectIncoming]);
+
+  if (!incomingCall) return null;
 
   return (
-    <Modal open={!!incomingCall} className="p-6 w-80 flex flex-col items-center gap-4">
-      {/* Avatar placeholder */}
-      <div className="w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center animate-pulse">
-        <User className="w-8 h-8 text-accent" />
-      </div>
+    <div className={s.overlay}>
+      <div ref={cardRef} className={s.card} role="dialog" aria-modal="true" aria-label="Incoming call">
+        <div className={`${s.avatarWrap} ${s.pulsing}`}>
+          <UserIcon size={32} strokeWidth={1.5} />
+        </div>
 
-      <div className="text-center">
-        <div className="text-text-primary font-semibold text-lg">{incomingCall?.callerUsername}</div>
-        <div className="text-text-tertiary text-sm mt-1">is calling you...</div>
-      </div>
+        <div className={s.textBlock}>
+          <span className={s.title}>{incomingCall.callerUsername}</span>
+          <span className={s.subtitle}>is calling…</span>
+        </div>
 
-      {/* Pulsing ring animation */}
-      <div className="relative w-10 h-10 my-1">
-        <div className="absolute inset-0 rounded-full bg-green-500/20 animate-ping" />
-        <div className="absolute inset-0 rounded-full bg-green-500/30 flex items-center justify-center">
-          <Phone className="w-5 h-5 text-green-400" />
+        <div className={s.actions}>
+          <button
+            className={`${s.btn} ${s.btnReject}`}
+            onClick={() => { stopRingSound(); rejectIncoming(); }}
+          >
+            <PhoneOff size={16} strokeWidth={2} />
+            Decline
+          </button>
+          <button
+            className={`${s.btn} ${s.btnAccept}`}
+            onClick={() => { stopRingSound(); acceptIncoming(); }}
+          >
+            <Phone size={16} strokeWidth={2} />
+            Accept
+          </button>
         </div>
       </div>
-
-      {/* Action buttons */}
-      <div className="flex gap-4">
-        <button
-          onClick={() => { stopRingSound(); acceptIncoming(); }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-green-600 hover:bg-green-500 text-white font-medium transition-colors"
-        >
-          <Phone className="w-4 h-4" />
-          Accept
-        </button>
-        <button
-          onClick={() => { stopRingSound(); rejectIncoming(); }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white font-medium transition-colors"
-        >
-          <PhoneOff className="w-4 h-4" />
-          Reject
-        </button>
-      </div>
-    </Modal>
+    </div>
   );
 }

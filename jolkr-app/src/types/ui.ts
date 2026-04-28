@@ -5,6 +5,7 @@ export interface Channel {
   desc:      string
   unread:    number
   is_system?: boolean
+  kind?:     'text' | 'voice'
 }
 
 export interface Category {

@@ -220,6 +220,7 @@ export function transformServer(
       desc: ch.topic || '',
       unread: channelUnreads?.[ch.id] ?? 0,
       is_system: ch.is_system,
+      kind: ch.kind === 'voice' ? 'voice' : 'text',
     }))
 
   return {

@@ -10,6 +10,7 @@ import * as api from '../../api/client'
 
 import { TabBar } from '../../components/TabBar/TabBar'
 import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
+import { VoiceConnectionBar } from '../../components/VoiceConnectionBar/VoiceConnectionBar'
 import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
 import { ChatArea } from '../../components/ChatArea/ChatArea'
 import { MemberPanel } from '../../components/MemberPanel/MemberPanel'
@@ -439,6 +440,8 @@ export default function AppShell() {
         onClose={() => setReportTarget(null)}
         user={reportTarget}
       />
+
+      <VoiceConnectionBar />
 
       <UserContextMenu
         menu={userContextMenu}

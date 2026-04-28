@@ -14,6 +14,8 @@ import GifPickerPopup from '../GifPickerPopup'
 import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
 import { RichInput, type RichInputHandle } from './RichInput'
 import { createEmojiImg } from './richInputHelpers'
+import { useCallStore } from '../../stores/call'
+import { useVoiceStore } from '../../stores/voice'
 import s from './ChatArea.module.css'
 
 export interface MentionableUser {
@@ -296,6 +298,28 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     ? `Message ${dmName}`
     : `Message #${channel.name}`
 
+  // ── Voice call wiring (DM) ───────────────────────────────────────
+  // Works for both 1-on-1 and group DMs. The SFU treats `dm_id` as a room id
+  // and routes audio between any number of participants, so group calls are
+  // an N-way join into the same room. E2EE is only derived for 1-on-1 calls
+  // (where there's a single peer to do the X25519/ML-KEM handshake against);
+  // group calls fall back to DTLS-SRTP only.
+  const isGroupDm = isDm && dmConversation?.type === 'group'
+  const recipientUserId = !isGroupDm ? dmFirstP?.userId : undefined
+  const activeCallDmId = useCallStore((st) => st.activeCallDmId)
+  const incomingCall   = useCallStore((st) => st.incomingCall)
+  const outgoingCall   = useCallStore((st) => st.outgoingCall)
+  const startCall      = useCallStore((st) => st.startCall)
+  const voiceState     = useVoiceStore((st) => st.connectionState)
+  const inAnyCall      = !!activeCallDmId || !!outgoingCall || !!incomingCall || voiceState !== 'disconnected'
+  const callDisabled   = !isDm || !dmConversation || inAnyCall
+  const callTitle      = inAnyCall ? 'Already in a call' : 'Start voice call'
+
+  const handleStartCall = useCallback(() => {
+    if (callDisabled || !dmConversation) return
+    void startCall(dmConversation.id, dmName, recipientUserId)
+  }, [callDisabled, dmConversation, dmName, recipientUserId, startCall])
+
   return (
     <main className={s.area}>
       <header className={s.header}>
@@ -343,8 +367,21 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         <div className={s.headerActions}>
           {isDm ? (
             <>
-              <button className={s.iconBtn} title="Start voice call"><CallIcon /></button>
-              <button className={s.iconBtn} title="Start video call"><VideoIcon /></button>
+              <button
+                className={`${s.iconBtn} ${callDisabled ? s.iconBtnDisabled : ''}`}
+                title={callTitle}
+                disabled={callDisabled}
+                onClick={handleStartCall}
+              >
+                <CallIcon />
+              </button>
+              <button
+                className={`${s.iconBtn} ${s.iconBtnDisabled}`}
+                title="Video calls — coming soon"
+                disabled
+              >
+                <VideoIcon />
+              </button>
               <div className={s.headerSep} />
             </>
           ) : (

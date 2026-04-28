@@ -40,8 +40,11 @@ services:
       MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-noreply@jolkr.app}"
       MAIL_USERNAME: "${MAIL_USERNAME:-}"
       MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
-      APP_URL: "${APP_URL:-http://localhost/app}"
-      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost,http://localhost:1420,https://tauri.localhost,https://jolkr.app}"
+      # Public-facing URL for emails, OAuth callbacks, etc. Override via .env on
+      # dev machines that genuinely need a localhost link (e.g. throw-away test
+      # accounts) — production must always be https://jolkr.app/app.
+      APP_URL: "${APP_URL:-https://jolkr.app/app}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-https://jolkr.app,https://tauri.localhost,http://localhost,http://localhost:1420}"
       GIPHY_API_KEY: "${GIPHY_API_KEY:-}"
       RUST_LOG: "${RUST_LOG:-info}"
     networks:

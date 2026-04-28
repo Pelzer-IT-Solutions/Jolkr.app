@@ -123,8 +123,13 @@
   color: var(--icon-muted);
   transition: background-color var(--transition), color var(--transition);
 }
-.iconBtn:hover  { background: var(--bg-dark-default); color: var(--icon-strong); }
+.iconBtn:hover:not(:disabled)  { background: var(--bg-dark-default); color: var(--icon-strong); }
 .iconBtn.active { background: var(--bg-dark-strong);  color: var(--icon-strong); }
+.iconBtn:disabled,
+.iconBtnDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 /* ─── Chat body — positioning context for the floating composer ─── */
 .chatBody {

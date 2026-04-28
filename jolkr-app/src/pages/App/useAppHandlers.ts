@@ -9,6 +9,7 @@ import { getLocalKeys } from '../../services/e2ee'
 import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { orbsForHue } from '../../utils/theme'
 import { useMessagesStore } from '../../stores/messages'
+import { useVoiceStore } from '../../stores/voice'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -116,6 +117,20 @@ export function useAppHandlers(
   }
 
   function handleSwitchChannel(id: string) {
+    // Voice channels: join the SFU instead of switching the chat view.
+    // Text channels: standard channel switch.
+    const channels = useServersStore.getState().channels[activeServerId] ?? []
+    const target = channels.find(c => c.id === id)
+    if (target?.kind === 'voice') {
+      const { connectionState, channelId: currentVoiceId, joinChannel, leaveChannel } = useVoiceStore.getState()
+      if (currentVoiceId === id && connectionState !== 'disconnected') {
+        // Clicking the channel you're already in — disconnect.
+        void leaveChannel()
+        return
+      }
+      void joinChannel(id, activeServerId, target.name)
+      return
+    }
     if (id === activeChannelId) return
     setActiveChannelId(id)
   }
