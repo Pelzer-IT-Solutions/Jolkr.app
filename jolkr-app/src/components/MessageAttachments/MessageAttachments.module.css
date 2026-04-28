@@ -36,6 +36,27 @@
   transform: scale(1.04);
 }
 
+/* Placeholder shown while the authed blob URL is being fetched. Sized as
+   a small square — image's intrinsic dimensions will replace it once
+   loaded. */
+.loadingTile {
+  display: inline-block;
+  width: 12rem;
+  height: 9rem;
+  background: linear-gradient(
+    100deg,
+    var(--bg-dark-muted) 30%,
+    var(--bg-dark-default) 50%,
+    var(--bg-dark-muted) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 /* ── Generic file chip (non-media) ── */
 .file {
   display: flex;

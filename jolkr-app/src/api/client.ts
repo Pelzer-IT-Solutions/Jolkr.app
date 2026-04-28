@@ -30,6 +30,20 @@ function checkLogoutFlag(): boolean {
 }
 
 /** Load tokens from secure storage on startup. Must be called before any API request. */
+/**
+ * Authenticated raw `fetch` — attaches Bearer and apiBase, returns the raw
+ * Response so callers can stream binary payloads (blobs, etc.). Bypasses the
+ * JSON-parsing path of `request<T>()` but keeps the auth wiring consistent.
+ */
+export async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers: Record<string, string> = { ...(init.headers as Record<string, string> || {}) };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+  const url = path.startsWith('http') ? path
+    : path.startsWith('/api') ? `${apiBase}${path.slice(4)}`
+    : `${apiBase}${path}`;
+  return fetch(url, { ...init, headers });
+}
+
 export async function initTokens() {
   apiBase = getApiBaseUrl();
   // If logout flag is set, refuse to load tokens — flag is only cleared by login/register
