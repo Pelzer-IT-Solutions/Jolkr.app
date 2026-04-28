@@ -282,7 +282,10 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           className={`${s.actionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
           title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
           onClick={(e) => {
-            if (shiftDeleteArmed) {
+            // Use the actual click event's shift state, not the hook — that
+            // way a click never desyncs from what the user thinks they did
+            // (e.g. they release Shift mid-click).
+            if (canDelete && e.shiftKey) {
               e.stopPropagation()
               handleDelete()
               return
@@ -387,7 +390,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                   className={`${s.dmActionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
                   title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
                   onClick={(e) => {
-                    if (shiftDeleteArmed) {
+                    if (canDelete && e.shiftKey) {
                       e.stopPropagation()
                       handleDelete()
                       return
