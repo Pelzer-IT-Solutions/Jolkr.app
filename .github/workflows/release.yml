@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to build (e.g. v0.10.0). Skips desktop, Play Store upload, and version-bump.'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -10,6 +16,7 @@ permissions:
 jobs:
   # ─── Desktop builds (Windows, macOS, Linux) ───
   build-desktop:
+    if: github.event_name == 'push'
     strategy:
       fail-fast: false
       matrix:
@@ -69,8 +76,13 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
 
+    env:
+      VERSION_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
 
       - uses: actions/setup-node@v6
         with:
@@ -99,7 +111,7 @@ jobs:
       - name: Decode Android keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > $RUNNER_TEMP/android-keystore.jks
 
-      - name: Build Android APK
+      - name: Build Android APK + AAB
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/android-keystore.jks
@@ -108,7 +120,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd jolkr-app
-          npx tauri android build --apk
+          npx tauri android build --apk --aab
 
       - name: Remove unsigned APKs and rename signed APK
         id: find-apk
@@ -119,12 +131,35 @@ jobs:
             echo "ERROR: No signed APK found!"
             exit 1
           fi
-          RENAMED="jolkr-app/src-tauri/gen/android/Jolkr_${{ github.ref_name }}_android.apk"
+          RENAMED="jolkr-app/src-tauri/gen/android/Jolkr_${VERSION_REF}_android.apk"
           mv "$APK_PATH" "$RENAMED"
           echo "apk_path=$RENAMED" >> "$GITHUB_OUTPUT"
           echo "Renamed APK: $APK_PATH → $RENAMED"
 
+      - name: Locate signed AAB
+        id: find-aab
+        run: |
+          AAB_PATH=$(find jolkr-app/src-tauri/gen/android -name '*.aab' -type f | head -1)
+          if [ -z "$AAB_PATH" ]; then
+            echo "ERROR: No signed AAB found!"
+            exit 1
+          fi
+          RENAMED_AAB="jolkr-app/src-tauri/gen/android/Jolkr_${VERSION_REF}_android.aab"
+          mv "$AAB_PATH" "$RENAMED_AAB"
+          echo "aab_path=$RENAMED_AAB" >> "$GITHUB_OUTPUT"
+          echo "Renamed AAB: $AAB_PATH → $RENAMED_AAB"
+
+      - name: Upload APK + AAB as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jolkr-android-${{ env.VERSION_REF }}
+          path: |
+            ${{ steps.find-apk.outputs.apk_path }}
+            ${{ steps.find-aab.outputs.aab_path }}
+          retention-days: 14
+
       - name: Upload signed APK to Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -134,10 +169,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload AAB to Play Store internal track
+        if: github.event_name == 'push'
+        continue-on-error: true
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          packageName: io.jolkr.app
+          releaseFiles: ${{ steps.find-aab.outputs.aab_path }}
+          track: internal
+          status: completed
+          releaseName: ${{ github.ref_name }}
+
   # ─── Post-release: bump version for next development cycle ───
   version-bump:
     needs: [build-desktop, build-android]
-    if: success()
+    if: success() && github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
