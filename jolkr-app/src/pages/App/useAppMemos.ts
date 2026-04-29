@@ -30,7 +30,22 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     storeMessages, presences, unreadCounts, serverPermissions,
     dmList, dmUsers, activeServerId, activeChannelId, dmActive, activeDmId,
     tabbedIds, serverThemes, channelPermissions,
+    viewport, userOverrideLeft, userOverrideRight, autoLeftCollapsed, autoRightCollapsed,
+    rightPanelMode,
   } = init
+
+  // ── Effective collapse state — userOverride wins, falls back to auto-rule ──
+  const effectiveLeftCollapsed =
+    userOverrideLeft === 'closed' ? true  :
+    userOverrideLeft === 'open'   ? false :
+    autoLeftCollapsed
+  const effectiveRightCollapsed =
+    userOverrideRight === 'closed' ? true  :
+    userOverrideRight === 'open'   ? false :
+    autoRightCollapsed
+  // Mode is preserved while collapsed so re-opening shows the last tab.
+  const effectiveRightMode: 'members' | 'pinned' | 'threads' | null =
+    effectiveRightCollapsed ? null : (rightPanelMode ?? 'members')
 
   // ── Presence map ──
   const presenceMap = useMemo(() => new Map(Object.entries(presences)), [presences])
@@ -215,5 +230,6 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, fallbackMessages, displayMessages,
     mentionableUsers,
+    viewport, effectiveLeftCollapsed, effectiveRightCollapsed, effectiveRightMode,
   }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { ServerTheme } from '../../types/ui'
+import { useViewport } from '../../hooks/useViewport'
 import { useAuthStore } from '../../stores/auth'
 import { useServersStore } from '../../stores/servers'
 import { useMessagesStore } from '../../stores/messages'
@@ -42,6 +43,35 @@ export function useAppInit() {
   const [activeChannelId, setActiveChannelId] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [rightPanelMode, setRightPanelMode] = useState<'members' | 'pinned' | 'threads' | null>('members')
+
+  // Responsive collapse state — see plan-responsive-collapsing.md
+  // Asymmetric model: 'closed' is sticky across resizes, 'open' is transient
+  // and auto-clears once the auto-rule itself flips back to "open".
+  const viewport = useViewport()
+  const [userOverrideLeft,  setUserOverrideLeft]  = useState<'closed' | 'open' | null>(null)
+  const [userOverrideRight, setUserOverrideRight] = useState<'closed' | 'open' | null>(null)
+  const [activeMobilePane,  setActiveMobilePane]  = useState<'left' | 'chat' | 'right'>('chat')
+
+  const autoLeftCollapsed  = viewport.isCompact   // < 768
+  const autoRightCollapsed = viewport.isTablet    // < 1024
+
+  // Auto-clear 'open' override once the auto-rule no longer demands closing.
+  // This is what makes a manual-open on a small screen "expire" when the
+  // user later resizes back into the closed regime.
+  useEffect(() => {
+    if (userOverrideLeft === 'open' && !autoLeftCollapsed) setUserOverrideLeft(null)
+  }, [autoLeftCollapsed, userOverrideLeft])
+  useEffect(() => {
+    if (userOverrideRight === 'open' && !autoRightCollapsed) setUserOverrideRight(null)
+  }, [autoRightCollapsed, userOverrideRight])
+
+  // Reset mobile pane to 'chat' whenever we ENTER mobile regime so the user
+  // doesn't land in a stale pane after a resize.
+  const wasMobileRef = useRef(viewport.isMobile)
+  useEffect(() => {
+    if (viewport.isMobile && !wasMobileRef.current) setActiveMobilePane('chat')
+    wasMobileRef.current = viewport.isMobile
+  }, [viewport.isMobile])
   const [dmActive, setDmActive] = useState(false)
   const [activeDmId, setActiveDmId] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -324,6 +354,11 @@ export function useAppInit() {
     tabbedIds, setTabbedIds, activeServerId, setActiveServerId,
     activeChannelId, setActiveChannelId, sidebarCollapsed, setSidebarCollapsed,
     rightPanelMode, setRightPanelMode, dmActive, setDmActive,
+    viewport,
+    userOverrideLeft, setUserOverrideLeft,
+    userOverrideRight, setUserOverrideRight,
+    activeMobilePane, setActiveMobilePane,
+    autoLeftCollapsed, autoRightCollapsed,
     activeDmId, setActiveDmId, settingsOpen, setSettingsOpen,
     newDmOpen, setNewDmOpen, joinServerOpen, setJoinServerOpen,
     createServerOpen, setCreateServerOpen, searchActive, setSearchActive,

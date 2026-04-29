@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react'
 import type { MemberGroup, Member } from '../../types'
 import type { User } from '../../api/types'
 import Avatar from '../Avatar'
@@ -16,9 +17,10 @@ interface Props {
   onUnpin?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number
+  onMobileClose?: () => void
 }
 
-export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onUnpin, users, pinnedVersion }: Props) {
+export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
   const visible = mode !== null
 
   const total = members.online.length + members.offline.length
@@ -128,6 +130,11 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
   return (
     <aside className={`${s.panel} ${!visible ? s.hidden : ''}`}>
       <div className={s.header}>
+        {onMobileClose && (
+          <button className={s.backBtn} title="Back to chat" onClick={onMobileClose}>
+            <ArrowLeft size={14} strokeWidth={1.5} />
+          </button>
+        )}
         <span className={`${s.title} txt-tiny txt-semibold`}>
           {getHeaderTitle()}
         </span>

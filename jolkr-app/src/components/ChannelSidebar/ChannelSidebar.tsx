@@ -11,7 +11,7 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, PanelLeftClose, ChevronDown, FolderPlus, Hash, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
+import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, FolderPlus, Hash, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
 import type { Server, Channel, Category, ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
@@ -90,6 +90,7 @@ interface Props {
   onSwitch:        (id: string) => void
   onCollapse:      () => void
   collapsed:       boolean
+  isMobile?:       boolean
   theme:           ServerTheme
   onThemeChange:   (theme: ServerTheme) => void
   isDark:          boolean
@@ -112,7 +113,7 @@ interface Props {
   ) => Promise<void>
 }
 
-export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, canEditTheme, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings, onReorderChannels }: Props) {
+export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, isMobile = false, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, canEditTheme, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings, onReorderChannels }: Props) {
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
   const [localCats,          setLocalCats]           = useState<Category[]>(server.categories)
   const [localExtraChannels, setLocalExtraChannels]  = useState<Channel[]>([])
@@ -481,8 +482,12 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               onSetColorPref={onSetColorPref}
             />
           )}
-          <button className={s.iconBtn} title="Collapse sidebar" onClick={onCollapse}>
-            <CollapseIcon />
+          <button
+            className={s.iconBtn}
+            title={isMobile ? 'Back to chat' : 'Collapse sidebar'}
+            onClick={onCollapse}
+          >
+            {isMobile ? <ArrowLeft size={14} strokeWidth={1.5} /> : <CollapseIcon />}
           </button>
         </div>
       </div>

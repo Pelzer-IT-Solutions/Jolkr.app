@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, ArrowLeft } from 'lucide-react'
 import * as api from '../../api/client'
 import type { Message, User } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
@@ -12,6 +12,7 @@ interface Props {
   onUnpin?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number
+  onMobileClose?: () => void
 }
 
 function PinnedItem({ msg, dmId, onUnpin, users }: {
@@ -36,7 +37,7 @@ function PinnedItem({ msg, dmId, onUnpin, users }: {
   )
 }
 
-export function DMInfoPanel({ visible, dmId, onUnpin, users, pinnedVersion }: Props) {
+export function DMInfoPanel({ visible, dmId, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
   const isRevealing = useRevealAnimation(0, [visible], visible, 300)
   const [pinned, setPinned] = useState<Message[]>([])
   const [loadingPins, setLoadingPins] = useState(false)
@@ -62,6 +63,11 @@ export function DMInfoPanel({ visible, dmId, onUnpin, users, pinnedVersion }: Pr
   return (
     <aside className={`${s.panel} ${!visible ? s.hidden : ''}`}>
       <div className={s.header}>
+        {onMobileClose && (
+          <button className={s.backBtn} title="Back to chat" onClick={onMobileClose}>
+            <ArrowLeft size={14} strokeWidth={1.5} />
+          </button>
+        )}
         <span className={`${s.title} txt-tiny txt-semibold`}>Info</span>
       </div>
 

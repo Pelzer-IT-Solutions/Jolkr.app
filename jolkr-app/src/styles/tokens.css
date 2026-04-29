@@ -157,6 +157,11 @@
   --transition:        150ms ease;
   --medium-font-weight: 450;
 
+  /* Responsive breakpoints (informational; @media rules use literal values) */
+  --bp-tablet:  1024px;
+  --bp-compact:  768px;
+  --bp-mobile:   600px;
+
   /* Solid opaque surfaces — for modals/portals that render over the body */
   /* Hierarchy: nav (darkest/furthest) → content → field → raised (lightest/closest) */
   /* Tinted neutrals that respond to theme-hue */

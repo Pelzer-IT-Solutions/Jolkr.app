@@ -42,8 +42,9 @@ export default function AppShell() {
     user, servers, channelsByServer, presences, serverPermissions,
     dmActive, activeDmId, activeServerId, activeChannelId,
     tabbedIds, setTabbedIds, setActiveServerId, setActiveChannelId,
-    sidebarCollapsed, setSidebarCollapsed,
-    rightPanelMode, setRightPanelMode,
+    setRightPanelMode,
+    setUserOverrideLeft, setUserOverrideRight,
+    activeMobilePane, setActiveMobilePane,
     setDmActive, setActiveDmId, dmList, setDmList,
     settingsOpen, setSettingsOpen,
     newDmOpen, setNewDmOpen,
@@ -73,7 +74,40 @@ export default function AppShell() {
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
     mentionableUsers,
+    viewport, effectiveLeftCollapsed, effectiveRightCollapsed, effectiveRightMode,
   } = memos
+
+  // ── Responsive layout helpers ──
+  const isMobile = viewport.isMobile
+  const showLeft  = !isMobile || activeMobilePane === 'left'
+  const showChat  = !isMobile || activeMobilePane === 'chat'
+  const showRight = !isMobile || activeMobilePane === 'right'
+
+  const handleExpandSidebar = useCallback(() => {
+    if (isMobile) setActiveMobilePane('left')
+    else setUserOverrideLeft('open')
+  }, [isMobile, setActiveMobilePane, setUserOverrideLeft])
+
+  const handleCollapseSidebar = useCallback(() => {
+    if (isMobile) setActiveMobilePane('chat')
+    else setUserOverrideLeft('closed')
+  }, [isMobile, setActiveMobilePane, setUserOverrideLeft])
+
+  const handleSetRightPanelMode = useCallback((mode: 'members' | 'pinned' | 'threads' | null) => {
+    if (isMobile) {
+      if (mode === null) setActiveMobilePane('chat')
+      else { setRightPanelMode(mode); setActiveMobilePane('right') }
+    } else {
+      if (mode === null) setUserOverrideRight('closed')
+      else { setRightPanelMode(mode); setUserOverrideRight('open') }
+    }
+  }, [isMobile, setActiveMobilePane, setRightPanelMode, setUserOverrideRight])
+
+  const mobileBackToChat = useCallback(() => setActiveMobilePane('chat'), [setActiveMobilePane])
+
+  const sidebarCollapsedForChannelSidebar = isMobile ? false : effectiveLeftCollapsed
+  const sidebarCollapsedForChatHeader     = isMobile ? true  : effectiveLeftCollapsed
+  const rightPanelHidden                   = isMobile ? false : effectiveRightCollapsed
 
   // ── Destructure handlers ──
   const {
@@ -197,7 +231,7 @@ export default function AppShell() {
         <div className={s.contentRow}>
           <div className={s.shell}>
             <div className={s.workspace}>
-              {!dmActive && !activeServer ? (
+              {showLeft && (!dmActive && !activeServer ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', opacity: 0.5 }}>
                   <div style={{ fontSize: '3rem' }}>👋</div>
                   <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
@@ -210,14 +244,18 @@ export default function AppShell() {
                   onSelect={setActiveDmId}
                   onNewMessage={() => setNewDmOpen(true)}
                   onOpenFriends={() => setFriendsPanelOpen(true)}
+                  collapsed={sidebarCollapsedForChannelSidebar}
+                  onCollapse={handleCollapseSidebar}
+                  isMobile={isMobile}
                 />
               ) : activeServer ? (
                 <ChannelSidebar
                   server={activeServer}
                   activeChannelId={activeChannelId}
                   onSwitch={handleSwitchChannel}
-                  onCollapse={() => setSidebarCollapsed(true)}
-                  collapsed={sidebarCollapsed}
+                  onCollapse={handleCollapseSidebar}
+                  collapsed={sidebarCollapsedForChannelSidebar}
+                  isMobile={isMobile}
                   theme={activeTheme}
                   onThemeChange={handleThemeChange}
                   isDark={isDark}
@@ -236,15 +274,15 @@ export default function AppShell() {
                   onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
                   onReorderChannels={canManageChannels ? handleReorderChannels : undefined}
                 />
-              ) : null}
+              ) : null)}
 
-              <ChatArea
+              {showChat && <ChatArea
                 channel={activeChannel}
                 messages={displayMessages}
-                sidebarCollapsed={dmActive ? false : sidebarCollapsed}
-                rightPanelMode={rightPanelMode}
-                onExpandSidebar={() => setSidebarCollapsed(false)}
-                onSetRightPanelMode={setRightPanelMode}
+                sidebarCollapsed={sidebarCollapsedForChatHeader}
+                rightPanelMode={effectiveRightMode}
+                onExpandSidebar={handleExpandSidebar}
+                onSetRightPanelMode={handleSetRightPanelMode}
                 onSend={handleSend}
                 onToggleReaction={handleToggleReaction}
                 onDeleteMessage={handleDeleteMessage}
@@ -271,14 +309,21 @@ export default function AppShell() {
                 canAddReactions={canAddReactions}
                 canSendMessages={canSendMessages}
                 canAttachFiles={canAttachFiles}
-              />
+              />}
 
-              {dmActive ? (
-                <DMInfoPanel visible={rightPanelMode !== null} dmId={activeDmId} onUnpin={handleUnpinMessage} users={userMap} pinnedVersion={pinnedVersion} />
+              {showRight && (dmActive ? (
+                <DMInfoPanel
+                  visible={!rightPanelHidden}
+                  dmId={activeDmId}
+                  onUnpin={handleUnpinMessage}
+                  users={userMap}
+                  pinnedVersion={pinnedVersion}
+                  onMobileClose={isMobile ? mobileBackToChat : undefined}
+                />
               ) : activeServer ? (
                 <MemberPanel
                   members={activeServer.members}
-                  mode={rightPanelMode}
+                  mode={effectiveRightMode}
                   serverId={activeServerId}
                   channelId={activeChannelId}
                   isDm={false}
@@ -302,8 +347,9 @@ export default function AppShell() {
                   onUnpin={handleUnpinMessage}
                   users={userMap}
                   pinnedVersion={pinnedVersion}
+                  onMobileClose={isMobile ? mobileBackToChat : undefined}
                 />
-              ) : null}
+              ) : null)}
             </div>
           </div>
 

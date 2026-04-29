@@ -16,6 +16,16 @@
   border-right-color: transparent;
 }
 
+/* Mobile: when shown alone in single-pane mode, fill the workspace */
+@media (max-width: 600px) {
+  .sidebar:not(.collapsed) {
+    width: 100%;
+    min-width: 0;
+    flex: 1;
+    border-right: none;
+  }
+}
+
 .header {
   display: flex;
   align-items: center;

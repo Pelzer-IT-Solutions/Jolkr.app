@@ -26,6 +26,18 @@
   visibility: hidden;
 }
 
+/* Mobile: full takeover of the content area */
+@media (max-width: 600px) {
+  .panel:not(.hidden) {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    z-index: 50;
+    margin-left: 0;
+    transform: none;
+  }
+}
+
 /* Define the "just inserted" state — browsers animate FROM here TO the rule above */
 @starting-style {
   .panel {
