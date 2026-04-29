@@ -113,7 +113,7 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
       return (
         <div className={s.tauriFallback}>
           <svg style={{ width: '2.5rem', height: '2.5rem', color: '#9146FF' }} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
+            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
           </svg>
           <span>{embed.title || 'Twitch'}</span>
           <a href={twitchUrl} target="_blank" rel="noopener noreferrer">Watch on Twitch</a>
@@ -155,7 +155,12 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
 function IframePlayer({ src, title }: { src: string; title: string }) {
   return (
     <div className={s.playerWrap}>
-      <iframe src={src} title={title} allow="fullscreen; encrypted-media" allowFullScreen />
+      <iframe
+        src={src}
+        title={title}
+        allow="accelerometer; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
     </div>
   );
 }
@@ -186,7 +191,7 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
     const el = wrapperRef.current;
     if (!el) return;
     if (document.fullscreenElement) document.exitFullscreen();
-    else el.requestFullscreen().catch(() => {});
+    else el.requestFullscreen().catch(() => { });
   };
 
   if (player.error) return <div className={s.errorMsg}>{player.error}</div>;
