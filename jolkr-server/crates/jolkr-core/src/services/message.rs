@@ -14,62 +14,101 @@ use jolkr_db::repo::{ChannelRepo, RoleRepo, ServerRepo};
 /// Attachment info included in message responses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AttachmentInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// File name.
     pub filename: String,
+    /// Content type.
     pub content_type: String,
+    /// Size in bytes.
     pub size_bytes: i64,
+    /// Resource URL.
     pub url: String,
+}
+
+/// Generate the proxy URL for an attachment (served via /api/files/:id with auth).
+#[must_use] 
+pub fn attachment_proxy_url(id: Uuid) -> String {
+    format!("/api/files/{id}")
 }
 
 /// Reaction info included in message responses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReactionInfo {
+    /// Emoji.
     pub emoji: String,
+    /// Count.
     pub count: i64,
+    /// User ids.
     pub user_ids: Vec<Uuid>,
 }
 
 /// Embed info included in message responses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbedInfo {
+    /// Resource URL.
     pub url: String,
+    /// Title text.
     pub title: Option<String>,
+    /// Description text.
     pub description: Option<String>,
+    /// Image URL.
     pub image_url: Option<String>,
+    /// Site name.
     pub site_name: Option<String>,
+    /// Color value (RGB).
     pub color: Option<String>,
 }
 
 /// Public message DTO.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning channel identifier.
     pub channel_id: Uuid,
+    /// Author user identifier.
     pub author_id: Uuid,
+    /// Message content (may be encrypted).
     pub content: Option<String>,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,
+    /// Whether the message has been edited.
     pub is_edited: bool,
+    /// Whether the message is pinned.
     pub is_pinned: bool,
+    /// Reply to identifier.
     pub reply_to_id: Option<Uuid>,
+    /// Owning thread identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thread_id: Option<Uuid>,
+    /// Number of replies in this thread.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thread_reply_count: Option<i64>,
+    /// Attached files.
     #[serde(default)]
     pub attachments: Vec<AttachmentInfo>,
+    /// Aggregated reactions.
     #[serde(default)]
     pub reactions: Vec<ReactionInfo>,
+    /// Attached embeds.
     #[serde(default)]
     pub embeds: Vec<EmbedInfo>,
+    /// Attached poll, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poll: Option<serde_json::Value>,
+    /// Webhook identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub webhook_id: Option<Uuid>,
+    /// Webhook name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub webhook_name: Option<String>,
+    /// Webhook avatar.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub webhook_avatar: Option<String>,
+    /// Creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
     pub updated_at: DateTime<Utc>,
 }
 
@@ -101,22 +140,32 @@ impl From<MessageRow> for MessageInfo {
     }
 }
 
+/// Request payload for the `SendMessage` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SendMessageRequest {
+    /// Message content (may be encrypted).
     pub content: Option<String>,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,             // base64-encoded
+    /// Reply to identifier.
     pub reply_to_id: Option<Uuid>,
 }
 
+/// Request payload for the `EditMessage` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditMessageRequest {
+    /// Message content (may be encrypted).
     pub content: String,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,  // base64-encoded; when provided, updates nonce in DB
 }
 
+/// `MessageQuery` value.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageQuery {
+    /// Before.
     pub before: Option<DateTime<Utc>>,
+    /// Limit.
     pub limit: Option<i64>,
 }
 
@@ -128,24 +177,23 @@ pub(crate) async fn enrich_with_reactions(pool: &PgPool, messages: &mut [Message
     let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
     let all_reactions = ReactionRepo::list_for_messages(pool, &msg_ids).await?;
 
-    // Group by message_id, then by emoji
-    let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
+    // Group by message_id, then by emoji (preserving order by first created_at)
+    let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
     for r in all_reactions {
-        let entry = by_msg.entry(r.message_id).or_default();
-        let emoji_entry = entry.entry(r.emoji).or_insert((0, Vec::new()));
+        let (order, map) = by_msg.entry(r.message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
+        if !map.contains_key(&r.emoji) {
+            order.push(r.emoji.clone());
+        }
+        let emoji_entry = map.entry(r.emoji).or_insert((0, Vec::new()));
         emoji_entry.0 += 1;
         emoji_entry.1.push(r.user_id);
     }
 
     for msg in messages.iter_mut() {
-        if let Some(emojis) = by_msg.remove(&msg.id) {
-            msg.reactions = emojis
+        if let Some((order, mut map)) = by_msg.remove(&msg.id) {
+            msg.reactions = order
                 .into_iter()
-                .map(|(emoji, (count, user_ids))| ReactionInfo {
-                    emoji,
-                    count,
-                    user_ids,
-                })
+                .filter_map(|emoji| map.remove(&emoji).map(|(count, user_ids)| ReactionInfo { emoji, count, user_ids }))
                 .collect();
         }
     }
@@ -162,7 +210,7 @@ pub(crate) async fn enrich_with_thread_counts(pool: &PgPool, messages: &mut [Mes
 
     // Find all threads whose starter_msg_id is in our message set
     let rows: Vec<(Uuid, Uuid)> = sqlx::query_as(
-        r#"SELECT starter_msg_id, id FROM threads WHERE starter_msg_id = ANY($1)"#,
+        "SELECT starter_msg_id, id FROM threads WHERE starter_msg_id = ANY($1)",
     )
     .bind(&msg_ids)
     .fetch_all(pool)
@@ -217,7 +265,7 @@ pub(crate) async fn enrich_with_embeds(pool: &PgPool, messages: &mut [MessageInf
     Ok(())
 }
 
-/// Batch load attachments and attach them to messages using HashMap for O(n+m) lookup.
+/// Batch load attachments and attach them to messages using `HashMap` for O(n+m) lookup.
 pub(crate) async fn enrich_with_attachments(pool: &PgPool, messages: &mut [MessageInfo]) -> Result<(), JolkrError> {
     let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
     let all_atts = AttachmentRepo::list_for_messages(pool, &msg_ids).await?;
@@ -229,7 +277,7 @@ pub(crate) async fn enrich_with_attachments(pool: &PgPool, messages: &mut [Messa
             filename: att.filename,
             content_type: att.content_type,
             size_bytes: att.size_bytes,
-            url: att.url,
+            url: attachment_proxy_url(att.id),
         });
     }
 
@@ -243,7 +291,7 @@ pub(crate) async fn enrich_with_attachments(pool: &PgPool, messages: &mut [Messa
 
 /// Batch load polls and attach them to messages as JSON.
 /// Note: `my_votes` is left empty because enrichment has no viewer context.
-/// The frontend PollDisplay component will fetch fresh data when the user interacts.
+/// The frontend `PollDisplay` component will fetch fresh data when the user interacts.
 pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo]) -> Result<(), JolkrError> {
     let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
     if msg_ids.is_empty() {
@@ -310,10 +358,11 @@ pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo
     Ok(())
 }
 
+/// Domain service for `message` operations.
 pub struct MessageService;
 
 impl MessageService {
-    /// Internal helper to validate and create a message with optional thread_id.
+    /// Internal helper to validate and create a message with optional `thread_id`.
     pub(crate) async fn send_message_internal(
         pool: &PgPool,
         channel_id: Uuid,
@@ -368,7 +417,7 @@ impl MessageService {
 
         // Enforce slowmode (only for non-thread messages)
         if thread_id.is_none() && channel.slowmode_seconds > 0 {
-            let since = Utc::now() - chrono::Duration::seconds(channel.slowmode_seconds as i64);
+            let since = Utc::now() - chrono::Duration::seconds(i64::from(channel.slowmode_seconds));
             let recent = MessageRepo::last_by_author_in_channel(pool, channel_id, author_id).await?;
             if let Some(last_msg) = recent {
                 if last_msg.created_at > since {
@@ -454,7 +503,7 @@ impl MessageService {
                 filename: att.filename,
                 content_type: att.content_type,
                 size_bytes: att.size_bytes,
-                url: att.url,
+                url: attachment_proxy_url(att.id),
             });
         }
 
@@ -512,7 +561,7 @@ impl MessageService {
         Ok(messages)
     }
 
-    /// Enrich raw MessageRows with attachments, reactions, threads, embeds.
+    /// Enrich raw `MessageRows` with attachments, reactions, threads, embeds.
     pub async fn enrich_messages(
         pool: &PgPool,
         rows: Vec<MessageRow>,
@@ -540,7 +589,7 @@ impl MessageService {
             return Err(JolkrError::Forbidden);
         }
 
-        let content = req.content.trim().to_string();
+        let content = req.content.trim().to_owned();
         if content.is_empty() {
             return Err(JolkrError::Validation("Content cannot be empty".into()));
         }
@@ -564,7 +613,7 @@ impl MessageService {
         Self::get_message_by_id(pool, message_id).await
     }
 
-    /// Delete a message. The author, server owner, or users with MANAGE_MESSAGES may delete.
+    /// Delete a message. The author, server owner, or users with `MANAGE_MESSAGES` may delete.
     pub async fn delete_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -595,7 +644,7 @@ impl MessageService {
         Ok(msg.channel_id)
     }
 
-    /// Pin a message. Requires MANAGE_MESSAGES channel permission.
+    /// Pin a message. Requires `MANAGE_MESSAGES` channel permission.
     pub async fn pin_message(
         pool: &PgPool,
         channel_id: Uuid,
@@ -624,11 +673,16 @@ impl MessageService {
 
         PinRepo::pin(pool, channel_id, message_id, caller_id).await?;
         let updated = MessageRepo::set_pinned(pool, message_id, true).await?;
+        let mut msgs = vec![MessageInfo::from(updated)];
+        enrich_with_reactions(pool, &mut msgs).await?;
+        enrich_with_attachments(pool, &mut msgs).await?;
+        enrich_with_embeds(pool, &mut msgs).await?;
+        enrich_with_polls(pool, &mut msgs).await?;
         info!(message_id = %message_id, channel_id = %channel_id, "Message pinned");
-        Ok(MessageInfo::from(updated))
+        Ok(msgs.into_iter().next().unwrap())
     }
 
-    /// Unpin a message. Requires MANAGE_MESSAGES channel permission.
+    /// Unpin a message. Requires `MANAGE_MESSAGES` channel permission.
     pub async fn unpin_message(
         pool: &PgPool,
         channel_id: Uuid,
@@ -657,11 +711,16 @@ impl MessageService {
 
         PinRepo::unpin(pool, channel_id, message_id).await?;
         let updated = MessageRepo::set_pinned(pool, message_id, false).await?;
+        let mut msgs = vec![MessageInfo::from(updated)];
+        enrich_with_reactions(pool, &mut msgs).await?;
+        enrich_with_attachments(pool, &mut msgs).await?;
+        enrich_with_embeds(pool, &mut msgs).await?;
+        enrich_with_polls(pool, &mut msgs).await?;
         info!(message_id = %message_id, channel_id = %channel_id, "Message unpinned");
-        Ok(MessageInfo::from(updated))
+        Ok(msgs.into_iter().next().unwrap())
     }
 
-    /// List pinned messages for a channel. Requires VIEW_CHANNELS.
+    /// List pinned messages for a channel. Requires `VIEW_CHANNELS`.
     pub async fn list_pinned(
         pool: &PgPool,
         channel_id: Uuid,

@@ -191,6 +191,8 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `forgotPassword` | POST | `/auth/forgot-password` | `{email}` | void |
 | `resetPasswordConfirm` | POST | `/auth/reset-password-confirm` | `{token, new_password}` | void |
 | `changePassword` | POST | `/auth/change-password` | `{current_password, new_password}` | void |
+| `verifyEmail` | POST | `/auth/verify-email` | `{token}` | void |
+| `resendVerification` | POST | `/auth/resend-verification` | — | void |
 
 ---
 
@@ -306,6 +308,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `uploadAttachment` | POST | `/channels/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
 | `uploadDmAttachment` | POST | `/dms/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
 | `uploadFile` | POST | `/upload?purpose={avatar\|icon}` | `FormData {file}` | `{key: string, url: string}` |
+| `getFileUrl` | GET | `/files/{attachmentId}` | — | Binary file (streamed) |
 
 ---
 
@@ -380,6 +383,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `acceptFriend` | POST | `/friends/{id}/accept` | — | `{friendship: Friendship}` |
 | `declineFriend` | DELETE | `/friends/{id}` | — | void |
 | `blockUser` | POST | `/friends/block` | `{user_id}` | `{friendship: Friendship}` |
+| `removeFriendByUserId` | DELETE | `/friends/user/{userId}` | — | void | ⚠️ Geen backend route — client-only |
 
 ---
 
@@ -496,6 +500,13 @@ De volgende backend routes bestaan maar hebben geen dedicated wrapper in `src/ap
 | POST | `/presence/query` | Presence opvragen (client gebruikt `queryPresence`) |
 | POST | `/users/batch` | Meerdere users ophalen (client gebruikt parallel `getUser` calls) |
 | POST | `/webhooks/{id}/{token}` | Webhook uitvoeren (geen auth, extern aangeroepen) |
+| GET | `/files/{attachmentId}` | File serving by attachment ID (client gebruikt `getFileUrl`) |
+| GET | `/gifs/search` | GIF zoeken (geen dedicated client wrapper, direct URL) |
+| GET | `/gifs/featured` | Trending GIFs (geen dedicated client wrapper, direct URL) |
+| GET | `/gifs/categories` | GIF categorieën (geen dedicated client wrapper, direct URL) |
+| GET | `/gifs/i/{gifId}/{size}` | GIF image proxy (geen dedicated client wrapper, direct URL) |
+| GET | `/gifs/media` | GIF media proxy (geen dedicated client wrapper, direct URL) |
+| GET | `/oembed` | oEmbed proxy (geen dedicated client wrapper, direct URL) |
 
 ---
 
@@ -990,7 +1001,9 @@ interface User {
   display_name?: string | null; email?: string | null;
   avatar_url?: string | null; status?: string | null;
   bio?: string | null; is_online?: boolean;
+  email_verified?: boolean;
   show_read_receipts?: boolean; is_system?: boolean;
+  banner_color?: string | null;
   created_at?: string | null;
 }
 
@@ -999,6 +1012,7 @@ interface Server {
   icon_url?: string | null; banner_url?: string | null;
   owner_id: string; is_public?: boolean;
   member_count?: number;
+  theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null;
   created_at?: string | null;
 }
 
@@ -1006,7 +1020,8 @@ interface Channel {
   id: string; server_id: string; name: string;
   kind: 'text' | 'voice' | 'category'; topic?: string | null;
   category_id?: string | null; position: number;
-  is_nsfw?: boolean; slowmode_seconds?: number;
+  is_nsfw?: boolean; is_system?: boolean;
+  slowmode_seconds?: number;
   e2ee_key_generation?: number;
   created_at?: string | null;
 }
@@ -1068,10 +1083,19 @@ interface ChannelOverwrite {
   allow: number; deny: number;
 }
 
+interface DmLastMessage {
+  id: string;
+  author_id: string;
+  content?: string | null;
+  nonce?: string | null;
+  created_at: string;
+}
+
 interface DmChannel {
   id: string; is_group: boolean; name?: string | null;
   members: string[];           // UUID array (not full User objects)
   created_at: string;
+  last_message?: DmLastMessage | null;
 }
 
 interface Friendship {
@@ -1148,10 +1172,19 @@ interface PreKeyBundleResponse {
   pq_signed_prekey_signature?: string | null;
 }
 
+interface GifFavorite {
+  gif_id: string;
+  gif_url: string;
+  preview_url: string;
+  title: string;
+  added_at: string;
+}
+
 interface Reaction {
   emoji: string;
   count: number;
   me: boolean;
+  user_ids?: string[];
 }
 ```
 

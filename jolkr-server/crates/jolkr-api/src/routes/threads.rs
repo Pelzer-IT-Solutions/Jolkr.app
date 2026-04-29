@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_core::ThreadService;
-use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::services::message::{MessageInfo, SendMessageRequest};
 use jolkr_core::services::thread::{
     CreateThreadRequest, ThreadInfo, ThreadMessageQuery, UpdateThreadRequest,
@@ -19,40 +18,40 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct ThreadResponse {
+pub(crate) struct ThreadResponse {
     pub thread: ThreadInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ThreadsResponse {
+pub(crate) struct ThreadsResponse {
     pub threads: Vec<ThreadInfo>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ThreadCreatedResponse {
+pub(crate) struct ThreadCreatedResponse {
     pub thread: ThreadInfo,
     pub message: MessageInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct MessageResponse {
+pub(crate) struct MessageResponse {
     pub message: MessageInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct MessagesResponse {
+pub(crate) struct MessagesResponse {
     pub messages: Vec<MessageInfo>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ListThreadsQuery {
+pub(crate) struct ListThreadsQuery {
     pub include_archived: Option<bool>,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/channels/:channel_id/threads
-pub async fn create_thread(
+pub(crate) async fn create_thread(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -77,7 +76,7 @@ pub async fn create_thread(
 }
 
 /// GET /api/channels/:channel_id/threads
-pub async fn list_threads(
+pub(crate) async fn list_threads(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -91,7 +90,7 @@ pub async fn list_threads(
 }
 
 /// GET /api/threads/:thread_id
-pub async fn get_thread(
+pub(crate) async fn get_thread(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,
@@ -101,7 +100,7 @@ pub async fn get_thread(
 }
 
 /// PATCH /api/threads/:thread_id
-pub async fn update_thread(
+pub(crate) async fn update_thread(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,
@@ -120,29 +119,20 @@ pub async fn update_thread(
 }
 
 /// GET /api/threads/:thread_id/messages
-pub async fn get_thread_messages(
+pub(crate) async fn get_thread_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,
     Query(query): Query<ThreadMessageQuery>,
 ) -> Result<Json<MessagesResponse>, AppError> {
-    let mut messages =
+    let messages =
         ThreadService::get_thread_messages(&state.pool, thread_id, auth.user_id, query).await?;
-
-    // Presign attachment URLs
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
 
     Ok(Json(MessagesResponse { messages }))
 }
 
 /// POST /api/threads/:thread_id/messages
-pub async fn send_thread_message(
+pub(crate) async fn send_thread_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,

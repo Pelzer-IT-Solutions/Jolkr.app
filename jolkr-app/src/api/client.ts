@@ -3,6 +3,7 @@ import type {
   DmChannel, Friendship, Invite, TokenPair, Attachment,
   PreKeyBundleResponse, Role, Category, ChannelOverwrite, Thread,
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
+  GifFavorite,
 } from './types';
 import { getApiBaseUrl } from '../platform/config';
 import { storage } from '../platform/storage';
@@ -29,6 +30,20 @@ function checkLogoutFlag(): boolean {
 }
 
 /** Load tokens from secure storage on startup. Must be called before any API request. */
+/**
+ * Authenticated raw `fetch` — attaches Bearer and apiBase, returns the raw
+ * Response so callers can stream binary payloads (blobs, etc.). Bypasses the
+ * JSON-parsing path of `request<T>()` but keeps the auth wiring consistent.
+ */
+export async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers: Record<string, string> = { ...(init.headers as Record<string, string> || {}) };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+  const url = path.startsWith('http') ? path
+    : path.startsWith('/api') ? `${apiBase}${path.slice(4)}`
+    : `${apiBase}${path}`;
+  return fetch(url, { ...init, headers });
+}
+
 export async function initTokens() {
   apiBase = getApiBaseUrl();
   // If logout flag is set, refuse to load tokens — flag is only cleared by login/register
@@ -291,6 +306,19 @@ export async function resetPasswordConfirm(token: string, newPassword: string): 
   });
 }
 
+export async function verifyEmail(token: string): Promise<void> {
+  await request<void>('/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function resendVerification(): Promise<void> {
+  await request<void>('/auth/resend-verification', {
+    method: 'POST',
+  });
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   await request<void>('/auth/change-password', {
     method: 'POST',
@@ -300,7 +328,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
 
 // Users
 export const getMe = () => request<User>('/users/@me', {}, 'user');
-export const updateMe = (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean }) =>
+export const updateMe = (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean; banner_color?: string }) =>
   request<User>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
 export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
 export const getUsersBatch = async (ids: string[]): Promise<User[]> => {
@@ -314,7 +342,7 @@ export const getServers = () => request<Server[]>('/servers', {}, 'servers');
 export const createServer = (body: { name: string; description?: string }) =>
   request<Server>('/servers', { method: 'POST', body: JSON.stringify(body) }, 'server');
 export const getServer = (id: string) => request<Server>(`/servers/${id}`, {}, 'server');
-export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean }) =>
+export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean; theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null }) =>
   request<Server>(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'server');
 export const deleteServer = (id: string) =>
   request<void>(`/servers/${id}`, { method: 'DELETE' });
@@ -386,7 +414,7 @@ export const getChannels = (serverId: string) =>
 export const createChannel = (serverId: string, body: { name: string; kind: string; topic?: string; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
 export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
-export const updateChannel = (id: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) =>
+export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
 export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>
   request<Channel[]>(`/servers/${serverId}/channels/reorder`, {
@@ -635,6 +663,8 @@ export const declineFriend = (id: string) =>
   request<void>(`/friends/${id}`, { method: 'DELETE' });
 export const blockUser = (userId: string) =>
   request<Friendship>('/friends/block', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'friendship');
+export const removeFriendByUserId = (userId: string) =>
+  request<void>(`/friends/user/${userId}`, { method: 'DELETE' });
 
 // General file upload (avatars, server icons, etc.)
 // When purpose is 'avatar' or 'icon', the backend converts to WebP and resizes.
@@ -868,3 +898,15 @@ export const unvotePoll = (pollId: string, optionId: string) =>
 
 export const getPoll = (pollId: string) =>
   request<Poll>(`/polls/${pollId}`, {}, 'poll');
+
+// ── GIF Favorites ───────────────────────────────────────────────────
+
+export const getGifFavorites = () =>
+  request<GifFavorite[]>('/gifs/favorites', {}, 'favorites')
+
+export const addGifFavorite = (gifId: string) =>
+  request<void>('/gifs/favorites', { method: 'POST', body: JSON.stringify({ gif_id: gifId }) })
+
+export const removeGifFavorite = (gifId: string) =>
+  request<void>(`/gifs/favorites/${encodeURIComponent(gifId)}`, { method: 'DELETE' })
+

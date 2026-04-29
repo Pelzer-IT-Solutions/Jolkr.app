@@ -65,7 +65,7 @@ export default function EditChannelDialog({ channel, serverId, onClose }: EditCh
   // Fetch roles on mount so Permissions tab has data
   useEffect(() => {
     if (canManageRoles && serverRoles.length === 0) {
-      fetchRoles(serverId).catch(() => {});
+      fetchRoles(serverId).catch(e => console.warn('Failed to fetch roles:', e));
     }
   }, [canManageRoles, serverRoles.length, fetchRoles, serverId]);
 

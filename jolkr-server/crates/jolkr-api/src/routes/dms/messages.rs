@@ -11,12 +11,11 @@ use jolkr_db::repo::{DmRepo, EmbedRepo, UserRepo};
 
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
-use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use crate::routes::AppState;
 
 use super::types::*;
 
-pub async fn send_dm_message(
+pub(crate) async fn send_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -114,28 +113,19 @@ pub async fn send_dm_message(
     Ok(Json(DmMessageResponse { message }))
 }
 
-pub async fn get_dm_messages(
+pub(crate) async fn get_dm_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
     Query(query): Query<DmMessageQuery>,
 ) -> Result<Json<DmMessagesResponse>, AppError> {
-    let mut messages = DmService::get_messages(&state.pool, dm_id, auth.user_id, query).await?;
-
-    // Presign attachment URLs
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
+    let messages = DmService::get_messages(&state.pool, dm_id, auth.user_id, query).await?;
 
     Ok(Json(DmMessagesResponse { messages }))
 }
 
 /// PATCH /api/dms/messages/:id
-pub async fn edit_dm_message(
+pub(crate) async fn edit_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,
@@ -173,7 +163,7 @@ pub async fn edit_dm_message(
 }
 
 /// DELETE /api/dms/messages/:id
-pub async fn delete_dm_message(
+pub(crate) async fn delete_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(message_id): Path<Uuid>,

@@ -14,21 +14,21 @@ use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Serialize)]
-pub struct FriendshipResponse {
+pub(crate) struct FriendshipResponse {
     pub friendship: FriendshipInfo,
 }
 
 #[derive(Serialize)]
-pub struct FriendshipsResponse {
+pub(crate) struct FriendshipsResponse {
     pub friendships: Vec<FriendshipInfo>,
 }
 
 #[derive(Deserialize)]
-pub struct SendRequestBody {
+pub(crate) struct SendRequestBody {
     pub user_id: Uuid,
 }
 
-pub async fn send_request(
+pub(crate) async fn send_request(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<SendRequestBody>,
@@ -38,7 +38,7 @@ pub async fn send_request(
     Ok(Json(FriendshipResponse { friendship }))
 }
 
-pub async fn accept_request(
+pub(crate) async fn accept_request(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -47,7 +47,7 @@ pub async fn accept_request(
     Ok(Json(FriendshipResponse { friendship }))
 }
 
-pub async fn decline_or_remove(
+pub(crate) async fn decline_or_remove(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -56,7 +56,7 @@ pub async fn decline_or_remove(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn block_user(
+pub(crate) async fn block_user(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<SendRequestBody>,
@@ -66,7 +66,7 @@ pub async fn block_user(
     Ok(Json(FriendshipResponse { friendship }))
 }
 
-pub async fn list_friends(
+pub(crate) async fn list_friends(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<FriendshipsResponse>, AppError> {
@@ -74,7 +74,7 @@ pub async fn list_friends(
     Ok(Json(FriendshipsResponse { friendships }))
 }
 
-pub async fn list_pending(
+pub(crate) async fn list_pending(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<FriendshipsResponse>, AppError> {

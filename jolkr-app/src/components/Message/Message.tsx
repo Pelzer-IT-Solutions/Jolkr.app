@@ -1,32 +1,50 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   SmilePlus, CornerUpLeft, Pencil, MoreHorizontal,
   Copy, Pin, Trash2, Flag,
 } from 'lucide-react'
 import type { Message as MessageType } from '../../types'
+import type { User, MessageEmbed } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useShiftKey } from '../../hooks/useShiftKey'
 import { useAuthStore } from '../../stores/auth'
-import { renderMarkdown } from '../../utils/markdown'
 import { useMenuPosition } from '../../utils/position'
-import EmojiPickerPopup from '../EmojiPickerPopup'
-import Avatar from '../Avatar'
 import { emojiToImgUrl } from '../../utils/emoji'
+import { parseVideoUrl, getYouTubeThumbnail, getPlatformName, getPlatformColor } from '../../utils/videoUrl'
+import EmojiPickerPopup from '../EmojiPickerPopup'
+import MessageContent from '../MessageContent'
+import VideoEmbed from '../VideoEmbed'
+import LinkEmbed from '../LinkEmbed'
+import Avatar from '../Avatar'
+import { MessageAttachments } from '../MessageAttachments/MessageAttachments'
+import { ReactionTooltip } from './ReactionTooltip'
 import s from './Message.module.css'
 
 interface Props {
-  message:          MessageType
-  onToggleReaction?: (emoji: string) => void
-  onDelete?:         () => void
-  onReply?:          () => void
-  onEdit?:           (newText: string) => void
-  onPin?:            () => void
-  isDm?:            boolean
+  message:               MessageType
+  onToggleReaction?:     (emoji: string) => void
+  onDelete?:             () => void
+  onReply?:              () => void
+  onEdit?:               (newText: string) => void
+  onPin?:                () => void
+  isDm?:                 boolean
+  serverId?:             string
+  userMap?:              Map<string, User>
+  dmParticipantNames?:   Record<string, string>
+  canManageMessages?:    boolean
+  canAddReactions?:      boolean
 }
 
-export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false }: Props) {
+export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
+  const shiftHeld = useShiftKey()
+  // Shift+click on the toolbar's "more" affordance acts as instant-delete
+  // when the viewer can actually delete this message. We don't gate on the
+  // toolbar being visible — pressing Shift while hovering swaps the icon.
+  const canDelete = !!onDelete && (isOwn || canManageMessages)
+  const shiftDeleteArmed = shiftHeld && canDelete
 
   // Decrypt E2EE content
   const { displayContent, isEncrypted, decrypting } = useDecryptedContent(
@@ -36,8 +54,34 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
     message.channel_id,
   )
   const messageContent = displayContent || message.content
-  // Webhook messages have no nonce → isEncrypted=false, but only show badge if content exists
   const showUnencryptedBadge = !isEncrypted && !!message.content
+
+  // Client-side embed generation: extract URLs from displayed content and create
+  // video embeds for known platforms (essential for E2EE where server can't read content)
+  const clientEmbeds = useMemo<MessageEmbed[]>(() => {
+    if ((message.embeds ?? []).length > 0) return message.embeds!
+    if (!messageContent) return []
+    const urls = messageContent.match(/https?:\/\/[^\s<>)"]+/gi)
+    if (!urls) return []
+    const seen = new Set<string>()
+    const embeds: MessageEmbed[] = []
+    for (const url of urls.slice(0, 5)) {
+      if (seen.has(url)) continue
+      seen.add(url)
+      const info = parseVideoUrl(url)
+      if (info) {
+        embeds.push({
+          url,
+          title: null,
+          description: null,
+          image_url: info.platform === 'youtube' && info.id ? getYouTubeThumbnail(info.id) : null,
+          site_name: getPlatformName(info.platform),
+          color: getPlatformColor(info.platform),
+        })
+      }
+    }
+    return embeds
+  }, [messageContent, message.embeds])
   const [showEmoji, setShowEmoji] = useState(false)
   const [showMore,  setShowMore]  = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -133,14 +177,21 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   const reactionsBlock = message.reactions.length > 0 ? (
     <div className={s.reactions}>
       {message.reactions.map((r, i) => (
-        <button
+        <ReactionTooltip
           key={i}
-          className={`${s.reaction} ${r.me ? s.active : ''}`}
-          onClick={() => onToggleReaction?.(r.emoji)}
+          reaction={r}
+          serverId={serverId}
+          userMap={userMap}
+          dmParticipantNames={dmParticipantNames}
         >
-          <img src={emojiToImgUrl(r.emoji)} alt={r.emoji} className={s.reactionEmoji} draggable={false} />
-          <span className={`${s.reactionCount} txt-tiny txt-medium`}>{r.count}</span>
-        </button>
+          <button
+            className={`${s.reaction} ${r.me ? s.active : ''}`}
+            onClick={() => onToggleReaction?.(r.emoji)}
+          >
+            <img src={emojiToImgUrl(r.emoji)} alt={r.emoji} className={s.reactionEmoji} draggable={false} />
+            <span className={`${s.reactionCount} txt-tiny txt-medium`}>{r.count}</span>
+          </button>
+        </ReactionTooltip>
       ))}
     </div>
   ) : null
@@ -159,13 +210,36 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
       </span>
     </div>
   ) : (
-    <div className={`${s.text} txt-body`}>{renderMarkdown(decrypting ? '...' : messageContent)}{editedTag}</div>
+    <div className={`${s.text} txt-body`}>
+      <MessageContent content={decrypting ? '...' : messageContent} serverId={serverId} />
+      {editedTag}
+    </div>
   )
+
+  // Link/video embeds (server-side or client-side generated)
+  const embedsBlock = clientEmbeds.length > 0 ? (
+    <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+      {clientEmbeds.map((embed, i) => {
+        const videoInfo = parseVideoUrl(embed.url)
+        return videoInfo ? (
+          <VideoEmbed key={`${embed.url}-${i}`} embed={embed} videoInfo={videoInfo} />
+        ) : (
+          <LinkEmbed key={`${embed.url}-${i}`} embed={embed} />
+        )
+      })}
+    </div>
+  ) : null
+
+  const attachmentsBlock = (message.attachments?.length ?? 0) > 0 ? (
+    <MessageAttachments attachments={message.attachments!} />
+  ) : null
 
   const body = (
     <>
       {replyBlock}
       {textContent}
+      {attachmentsBlock}
+      {embedsBlock}
       {reactionsBlock}
     </>
   )
@@ -174,7 +248,8 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 
   const toolbar = !hasActions ? null : (
     <div className={`${s.actions} ${anyOpen ? s.actionsVisible : ''} ${isDm ? s.actionsDm : ''}`}>
-      {/* ── Add reaction ── */}
+      {/* ── Add reaction (requires ADD_REACTIONS permission) ── */}
+      {canAddReactions && (
       <div className={s.actionWrap}>
         <button
           ref={emojiTriggerRef}
@@ -192,6 +267,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           <EmojiAddIcon />
         </button>
       </div>
+      )}
       {showEmoji && (
         <EmojiPickerPopup
           position={{ top: pickerPos.top, left: pickerPos.left }}
@@ -206,47 +282,62 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
       {/* ── Edit (own only) ── */}
       {isOwn && <button className={s.actionBtn} title="Edit message" onClick={startEdit}><EditIcon /></button>}
 
-      {/* ── More options ── */}
+      {/* ── More options (Shift swaps to instant-delete when user can delete) ── */}
       <div ref={moreRef} className={s.actionWrap}>
         <button
-          className={s.actionBtn}
-          title="More options"
+          className={`${s.actionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
+          title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
           onClick={(e) => {
+            // Use the actual click event's shift state, not the hook — that
+            // way a click never desyncs from what the user thinks they did
+            // (e.g. they release Shift mid-click).
+            if (canDelete && e.shiftKey) {
+              e.stopPropagation()
+              handleDelete()
+              return
+            }
             const r = e.currentTarget.getBoundingClientRect()
             setMoreTriggerPos({ x: r.right, y: r.bottom + 4 })
             setShowMore(v => !v)
             setShowEmoji(false)
           }}
         >
-          <MoreIcon />
+          {shiftDeleteArmed ? <TrashIcon /> : <MoreIcon />}
         </button>
         {showMore && createPortal(
           <div
             ref={moreMenuRef}
             className={s.moreMenu}
+            role="menu"
             style={{ position: 'fixed', top: morePos.y, left: morePos.x - 184 }}
           >
-            <button className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
+            <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
               <ReplyIcon /><span>Reply</span>
             </button>
             {isOwn && (
-              <button className={s.menuItem} onClick={startEdit}>
+              <button role="menuitem" className={s.menuItem} onClick={startEdit}>
                 <EditIcon /><span>Edit Message</span>
               </button>
             )}
-            <button className={s.menuItem} onClick={handleCopyText}>
+            <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
               <CopyIcon /><span>Copy Text</span>
             </button>
-            <button className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
-              <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
-            </button>
+            {canManageMessages && onPin && (
+              <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
+                <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
+              </button>
+            )}
             <div className={s.menuDivider} />
             {isOwn ? (
-              <button className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+              <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+                <TrashIcon /><span>Delete Message</span>
+              </button>
+            ) : canManageMessages ? (
+              <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
                 <TrashIcon /><span>Delete Message</span>
               </button>
             ) : (
-              <button className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
+              <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
                 <FlagIcon /><span>Report Message</span>
               </button>
             )}
@@ -260,7 +351,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   /* ─── DM card layout ─── */
   if (isDm) {
     return (
-      <div className={`${s.dmRow} ${isOwn ? s.dmRowOwn : ''}`}>
+      <article className={`${s.dmRow} ${isOwn ? s.dmRowOwn : ''}`}>
         <div className={`${s.dmCard} ${isOwn ? s.dmCardOwn : ''}`}>
           {/* Header: sender on left, actions on right */}
           <div className={s.dmHeader}>
@@ -271,6 +362,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             </div>
 
             <div className={`${s.dmActions} ${anyOpen ? s.dmActionsVisible : ''}`}>
+              {canAddReactions && (
               <div className={s.actionWrap}>
                 <button
                   ref={emojiTriggerRef}
@@ -288,6 +380,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                   <EmojiAddIcon />
                 </button>
               </div>
+              )}
               {showEmoji && (
                 <EmojiPickerPopup
                   position={{ top: pickerPos.top, left: pickerPos.left }}
@@ -296,20 +389,25 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                 />
               )}
 
-              <button className={s.dmActionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>
+              {onReply && <button className={s.dmActionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>}
 
               <div ref={moreRef} className={s.actionWrap}>
                 <button
-                  className={s.dmActionBtn}
-                  title="More options"
+                  className={`${s.dmActionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
+                  title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
                   onClick={(e) => {
+                    if (canDelete && e.shiftKey) {
+                      e.stopPropagation()
+                      handleDelete()
+                      return
+                    }
                     const r = e.currentTarget.getBoundingClientRect()
                     setMoreTriggerPos({ x: r.right, y: r.bottom + 4 })
                     setShowMore(v => !v)
                     setShowEmoji(false)
                   }}
                 >
-                  <MoreIcon />
+                  {shiftDeleteArmed ? <TrashIcon /> : <MoreIcon />}
                 </button>
                 {showMore && createPortal(
                   <div
@@ -317,27 +415,33 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                     className={s.moreMenu}
                     style={{ position: 'fixed', top: morePos.y, left: morePos.x - 184 }}
                   >
-                    <button className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
+                    <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
                       <ReplyIcon /><span>Reply</span>
                     </button>
                     {isOwn && (
-                      <button className={s.menuItem} onClick={startEdit}>
+                      <button role="menuitem" className={s.menuItem} onClick={startEdit}>
                         <EditIcon /><span>Edit Message</span>
                       </button>
                     )}
-                    <button className={s.menuItem} onClick={handleCopyText}>
+                    <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
                       <CopyIcon /><span>Copy Text</span>
                     </button>
-                    <button className={s.menuItem} onClick={() => { setShowMore(false); onPin?.() }}>
-                      <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
-                    </button>
+                    {canManageMessages && onPin && (
+                      <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
+                        <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
+                      </button>
+                    )}
                     <div className={s.menuDivider} />
                     {isOwn ? (
-                      <button className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+                        <TrashIcon /><span>Delete Message</span>
+                      </button>
+                    ) : canManageMessages ? (
+                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
                         <TrashIcon /><span>Delete Message</span>
                       </button>
                     ) : (
-                      <button className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
+                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
                         <FlagIcon /><span>Report Message</span>
                       </button>
                     )}
@@ -365,8 +469,13 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                 </span>
               </div>
             ) : (
-              <div className={`${s.text} txt-body`}>{renderMarkdown(decrypting ? '...' : messageContent)}{editedTag}</div>
+              <div className={`${s.text} txt-body`}>
+                <MessageContent content={decrypting ? '...' : messageContent} serverId={serverId} />
+                {editedTag}
+              </div>
             )}
+            {attachmentsBlock}
+            {embedsBlock}
           </div>
 
           {/* Reactions — overlaid on the card's bottom edge */}
@@ -376,34 +485,34 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             </div>
           )}
         </div>
-      </div>
+      </article>
     )
   }
 
   /* ─── Standard channel layout ─── */
   if (message.continued) {
     return (
-      <div className={`${s.msg} ${s.continued} ${anyOpen ? s.hasMenu : ''}`}>
+      <article className={`${s.msg} ${s.continued} ${anyOpen ? s.hasMenu : ''}`}>
         <div className={s.body}>{body}</div>
         {toolbar}
-      </div>
+      </article>
     )
   }
 
   return (
-    <div className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
+    <article className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
       <MessageAvatar message={message} />
       <div className={s.body}>
         <div className={s.meta}>
           <span className={`${s.author} txt-body txt-semibold`}>{message.author}</span>
-          <span className={`${s.time} txt-tiny`}>{message.time}</span>
+          <time className={`${s.time} txt-tiny`}>{message.time}</time>
           {message.is_pinned && <Pin size={11} strokeWidth={1.4} className={s.pinnedBadge} />}
           {showUnencryptedBadge && <span className={`${s.unencryptedBadge} txt-tiny`}>unencrypted</span>}
         </div>
         {body}
       </div>
       {toolbar}
-    </div>
+    </article>
   )
 }
 

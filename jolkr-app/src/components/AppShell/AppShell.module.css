@@ -2,9 +2,26 @@
   display: flex;
   flex-direction: column;
   height: 100svh;
-  padding: var(--gap);
+  /* Safe-area-aware padding so the outer chrome doesn't slide under the
+     Android status bar at the top or the gesture/nav bar at the bottom
+     (Tauri Android draws edge-to-edge). On desktop and web, env(...) is
+     0 so this collapses back to plain --gap. */
+  padding-top:    max(var(--gap), env(safe-area-inset-top));
+  padding-right:  max(var(--gap), env(safe-area-inset-right));
+  padding-bottom: max(var(--gap), env(safe-area-inset-bottom));
+  padding-left:   max(var(--gap), env(safe-area-inset-left));
   gap: var(--gap);
   /* background applied inline via buildBackground() */
+}
+
+/* Tauri Android WebView doesn't propagate safe-area-inset values even
+   though the host activity calls enableEdgeToEdge(). Fall back to a
+   pragmatic hardcoded inset that covers status bar (~28dp) and gesture
+   nav (~24dp) on virtually all current Android devices. The :global
+   selector matches the class set on <html> in main.tsx. */
+:global(html.tauri-mobile) .app {
+  padding-top:    max(var(--gap), env(safe-area-inset-top), 28px);
+  padding-bottom: max(var(--gap), env(safe-area-inset-bottom), 24px);
 }
 
 /* Row that holds main shell + optional panels (notifications, etc.) */
@@ -14,6 +31,7 @@
   flex-direction: row;
   gap: var(--gap);
   min-height: 0;
+  position: relative; /* anchor for mobile NotificationsPanel takeover */
 }
 
 /* Main rounded container — only workspace content, no tab bar */

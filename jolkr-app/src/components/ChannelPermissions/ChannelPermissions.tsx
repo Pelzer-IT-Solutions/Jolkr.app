@@ -4,7 +4,9 @@ import { X, Shield, Plus, Trash2, User, Users } from 'lucide-react'
 import type { Channel, PermissionOverwrite, MemberDisplay } from '../../types'
 import type { Role } from '../../api/types'
 import * as P from '../../utils/permissions'
-import { revealDelay, revealWindowMs } from '../../utils/animations'
+import { displayName } from '../../utils/format'
+import { revealDelay } from '../../utils/animations'
+import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import Avatar from '../Avatar'
 import s from './ChannelPermissions.module.css'
 
@@ -27,15 +29,8 @@ const ALL_PERMISSIONS = [
 export function ChannelPermissions({ channel, roles, members, isOpen, onClose, onSave }: Props) {
   const [overwrites, setOverwrites] = useState<PermissionOverwrite[]>([])
   const [selectedTarget, setSelectedTarget] = useState<{ type: 'role' | 'member'; id: string } | null>(null)
-  const [isRevealing, setIsRevealing] = useState(true)
+  const isRevealing = useRevealAnimation(8, [isOpen], isOpen)
   const [showAddModal, setShowAddModal] = useState(false)
-
-  useEffect(() => {
-    if (!isOpen) return
-    setIsRevealing(true)
-    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(8))
-    return () => clearTimeout(timer)
-  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) {
@@ -115,7 +110,7 @@ export function ChannelPermissions({ channel, roles, members, isOpen, onClose, o
       return roles.find(r => r.id === ow.target_id)?.name || 'Unknown Role'
     }
     const member = members.find(m => m.user_id === ow.target_id)
-    return member?.display_name || member?.username || 'Unknown User'
+    return member ? displayName(member) : 'Unknown User'
   }
 
   const getTargetIcon = (ow: PermissionOverwrite) => {
@@ -284,8 +279,8 @@ export function ChannelPermissions({ channel, roles, members, isOpen, onClose, o
                         className={s.addOption}
                         onClick={() => handleAddOverwrite('member', member.user_id)}
                       >
-                        <Avatar url={member?.avatar_url} name={member.display_name || member.username} size="xs" userId={member.user_id} color={member.color} />
-                        <span className={`${s.addOptionName} txt-small`}>{member.display_name || member.username}</span>
+                        <Avatar url={member?.avatar_url} name={displayName(member)} size="xs" userId={member.user_id} color={member.color} />
+                        <span className={`${s.addOptionName} txt-small`}>{displayName(member)}</span>
                       </button>
                     ))}
                   </div>

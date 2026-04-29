@@ -14,8 +14,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
   loadUser: () => Promise<void>;
-  updateProfile: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean }) => Promise<void>;
-  _applyUserUpdate: (data: Record<string, unknown>) => void;
+  updateProfile: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean; banner_color?: string }) => Promise<void>;
+  applyUserUpdate: (data: Record<string, unknown>) => void;
   logout: () => Promise<void>;
 }
 
@@ -43,7 +43,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.register(email, username, password);
       const user = await api.getMe();
       set({ user, loading: false });
-      wsClient.connect();
+      if (user.email_verified) {
+        wsClient.connect();
+      }
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
       throw e;
@@ -57,7 +59,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await api.getMe();
       set({ user, loading: false });
-      wsClient.connect();
+      if (user.email_verified) {
+        wsClient.connect();
+      }
     } catch (e) {
       // Only clear tokens on auth errors (401/403), not transient network errors
       const status = (e as { status?: number }).status;
@@ -73,7 +77,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
 
-  _applyUserUpdate: (data: Record<string, unknown>) => {
+  applyUserUpdate: (data: Record<string, unknown>) => {
     set((state) => {
       if (!state.user) return state;
       return {
@@ -104,6 +108,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 // Sync profile updates from other sessions
 wsClient.on((op, d) => {
   if (op === 'UserUpdate') {
-    useAuthStore.getState()._applyUserUpdate(d as Record<string, unknown>);
+    useAuthStore.getState().applyUserUpdate(d as Record<string, unknown>);
   }
 });

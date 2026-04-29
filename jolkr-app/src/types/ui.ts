@@ -1,9 +1,11 @@
 export interface Channel {
-  id:     string
-  name:   string
-  icon:   string
-  desc:   string
-  unread: number
+  id:        string
+  name:      string
+  icon:      string
+  desc:      string
+  unread:    number
+  is_system?: boolean
+  kind?:     'text' | 'voice'
 }
 
 export interface Category {
@@ -62,9 +64,10 @@ export interface MemberGroup {
 }
 
 export interface Reaction {
-  emoji: string
-  count: number
-  me:    boolean
+  emoji:   string
+  count:   number
+  me:      boolean
+  userIds: string[]  // List of user IDs who reacted (for tooltip)
 }
 
 export interface ReplyRef {
@@ -80,6 +83,8 @@ export interface Message {
   letter:    string
   avatarUrl?: string | null
   time:      string
+  /** Raw ISO timestamp from the backend — used for day-boundary separators. */
+  created_at: string
   content:   string
   reactions: Reaction[]
   continued: boolean
@@ -92,6 +97,8 @@ export interface Message {
   isDm?:              boolean
   is_pinned?:         boolean
   is_system?:         boolean
+  embeds?:            import('../api/types').MessageEmbed[]
+  attachments?:       import('../api/types').Attachment[]
 }
 
 export type MessageStore = Record<string, Record<string, Message[]>>

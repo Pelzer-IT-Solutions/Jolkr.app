@@ -10,23 +10,23 @@ use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Debug, Serialize)]
-pub struct PresenceEntry {
+pub(crate) struct PresenceEntry {
     pub user_id: Uuid,
     pub status: String,
 }
 
 #[derive(Debug, Serialize)]
-pub struct PresenceResponse {
+pub(crate) struct PresenceResponse {
     pub presences: Vec<PresenceEntry>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct PresenceQuery {
+pub(crate) struct PresenceQuery {
     pub user_ids: Vec<Uuid>,
 }
 
 /// POST /api/presence/query — get presence for a list of user IDs.
-pub async fn query_presence(
+pub(crate) async fn query_presence(
     State(state): State<AppState>,
     _auth: AuthUser,
     Json(body): Json<PresenceQuery>,

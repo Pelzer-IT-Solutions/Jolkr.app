@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::models::{MessageEmbedRow, DmMessageEmbedRow};
 use jolkr_common::JolkrError;
 
+/// Repository for `embed` persistence.
 pub struct EmbedRepo;
 
 impl EmbedRepo {
@@ -20,11 +21,11 @@ impl EmbedRepo {
         color: Option<&str>,
     ) -> Result<MessageEmbedRow, JolkrError> {
         let row = sqlx::query_as::<_, MessageEmbedRow>(
-            r#"
+            "
             INSERT INTO message_embeds (id, message_id, url, title, description, image_url, site_name, color)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(message_id)
@@ -46,7 +47,7 @@ impl EmbedRepo {
         message_id: Uuid,
     ) -> Result<Vec<MessageEmbedRow>, JolkrError> {
         let rows = sqlx::query_as::<_, MessageEmbedRow>(
-            r#"SELECT * FROM message_embeds WHERE message_id = $1 ORDER BY created_at ASC"#,
+            "SELECT * FROM message_embeds WHERE message_id = $1 ORDER BY created_at ASC",
         )
         .bind(message_id)
         .fetch_all(pool)
@@ -65,7 +66,7 @@ impl EmbedRepo {
         }
 
         let rows = sqlx::query_as::<_, MessageEmbedRow>(
-            r#"SELECT * FROM message_embeds WHERE message_id = ANY($1) ORDER BY created_at ASC"#,
+            "SELECT * FROM message_embeds WHERE message_id = ANY($1) ORDER BY created_at ASC",
         )
         .bind(message_ids)
         .fetch_all(pool)
@@ -79,7 +80,7 @@ impl EmbedRepo {
         pool: &PgPool,
         message_id: Uuid,
     ) -> Result<(), JolkrError> {
-        sqlx::query(r#"DELETE FROM message_embeds WHERE message_id = $1"#)
+        sqlx::query("DELETE FROM message_embeds WHERE message_id = $1")
             .bind(message_id)
             .execute(pool)
             .await?;
@@ -101,11 +102,11 @@ impl EmbedRepo {
         color: Option<&str>,
     ) -> Result<DmMessageEmbedRow, JolkrError> {
         let row = sqlx::query_as::<_, DmMessageEmbedRow>(
-            r#"
+            "
             INSERT INTO dm_message_embeds (id, dm_message_id, url, title, description, image_url, site_name, color)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(dm_message_id)
@@ -131,7 +132,7 @@ impl EmbedRepo {
         }
 
         let rows = sqlx::query_as::<_, DmMessageEmbedRow>(
-            r#"SELECT * FROM dm_message_embeds WHERE dm_message_id = ANY($1) ORDER BY created_at ASC"#,
+            "SELECT * FROM dm_message_embeds WHERE dm_message_id = ANY($1) ORDER BY created_at ASC",
         )
         .bind(dm_message_ids)
         .fetch_all(pool)

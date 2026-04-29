@@ -14,7 +14,7 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
-pub struct RegisterDeviceRequest {
+pub(crate) struct RegisterDeviceRequest {
     pub device_id: Option<Uuid>,
     pub device_name: String,
     pub device_type: String,
@@ -22,12 +22,12 @@ pub struct RegisterDeviceRequest {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UpdatePushTokenRequest {
+pub(crate) struct UpdatePushTokenRequest {
     pub push_token: String,
 }
 
 #[derive(Debug, Serialize)]
-pub struct DeviceInfo {
+pub(crate) struct DeviceInfo {
     pub id: Uuid,
     pub device_name: String,
     pub device_type: String,
@@ -37,19 +37,19 @@ pub struct DeviceInfo {
 }
 
 #[derive(Debug, Serialize)]
-pub struct DeviceResponse {
+pub(crate) struct DeviceResponse {
     pub device: DeviceInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct DevicesResponse {
+pub(crate) struct DevicesResponse {
     pub devices: Vec<DeviceInfo>,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/devices
-pub async fn register_device(
+pub(crate) async fn register_device(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<RegisterDeviceRequest>,
@@ -79,7 +79,7 @@ pub async fn register_device(
 }
 
 /// PATCH /api/devices/:device_id/push-token
-pub async fn update_push_token(
+pub(crate) async fn update_push_token(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(device_id): Path<Uuid>,
@@ -106,7 +106,7 @@ pub async fn update_push_token(
 }
 
 /// GET /api/devices
-pub async fn list_devices(
+pub(crate) async fn list_devices(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<DevicesResponse>, AppError> {
@@ -128,7 +128,7 @@ pub async fn list_devices(
 }
 
 /// DELETE /api/devices/:device_id
-pub async fn delete_device(
+pub(crate) async fn delete_device(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(device_id): Path<Uuid>,

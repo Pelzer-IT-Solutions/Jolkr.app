@@ -13,15 +13,23 @@ const MAX_EMOJI_NAME_LEN: usize = 32;
 /// Public emoji DTO.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmojiInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning server identifier.
     pub server_id: Uuid,
+    /// Display name.
     pub name: String,
+    /// Image URL.
     pub image_url: String,
+    /// Uploader user identifier.
     pub uploader_id: Uuid,
+    /// Whether the asset is animated.
     pub animated: bool,
 }
 
 impl EmojiInfo {
+    /// Builds the type from a database row.
+    #[must_use] 
     pub fn from_row(row: ServerEmojiRow, image_url: String) -> Self {
         Self {
             id: row.id,
@@ -34,15 +42,18 @@ impl EmojiInfo {
     }
 }
 
+/// Request payload for the `CreateEmoji` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateEmojiRequest {
+    /// Display name.
     pub name: String,
 }
 
+/// Domain service for `emoji` operations.
 pub struct EmojiService;
 
 impl EmojiService {
-    /// Upload a new custom emoji. Requires MANAGE_SERVER permission.
+    /// Upload a new custom emoji. Requires `MANAGE_SERVER` permission.
     pub async fn create_emoji(
         pool: &PgPool,
         server_id: Uuid,
@@ -61,7 +72,7 @@ impl EmojiService {
         let name = name.trim().to_lowercase();
         if name.is_empty() || name.len() > MAX_EMOJI_NAME_LEN {
             return Err(JolkrError::Validation(
-                format!("Emoji name must be between 1 and {} characters", MAX_EMOJI_NAME_LEN),
+                format!("Emoji name must be between 1 and {MAX_EMOJI_NAME_LEN} characters"),
             ));
         }
         // Only allow alphanumeric + underscores
@@ -75,7 +86,7 @@ impl EmojiService {
         let count = EmojiRepo::count_for_server(pool, server_id).await?;
         if count >= MAX_EMOJIS_PER_SERVER {
             return Err(JolkrError::Validation(
-                format!("Server has reached the maximum of {} custom emojis", MAX_EMOJIS_PER_SERVER),
+                format!("Server has reached the maximum of {MAX_EMOJIS_PER_SERVER} custom emojis"),
             ));
         }
 
@@ -99,7 +110,7 @@ impl EmojiService {
         EmojiRepo::list_for_server(pool, server_id).await
     }
 
-    /// Delete a custom emoji. Requires MANAGE_SERVER permission.
+    /// Delete a custom emoji. Requires `MANAGE_SERVER` permission.
     pub async fn delete_emoji(
         pool: &PgPool,
         emoji_id: Uuid,

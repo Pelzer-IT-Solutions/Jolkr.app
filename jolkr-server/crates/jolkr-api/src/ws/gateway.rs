@@ -145,7 +145,7 @@ impl GatewayState {
         for entry in self.clients.iter() {
             let client = entry.value();
             if client.user_id == user_id {
-                let _ = client.tx.try_send(event.clone());
+                drop(client.tx.try_send(event.clone()));
             }
         }
     }
@@ -153,7 +153,7 @@ impl GatewayState {
     /// Broadcast an event to every connected client.
     pub fn broadcast_all(&self, event: &GatewayEvent) {
         for entry in self.clients.iter() {
-            let _ = entry.value().tx.try_send(event.clone());
+            drop(entry.value().tx.try_send(event.clone()));
         }
     }
 }

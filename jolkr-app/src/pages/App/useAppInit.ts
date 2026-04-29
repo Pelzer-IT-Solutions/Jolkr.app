@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { ServerTheme } from '../../types/ui'
+import { useViewport } from '../../hooks/useViewport'
 import { useAuthStore } from '../../stores/auth'
 import { useServersStore } from '../../stores/servers'
 import { useMessagesStore } from '../../stores/messages'
@@ -8,6 +9,7 @@ import { usePresenceStore } from '../../stores/presence'
 import { useUnreadStore } from '../../stores/unread'
 import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
+import { useGifFavoritesStore } from '../../stores/gif-favorites'
 
 import type { DmChannel, User } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
@@ -27,7 +29,8 @@ export function useAppInit() {
   const presences = usePresenceStore(s => s.statuses)
   const unreadCounts = useUnreadStore(s => s.counts)
   const serverPermissions = useServersStore(s => s.permissions)
-  const { fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions } = useServersStore.getState()
+  const channelPermissions = useServersStore(s => s.channelPermissions)
+  const { fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions, fetchChannelPermissions } = useServersStore.getState()
   const { fetchMessages, sendMessage, sendDmMessage, editMessage, deleteMessage } = useMessagesStore.getState()
 
   // ── DMs ──
@@ -39,7 +42,36 @@ export function useAppInit() {
   const [activeServerId, setActiveServerId] = useState('')
   const [activeChannelId, setActiveChannelId] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [membersVisible, setMembersVisible] = useState(true)
+  const [rightPanelMode, setRightPanelMode] = useState<'members' | 'pinned' | 'threads' | null>('members')
+
+  // Responsive collapse state — see plan-responsive-collapsing.md
+  // Asymmetric model: 'closed' is sticky across resizes, 'open' is transient
+  // and auto-clears once the auto-rule itself flips back to "open".
+  const viewport = useViewport()
+  const [userOverrideLeft,  setUserOverrideLeft]  = useState<'closed' | 'open' | null>(null)
+  const [userOverrideRight, setUserOverrideRight] = useState<'closed' | 'open' | null>(null)
+  const [activeMobilePane,  setActiveMobilePane]  = useState<'left' | 'chat' | 'right'>('chat')
+
+  const autoLeftCollapsed  = viewport.isCompact   // < 768
+  const autoRightCollapsed = viewport.isTablet    // < 1024
+
+  // Auto-clear 'open' override once the auto-rule no longer demands closing.
+  // This is what makes a manual-open on a small screen "expire" when the
+  // user later resizes back into the closed regime.
+  useEffect(() => {
+    if (userOverrideLeft === 'open' && !autoLeftCollapsed) setUserOverrideLeft(null)
+  }, [autoLeftCollapsed, userOverrideLeft])
+  useEffect(() => {
+    if (userOverrideRight === 'open' && !autoRightCollapsed) setUserOverrideRight(null)
+  }, [autoRightCollapsed, userOverrideRight])
+
+  // Reset mobile pane to 'chat' whenever we ENTER mobile regime so the user
+  // doesn't land in a stale pane after a resize.
+  const wasMobileRef = useRef(viewport.isMobile)
+  useEffect(() => {
+    if (viewport.isMobile && !wasMobileRef.current) setActiveMobilePane('chat')
+    wasMobileRef.current = viewport.isMobile
+  }, [viewport.isMobile])
   const [dmActive, setDmActive] = useState(false)
   const [activeDmId, setActiveDmId] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -50,11 +82,17 @@ export function useAppInit() {
   const [notificationsActive, setNotificationsActive] = useState(false)
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
   const [serverSettingsOpen, setServerSettingsOpen] = useState(false)
+  const [channelSettingsOpen, setChannelSettingsOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<MemberDisplay | null>(null)
   const [userContextMenu, setUserContextMenu] = useState<UserContextMenuState | null>(null)
-  const [pinnedPanelOpen, setPinnedPanelOpen] = useState(false)
+
+  // ── Content availability for conditional icon display ──
+  const [pinnedCount, setPinnedCount] = useState(0)
+  const [pinnedVersion, setPinnedVersion] = useState(0)
+  const [threadsCount, setThreadsCount] = useState(0)
 
   const lastChannelPerServer = useRef<Record<string, string>>({})
+  const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
 
   // ── Per-server themes ──
@@ -71,10 +109,11 @@ export function useAppInit() {
       const urlServerId = path.match(/\/servers\/([^/]+)/)?.[1]
       const urlChannelId = path.match(/\/servers\/[^/]+\/channels\/([^/]+)/)?.[1]
 
-      // Fetch servers and DMs in parallel
+      // Fetch servers, DMs, and GIF favorites in parallel
       const [, dms] = await Promise.all([
         fetchServers(),
         api.getDms(),
+        useGifFavoritesStore.getState().load(),
       ])
       if (cancelled) return
 
@@ -101,7 +140,13 @@ export function useAppInit() {
 
       const srvs = useServersStore.getState().servers
       const themes: Record<string, ServerTheme> = {}
-      srvs.forEach(srv => { themes[srv.id] = { hue: null, orbs: [] } })
+      srvs.forEach(srv => {
+        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
+          themes[srv.id] = srv.theme as unknown as ServerTheme
+        } else {
+          themes[srv.id] = { hue: null, orbs: [] }
+        }
+      })
       setServerThemes(themes)
 
       const ids = srvs.slice(0, 5).map(s => s.id)
@@ -172,6 +217,8 @@ export function useAppInit() {
     let target: string
     if (dmActive && activeDmId) {
       target = `/dm/${activeDmId}`
+    } else if (dmActive) {
+      target = `/dm`
     } else if (activeServerId && activeChannelId) {
       target = `/servers/${activeServerId}/channels/${activeChannelId}`
     } else if (activeServerId) {
@@ -193,6 +240,13 @@ export function useAppInit() {
       fetchCategories(activeServerId),
       fetchPermissions(activeServerId),
     ]).then(() => {
+      // Ensure a valid channel is selected after fresh channel data arrives
+      const chs = useServersStore.getState().channels[activeServerId]
+      if (!chs?.length) return
+      const currentValid = activeChannelId && chs.some(c => c.id === activeChannelId)
+      if (!currentValid) {
+        setActiveChannelId(chs.find(c => c.kind === 'text')?.id ?? chs[0].id)
+      }
       const mems = useServersStore.getState().members[activeServerId]
       if (mems?.length) {
         api.queryPresence(mems.map(m => m.user_id)).then(p => {
@@ -228,6 +282,9 @@ export function useAppInit() {
     if (!channelId) return
     fetchMessages(channelId, dmActive)
 
+    // Fetch channel-level permissions (accounts for channel overwrites)
+    if (!dmActive) fetchChannelPermissions(channelId)
+
     // Mark as read locally
     const prevUnread = useUnreadStore.getState().counts[channelId] ?? 0
     useUnreadStore.getState().setActiveChannel(channelId)
@@ -240,6 +297,21 @@ export function useAppInit() {
         api.markChannelRead(channelId, lastMsg.id).catch(console.warn)
       }
     }
+
+    // Fetch pinned count and threads count for conditional icon display
+    const fetchCounts = async () => {
+      try {
+        const pinned = dmActive
+          ? await api.getDmPinnedMessages(channelId)
+          : await api.getPinnedMessages(channelId)
+        setPinnedCount(pinned.length)
+      } catch {
+        setPinnedCount(0)
+      }
+      // TODO: Fetch threads count when API is available
+      setThreadsCount(0)
+    }
+    fetchCounts()
 
     return () => {
       useUnreadStore.getState().setActiveChannel(null)
@@ -254,22 +326,48 @@ export function useAppInit() {
     return () => { wsClient.unsubscribe(channelId) }
   }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
+  useEffect(() => {
+    setServerThemes(prev => {
+      const next = { ...prev }
+      let changed = false
+      for (const srv of servers) {
+        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
+          const t = srv.theme as unknown as ServerTheme
+          if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
+            next[srv.id] = t
+            changed = true
+          }
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [servers])
+
   return {
     navigate, location,
     user, servers, channelsByServer, membersByServer, categoriesByServer,
-    storeMessages, presences, unreadCounts, serverPermissions,
-    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions,
+    storeMessages, presences, unreadCounts, serverPermissions, channelPermissions,
+    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions, fetchChannelPermissions,
     fetchMessages, sendMessage, sendDmMessage, editMessage, deleteMessage,
     dmList, setDmList, dmUsers, setDmUsers,
     tabbedIds, setTabbedIds, activeServerId, setActiveServerId,
     activeChannelId, setActiveChannelId, sidebarCollapsed, setSidebarCollapsed,
-    membersVisible, setMembersVisible, dmActive, setDmActive,
+    rightPanelMode, setRightPanelMode, dmActive, setDmActive,
+    viewport,
+    userOverrideLeft, setUserOverrideLeft,
+    userOverrideRight, setUserOverrideRight,
+    activeMobilePane, setActiveMobilePane,
+    autoLeftCollapsed, autoRightCollapsed,
     activeDmId, setActiveDmId, settingsOpen, setSettingsOpen,
     newDmOpen, setNewDmOpen, joinServerOpen, setJoinServerOpen,
     createServerOpen, setCreateServerOpen, searchActive, setSearchActive,
     notificationsActive, setNotificationsActive, friendsPanelOpen, setFriendsPanelOpen,
-    serverSettingsOpen, setServerSettingsOpen, reportTarget, setReportTarget,
-    userContextMenu, setUserContextMenu, pinnedPanelOpen, setPinnedPanelOpen,
-    lastChannelPerServer, ready, serverThemes, setServerThemes,
+    serverSettingsOpen, setServerSettingsOpen,
+    channelSettingsOpen, setChannelSettingsOpen,
+    reportTarget, setReportTarget,
+    userContextMenu, setUserContextMenu,
+    pinnedCount, setPinnedCount, pinnedVersion, setPinnedVersion, threadsCount, setThreadsCount,
+    lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
   }
 }

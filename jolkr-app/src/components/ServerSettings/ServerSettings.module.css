@@ -15,12 +15,14 @@
   display: flex;
   width: 56rem;
   height: 36rem;
+  flex-shrink: 0;
   border-radius: 0.75rem;
-  overflow: hidden;
+  overflow: visible;
   box-shadow:
     0 0 0 1px var(--jolkr-neutral-dark-8),
     0 24px 48px rgba(0, 0, 0, 0.24);
   animation: popIn 200ms var(--ease-out-quart) both;
+  position: relative;
 }
 
 @keyframes popIn {
@@ -33,12 +35,17 @@
   display: flex;
   flex-direction: column;
   width: 14rem;
+  flex-shrink: 0;
+  min-height: 0;
   background: var(--bg-loud);
   border-right: 1px solid var(--border-muted);
+  border-radius: 0.75rem 0 0 0.75rem;
+  overflow: hidden;
 }
 
 .navScroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0.75rem;
 }
@@ -111,8 +118,14 @@
 .navItem.navItemDanger {
   color: oklch(55% 0.2 25);
 }
+.navItem.navItemDanger .navIcon {
+  color: oklch(55% 0.2 25);
+}
 .navItem.navItemDanger:hover {
   background: oklch(55% 0.2 25 / 0.12);
+}
+.navItem.navItemDanger:hover .navIcon {
+  color: oklch(55% 0.2 25);
 }
 
 .navIcon {
@@ -127,12 +140,37 @@
 }
 
 .navLabel {
-  flex: 1;
   text-align: left;
+}
+
+.navBadge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--bg-dark-muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: 100px;
+  line-height: 1;
+  min-width: 1.25rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.navItem:hover .navBadge,
+.navItem.navItemActive .navBadge {
+  background: var(--bg-dark-default);
+  color: var(--text-muted);
+}
+
+/* Spacer to push chevron to the right */
+.navSpacer {
+  flex: 1;
 }
 
 .navChevron {
   color: var(--accent);
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .navFooter {
@@ -160,44 +198,80 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   background: var(--bg-shout);
+  position: relative;
+  border-radius: 0 0.75rem 0.75rem 0;
+  overflow: hidden;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border-muted);
-}
-
-.title {
-  color: var(--text-strong);
-}
-
-.closeBtn {
+/* ── Floating close button (half in, half out) ── */
+.closeBtnOverlay {
+  position: absolute;
+  top: -0.75rem;
+  right: -0.75rem;
   width: 2rem;
   height: 2rem;
-  border-radius: 0.5rem;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
   color: var(--icon-muted);
-  transition: background-color var(--transition), color var(--transition);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  z-index: 10;
+  transition: background-color var(--transition), color var(--transition), transform var(--transition);
 }
-.closeBtn:hover {
+.closeBtnOverlay:hover {
   background: var(--bg-dark-default);
   color: var(--icon-default);
+  transform: scale(1.05);
 }
 
 .scroll {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1.25rem;
+  scroll-padding-bottom: 2rem;
+}
+
+.scrollNoPadding {
+  padding: 0;
+  scroll-padding-bottom: 0;
 }
 
 .section {
+  display: flex;
+  flex-direction: column;
+  /* shrink: 1 so tall content can live inside .scroll instead of stretching past the modal */
+  flex: 1 1 auto;
+  width: 100%;
   max-width: 40rem;
+  min-height: 0;
+  box-sizing: border-box;
+  padding-bottom: 2rem;
+}
+
+.sectionFull {
+  display: flex;
+  flex-direction: column;
+  /* basis 0 + shrink so this panel never exceeds the scroll viewport (roles layout stays inside modal) */
+  flex: 1 1 0%;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  /* No extra bottom inset — roles panel fills the modal; overview uses .section padding-bottom instead */
+  padding: 0;
 }
 
 /* ── Form fields ── */
@@ -264,16 +338,27 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1rem;
+  padding: 0 0.875rem;
+  height: 2rem;
   border-radius: 0.5rem;
   background: var(--accent);
   color: #fff;
   font-weight: 500;
-  transition: background-color var(--transition), transform var(--transition);
+  transition: background-color var(--transition);
+  border: none;
+  cursor: pointer;
 }
 .saveBtn:hover {
   background: var(--accent-strong);
-  transform: translateY(-1px);
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveBtn:disabled:hover {
+  background: var(--accent);
 }
 
 /* ── Section headers ── */
@@ -282,6 +367,26 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
+}
+
+.sectionHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.sectionHeaderWithTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .createBtn {
@@ -304,183 +409,81 @@
 /* ── Roles ── */
 .rolesLayout {
   display: flex;
-  gap: 1.5rem;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
+/* Left Panel - Role List */
 .rolesLeftPanel {
-  width: 18rem;
+  width: 14rem;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-}
-
-.rolesRightPanel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--border-muted);
-  padding-left: 1.5rem;
-}
-
-.createRoleForm {
+  min-height: 0;
+  border-right: 1px solid var(--border-muted);
   padding: 0.75rem;
-  background: var(--bg-loud);
-  border-radius: 0.5rem;
-  border: 1px solid var(--border-muted);
-  margin-bottom: 0.75rem;
 }
 
-.roleFormRow,
-.roleEditRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.colorPicker {
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  background: none;
-  padding: 0;
-}
-
-.roleInput {
-  flex: 1;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-muted);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.625rem;
-  color: var(--text-default);
-  font-family: inherit;
-}
-
-.roleInput:focus {
-  outline: none;
-  border-color: var(--accent-default);
-}
-
-.saveRoleBtn,
-.cancelRoleBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.saveRoleBtn {
-  background: var(--accent-default);
-  color: white;
-}
-
-.saveRoleBtn:hover:not(:disabled) {
-  background: var(--accent-strong);
-}
-
-.saveRoleBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.cancelRoleBtn {
-  background: var(--bg-subtle);
-  color: var(--text-default);
-}
-
-.cancelRoleBtn:hover {
-  background: var(--bg-dark-default);
+.rolesListHeader {
+  display: block;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .rolesList {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.125rem;
   overflow-y: auto;
-  max-height: 20rem;
+  flex: 1;
 }
 
 .roleItem {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.5rem;
-  background: var(--bg-loud);
-  border: 1px solid var(--border-muted);
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
 }
 
 .roleItem:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-dark-muted);
 }
 
 .roleItemSelected {
-  background: var(--accent-soft);
-  border-color: var(--accent-default);
+  background: var(--bg-dark-default);
 }
 
-.roleInfo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1;
+.roleItemSelected .roleName {
+  color: var(--text-strong);
 }
 
-.roleColor {
-  width: 1rem;
-  height: 1rem;
+.roleColorDot {
+  width: 0.625rem;
+  height: 0.625rem;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .roleName {
-  color: var(--text-strong);
-}
-
-.roleCount {
-  font-size: 0.75rem;
-  color: var(--text-faint);
-  margin-left: auto;
-}
-
-.roleActions {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.editRoleBtn,
-.deleteRoleBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.editRoleBtn:hover {
-  background: var(--bg-subtle);
-  color: var(--text-default);
-}
-
-.deleteRoleBtn:hover {
-  background: rgba(235, 75, 75, 0.15);
-  color: var(--danger-default);
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .defaultBadge {
@@ -488,46 +491,202 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  padding: 0.25rem 0.5rem;
+  padding: 0.125rem 0.375rem;
   border-radius: 100px;
-  background: var(--bg-dark-default);
-  color: var(--text-faint);
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  flex-shrink: 0;
+  min-width: 2.75rem;
+  text-align: center;
 }
 
-/* ── Role Permissions ── */
-.permissionsHeader {
+.createRoleBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  background: transparent;
+  border: 1px dashed var(--border-muted);
+  color: var(--accent-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.createRoleBtn:hover {
+  background: var(--accent-muted);
+  border-style: solid;
+}
+
+/* Right Panel - Role Editor */
+.rolesRightPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Role Info Header */
+.roleInfoHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
+  min-height: 2.5rem;
+  padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border-muted);
+  margin-bottom: 1.25rem;
+  flex-shrink: 0;
 }
 
-.permissionsTitle {
+.roleInfoTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  min-height: 2rem;
+}
+
+.roleInfoViewRow,
+.roleInfoEditRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.roleInfoColor,
+.colorPickerInline {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+}
+
+.colorPickerInline {
+  cursor: pointer;
+}
+
+.colorPickerInline::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.colorPickerInline::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.roleInfoName {
   color: var(--text-strong);
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
-.permissionsSubtitle {
-  color: var(--text-faint);
-  margin-top: 0.125rem;
+.roleNameInput {
+  flex: 1;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-strong);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  min-width: 0;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
 
-.editPermsBtn {
+.roleNameInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.defaultBadgeLarge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 100px;
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  flex-shrink: 0;
+}
+
+.defaultBadgePlaceholder {
+  visibility: hidden;
+}
+
+.clearPermsBtn {
+  font-size: 0.8125rem;
+  color: var(--accent-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+}
+
+.clearPermsBtn:hover {
+  background: var(--accent-muted);
+}
+
+.editRoleInfoBtn {
   display: flex;
   align-items: center;
   gap: 0.375rem;
   padding: 0.375rem 0.75rem;
   border-radius: 0.375rem;
   border: none;
-  background: var(--accent-default);
-  color: white;
+  background: var(--bg-dark-muted);
+  color: var(--text-default);
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+  height: 2rem;
 }
 
-.editPermsBtn:hover {
-  background: var(--accent-strong);
+.editRoleInfoBtn:hover {
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+}
+
+/* ── Role Permissions ── */
+.permissionsSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.permissionsSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.permissionsSectionTitle {
+  color: var(--text-strong);
 }
 
 .permissionsList {
@@ -535,7 +694,9 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
+  min-height: 0;
+  /* scroll-view-y class handles the edge fade effect */
 }
 
 .permissionGroup {
@@ -548,8 +709,9 @@
   color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-muted);
+  font-size: 0.6875rem;
 }
 
 .permissionItem {
@@ -557,15 +719,21 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease;
+  min-height: 3.5rem;
+}
+
+.permissionItem:hover {
   background: var(--bg-loud);
 }
 
 .permissionInfo {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.25rem;
+  flex: 1;
 }
 
 .permissionLabel {
@@ -574,38 +742,75 @@
 
 .permissionDesc {
   color: var(--text-faint);
+  line-height: 1.4;
+  max-width: 24rem;
 }
 
-.permToggle {
-  width: 2.5rem;
-  height: 1.75rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--border-muted);
-  background: var(--bg-subtle);
-  color: var(--text-muted);
+/* Toggle Checkbox Group */
+.permToggleGroup {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.permToggleBtn {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: var(--bg-dark-muted);
   cursor: pointer;
   transition: all 0.15s ease;
-  font-size: 0.875rem;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  opacity: 0.48;
 }
 
-.permToggle:hover {
-  background: var(--bg-dark-muted);
+.permToggleBtn:first-child {
+  border-radius: 8px 2px 2px 8px;
 }
 
-.permToggleActive {
-  background: rgba(59, 165, 92, 0.2);
-  border-color: #3ba55c;
+.permToggleBtn:last-child {
+  border-radius: 2px 8px 8px 2px;
+}
+
+.permToggleBtn:hover:not(:disabled):not(.permToggleBtnActive):not(.permToggleBtnDeny) {
+  opacity: 0.8;
+}
+
+.permToggleBtnActive {
+  background: rgba(59, 165, 92, 0.32);
   color: #3ba55c;
+  opacity: 1;
+}
+
+.permToggleBtnDeny {
+  background: rgba(235, 75, 75, 0.32);
+  color: #eb4b4b;
+  opacity: 1;
+}
+
+.permToggleBtn:disabled {
+  cursor: not-allowed;
 }
 
 .permStatus {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.625rem;
   border-radius: 0.25rem;
   font-weight: 500;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .permStatusGranted {
-  background: rgba(59, 165, 92, 0.1);
+  background: rgba(59, 165, 92, 0.15);
   color: #3ba55c;
 }
 
@@ -614,17 +819,73 @@
   color: var(--text-faint);
 }
 
-.permissionsFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
+/* Delete Role Section */
+/* Role Footer: Delete on left, Cancel/Save on right */
+.roleFooter {
+  margin-top: 1.5rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-muted);
+  flex-shrink: 0;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.roleFooterLeft {
+  display: flex;
+  align-items: center;
+}
+
+.roleFooterRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deleteRoleLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: oklch(55% 0.2 25);
+  font-size: 0.8125rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.375rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.15s ease;
+  height: 1.75rem;
+}
+
+.deleteRoleLink:hover {
+  background: oklch(55% 0.2 25 / 0.1);
 }
 
 /* ── Audit Log ── */
 .auditList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auditDayGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auditDayHeader {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.auditDayEntries {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -823,11 +1084,129 @@
   background: oklch(55% 0.2 25 / 0.12);
 }
 
+/* ── Invite create row ── */
+.inviteCreateRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.625rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-muted);
+  margin-bottom: 1rem;
+}
+
+/* Make the Create Invite button match the height of the sibling selects.
+   Selects have a 1px border so their content box is 2px shorter than a borderless
+   button at the same padding — a transparent border evens it out without changing
+   the look or the global .createBtn class. */
+.inviteRowBtn {
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.inviteCreateField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.inviteCreateLabel {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inviteSelect {
+  width: 100%;
+  /* Reserve right-edge space for our custom chevron */
+  padding: 0.5rem 1.75rem 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  background-color: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  color: var(--text-strong);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  /* Strip the native chevron so we can position our own */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  /* Custom chevron — sits 0.625rem from the right edge, snug against the value */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.625rem center;
+  background-size: 12px 12px;
+}
+
+.inviteSelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inviteError {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: oklch(55% 0.2 25 / 0.12);
+  color: oklch(55% 0.2 25);
+  font-size: 0.8125rem;
+}
+
+.inviteCopyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.375rem 0.125rem 0;
+  border-radius: 0.375rem;
+  color: var(--accent);
+  background: transparent;
+  cursor: pointer;
+  transition: color var(--transition);
+}
+
+.inviteCopyBtn:hover {
+  color: var(--accent-strong);
+}
+
+.inviteCopyBtn:hover .inviteCode {
+  background: var(--bg-loud);
+}
+
 /* ── Empty state ── */
 .empty {
   color: var(--text-faint);
   padding: 2rem;
   text-align: center;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  gap: 0.5rem;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.emptyStateIcon {
+  color: var(--text-faint);
+  opacity: 0.5;
+  margin-bottom: 0.5rem;
+}
+
+.emptyStateTitle {
+  color: var(--text-muted);
+}
+
+.emptyStateDesc {
+  color: var(--text-faint);
+  max-width: 18rem;
+  line-height: 1.5;
+  text-wrap: balance;
 }
 
 /* ── Danger Zone ── */
@@ -904,10 +1283,17 @@
 }
 
 .cancelBtn {
-  padding: 0.5rem 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.875rem;
+  height: 2rem;
   border-radius: 0.5rem;
   font-size: 0.8125rem;
   color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
   transition: background-color var(--transition), color var(--transition);
 }
 .cancelBtn:hover {
@@ -939,4 +1325,403 @@
 }
 .confirmDeleteBtn:hover {
   background: oklch(40% 0.28 25);
+}
+
+/* ── Overview Section: Visual Editor ── */
+.serverPreviewCard {
+  background: var(--bg-loud);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-muted);
+  overflow: visible;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.bannerEditorWrap {
+  position: relative;
+}
+
+/* Palette trigger (popover content is portaled to body) */
+.serverPreviewActions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.colorPickerBtn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-loud);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition), transform 120ms;
+}
+
+.colorPickerBtn:hover {
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+  transform: scale(1.05);
+}
+
+.colorPickerActive {
+  background: var(--accent);
+  color: #fff;
+}
+
+.bannerPopover {
+  position: fixed;
+  z-index: 10050;
+  width: min(20rem, calc(100vw - 1rem));
+  max-height: min(70vh, 28rem);
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.bannerPopoverSection {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.bannerPopoverSection:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.bannerPopoverLabel {
+  display: block;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.bannerPopoverSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.bannerPopoverImageRow {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.bannerPopoverUrlInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+  font-family: inherit;
+  font-size: 0.8125rem;
+}
+
+.bannerPopoverUrlInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.bannerPopoverFileInput {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.bannerPopoverUploadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition), border-color var(--transition);
+}
+
+.bannerPopoverUploadBtn:hover:not(:disabled) {
+  background: var(--bg-dark-default);
+  border-color: var(--border-strong);
+}
+
+.bannerPopoverUploadBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bannerPopoverClearImage {
+  margin-top: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.bannerPopoverClearImage:hover {
+  color: var(--text-strong);
+}
+
+.colorPickerSwatch {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform 120ms, border-color var(--transition);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.colorPickerSwatch:hover {
+  transform: scale(1.15);
+}
+
+.colorPickerSwatchActive {
+  border-color: var(--text-strong);
+  box-shadow: 0 0 0 1px var(--bg-loud), 0 0 0 3px var(--accent);
+}
+
+/* Banner Editor */
+.bannerEditor {
+  height: 11rem;
+  min-height: 11rem;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem 0.75rem 0 0;
+  transition: all 0.2s ease;
+}
+
+/* Preview Content */
+.previewContent {
+  display: flex;
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+  position: relative;
+}
+
+.previewAvatarWrap {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: -2.5rem;
+  cursor: pointer;
+  width: 5rem;
+  height: 5rem;
+}
+
+.previewAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 1rem;
+  background: var(--bg-loud);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 4px solid var(--bg-loud);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.previewAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarChangeOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.previewAvatarWrap:hover .avatarChangeOverlay {
+  opacity: 1;
+}
+
+/* Inline Edit Info */
+.previewInfo {
+  flex: 1;
+  min-width: 0;
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inlineNameInput {
+  width: 100%;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: -0.5rem;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.inlineNameInput:hover {
+  background: var(--bg-dark-muted);
+  border-color: var(--border-muted);
+}
+
+.inlineNameInput:focus {
+  outline: none;
+  background: var(--bg-dark-muted);
+  border-color: var(--accent);
+}
+
+.inlineDescInput {
+  width: 100%;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  margin-left: -0.5rem;
+  font-family: inherit;
+  resize: none;
+  line-height: 1.5;
+  transition: all 0.15s ease;
+}
+
+.inlineDescInput:hover {
+  background: var(--bg-dark-muted);
+  border-color: var(--border-muted);
+}
+
+.inlineDescInput:focus {
+  outline: none;
+  background: var(--bg-dark-muted);
+  border-color: var(--accent);
+}
+
+.inlineDescInput::placeholder {
+  color: var(--text-faint);
+}
+
+/* Simple Field Row */
+.simpleFieldRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-loud);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-muted);
+  margin-bottom: 1rem;
+}
+
+/* Save Actions */
+.saveActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+.saveChangesBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.saveChangesBtn:hover {
+  background: var(--accent-strong);
+}
+
+/* Toggle Switch */
+.toggle {
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 0.75rem;
+  background: var(--bg-dark-muted);
+  border: none;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggleOn {
+  background: var(--accent);
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggleOn .toggleThumb {
+  transform: translateX(1.25rem);
+}
+
+.toggleMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.toggleLabel {
+  color: var(--text-strong);
+}
+
+.toggleDesc {
+  color: var(--text-faint);
 }

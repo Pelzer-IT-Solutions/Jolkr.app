@@ -3,7 +3,7 @@
   position: fixed;
   inset: 0;
   z-index: 800;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -96,7 +96,7 @@
 .iconChar {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--jolkr-neutral-light-1000);
   letter-spacing: -0.01em;
   line-height: 1;
 }
@@ -261,7 +261,7 @@
   padding: 0 1rem;
   border-radius: 0.5rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--jolkr-neutral-light-1000);
   font-weight: 500;
   transition: opacity var(--transition);
 }

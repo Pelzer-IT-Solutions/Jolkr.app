@@ -15,13 +15,13 @@ use crate::routes::AppState;
 // ── Request / Response types ───────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
-pub struct DistributeKeysBody {
+pub(crate) struct DistributeKeysBody {
     pub key_generation: i32,
     pub recipients: Vec<RecipientKeyBody>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct RecipientKeyBody {
+pub(crate) struct RecipientKeyBody {
     pub user_id: Uuid,
     /// base64-encoded encrypted channel key (same format as DM E2EE payload)
     pub encrypted_key: String,
@@ -30,7 +30,7 @@ pub struct RecipientKeyBody {
 }
 
 #[derive(Debug, Serialize)]
-pub struct ChannelKeyResponse {
+pub(crate) struct ChannelKeyResponse {
     pub encrypted_key: String,
     pub nonce: String,
     pub key_generation: i32,
@@ -38,14 +38,14 @@ pub struct ChannelKeyResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct KeyGenerationResponse {
+pub(crate) struct KeyGenerationResponse {
     pub key_generation: i32,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/channels/:id/e2ee/distribute — Distribute encrypted channel keys to members.
-pub async fn distribute_keys(
+pub(crate) async fn distribute_keys(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -85,7 +85,7 @@ pub async fn distribute_keys(
 }
 
 /// GET /api/channels/:id/e2ee/my-key — Get my encrypted channel key.
-pub async fn get_my_key(
+pub(crate) async fn get_my_key(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -114,7 +114,7 @@ pub async fn get_my_key(
 // ── DM Channel E2EE Handlers ─────────────────────────────────────────
 
 /// POST /api/dms/:dm_id/e2ee/distribute — Distribute encrypted keys to DM members.
-pub async fn dm_distribute_keys(
+pub(crate) async fn dm_distribute_keys(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -143,7 +143,7 @@ pub async fn dm_distribute_keys(
 }
 
 /// GET /api/dms/:dm_id/e2ee/my-key — Get my encrypted key for a DM channel.
-pub async fn dm_get_my_key(
+pub(crate) async fn dm_get_my_key(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -163,7 +163,7 @@ pub async fn dm_get_my_key(
 }
 
 /// GET /api/channels/:id/e2ee/generation — Get the current key generation.
-pub async fn get_key_generation(
+pub(crate) async fn get_key_generation(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -179,9 +179,9 @@ pub async fn get_key_generation(
         return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
 
-    let gen = ChannelEncryptionService::get_key_generation(&state.pool, channel_id).await?;
+    let generation = ChannelEncryptionService::get_key_generation(&state.pool, channel_id).await?;
 
     Ok(Json(KeyGenerationResponse {
-        key_generation: gen,
+        key_generation: generation,
     }))
 }

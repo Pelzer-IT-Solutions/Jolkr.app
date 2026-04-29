@@ -1,38 +1,54 @@
+import { useEffect, useRef } from 'react';
+import { PhoneOff, User as UserIcon } from 'lucide-react';
 import { useCallStore } from '../stores/call';
-import { User, PhoneOff } from 'lucide-react';
-import Modal from './ui/Modal';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import s from './CallDialogs.module.css';
 
 export default function OutgoingCallDialog() {
-  const outgoingCall = useCallStore((s) => s.outgoingCall);
+  const outgoingCall   = useCallStore((s) => s.outgoingCall);
   const cancelOutgoing = useCallStore((s) => s.cancelOutgoing);
+  const cardRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(cardRef);
+
+  useEffect(() => {
+    if (!outgoingCall) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancelOutgoing();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [outgoingCall, cancelOutgoing]);
+
+  if (!outgoingCall) return null;
 
   return (
-    <Modal open={!!outgoingCall} className="p-6 w-80 flex flex-col items-center gap-4">
-      {/* Avatar placeholder */}
-      <div className="w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center">
-        <User className="w-8 h-8 text-accent" />
-      </div>
+    <div className={s.overlay}>
+      <div ref={cardRef} className={s.card} role="dialog" aria-modal="true" aria-label="Outgoing call">
+        <div className={s.avatarWrap}>
+          <UserIcon size={32} strokeWidth={1.5} />
+        </div>
 
-      <div className="text-center">
-        <div className="text-text-primary font-semibold text-lg">{outgoingCall?.recipientName}</div>
-        <div className="text-text-tertiary text-sm mt-1">Calling...</div>
-      </div>
+        <div className={s.textBlock}>
+          <span className={s.title}>{outgoingCall.recipientName}</span>
+          <span className={s.subtitle}>Calling…</span>
+        </div>
 
-      {/* Pulsing animation */}
-      <div className="flex gap-1.5 my-2">
-        <div className="w-2 h-2 rounded-full bg-accent animate-typing-dot" style={{ animationDelay: '0ms' }} />
-        <div className="w-2 h-2 rounded-full bg-accent animate-typing-dot" style={{ animationDelay: '150ms' }} />
-        <div className="w-2 h-2 rounded-full bg-accent animate-typing-dot" style={{ animationDelay: '300ms' }} />
-      </div>
+        <div className={s.dots}>
+          <span className={s.dot} />
+          <span className={s.dot} />
+          <span className={s.dot} />
+        </div>
 
-      {/* Cancel button */}
-      <button
-        onClick={cancelOutgoing}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white font-medium transition-colors"
-      >
-        <PhoneOff className="w-4 h-4" />
-        Cancel
-      </button>
-    </Modal>
+        <div className={s.actions}>
+          <button
+            className={`${s.btn} ${s.btnCancel}`}
+            onClick={cancelOutgoing}
+          >
+            <PhoneOff size={16} strokeWidth={2} />
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

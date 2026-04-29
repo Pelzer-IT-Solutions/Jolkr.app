@@ -6,15 +6,33 @@ use jolkr_common::{JolkrError, Permissions};
 use jolkr_db::models::InviteRow;
 use jolkr_db::repo::{InviteRepo, MemberRepo, RoleRepo, ServerRepo};
 
+/// Public information about `invite`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InviteInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning server identifier.
     pub server_id: Uuid,
+    /// Status or error code.
     pub code: String,
+    /// Creator user identifier.
     pub creator_id: Uuid,
+    /// Maximum allowed uses (None = unlimited).
     pub max_uses: Option<i32>,
+    /// Number of times this entry has been used.
     pub use_count: i32,
+    /// Expiration timestamp.
     pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// Result of a `use_invite` call. `freshly_joined` is `false` when the caller
+/// was already a member (idempotent navigation case).
+#[derive(Debug, Clone)]
+pub struct UseInviteResult {
+    /// The resolved invite.
+    pub invite: InviteInfo,
+    /// True if this call actually added the user to the server.
+    pub freshly_joined: bool,
 }
 
 impl From<InviteRow> for InviteInfo {
@@ -31,15 +49,20 @@ impl From<InviteRow> for InviteInfo {
     }
 }
 
+/// Request payload for the `CreateInvite` operation.
 #[derive(Debug, Deserialize)]
 pub struct CreateInviteRequest {
+    /// Maximum allowed uses (None = unlimited).
     pub max_uses: Option<i32>,
+    /// Lifetime in seconds.
     pub max_age_seconds: Option<i64>,
 }
 
+/// Domain service for `invite` operations.
 pub struct InviteService;
 
 impl InviteService {
+    /// Creates invite.
     pub async fn create_invite(
         pool: &PgPool,
         server_id: Uuid,
@@ -82,12 +105,32 @@ impl InviteService {
         Ok(InviteInfo::from(row))
     }
 
+    /// Use invite.
+    ///
+    /// Idempotent: if the caller is already a member of the target server, the
+    /// invite is returned without consuming a use slot — so following an invite
+    /// link to a server you've already joined just navigates you there instead
+    /// of returning an error.
     pub async fn use_invite(
         pool: &PgPool,
         code: &str,
         user_id: Uuid,
-    ) -> Result<InviteInfo, JolkrError> {
+    ) -> Result<UseInviteResult, JolkrError> {
         let invite = InviteRepo::get_by_code(pool, code).await?;
+
+        // Idempotent shortcut: already a member → just return the invite info.
+        // Done outside the transaction so we never even tentatively touch use_count.
+        let already_member: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM members WHERE server_id = $1 AND user_id = $2)",
+        )
+        .bind(invite.server_id)
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| JolkrError::Internal(e.to_string()))?;
+        if already_member {
+            return Ok(UseInviteResult { invite: InviteInfo::from(invite), freshly_joined: false });
+        }
 
         // Use a transaction so ban check + invite use + member add are atomic.
         // If any step fails, everything rolls back (no consumed invite slots on failure).
@@ -95,7 +138,7 @@ impl InviteService {
 
         // Check if user is banned from this server
         let is_banned: bool = sqlx::query_scalar(
-            r#"SELECT EXISTS(SELECT 1 FROM server_bans WHERE server_id = $1 AND user_id = $2)"#,
+            "SELECT EXISTS(SELECT 1 FROM server_bans WHERE server_id = $1 AND user_id = $2)",
         )
         .bind(invite.server_id)
         .bind(user_id)
@@ -108,10 +151,10 @@ impl InviteService {
 
         // Atomically increment use count — returns false if invite is exhausted/expired
         let result = sqlx::query(
-            r#"UPDATE invites SET use_count = use_count + 1
+            "UPDATE invites SET use_count = use_count + 1
                WHERE id = $1
                  AND (max_uses IS NULL OR use_count < max_uses)
-                 AND (expires_at IS NULL OR expires_at > NOW())"#,
+                 AND (expires_at IS NULL OR expires_at > NOW())",
         )
         .bind(invite.id)
         .execute(&mut *tx)
@@ -123,11 +166,13 @@ impl InviteService {
             ));
         }
 
-        // Add user as member
-        let member_result = sqlx::query(
-            r#"INSERT INTO members (id, server_id, user_id, joined_at)
+        // Add user as member. The pre-check above already handled the
+        // "already member" case, so a 0-row result here means a concurrent
+        // join landed first — also idempotent OK.
+        sqlx::query(
+            "INSERT INTO members (id, server_id, user_id, joined_at)
                VALUES ($1, $2, $3, NOW())
-               ON CONFLICT (server_id, user_id) DO NOTHING"#,
+               ON CONFLICT (server_id, user_id) DO NOTHING",
         )
         .bind(Uuid::new_v4())
         .bind(invite.server_id)
@@ -135,16 +180,13 @@ impl InviteService {
         .execute(&mut *tx)
         .await
         .map_err(|e| JolkrError::Internal(e.to_string()))?;
-        if member_result.rows_affected() == 0 {
-            // Already a member — rollback the invite use_count increment
-            return Err(JolkrError::Conflict("Already a member of this server".into()));
-        }
 
         tx.commit().await.map_err(|e| JolkrError::Internal(e.to_string()))?;
 
-        Ok(InviteInfo::from(invite))
+        Ok(UseInviteResult { invite: InviteInfo::from(invite), freshly_joined: true })
     }
 
+    /// Lists invites.
     pub async fn list_invites(
         pool: &PgPool,
         server_id: Uuid,
@@ -157,6 +199,7 @@ impl InviteService {
         Ok(rows.into_iter().map(InviteInfo::from).collect())
     }
 
+    /// Deletes invite.
     pub async fn delete_invite(
         pool: &PgPool,
         invite_id: Uuid,

@@ -9,6 +9,8 @@ export interface User {
   is_online?: boolean;
   show_read_receipts?: boolean;
   is_system?: boolean;
+  email_verified?: boolean;
+  banner_color?: string | null;
   created_at?: string | null;
 }
 
@@ -21,6 +23,7 @@ export interface Server {
   description?: string | null;
   is_public?: boolean;
   member_count?: number;
+  theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null;
   created_at?: string | null;
 }
 
@@ -33,6 +36,7 @@ export interface Channel {
   position: number;
   category_id?: string | null;
   is_nsfw?: boolean;
+  is_system?: boolean;
   slowmode_seconds?: number;
   e2ee_key_generation?: number;
   created_at?: string | null;
@@ -42,6 +46,7 @@ export interface Reaction {
   emoji: string;
   count: number;
   me: boolean;
+  user_ids?: string[]; // Backend sends user IDs who reacted (for tooltip)
 }
 
 export interface Message {
@@ -163,12 +168,21 @@ export interface ChannelOverwrite {
   deny: number;
 }
 
+export interface DmLastMessage {
+  id: string;
+  author_id: string;
+  content?: string | null;
+  nonce?: string | null;
+  created_at: string;
+}
+
 export interface DmChannel {
   id: string;
   is_group: boolean;
   name?: string | null;
   members: string[];
   created_at: string;
+  last_message?: DmLastMessage | null;
 }
 
 export interface Friendship {
@@ -243,4 +257,12 @@ export interface PreKeyBundleResponse {
   one_time_prekey?: string | null;
   pq_signed_prekey?: string | null;
   pq_signed_prekey_signature?: string | null;
+}
+
+export interface GifFavorite {
+  gif_id: string
+  gif_url: string
+  preview_url: string
+  title: string
+  added_at: string
 }

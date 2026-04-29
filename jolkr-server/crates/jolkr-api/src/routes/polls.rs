@@ -14,18 +14,18 @@ use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Debug, Serialize)]
-pub struct CreatePollResponse {
+pub(crate) struct CreatePollResponse {
     pub poll: PollInfo,
     pub message: MessageInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct PollResponse {
+pub(crate) struct PollResponse {
     pub poll: PollInfo,
 }
 
 /// POST /api/channels/:id/polls — create a poll
-pub async fn create_poll(
+pub(crate) async fn create_poll(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -46,7 +46,7 @@ pub async fn create_poll(
 }
 
 /// POST /api/polls/:id/vote — vote on a poll
-pub async fn vote_poll(
+pub(crate) async fn vote_poll(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(poll_id): Path<Uuid>,
@@ -66,7 +66,7 @@ pub async fn vote_poll(
 }
 
 /// DELETE /api/polls/:id/vote — remove a vote
-pub async fn unvote_poll(
+pub(crate) async fn unvote_poll(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(poll_id): Path<Uuid>,
@@ -85,7 +85,7 @@ pub async fn unvote_poll(
 }
 
 /// GET /api/polls/:id — get a poll
-pub async fn get_poll(
+pub(crate) async fn get_poll(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(poll_id): Path<Uuid>,

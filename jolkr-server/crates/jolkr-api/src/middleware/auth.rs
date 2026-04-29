@@ -16,14 +16,14 @@ use crate::routes::AppState;
 /// Extractor that reads the `Authorization: Bearer <token>` header, validates the
 /// JWT, and makes the authenticated user's ID available to route handlers.
 #[derive(Debug, Clone)]
-pub struct AuthUser {
+pub(crate) struct AuthUser {
     pub user_id: Uuid,
     #[allow(dead_code)]
     pub device_id: Option<Uuid>,
 }
 
 /// Error returned when authentication fails.
-pub struct AuthError(String);
+pub(crate) struct AuthError(String);
 
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {

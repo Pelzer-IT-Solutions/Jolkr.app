@@ -8,13 +8,12 @@ use jolkr_core::DmService;
 
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
-use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use crate::routes::AppState;
 
 use super::types::*;
 
 /// POST /api/dms/:dm_id/pins/:message_id — pin a DM message
-pub async fn pin_dm_message(
+pub(crate) async fn pin_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((dm_id, message_id)): Path<(Uuid, Uuid)>,
@@ -30,7 +29,7 @@ pub async fn pin_dm_message(
 }
 
 /// DELETE /api/dms/:dm_id/pins/:message_id — unpin a DM message
-pub async fn unpin_dm_message(
+pub(crate) async fn unpin_dm_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((dm_id, message_id)): Path<(Uuid, Uuid)>,
@@ -46,21 +45,12 @@ pub async fn unpin_dm_message(
 }
 
 /// GET /api/dms/:dm_id/pins — list pinned DM messages
-pub async fn list_dm_pins(
+pub(crate) async fn list_dm_pins(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
 ) -> Result<Json<DmMessagesResponse>, AppError> {
-    let mut messages = DmService::list_pinned(&state.pool, dm_id, auth.user_id).await?;
-
-    // Presign attachment URLs
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
+    let messages = DmService::list_pinned(&state.pool, dm_id, auth.user_id).await?;
 
     Ok(Json(DmMessagesResponse { messages }))
 }

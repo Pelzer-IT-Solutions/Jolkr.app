@@ -5,12 +5,17 @@ import {
   Paperclip, ImagePlay, SendHorizontal,
   Bold, Italic, Strikethrough, Code, Pin,
 } from 'lucide-react'
-import DOMPurify from 'dompurify'
 import type { Channel, DMConversation, Message as MessageType, ReplyRef } from '../../types'
+import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { Message } from '../Message/Message'
 import EmojiPickerPopup from '../EmojiPickerPopup'
-import { searchEmojis, emojiToImgUrl, renderUnicodeEmojis } from '../../utils/emoji'
+import GifPickerPopup from '../GifPickerPopup'
+import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
+import { RichInput, type RichInputHandle } from './RichInput'
+import { createEmojiImg } from './richInputHelpers'
+import { useCallStore } from '../../stores/call'
+import { useVoiceStore } from '../../stores/voice'
 import s from './ChatArea.module.css'
 
 export interface MentionableUser {
@@ -22,10 +27,10 @@ interface Props {
   channel:            Channel
   messages:           MessageType[]
   sidebarCollapsed:   boolean
-  membersVisible:     boolean
+  rightPanelMode:     'members' | 'pinned' | 'threads' | null
   onExpandSidebar:    () => void
-  onToggleMembers:    () => void
-  onSend:             (text: string, replyTo?: ReplyRef) => void
+  onSetRightPanelMode: (mode: 'members' | 'pinned' | 'threads' | null) => void
+  onSend:             (text: string, replyTo?: ReplyRef, files?: File[]) => void
   onToggleReaction:   (msgId: string, emoji: string) => void
   onDeleteMessage:    (msgId: string) => void
   onEditMessage:      (msgId: string, newText: string) => void
@@ -38,17 +43,26 @@ interface Props {
   readOnly?:          boolean
   typingUsers?:       string[]
   onPinMessage?:      (msgId: string) => void
-  onTogglePinPanel?:  () => void
-  pinnedPanelOpen?:   boolean
+  hasPinnedMessages?: boolean
+  hasThreads?:        boolean
+  serverId?:          string
+  userMap?:           Map<string, User>
   mentionableUsers?:  MentionableUser[]
+  canManageMessages?: boolean
+  canAddReactions?:   boolean
+  canSendMessages?:   boolean
+  canAttachFiles?:    boolean
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, onExpandSidebar, onToggleMembers, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onTogglePinPanel, pinnedPanelOpen, mentionableUsers = [] }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false }: Props) {
   const listRef    = useRef<HTMLDivElement>(null)
-  const inputRef   = useRef<HTMLTextAreaElement>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
+  const inputRef   = useRef<RichInputHandle>(null)
+  const contentRef = useRef('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [content,     setContent]     = useState('')
+  // System channels are read-only; also hide composer if user lacks SEND_MESSAGES
+  const isReadOnly = readOnly || channel.is_system || !canSendMessages
+
   const [replyingTo,  setReplyingTo]  = useState<MessageType | null>(null)
   const [isRevealing, setIsRevealing] = useState(false)
 
@@ -60,35 +74,68 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionIndex, setMentionIndex] = useState(0)
 
-  // Tracks previous animation key for reveal stagger on navigation
-  const prevAnimKeyRef = useRef<string | null>(null)
-  const navTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // File attachment state
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+
+  // Drag & drop state. We use a counter to handle the dragenter/leave bubble
+  // pattern — a single ref-counted depth lets us correctly detect "actually
+  // left the chat area" vs. "moved between two child elements".
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false)
+  const dragDepthRef = useRef(0)
+
+  // Limit + filter helper shared by the file picker and drop handler.
+  const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB — matches server cap
+  const acceptValidFiles = useCallback((incoming: FileList | File[]) => {
+    const list = Array.from(incoming)
+    const oversized = list.filter((f) => f.size > MAX_FILE_SIZE)
+    if (oversized.length) {
+      alert(`File too large (max 25 MB): ${oversized.map((f) => f.name).join(', ')}`)
+    }
+    const valid = list.filter((f) => f.size <= MAX_FILE_SIZE)
+    if (valid.length) setPendingFiles((prev) => [...prev, ...valid])
+  }, [])
+
+  // Tracks previous values to distinguish navigation from message sends
+  const prevAnimKeyRef    = useRef<string | null>(null)
+  const prevMsgCountRef   = useRef(0)
+  const navTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mentionTimerRef   = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const scrollBehaviorRef = useRef<ScrollBehavior>('auto')
 
   useLayoutEffect(() => {
-    const prevAnimKey = prevAnimKeyRef.current
-    prevAnimKeyRef.current = animationKey
+    const prevAnimKey  = prevAnimKeyRef.current
+    const prevMsgCount = prevMsgCountRef.current
+    prevAnimKeyRef.current  = animationKey
+    prevMsgCountRef.current = messages.length
 
     if (animationKey !== prevAnimKey) {
-      // Navigation (first mount, channel/server/DM switch): trigger reveal stagger
-      // column-reverse already anchors scroll at the bottom — no JS scroll needed
       if (navTimerRef.current) clearTimeout(navTimerRef.current)
+      if (listRef.current) listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
       setIsRevealing(true)
       const animCount = Math.min(messages.length, CHAT_REVEAL_LIMIT)
       navTimerRef.current = setTimeout(() => {
         setIsRevealing(false)
         navTimerRef.current = null
       }, revealWindowMs(animCount))
+      return
+    }
+
+    if (messages.length > prevMsgCount) {
+      scrollBehaviorRef.current = 'smooth'
     }
   }, [animationKey, messages])
 
-  // Cleanup nav timer on unmount
+  useEffect(() => {
+    if (!listRef.current || scrollBehaviorRef.current !== 'smooth') return
+    listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollBehaviorRef.current = 'auto'
+  }, [messages])
+
   useEffect(() => () => {
     if (navTimerRef.current) clearTimeout(navTimerRef.current)
+    if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
   }, [])
 
-
-  // Load older messages when scrolling to top (in column-reverse, scrollTop
-  // is 0 at the bottom and goes negative when scrolling up toward older msgs)
   function handleScroll() {
     if (!listRef.current || !hasMore || !onLoadOlder) return
     const el = listRef.current
@@ -99,15 +146,18 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
   const [showComposerEmoji, setShowComposerEmoji] = useState(false)
   const [composerEmojiPos, setComposerEmojiPos] = useState<{ top: number; left: number } | null>(null)
   const composerEmojiBtnRef = useRef<HTMLButtonElement>(null)
-  const mentionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const [showGifPicker, setShowGifPicker] = useState(false)
+  const [gifPickerPos, setGifPickerPos] = useState<{ top: number; left: number } | null>(null)
+  const gifBtnRef = useRef<HTMLButtonElement>(null)
 
   // Clear reply context + content when channel changes
-  useEffect(() => { setReplyingTo(null); setContent('') }, [channel.id])
+  useEffect(() => {
+    setReplyingTo(null)
+    contentRef.current = ''
+    inputRef.current?.clear()
+  }, [channel.id])
 
-  // Cleanup mention timer on unmount
-  useEffect(() => () => { if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current) }, [])
-
-  // Auto-focus textarea on channel switch
+  // Auto-focus input on channel switch
   useEffect(() => { inputRef.current?.focus() }, [channel.id])
 
   // ── Emoji autocomplete ──
@@ -116,37 +166,17 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
     return searchEmojis(emojiQuery, 8)
   }, [emojiQuery])
 
-  const getEmojiContext = useCallback(() => {
-    const el = inputRef.current
-    if (!el) return null
-    const cursor = el.selectionStart
-    const text = el.value.slice(0, cursor)
-    const lastColon = text.lastIndexOf(':')
-    if (lastColon === -1) return null
-    if (lastColon > 0 && !/\s/.test(text[lastColon - 1])) return null
-    const query = text.slice(lastColon + 1)
-    if (/\s/.test(query) || query.length < 2 || !/^[a-zA-Z0-9_]+$/.test(query)) return null
-    return { start: lastColon, query }
-  }, [])
-
   const insertEmoji = useCallback((emoji: string) => {
-    const el = inputRef.current
-    if (!el) return
-    const cursor = el.selectionStart
-    const text = el.value
-    const before = text.slice(0, cursor)
-    const lastColon = before.lastIndexOf(':')
+    const handle = inputRef.current
+    if (!handle) return
+    const text = handle.getTextBeforeCursor()
+    if (!text) return
+    const lastColon = text.lastIndexOf(':')
     if (lastColon === -1) return
-    const after = text.slice(cursor)
-    const newContent = text.slice(0, lastColon) + emoji + ' ' + after
-    setContent(newContent)
+    const charCount = text.length - lastColon
+    handle.replaceBeforeCursor(charCount, createEmojiImg(emoji))
     setEmojiQuery(null)
     setEmojiIndex(0)
-    setTimeout(() => {
-      const newPos = lastColon + emoji.length + 1
-      el.selectionStart = el.selectionEnd = newPos
-      el.focus()
-    }, 0)
   }, [])
 
   // ── Mention autocomplete ──
@@ -156,126 +186,129 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
     return mentionableUsers.filter((u) => u.username.toLowerCase().includes(q)).slice(0, 8)
   }, [mentionQuery, mentionableUsers])
 
-  const getMentionContext = useCallback(() => {
-    const el = inputRef.current
-    if (!el) return null
-    const cursor = el.selectionStart
-    const text = el.value.slice(0, cursor)
-    const lastAt = text.lastIndexOf('@')
-    if (lastAt === -1) return null
-    if (lastAt > 0 && !/\s/.test(text[lastAt - 1])) return null
-    const query = text.slice(lastAt + 1)
-    if (/\s/.test(query)) return null
-    return { start: lastAt, query }
-  }, [])
-
   const insertMention = useCallback((username: string) => {
-    const el = inputRef.current
-    if (!el) return
-    const cursor = el.selectionStart
-    const text = el.value
-    const before = text.slice(0, cursor)
-    const lastAt = before.lastIndexOf('@')
+    const handle = inputRef.current
+    if (!handle) return
+    const text = handle.getTextBeforeCursor()
+    if (!text) return
+    const lastAt = text.lastIndexOf('@')
     if (lastAt === -1) return
-    const after = text.slice(cursor)
-    const newContent = text.slice(0, lastAt) + `@${username} ` + after
-    setContent(newContent)
+    const charCount = text.length - lastAt
+    handle.replaceBeforeCursor(charCount, `@${username} `)
     setMentionQuery(null)
     setMentionIndex(0)
-    setTimeout(() => {
-      const newPos = lastAt + username.length + 2
-      el.selectionStart = el.selectionEnd = newPos
-      el.focus()
-    }, 0)
   }, [])
 
-  // ── Formatting (selection-based on textarea) ──
+  // ── Formatting (selection-based on contentEditable) ──
   const insertFormatting = useCallback((prefix: string, suffix: string) => {
-    const el = inputRef.current
-    if (!el) return
-    const start = el.selectionStart
-    const end = el.selectionEnd
-    const text = el.value
-    const selected = text.slice(start, end)
-    const newContent = text.slice(0, start) + prefix + selected + suffix + text.slice(end)
-    setContent(newContent)
-    setTimeout(() => {
-      if (selected) {
-        el.selectionStart = start + prefix.length
-        el.selectionEnd = end + prefix.length
-      } else {
-        el.selectionStart = el.selectionEnd = start + prefix.length
-      }
-      el.focus()
-    }, 0)
-  }, [])
-
-  // ── Selection-based floating format bar ──
-  const checkSelection = useCallback(() => {
-    const el = inputRef.current
-    if (!el || el.selectionStart === el.selectionEnd) {
-      setFmtBar(null)
-      return
+    inputRef.current?.focus()
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    const selectedText = range.toString()
+    range.deleteContents()
+    const textNode = document.createTextNode(prefix + selectedText + suffix)
+    range.insertNode(textNode)
+    const newRange = document.createRange()
+    if (selectedText) {
+      newRange.setStart(textNode, prefix.length)
+      newRange.setEnd(textNode, prefix.length + selectedText.length)
+    } else {
+      newRange.setStart(textNode, prefix.length)
+      newRange.collapse(true)
     }
-    // Measure selection rect via a temporary range in the overlay
-    // For textarea we approximate position from the element's bounding rect
-    const rect = el.getBoundingClientRect()
-    // Place the bar above the textarea, centered
-    setFmtBar({ top: rect.top - 6, left: rect.left + rect.width / 2 })
+    sel.removeAllRanges()
+    sel.addRange(newRange)
   }, [])
 
-  // ── Input handler ──
-  const handleInput = useCallback((val: string) => {
-    setContent(val)
+  const checkSelection = useCallback(() => {
+    const sel = window.getSelection()
+    if (!sel || sel.isCollapsed) { setFmtBar(null); return }
+    const range = sel.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+    if (rect.width > 0) {
+      setFmtBar({ top: rect.top - 6, left: rect.left + rect.width / 2 })
+    } else { setFmtBar(null) }
+  }, [])
+
+  const syncContent = useCallback((plainText: string) => {
+    contentRef.current = plainText
     if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
     mentionTimerRef.current = setTimeout(() => {
-      const emojiCtx = getEmojiContext()
-      if (emojiCtx) { setEmojiQuery(emojiCtx.query); setEmojiIndex(0) }
-      else setEmojiQuery(null)
+      const text = inputRef.current?.getTextBeforeCursor() ?? null
+      if (text) {
+        const lastColon = text.lastIndexOf(':')
+        if (lastColon !== -1 && (lastColon === 0 || /\s/.test(text[lastColon - 1]))) {
+          const query = text.slice(lastColon + 1)
+          if (query.length >= 2 && /^[a-zA-Z0-9_]+$/.test(query)) {
+            setEmojiQuery(query); setEmojiIndex(0)
+          } else { setEmojiQuery(null) }
+        } else { setEmojiQuery(null) }
 
-      const mentionCtx = getMentionContext()
-      if (mentionCtx) { setMentionQuery(mentionCtx.query); setMentionIndex(0) }
-      else setMentionQuery(null)
+        const lastAt = text.lastIndexOf('@')
+        if (lastAt !== -1 && (lastAt === 0 || /\s/.test(text[lastAt - 1]))) {
+          const mQuery = text.slice(lastAt + 1)
+          if (!/\s/.test(mQuery)) {
+            setMentionQuery(mQuery); setMentionIndex(0)
+          } else { setMentionQuery(null) }
+        } else { setMentionQuery(null) }
+      } else {
+        setEmojiQuery(null)
+        setMentionQuery(null)
+      }
     }, 0)
     onTyping?.()
-  }, [getEmojiContext, getMentionContext, onTyping])
+  }, [onTyping])
 
-  // ── Send ──
   function send() {
-    const text = content.trim()
-    if (!text) return
+    const text = contentRef.current.trim()
+    if (!text && pendingFiles.length === 0) return
     const replyRef = replyingTo ? { id: replyingTo.id, author: replyingTo.author, text: replyingTo.content } : undefined
-    onSend(text, replyRef)
-    setContent('')
+    onSend(text || '', replyRef, pendingFiles.length > 0 ? pendingFiles : undefined)
+    inputRef.current?.clear()
+    contentRef.current = ''
+    setPendingFiles([])
     setReplyingTo(null)
-    if (inputRef.current) inputRef.current.style.height = 'auto'
   }
 
-  // ── Keyboard ──
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Emoji autocomplete navigation
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (emojiQuery !== null && emojiMatches.length > 0) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setEmojiIndex((i) => (i + 1) % emojiMatches.length); return }
       if (e.key === 'ArrowUp')   { e.preventDefault(); setEmojiIndex((i) => (i - 1 + emojiMatches.length) % emojiMatches.length); return }
       if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); insertEmoji(emojiMatches[emojiIndex].emoji); return }
       if (e.key === 'Escape') { e.preventDefault(); setEmojiQuery(null); return }
     }
-    // Mention autocomplete navigation
     if (mentionQuery !== null && mentionMatches.length > 0) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex((i) => (i + 1) % mentionMatches.length); return }
       if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionIndex((i) => (i - 1 + mentionMatches.length) % mentionMatches.length); return }
       if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); insertMention(mentionMatches[mentionIndex].username); return }
       if (e.key === 'Escape') { e.preventDefault(); setMentionQuery(null); return }
     }
-    // Formatting shortcuts
     if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); insertFormatting('**', '**'); return }
     if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); insertFormatting('*', '*'); return }
-    // Send
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
     if (e.key === 'Escape' && replyingTo) setReplyingTo(null)
   }
 
-  const dateLabel = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  // Format a message's day as a separator label. Locale-aware, weekday + date.
+  // Same format for every separator — no "Today" / "Yesterday" smartness.
+  const formatDayLabel = (iso: string) => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    return d.toLocaleDateString(undefined, {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    })
+  }
+
+  // Cheap day key: YYYY-MM-DD in local time. Used to detect day boundaries.
+  const dayKey = (iso: string) => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
 
   const dmName        = dmConversation?.name ?? (dmConversation ? `@${dmConversation.participants[0].name}` : '')
   const dmFirstP      = dmConversation?.participants[0]
@@ -283,10 +316,83 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
     ? `Message ${dmName}`
     : `Message #${channel.name}`
 
+  // ── Voice call wiring (DM) ───────────────────────────────────────
+  // Works for both 1-on-1 and group DMs. The SFU treats `dm_id` as a room id
+  // and routes audio between any number of participants, so group calls are
+  // an N-way join into the same room. E2EE is only derived for 1-on-1 calls
+  // (where there's a single peer to do the X25519/ML-KEM handshake against);
+  // group calls fall back to DTLS-SRTP only.
+  const isGroupDm = isDm && dmConversation?.type === 'group'
+  const recipientUserId = !isGroupDm ? dmFirstP?.userId : undefined
+  const activeCallDmId = useCallStore((st) => st.activeCallDmId)
+  const incomingCall   = useCallStore((st) => st.incomingCall)
+  const outgoingCall   = useCallStore((st) => st.outgoingCall)
+  const startCall      = useCallStore((st) => st.startCall)
+  const voiceState     = useVoiceStore((st) => st.connectionState)
+  const inAnyCall      = !!activeCallDmId || !!outgoingCall || !!incomingCall || voiceState !== 'disconnected'
+  const callDisabled   = !isDm || !dmConversation || inAnyCall
+  const callTitle      = inAnyCall ? 'Already in a call' : 'Start voice call'
+
+  const handleStartCall = useCallback(() => {
+    if (callDisabled || !dmConversation) return
+    void startCall(dmConversation.id, dmName, recipientUserId)
+  }, [callDisabled, dmConversation, dmName, recipientUserId, startCall])
+
+  // Only treat drags that actually carry files as attachable — a regular
+  // text/HTML drag (e.g. dragging a message link around) shouldn't show the
+  // overlay.
+  const dragHasFiles = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer?.types ?? []).includes('Files')
+
+  function handleDragEnter(e: React.DragEvent) {
+    if (!canAttachFiles || !dragHasFiles(e)) return
+    e.preventDefault()
+    dragDepthRef.current += 1
+    setIsDraggingFiles(true)
+  }
+  function handleDragOver(e: React.DragEvent) {
+    if (!canAttachFiles || !dragHasFiles(e)) return
+    e.preventDefault()
+    // 'move' suppresses the green "+ Copy" badge that Windows attaches when
+    // dropEffect is 'copy' — the OS still owns the cursor at the system
+    // level for native file drags, but we apply `cursor: grabbing` on the
+    // drop area below as a best-effort override (browsers honour it in some
+    // cases). 'none' would also remove the badge but blocks the drop.
+    e.dataTransfer.dropEffect = 'move'
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    if (!canAttachFiles || !dragHasFiles(e)) return
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+    if (dragDepthRef.current === 0) setIsDraggingFiles(false)
+  }
+  function handleDrop(e: React.DragEvent) {
+    if (!canAttachFiles || !dragHasFiles(e)) return
+    e.preventDefault()
+    dragDepthRef.current = 0
+    setIsDraggingFiles(false)
+    if (e.dataTransfer.files.length > 0) {
+      acceptValidFiles(e.dataTransfer.files)
+    }
+  }
+
   return (
-    <main className={s.area}>
-      {/* Header — always full width */}
-      <div className={s.header}>
+    <main
+      className={`${s.area} ${isDraggingFiles && canAttachFiles ? s.areaDragging : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDraggingFiles && canAttachFiles && (
+        <div className={s.dropOverlay} aria-hidden>
+          <div className={s.dropBox}>
+            <Paperclip size={28} strokeWidth={1.5} />
+            <span className="txt-body txt-semibold">Drop to attach</span>
+            <span className={`${s.dropHint} txt-small`}>Up to 25 MB per file</span>
+          </div>
+        </div>
+      )}
+      <header className={s.header}>
         {sidebarCollapsed && (
           <button className={s.iconBtn} title="Expand channels" onClick={onExpandSidebar}>
             <SidebarIcon />
@@ -331,73 +437,108 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
         <div className={s.headerActions}>
           {isDm ? (
             <>
-              <button className={s.iconBtn} title="Start voice call"><CallIcon /></button>
-              <button className={s.iconBtn} title="Start video call"><VideoIcon /></button>
+              <button
+                className={`${s.iconBtn} ${callDisabled ? s.iconBtnDisabled : ''}`}
+                title={callTitle}
+                disabled={callDisabled}
+                onClick={handleStartCall}
+              >
+                <CallIcon />
+              </button>
+              <button
+                className={`${s.iconBtn} ${s.iconBtnDisabled}`}
+                title="Video calls — coming soon"
+                disabled
+              >
+                <VideoIcon />
+              </button>
               <div className={s.headerSep} />
             </>
           ) : (
-            <button className={s.iconBtn} title="Thread view">
-              <ThreadsIcon />
-            </button>
+            <>
+              {hasThreads && (
+                <button
+                  className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
+                  title="Threads"
+                  onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
+                >
+                  <ThreadsIcon />
+                </button>
+              )}
+              {hasPinnedMessages && (
+                <button
+                  className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
+                  title="Pinned messages"
+                  onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
+                >
+                  <Pin size={14} strokeWidth={1.5} />
+                </button>
+              )}
+            </>
           )}
           <button
-            className={`${s.iconBtn} ${pinnedPanelOpen ? s.active : ''}`}
-            title="Pinned messages"
-            onClick={onTogglePinPanel}
-          >
-            <Pin size={14} strokeWidth={1.5} />
-          </button>
-          <button
-            className={`${s.iconBtn} ${membersVisible ? s.active : ''}`}
+            className={`${s.iconBtn} ${rightPanelMode === 'members' ? s.active : ''}`}
             title={isDm ? 'Files & pins' : 'Members'}
-            onClick={onToggleMembers}
+            onClick={() => onSetRightPanelMode(rightPanelMode === 'members' ? null : 'members')}
           >
             {isDm ? <FilesIcon /> : <MembersIcon />}
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Centered body — messages + composer */}
       <div className={s.chatBody}>
         <div className={`${s.messageList} scrollbar-thin scroll-view-y-chat`} ref={listRef} onScroll={handleScroll}>
           <div className={`${s.messageInner} ${isDm ? s.messageInnerDm : ''}`}>
-            <div className={s.dateSeparator}>
-              <div className={s.sepLine} />
-              <span className={`${s.sepLabel} txt-tiny txt-semibold`}>
-                Today · {dateLabel}
-              </span>
-              <div className={s.sepLine} />
-            </div>
             {messages.map((msg, i) => {
-              // Bottom-up stagger on navigation; messages added by sends are not animated
-              // — they appear below the fold and slide in via smooth scroll instead.
               const fromBottom   = messages.length - 1 - i
               const shouldReveal = isRevealing && fromBottom < CHAT_REVEAL_LIMIT
+              const prevDay = i > 0 ? dayKey(messages[i - 1].created_at) : ''
+              const thisDay = dayKey(msg.created_at)
+              // Insert a separator at the very first message and whenever the
+              // day changes between consecutive messages.
+              const showSeparator = thisDay !== '' && thisDay !== prevDay
               return (
-                <div
-                  key={msg.id}
-                  className={shouldReveal ? 'revealing' : undefined}
-                  style={shouldReveal
-                    ? { '--reveal-delay': `${revealDelay(fromBottom)}ms` } as React.CSSProperties
-                    : undefined
-                  }
-                >
-                  <Message
-                    message={msg}
-                    onToggleReaction={readOnly || msg.is_system ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
-                    onDelete={readOnly || msg.is_system ? undefined : () => onDeleteMessage(msg.id)}
-                    onEdit={readOnly || msg.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
-                    onReply={readOnly || msg.is_system ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
-                    onPin={readOnly || msg.is_system ? undefined : () => onPinMessage?.(msg.id)}
-                    isDm={isDm}
-                  />
+                <div key={msg.id}>
+                  {showSeparator && (
+                    <div className={s.dateSeparator}>
+                      <div className={s.sepLine} />
+                      <span className={`${s.sepLabel} txt-tiny txt-semibold`}>
+                        {formatDayLabel(msg.created_at)}
+                      </span>
+                      <div className={s.sepLine} />
+                    </div>
+                  )}
+                  <div
+                    className={shouldReveal ? 'revealing' : undefined}
+                    style={shouldReveal
+                      ? { '--reveal-delay': `${revealDelay(fromBottom)}ms` } as React.CSSProperties
+                      : undefined
+                    }
+                  >
+                    <Message
+                      message={msg}
+                      onToggleReaction={readOnly || channel.is_system || !canAddReactions ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
+                      onDelete={() => onDeleteMessage(msg.id)}
+                      onEdit={readOnly || channel.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
+                      onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
+                      onPin={() => onPinMessage?.(msg.id)}
+                      isDm={isDm}
+                      serverId={isDm ? undefined : serverId}
+                      userMap={userMap}
+                      dmParticipantNames={isDm && dmConversation
+                        ? Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
+                        : undefined}
+                      canManageMessages={canManageMessages}
+                      canAddReactions={canAddReactions}
+                    />
+                  </div>
                 </div>
               )
             })}
           </div>
+          <div className={s.spacer} />
         </div>
 
-        {/* Typing indicator */}
         {typingUsers && typingUsers.length > 0 && (
           <div className={s.typingIndicator}>
             <span className={s.typingDots}>
@@ -416,18 +557,17 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
           </div>
         )}
 
-        {readOnly ? (
+        {isReadOnly ? (
           <div className={s.composerWrap}>
             <div className={`${s.composer} ${s.readOnly}`} style={{ padding: '.725rem .625rem' }}>
               <span className="txt-small" style={{ opacity: 0.4, textAlign: 'center', width: '100%' }}>
-                This is a read-only channel
+                {channel.is_system ? 'This is a system channel' : !canSendMessages ? 'You do not have permission to send messages in this channel' : 'This is a read-only channel'}
               </span>
             </div>
           </div>
         ) : (
         <div className={s.composerWrap}>
           <div className={s.composerStack}>
-            {/* ── Reply card — slides up from behind the composer ── */}
             {replyingTo && (
               <div className={s.replyCard}>
                 <div className={s.replyCardInner}>
@@ -445,7 +585,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
               </div>
             )}
 
-            {/* ── Mention autocomplete dropdown ── */}
             {mentionQuery !== null && mentionMatches.length > 0 && (
               <div role="listbox" className={s.autocomplete}>
                 <div className={s.autocompleteHeader}>Members</div>
@@ -464,7 +603,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
               </div>
             )}
 
-            {/* ── Emoji autocomplete dropdown ── */}
             {emojiQuery !== null && emojiMatches.length > 0 && (
               <div role="listbox" className={s.autocomplete}>
                 <div className={s.autocompleteHeader}>Emoji matching :{emojiQuery}</div>
@@ -483,7 +621,26 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
               </div>
             )}
 
-            {/* ── Composer — sits in front of reply card ── */}
+            {pendingFiles.length > 0 && (
+              <div className={s.pendingFiles}>
+                {pendingFiles.map((file, i) => (
+                  <div key={`${file.name}-${i}`} className={s.pendingFile}>
+                    {file.type.startsWith('image/') ? (
+                      <img src={URL.createObjectURL(file)} alt={file.name} className={s.pendingFileThumb} />
+                    ) : (
+                      <div className={s.pendingFileIcon}><AttachIcon /></div>
+                    )}
+                    <span className={`${s.pendingFileName} txt-tiny`}>{file.name}</span>
+                    <button
+                      className={s.pendingFileRemove}
+                      onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className={s.composer}>
               {fmtBar && (
                 <div
@@ -524,44 +681,64 @@ export function ChatArea({ channel, messages, sidebarCollapsed, membersVisible, 
                   <EmojiPickerPopup
                     position={composerEmojiPos}
                     onSelect={(emoji) => {
-                      setContent((prev) => prev + emoji)
-                      inputRef.current?.focus()
+                      inputRef.current?.insertEmojiAtCursor(emoji)
                     }}
                     onClose={() => setShowComposerEmoji(false)}
                   />
                 )}
               </div>
               <div className={s.inputWrap}>
-                {/* Emoji image overlay — shows rendered content with pretty emoji images */}
-                {content && (
-                  <div
-                    ref={overlayRef}
-                    className={s.inputOverlay}
-                    dangerouslySetInnerHTML={{ __html: renderInputEmojis(content) }}
-                  />
-                )}
-                <textarea
+                <RichInput
                   ref={inputRef}
-                  value={content}
-                  onChange={(e) => handleInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onSelect={checkSelection}
                   placeholder={inputPlaceholder}
-                  rows={1}
-                  className={s.textarea}
-                  onInput={(e) => {
-                    const el = e.currentTarget
-                    el.style.height = 'auto'
-                    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
-                  }}
-                  onScroll={(e) => {
-                    if (overlayRef.current) overlayRef.current.scrollTop = e.currentTarget.scrollTop
-                  }}
+                  onInput={syncContent}
+                  onKeyDown={handleKeyDown}
+                  onSelectionChange={checkSelection}
                 />
               </div>
               <div className={s.composerActions}>
-                <button className={s.composerBtn} title="Attach file"><AttachIcon /></button>
-                <button className={s.composerBtn} title="GIF"><GifIcon /></button>
+                {canAttachFiles && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*,.pdf,.txt,.zip,.doc,.docx"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files) acceptValidFiles(e.target.files)
+                        e.target.value = ''
+                      }}
+                    />
+                    <button className={s.composerBtn} title="Attach file" onClick={() => fileInputRef.current?.click()}>
+                      <AttachIcon />
+                    </button>
+                    <button
+                      ref={gifBtnRef}
+                      className={s.composerBtn}
+                      title="GIF"
+                      onClick={() => {
+                        if (!showGifPicker && gifBtnRef.current) {
+                          const r = gifBtnRef.current.getBoundingClientRect()
+                          setGifPickerPos({ top: r.top, left: r.left + r.width / 2 })
+                        }
+                        setShowGifPicker(v => !v)
+                      }}
+                    >
+                      <GifIcon />
+                    </button>
+                    {showGifPicker && gifPickerPos && (
+                      <GifPickerPopup
+                        position={gifPickerPos}
+                        onSelect={(gifUrl) => {
+                          onSend(gifUrl)
+                          inputRef.current?.focus()
+                        }}
+                        onClose={() => setShowGifPicker(false)}
+                      />
+                    )}
+                  </>
+                )}
                 <button className={s.sendBtn} title="Send (Enter)" onClick={send}>
                   <SendIcon />
                 </button>
@@ -587,15 +764,3 @@ function EmojiIcon()      { return <Smile         size={15} strokeWidth={1.25} /
 function AttachIcon()     { return <Paperclip     size={15} strokeWidth={1.25} /> }
 function GifIcon()        { return <ImagePlay     size={15} strokeWidth={1.25} /> }
 function SendIcon()       { return <SendHorizontal size={15} strokeWidth={1.5} /> }
-
-/** Render input text with Unicode emojis replaced by CDN images */
-function renderInputEmojis(text: string): string {
-  if (!text) return ''
-  let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  html = html.replace(/\n/g, '<br>')
-  html = renderUnicodeEmojis(html, 20)
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['img', 'br'],
-    ALLOWED_ATTR: ['src', 'alt', 'class', 'style', 'loading', 'draggable'],
-  })
-}

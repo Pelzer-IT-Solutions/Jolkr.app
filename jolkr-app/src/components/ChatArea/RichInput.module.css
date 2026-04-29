@@ -1,0 +1,36 @@
+.richInput {
+  position: relative;
+  width: 100%;
+  background: transparent;
+  color: var(--text-strong);
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: normal;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-height: 1.5rem;
+  max-height: 7.5rem;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.richInput::-webkit-scrollbar { display: none; }
+.richInput[data-empty]::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+  pointer-events: none;
+  position: absolute;
+}
+.richInput img {
+  display: inline;
+  vertical-align: text-bottom;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.richInput::selection {
+  background: oklch(65% 0.15 250 / 0.3);
+}

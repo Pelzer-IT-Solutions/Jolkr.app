@@ -10,7 +10,7 @@ import { rewriteStorageUrl } from '../../../platform/config';
 
 export interface AccountTabProps {
   user: User | null;
-  onProfileUpdate: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string }) => Promise<void>;
+  onProfileUpdate: (body: { display_name?: string; bio?: string; avatar_url?: string }) => Promise<void>;
   onLogout: () => void;
 }
 
@@ -86,7 +86,6 @@ function ChangePasswordBlock() {
 }
 
 export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountTabProps) {
-  const [username, setUsername] = useState(user?.username ?? '');
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
   const [saving, setSaving] = useState(false);
@@ -103,7 +102,6 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
     setSaveError('');
     try {
       await onProfileUpdate({
-        username: username.trim(),
         display_name: displayName.trim() || undefined,
         bio: bio.trim(),
         avatar_url: avatarKey || undefined,
@@ -122,21 +120,24 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Reset so re-selecting the same file triggers onChange again
+    e.target.value = '';
     setAvatarUploading(true);
+    setSaveError('');
     try {
       const result = await api.uploadFile(file, 'avatar');
       setAvatarKey(result.key);
       setAvatarPreviewUrl(result.url);
-    } catch (e) {
-      setSaveError((e as Error).message || 'Failed to upload avatar');
+    } catch (err) {
+      setSaveError((err as Error).message || 'Failed to upload avatar');
     }
     setAvatarUploading(false);
   };
 
-  // Show preview from new upload, otherwise existing avatar
-  const displayAvatarUrl = avatarPreviewUrl
-    ? rewriteStorageUrl(avatarPreviewUrl)
-    : user?.avatar_url;
+  // Show preview from new upload, otherwise existing avatar.
+  // Both paths need rewriteStorageUrl because presigned URLs contain the
+  // Docker-internal "minio:9000" host which isn't reachable from browser/Tauri.
+  const displayAvatarUrl = rewriteStorageUrl(avatarPreviewUrl || user?.avatar_url);
 
   return (
     <>
@@ -165,7 +166,7 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              className="hidden"
+              style={{ display: 'none' }}
               onChange={handleAvatarUpload}
             />
           </div>
@@ -177,31 +178,28 @@ export default function AccountTab({ user, onProfileUpdate, onLogout }: AccountT
 
         <div className="flex flex-col gap-4">
           <Input
-            id="settings-username"
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <Input
             id="settings-displayname"
             label="Display Name"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="How others see you (optional)"
           />
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <label htmlFor="settings-bio" className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Bio</label>
-            <textarea
-              id="settings-bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              className="w-full rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary resize-none h-20"
-              placeholder="Tell us about yourself"
-            />
+            <div className="rounded-lg border bg-bg border-divider focus-within:border-border-accent transition-colors">
+              <textarea
+                id="settings-bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="w-full bg-transparent rounded-lg px-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none resize-none h-20"
+                placeholder="Tell us about yourself"
+                maxLength={500}
+              />
+            </div>
           </div>
           {saveError && <div className="bg-danger/10 text-danger text-sm p-2 rounded">{saveError}</div>}
           <div>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={handleSave} disabled={saving || avatarUploading}>
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
             </Button>
           </div>

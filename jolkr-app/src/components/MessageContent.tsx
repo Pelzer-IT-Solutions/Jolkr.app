@@ -1,9 +1,10 @@
-import { useMemo, memo } from 'react';
+import { useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/github-dark.css';
 import { useServersStore } from '../stores/servers';
+import { useGifFavoritesStore, extractGiphyId } from '../stores/gif-favorites';
 import { renderUnicodeEmojis, isEmojiOnly } from '../utils/emoji';
 
 // Unescape HTML entities that marked escapes in code blocks
@@ -46,7 +47,7 @@ marked.use({
       return `<del class="line-through">${body}</del>`;
     },
     codespan({ text }) {
-      return `<code class="px-1 py-0.5 bg-black/30 rounded text-sm text-pink-300 font-mono">${text}</code>`;
+      return `<code class="px-1 py-0.5 bg-black/30 rounded text-sm text-teal-300 font-mono">${text}</code>`;
     },
     code({ text, lang }) {
       const raw = unescapeHtml(text);
@@ -59,6 +60,21 @@ marked.use({
       const safeLang = lang ? lang.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : '';
       const langLabel = safeLang ? `<div class="text-xs text-text-tertiary">${safeLang}</div>` : '';
       return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-sm font-mono hljs !p-0">${highlighted}</code></pre>`;
+    },
+    image({ href, title }) {
+      const safeHref = /^(https?:\/\/|\/api\/)/i.test(href ?? '') ? escapeAttr(href ?? '') : '#';
+      const safeTitle = title ? ` title="${escapeAttr(title)}"` : '';
+      const isGif = GIF_PROXY_RE.test(href ?? '') || /\.gif(\?[^\s]*)?$/i.test(href ?? '');
+      const maxW = isGif ? '250px' : '450px';
+      const imgTag = `<img src="${safeHref}" alt="GIF"${safeTitle} style="max-width:${maxW};max-height:300px;border-radius:0.5rem" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
+      // Wrap GIF proxy images with a heart overlay for favorites
+      if (GIF_PROXY_RE.test(href ?? '')) {
+        const gifId = extractGiphyId(href ?? '');
+        if (gifId) {
+          return `<span class="gif-embed" data-gif-id="${escapeAttr(gifId)}" style="position:relative;display:inline-block;margin:0.25rem 0">${imgTag}<button class="gif-embed-heart" data-gif-id="${escapeAttr(gifId)}" type="button">${HEART_SVG}</button></span>`;
+        }
+      }
+      return `<span style="display:inline-block;margin:0.25rem 0">${imgTag}</span>`;
     },
     heading({ tokens, depth }) {
       const body = this.parser.parseInline(tokens);
@@ -75,13 +91,25 @@ marked.use({
   },
 });
 
+// Image URL patterns — render as <img> instead of <a>
+const IMAGE_URL_RE = /\.(gif|png|jpe?g|webp)(\?[^\s]*)?$/i;
+const GIF_PROXY_RE = /\/api\/gifs\/(media\?url=|i\/)/;
+
+// Heart SVG for GIF favorite overlay (inline since we can't use React components in raw HTML)
+const HEART_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+
 // Auto-detect URLs in plain text that aren't already links
 function autoLinkUrls(text: string): string {
   // Don't process if it already contains markdown links or HTML
   if (/\[.*?\]\(.*?\)/.test(text) || /<a\s/.test(text)) return text;
   return text.replace(
-    /(https?:\/\/[^\s<>)"]+)/gi,
-    '[$1]($1)',
+    /((?:https?:\/\/[^\s<>)"]+)|(?:\/api\/gifs\/(?:media\?url=|i\/)[^\s<>)"]+))/gi,
+    (url) => {
+      if (IMAGE_URL_RE.test(url) || GIF_PROXY_RE.test(url)) {
+        return `![GIF](${url})`;
+      }
+      return `[${url}](${url})`;
+    },
   );
 }
 
@@ -131,8 +159,8 @@ export interface MessageContentProps {
   serverId?: string;
 }
 
-const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div'];
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin'];
+const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div', 'button', 'svg', 'path'];
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin', 'data-gif-id', 'type', 'width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd'];
 
 export default memo(function MessageContent({ content, className, emojiMap, serverId }: MessageContentProps) {
   // Build emoji map from store if serverId is provided and no explicit emojiMap
@@ -163,10 +191,43 @@ export default memo(function MessageContent({ content, className, emojiMap, serv
     return DOMPurify.sanitize(withUnicodeEmojis, { ALLOWED_TAGS, ALLOWED_ATTR });
   }, [content, resolvedEmojiMap, emojiOnly]);
 
+  // GIF favorite hearts — sync visual state with store
+  const containerRef = useRef<HTMLDivElement>(null);
+  const favIds = useGifFavoritesStore((s) => s.ids);
+  const toggleFav = useGifFavoritesStore((s) => s.toggle);
+
+  // Update heart button fill state whenever favIds changes
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const hearts = el.querySelectorAll<HTMLButtonElement>('.gif-embed-heart');
+    hearts.forEach((btn) => {
+      const gifId = btn.getAttribute('data-gif-id');
+      if (!gifId) return;
+      const isFav = favIds.has(gifId);
+      btn.setAttribute('data-fav', String(isFav));
+      // Update SVG fill
+      const svg = btn.querySelector('svg');
+      if (svg) svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
+    });
+  }, [favIds, html]);
+
+  // Click handler via event delegation
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const heart = (e.target as HTMLElement).closest('.gif-embed-heart') as HTMLElement | null;
+    if (!heart) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const gifId = heart.getAttribute('data-gif-id');
+    if (gifId) toggleFav(gifId);
+  }, [toggleFav]);
+
   return (
     <div
+      ref={containerRef}
       className={`max-w-none ${emojiOnly ? 'leading-10' : ''} ${className ?? ''}`}
       dangerouslySetInnerHTML={{ __html: html }}
+      onClick={handleClick}
     />
   );
 });

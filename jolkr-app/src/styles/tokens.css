@@ -1,7 +1,8 @@
 /* ─── Design tokens ─── */
 :root {
   /* ── Theme hue — drives the entire palette tint ── */
-  --theme-hue: 136.69;
+  /* Overridden at runtime by useAnimatedTheme (synced to :root) */
+  --theme-hue: 182;
 
   /* Base palette — tinted neutrals that respond to theme-hue */
   /* Low chroma creates "neutral with character" - subtle tint matching the theme */
@@ -156,6 +157,11 @@
   --transition:        150ms ease;
   --medium-font-weight: 450;
 
+  /* Responsive breakpoints (informational; @media rules use literal values) */
+  --bp-tablet:  1024px;
+  --bp-compact:  768px;
+  --bp-mobile:   600px;
+
   /* Solid opaque surfaces — for modals/portals that render over the body */
   /* Hierarchy: nav (darkest/furthest) → content → field → raised (lightest/closest) */
   /* Tinted neutrals that respond to theme-hue */
@@ -174,6 +180,19 @@
   --danger-default: oklch(55% 0.2 25);
   --danger-strong:  oklch(62% 0.22 25);
   --danger-muted:   oklch(55% 0.2 25 / 0.12);
+
+  /* Success / allow — fixed green, not theme-driven */
+  --success-default: oklch(65% 0.18 145);
+  --success-muted:   oklch(65% 0.18 145 / 0.12);
+  --success-strong:  oklch(65% 0.18 145 / 0.24);
+
+  /* Status indicator colors — fixed, not theme-driven */
+  --status-online: oklch(65% 0.18 143);
+  --status-idle:   oklch(75% 0.18 65);
+  --status-dnd:    oklch(55% 0.2 25);
+
+  /* Overlay backdrop */
+  --overlay-backdrop: oklch(25% 0 0 / 0.5);
 }
 
 /* ─── Dark mode overrides ────────────────────────────────────────────── */

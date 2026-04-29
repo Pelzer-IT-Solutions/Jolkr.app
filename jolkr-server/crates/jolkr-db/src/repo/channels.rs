@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::ChannelRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `channel` persistence.
 pub struct ChannelRepo;
 
 impl ChannelRepo {
@@ -20,11 +21,11 @@ impl ChannelRepo {
     ) -> Result<ChannelRow, JolkrError> {
         let now = Utc::now();
         let channel = sqlx::query_as::<_, ChannelRow>(
-            r#"
+            "
             INSERT INTO channels (id, server_id, category_id, name, kind, position, is_nsfw, slowmode_seconds, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, false, 0, $7, $7)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(server_id)
@@ -42,7 +43,7 @@ impl ChannelRepo {
     /// Get a channel by its ID.
     pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<ChannelRow, JolkrError> {
         let channel = sqlx::query_as::<_, ChannelRow>(
-            r#"SELECT * FROM channels WHERE id = $1"#,
+            "SELECT * FROM channels WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -58,11 +59,11 @@ impl ChannelRepo {
         server_id: Uuid,
     ) -> Result<Vec<ChannelRow>, JolkrError> {
         let channels = sqlx::query_as::<_, ChannelRow>(
-            r#"
+            "
             SELECT * FROM channels
             WHERE server_id = $1
             ORDER BY position ASC
-            "#,
+            ",
         )
         .bind(server_id)
         .fetch_all(pool)
@@ -83,7 +84,7 @@ impl ChannelRepo {
     ) -> Result<ChannelRow, JolkrError> {
         let now = Utc::now();
         let channel = sqlx::query_as::<_, ChannelRow>(
-            r#"
+            "
             UPDATE channels
             SET name              = COALESCE($2, name),
                 topic             = COALESCE($3, topic),
@@ -93,7 +94,7 @@ impl ChannelRepo {
                 updated_at        = $7
             WHERE id = $1
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(name)
@@ -117,13 +118,13 @@ impl ChannelRepo {
     ) -> Result<ChannelRow, JolkrError> {
         let now = Utc::now();
         let channel = sqlx::query_as::<_, ChannelRow>(
-            r#"
+            "
             UPDATE channels
             SET category_id = $2,
                 updated_at  = $3
             WHERE id = $1
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(category_id)
@@ -144,11 +145,11 @@ impl ChannelRepo {
         let now = Utc::now();
         for (channel_id, position) in positions {
             sqlx::query(
-                r#"
+                "
                 UPDATE channels
                 SET position = $2, updated_at = $3
                 WHERE id = $1
-                "#,
+                ",
             )
             .bind(channel_id)
             .bind(position)
@@ -162,7 +163,7 @@ impl ChannelRepo {
 
     /// Delete a channel.
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
-        let result = sqlx::query(r#"DELETE FROM channels WHERE id = $1"#)
+        let result = sqlx::query("DELETE FROM channels WHERE id = $1")
             .bind(id)
             .execute(pool)
             .await?;

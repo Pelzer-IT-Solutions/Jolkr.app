@@ -19,7 +19,7 @@ use crate::redis_store::RedisStore;
 
 /// Per-IP rate limiter with Redis backend and local DashMap fallback.
 #[derive(Clone)]
-pub struct RateLimiter {
+pub(crate) struct RateLimiter {
     name: String,
     max_tokens: u32,
     window_secs: u64,
@@ -36,7 +36,7 @@ struct LocalBucket {
 impl RateLimiter {
     /// Create a new rate limiter. If `redis` is Some, uses distributed Redis counters
     /// with local DashMap fallback. If None, uses only local DashMap.
-    pub fn new(name: &str, max_tokens: u32, per_second: f64, redis: Option<RedisStore>) -> Self {
+    pub(crate) fn new(name: &str, max_tokens: u32, per_second: f64, redis: Option<RedisStore>) -> Self {
         Self {
             name: name.to_string(),
             max_tokens,
@@ -48,7 +48,7 @@ impl RateLimiter {
     }
 
     /// Spawn a background task that periodically removes stale local entries.
-    pub fn spawn_cleanup(&self) {
+    pub(crate) fn spawn_cleanup(&self) {
         let local = Arc::clone(&self.local);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(5 * 60));
@@ -121,7 +121,7 @@ fn is_trusted_proxy(ip: IpAddr) -> bool {
 }
 
 /// Axum middleware function for rate limiting.
-pub async fn rate_limit_middleware(
+pub(crate) async fn rate_limit_middleware(
     Extension(limiter): Extension<RateLimiter>,
     req: Request<Body>,
     next: Next,
@@ -132,11 +132,18 @@ pub async fn rate_limit_middleware(
         .map(|ci| ci.0.ip());
 
     let ip = if connect_ip.map_or(false, is_trusted_proxy) {
+        // Take the rightmost non-trusted IP — that's the one added by our outermost proxy.
+        // The leftmost IP is attacker-controlled and must not be trusted.
         req.headers()
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.split(',').next())
-            .and_then(|s| s.trim().parse::<IpAddr>().ok())
+            .and_then(|s| {
+                s.split(',')
+                    .rev()
+                    .map(|p| p.trim())
+                    .filter_map(|p| p.parse::<IpAddr>().ok())
+                    .find(|ip| !is_trusted_proxy(*ip))
+            })
             .or(connect_ip)
             .unwrap_or_else(|| "127.0.0.1".parse().unwrap())
     } else {

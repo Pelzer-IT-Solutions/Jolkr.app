@@ -1,28 +1,30 @@
-pub mod attachments;
-pub mod avatars;
-pub mod health;
-pub mod audit_log;
-pub mod auth;
-pub mod categories;
-pub mod channel_encryption;
-pub mod channels;
-pub mod devices;
-pub mod dms;
-pub mod emojis;
-pub mod friends;
-pub mod invites;
-pub mod keys;
-pub mod messages;
-pub mod notifications;
-pub mod presence;
-pub mod push;
-pub mod polls;
-pub mod reactions;
-pub mod webhooks;
-pub mod roles;
-pub mod servers;
-pub mod threads;
-pub mod users;
+pub(crate) mod attachments;
+pub(crate) mod avatars;
+pub(crate) mod health;
+pub(crate) mod audit_log;
+pub(crate) mod auth;
+pub(crate) mod categories;
+pub(crate) mod channel_encryption;
+pub(crate) mod channels;
+pub(crate) mod devices;
+pub(crate) mod dms;
+pub(crate) mod emojis;
+pub(crate) mod files;
+pub(crate) mod friends;
+pub(crate) mod gifs;
+pub(crate) mod invites;
+pub(crate) mod keys;
+pub(crate) mod messages;
+pub(crate) mod notifications;
+pub(crate) mod presence;
+pub(crate) mod push;
+pub(crate) mod polls;
+pub(crate) mod reactions;
+pub(crate) mod webhooks;
+pub(crate) mod roles;
+pub(crate) mod servers;
+pub(crate) mod threads;
+pub(crate) mod users;
 
 use axum::{
     extract::{DefaultBodyLimit, Extension},
@@ -52,7 +54,7 @@ use crate::ws;
 
 /// Shared application state passed to all handlers.
 #[derive(Clone)]
-pub struct AppState {
+pub(crate) struct AppState {
     pub pool: PgPool,
     pub jwt_secret: String,
     pub gateway: ws::gateway::GatewayState,
@@ -66,7 +68,7 @@ pub struct AppState {
 }
 
 /// Build the complete Axum router with all route groups.
-pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Router {
+pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Router {
     let redis = Some(state.redis.clone());
     // Read CORS origins from env var (comma-separated). Fall back to localhost for dev.
     let cors_origin = match std::env::var("CORS_ORIGINS") {
@@ -126,6 +128,7 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/auth/reset-password", post(auth::reset_password))
         .route("/api/auth/forgot-password", post(auth::forgot_password))
         .route("/api/auth/reset-password-confirm", post(auth::reset_password_confirm))
+        .route("/api/auth/verify-email", post(auth::verify_email))
         .layer(axum_mw::from_fn(rate_limit_middleware))
         .layer(Extension(auth_limiter));
 
@@ -135,6 +138,7 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/auth/change-password", post(auth::change_password))
         .route("/api/auth/logout", post(auth::logout))
         .route("/api/auth/logout-all", post(auth::logout_all))
+        .route("/api/auth/resend-verification", post(auth::resend_verification))
         // ── Users ───────────────────────────────────────────────────
         .route("/api/users/@me", get(users::get_me).patch(users::update_me))
         .route("/api/users/batch", post(users::get_users_batch))
@@ -306,6 +310,8 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/channels/:id/e2ee/distribute", post(channel_encryption::distribute_keys))
         .route("/api/channels/:id/e2ee/my-key", get(channel_encryption::get_my_key))
         .route("/api/channels/:id/e2ee/generation", get(channel_encryption::get_key_generation))
+        // ── File proxy (replaces presigned S3 URLs) ─────────────────────
+        .route("/api/files/:attachment_id", get(files::serve_file))
         // ── E2EE Keys ─────────────────────────────────────────────────
         .route("/api/keys/upload", post(keys::upload_prekeys))
         .route("/api/keys/count/:device_id", get(keys::get_prekey_count))
@@ -353,6 +359,15 @@ pub fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Ro
         .route("/api/servers/:server_id/audit-log", get(audit_log::get_audit_log))
         // ── Presence ──────────────────────────────────────────────────
         .route("/api/presence/query", post(presence::query_presence))
+        // ── GIFs (proxied via GIPHY, Tenor v2-compatible for gif-picker-react) ──
+        .route("/api/gifs/search", get(gifs::search_gifs))
+        .route("/api/gifs/featured", get(gifs::featured_gifs))
+        .route("/api/gifs/categories", get(gifs::categories))
+        .route("/api/gifs/media", get(gifs::proxy_media))
+        .route("/api/gifs/i/:gif_id/:size", get(gifs::proxy_gif_image))
+        .route("/api/gifs/favorites", get(gifs::list_favorites).post(gifs::add_favorite))
+        .route("/api/gifs/favorites/:gif_id", delete(gifs::remove_favorite))
+        .route("/api/oembed", get(gifs::oembed_proxy))
         // ── Push ────────────────────────────────────────────────────
         .route("/api/push/vapid-key", get(push::vapid_key))
         .layer(axum_mw::from_fn(rate_limit_middleware))

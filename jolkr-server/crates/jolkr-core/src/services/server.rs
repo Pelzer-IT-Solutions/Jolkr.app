@@ -11,15 +11,26 @@ use jolkr_db::repo::{BanRepo, ChannelOverwriteRepo, ChannelRepo, MemberRepo, Rol
 /// Public server DTO.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Display name.
     pub name: String,
+    /// Description text.
     pub description: Option<String>,
+    /// Icon image URL.
     pub icon_url: Option<String>,
+    /// Banner image URL.
     pub banner_url: Option<String>,
+    /// Owner identifier.
     pub owner_id: Uuid,
+    /// Whether this entry is publicly visible.
     pub is_public: bool,
+    /// Cached member count.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub member_count: Option<i64>,
+    /// Theme.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme: Option<serde_json::Value>,
 }
 
 impl From<ServerRow> for ServerInfo {
@@ -33,44 +44,67 @@ impl From<ServerRow> for ServerInfo {
             owner_id: row.owner_id,
             is_public: row.is_public,
             member_count: None,
+            theme: row.theme,
         }
     }
 }
 
+/// Request payload for the `CreateServer` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateServerRequest {
+    /// Display name.
     pub name: String,
+    /// Description text.
     pub description: Option<String>,
 }
 
+/// Request payload for the `UpdateServer` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateServerRequest {
+    /// Display name.
     pub name: Option<String>,
+    /// Description text.
     pub description: Option<String>,
+    /// Icon image URL.
     pub icon_url: Option<String>,
+    /// Banner image URL.
     pub banner_url: Option<String>,
+    /// Whether this entry is publicly visible.
     pub is_public: Option<bool>,
+    /// Theme.
+    pub theme: Option<serde_json::Value>,
 }
 
+/// Request payload for the `BanMember` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BanMemberRequest {
+    /// Owning user identifier.
     pub user_id: Uuid,
+    /// Reason text.
     pub reason: Option<String>,
 }
 
+/// Request payload for the `SetNickname` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetNicknameRequest {
+    /// Nickname.
     pub nickname: Option<String>,
 }
 
 /// Public ban DTO.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BanInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning server identifier.
     pub server_id: Uuid,
+    /// Owning user identifier.
     pub user_id: Uuid,
+    /// Identifier of the user who issued the ban.
     pub banned_by: Option<Uuid>,
+    /// Reason text.
     pub reason: Option<String>,
+    /// Creation timestamp.
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -87,6 +121,7 @@ impl From<BanRow> for BanInfo {
     }
 }
 
+/// Domain service for `server` operations.
 pub struct ServerService;
 
 impl ServerService {
@@ -183,6 +218,7 @@ impl ServerService {
             req.icon_url.as_deref(),
             req.banner_url.as_deref(),
             req.is_public,
+            req.theme.as_ref(),
         )
         .await?;
 
@@ -244,7 +280,7 @@ impl ServerService {
 
     // ── Moderation ─────────────────────────────────────────────────────
 
-    /// Kick a member from the server. Requires KICK_MEMBERS permission.
+    /// Kick a member from the server. Requires `KICK_MEMBERS` permission.
     pub async fn kick_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -276,7 +312,7 @@ impl ServerService {
         Ok(())
     }
 
-    /// Ban a member from the server. Requires BAN_MEMBERS permission.
+    /// Ban a member from the server. Requires `BAN_MEMBERS` permission.
     /// Creates a ban record and removes the member.
     pub async fn ban_member(
         pool: &PgPool,
@@ -330,7 +366,7 @@ impl ServerService {
         Ok(BanInfo::from(ban))
     }
 
-    /// Unban a user from the server. Requires BAN_MEMBERS permission.
+    /// Unban a user from the server. Requires `BAN_MEMBERS` permission.
     pub async fn unban_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -348,7 +384,7 @@ impl ServerService {
         Ok(())
     }
 
-    /// List all bans for a server. Requires BAN_MEMBERS permission.
+    /// List all bans for a server. Requires `BAN_MEMBERS` permission.
     pub async fn list_bans(
         pool: &PgPool,
         server_id: Uuid,
@@ -364,7 +400,7 @@ impl ServerService {
         Ok(bans.into_iter().map(BanInfo::from).collect())
     }
 
-    /// Set a member's nickname. Requires MANAGE_NICKNAMES for others, CHANGE_NICKNAME for self.
+    /// Set a member's nickname. Requires `MANAGE_NICKNAMES` for others, `CHANGE_NICKNAME` for self.
     pub async fn set_nickname(
         pool: &PgPool,
         server_id: Uuid,
@@ -386,7 +422,7 @@ impl ServerService {
             }
         }
 
-        let nickname = req.nickname.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+        let nickname = req.nickname.map(|n| n.trim().to_owned()).filter(|n| !n.is_empty());
         if let Some(ref nick) = nickname {
             if nick.len() > 32 {
                 return Err(JolkrError::Validation(
@@ -399,7 +435,7 @@ impl ServerService {
         Ok(())
     }
 
-    /// Timeout a member. Requires MODERATE_MEMBERS permission.
+    /// Timeout a member. Requires `MODERATE_MEMBERS` permission.
     pub async fn timeout_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -425,7 +461,7 @@ impl ServerService {
         Ok(())
     }
 
-    /// Remove timeout from a member. Requires MODERATE_MEMBERS permission.
+    /// Remove timeout from a member. Requires `MODERATE_MEMBERS` permission.
     pub async fn remove_timeout(
         pool: &PgPool,
         server_id: Uuid,
@@ -485,7 +521,7 @@ impl ServerService {
         Ok(())
     }
 
-    /// Reorder servers for a user. Accepts an ordered list of server_ids.
+    /// Reorder servers for a user. Accepts an ordered list of `server_ids`.
     pub async fn reorder_servers(
         pool: &PgPool,
         user_id: Uuid,
@@ -499,7 +535,7 @@ impl ServerService {
         for sid in server_ids {
             if !member_set.contains(sid) {
                 return Err(JolkrError::Validation(
-                    format!("Server {} is not in your server list", sid),
+                    format!("Server {sid} is not in your server list"),
                 ));
             }
         }

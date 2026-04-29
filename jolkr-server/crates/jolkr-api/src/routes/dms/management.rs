@@ -16,7 +16,7 @@ use crate::routes::AppState;
 use super::types::*;
 
 /// POST /api/dms — create a 1-on-1 or group DM.
-pub async fn create_dm(
+pub(crate) async fn create_dm(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<CreateDmRequest>,
@@ -41,7 +41,7 @@ pub async fn create_dm(
     Ok(Json(DmChannelResponse { channel }))
 }
 
-pub async fn list_dms(
+pub(crate) async fn list_dms(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<DmChannelsResponse>, AppError> {
@@ -50,7 +50,7 @@ pub async fn list_dms(
 }
 
 /// PATCH /api/dms/:dm_id — update group DM name.
-pub async fn update_dm(
+pub(crate) async fn update_dm(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -69,7 +69,7 @@ pub async fn update_dm(
 }
 
 /// PUT /api/dms/:dm_id/members — add a member to a group DM.
-pub async fn add_dm_member(
+pub(crate) async fn add_dm_member(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -88,7 +88,7 @@ pub async fn add_dm_member(
 }
 
 /// DELETE /api/dms/:dm_id/members/@me — leave a group DM.
-pub async fn leave_dm(
+pub(crate) async fn leave_dm(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -107,7 +107,7 @@ pub async fn leave_dm(
 }
 
 /// POST /api/dms/:dm_id/close — close (hide) a DM from the user's list.
-pub async fn close_dm(
+pub(crate) async fn close_dm(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
@@ -119,12 +119,12 @@ pub async fn close_dm(
 // ── Read Receipts ────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
-pub struct MarkAsReadRequest {
+pub(crate) struct MarkAsReadRequest {
     pub message_id: Uuid,
 }
 
 /// POST /api/dms/:dm_id/read
-pub async fn mark_as_read(
+pub(crate) async fn mark_as_read(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,

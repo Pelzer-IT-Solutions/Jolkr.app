@@ -6,11 +6,16 @@ use jolkr_common::JolkrError;
 use jolkr_db::models::FriendshipRow;
 use jolkr_db::repo::FriendshipRepo;
 
+/// Public information about `friendship`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FriendshipInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Requesting user identifier.
     pub requester_id: Uuid,
+    /// Addressee user identifier.
     pub addressee_id: Uuid,
+    /// Current status.
     pub status: String,
 }
 
@@ -25,9 +30,11 @@ impl From<FriendshipRow> for FriendshipInfo {
     }
 }
 
+/// Domain service for `friendship` operations.
 pub struct FriendshipService;
 
 impl FriendshipService {
+    /// Sends request.
     pub async fn send_request(
         pool: &PgPool,
         requester_id: Uuid,
@@ -46,6 +53,7 @@ impl FriendshipService {
         Ok(FriendshipInfo::from(row))
     }
 
+    /// Accept request.
     pub async fn accept_request(
         pool: &PgPool,
         friendship_id: Uuid,
@@ -55,6 +63,7 @@ impl FriendshipService {
         Ok(FriendshipInfo::from(row))
     }
 
+    /// Decline or remove.
     pub async fn decline_or_remove(
         pool: &PgPool,
         friendship_id: Uuid,
@@ -63,6 +72,7 @@ impl FriendshipService {
         FriendshipRepo::decline_or_remove(pool, friendship_id, caller_id).await
     }
 
+    /// Block user.
     pub async fn block_user(
         pool: &PgPool,
         blocker_id: Uuid,
@@ -75,6 +85,7 @@ impl FriendshipService {
         Ok(FriendshipInfo::from(row))
     }
 
+    /// Lists friends.
     pub async fn list_friends(
         pool: &PgPool,
         user_id: Uuid,
@@ -83,6 +94,7 @@ impl FriendshipService {
         Ok(rows.into_iter().map(FriendshipInfo::from).collect())
     }
 
+    /// Lists pending.
     pub async fn list_pending(
         pool: &PgPool,
         user_id: Uuid,

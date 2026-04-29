@@ -6,27 +6,25 @@ import {
   toBase64,
   fromBase64,
 } from '../crypto';
-import { saveKeySet, loadKeySet, clearKeySet } from '../crypto/keyStore';
+import { clearKeySet } from '../crypto/keyStore';
 import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
 
-// ── Storage encryption ────────────────────────────────────────────
+// ── Seed storage ─────────────────────────────────────────────────
 
-const STORAGE_KEY_SESSION = 'jolkr_storage_enc_key';
+const SEED_KEY = 'jolkr_e2ee_seed';
 
-/** Derive storage encryption key from E2EE seed and store in sessionStorage. */
-async function deriveAndStoreStorageKey(seed: Uint8Array): Promise<void> {
-  const buf = seed.buffer.slice(seed.byteOffset, seed.byteOffset + seed.byteLength) as ArrayBuffer;
-  const keyMaterial = await crypto.subtle.importKey('raw', buf, 'HKDF', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: new TextEncoder().encode('jolkr-storage-key') },
-    keyMaterial, 256,
-  );
-  const raw = new Uint8Array(bits);
-  let b64 = '';
-  for (let i = 0; i < raw.length; i++) b64 += String.fromCharCode(raw[i]);
-  sessionStorage.setItem(STORAGE_KEY_SESSION, btoa(b64));
+/** Persist the raw seed so keys can be re-derived after page reload.
+ *  Same lifecycle as auth tokens — cleared on logout via resetE2EE(). */
+function storeSeed(seed: Uint8Array): void {
+  localStorage.setItem(SEED_KEY, toBase64(seed));
+}
+
+function loadSeed(): Uint8Array | null {
+  const b64 = localStorage.getItem(SEED_KEY);
+  if (!b64) return null;
+  try { return fromBase64(b64); } catch { return null; }
 }
 
 // ── State ──────────────────────────────────────────────────────────
@@ -43,35 +41,47 @@ const bundleCache = new Map<string, CachedBundle>();
 // ── Public API ─────────────────────────────────────────────────────
 
 /**
- * Initialize E2EE: load keys from storage, or generate from seed if provided.
- * When seed is provided (login/register), deterministic keys are generated so
- * all devices of the same user share the same keypair.
+ * Initialize E2EE: derive keys on-the-fly from seed.
+ *
+ * - Login/register: seed is provided → stored in localStorage, keys derived in memory.
+ * - Page reload: seed loaded from localStorage → keys derived in memory.
+ *
+ * Private keys never touch disk — only the 32-byte seed is persisted.
  */
 export async function initE2EE(deviceId: string, seed?: Uint8Array): Promise<void> {
+  // Use provided seed (login) or load from localStorage (page reload)
+  const activeSeed = seed ?? loadSeed();
+  if (!activeSeed) return; // No seed available — E2EE unavailable until next login
+
   if (seed) {
-    // Derive storage encryption key from seed and persist in sessionStorage
-    // This protects private keys in localStorage at rest (cleared on tab close)
-    await deriveAndStoreStorageKey(seed);
-
-    // Derive deterministic keys from password seed using HKDF
-    const keys = await generateKeySetFromSeed(seed);
-    localKeys = keys;
-    await saveKeySet(keys);
-    // Force re-upload (keys may differ from what's on server)
+    // Fresh login — persist seed and force re-upload of public keys
+    storeSeed(seed);
     await storage.remove('e2ee_keys_uploaded');
-    await ensureKeysUploaded(deviceId, keys);
-    return;
   }
 
-  // No seed — just load existing keys from storage
-  const existing = await loadKeySet();
-  if (existing) {
-    localKeys = existing;
-    await ensureKeysUploaded(deviceId, existing);
-    return;
-  }
+  // Derive keys on-the-fly (never stored)
+  const keys = await generateKeySetFromSeed(activeSeed);
+  localKeys = keys;
 
-  // No seed and no stored keys — E2EE unavailable until next login
+  // Clean up legacy encrypted key entries from localStorage (one-time migration)
+  cleanupLegacyKeys();
+
+  await ensureKeysUploaded(deviceId, keys);
+}
+
+/** Remove old per-key entries + storage encryption key from previous versions. */
+function cleanupLegacyKeys(): void {
+  const legacyKeys = [
+    'e2ee_identity_pub', 'e2ee_identity_priv',
+    'e2ee_signed_prekey_pub', 'e2ee_signed_prekey_priv', 'e2ee_signed_prekey_sig',
+    'e2ee_pq_encapsulation_key', 'e2ee_pq_decapsulation_key', 'e2ee_pq_signature',
+    'jolkr_storage_enc_key',
+  ];
+  for (const key of legacyKeys) {
+    localStorage.removeItem(key);
+  }
+  // Also remove from sessionStorage (older versions stored enc key there)
+  sessionStorage.removeItem('jolkr_storage_enc_key');
 }
 
 /** Upload prekeys to server if not yet confirmed uploaded. */
@@ -192,8 +202,12 @@ export function invalidateBundle(userId: string): void {
 export async function resetE2EE(): Promise<void> {
   localKeys = null;
   bundleCache.clear();
+  // Remove seed — keys can no longer be derived
+  localStorage.removeItem(SEED_KEY);
+  // Clean up any legacy key entries
+  cleanupLegacyKeys();
+  // Legacy: clear old keyStore entries via storage abstraction (Stronghold on desktop)
   await clearKeySet();
   // Clear upload flag so next login re-uploads keys; keep device ID to reuse the same device row.
-  // Only use platform storage (Stronghold on desktop, localStorage on web) — not both.
   await storage.remove('e2ee_keys_uploaded');
 }

@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::models::{ChannelOverwriteRow, RoleRow};
 use jolkr_common::{JolkrError, Permissions};
 
+/// Repository for `role` persistence.
 pub struct RoleRepo;
 
 impl RoleRepo {
@@ -22,11 +23,11 @@ impl RoleRepo {
     ) -> Result<RoleRow, JolkrError> {
         let now = Utc::now();
         let row = sqlx::query_as::<_, RoleRow>(
-            r#"
+            "
             INSERT INTO roles (id, server_id, name, color, position, permissions, is_default, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(server_id)
@@ -45,7 +46,7 @@ impl RoleRepo {
     /// Get a role by ID.
     pub async fn get_by_id(pool: &PgPool, id: Uuid) -> Result<RoleRow, JolkrError> {
         let row = sqlx::query_as::<_, RoleRow>(
-            r#"SELECT * FROM roles WHERE id = $1"#,
+            "SELECT * FROM roles WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -58,7 +59,7 @@ impl RoleRepo {
     /// Get the @everyone (default) role for a server.
     pub async fn get_default(pool: &PgPool, server_id: Uuid) -> Result<RoleRow, JolkrError> {
         let row = sqlx::query_as::<_, RoleRow>(
-            r#"SELECT * FROM roles WHERE server_id = $1 AND is_default = true"#,
+            "SELECT * FROM roles WHERE server_id = $1 AND is_default = true",
         )
         .bind(server_id)
         .fetch_optional(pool)
@@ -74,11 +75,11 @@ impl RoleRepo {
         server_id: Uuid,
     ) -> Result<Vec<RoleRow>, JolkrError> {
         let rows = sqlx::query_as::<_, RoleRow>(
-            r#"
+            "
             SELECT * FROM roles
             WHERE server_id = $1
             ORDER BY position DESC
-            "#,
+            ",
         )
         .bind(server_id)
         .fetch_all(pool)
@@ -97,7 +98,7 @@ impl RoleRepo {
         permissions: Option<i64>,
     ) -> Result<RoleRow, JolkrError> {
         let row = sqlx::query_as::<_, RoleRow>(
-            r#"
+            "
             UPDATE roles
             SET name        = COALESCE($2, name),
                 color       = COALESCE($3, color),
@@ -105,7 +106,7 @@ impl RoleRepo {
                 permissions = COALESCE($5, permissions)
             WHERE id = $1
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(name)
@@ -125,18 +126,18 @@ impl RoleRepo {
         let mut tx = pool.begin().await?;
 
         // Remove all member_roles entries first
-        sqlx::query(r#"DELETE FROM member_roles WHERE role_id = $1"#)
+        sqlx::query("DELETE FROM member_roles WHERE role_id = $1")
             .bind(id)
             .execute(&mut *tx)
             .await?;
 
         // Remove channel overwrites for this role
-        sqlx::query(r#"DELETE FROM channel_permission_overwrites WHERE target_type = 'role' AND target_id = $1"#)
+        sqlx::query("DELETE FROM channel_permission_overwrites WHERE target_type = 'role' AND target_id = $1")
             .bind(id)
             .execute(&mut *tx)
             .await?;
 
-        let result = sqlx::query(r#"DELETE FROM roles WHERE id = $1 AND is_default = false"#)
+        let result = sqlx::query("DELETE FROM roles WHERE id = $1 AND is_default = false")
             .bind(id)
             .execute(&mut *tx)
             .await?;
@@ -157,11 +158,11 @@ impl RoleRepo {
         role_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"
+            "
             INSERT INTO member_roles (member_id, role_id)
             VALUES ($1, $2)
             ON CONFLICT (member_id, role_id) DO NOTHING
-            "#,
+            ",
         )
         .bind(member_id)
         .bind(role_id)
@@ -177,7 +178,7 @@ impl RoleRepo {
         member_id: Uuid,
         role_id: Uuid,
     ) -> Result<(), JolkrError> {
-        sqlx::query(r#"DELETE FROM member_roles WHERE member_id = $1 AND role_id = $2"#)
+        sqlx::query("DELETE FROM member_roles WHERE member_id = $1 AND role_id = $2")
             .bind(member_id)
             .bind(role_id)
             .execute(pool)
@@ -192,7 +193,7 @@ impl RoleRepo {
         member_id: Uuid,
     ) -> Result<Vec<Uuid>, JolkrError> {
         let rows: Vec<(Uuid,)> = sqlx::query_as(
-            r#"SELECT role_id FROM member_roles WHERE member_id = $1"#,
+            "SELECT role_id FROM member_roles WHERE member_id = $1",
         )
         .bind(member_id)
         .fetch_all(pool)
@@ -207,12 +208,12 @@ impl RoleRepo {
         member_id: Uuid,
     ) -> Result<Vec<RoleRow>, JolkrError> {
         let rows = sqlx::query_as::<_, RoleRow>(
-            r#"
+            "
             SELECT r.* FROM roles r
             JOIN member_roles mr ON mr.role_id = r.id
             WHERE mr.member_id = $1
             ORDER BY r.position DESC
-            "#,
+            ",
         )
         .bind(member_id)
         .fetch_all(pool)
@@ -221,18 +222,18 @@ impl RoleRepo {
         Ok(rows)
     }
 
-    /// Get all role_ids for all members in a server (batch query to avoid N+1).
+    /// Get all `role_ids` for all members in a server (batch query to avoid N+1).
     pub async fn get_roles_for_server_members(
         pool: &PgPool,
         server_id: Uuid,
     ) -> Result<Vec<(Uuid, Uuid)>, JolkrError> {
         let rows: Vec<(Uuid, Uuid)> = sqlx::query_as(
-            r#"
+            "
             SELECT mr.member_id, mr.role_id
             FROM member_roles mr
             JOIN members m ON m.id = mr.member_id
             WHERE m.server_id = $1
-            "#,
+            ",
         )
         .bind(server_id)
         .fetch_all(pool)
@@ -242,19 +243,19 @@ impl RoleRepo {
     }
 
     /// Get all roles with permissions for all members in a server (single query).
-    /// Returns (member_id, role_id, permissions) tuples for batch permission computation.
+    /// Returns (`member_id`, `role_id`, permissions) tuples for batch permission computation.
     pub async fn get_member_roles_batch(
         pool: &PgPool,
         server_id: Uuid,
     ) -> Result<Vec<(Uuid, Uuid, i64)>, JolkrError> {
         let rows: Vec<(Uuid, Uuid, i64)> = sqlx::query_as(
-            r#"
+            "
             SELECT mr.member_id, mr.role_id, r.permissions
             FROM member_roles mr
             JOIN members m ON m.id = mr.member_id
             JOIN roles r ON r.id = mr.role_id
             WHERE m.server_id = $1
-            "#,
+            ",
         )
         .bind(server_id)
         .fetch_all(pool)
@@ -264,7 +265,8 @@ impl RoleRepo {
     }
 
     /// Compute channel permissions for all members in one go, using pre-fetched batch data.
-    /// Returns a HashMap<member_id, permissions>.
+    /// Returns a `HashMap`<`member_id`, permissions>.
+    #[must_use] 
     pub fn compute_channel_permissions_for_all_members(
         members: &[(Uuid, Uuid)],  // (member_id, user_id)
         member_roles_batch: &[(Uuid, Uuid, i64)],  // (member_id, role_id, permissions)
@@ -272,7 +274,7 @@ impl RoleRepo {
         everyone_role: Option<&RoleRow>,
         server_owner_id: Uuid,
     ) -> HashMap<Uuid, i64> {
-        let everyone_perms = everyone_role.map(|r| r.permissions).unwrap_or(Permissions::DEFAULT as i64);
+        let everyone_perms = everyone_role.map_or(Permissions::DEFAULT as i64, |r| r.permissions);
         let everyone_role_id = everyone_role.map(|r| r.id);
 
         // Group role data by member_id
@@ -336,7 +338,7 @@ impl RoleRepo {
     }
 
     /// Compute channel-level permissions using the Discord 3-layer model:
-    /// 1. Start with server-level permissions (compute_permissions)
+    /// 1. Start with server-level permissions (`compute_permissions`)
     /// 2. ADMINISTRATOR short-circuit → return ALL
     /// 3. Apply @everyone role overwrite for this channel
     /// 4. Aggregate all assigned role overwrites (except @everyone)
@@ -374,7 +376,7 @@ impl RoleRepo {
         everyone_role: Option<&RoleRow>,
     ) -> Result<i64, JolkrError> {
         // Compute server-level permissions (still per-member: @everyone + assigned roles)
-        let everyone_perms = everyone_role.map(|r| r.permissions).unwrap_or(Permissions::DEFAULT as i64);
+        let everyone_perms = everyone_role.map_or(Permissions::DEFAULT as i64, |r| r.permissions);
         let roles = Self::get_member_roles(pool, member_id).await?;
         let mut base = everyone_perms;
         for role in &roles {
@@ -395,6 +397,7 @@ impl RoleRepo {
 
     /// Batch compute channel permissions for all channels in a server.
     /// Takes pre-fetched overwrites to avoid N+1 queries.
+    #[must_use] 
     pub fn compute_channel_permissions_batch(
         base_perms: i64,
         channel_ids: &[Uuid],
@@ -447,7 +450,7 @@ impl RoleRepo {
         let mut agg_deny: i64 = 0;
         for ow in overwrites.iter().filter(|o| {
             o.target_type == "role"
-                && everyone_role_id.map_or(true, |eid| o.target_id != eid)
+                && (everyone_role_id != Some(o.target_id))
                 && member_role_ids.contains(&o.target_id)
         }) {
             agg_allow |= ow.allow;

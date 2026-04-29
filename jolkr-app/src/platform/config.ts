@@ -1,39 +1,11 @@
 import { isTauri } from './detect';
 
-// For Tauri builds, API requests go directly to the server.
-// For web, they're proxied by nginx/vite.
-// Users can override via localStorage (settings screen later).
+// Tauri builds always connect directly to the public server.
+// Web is served from the same origin and uses relative URLs.
 const DEFAULT_SERVER = 'https://jolkr.app';
 
-/** Whether the user can pick a custom server (dev machine only). */
-export const isDevMachine = !!import.meta.env.VITE_DEV_MODE;
-
-export function hasServerUrl(): boolean {
-  if (!isTauri) return true; // web always uses relative URLs
-  if (!isDevMachine) return true; // production: always use jolkr.app, no setup needed
-  try {
-    return !!localStorage.getItem('jolkr_server_url');
-  } catch { return false; }
-}
-
 export function getServerUrl(): string {
-  if (!isTauri) return '';
-  try {
-    const saved = localStorage.getItem('jolkr_server_url');
-    if (saved && isValidServerUrl(saved)) return saved;
-  } catch { /* ignore */ }
-  return DEFAULT_SERVER;
-}
-
-/** Validate server URL: must be HTTPS (or localhost for dev) */
-export function isValidServerUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    // Allow HTTPS always, HTTP only for localhost/dev
-    if (parsed.protocol === 'https:') return true;
-    if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) return true;
-    return false;
-  } catch { return false; }
+  return isTauri ? DEFAULT_SERVER : '';
 }
 
 export function getApiBaseUrl(): string {
@@ -77,6 +49,31 @@ export function getMediaWsUrl(): string {
 
 export function getBasename(): string {
   return isTauri ? '/' : '/app';
+}
+
+/**
+ * Build a shareable invite URL that always points at the SPA invite route.
+ *
+ * - Tauri desktop: `window.location.origin` is `tauri://localhost` and useless
+ *   to recipients, so we hardcode the public host.
+ * - Web (prod or dev): use the current origin so links work in dev/staging,
+ *   and always include the `/app` SPA basename — without it the link hits
+ *   the landing page instead of `<InviteAccept />`.
+ */
+export function buildInviteUrl(code: string): string {
+  if (isTauri) return `https://jolkr.app/app/invite/${code}`;
+  return `${window.location.origin}/app/invite/${code}`;
+}
+
+/** Try to extract an invite code from either a bare code or a full invite URL. */
+export function parseInviteInput(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  // Match the last `/invite/<code>` segment (handles both /app/invite/CODE and /invite/CODE,
+  // with or without trailing slash/query/hash).
+  const match = trimmed.match(/\/invite\/([^/?#\s]+)/);
+  if (match) return match[1];
+  return trimmed;
 }
 
 /**

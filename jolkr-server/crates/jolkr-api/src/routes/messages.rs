@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
-use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::MessageService;
 use jolkr_core::services::message::{
     EditMessageRequest, MessageInfo, MessageQuery, SendMessageRequest,
@@ -21,19 +20,19 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct MessageResponse {
+pub(crate) struct MessageResponse {
     pub message: MessageInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct MessagesResponse {
+pub(crate) struct MessagesResponse {
     pub messages: Vec<MessageInfo>,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/channels/:id/messages
-pub async fn send_message(
+pub(crate) async fn send_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -108,7 +107,7 @@ pub async fn send_message(
         let everyone_role = RoleRepo::get_default(&pool, channel.server_id).await.ok();
 
         // Build (member_id, user_id) pairs, excluding the author
-        let member_pairs: Vec<(uuid::Uuid, uuid::Uuid)> = members.iter()
+        let member_pairs: Vec<(Uuid, Uuid)> = members.iter()
             .filter(|m| m.user_id != author_id)
             .map(|m| (m.id, m.user_id))
             .collect();
@@ -123,7 +122,7 @@ pub async fn send_message(
         );
 
         // Filter to members with VIEW_CHANNELS permission
-        let eligible: Vec<(uuid::Uuid, uuid::Uuid)> = member_pairs.into_iter()
+        let eligible: Vec<(Uuid, Uuid)> = member_pairs.into_iter()
             .filter(|(member_id, _user_id)| {
                 perms_map.get(member_id)
                     .map(|&p| Permissions::from(p).has(Permissions::VIEW_CHANNELS))
@@ -146,7 +145,7 @@ pub async fn send_message(
 }
 
 /// GET /api/channels/:id/messages — requires membership + VIEW_CHANNELS
-pub async fn get_messages(
+pub(crate) async fn get_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -167,22 +166,13 @@ pub async fn get_messages(
         }
     }
 
-    let mut messages = MessageService::get_messages(&state.pool, channel_id, query).await?;
-
-    // Presign attachment URLs so clients can download them
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
+    let messages = MessageService::get_messages(&state.pool, channel_id, query).await?;
 
     Ok(Json(MessagesResponse { messages }))
 }
 
 /// PATCH /api/messages/:id
-pub async fn edit_message(
+pub(crate) async fn edit_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -200,7 +190,7 @@ pub async fn edit_message(
 }
 
 /// DELETE /api/messages/:id
-pub async fn delete_message(
+pub(crate) async fn delete_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -219,7 +209,7 @@ pub async fn delete_message(
 // ── Search ────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
-pub struct SearchMessagesQuery {
+pub(crate) struct SearchMessagesQuery {
     pub q: Option<String>,
     pub from: Option<String>,
     pub has: Option<String>,
@@ -229,7 +219,7 @@ pub struct SearchMessagesQuery {
 }
 
 /// GET /api/channels/:id/messages/search?q=...&from=...&has=...&before=...&after=...
-pub async fn search_messages(
+pub(crate) async fn search_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -256,7 +246,7 @@ pub async fn search_messages(
     let has_advanced = params.from.is_some() || params.has.is_some()
         || params.before.is_some() || params.after.is_some();
 
-    let mut messages = if has_advanced {
+    let messages = if has_advanced {
         // H9: Resolve from:username → user_id using exact match
         let from_user_id = if let Some(ref from_name) = params.from {
             UserRepo::get_by_username(&state.pool, from_name).await.ok().map(|u| u.id)
@@ -294,21 +284,13 @@ pub async fn search_messages(
         MessageService::search_messages(&state.pool, channel_id, q, limit).await?
     };
 
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
-
     Ok(Json(MessagesResponse { messages }))
 }
 
 // ── Pins ─────────────────────────────────────────────────────────────
 
 /// POST /api/channels/:channel_id/pins/:message_id — pin a message
-pub async fn pin_message(
+pub(crate) async fn pin_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((channel_id, message_id)): Path<(Uuid, Uuid)>,
@@ -324,7 +306,7 @@ pub async fn pin_message(
 }
 
 /// DELETE /api/channels/:channel_id/pins/:message_id — unpin a message
-pub async fn unpin_message(
+pub(crate) async fn unpin_message(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((channel_id, message_id)): Path<(Uuid, Uuid)>,
@@ -340,20 +322,12 @@ pub async fn unpin_message(
 }
 
 /// GET /api/channels/:channel_id/pins — list pinned messages
-pub async fn list_pins(
+pub(crate) async fn list_pins(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
 ) -> Result<Json<MessagesResponse>, AppError> {
-    let mut messages = MessageService::list_pinned(&state.pool, channel_id, auth.user_id).await?;
-
-    for msg in &mut messages {
-        for att in &mut msg.attachments {
-            if let Ok(url) = state.storage.presign_get(&att.url, PRESIGN_EXPIRY_SECS).await {
-                att.url = url;
-            }
-        }
-    }
+    let messages = MessageService::list_pinned(&state.pool, channel_id, auth.user_id).await?;
 
     Ok(Json(MessagesResponse { messages }))
 }

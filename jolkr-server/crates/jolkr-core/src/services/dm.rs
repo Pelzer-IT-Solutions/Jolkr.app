@@ -9,33 +9,71 @@ use jolkr_common::JolkrError;
 use jolkr_db::models::DmMessageRow;
 use jolkr_db::repo::{DmRepo, UserRepo};
 
-use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo};
+use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, attachment_proxy_url};
 
+/// Lightweight last-message preview included in the DM channel list.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DmChannelInfo {
+pub struct DmLastMessage {
+    /// Unique identifier.
     pub id: Uuid,
-    pub is_group: bool,
-    pub name: Option<String>,
-    pub members: Vec<Uuid>,
+    /// Author user identifier.
+    pub author_id: Uuid,
+    /// Message content (may be encrypted).
+    pub content: Option<String>,
+    /// Encryption nonce when content is encrypted.
+    pub nonce: Option<String>,
+    /// Creation timestamp.
     pub created_at: DateTime<Utc>,
 }
 
+/// Public information about `dmchannel`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DmChannelInfo {
+    /// Unique identifier.
+    pub id: Uuid,
+    /// Whether this is a group conversation.
+    pub is_group: bool,
+    /// Display name.
+    pub name: Option<String>,
+    /// Member list.
+    pub members: Vec<Uuid>,
+    /// Creation timestamp.
+    pub created_at: DateTime<Utc>,
+    /// Last message.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_message: Option<DmLastMessage>,
+}
+
+/// Public information about `dmmessage`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DmMessageInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// DM channel identifier.
     pub dm_channel_id: Uuid,
+    /// Author user identifier.
     pub author_id: Uuid,
+    /// Message content (may be encrypted).
     pub content: Option<String>,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,
+    /// Whether the message has been edited.
     pub is_edited: bool,
+    /// Whether the message is pinned.
     pub is_pinned: bool,
+    /// Reply to identifier.
     pub reply_to_id: Option<Uuid>,
+    /// Attached files.
     pub attachments: Vec<AttachmentInfo>,
+    /// Aggregated reactions.
     #[serde(default)]
     pub reactions: Vec<ReactionInfo>,
+    /// Attached embeds.
     #[serde(default)]
     pub embeds: Vec<EmbedInfo>,
+    /// Creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Last-update timestamp.
     pub updated_at: DateTime<Utc>,
 }
 
@@ -61,22 +99,32 @@ impl From<DmMessageRow> for DmMessageInfo {
     }
 }
 
+/// Request payload for the `SendDm` operation.
 #[derive(Debug, Deserialize)]
 pub struct SendDmRequest {
+    /// Message content (may be encrypted).
     pub content: Option<String>,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,
+    /// Reply to identifier.
     pub reply_to_id: Option<Uuid>,
 }
 
+/// Request payload for the `EditDm` operation.
 #[derive(Debug, Deserialize)]
 pub struct EditDmRequest {
+    /// Message content (may be encrypted).
     pub content: String,
+    /// Encryption nonce when content is encrypted.
     pub nonce: Option<String>,  // base64-encoded; when provided, updates nonce in DB
 }
 
+/// `DmMessageQuery` value.
 #[derive(Debug, Deserialize)]
 pub struct DmMessageQuery {
+    /// Before.
     pub before: Option<DateTime<Utc>>,
+    /// Limit.
     pub limit: Option<i64>,
 }
 
@@ -89,22 +137,30 @@ const MAX_GROUP_DM_MEMBERS: usize = 10;
 /// Maximum length of a group DM name.
 const MAX_GROUP_NAME_LENGTH: usize = 100;
 
+/// Request payload for the `CreateGroupDm` operation.
 #[derive(Debug, Deserialize)]
 pub struct CreateGroupDmRequest {
+    /// User ids.
     pub user_ids: Vec<Uuid>,
+    /// Display name.
     pub name: Option<String>,
 }
 
+/// Request payload for the `AddMember` operation.
 #[derive(Debug, Deserialize)]
 pub struct AddMemberRequest {
+    /// Owning user identifier.
     pub user_id: Uuid,
 }
 
+/// Request payload for the `UpdateGroupDm` operation.
 #[derive(Debug, Deserialize)]
 pub struct UpdateGroupDmRequest {
+    /// Display name.
     pub name: Option<String>,
 }
 
+/// Domain service for `dm` operations.
 pub struct DmService;
 
 impl DmService {
@@ -128,6 +184,7 @@ impl DmService {
             name: channel.name,
             members: member_ids,
             created_at: channel.created_at,
+            last_message: None,
         })
     }
 
@@ -138,9 +195,12 @@ impl DmService {
     ) -> Result<Vec<DmChannelInfo>, JolkrError> {
         let channels = DmRepo::list_dm_channels(pool, user_id).await?;
 
-        // Batch load all members in one query
+        // Batch load members + last messages in parallel
         let channel_ids: Vec<Uuid> = channels.iter().map(|ch| ch.id).collect();
-        let all_members = DmRepo::get_members_for_channels(pool, &channel_ids).await?;
+        let (all_members, last_messages) = tokio::try_join!(
+            DmRepo::get_members_for_channels(pool, &channel_ids),
+            DmRepo::get_last_messages(pool, &channel_ids),
+        )?;
 
         let result = channels
             .into_iter()
@@ -150,12 +210,24 @@ impl DmService {
                     .filter(|m| m.dm_channel_id == ch.id)
                     .map(|m| m.user_id)
                     .collect();
+                let last_msg = last_messages.iter().find(|m| m.dm_channel_id == ch.id).map(|m| {
+                    use base64::Engine;
+                    let engine = base64::engine::general_purpose::STANDARD;
+                    DmLastMessage {
+                        id: m.id,
+                        author_id: m.author_id,
+                        content: m.content.clone(),
+                        nonce: m.nonce.as_ref().map(|n| engine.encode(n)),
+                        created_at: m.created_at,
+                    }
+                });
                 DmChannelInfo {
                     id: ch.id,
                     is_group: ch.is_group,
                     name: ch.name,
                     members: member_ids,
                     created_at: ch.created_at,
+                    last_message: last_msg,
                 }
             })
             .collect();
@@ -187,7 +259,7 @@ impl DmService {
         }
 
         // Trim name, treat whitespace-only as None
-        let name = req.name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+        let name = req.name.map(|n| n.trim().to_owned()).filter(|n| !n.is_empty());
         if let Some(ref name) = name {
             if name.len() > MAX_GROUP_NAME_LENGTH {
                 return Err(JolkrError::Validation(
@@ -209,6 +281,7 @@ impl DmService {
             name: channel.name,
             members: member_ids,
             created_at: channel.created_at,
+            last_message: None,
         })
     }
 
@@ -248,6 +321,7 @@ impl DmService {
             name: channel.name,
             members: member_ids,
             created_at: channel.created_at,
+            last_message: None,
         })
     }
 
@@ -276,6 +350,7 @@ impl DmService {
             name: channel.name,
             members: member_ids,
             created_at: channel.created_at,
+            last_message: None,
         })
     }
 
@@ -295,7 +370,7 @@ impl DmService {
         }
 
         // Trim name, treat whitespace-only as None
-        let name = req.name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+        let name = req.name.map(|n| n.trim().to_owned()).filter(|n| !n.is_empty());
         if let Some(ref name) = name {
             if name.len() > MAX_GROUP_NAME_LENGTH {
                 return Err(JolkrError::Validation(
@@ -315,6 +390,7 @@ impl DmService {
             name: updated.name,
             members: member_ids,
             created_at: updated.created_at,
+            last_message: None,
         })
     }
 
@@ -332,7 +408,7 @@ impl DmService {
     }
 
     /// Mark messages as read up to a given message ID.
-    /// Returns `true` if the read receipt should be broadcast (user has show_read_receipts enabled).
+    /// Returns `true` if the read receipt should be broadcast (user has `show_read_receipts` enabled).
     pub async fn mark_as_read(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -450,7 +526,7 @@ impl DmService {
             return Err(JolkrError::Forbidden);
         }
 
-        let content = req.content.trim().to_string();
+        let content = req.content.trim().to_owned();
         if content.is_empty() {
             return Err(JolkrError::Validation("Message content cannot be empty".into()));
         }
@@ -518,7 +594,7 @@ impl DmService {
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
-                    url: att.url,
+                    url: attachment_proxy_url(att.id),
                 });
             }
         }
@@ -533,22 +609,21 @@ impl DmService {
         };
         {
             use std::collections::HashMap;
-            let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
+            let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
             for r in all_reactions {
-                let entry = by_msg.entry(r.dm_message_id).or_default();
-                let emoji_entry = entry.entry(r.emoji).or_insert((0, Vec::new()));
+                let (order, map) = by_msg.entry(r.dm_message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
+                if !map.contains_key(&r.emoji) {
+                    order.push(r.emoji.clone());
+                }
+                let emoji_entry = map.entry(r.emoji).or_insert((0, Vec::new()));
                 emoji_entry.0 += 1;
                 emoji_entry.1.push(r.user_id);
             }
-            for msg in messages.iter_mut() {
-                if let Some(emojis) = by_msg.remove(&msg.id) {
-                    msg.reactions = emojis
+            for msg in &mut messages {
+                if let Some((order, mut map)) = by_msg.remove(&msg.id) {
+                    msg.reactions = order
                         .into_iter()
-                        .map(|(emoji, (count, user_ids))| ReactionInfo {
-                            emoji,
-                            count,
-                            user_ids,
-                        })
+                        .filter_map(|emoji| map.remove(&emoji).map(|(count, user_ids)| ReactionInfo { emoji, count, user_ids }))
                         .collect();
                 }
             }
@@ -576,7 +651,7 @@ impl DmService {
                     color: e.color,
                 });
             }
-            for msg in messages.iter_mut() {
+            for msg in &mut messages {
                 if let Some(embeds) = by_msg.remove(&msg.id) {
                     msg.embeds = embeds;
                 }
@@ -584,6 +659,79 @@ impl DmService {
         }
 
         Ok(messages)
+    }
+
+    // ── Enrichment helper ──────────────────────────────────────────
+
+    /// Enrich DM messages with reactions, attachments, and embeds.
+    async fn enrich_dm_messages(pool: &PgPool, messages: &mut Vec<DmMessageInfo>) -> Result<(), JolkrError> {
+        if messages.is_empty() { return Ok(()); }
+
+        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
+
+        // Attachments
+        let all_atts = DmRepo::list_attachments_for_messages(pool, &msg_ids).await.unwrap_or_default();
+        for att in all_atts {
+            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
+                msg.attachments.push(AttachmentInfo {
+                    id: att.id,
+                    filename: att.filename,
+                    content_type: att.content_type,
+                    size_bytes: att.size_bytes,
+                    url: attachment_proxy_url(att.id),
+                });
+            }
+        }
+
+        // Reactions (preserving order by first created_at — DB returns ORDER BY created_at ASC)
+        let all_reactions = DmRepo::list_reactions_for_messages(pool, &msg_ids).await.unwrap_or_default();
+        {
+            use std::collections::HashMap;
+            // Track per-message: emoji insertion order + aggregated data
+            let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
+            for r in all_reactions {
+                let (order, map) = by_msg.entry(r.dm_message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
+                if !map.contains_key(&r.emoji) {
+                    order.push(r.emoji.clone());
+                }
+                let emoji_entry = map.entry(r.emoji).or_insert((0, Vec::new()));
+                emoji_entry.0 += 1;
+                emoji_entry.1.push(r.user_id);
+            }
+            for msg in messages.iter_mut() {
+                if let Some((order, mut map)) = by_msg.remove(&msg.id) {
+                    msg.reactions = order
+                        .into_iter()
+                        .filter_map(|emoji| map.remove(&emoji).map(|(count, user_ids)| ReactionInfo { emoji, count, user_ids }))
+                        .collect();
+                }
+            }
+        }
+
+        // Embeds
+        {
+            use jolkr_db::repo::EmbedRepo;
+            use std::collections::HashMap;
+            let all_embeds = EmbedRepo::list_for_dm_messages(pool, &msg_ids).await.unwrap_or_default();
+            let mut by_msg: HashMap<Uuid, Vec<EmbedInfo>> = HashMap::new();
+            for e in all_embeds {
+                by_msg.entry(e.dm_message_id).or_default().push(EmbedInfo {
+                    url: e.url,
+                    title: e.title,
+                    description: e.description,
+                    image_url: e.image_url,
+                    site_name: e.site_name,
+                    color: e.color,
+                });
+            }
+            for msg in messages.iter_mut() {
+                if let Some(embeds) = by_msg.remove(&msg.id) {
+                    msg.embeds = embeds;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     // ── Pins ─────────────────────────────────────────────────────────
@@ -605,9 +753,11 @@ impl DmService {
 
         DmRepo::pin_message(pool, dm_channel_id, message_id, caller_id).await?;
 
-        // Re-fetch to get updated is_pinned flag
+        // Re-fetch and enrich with reactions/attachments/embeds
         let row = DmRepo::get_message(pool, message_id).await?;
-        Ok(DmMessageInfo::from(row))
+        let mut msgs = vec![DmMessageInfo::from(row)];
+        Self::enrich_dm_messages(pool, &mut msgs).await?;
+        Ok(msgs.into_iter().next().unwrap())
     }
 
     /// Unpin a message in a DM channel.
@@ -623,8 +773,11 @@ impl DmService {
 
         DmRepo::unpin_message(pool, dm_channel_id, message_id).await?;
 
+        // Re-fetch and enrich with reactions/attachments/embeds
         let row = DmRepo::get_message(pool, message_id).await?;
-        Ok(DmMessageInfo::from(row))
+        let mut msgs = vec![DmMessageInfo::from(row)];
+        Self::enrich_dm_messages(pool, &mut msgs).await?;
+        Ok(msgs.into_iter().next().unwrap())
     }
 
     /// List pinned messages in a DM channel (enriched with attachments, reactions, embeds).
@@ -639,43 +792,7 @@ impl DmService {
 
         let rows = DmRepo::list_pinned(pool, dm_channel_id).await?;
         let mut messages: Vec<DmMessageInfo> = rows.into_iter().map(DmMessageInfo::from).collect();
-
-        // Enrich with attachments, reactions, embeds (same pattern as get_messages)
-        let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-
-        let all_atts = DmRepo::list_attachments_for_messages(pool, &msg_ids).await.unwrap_or_default();
-        for att in all_atts {
-            if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
-                msg.attachments.push(AttachmentInfo {
-                    id: att.id,
-                    filename: att.filename,
-                    content_type: att.content_type,
-                    size_bytes: att.size_bytes,
-                    url: att.url,
-                });
-            }
-        }
-
-        let all_reactions = DmRepo::list_reactions_for_messages(pool, &msg_ids).await.unwrap_or_default();
-        {
-            use std::collections::HashMap;
-            let mut by_msg: HashMap<Uuid, HashMap<String, (i64, Vec<Uuid>)>> = HashMap::new();
-            for r in all_reactions {
-                let entry = by_msg.entry(r.dm_message_id).or_default();
-                let emoji_entry = entry.entry(r.emoji).or_insert((0, Vec::new()));
-                emoji_entry.0 += 1;
-                emoji_entry.1.push(r.user_id);
-            }
-            for msg in messages.iter_mut() {
-                if let Some(emojis) = by_msg.remove(&msg.id) {
-                    msg.reactions = emojis
-                        .into_iter()
-                        .map(|(emoji, (count, user_ids))| ReactionInfo { emoji, count, user_ids })
-                        .collect();
-                }
-            }
-        }
-
+        Self::enrich_dm_messages(pool, &mut messages).await?;
         Ok(messages)
     }
 }

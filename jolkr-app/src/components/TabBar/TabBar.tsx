@@ -19,7 +19,13 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import type { Server } from '../../types'
 import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
+import { isTauri, isMobile } from '../../platform/detect'
 import s from './TabBar.module.css'
+
+// Tauri Android/iOS: disable drag-to-reorder so finger scrolling along the
+// tab strip never accidentally moves a server. Reordering on those platforms
+// can be added later via a long-press menu if needed.
+const dragDisabled = isTauri && isMobile()
 
 /** Max width of each edge fade (matches ~2.5rem) */
 const TAB_MASK_FADE_PX = 40
@@ -613,9 +619,9 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
     <div
       ref={setNodeRef}
       style={style}
-      className={[s.tab, isActive ? s.active : '', isDragging ? s.draggingPlaceholder : '', isMenuOpen ? s.menuOpen : ''].filter(Boolean).join(' ')}
-      {...attributes}
-      {...listeners}
+      className={[s.tab, isActive ? s.active : '', isDragging ? s.draggingPlaceholder : '', isMenuOpen ? s.menuOpen : '', dragDisabled ? s.tabNoDrag : ''].filter(Boolean).join(' ')}
+      {...(dragDisabled ? {} : attributes)}
+      {...(dragDisabled ? {} : listeners)}
       onClick={() => onSwitch(server.id)}
       onAuxClick={e => { if (e.button === 1) { e.preventDefault(); onClose(server.id) } }}
     >

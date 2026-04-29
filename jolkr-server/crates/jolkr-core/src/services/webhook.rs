@@ -12,12 +12,19 @@ use crate::services::message::MessageInfo;
 /// Webhook info (hides token for list/get)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookInfo {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Owning channel identifier.
     pub channel_id: Uuid,
+    /// Owning server identifier.
     pub server_id: Uuid,
+    /// Creator user identifier.
     pub creator_id: Uuid,
+    /// Display name.
     pub name: String,
+    /// Avatar image URL.
     pub avatar_url: Option<String>,
+    /// Opaque token string.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
 }
@@ -25,6 +32,7 @@ pub struct WebhookInfo {
 impl WebhookInfo {
     /// Build from row. `plaintext_token` is only set on create/regenerate (the only
     /// time the caller still has the unhashed token).
+    #[must_use] 
     pub fn from_row(row: WebhookRow, plaintext_token: Option<String>) -> Self {
         Self {
             id: row.id,
@@ -38,25 +46,36 @@ impl WebhookInfo {
     }
 }
 
+/// Request payload for the `CreateWebhook` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateWebhookRequest {
+    /// Display name.
     pub name: String,
+    /// Avatar image URL.
     pub avatar_url: Option<String>,
 }
 
+/// Request payload for the `UpdateWebhook` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateWebhookRequest {
+    /// Display name.
     pub name: Option<String>,
+    /// Avatar image URL.
     pub avatar_url: Option<String>,
 }
 
+/// Request payload for the `ExecuteWebhook` operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecuteWebhookRequest {
+    /// Message content (may be encrypted).
     pub content: String,
+    /// Login username.
     pub username: Option<String>,
+    /// Avatar image URL.
     pub avatar_url: Option<String>,
 }
 
+/// Domain service for `webhook` operations.
 pub struct WebhookService;
 
 impl WebhookService {
@@ -64,12 +83,12 @@ impl WebhookService {
     fn generate_token() -> String {
         use rand::Rng;
         let mut rng = rand::thread_rng();
-        let bytes: Vec<u8> = (0..48).map(|_| rng.gen::<u8>()).collect();
+        let bytes: Vec<u8> = (0..48).map(|_| rng.r#gen::<u8>()).collect();
         use base64::Engine;
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&bytes)
     }
 
-    /// Create a webhook. Requires MANAGE_WEBHOOKS permission.
+    /// Create a webhook. Requires `MANAGE_WEBHOOKS` permission.
     pub async fn create_webhook(
         pool: &PgPool,
         channel_id: Uuid,
@@ -92,7 +111,7 @@ impl WebhookService {
         }
 
         // Validate
-        let name = req.name.trim().to_string();
+        let name = req.name.trim().to_owned();
         if name.is_empty() || name.len() > 80 {
             return Err(JolkrError::Validation("Webhook name must be 1-80 characters".into()));
         }
@@ -241,12 +260,12 @@ impl WebhookService {
         let message_id = Uuid::new_v4();
         let now = chrono::Utc::now();
         let row = sqlx::query_as::<_, jolkr_db::models::MessageRow>(
-            r#"
+            "
             INSERT INTO messages
                 (id, channel_id, author_id, content, is_edited, is_pinned, webhook_id, created_at, updated_at)
             VALUES ($1, $2, $3, $4, false, false, $5, $6, $6)
             RETURNING *
-            "#,
+            ",
         )
         .bind(message_id)
         .bind(webhook.channel_id)

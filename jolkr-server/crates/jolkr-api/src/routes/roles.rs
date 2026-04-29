@@ -16,17 +16,17 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct RoleResponse {
+pub(crate) struct RoleResponse {
     pub role: RoleInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct RolesResponse {
+pub(crate) struct RolesResponse {
     pub roles: Vec<RoleInfo>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct MemberWithRoles {
+pub(crate) struct MemberWithRoles {
     pub id: Uuid,
     pub server_id: Uuid,
     pub user_id: Uuid,
@@ -36,24 +36,24 @@ pub struct MemberWithRoles {
 }
 
 #[derive(Debug, Serialize)]
-pub struct MembersWithRolesResponse {
+pub(crate) struct MembersWithRolesResponse {
     pub members: Vec<MemberWithRoles>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AssignRoleBody {
+pub(crate) struct AssignRoleBody {
     pub user_id: Uuid,
 }
 
 #[derive(Debug, Serialize)]
-pub struct PermissionsResponse {
+pub(crate) struct PermissionsResponse {
     pub permissions: i64,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/servers/:server_id/roles
-pub async fn create_role(
+pub(crate) async fn create_role(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -65,7 +65,7 @@ pub async fn create_role(
 }
 
 /// GET /api/servers/:server_id/roles — requires membership
-pub async fn list_roles(
+pub(crate) async fn list_roles(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -78,7 +78,7 @@ pub async fn list_roles(
 }
 
 /// PATCH /api/roles/:id
-pub async fn update_role(
+pub(crate) async fn update_role(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -89,7 +89,7 @@ pub async fn update_role(
 }
 
 /// DELETE /api/roles/:id
-pub async fn delete_role(
+pub(crate) async fn delete_role(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -99,7 +99,7 @@ pub async fn delete_role(
 }
 
 /// PUT /api/servers/:server_id/roles/:role_id/members — assign role
-pub async fn assign_role(
+pub(crate) async fn assign_role(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, role_id)): Path<(Uuid, Uuid)>,
@@ -110,7 +110,7 @@ pub async fn assign_role(
 }
 
 /// DELETE /api/servers/:server_id/roles/:role_id/members/:user_id — remove role
-pub async fn remove_role(
+pub(crate) async fn remove_role(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, role_id, user_id)): Path<(Uuid, Uuid, Uuid)>,
@@ -120,7 +120,7 @@ pub async fn remove_role(
 }
 
 /// GET /api/servers/:server_id/members-with-roles — members with their role_ids
-pub async fn list_members_with_roles(
+pub(crate) async fn list_members_with_roles(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -154,7 +154,7 @@ pub async fn list_members_with_roles(
 }
 
 /// GET /api/servers/:server_id/permissions/@me — get caller's permissions
-pub async fn get_my_permissions(
+pub(crate) async fn get_my_permissions(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,

@@ -4,6 +4,7 @@
  * This adapter layer bridges the two type systems.
  */
 
+import { displayName } from '../utils/format'
 import type {
   User,
   Server as ApiServer,
@@ -43,8 +44,7 @@ export function hashColor(input: string): string {
 
 /** First letter of display name or username, uppercased. */
 export function avatarLetter(user: User): string {
-  const name = user.display_name || user.username
-  return (name?.[0] ?? '?').toUpperCase()
+  return (displayName(user)?.[0] ?? '?').toUpperCase()
 }
 
 /** Build the cached avatar endpoint URL for a user (no presigned S3 needed). */
@@ -113,7 +113,7 @@ export function transformMessage(
 ): UiMessage {
   const author = users.get(msg.author_id) ?? msg.author
   const { color, letter, avatarUrl } = author ? userToAvatar(author) : { color: 'oklch(50% 0 0)', letter: '?', avatarUrl: null }
-  const displayName = author?.display_name || author?.username || 'Unknown'
+  const authorName = displayName(author)
 
   // Continued = same author as previous message
   const continued = !!prevMsg && prevMsg.author_id === msg.author_id
@@ -125,27 +125,29 @@ export function transformMessage(
     if (replyMsg) {
       const replyAuthor = replyMsg.author ?? users.get(replyMsg.author_id)
       replyTo = {
-        author: replyAuthor?.display_name || replyAuthor?.username || 'Unknown',
+        author: displayName(replyAuthor),
         // If the reply has a nonce, it's encrypted — show placeholder (content is raw ciphertext)
         text: replyMsg.nonce ? 'Encrypted message' : (replyMsg.content?.slice(0, 100) || 'Encrypted message'),
       }
     }
   }
 
-  // Reactions — backend format is already compatible
+  // Reactions — map to UI format with userIds for tooltip
   const reactions: Reaction[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
     me: r.me,
+    userIds: r.user_ids ?? [],
   }))
 
   return {
     id: msg.id,
-    author: displayName,
+    author: authorName,
     color,
     letter,
     avatarUrl,
     time: formatTimestamp(msg.created_at),
+    created_at: msg.created_at,
     content: msg.content || '',
     reactions,
     continued,
@@ -156,6 +158,8 @@ export function transformMessage(
     author_id: msg.author_id,
     channel_id: msg.channel_id,
     is_pinned: msg.is_pinned,
+    embeds: msg.embeds,
+    attachments: msg.attachments,
   }
 }
 
@@ -216,6 +220,8 @@ export function transformServer(
       icon: channelIcon(ch.kind),
       desc: ch.topic || '',
       unread: channelUnreads?.[ch.id] ?? 0,
+      is_system: ch.is_system,
+      kind: ch.kind === 'voice' ? 'voice' : 'text',
     }))
 
   return {
@@ -224,7 +230,7 @@ export function transformServer(
     icon: (server.name?.[0] ?? '?').toUpperCase(),
     color: hashColor(server.id),
     unread: unreadCount > 0,
-    iconUrl: server.icon_url ? iconEndpoint(server.id) : null,
+    iconUrl: server.icon_url ? `${iconEndpoint(server.id)}?v=${encodeURIComponent(server.icon_url.slice(-8))}` : null,
     categories: uiCategories,
     channels: uiChannels,
     members: memberGroup,
@@ -248,7 +254,7 @@ export function transformMemberGroup(
     const status = toMemberStatus(presences.get(user.id) ?? user.status)
     const { color, letter, avatarUrl } = userToAvatar(user)
     const uiMember: UiMember = {
-      name: member.nickname || user.display_name || user.username,
+      name: member.nickname || displayName(user),
       status,
       color,
       letter,
@@ -285,7 +291,7 @@ export function transformDmConversation(
       const status = toMemberStatus(presences.get(id) ?? user.status)
       const { color, letter, avatarUrl } = userToAvatar(user)
       return {
-        name: user.display_name || user.username,
+        name: displayName(user),
         status,
         color,
         letter,

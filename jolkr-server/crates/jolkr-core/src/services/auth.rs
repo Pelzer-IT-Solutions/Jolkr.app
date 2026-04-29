@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use jolkr_common::JolkrError;
 use jolkr_db::models::UserRow;
-use jolkr_db::repo::{PasswordResetRepo, SessionRepo, UserRepo};
+use jolkr_db::repo::{EmailVerificationRepo, PasswordResetRepo, SessionRepo, UserRepo};
 
 // ── Public types ───────────────────────────────────────────────────────
 
@@ -33,20 +33,31 @@ pub struct Claims {
 /// An access + refresh token pair returned after login / register / refresh.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenPair {
+    /// Access token string.
     pub access_token: String,
+    /// Refresh token string.
     pub refresh_token: String,
+    /// Lifetime in seconds.
     pub expires_in: i64,
 }
 
 /// Lightweight user DTO returned alongside tokens.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthUser {
+    /// Unique identifier.
     pub id: Uuid,
+    /// Email address.
     pub email: String,
+    /// Login username.
     pub username: String,
+    /// Optional display name shown in the UI.
     pub display_name: Option<String>,
+    /// Avatar image URL.
     pub avatar_url: Option<String>,
+    /// Whether this is a system-generated entity.
     pub is_system: bool,
+    /// Email verified.
+    pub email_verified: bool,
 }
 
 impl From<UserRow> for AuthUser {
@@ -58,12 +69,14 @@ impl From<UserRow> for AuthUser {
             display_name: row.display_name,
             avatar_url: row.avatar_url,
             is_system: row.is_system,
+            email_verified: row.email_verified,
         }
     }
 }
 
 // ── Service ────────────────────────────────────────────────────────────
 
+/// Domain service for `auth` operations.
 pub struct AuthService;
 
 impl AuthService {
@@ -275,6 +288,53 @@ impl AuthService {
         Ok(())
     }
 
+    // ── Email verification ────────────────────────────────────────────
+
+    /// Generate an email verification token for a user.
+    /// Returns the plaintext token to include in the verification URL.
+    pub async fn request_email_verification(
+        pool: &PgPool,
+        user_id: Uuid,
+    ) -> Result<String, JolkrError> {
+        // Delete any existing verification tokens for this user
+        EmailVerificationRepo::delete_for_user(pool, user_id).await?;
+
+        let plaintext_token = Self::generate_reset_token();
+        let token_hash = Self::hash_reset_token(&plaintext_token);
+
+        // Token expires in 24 hours
+        let expires_at = Utc::now() + Duration::hours(24);
+
+        EmailVerificationRepo::create(pool, user_id, &token_hash, expires_at).await?;
+        info!(user_id = %user_id, "Email verification token generated");
+
+        Ok(plaintext_token)
+    }
+
+    /// Confirm email verification: validate token, mark user as verified.
+    pub async fn confirm_email_verification(
+        pool: &PgPool,
+        token: &str,
+    ) -> Result<(), JolkrError> {
+        let token_hash = Self::hash_reset_token(token);
+        let row = EmailVerificationRepo::get_by_token_hash(pool, &token_hash).await.map_err(|_| {
+            warn!("Invalid or expired email verification token used");
+            JolkrError::Validation("Invalid or expired verification link".into())
+        })?;
+
+        // Mark user as verified
+        EmailVerificationRepo::verify_user(pool, row.user_id).await?;
+
+        // Mark token as used
+        EmailVerificationRepo::mark_used(pool, row.id).await?;
+
+        // Delete all remaining tokens for this user
+        EmailVerificationRepo::delete_for_user(pool, row.user_id).await?;
+
+        info!(user_id = %row.user_id, "Email verified successfully");
+        Ok(())
+    }
+
     // ── Token validation ───────────────────────────────────────────────
 
     /// Validate an access token and return the embedded claims.
@@ -362,6 +422,7 @@ impl AuthService {
     }
 
     /// Public wrapper for hashing a refresh token (used by logout endpoints).
+    #[must_use] 
     pub fn hash_refresh_token_pub(token: &str) -> String {
         Self::hash_refresh_token(token)
     }
@@ -374,7 +435,7 @@ impl AuthService {
     }
 
     /// Generate a cryptographically random password reset token (48 bytes, base64url).
-    fn generate_reset_token() -> String {
+    pub(crate) fn generate_reset_token() -> String {
         use base64::Engine;
         use rand::RngCore;
         let mut bytes = [0u8; 48];
@@ -383,7 +444,7 @@ impl AuthService {
     }
 
     /// Hash a reset token with SHA-256 for safe DB storage.
-    fn hash_reset_token(token: &str) -> String {
+    pub(crate) fn hash_reset_token(token: &str) -> String {
         use sha2::{Sha256, Digest};
         let hash = Sha256::digest(token.as_bytes());
         hex::encode(hash)
@@ -418,11 +479,11 @@ impl AuthService {
             return Err(JolkrError::Validation("Invalid email format".into()));
         }
         // Domain parts must each be non-empty
-        if domain.split('.').any(|p| p.is_empty()) {
+        if domain.split('.').any(str::is_empty) {
             return Err(JolkrError::Validation("Invalid email format".into()));
         }
         // TLD must be at least 2 chars
-        if domain.split('.').last().map_or(true, |tld| tld.len() < 2) {
+        if domain.split('.').next_back().is_none_or(|tld| tld.len() < 2) {
             return Err(JolkrError::Validation("Invalid email format".into()));
         }
         Ok(())
@@ -461,12 +522,12 @@ impl AuthService {
                 "Password must be at most 128 characters".into(),
             ));
         }
-        if !password.chars().any(|c| c.is_uppercase()) {
+        if !password.chars().any(char::is_uppercase) {
             return Err(JolkrError::Validation(
                 "Password must contain at least one uppercase letter".into(),
             ));
         }
-        if !password.chars().any(|c| c.is_lowercase()) {
+        if !password.chars().any(char::is_lowercase) {
             return Err(JolkrError::Validation(
                 "Password must contain at least one lowercase letter".into(),
             ));

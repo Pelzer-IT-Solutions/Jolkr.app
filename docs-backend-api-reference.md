@@ -67,6 +67,8 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 | POST | `/api/auth/change-password` | JWT | Change current user's password |
 | POST | `/api/auth/logout` | JWT | Revoke refresh token |
 | POST | `/api/auth/logout-all` | JWT | Revoke all sessions |
+| POST | `/api/auth/verify-email` | None | Verify email address with token |
+| POST | `/api/auth/resend-verification` | JWT | Resend verification email |
 
 ### POST `/api/auth/register`
 ```json
@@ -1127,6 +1129,7 @@ Used for end-to-end encryption in server channels and group DMs using the Sender
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/api/upload` | JWT | Upload file (generic) |
+| GET | `/api/files/:attachment_id` | JWT | Serve file by attachment ID |
 
 ### Constraints
 - **Max file size**: 26 MB
@@ -1149,6 +1152,22 @@ Used for end-to-end encryption in server channels and group DMs using the Sender
   }
 }
 ```
+
+---
+
+## 23b. GIFs & oEmbed
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/gifs/search` | None | Search GIFs (GIPHY proxy) |
+| GET | `/api/gifs/featured` | None | Get featured/trending GIFs |
+| GET | `/api/gifs/categories` | None | Get GIF categories (30min cache) |
+| GET | `/api/gifs/i/:gif_id/:size` | None | Proxy GIF image by ID and size |
+| GET | `/api/gifs/media` | None | Proxy GIF media |
+| GET | `/api/gifs/favorites` | JWT | List user's favorite GIFs |
+| POST | `/api/gifs/favorites` | JWT | Add GIF to favorites |
+| DELETE | `/api/gifs/favorites/:gif_id` | JWT | Remove GIF from favorites |
+| GET | `/api/oembed` | None | oEmbed proxy for link previews |
 
 ---
 
@@ -1288,6 +1307,12 @@ ws://localhost:8080/ws
 | `MINIO_URL` | — | No | MinIO/S3 internal URL (used for presigned URL generation) |
 | `REDIS_PASSWORD` | — | No | Redis authentication password |
 | `STUN_SERVER` | — | No | STUN server address for WebRTC ICE |
+| `MAIL_HOST` | — | No | Mail server hostname (SMTP) |
+| `MAIL_PORT` | `587` | No | Mail server port |
+| `MAIL_USERNAME` | — | No | Mail server authentication username |
+| `MAIL_PASSWORD` | — | No | Mail server authentication password |
+| `MAIL_FROM_ADDRESS` | `noreply@jolkr.app` | No | Sender address for outgoing emails |
+| `GIPHY_API_KEY` | — | No | GIPHY API key for GIF search/featured/categories (503 if not set) |
 
 ---
 
@@ -1332,7 +1357,9 @@ ws://localhost:8080/ws
 | `dm_reactions` | DM message reactions | id, dm_message_id, user_id, emoji |
 | `message_embeds` | Channel message link embeds | id, message_id, url, title, description, image_url |
 | `password_reset_tokens` | Password reset tokens | id, user_id, token_hash, expires_at |
+| `email_verification_tokens` | Email verification tokens | id, user_id, token_hash, expires_at, used_at |
 | `server_bans` | Server ban records | id, server_id, user_id, banned_by, reason |
+| `gif_favorites` | User GIF favorites | id, user_id, gif_id, gif_url, preview_url, title, added_at |
 | `server_emojis` | Custom server emojis | id, server_id, name, image_url, uploader_id, animated |
 
 ---

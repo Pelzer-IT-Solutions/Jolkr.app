@@ -1,3 +1,8 @@
+//! Jolkr HTTP/WebSocket API server: Axum routes, middleware, and the gateway.
+#![expect(
+    tail_expr_drop_order,
+    reason = "Edition-2024 drop-order audit: tail expressions involve awaited futures and Redis connection clones. Their custom destructors only release pooled handles (no locks, no observable side effects). Will be revisited during the 2024 edition migration."
+)]
 use std::net::SocketAddr;
 
 use tokio::net::TcpListener;
@@ -5,15 +10,22 @@ use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 mod config;
+/// Embed service module.
 pub mod embed_service;
+/// Email service module.
 pub mod email_service;
 mod errors;
 mod middleware;
+/// Nats bus module.
 pub mod nats_bus;
+/// Push service module.
 pub mod push_service;
+/// Redis store module.
 pub mod redis_store;
 mod routes;
+/// Image processing module.
 pub mod image_processing;
+/// Storage module.
 pub mod storage;
 mod ws;
 
@@ -87,11 +99,13 @@ async fn main() {
         config.vapid_subject.clone(),
     );
 
-    // Email service (SMTP for password resets)
+    // Email service (SMTP for password resets + email verification)
     let email = email_service::EmailService::new(
-        config.smtp_host.as_deref(),
-        config.smtp_port,
-        &config.smtp_from,
+        config.mail_host.as_deref(),
+        config.mail_port,
+        &config.mail_from,
+        config.mail_username.as_deref(),
+        config.mail_password.as_deref(),
     );
 
     // Link embed service (fetches URL previews async)

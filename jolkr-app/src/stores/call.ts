@@ -63,7 +63,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       ringTimer = setTimeout(() => {
         const state = get();
         if (state.outgoingCall?.dmId === dmId) {
-          api.endCall(dmId).catch(() => {});
+          api.endCall(dmId).catch(e => console.warn('Failed to end call:', e));
           set({ outgoingCall: null });
         }
       }, RING_TIMEOUT_MS);
@@ -148,7 +148,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       const state = get();
       if (state.incomingCall?.dmId === dmId) {
         stopRingSound();
-        api.rejectCall(dmId).catch(() => {});
+        api.rejectCall(dmId).catch(e => console.warn('Failed to reject call:', e));
         set({ incomingCall: null });
       }
     }, RING_TIMEOUT_MS);
@@ -227,7 +227,7 @@ useVoiceStore.subscribe((state, prev) => {
   if (prev.connectionState !== 'disconnected' && state.connectionState === 'disconnected') {
     const { activeCallDmId } = useCallStore.getState();
     if (activeCallDmId) {
-      api.endCall(activeCallDmId).catch(() => {});
+      api.endCall(activeCallDmId).catch(e => console.warn('Failed to end call:', e));
       useCallStore.setState({ activeCallDmId: null });
     }
   }

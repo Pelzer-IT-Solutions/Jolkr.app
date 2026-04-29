@@ -8,7 +8,6 @@ use uuid::Uuid;
 use jolkr_db::repo::UserRepo;
 use jolkr_db::repo::ServerRepo;
 
-use crate::image_processing::{convert_to_webp, ImagePurpose};
 use crate::routes::AppState;
 
 /// Max avatar size served to clients (2x retina of 56px max display = 112, round to 128).
@@ -19,7 +18,7 @@ const SERVE_MAX_PX: u32 = 128;
 /// Serves the user's avatar image directly from S3, resized to 128×128 WebP.
 /// No authentication required — avatars are public.
 /// Nginx caches the response so the resize only happens once per avatar.
-pub async fn get_user_avatar(
+pub(crate) async fn get_user_avatar(
     State(state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> Result<Response<Body>, StatusCode> {
@@ -45,7 +44,7 @@ pub async fn get_user_avatar(
 ///
 /// Serves the server's icon image directly from S3, resized to 128×128 WebP.
 /// No authentication required — server icons are public.
-pub async fn get_server_icon(
+pub(crate) async fn get_server_icon(
     State(state): State<AppState>,
     Path(server_id): Path<Uuid>,
 ) -> Result<Response<Body>, StatusCode> {

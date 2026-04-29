@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::models::ServerEmojiRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `emoji` persistence.
 pub struct EmojiRepo;
 
 impl EmojiRepo {
@@ -18,11 +19,11 @@ impl EmojiRepo {
         animated: bool,
     ) -> Result<ServerEmojiRow, JolkrError> {
         let row = sqlx::query_as::<_, ServerEmojiRow>(
-            r#"
+            "
             INSERT INTO server_emojis (id, server_id, name, image_key, uploader_id, animated)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
-            "#,
+            ",
         )
         .bind(id)
         .bind(server_id)
@@ -36,7 +37,7 @@ impl EmojiRepo {
             if let sqlx::Error::Database(ref db_err) = e {
                 if db_err.code().as_deref() == Some("23505") {
                     return JolkrError::Validation(
-                        format!("An emoji with the name '{}' already exists in this server", name),
+                        format!("An emoji with the name '{name}' already exists in this server"),
                     );
                 }
             }
@@ -52,7 +53,7 @@ impl EmojiRepo {
         server_id: Uuid,
     ) -> Result<Vec<ServerEmojiRow>, JolkrError> {
         let rows = sqlx::query_as::<_, ServerEmojiRow>(
-            r#"SELECT * FROM server_emojis WHERE server_id = $1 ORDER BY name ASC"#,
+            "SELECT * FROM server_emojis WHERE server_id = $1 ORDER BY name ASC",
         )
         .bind(server_id)
         .fetch_all(pool)
@@ -67,7 +68,7 @@ impl EmojiRepo {
         id: Uuid,
     ) -> Result<ServerEmojiRow, JolkrError> {
         let row = sqlx::query_as::<_, ServerEmojiRow>(
-            r#"SELECT * FROM server_emojis WHERE id = $1"#,
+            "SELECT * FROM server_emojis WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -83,7 +84,7 @@ impl EmojiRepo {
         server_id: Uuid,
     ) -> Result<i64, JolkrError> {
         let row: (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM server_emojis WHERE server_id = $1"#,
+            "SELECT COUNT(*) FROM server_emojis WHERE server_id = $1",
         )
         .bind(server_id)
         .fetch_one(pool)
@@ -94,7 +95,7 @@ impl EmojiRepo {
 
     /// Delete an emoji.
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
-        let result = sqlx::query(r#"DELETE FROM server_emojis WHERE id = $1"#)
+        let result = sqlx::query("DELETE FROM server_emojis WHERE id = $1")
             .bind(id)
             .execute(pool)
             .await?;
@@ -116,7 +117,7 @@ impl EmojiRepo {
         }
 
         let rows = sqlx::query_as::<_, ServerEmojiRow>(
-            r#"SELECT * FROM server_emojis WHERE server_id = ANY($1) ORDER BY server_id, name ASC"#,
+            "SELECT * FROM server_emojis WHERE server_id = ANY($1) ORDER BY server_id, name ASC",
         )
         .bind(server_ids)
         .fetch_all(pool)

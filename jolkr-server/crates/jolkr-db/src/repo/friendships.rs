@@ -4,9 +4,11 @@ use uuid::Uuid;
 use crate::models::FriendshipRow;
 use jolkr_common::JolkrError;
 
+/// Repository for `friendship` persistence.
 pub struct FriendshipRepo;
 
 impl FriendshipRepo {
+    /// Sends request.
     pub async fn send_request(
         pool: &PgPool,
         requester_id: Uuid,
@@ -14,9 +16,9 @@ impl FriendshipRepo {
     ) -> Result<FriendshipRow, JolkrError> {
         let id = Uuid::new_v4();
         let row = sqlx::query_as::<_, FriendshipRow>(
-            r#"INSERT INTO friendships (id, requester_id, addressee_id, status)
+            "INSERT INTO friendships (id, requester_id, addressee_id, status)
                VALUES ($1, $2, $3, 'pending')
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(id)
         .bind(requester_id)
@@ -32,16 +34,17 @@ impl FriendshipRepo {
         Ok(row)
     }
 
+    /// Accept request.
     pub async fn accept_request(
         pool: &PgPool,
         friendship_id: Uuid,
         addressee_id: Uuid,
     ) -> Result<FriendshipRow, JolkrError> {
         let row = sqlx::query_as::<_, FriendshipRow>(
-            r#"UPDATE friendships
+            "UPDATE friendships
                SET status = 'accepted', updated_at = NOW()
                WHERE id = $1 AND addressee_id = $2 AND status = 'pending'
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(friendship_id)
         .bind(addressee_id)
@@ -51,14 +54,15 @@ impl FriendshipRepo {
         Ok(row)
     }
 
+    /// Decline or remove.
     pub async fn decline_or_remove(
         pool: &PgPool,
         friendship_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), JolkrError> {
         let result = sqlx::query(
-            r#"DELETE FROM friendships
-               WHERE id = $1 AND (requester_id = $2 OR addressee_id = $2)"#,
+            "DELETE FROM friendships
+               WHERE id = $1 AND (requester_id = $2 OR addressee_id = $2)",
         )
         .bind(friendship_id)
         .bind(user_id)
@@ -71,6 +75,7 @@ impl FriendshipRepo {
         Ok(())
     }
 
+    /// Block user.
     pub async fn block_user(
         pool: &PgPool,
         blocker_id: Uuid,
@@ -80,9 +85,9 @@ impl FriendshipRepo {
 
         // Remove any existing friendship first
         sqlx::query(
-            r#"DELETE FROM friendships
+            "DELETE FROM friendships
                WHERE (requester_id = $1 AND addressee_id = $2)
-                  OR (requester_id = $2 AND addressee_id = $1)"#,
+                  OR (requester_id = $2 AND addressee_id = $1)",
         )
         .bind(blocker_id)
         .bind(blocked_id)
@@ -91,9 +96,9 @@ impl FriendshipRepo {
 
         let id = Uuid::new_v4();
         let row = sqlx::query_as::<_, FriendshipRow>(
-            r#"INSERT INTO friendships (id, requester_id, addressee_id, status)
+            "INSERT INTO friendships (id, requester_id, addressee_id, status)
                VALUES ($1, $2, $3, 'blocked')
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(id)
         .bind(blocker_id)
@@ -105,15 +110,16 @@ impl FriendshipRepo {
         Ok(row)
     }
 
+    /// Lists friends.
     pub async fn list_friends(
         pool: &PgPool,
         user_id: Uuid,
     ) -> Result<Vec<FriendshipRow>, JolkrError> {
         let rows = sqlx::query_as::<_, FriendshipRow>(
-            r#"SELECT * FROM friendships
+            "SELECT * FROM friendships
                WHERE (requester_id = $1 OR addressee_id = $1)
                  AND status = 'accepted'
-               ORDER BY updated_at DESC"#,
+               ORDER BY updated_at DESC",
         )
         .bind(user_id)
         .fetch_all(pool)
@@ -121,14 +127,15 @@ impl FriendshipRepo {
         Ok(rows)
     }
 
+    /// Lists pending.
     pub async fn list_pending(
         pool: &PgPool,
         user_id: Uuid,
     ) -> Result<Vec<FriendshipRow>, JolkrError> {
         let rows = sqlx::query_as::<_, FriendshipRow>(
-            r#"SELECT * FROM friendships
+            "SELECT * FROM friendships
                WHERE addressee_id = $1 AND status = 'pending'
-               ORDER BY created_at DESC"#,
+               ORDER BY created_at DESC",
         )
         .bind(user_id)
         .fetch_all(pool)

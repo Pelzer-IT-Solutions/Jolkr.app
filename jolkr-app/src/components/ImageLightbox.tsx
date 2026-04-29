@@ -1,236 +1,327 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useFocusTrap } from '../hooks/useFocusTrap';
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, ExternalLink, MoreHorizontal, Copy, Link, Info } from 'lucide-react';
-import { formatBytes } from '../utils/format';
-import Spinner from './ui/Spinner';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import {
+  X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, ExternalLink,
+  MoreHorizontal, Copy, Link, Info, ChevronRight as ArrowRight,
+} from 'lucide-react'
+import type { Attachment } from '../api/types'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useAuthedFileUrl } from '../hooks/useAuthedFileUrl'
+import { rewriteStorageUrl } from '../platform/config'
+import { formatBytes } from '../utils/format'
+import s from './ImageLightbox.module.css'
 
 export interface LightboxImage {
-  src: string;
-  alt: string;
-  filename?: string;
-  sizeBytes?: number;
-  contentType?: string;
+  src: string
+  alt: string
+  filename?: string
+  sizeBytes?: number
+  contentType?: string
 }
 
-export interface ImageLightboxProps {
-  images: LightboxImage[];
-  initialIndex?: number;
-  onClose: () => void;
+interface PropsAttachments {
+  attachments: Attachment[]
+  initialIndex?: number
+  onClose: () => void
+}
+interface PropsImages {
+  images: LightboxImage[]
+  initialIndex?: number
+  onClose: () => void
+}
+type Props = PropsAttachments | PropsImages
+
+const MIN_SCALE = 0.5
+const MAX_SCALE = 3
+const SCALE_STEP = 0.1
+
+function resolveSrc(rawUrl: string): string {
+  if (rawUrl.startsWith('/api/files/') || rawUrl.startsWith('/files/')) return rawUrl
+  return rewriteStorageUrl(rawUrl) ?? rawUrl
 }
 
-const MIN_SCALE = 0.5;
-const MAX_SCALE = 2;
-const SCALE_STEP = 0.1;
+export default function ImageLightbox(props: Props) {
+  // Normalize both prop shapes into a single internal model — the legacy
+  // "images" prop carries a precomputed src; the newer "attachments" prop
+  // routes through useAuthedFileUrl below to get a blob: URL.
+  const items: { src: string; needsAuth: boolean; alt: string; filename?: string; sizeBytes?: number; contentType?: string }[] =
+    'attachments' in props
+      ? props.attachments.map((a) => ({
+          src: resolveSrc(a.url),
+          needsAuth: a.url.startsWith('/api/files/') || a.url.startsWith('/files/'),
+          alt: a.filename,
+          filename: a.filename,
+          sizeBytes: a.size_bytes,
+          contentType: a.content_type,
+        }))
+      : props.images.map((i) => ({ ...i, needsAuth: false }))
 
-export default function ImageLightbox({ images, initialIndex = 0, onClose }: ImageLightboxProps) {
-  const [index, setIndex] = useState(initialIndex);
-  const [loaded, setLoaded] = useState(false);
-  const [scale, setScale] = useState(1);
-  const [showMore, setShowMore] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const lightboxRef = useRef<HTMLDivElement>(null);
-  const moreRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(lightboxRef);
+  const [index, setIndex] = useState(props.initialIndex ?? 0)
+  const [scale, setScale] = useState(1)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const [showMore, setShowMore] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
+  const [naturalDims, setNaturalDims] = useState<{ w: number; h: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const moreRef = useRef<HTMLDivElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+  // Live drag state held in refs (no rerender per mousemove). Captures the
+  // cursor + offset at mousedown so the move handler can compute delta in O(1).
+  const panStartRef = useRef<{ cursorX: number; cursorY: number; offsetX: number; offsetY: number } | null>(null)
+  // Track whether mousedown actually moved — used to suppress the click-to-
+  // close that fires after a drag ends.
+  const dragMovedRef = useRef(false)
+  useFocusTrap(containerRef)
 
-  const current = images[index];
-  const hasMultiple = images.length > 1;
+  const current = items[index]
+  const hasMultiple = items.length > 1
 
-  const goPrev = useCallback(() => {
-    setIndex((i) => (i > 0 ? i - 1 : images.length - 1));
-  }, [images.length]);
+  // Always call the hook — pass null when current item already has a usable
+  // URL so the hook short-circuits without a fetch.
+  const blobUrl = useAuthedFileUrl(current?.needsAuth ? current.src : null)
+  const displaySrc = current?.needsAuth ? blobUrl : current?.src ?? null
+  const isLoading = !displaySrc
 
-  const goNext = useCallback(() => {
-    setIndex((i) => (i < images.length - 1 ? i + 1 : 0));
-  }, [images.length]);
+  const goPrev = useCallback(() => setIndex((i) => (i > 0 ? i - 1 : items.length - 1)), [items.length])
+  const goNext = useCallback(() => setIndex((i) => (i < items.length - 1 ? i + 1 : 0)), [items.length])
+  const clampScale = useCallback((v: number) => Math.round(Math.min(Math.max(v, MIN_SCALE), MAX_SCALE) * 10) / 10, [])
 
-  const clampScale = useCallback((s: number) => Math.round(Math.min(Math.max(s, MIN_SCALE), MAX_SCALE) * 10) / 10, []);
+  // Pan offset is bounded so the image can't be dragged off-screen entirely —
+  // when we're zoomed in, the user can shift up to half of the *extra* pixels
+  // the zoom adds in each axis. At scale=1 the bounds are zero (pan is locked).
+  const clampOffset = useCallback((next: { x: number; y: number }, atScale: number) => {
+    const img = imgRef.current
+    if (!img) return next
+    // offsetWidth/Height ignore CSS transforms, so they give us the true
+    // pre-scale rendered size — exactly what we need for the bounds math.
+    const baseW = img.offsetWidth
+    const baseH = img.offsetHeight
+    const maxX = Math.max(0, (baseW * atScale - baseW) / 2)
+    const maxY = Math.max(0, (baseH * atScale - baseH) / 2)
+    return {
+      x: Math.min(maxX, Math.max(-maxX, next.x)),
+      y: Math.min(maxY, Math.max(-maxY, next.y)),
+    }
+  }, [])
 
-  const zoomIn = useCallback(() => setScale((s) => clampScale(s + SCALE_STEP)), [clampScale]);
-  const zoomOut = useCallback(() => setScale((s) => clampScale(s - SCALE_STEP)), [clampScale]);
+  // Centralised setter so every zoom path enforces the offset clamp. When the
+  // user zooms back to 1× we snap the offset back to centre — otherwise a
+  // tiny remainder leaves the image visibly nudged.
+  const applyScale = useCallback((nextScale: number, anchor?: { clientX: number; clientY: number }) => {
+    const clamped = clampScale(nextScale)
+    setScale((prev) => {
+      if (clamped === prev) return prev
+      // If we have an anchor (wheel zoom toward cursor), shift the offset so
+      // the point under the cursor stays put. Derivation: offset is added in
+      // post-scale viewport pixels, so `new = old + dx * (1 - ratio)` where
+      // dx is cursor distance from the displayed image centre.
+      if (anchor && imgRef.current) {
+        const rect = imgRef.current.getBoundingClientRect()
+        const cx = rect.left + rect.width / 2
+        const cy = rect.top  + rect.height / 2
+        const dx = anchor.clientX - cx
+        const dy = anchor.clientY - cy
+        const ratio = clamped / prev
+        setOffset((curr) => {
+          const next = clamped <= 1
+            ? { x: 0, y: 0 }
+            : { x: curr.x + dx * (1 - ratio), y: curr.y + dy * (1 - ratio) }
+          return clampOffset(next, clamped)
+        })
+      } else if (clamped <= 1) {
+        setOffset({ x: 0, y: 0 })
+      } else {
+        setOffset((curr) => clampOffset(curr, clamped))
+      }
+      return clamped
+    })
+  }, [clampScale, clampOffset])
+
+  const zoomIn  = useCallback(() => applyScale(scale + SCALE_STEP), [scale, applyScale])
+  const zoomOut = useCallback(() => applyScale(scale - SCALE_STEP), [scale, applyScale])
+
+  // Reset per-image state when navigating
+  useEffect(() => {
+    setScale(1)
+    setOffset({ x: 0, y: 0 })
+    setShowMore(false)
+    setShowDetails(false)
+    setNaturalDims(null)
+  }, [index])
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setShowMore(false); setShowDetails(false); onClose(); }
-      if (hasMultiple && e.key === 'ArrowLeft') goPrev();
-      if (hasMultiple && e.key === 'ArrowRight') goNext();
-      if (e.key === '+' || e.key === '=') zoomIn();
-      if (e.key === '-') zoomOut();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, hasMultiple, goPrev, goNext, zoomIn, zoomOut]);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setShowMore(false); setShowDetails(false); props.onClose() }
+      if (hasMultiple && e.key === 'ArrowLeft')  goPrev()
+      if (hasMultiple && e.key === 'ArrowRight') goNext()
+      if (e.key === '+' || e.key === '=') zoomIn()
+      if (e.key === '-') zoomOut()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [props, hasMultiple, goPrev, goNext, zoomIn, zoomOut])
 
-  // Reset state when image changes
   useEffect(() => {
-    setLoaded(false);
-    setScale(1);
-    setShowMore(false);
-    setShowDetails(false);
-    setDimensions(null);
-  }, [index]);
-
-  // Close more menu when clicking outside
-  useEffect(() => {
-    if (!showMore) return;
+    if (!showMore) return
     const handler = (e: MouseEvent) => {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setShowMore(false);
-        setShowDetails(false);
+        setShowMore(false); setShowDetails(false)
       }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showMore]);
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showMore])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.stopPropagation();
-    setScale((prev) => {
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      return clampScale(prev + delta);
-    });
-  }, [clampScale]);
+    e.stopPropagation()
+    const delta = e.deltaY > 0 ? -SCALE_STEP : SCALE_STEP
+    applyScale(scale + delta, { clientX: e.clientX, clientY: e.clientY })
+  }, [scale, applyScale])
 
-  const handleImageLoad = useCallback(() => {
-    setLoaded(true);
-    if (imgRef.current) {
-      setDimensions({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight });
+  // ── Pan handlers (active when scale > 1) ──────────────────────────────
+  const handleImagePointerDown = useCallback((e: React.PointerEvent<HTMLImageElement>) => {
+    if (scale <= 1) return
+    // Left mouse / primary pointer only — we don't want to start a pan from
+    // a right-click or middle-click.
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    panStartRef.current = {
+      cursorX: e.clientX,
+      cursorY: e.clientY,
+      offsetX: offset.x,
+      offsetY: offset.y,
     }
-  }, []);
+    dragMovedRef.current = false
+    setIsPanning(true)
+    // Capture the pointer so we keep getting events even if the cursor
+    // strays outside the image (or the lightbox).
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }, [scale, offset])
+
+  const handleImagePointerMove = useCallback((e: React.PointerEvent<HTMLImageElement>) => {
+    const start = panStartRef.current
+    if (!start) return
+    const dx = e.clientX - start.cursorX
+    const dy = e.clientY - start.cursorY
+    if (Math.abs(dx) + Math.abs(dy) > 3) dragMovedRef.current = true
+    setOffset(clampOffset({ x: start.offsetX + dx, y: start.offsetY + dy }, scale))
+  }, [scale, clampOffset])
+
+  const handleImagePointerUp = useCallback((e: React.PointerEvent<HTMLImageElement>) => {
+    if (!panStartRef.current) return
+    panStartRef.current = null
+    setIsPanning(false)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }, [])
+
+  // Double-click toggles between 1× and 2× anchored on the cursor — quick
+  // shortcut so users don't have to click + + + + to zoom in.
+  const handleImageDoubleClick = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+    e.stopPropagation()
+    if (scale > 1) {
+      applyScale(1)
+    } else {
+      applyScale(2, { clientX: e.clientX, clientY: e.clientY })
+    }
+  }, [scale, applyScale])
 
   const handleDownload = useCallback(async () => {
+    if (!displaySrc) return
     try {
-      const response = await fetch(current.src, { mode: 'cors' });
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = current.filename || current.alt || 'image';
-      a.click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a')
+      a.href = displaySrc
+      a.download = current?.filename || current?.alt || 'image'
+      a.click()
     } catch {
-      window.open(current.src, '_blank');
+      window.open(displaySrc, '_blank')
     }
-  }, [current]);
+  }, [displaySrc, current])
 
   const handleOpenExternal = useCallback(() => {
-    window.open(current.src, '_blank', 'noopener');
-  }, [current]);
+    if (displaySrc) window.open(displaySrc, '_blank', 'noopener')
+  }, [displaySrc])
 
   const handleCopyImage = useCallback(async () => {
+    if (!displaySrc) return
     try {
-      const response = await fetch(current.src, { mode: 'cors' });
-      const blob = await response.blob();
-      const pngBlob = blob.type === 'image/png' ? blob : await convertToPng(current.src);
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-    } catch { /* clipboard API may not be available */ }
-    setShowMore(false);
-  }, [current]);
+      const res = await fetch(displaySrc)
+      const blob = await res.blob()
+      const png = blob.type === 'image/png' ? blob : await convertToPng(displaySrc)
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+    } catch { /* clipboard API may be unavailable */ }
+    setShowMore(false)
+  }, [displaySrc])
 
   const handleCopyLink = useCallback(async () => {
+    if (!current) return
     try {
-      await navigator.clipboard.writeText(current.src);
+      // Copy the canonical (non-blob) URL — blob URLs are local-only and
+      // useless in chat. Prefer the source the lightbox was opened with.
+      await navigator.clipboard.writeText(current.src)
     } catch { /* ignore */ }
-    setShowMore(false);
-  }, [current]);
+    setShowMore(false)
+  }, [current])
 
-  if (!current) return null;
+  const handleImageLoad = useCallback(() => {
+    if (imgRef.current) {
+      setNaturalDims({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight })
+    }
+  }, [])
 
-  const sizeStr = current.sizeBytes ? formatBytes(current.sizeBytes) : null;
-  const dimStr = dimensions ? `${dimensions.w}x${dimensions.h}` : null;
-  const detailStr = [dimStr, sizeStr].filter(Boolean).join(' (') + (sizeStr ? ')' : '');
+  if (!current) return null
+
+  const sizeStr = current.sizeBytes ? formatBytes(current.sizeBytes) : null
+  const dimStr = naturalDims ? `${naturalDims.w}×${naturalDims.h}` : null
 
   return createPortal(
     <div
-      ref={lightboxRef}
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center cursor-zoom-out"
-      onClick={onClose}
+      ref={containerRef}
+      className={s.overlay}
+      onClick={props.onClose}
       onWheel={handleWheel}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image preview"
     >
-      {/* Toolbar */}
-      <div
-        className="absolute top-4 right-4 flex items-center gap-1 z-10"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={zoomIn}
-          disabled={scale >= MAX_SCALE}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Zoom in (+)"
-          aria-label="Zoom in"
-        >
-          <ZoomIn className="w-5 h-5" />
-        </button>
-        <button
-          onClick={zoomOut}
-          disabled={scale <= MIN_SCALE}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Zoom out (-)"
-          aria-label="Zoom out"
-        >
-          <ZoomOut className="w-5 h-5" />
-        </button>
-        <button
-          onClick={handleDownload}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-          title="Download"
-          aria-label="Download"
-        >
-          <Download className="w-5 h-5" />
-        </button>
-        <button
-          onClick={handleOpenExternal}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-          title="Open in new tab"
-          aria-label="Open in new tab"
-        >
-          <ExternalLink className="w-5 h-5" />
-        </button>
+      {/* ── Toolbar ── */}
+      <div className={s.toolbar} onClick={(e) => e.stopPropagation()}>
+        <button className={s.toolBtn} onClick={zoomIn}  disabled={scale >= MAX_SCALE} title="Zoom in (+)" aria-label="Zoom in"><ZoomIn size={18} strokeWidth={1.6} /></button>
+        <button className={s.toolBtn} onClick={zoomOut} disabled={scale <= MIN_SCALE} title="Zoom out (-)" aria-label="Zoom out"><ZoomOut size={18} strokeWidth={1.6} /></button>
+        <button className={s.toolBtn} onClick={handleDownload}     title="Download"           aria-label="Download"><Download size={18} strokeWidth={1.6} /></button>
+        <button className={s.toolBtn} onClick={handleOpenExternal} title="Open in new tab"    aria-label="Open in new tab"><ExternalLink size={18} strokeWidth={1.6} /></button>
 
-        {/* More menu */}
-        <div className="relative" ref={moreRef}>
+        <div className={s.moreWrap} ref={moreRef}>
           <button
-            onClick={() => { setShowMore((v) => !v); setShowDetails(false); }}
-            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${showMore ? 'bg-white/20 text-white' : 'bg-black/50 text-white/70 hover:text-white hover:bg-black/70'}`}
+            className={`${s.toolBtn} ${showMore ? s.toolBtnActive : ''}`}
+            onClick={() => { setShowMore((v) => !v); setShowDetails(false) }}
             title="More"
             aria-label="More options"
           >
-            <MoreHorizontal className="w-5 h-5" />
+            <MoreHorizontal size={18} strokeWidth={1.6} />
           </button>
           {showMore && (
-            <div className="absolute right-0 top-11 bg-surface border border-divider rounded-xl shadow-float py-1 w-48 text-sm">
+            <div className={s.moreMenu}>
+              <button className={s.menuItem} onClick={handleCopyImage}><Copy size={14} strokeWidth={1.6} />Copy image</button>
+              <button className={s.menuItem} onClick={handleCopyLink}><Link size={14} strokeWidth={1.6} />Copy link</button>
               <button
-                onClick={handleCopyImage}
-                className="w-full px-3 py-2 text-left text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-                Copy Image
-              </button>
-              <button
-                onClick={handleCopyLink}
-                className="w-full px-3 py-2 text-left text-text-secondary hover:bg-hover hover:text-text-primary flex items-center gap-2"
-              >
-                <Link className="w-4 h-4" />
-                Copy Link
-              </button>
-              <button
+                className={`${s.menuItem} ${showDetails ? s.active : ''}`}
                 onClick={() => setShowDetails((v) => !v)}
-                className={`w-full px-3 py-2 text-left flex items-center gap-2 ${showDetails ? 'bg-hover text-text-primary' : 'text-text-secondary hover:bg-hover hover:text-text-primary'}`}
               >
-                <Info className="w-4 h-4" />
-                View Details
-                <ChevronRight className="w-3 h-3 ml-auto" />
+                <Info size={14} strokeWidth={1.6} />View details
+                <ArrowRight size={12} strokeWidth={1.8} className={s.menuChevron} />
               </button>
               {showDetails && (
-                <div className="px-3 py-2 border-t border-divider">
-                  <div className="text-text-tertiary text-xs mb-1">Filename</div>
-                  <div className="text-text-primary text-xs truncate mb-2">{current.filename || current.alt}</div>
+                <div className={s.detailsBlock}>
+                  <span className={s.detailsLabel}>Filename</span>
+                  <span className={s.detailsValue}>{current.filename || current.alt}</span>
                   {(dimStr || sizeStr) && (
                     <>
-                      <div className="text-text-tertiary text-xs mb-1">Size</div>
-                      <div className="text-text-primary text-xs">{detailStr}</div>
+                      <span className={s.detailsLabel}>Size</span>
+                      <span className={s.detailsValue}>{[dimStr, sizeStr].filter(Boolean).join(' · ')}</span>
                     </>
                   )}
                 </div>
@@ -239,109 +330,78 @@ export default function ImageLightbox({ images, initialIndex = 0, onClose }: Ima
           )}
         </div>
 
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-          title="Close (Esc)"
-          aria-label="Close"
-        >
-          <X className="w-5 h-5" />
+        <button className={s.toolBtn} onClick={props.onClose} title="Close (Esc)" aria-label="Close">
+          <X size={18} strokeWidth={1.6} />
         </button>
       </div>
 
-      {/* Previous button */}
+      {/* ── Prev / next ── */}
       {hasMultiple && (
-        <button
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-          onClick={(e) => { e.stopPropagation(); goPrev(); }}
-          aria-label="Previous image"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
+        <button className={`${s.navBtn} ${s.navBtnLeft}`} onClick={(e) => { e.stopPropagation(); goPrev() }} aria-label="Previous image"><ChevronLeft size={22} strokeWidth={1.8} /></button>
       )}
-
-      {/* Next button */}
       {hasMultiple && (
-        <button
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-          onClick={(e) => { e.stopPropagation(); goNext(); }}
-          aria-label="Next image"
-        >
-          <ChevronRight className="w-6 h-6" />
-        </button>
+        <button className={`${s.navBtn} ${s.navBtnRight}`} onClick={(e) => { e.stopPropagation(); goNext() }} aria-label="Next image"><ChevronRight size={22} strokeWidth={1.8} /></button>
       )}
 
-      {/* Counter */}
-      {hasMultiple && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/60 text-white/80 text-sm px-3 py-1 rounded-full z-10">
-          {index + 1} / {images.length}
-        </div>
-      )}
+      {hasMultiple && <div className={s.counter}>{index + 1} / {items.length}</div>}
 
-      {/* Zoom indicator */}
-      {scale !== 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white/80 text-xs px-3 py-1 rounded-full z-10">
-          {Math.round(scale * 100)}%
-        </div>
-      )}
+      {scale !== 1 && <div className={s.zoomPill}>{Math.round(scale * 100)}%</div>}
 
-      {/* Spinner */}
-      {!loaded && (
-        <Spinner colors="border-white/20 border-t-white/60" className="size-16! border-2!" />
-      )}
+      {isLoading && <div className={s.spinner} />}
 
-      {/* Image */}
-      <img
-        ref={imgRef}
-        src={current.src}
-        alt={current.alt}
-        crossOrigin="anonymous"
-        referrerPolicy="no-referrer"
-        className={`max-w-[90vw] max-h-[90vh] min-w-[80vw] min-h-[60vh] object-contain shadow-2xl transition-all duration-150 ${loaded ? 'opacity-100' : 'opacity-0 absolute'}`}
-        style={{ transform: `scale(${scale})` }}
-        onClick={onClose}
-        onLoad={handleImageLoad}
-      />
-
-      {/* Thumbnail strip */}
-      {hasMultiple && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10" style={{ marginBottom: scale !== 1 ? '2rem' : 0 }}>
-          {images.map((img, i) => (
-            <button
-              key={img.src}
-              onClick={(e) => { e.stopPropagation(); setIndex(i); }}
-              className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === index ? 'border-white scale-110' : 'border-white/30 hover:border-white/60 opacity-60 hover:opacity-100'}`}
-              aria-label={`View image ${i + 1}`}
-            >
-              <img src={img.src} alt={img.alt} crossOrigin="anonymous" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-            </button>
-          ))}
-        </div>
+      {displaySrc && (
+        <img
+          ref={imgRef}
+          className={`${s.image} ${scale > 1 ? (isPanning ? s.imagePanning : s.imagePannable) : ''}`}
+          src={displaySrc}
+          alt={current.alt}
+          onClick={(e) => {
+            e.stopPropagation()
+            // Suppress the click that fires after a drag — otherwise
+            // releasing a pan would also close the lightbox if we ever
+            // wired that path.
+            if (dragMovedRef.current) {
+              dragMovedRef.current = false
+              return
+            }
+          }}
+          onPointerDown={handleImagePointerDown}
+          onPointerMove={handleImagePointerMove}
+          onPointerUp={handleImagePointerUp}
+          onPointerCancel={handleImagePointerUp}
+          onDoubleClick={handleImageDoubleClick}
+          onLoad={handleImageLoad}
+          style={{
+            // Order matters: translate first, then scale, so the offset is
+            // applied in pre-scale image coordinates (matches the clamp).
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+            transition: isPanning ? 'none' : 'transform 150ms ease',
+          }}
+          draggable={false}
+        />
       )}
     </div>,
     document.body,
-  );
+  )
 }
 
-/** Convert an image URL to a PNG blob (for clipboard API which requires PNG). */
+/** PNG conversion for clipboard (which only accepts image/png). */
 async function convertToPng(src: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { reject(new Error('No canvas context')); return; }
-      ctx.drawImage(img, 0, 0);
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('No canvas context')); return }
+      ctx.drawImage(img, 0, 0)
       canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Failed to convert to PNG'));
-      }, 'image/png');
-    };
-    img.onerror = reject;
-    img.src = src;
-  });
+        if (blob) resolve(blob); else reject(new Error('PNG conversion failed'))
+      }, 'image/png')
+    }
+    img.onerror = reject
+    img.src = src
+  })
 }

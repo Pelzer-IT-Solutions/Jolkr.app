@@ -1,4 +1,4 @@
-import { SquarePen, Users } from 'lucide-react'
+import { SquarePen, Users, PanelLeftClose, ArrowLeft } from 'lucide-react'
 import type { DMConversation } from '../../types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import Avatar from '../Avatar'
@@ -10,18 +10,31 @@ interface Props {
   onSelect:      (id: string) => void
   onNewMessage:  () => void
   onOpenFriends?: () => void
+  collapsed?:     boolean
+  onCollapse?:    () => void
+  isMobile?:      boolean
 }
 
-export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onOpenFriends }: Props) {
+export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onOpenFriends, collapsed = false, onCollapse, isMobile = false }: Props) {
   return (
-    <aside className={s.sidebar}>
+    <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
       <div className={s.header}>
+        {isMobile && onCollapse && (
+          <button className={s.iconBtn} title="Back to chat" onClick={onCollapse}>
+            <ArrowLeft size={14} strokeWidth={1.5} />
+          </button>
+        )}
         <span className={`${s.title} txt-small txt-semibold`}>Direct Messages</span>
         <div className={s.actions}>
           {onOpenFriends && (
             <button className={s.iconBtn} title="Friends" onClick={onOpenFriends}><Users size={14} strokeWidth={1.5} /></button>
           )}
           <button className={s.iconBtn} title="New message" onClick={onNewMessage}><ComposeIcon /></button>
+          {!isMobile && onCollapse && (
+            <button className={s.iconBtn} title="Collapse sidebar" onClick={onCollapse}>
+              <PanelLeftClose size={14} strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       </div>
 

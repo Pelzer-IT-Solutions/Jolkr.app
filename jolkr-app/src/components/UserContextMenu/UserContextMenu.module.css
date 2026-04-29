@@ -188,3 +188,36 @@
   min-width: 0;
   color: inherit;
 }
+
+/* ─── Role assignment ─── */
+.roleItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4375rem 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition), color var(--transition);
+}
+.roleItem:hover {
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+}
+.roleItem.roleActive {
+  color: var(--text-strong);
+}
+.roleDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.roleCheck {
+  margin-left: auto;
+  color: var(--text-faint);
+}

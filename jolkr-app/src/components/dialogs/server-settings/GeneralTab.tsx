@@ -102,7 +102,7 @@ export default function GeneralTab({ server, onClose, isOwner }: GeneralTabProps
         <div className="text-xs text-text-tertiary">
           Click to upload server icon<br />Recommended: 128x128px
         </div>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIconUpload} />
+        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleIconUpload} />
       </div>
 
       <div className="mb-4">

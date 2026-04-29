@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
+import { resetAuthTheme } from '../utils/resetAuthTheme';
 
 export default function Register() {
+  useEffect(resetAuthTheme, []);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +31,7 @@ export default function Register() {
         initE2EE(deviceId, seed).catch(console.warn);
       }
 
-      navigate('/');
+      navigate('/verify-email');
     } catch { /* error is in store */ }
   };
 

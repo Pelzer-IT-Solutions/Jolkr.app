@@ -1,6 +1,6 @@
 /// Media server configuration.
 #[derive(Debug, Clone)]
-pub struct Config {
+pub(crate) struct Config {
     /// HTTP/WS server port (default: 8081).
     pub http_port: u16,
     /// UDP port for WebRTC media (default: 10000).
@@ -15,7 +15,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_env() -> Self {
+    pub(crate) fn from_env() -> Self {
         Self {
             http_port: std::env::var("MEDIA_PORT")
                 .unwrap_or_else(|_| "8081".into())

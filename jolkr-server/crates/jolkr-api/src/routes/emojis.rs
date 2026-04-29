@@ -17,19 +17,19 @@ use crate::storage::MAX_FILE_SIZE;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct EmojiResponse {
+pub(crate) struct EmojiResponse {
     pub emoji: EmojiInfo,
 }
 
 #[derive(Debug, Serialize)]
-pub struct EmojisResponse {
+pub(crate) struct EmojisResponse {
     pub emojis: Vec<EmojiInfo>,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
 
 /// POST /api/servers/:server_id/emojis — upload custom emoji (multipart: name + file)
-pub async fn upload_emoji(
+pub(crate) async fn upload_emoji(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -123,7 +123,7 @@ pub async fn upload_emoji(
         // Clean up uploaded file on DB error
         let storage = state.storage.clone();
         let key = image_key.clone();
-        tokio::spawn(async move { let _ = storage.delete(&key).await; });
+        tokio::spawn(async move { drop(storage.delete(&key).await); });
         AppError(e)
     })?;
 
@@ -140,7 +140,7 @@ pub async fn upload_emoji(
 }
 
 /// GET /api/servers/:server_id/emojis — list all custom emojis
-pub async fn list_emojis(
+pub(crate) async fn list_emojis(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -161,7 +161,7 @@ pub async fn list_emojis(
 }
 
 /// DELETE /api/emojis/:emoji_id — delete a custom emoji
-pub async fn delete_emoji(
+pub(crate) async fn delete_emoji(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(emoji_id): Path<Uuid>,
@@ -170,7 +170,7 @@ pub async fn delete_emoji(
 
     // Clean up S3 object
     let storage = state.storage.clone();
-    tokio::spawn(async move { let _ = storage.delete(&image_key).await; });
+    tokio::spawn(async move { drop(storage.delete(&image_key).await); });
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

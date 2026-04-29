@@ -16,31 +16,32 @@ use crate::routes::AppState;
 // ── DTOs ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
-pub struct UserResponse {
+pub(crate) struct UserResponse {
     pub user: UserProfile,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UpdateMeRequest {
+pub(crate) struct UpdateMeRequest {
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
     pub status: Option<String>,
     pub bio: Option<String>,
     pub show_read_receipts: Option<bool>,
+    pub banner_color: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SearchQuery {
+pub(crate) struct SearchQuery {
     pub q: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BatchUsersRequest {
+pub(crate) struct BatchUsersRequest {
     pub ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct UsersResponse {
+pub(crate) struct UsersResponse {
     pub users: Vec<UserProfile>,
 }
 
@@ -59,7 +60,7 @@ async fn presign_avatar(state: &AppState, profile: &mut UserProfile) {
 }
 
 /// GET /api/users/@me
-pub async fn get_me(
+pub(crate) async fn get_me(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<UserResponse>, AppError> {
@@ -69,7 +70,7 @@ pub async fn get_me(
 }
 
 /// PATCH /api/users/@me
-pub async fn update_me(
+pub(crate) async fn update_me(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<UpdateMeRequest>,
@@ -97,6 +98,7 @@ pub async fn update_me(
             status: body.status,
             bio: body.bio,
             show_read_receipts: body.show_read_receipts,
+            banner_color: body.banner_color,
         },
     )
     .await?;
@@ -117,7 +119,7 @@ pub async fn update_me(
 }
 
 /// GET /api/users/:id
-pub async fn get_user(
+pub(crate) async fn get_user(
     State(state): State<AppState>,
     _auth: AuthUser,
     Path(id): Path<Uuid>,
@@ -128,7 +130,7 @@ pub async fn get_user(
 }
 
 /// POST /api/users/batch
-pub async fn get_users_batch(
+pub(crate) async fn get_users_batch(
     State(state): State<AppState>,
     _auth: AuthUser,
     Json(body): Json<BatchUsersRequest>,
@@ -147,7 +149,7 @@ pub async fn get_users_batch(
 }
 
 /// GET /api/users/search?q=<query>
-pub async fn search_users(
+pub(crate) async fn search_users(
     State(state): State<AppState>,
     _auth: AuthUser,
     Query(params): Query<SearchQuery>,

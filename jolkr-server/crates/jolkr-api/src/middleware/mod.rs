@@ -1,5 +1,5 @@
-pub mod auth;
-pub mod metrics;
-pub mod rate_limit;
+pub(crate) mod auth;
+pub(crate) mod metrics;
+pub(crate) mod rate_limit;
 
-pub use auth::AuthUser;
+pub(crate) use auth::AuthUser;

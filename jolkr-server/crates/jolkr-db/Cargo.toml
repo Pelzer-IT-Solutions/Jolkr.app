@@ -12,3 +12,6 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 jolkr-common = { path = "../jolkr-common" }
 sha2 = "0.10"
+
+[lints]
+workspace = true

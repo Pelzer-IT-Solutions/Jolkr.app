@@ -1,21 +1,32 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, ChevronRight, Plus, Edit2, Check, XCircle, Camera
+  X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, Plus, Check, Camera, Palette, Upload, Copy
 } from 'lucide-react'
 import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
 import type { Server as ApiServer, Member } from '../../api/types'
 import * as api from '../../api/client'
 import * as P from '../../utils/permissions'
 import { useAuthStore } from '../../stores/auth'
+import { buildInviteUrl } from '../../platform/config'
+import { useToast } from '../Toast'
 import ServerIcon from '../ServerIcon'
+import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 
 // Extend API Server with frontend-only display fields
 type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
-import { revealDelay, revealWindowMs } from '../../utils/animations'
 import s from './ServerSettings.module.css'
 
 type Section = 'overview' | 'roles' | 'invites' | 'bans' | 'audit' | 'delete'
+
+/** API returns roles by position DESC; UI shows oldest / lowest position first (new roles at the end). */
+function sortRolesByPosition(roles: Role[]): Role[] {
+  return [...roles].sort((a, b) => {
+    if (a.position !== b.position) return a.position - b.position
+    return a.name.localeCompare(b.name)
+  })
+}
 
 interface Props {
   server: Server
@@ -55,15 +66,18 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [section, setSection] = useState<Section>('overview')
   const [editedServer, setEditedServer] = useState<Partial<Server>>({})
   const [hasChanges, setHasChanges] = useState(false)
-  const [isRevealing, setIsRevealing] = useState(true)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [iconUploading, setIconUploading] = useState(false)
   const [iconPreviewUrl, setIconPreviewUrl] = useState<string | null>(null)
-  const iconFileRef = useRef<HTMLInputElement>(null)
+  const iconFileRef = useRef<HTMLInputElement | null>(null)
 
-  // TODO: Replace with real API data
   const [invites, setInvites] = useState<Invite[]>([])
+  const [createInviteMaxAge, setCreateInviteMaxAge] = useState<number>(86400) // 1 day default
+  const [createInviteMaxUses, setCreateInviteMaxUses] = useState<number>(0) // 0 = unlimited
+  const [creatingInvite, setCreatingInvite] = useState(false)
+  const [createInviteError, setCreateInviteError] = useState('')
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null)
+  const showToast = useToast(s => s.show)
   const [roles, setRoles] = useState<Role[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [bans, setBans] = useState<Ban[]>([])
@@ -74,56 +88,68 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [editingRoleName, setEditingRoleName] = useState('')
   const [editingRoleColor, setEditingRoleColor] = useState('#000000')
   const [editingRolePermissions, setEditingRolePermissions] = useState<number>(0)
-  const [showCreateRole, setShowCreateRole] = useState(false)
-  const [newRoleName, setNewRoleName] = useState('')
-  const [newRoleColor, setNewRoleColor] = useState('#5865F2')
+  // Store original values to detect changes and support cancel
+  const [originalRoleName, setOriginalRoleName] = useState('')
+  const [originalRoleColor, setOriginalRoleColor] = useState('#000000')
+  const [originalRolePermissions, setOriginalRolePermissions] = useState<number>(0)
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
-
-  const navTotal = NAV.reduce((sum, g) => sum + 1 + g.items.length, 0)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(navTotal))
-    return () => clearTimeout(timer)
-  }, [navTotal])
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
 
   // Load real data from API
   useEffect(() => {
     const id = server.id
-    api.getRoles(id).then(setRoles).catch(() => setRoles([]))
+    api.getRoles(id).then((loadedRoles) => {
+      setRoles(loadedRoles)
+      // Always auto-select first role when roles are loaded (oldest / lowest position, e.g. @everyone)
+      const ordered = sortRolesByPosition(loadedRoles)
+      if (ordered.length > 0) {
+        const firstRole = ordered[0]
+        setSelectedRoleId(firstRole.id)
+        // Initialize editing state for the first role
+        const colorHex = `#${firstRole.color.toString(16).padStart(6, '0')}`
+        setEditingRoleId(firstRole.id)
+        setEditingRoleName(firstRole.name)
+        setEditingRoleColor(colorHex)
+        setEditingRolePermissions(firstRole.permissions)
+        setOriginalRoleName(firstRole.name)
+        setOriginalRoleColor(colorHex)
+        setOriginalRolePermissions(firstRole.permissions)
+      }
+    }).catch(() => setRoles([]))
     api.getMembersWithRoles(id).then(setMembers).catch(() => setMembers([]))
     api.getInvites(id).then(setInvites).catch(() => setInvites([]))
     api.getBans(id).then(setBans).catch(() => setBans([]))
     api.getAuditLog(id).then(setAuditLog).catch(() => setAuditLog([]))
   }, [server.id])
 
-  const handleFieldChange = (field: keyof Server, value: unknown) => {
-    setEditedServer(prev => ({ ...prev, [field]: value }))
-    setHasChanges(true)
-  }
+  const rolesOrdered = useMemo(() => sortRolesByPosition(roles), [roles])
 
-  const handleSave = () => {
-    onUpdate(server.id, editedServer)
-    setHasChanges(false)
-    setEditedServer({})
-  }
-
-  const handleCreateInvite = () => {
-    const newInvite: Invite = {
-      id: `inv-${Date.now()}`,
-      server_id: server.id,
-      creator_id: 'me',
-      code: Math.random().toString(36).substring(2, 10).toUpperCase(),
-      max_uses: null,
-      use_count: 0,
-      expires_at: null,
+  const handleCreateInvite = async () => {
+    setCreatingInvite(true)
+    setCreateInviteError('')
+    try {
+      const body: { max_uses?: number; max_age_seconds?: number } = {}
+      if (createInviteMaxUses > 0) body.max_uses = createInviteMaxUses
+      if (createInviteMaxAge > 0) body.max_age_seconds = createInviteMaxAge
+      const created = await api.createInvite(server.id, Object.keys(body).length > 0 ? body : undefined)
+      setInvites(prev => [created, ...prev])
+    } catch (e) {
+      setCreateInviteError((e as Error).message || 'Failed to create invite')
+    } finally {
+      setCreatingInvite(false)
     }
-    setInvites(prev => [newInvite, ...prev])
+  }
+
+  const handleCopyInvite = async (invite: Invite) => {
+    const url = buildInviteUrl(invite.code)
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedInviteId(invite.id)
+      showToast('Invite link copied!', 'success')
+      setTimeout(() => setCopiedInviteId(prev => prev === invite.id ? null : prev), 2000)
+    } catch {
+      // Clipboard API can fail when the window isn't focused — show the URL so the user can copy manually
+      showToast(`Copy failed — link: ${url}`, 'error', 6000)
+    }
   }
 
   const handleDeleteInvite = async (inviteId: string) => {
@@ -145,50 +171,34 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
 
   // Role management handlers
   const handleCreateRole = async () => {
-    if (!newRoleName.trim()) return
+    // Find the next available default name
+    const baseName = 'new_role'
+    let nextNum = 1
+    const existingNames = new Set(roles.map(r => r.name))
+    while (existingNames.has(`${baseName}_${nextNum}`)) {
+      nextNum++
+    }
+    const defaultName = `${baseName}_${nextNum}`
+    const defaultColor = 0x5865F2 // Default blue color
+
     try {
       const newRole = await api.createRole(server.id, {
-        name: newRoleName.trim(),
-        color: parseInt(newRoleColor.replace('#', ''), 16),
+        name: defaultName,
+        color: defaultColor,
         permissions: 0,
       })
       setRoles(prev => [...prev, newRole])
-      setNewRoleName('')
-      setNewRoleColor('#5865F2')
-      setShowCreateRole(false)
+      // Auto-select the new role and initialize edit state
+      setSelectedRoleId(newRole.id)
+      setEditingRoleId(newRole.id)
+      setEditingRoleName(newRole.name)
+      setEditingRoleColor(`#${newRole.color.toString(16).padStart(6, '0')}`)
+      setEditingRolePermissions(newRole.permissions)
+      // Store original values (same as new since it's fresh)
+      setOriginalRoleName(newRole.name)
+      setOriginalRoleColor(`#${newRole.color.toString(16).padStart(6, '0')}`)
+      setOriginalRolePermissions(newRole.permissions)
     } catch (e) { console.warn('Failed to create role:', e) }
-  }
-
-  const handleStartEditRole = (role: Role) => {
-    setEditingRoleId(role.id)
-    setEditingRoleName(role.name)
-    setEditingRoleColor(`#${role.color.toString(16).padStart(6, '0')}`)
-    setEditingRolePermissions(role.permissions)
-    setSelectedRoleId(role.id)
-  }
-
-  const handleSaveRole = async () => {
-    if (!editingRoleId || !editingRoleName.trim()) return
-    try {
-      const updated = await api.updateRole(editingRoleId, {
-        name: editingRoleName.trim(),
-        color: parseInt(editingRoleColor.replace('#', ''), 16),
-        permissions: editingRolePermissions,
-      })
-      setRoles(prev => prev.map(r => r.id === editingRoleId ? updated : r))
-    } catch (e) { console.warn('Failed to update role:', e) }
-    setEditingRoleId(null)
-    setEditingRoleName('')
-    setEditingRoleColor('#000000')
-    setEditingRolePermissions(0)
-  }
-
-  const handleCancelEditRole = () => {
-    setEditingRoleId(null)
-    setEditingRoleName('')
-    setEditingRoleColor('#000000')
-    setEditingRolePermissions(0)
-    setSelectedRoleId(null)
   }
 
   const handlePermissionToggle = (permissionFlag: number) => {
@@ -203,19 +213,51 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   }
 
   const handleSelectRole = (roleId: string) => {
-    setSelectedRoleId(selectedRoleId === roleId ? null : roleId)
-    if (editingRoleId && editingRoleId !== roleId) {
-      setEditingRoleId(null)
-      setEditingRoleName('')
-      setEditingRoleColor('#000000')
-      setEditingRolePermissions(0)
+    // Radio button behavior: always have one selected, can't unselect
+    if (selectedRoleId === roleId) {
+      // Clicking already selected role does nothing
+      return
+    }
+
+    // Select the new role
+    setSelectedRoleId(roleId)
+
+    // Initialize editing state for the selected role
+    const role = roles.find(r => r.id === roleId)
+    if (role) {
+      const colorHex = `#${role.color.toString(16).padStart(6, '0')}`
+      setEditingRoleId(roleId)
+      setEditingRoleName(role.name)
+      setEditingRoleColor(colorHex)
+      setEditingRolePermissions(role.permissions)
+      // Store original values for change detection and cancel
+      setOriginalRoleName(role.name)
+      setOriginalRoleColor(colorHex)
+      setOriginalRolePermissions(role.permissions)
     }
   }
 
   const handleDeleteRole = async (roleId: string) => {
     try {
       await api.deleteRole(roleId)
-      setRoles(prev => prev.filter(r => r.id !== roleId))
+      setRoles(prev => {
+        const newRoles = prev.filter(r => r.id !== roleId)
+        // Select another role if the deleted one was selected (first in display order)
+        if (selectedRoleId === roleId && newRoles.length > 0) {
+          const newSelectedRole = sortRolesByPosition(newRoles)[0]
+          setSelectedRoleId(newSelectedRole.id)
+          // Initialize editing state for the new selected role
+          const colorHex = `#${newSelectedRole.color.toString(16).padStart(6, '0')}`
+          setEditingRoleId(newSelectedRole.id)
+          setEditingRoleName(newSelectedRole.name)
+          setEditingRoleColor(colorHex)
+          setEditingRolePermissions(newSelectedRole.permissions)
+          setOriginalRoleName(newSelectedRole.name)
+          setOriginalRoleColor(colorHex)
+          setOriginalRolePermissions(newSelectedRole.permissions)
+        }
+        return newRoles
+      })
       setMembers(prev => prev.map(m => ({
         ...m,
         role_ids: (m.role_ids ?? []).filter((id: string) => id !== roleId)
@@ -223,400 +265,297 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     } catch (e) { console.warn('Failed to delete role:', e) }
   }
 
+  const handleSaveRoleInfo = async () => {
+    if (!editingRoleId || !editingRoleName.trim()) return
+    try {
+      const updated = await api.updateRole(editingRoleId, {
+        name: editingRoleName.trim(),
+        color: parseInt(editingRoleColor.replace('#', ''), 16),
+        permissions: editingRolePermissions,
+      })
+      setRoles(prev => prev.map(r => r.id === editingRoleId ? updated : r))
+      // Update original values after successful save
+      setOriginalRoleName(editingRoleName.trim())
+      setOriginalRoleColor(editingRoleColor)
+      setOriginalRolePermissions(editingRolePermissions)
+    } catch (e) { console.warn('Failed to update role:', e) }
+  }
+
+  const handleCancelEditRoleInfo = () => {
+    // Revert to original values instead of closing
+    setEditingRoleName(originalRoleName)
+    setEditingRoleColor(originalRoleColor)
+    setEditingRolePermissions(originalRolePermissions)
+  }
+
+  // Check if there are any unsaved changes
+  const hasRoleChanges = editingRoleId && (
+    editingRoleName !== originalRoleName ||
+    editingRoleColor !== originalRoleColor ||
+    editingRolePermissions !== originalRolePermissions
+  )
+
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setIconUploading(true)
     try {
       const result = await api.uploadFile(file, 'icon')
-      handleFieldChange('icon_url', result.key)
+      setEditedServer(prev => ({ ...prev, icon_url: result.key }))
+      setHasChanges(true)
       setIconPreviewUrl(URL.createObjectURL(file))
     } catch { /* ignore */ }
-    setIconUploading(false)
   }
 
-  const currentName = editedServer.name ?? server.name
-  const currentDescription = editedServer.description ?? server.description ?? ''
-  const currentBannerUrl = editedServer.banner_url ?? server.banner_url ?? ''
-  const currentDiscoverable = editedServer.discoverable ?? server.discoverable ?? false
+  // Compose nav groups for the shell — counts and the danger variant for
+  // Delete Server are computed per-render from the loaded data.
+  const navGroups: SettingsNavGroup<Section>[] = useMemo(() => NAV.map(group => ({
+    group: group.group,
+    items: group.items.map(item => {
+      let count: number | undefined
+      if (item.id === 'roles') count = roles.length
+      else if (item.id === 'invites') count = invites.length
+      else if (item.id === 'bans') count = bans.length
+      else if (item.id === 'audit') count = auditLog.length
+      return {
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        count,
+        variant: item.id === 'delete' ? ('danger' as const) : undefined,
+      }
+    }),
+  })), [roles.length, invites.length, bans.length, auditLog.length])
 
-  let navIdx = 0
-
-  return createPortal(
-    <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={s.modal}>
-        {/* Left nav */}
-        <aside className={s.nav}>
-          <div className={`${s.navScroll} scrollbar-thin`}>
-            <div className={s.serverHeader}>
-              <ServerIcon name={server.name} iconUrl={server.icon_url} serverId={server.id} size="sm" />
-              <span className={`${s.serverName} txt-small txt-semibold`}>{server.name}</span>
-            </div>
-            <div className={s.navDivider} />
-            {NAV.map(group => {
-              const groupIdx = navIdx++
-              return (
-              <div key={group.group} className={s.navGroup}>
-                <span
-                  className={`${s.navGroupLabel} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}
-                  style={isRevealing ? { '--reveal-delay': `${revealDelay(groupIdx)}ms` } as React.CSSProperties : undefined}
-                >
-                  {group.group}
-                </span>
-                {group.items.map(item => {
-                  const itemIdx = navIdx++
-                  return (
-                  <button
-                    key={item.id}
-                    className={`${s.navItem} ${section === item.id ? s.navItemActive : ''} ${isRevealing ? 'revealing' : ''} ${item.id === 'delete' ? s.navItemDanger : ''}`}
-                    style={isRevealing ? { '--reveal-delay': `${revealDelay(itemIdx)}ms` } as React.CSSProperties : undefined}
-                    onClick={() => setSection(item.id)}
-                  >
-                    <span className={s.navIcon}>{item.icon}</span>
-                    <span className={`${s.navLabel} txt-small txt-medium`}>{item.label}</span>
-                    {section === item.id && <ChevronRight size={12} strokeWidth={2} className={s.navChevron} />}
-                  </button>
-                  )
-                })}
-              </div>
-              )
-            })}
-          </div>
-
-          {/* Leave Server Button (hidden for owner — must transfer or delete) */}
-          {!isOwner && (
-            <div className={s.navFooter}>
-              <button className={s.leaveBtn} onClick={() => setShowLeaveConfirm(true)}>
-                <Users size={14} strokeWidth={1.5} />
-                <span className="txt-small">Leave Server</span>
-              </button>
-            </div>
-          )}
-        </aside>
-
-        {/* Right content */}
-        <main className={s.content}>
-          {/* Header */}
-          <div className={s.header}>
-            <h2 className={`${s.title} txt-title`}>
-              {NAV.flatMap(g => g.items).find(i => i.id === section)?.label}
-            </h2>
-            <button className={s.closeBtn} onClick={onClose}>
-              <X size={18} strokeWidth={1.5} />
-            </button>
-          </div>
-
-          <div className={`${s.scroll} scrollbar-thin`}>
+  return (
+    <>
+    <SettingsShell
+      section={section}
+      onSection={setSection}
+      onClose={onClose}
+      navGroups={navGroups}
+      navHeader={
+        <div className={s.serverHeader}>
+          <ServerIcon name={server.name} iconUrl={server.icon_url} serverId={server.id} size="sm" />
+          <span className={`${s.serverName} txt-small txt-semibold`}>{server.name}</span>
+        </div>
+      }
+      navFooter={!isOwner ? (
+        <button className={s.leaveBtn} onClick={() => setShowLeaveConfirm(true)}>
+          <Users size={14} strokeWidth={1.5} />
+          <span className="txt-small">Leave Server</span>
+        </button>
+      ) : undefined}
+      scrollNoPadding={section === 'roles'}
+    >
             {/* Overview Section */}
             {section === 'overview' && (
-              <div className={s.section}>
-                <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Server Name</label>
-                  <input
-                    type="text"
-                    className={`${s.input} txt-small`}
-                    value={currentName}
-                    onChange={e => handleFieldChange('name', e.target.value)}
-                    maxLength={100}
-                  />
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Description</label>
-                  <textarea
-                    className={`${s.textarea} txt-small`}
-                    value={currentDescription}
-                    onChange={e => handleFieldChange('description', e.target.value)}
-                    rows={3}
-                    maxLength={500}
-                    placeholder="What's your server about?"
-                  />
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Server Icon</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="group"
-                      style={{ position: 'relative', cursor: 'pointer', borderRadius: '50%', overflow: 'hidden', width: 64, height: 64, flexShrink: 0 }}
-                      onClick={() => iconFileRef.current?.click()}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); iconFileRef.current?.click() }}}
-                    >
-                      {iconPreviewUrl ? (
-                        <img src={iconPreviewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <ServerIcon name={currentName} iconUrl={server.icon_url} serverId={server.id} size="lg" />
-                      )}
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        {iconUploading ? <span style={{ color: '#fff', fontSize: 11 }}>...</span> : <Camera size={20} color="#aaa" />}
-                      </div>
-                    </div>
-                    <span className="txt-tiny" style={{ color: 'var(--text-tertiary)' }}>Click to upload<br />Recommended: 128x128</span>
-                    <input ref={iconFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleIconUpload} />
-                  </div>
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={`${s.label} txt-tiny txt-semibold`}>Banner URL</label>
-                  <input
-                    type="text"
-                    className={`${s.input} txt-small`}
-                    value={currentBannerUrl}
-                    onChange={e => handleFieldChange('banner_url', e.target.value)}
-                    placeholder="https://..."
-                  />
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={s.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={currentDiscoverable}
-                      onChange={e => handleFieldChange('discoverable', e.target.checked)}
-                    />
-                    <span className="txt-small">Make server discoverable in server browser</span>
-                  </label>
-                </div>
-
-                {hasChanges && (
-                  <div className={s.actions}>
-                    <button className={s.saveBtn} onClick={handleSave}>
-                      <Save size={14} strokeWidth={1.5} />
-                      <span className="txt-small">Save Changes</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <OverviewSection
+                server={server}
+                editedServer={editedServer}
+                setEditedServer={setEditedServer}
+                hasChanges={hasChanges}
+                setHasChanges={setHasChanges}
+                iconPreviewUrl={iconPreviewUrl}
+                setIconPreviewUrl={setIconPreviewUrl}
+                iconFileRef={iconFileRef}
+                onUpdate={onUpdate}
+                onIconUpload={handleIconUpload}
+              />
             )}
 
             {/* Roles Section */}
             {section === 'roles' && (
-              <div className={s.section}>
+              <div className={s.sectionFull}>
                 <div className={s.rolesLayout}>
                   {/* Left: Role List */}
                   <div className={s.rolesLeftPanel}>
-                    <div className={s.sectionHeader}>
-                      <h3 className="txt-small txt-semibold">Server Roles</h3>
-                      <button
-                        className={s.createBtn}
-                        onClick={() => setShowCreateRole(true)}
-                      >
-                        <Plus size={14} strokeWidth={1.5} /> Create Role
-                      </button>
-                    </div>
-
-                    {/* Create Role Form */}
-                    {showCreateRole && (
-                      <div className={s.createRoleForm}>
-                        <div className={s.roleFormRow}>
-                          <input
-                            type="color"
-                            value={newRoleColor}
-                            onChange={e => setNewRoleColor(e.target.value)}
-                            className={s.colorPicker}
-                          />
-                          <input
-                            type="text"
-                            value={newRoleName}
-                            onChange={e => setNewRoleName(e.target.value)}
-                            placeholder="Role name"
-                            className={`${s.roleInput} txt-small`}
-                            maxLength={32}
-                          />
-                          <button
-                            className={s.saveRoleBtn}
-                            onClick={handleCreateRole}
-                            disabled={!newRoleName.trim()}
-                          >
-                            <Check size={16} strokeWidth={1.5} />
-                          </button>
-                          <button
-                            className={s.cancelRoleBtn}
-                            onClick={() => {
-                              setShowCreateRole(false)
-                              setNewRoleName('')
-                              setNewRoleColor('#5865F2')
-                            }}
-                          >
-                            <XCircle size={16} strokeWidth={1.5} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
+                    <span className={`${s.rolesListHeader} txt-tiny txt-semibold`}>All Roles</span>
                     <div className={`${s.rolesList} scrollbar-thin`}>
-                      {roles.map(role => (
-                        <div
+                      {rolesOrdered.map(role => (
+                        <button
                           key={role.id}
                           className={`${s.roleItem} ${selectedRoleId === role.id ? s.roleItemSelected : ''}`}
                           onClick={() => handleSelectRole(role.id)}
                         >
-                          {editingRoleId === role.id ? (
-                            <div className={s.roleEditRow}>
-                              <input
-                                type="color"
-                                value={editingRoleColor}
-                                onChange={e => setEditingRoleColor(e.target.value)}
-                                className={s.colorPicker}
-                              />
-                              <input
-                                type="text"
-                                value={editingRoleName}
-                                onChange={e => setEditingRoleName(e.target.value)}
-                                className={`${s.roleInput} txt-small`}
-                                maxLength={32}
-                                autoFocus
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') handleSaveRole()
-                                  if (e.key === 'Escape') handleCancelEditRole()
-                                }}
-                              />
-                              <button className={s.saveRoleBtn} onClick={handleSaveRole}>
-                                <Check size={16} strokeWidth={1.5} />
-                              </button>
-                              <button className={s.cancelRoleBtn} onClick={handleCancelEditRole}>
-                                <XCircle size={16} strokeWidth={1.5} />
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <div className={s.roleInfo}>
-                                <div
-                                  className={s.roleColor}
-                                  style={{ background: `#${role.color.toString(16).padStart(6, '0')}` }}
-                                />
-                                <span className={`${s.roleName} txt-small`}>{role.name}</span>
-                                {role.is_default && <span className={s.defaultBadge}>Default</span>}
-                              </div>
-                              <div className={s.roleActions}>
-                                <button
-                                  className={s.editRoleBtn}
-                                  onClick={e => { e.stopPropagation(); handleStartEditRole(role); }}
-                                >
-                                  <Edit2 size={14} strokeWidth={1.5} />
-                                </button>
-                                {!role.is_default && (
-                                  <button
-                                    className={s.deleteRoleBtn}
-                                    onClick={e => { e.stopPropagation(); handleDeleteRole(role.id); }}
-                                  >
-                                    <Trash2 size={14} strokeWidth={1.5} />
-                                  </button>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
+                          <div
+                            className={s.roleColorDot}
+                            style={{ background: `#${role.color.toString(16).padStart(6, '0')}` }}
+                          />
+                          <span className={`${s.roleName} txt-small`}>{role.name}</span>
+                        </button>
                       ))}
                     </div>
+
+                    {/* Create Role Button */}
+                    <button
+                      className={s.createRoleBtn}
+                      onClick={handleCreateRole}
+                    >
+                      <Plus size={14} strokeWidth={1.5} />
+                      <span>Create Role</span>
+                    </button>
                   </div>
 
-                  {/* Right: Permissions Editor */}
-                  {selectedRoleId && (
-                    <div className={s.rolesRightPanel}>
-                      {(() => {
-                        const role = roles.find(r => r.id === selectedRoleId)
-                        if (!role) return null
-                        const isEditing = editingRoleId === role.id
-                        const currentPermissions = isEditing ? editingRolePermissions : role.permissions
+                  {/* Right: Role Editor */}
+                  <div className={s.rolesRightPanel}>
+                    {selectedRoleId && (() => {
+                      const role = roles.find(r => r.id === selectedRoleId)
+                      if (!role) return null
+                      const isRoleSelected = editingRoleId === role.id
+                      const currentPermissions = editingRolePermissions
 
-                        return (
-                          <>
-                            <div className={s.permissionsHeader}>
-                              <div>
-                                <h4 className={`${s.permissionsTitle} txt-small txt-semibold`}>
-                                  {role.name} Permissions
-                                </h4>
-                                <p className={`${s.permissionsSubtitle} txt-tiny`}>
-                                  {members.filter(m => (m.role_ids ?? []).includes(role.id)).length} members
-                                </p>
+                      return (
+                        <>
+                          {/* Role Info Header */}
+                          <div className={s.roleInfoHeader}>
+                            <div className={s.roleInfoTitle}>
+                              <div className={s.roleInfoEditRow}>
+                                <input
+                                  type="color"
+                                  value={editingRoleColor}
+                                  onChange={e => setEditingRoleColor(e.target.value)}
+                                  className={s.colorPickerInline}
+                                />
+                                <input
+                                  type="text"
+                                  value={editingRoleName}
+                                  onChange={e => setEditingRoleName(e.target.value)}
+                                  className={s.roleNameInput}
+                                  maxLength={32}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveRoleInfo()
+                                    if (e.key === 'Escape') handleCancelEditRoleInfo()
+                                  }}
+                                />
                               </div>
-                              {!isEditing && (
-                                <button
-                                  className={s.editPermsBtn}
-                                  onClick={() => handleStartEditRole(role)}
-                                >
-                                  <Edit2 size={14} strokeWidth={1.5} />
-                                  <span className="txt-small">Edit</span>
-                                </button>
-                              )}
                             </div>
+                          </div>
 
-                            <div className={`${s.permissionsList} scrollbar-thin`}>
+                          {/* Permissions Section */}
+                          <div className={s.permissionsSection}>
+                            <div className={s.permissionsSectionHeader}>
+                              <h4 className={`${s.permissionsSectionTitle} txt-small txt-semibold`}>Permissions</h4>
+                              <button
+                                className={s.clearPermsBtn}
+                                onClick={() => setEditingRolePermissions(0)}
+                              >
+                                Clear permissions
+                              </button>
+                            </div>
+                            <div className={`${s.permissionsList} scrollbar-thin scroll-view-y`}>
                               <PermissionGroup
                                 title="General Server Permissions"
                                 permissions={[
-                                  { flag: P.VIEW_CHANNELS, label: 'View Channels', description: 'Allows members to view channels' },
-                                  { flag: P.MANAGE_CHANNELS, label: 'Manage Channels', description: 'Allows members to create, edit, and delete channels' },
-                                  { flag: P.MANAGE_SERVER, label: 'Manage Server', description: 'Allows members to change server name, icon, and other settings' },
+                                  { flag: P.VIEW_CHANNELS, label: 'View Channels', description: 'Allows members to view channels by default (excluding private channels).' },
+                                  { flag: P.MANAGE_CHANNELS, label: 'Manage Channels', description: 'Allows members to create, edit, or delete channels.' },
+                                  { flag: P.MANAGE_SERVER, label: 'Manage Server', description: 'Allows members to change server name, icon, and other settings.' },
                                 ]}
                                 currentPermissions={currentPermissions}
-                                isEditing={isEditing}
+                                isEditing={isRoleSelected}
                                 onToggle={handlePermissionToggle}
                               />
 
                               <PermissionGroup
                                 title="Member Permissions"
                                 permissions={[
-                                  { flag: P.KICK_MEMBERS, label: 'Kick Members', description: 'Allows members to kick other members' },
-                                  { flag: P.BAN_MEMBERS, label: 'Ban Members', description: 'Allows members to ban other members' },
-                                  { flag: P.MANAGE_ROLES, label: 'Manage Roles', description: 'Allows members to create and manage roles' },
-                                  { flag: P.CREATE_INVITE, label: 'Create Invites', description: 'Allows members to create invite links' },
+                                  { flag: P.KICK_MEMBERS, label: 'Kick Members', description: 'Allows members to kick other members from the server.' },
+                                  { flag: P.BAN_MEMBERS, label: 'Ban Members', description: 'Allows members to ban other members from the server.' },
+                                  { flag: P.MANAGE_ROLES, label: 'Manage Roles', description: 'Allows members to create new roles and edit or delete roles lower than their highest role.' },
+                                  { flag: P.CREATE_INVITE, label: 'Create Invites', description: 'Allows members to create invite links to the server.' },
                                 ]}
                                 currentPermissions={currentPermissions}
-                                isEditing={isEditing}
+                                isEditing={isRoleSelected}
                                 onToggle={handlePermissionToggle}
                               />
 
                               <PermissionGroup
                                 title="Text Channel Permissions"
                                 permissions={[
-                                  { flag: P.SEND_MESSAGES, label: 'Send Messages', description: 'Allows members to send messages' },
-                                  { flag: P.MANAGE_MESSAGES, label: 'Manage Messages', description: 'Allows members to delete and pin messages' },
+                                  { flag: P.SEND_MESSAGES, label: 'Send Messages', description: 'Allows members to send messages in text channels.' },
+                                  { flag: P.MANAGE_MESSAGES, label: 'Manage Messages', description: 'Allows members to delete and pin messages in text channels.' },
+                                  { flag: P.EMBED_LINKS, label: 'Embed Links', description: 'Allows members to embed links in messages.' },
+                                  { flag: P.ATTACH_FILES, label: 'Attach Files', description: 'Allows members to attach files to messages.' },
                                 ]}
                                 currentPermissions={currentPermissions}
-                                isEditing={isEditing}
+                                isEditing={isRoleSelected}
+                                onToggle={handlePermissionToggle}
+                              />
+
+                              <PermissionGroup
+                                title="Voice Channel Permissions"
+                                permissions={[
+                                  { flag: P.CONNECT, label: 'Connect', description: 'Allows members to connect to voice channels.' },
+                                  { flag: P.SPEAK, label: 'Speak', description: 'Allows members to speak in voice channels.' },
+                                  { flag: P.VIDEO, label: 'Video', description: 'Allows members to share video in voice channels.' },
+                                  { flag: P.MUTE_MEMBERS, label: 'Mute Members', description: 'Allows members to mute other members in voice channels.' },
+                                  { flag: P.DEAFEN_MEMBERS, label: 'Deafen Members', description: 'Allows members to deafen other members in voice channels.' },
+                                ]}
+                                currentPermissions={currentPermissions}
+                                isEditing={isRoleSelected}
                                 onToggle={handlePermissionToggle}
                               />
 
                               <div className={s.permissionItem}>
                                 <div className={s.permissionInfo}>
                                   <span className={`${s.permissionLabel} txt-small txt-medium`}>Administrator</span>
-                                  <span className={`${s.permissionDesc} txt-tiny`}>Grants all permissions and bypasses channel permissions</span>
+                                  <span className={`${s.permissionDesc} txt-tiny`}>Grants all permissions and bypasses channel permissions. This is a dangerous permission!</span>
                                 </div>
-                                {isEditing ? (
+                                <div className={s.permToggleGroup}>
                                   <button
-                                    className={`${s.permToggle} ${(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? s.permToggleActive : ''}`}
-                                    onClick={() => handlePermissionToggle(P.ADMINISTRATOR)}
+                                    className={`${s.permToggleBtn} ${(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? s.permToggleBtnActive : ''}`}
+                                    onClick={isRoleSelected ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
+                                    disabled={!isRoleSelected}
+                                    aria-label={(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? 'Disable Administrator' : 'Enable Administrator'}
                                   >
-                                    <Shield size={14} strokeWidth={1.5} />
+                                    <Check size={16} strokeWidth={2.5} />
                                   </button>
-                                ) : (
-                                  <span className={`${s.permStatus} txt-tiny ${(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? s.permStatusGranted : s.permStatusDenied}`}>
-                                    {(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? 'Granted' : 'Not Granted'}
-                                  </span>
-                                )}
+                                  <button
+                                    className={`${s.permToggleBtn} ${(currentPermissions & P.ADMINISTRATOR) !== P.ADMINISTRATOR ? s.permToggleBtnDeny : ''}`}
+                                    onClick={isRoleSelected ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
+                                    disabled={!isRoleSelected}
+                                    aria-label={(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? 'Disable Administrator' : 'Enable Administrator'}
+                                  >
+                                    <X size={16} strokeWidth={2.5} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
+                          </div>
 
-                            {isEditing && (
-                              <div className={s.permissionsFooter}>
-                                <button className={s.cancelBtn} onClick={handleCancelEditRole}>
-                                  <span className="txt-small">Cancel</span>
+                          {/* Footer: Delete + Cancel/Save */}
+                          <div className={s.roleFooter}>
+                            <div className={s.roleFooterLeft}>
+                              {!role.is_default && (
+                                <button
+                                  className={s.deleteRoleLink}
+                                  onClick={() => handleDeleteRole(role.id)}
+                                >
+                                  <Trash2 size={14} strokeWidth={1.5} />
+                                  <span>Delete Role</span>
                                 </button>
-                                <button className={s.saveBtn} onClick={handleSaveRole}>
-                                  <Save size={14} strokeWidth={1.5} />
-                                  <span className="txt-small">Save Changes</span>
-                                </button>
-                              </div>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </div>
-                  )}
+                              )}
+                            </div>
+                            <div className={s.roleFooterRight}>
+                              <button
+                                className={s.cancelBtn}
+                                onClick={handleCancelEditRoleInfo}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                className={s.saveBtn}
+                                onClick={handleSaveRoleInfo}
+                                disabled={!hasRoleChanges}
+                              >
+                                <Save size={14} strokeWidth={1.5} />
+                                <span>Save</span>
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </div>
                 </div>
               </div>
             )}
@@ -624,32 +563,99 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             {/* Invites Section */}
             {section === 'invites' && (
               <div className={s.section}>
-                <div className={s.sectionHeader}>
-                  <h3 className="txt-small txt-semibold">Active Invites</h3>
-                  <button className={s.createBtn} onClick={handleCreateInvite}>Create Invite</button>
-                </div>
-                {invites.length === 0 ? (
-                  <p className={`${s.empty} txt-small`}>No active invites. Create one to invite people!</p>
-                ) : (
-                  <div className={s.invitesList}>
-                    {invites.map(invite => (
-                      <div key={invite.id} className={s.inviteItem}>
-                        <div className={s.inviteInfo}>
-                          <code className={s.inviteCode}>{invite.code}</code>
-                          <span className={`${s.inviteMeta} txt-tiny`}>
-                            {invite.use_count} / {invite.max_uses ?? '\u221E'} uses
-                            {invite.expires_at && ` \u00B7 Expires ${new Date(invite.expires_at).toLocaleDateString()}`}
-                          </span>
-                        </div>
-                        <button
-                          className={s.revokeBtn}
-                          onClick={() => handleDeleteInvite(invite.id)}
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    ))}
+                <div className={s.inviteCreateRow}>
+                  <div className={s.inviteCreateField}>
+                    <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>Expire after</label>
+                    <select
+                      className={s.inviteSelect}
+                      style={{ maxHeight: '32px' }}
+                      value={createInviteMaxAge}
+                      onChange={e => setCreateInviteMaxAge(Number(e.target.value))}
+                      disabled={creatingInvite}
+                    >
+                      <option value={0}>Never</option>
+                      <option value={1800}>30 minutes</option>
+                      <option value={3600}>1 hour</option>
+                      <option value={21600}>6 hours</option>
+                      <option value={43200}>12 hours</option>
+                      <option value={86400}>1 day</option>
+                      <option value={604800}>7 days</option>
+                    </select>
                   </div>
+                  <div className={s.inviteCreateField}>
+                    <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>Max uses</label>
+                    <select
+                      className={s.inviteSelect}
+                      value={createInviteMaxUses}
+                      onChange={e => setCreateInviteMaxUses(Number(e.target.value))}
+                      disabled={creatingInvite}
+                    >
+                      <option value={0}>No limit</option>
+                      <option value={1}>1 use</option>
+                      <option value={5}>5 uses</option>
+                      <option value={10}>10 uses</option>
+                      <option value={25}>25 uses</option>
+                      <option value={50}>50 uses</option>
+                      <option value={100}>100 uses</option>
+                    </select>
+                  </div>
+                  <button
+                    className={`${s.createBtn} ${s.inviteRowBtn}`}
+                    onClick={handleCreateInvite}
+                    disabled={creatingInvite}
+                  >
+                    <Link2 size={14} strokeWidth={1.5} />
+                    {creatingInvite ? 'Creating…' : 'Create Invite'}
+                  </button>
+                </div>
+
+                {createInviteError && (
+                  <div className={s.inviteError}>{createInviteError}</div>
+                )}
+
+                {invites.length === 0 ? (
+                  <div className={s.emptyState}>
+                    <div className={s.emptyStateIcon}>
+                      <Link2 size={32} strokeWidth={1.5} />
+                    </div>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Invites Yet</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>Create an invite above to start inviting people to your server.</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className={s.sectionHeaderWithTitle}>
+                      <span className={`${s.sectionTitle} txt-tiny txt-semibold`}>All Invites</span>
+                    </div>
+                    <div className={s.invitesList}>
+                      {invites.map(invite => (
+                        <div key={invite.id} className={s.inviteItem}>
+                          <div className={s.inviteInfo}>
+                            <button
+                              type="button"
+                              className={s.inviteCopyBtn}
+                              onClick={() => handleCopyInvite(invite)}
+                              title="Click to copy invite link"
+                            >
+                              <code className={s.inviteCode}>{invite.code}</code>
+                              {copiedInviteId === invite.id
+                                ? <Check size={13} strokeWidth={1.75} />
+                                : <Copy size={13} strokeWidth={1.5} />}
+                            </button>
+                            <span className={`${s.inviteMeta} txt-tiny`}>
+                              {invite.use_count} / {invite.max_uses ?? '\u221E'} uses
+                              {invite.expires_at && ` \u00B7 Expires ${new Date(invite.expires_at).toLocaleString()}`}
+                            </span>
+                          </div>
+                          <button
+                            className={s.revokeBtn}
+                            onClick={() => handleDeleteInvite(invite.id)}
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -657,11 +663,14 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             {/* Bans Section */}
             {section === 'bans' && (
               <div className={s.section}>
-                <div className={s.sectionHeader}>
-                  <h3 className="txt-small txt-semibold">Banned Users ({bans.length})</h3>
-                </div>
                 {bans.length === 0 ? (
-                  <p className={`${s.empty} txt-small`}>No banned users. Bans will appear here.</p>
+                  <div className={s.emptyState}>
+                    <div className={s.emptyStateIcon}>
+                      <Shield size={32} strokeWidth={1.5} />
+                    </div>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Banned Users</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>Your server is clean! Banned users will appear here.</span>
+                  </div>
                 ) : (
                   <div className={s.bansList}>
                     {bans.map(ban => (
@@ -697,54 +706,74 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             {/* Audit Log Section */}
             {section === 'audit' && (
               <div className={s.section}>
-                <div className={s.sectionHeader}>
-                  <h3 className="txt-small txt-semibold">Audit Log ({auditLog.length} entries)</h3>
-                </div>
                 {auditLog.length === 0 ? (
-                  <p className={`${s.empty} txt-small`}>No audit log entries yet.</p>
+                  <div className={s.emptyState}>
+                    <div className={s.emptyStateIcon}>
+                      <ScrollText size={32} strokeWidth={1.5} />
+                    </div>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Activity Yet</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>Audit log entries will appear here when server actions are performed.</span>
+                  </div>
                 ) : (
                   <div className={s.auditList}>
-                    {auditLog.map(entry => (
-                      <div key={entry.id} className={s.auditItem}>
-                        <div className={s.auditIcon}>
-                          <AuditIcon actionType={entry.action_type} />
-                        </div>
-                        <div className={s.auditContent}>
-                          <div className={s.auditHeader}>
-                            <span className={`${s.auditAction} txt-small txt-medium`}>
-                              {formatActionType(entry.action_type)}
-                            </span>
-                            <span className={`${s.auditTime} txt-tiny`}>
-                              {new Date(entry.created_at).toLocaleString()}
-                            </span>
+                    {(() => {
+                      // Group entries by day
+                      const grouped = auditLog.reduce((acc, entry) => {
+                        const date = new Date(entry.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                        if (!acc[date]) acc[date] = []
+                        acc[date].push(entry)
+                        return acc
+                      }, {} as Record<string, typeof auditLog>)
+
+                      return Object.entries(grouped).map(([date, entries]) => (
+                        <div key={date} className={s.auditDayGroup}>
+                          <div className={s.auditDayHeader}>{date}</div>
+                          <div className={s.auditDayEntries}>
+                            {entries.map(entry => (
+                              <div key={entry.id} className={s.auditItem}>
+                                <div className={s.auditIcon}>
+                                  <AuditIcon actionType={entry.action_type} />
+                                </div>
+                                <div className={s.auditContent}>
+                                  <div className={s.auditHeader}>
+                                    <span className={`${s.auditAction} txt-small txt-medium`}>
+                                      {formatActionType(entry.action_type)}
+                                    </span>
+                                    <span className={`${s.auditTime} txt-tiny`}>
+                                      {new Date(entry.created_at).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <div className={s.auditDetails}>
+                                    <span className={`${s.auditUser} txt-tiny`}>
+                                      by {members.find(m => m.user_id === entry.user_id)?.nickname || entry.user_id}
+                                    </span>
+                                    {entry.target_type && entry.target_id && (
+                                      <span className={`${s.auditTarget} txt-tiny`}>
+                                        {' '}on {entry.target_type}: {entry.target_id.slice(0, 8)}...
+                                      </span>
+                                    )}
+                                  </div>
+                                  {entry.reason && (
+                                    <span className={`${s.auditReason} txt-tiny`}>
+                                      Reason: {entry.reason}
+                                    </span>
+                                  )}
+                                  {entry.changes && Object.keys(entry.changes).length > 0 && (
+                                    <div className={s.auditChanges}>
+                                      {Object.entries(entry.changes).map(([key, value]) => (
+                                        <span key={key} className={`${s.changeItem} txt-tiny`}>
+                                          {key}: {JSON.stringify(value)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          <div className={s.auditDetails}>
-                            <span className={`${s.auditUser} txt-tiny`}>
-                              by {members.find(m => m.user_id === entry.user_id)?.nickname || entry.user_id}
-                            </span>
-                            {entry.target_type && entry.target_id && (
-                              <span className={`${s.auditTarget} txt-tiny`}>
-                                {' '}on {entry.target_type}: {entry.target_id.slice(0, 8)}...
-                              </span>
-                            )}
-                          </div>
-                          {entry.reason && (
-                            <span className={`${s.auditReason} txt-tiny`}>
-                              Reason: {entry.reason}
-                            </span>
-                          )}
-                          {entry.changes && Object.keys(entry.changes).length > 0 && (
-                            <div className={s.auditChanges}>
-                              {Object.entries(entry.changes).map(([key, value]) => (
-                                <span key={key} className={`${s.changeItem} txt-tiny`}>
-                                  {key}: {JSON.stringify(value)}
-                                </span>
-                              ))}
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    })()}
                   </div>
                 )}
               </div>
@@ -768,53 +797,402 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                 </div>
               </div>
             )}
-          </div>
-        </main>
+    </SettingsShell>
 
-        {/* Leave Confirmation Modal */}
-        {showLeaveConfirm && (
-          <div className={s.confirmOverlay} onClick={() => setShowLeaveConfirm(false)}>
-            <div className={s.confirmModal}>
-              <h3 className="txt-small txt-semibold">Leave Server</h3>
-              <p className={`${s.confirmText} txt-small`}>
-                Are you sure you want to leave <strong>{server.name}</strong>? You won't be able to rejoin unless you have an invite.
-              </p>
-              <div className={s.confirmActions}>
-                <button className={s.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>Cancel</button>
-                <button
-                  className={s.confirmLeaveBtn}
-                  onClick={() => { onLeave?.(server.id); onClose() }}
-                >
-                  Leave Server
-                </button>
+    {/* Leave Confirmation Modal — rendered as a separate portal sibling so it
+        floats on top of the SettingsShell modal with its own backdrop. */}
+    {showLeaveConfirm && createPortal(
+      <div className={s.confirmOverlay} onClick={() => setShowLeaveConfirm(false)}>
+        <div className={s.confirmModal}>
+          <h3 className="txt-small txt-semibold">Leave Server</h3>
+          <p className={`${s.confirmText} txt-small`}>
+            Are you sure you want to leave <strong>{server.name}</strong>? You won't be able to rejoin unless you have an invite.
+          </p>
+          <div className={s.confirmActions}>
+            <button className={s.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>Cancel</button>
+            <button
+              className={s.confirmLeaveBtn}
+              onClick={() => { onLeave?.(server.id); onClose() }}
+            >
+              Leave Server
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
+
+    {/* Delete Confirmation Modal */}
+    {showDeleteConfirm && createPortal(
+      <div className={s.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>
+        <div className={s.confirmModal}>
+          <h3 className="txt-small txt-semibold">Delete Server</h3>
+          <p className={`${s.confirmText} txt-small`}>
+            Are you sure you want to permanently delete <strong>{server.name}</strong>? This action cannot be undone.
+          </p>
+          <div className={s.confirmActions}>
+            <button className={s.cancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+            <button
+              className={s.confirmDeleteBtn}
+              onClick={() => { onDelete?.(server.id); onClose() }}
+            >
+              Delete Server
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
+  )
+}
+
+// Overview — solid colors match Settings.tsx AccountSection (BANNER_COLORS)
+const BANNER_COLORS = [
+  { name: 'Sage', value: 'oklch(60% 0.1 136)' },
+  { name: 'Gold', value: 'oklch(65% 0.12 85)' },
+  { name: 'Ocean', value: 'oklch(60% 0.12 215)' },
+  { name: 'Royal', value: 'oklch(55% 0.18 280)' },
+  { name: 'Berry', value: 'oklch(55% 0.18 340)' },
+  { name: 'Coral', value: 'oklch(60% 0.15 25)' },
+]
+
+function hueFromOklch(oklch: string): number | null {
+  const m = oklch.match(/oklch\([^\s]+\s+[^\s]+\s+(\d+)/)
+  return m ? parseInt(m[1], 10) : null
+}
+
+const BANNER_PRESETS = {
+  gradients: [
+    { name: 'Ocean Breeze', value: 'linear-gradient(135deg, oklch(60% 0.12 215), oklch(55% 0.1 180))' },
+    { name: 'Sunset Glow', value: 'linear-gradient(135deg, oklch(65% 0.15 45), oklch(55% 0.18 340))' },
+    { name: 'Forest Mist', value: 'linear-gradient(135deg, oklch(60% 0.1 136), oklch(55% 0.08 160))' },
+    { name: 'Royal Velvet', value: 'linear-gradient(135deg, oklch(55% 0.18 280), oklch(50% 0.15 320))' },
+    { name: 'Berry Burst', value: 'linear-gradient(135deg, oklch(55% 0.18 340), oklch(60% 0.12 25))' },
+    { name: 'Midnight', value: 'linear-gradient(135deg, oklch(40% 0.05 250), oklch(35% 0.08 280))' },
+  ],
+}
+
+interface OverviewSectionProps {
+  server: Server
+  editedServer: Partial<Server>
+  setEditedServer: Dispatch<SetStateAction<Partial<Server>>>
+  hasChanges: boolean
+  setHasChanges: (has: boolean) => void
+  iconPreviewUrl: string | null
+  setIconPreviewUrl: (url: string | null) => void
+  iconFileRef: React.RefObject<HTMLInputElement | null>
+  onUpdate: (serverId: string, data: Partial<Server>) => void
+  onIconUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
+}
+
+function OverviewSection({
+  server,
+  editedServer,
+  setEditedServer,
+  hasChanges,
+  setHasChanges,
+  iconPreviewUrl,
+  iconFileRef,
+  onUpdate,
+  onIconUpload,
+}: OverviewSectionProps) {
+  const [showBannerMenu, setShowBannerMenu] = useState(false)
+  const [bannerPopoverPos, setBannerPopoverPos] = useState({ top: 0, left: 0 })
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const bannerMenuBtnRef = useRef<HTMLButtonElement>(null)
+  const bannerPopoverRef = useRef<HTMLDivElement>(null)
+  const bannerFileInputRef = useRef<HTMLInputElement>(null)
+  // Store banner gradient in local state since it's not in Server type
+  const [bannerGradient, setBannerGradient] = useState<string | null>(null)
+
+  // Compute current values (edited or original)
+  const currentName = editedServer.name ?? server.name
+  const currentDescription = editedServer.description ?? server.description ?? ''
+  const currentBannerUrl = editedServer.banner_url ?? server.banner_url ?? ''
+  const currentDiscoverable = editedServer.discoverable ?? server.discoverable ?? false
+  const currentHue =
+    editedServer.hue ?? server.hue ?? server.theme?.hue ?? null
+  const currentGradient = bannerGradient
+
+  const updateBannerPopoverPosition = useCallback(() => {
+    const btn = bannerMenuBtnRef.current
+    if (!btn) return
+    const r = btn.getBoundingClientRect()
+    const panelWidth = 320
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - panelWidth - 8))
+    setBannerPopoverPos({ top: r.bottom + 8, left })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!showBannerMenu) return
+    updateBannerPopoverPosition()
+    const onScrollOrResize = () => updateBannerPopoverPosition()
+    window.addEventListener('scroll', onScrollOrResize, true)
+    window.addEventListener('resize', onScrollOrResize)
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true)
+      window.removeEventListener('resize', onScrollOrResize)
+    }
+  }, [showBannerMenu, updateBannerPopoverPosition])
+
+  useEffect(() => {
+    if (!showBannerMenu) return
+    const onPointerDown = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (bannerPopoverRef.current?.contains(t)) return
+      if (bannerMenuBtnRef.current?.contains(t)) return
+      setShowBannerMenu(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [showBannerMenu])
+
+  // Solid fill: use exact preset string when hue matches Settings palette (same as profile banner)
+  const getBannerBackground = () => {
+    if (currentBannerUrl) return `url(${currentBannerUrl}) center/cover`
+    if (currentGradient) return currentGradient
+    if (currentHue != null) {
+      const preset = BANNER_COLORS.find(c => hueFromOklch(c.value) === currentHue)
+      if (preset) return preset.value
+      return `oklch(60% 0.12 ${currentHue})`
+    }
+    return BANNER_COLORS[2].value
+  }
+
+  const isSolidColorActive = (presetValue: string) => {
+    if (currentBannerUrl || currentGradient || currentHue == null) return false
+    return hueFromOklch(presetValue) === currentHue
+  }
+
+  const handleFieldChange = (field: keyof Server, value: unknown) => {
+    // Functional update so sequential calls (e.g. hue + banner_url) don't clobber each other
+    setEditedServer(prev => ({ ...prev, [field]: value }))
+    setHasChanges(true)
+  }
+
+  const handleSave = () => {
+    onUpdate(server.id, editedServer)
+    setHasChanges(false)
+    setEditedServer({})
+  }
+
+  const handleBannerColorSelect = (colorValue: string) => {
+    const h = hueFromOklch(colorValue)
+    if (h != null) {
+      handleFieldChange('hue', h)
+      setBannerGradient(null)
+      handleFieldChange('banner_url', null)
+    }
+  }
+
+  const handleGradientSelect = (gradientValue: string) => {
+    setBannerGradient(gradientValue)
+    handleFieldChange('hue', null)
+    handleFieldChange('banner_url', null)
+    setHasChanges(true)
+  }
+
+  const handleImageUrlChange = (url: string) => {
+    handleFieldChange('banner_url', url)
+    handleFieldChange('hue', null)
+    setBannerGradient(null)
+  }
+
+  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBannerUploading(true)
+    try {
+      const result = await api.uploadFile(file)
+      const url = result.url ?? result.key
+      handleImageUrlChange(url)
+    } catch {
+      /* ignore */
+    } finally {
+      setBannerUploading(false)
+    }
+  }
+
+  return (
+    <div className={s.section}>
+      {/* Server Preview Card - Visual Editor */}
+      <div className={s.serverPreviewCard}>
+        <div className={s.bannerEditorWrap}>
+          <div className={s.bannerEditor} style={{ background: getBannerBackground() }} />
+          <div className={s.serverPreviewActions}>
+            <button
+              ref={bannerMenuBtnRef}
+              type="button"
+              className={`${s.colorPickerBtn} ${showBannerMenu ? s.colorPickerActive : ''}`}
+              onClick={() => setShowBannerMenu(v => !v)}
+              title="Banner background"
+              aria-expanded={showBannerMenu}
+              aria-haspopup="dialog"
+            >
+              <Palette size={16} strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+
+        {showBannerMenu &&
+          createPortal(
+            <div
+              ref={bannerPopoverRef}
+              className={s.bannerPopover}
+              style={{ top: bannerPopoverPos.top, left: bannerPopoverPos.left }}
+              role="dialog"
+              aria-label="Banner background"
+            >
+              <div className={s.bannerPopoverSection}>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Solid colors</span>
+                <div className={s.bannerPopoverSwatches}>
+                  {BANNER_COLORS.map(c => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      className={`${s.colorPickerSwatch} ${isSolidColorActive(c.value) ? s.colorPickerSwatchActive : ''}`}
+                      style={{ background: c.value }}
+                      onClick={() => handleBannerColorSelect(c.value)}
+                      title={c.name}
+                    />
+                  ))}
+                </div>
               </div>
+
+              <div className={s.bannerPopoverSection}>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Gradients</span>
+                <div className={s.bannerPopoverSwatches}>
+                  {BANNER_PRESETS.gradients.map(g => (
+                    <button
+                      key={g.name}
+                      type="button"
+                      className={`${s.colorPickerSwatch} ${currentGradient === g.value ? s.colorPickerSwatchActive : ''}`}
+                      style={{ background: g.value }}
+                      onClick={() => handleGradientSelect(g.value)}
+                      title={g.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className={s.bannerPopoverSection}>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Image</span>
+                <div className={s.bannerPopoverImageRow}>
+                  <input
+                    type="text"
+                    className={s.bannerPopoverUrlInput}
+                    value={currentBannerUrl}
+                    onChange={e => handleImageUrlChange(e.target.value)}
+                    placeholder="Image URL (https://…)"
+                    autoComplete="off"
+                  />
+                  <input
+                    ref={bannerFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className={s.bannerPopoverFileInput}
+                    onChange={handleBannerFileChange}
+                  />
+                  <button
+                    type="button"
+                    className={s.bannerPopoverUploadBtn}
+                    disabled={bannerUploading}
+                    onClick={() => bannerFileInputRef.current?.click()}
+                  >
+                    <Upload size={14} strokeWidth={1.5} />
+                    {bannerUploading ? 'Uploading…' : 'Upload'}
+                  </button>
+                </div>
+                {currentBannerUrl ? (
+                  <button
+                    type="button"
+                    className={s.bannerPopoverClearImage}
+                    onClick={() => handleImageUrlChange('')}
+                  >
+                    Remove image banner
+                  </button>
+                ) : null}
+              </div>
+            </div>,
+            document.body
+          )}
+
+        {/* Server Content */}
+        <div className={s.previewContent}>
+          {/* Server Icon with Upload */}
+          <div
+            className={s.previewAvatarWrap}
+            onClick={() => iconFileRef.current?.click()}
+          >
+            <input
+              ref={iconFileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={onIconUpload}
+            />
+            <div className={s.previewAvatar}>
+              {iconPreviewUrl ? (
+                <img src={iconPreviewUrl} alt="Server Icon" className={s.previewAvatarImg} />
+              ) : (
+                <ServerIcon name={currentName} iconUrl={server.icon_url} serverId={server.id} size="lg" />
+              )}
+            </div>
+            <div className={s.avatarChangeOverlay}>
+              <Camera size={20} strokeWidth={1.5} />
             </div>
           </div>
-        )}
 
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className={s.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>
-            <div className={s.confirmModal}>
-              <h3 className="txt-small txt-semibold">Delete Server</h3>
-              <p className={`${s.confirmText} txt-small`}>
-                Are you sure you want to permanently delete <strong>{server.name}</strong>? This action cannot be undone.
-              </p>
-              <div className={s.confirmActions}>
-                <button className={s.cancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
-                <button
-                  className={s.confirmDeleteBtn}
-                  onClick={() => { onDelete?.(server.id); onClose() }}
-                >
-                  Delete Server
-                </button>
-              </div>
-            </div>
+          {/* Direct Edit Fields */}
+          <div className={s.previewInfo}>
+            <input
+              type="text"
+              className={s.inlineNameInput}
+              value={currentName}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+              placeholder="Server Name"
+              maxLength={100}
+            />
+            <textarea
+              className={s.inlineDescInput}
+              value={currentDescription}
+              onChange={(e) => handleFieldChange('description', e.target.value)}
+              placeholder="What's your server about?"
+              rows={2}
+              maxLength={500}
+            />
           </div>
-        )}
+        </div>
       </div>
-    </div>,
-    document.body
+
+      {/* Discoverable Toggle */}
+      <div className={s.simpleFieldRow}>
+        <div className={s.toggleMeta}>
+          <span className={`${s.toggleLabel} txt-small txt-medium`}>Server Discovery</span>
+          <span className={`${s.toggleDesc} txt-tiny`}>Make server discoverable in server browser</span>
+        </div>
+        <button
+          className={`${s.toggle} ${currentDiscoverable ? s.toggleOn : ''}`}
+          onClick={() => handleFieldChange('discoverable', !currentDiscoverable)}
+          role="switch"
+          aria-checked={currentDiscoverable}
+        >
+          <span className={s.toggleThumb} />
+        </button>
+      </div>
+
+      {/* Save Button */}
+      {hasChanges && (
+        <div className={s.saveActions}>
+          <button className={s.saveChangesBtn} onClick={handleSave}>
+            <Save size={14} strokeWidth={1.5} />
+            Save Changes
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -882,26 +1260,35 @@ function PermissionGroup({
   return (
     <div className={s.permissionGroup}>
       <h5 className={`${s.permissionGroupTitle} txt-tiny txt-semibold`}>{title}</h5>
-      {permissions.map(perm => (
-        <div key={perm.flag} className={s.permissionItem}>
-          <div className={s.permissionInfo}>
-            <span className={`${s.permissionLabel} txt-small txt-medium`}>{perm.label}</span>
-            <span className={`${s.permissionDesc} txt-tiny`}>{perm.description}</span>
+      {permissions.map(perm => {
+        const isGranted = (currentPermissions & perm.flag) === perm.flag
+        return (
+          <div key={perm.flag} className={s.permissionItem}>
+            <div className={s.permissionInfo}>
+              <span className={`${s.permissionLabel} txt-small txt-medium`}>{perm.label}</span>
+              <span className={`${s.permissionDesc} txt-tiny`}>{perm.description}</span>
+            </div>
+            <div className={s.permToggleGroup}>
+              <button
+                className={`${s.permToggleBtn} ${isGranted ? s.permToggleBtnActive : ''}`}
+                onClick={isEditing ? () => onToggle(perm.flag) : undefined}
+                disabled={!isEditing}
+                aria-label={isGranted ? `Disable ${perm.label}` : `Enable ${perm.label}`}
+              >
+                <Check size={16} strokeWidth={2.5} />
+              </button>
+              <button
+                className={`${s.permToggleBtn} ${!isGranted ? s.permToggleBtnDeny : ''}`}
+                onClick={isEditing ? () => onToggle(perm.flag) : undefined}
+                disabled={!isEditing}
+                aria-label={isGranted ? `Disable ${perm.label}` : `Enable ${perm.label}`}
+              >
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
           </div>
-          {isEditing ? (
-            <button
-              className={`${s.permToggle} ${(currentPermissions & perm.flag) === perm.flag ? s.permToggleActive : ''}`}
-              onClick={() => onToggle(perm.flag)}
-            >
-              {(currentPermissions & perm.flag) === perm.flag ? '\u2713' : '\u2715'}
-            </button>
-          ) : (
-            <span className={`${s.permStatus} txt-tiny ${(currentPermissions & perm.flag) === perm.flag ? s.permStatusGranted : s.permStatusDenied}`}>
-              {(currentPermissions & perm.flag) === perm.flag ? 'Granted' : 'Not Granted'}
-            </span>
-          )}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

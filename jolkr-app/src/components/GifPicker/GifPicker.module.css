@@ -1,0 +1,327 @@
+/* ── GIF Picker — pixel-perfect match of gif-picker-react ── */
+
+/* CSS custom properties matching gif-picker-react dark theme */
+.picker {
+  --gpr-highlight-color: #007aeb;
+  --gpr-bg-color: #222;
+  --gpr-border-color: #2b2b2b;
+  --gpr-input-bg: #3b3b3b;
+  --gpr-text-color: silver;
+  --gpr-placeholder-color: #3b3b3b;
+  --gpr-hover-bg: #363636f6;
+  --gpr-gap: 10px;
+  --gpr-radius: 8px;
+  --gpr-card-radius: 4px;
+
+  box-sizing: border-box;
+  background-color: var(--gpr-bg-color);
+  border: 1px solid var(--gpr-border-color);
+  border-radius: var(--gpr-radius);
+  color: var(--gpr-text-color);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.picker[data-theme='light'] {
+  --gpr-bg-color: #fff;
+  --gpr-border-color: #e7e7e7;
+  --gpr-input-bg: #f6f6f6;
+  --gpr-text-color: #858585;
+  --gpr-placeholder-color: #d3d3d3;
+  --gpr-hover-bg: #f1f8ff;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 15px 10px;
+  border-bottom: 1px solid var(--gpr-border-color);
+  min-height: 0;
+}
+
+.backBtn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  color: var(--gpr-text-color);
+  display: flex;
+  align-items: center;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  justify-content: center;
+}
+
+.backBtn:hover {
+  background: var(--gpr-hover-bg);
+}
+
+/* ── Search bar ── */
+.searchWrap {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--gpr-text-color);
+  pointer-events: none;
+}
+
+.searchInput {
+  background-color: var(--gpr-input-bg);
+  border: 1px solid var(--gpr-input-bg);
+  border-radius: var(--gpr-radius);
+  color: var(--gpr-text-color);
+  height: 40px;
+  outline: none;
+  padding: 0 32px;
+  transition: all 0.2s ease-in-out;
+  width: 100%;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.searchInput::placeholder {
+  color: var(--gpr-text-color);
+}
+
+.searchInput:focus {
+  background-color: #000;
+  border-color: var(--gpr-highlight-color);
+}
+
+.picker[data-theme='light'] .searchInput:focus {
+  background-color: #fff;
+}
+
+/* ── Title bar (when browsing category/trending) ── */
+.titleBar {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  background-color: var(--gpr-input-bg);
+  border-radius: var(--gpr-radius);
+  height: 40px;
+  padding: 0 10px;
+  gap: 8px;
+}
+
+.titleText {
+  flex: 1;
+  font-size: 14px;
+  color: var(--gpr-text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clearBtn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--gpr-text-color);
+}
+
+.clearBtn:hover {
+  background: var(--gpr-hover-bg);
+}
+
+/* ── Body ── */
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Category grid (home view) ── */
+.categories {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: var(--gpr-gap);
+  grid-auto-rows: min-content;
+  flex: 1;
+  overflow-y: scroll;
+  padding: 10px;
+}
+
+.categoryCard {
+  position: relative;
+  height: 100px;
+  border-radius: var(--gpr-card-radius);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease-in-out;
+  overflow: hidden;
+  background: var(--gpr-placeholder-color);
+}
+
+.categoryCard:hover {
+  box-shadow: 0 0 0 2px var(--gpr-highlight-color);
+}
+
+.categoryImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--gpr-card-radius);
+  background-color: var(--gpr-placeholder-color);
+}
+
+.categoryOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: var(--gpr-card-radius);
+  transition: background-color 0.15s ease-in-out;
+  overflow: hidden;
+}
+
+.categoryCard:hover .categoryOverlay {
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+.categoryName {
+  color: #e7e7e7;
+  font-size: 16px;
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── GIF masonry grid (search/browse/favorites) ── */
+.gifList {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  gap: var(--gpr-gap);
+  overflow-y: scroll;
+  padding: 10px;
+}
+
+.gifColumn {
+  display: grid;
+  flex: 1;
+  grid-gap: var(--gpr-gap);
+  grid-auto-rows: min-content;
+  grid-template-columns: 1fr;
+}
+
+.gifCell {
+  position: relative;
+  border-radius: var(--gpr-card-radius);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease-in-out;
+  overflow: hidden;
+}
+
+.gifCell:hover {
+  box-shadow: 0 0 0 2px var(--gpr-highlight-color);
+}
+
+.gifCell:hover .heartBtn {
+  opacity: 1;
+}
+
+.gifThumb {
+  width: 100%;
+  display: block;
+  border-radius: var(--gpr-card-radius);
+  background-color: var(--gpr-placeholder-color);
+}
+
+/* ── Heart (favorite) button ── */
+.heartBtn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  padding: 0;
+  z-index: 1;
+}
+
+.heartBtn[data-fav='true'] {
+  opacity: 1;
+  color: #ff4757;
+}
+
+.heartBtn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ── Loading / empty states ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: var(--gpr-text-color);
+  font-size: 14px;
+  width: 100%;
+}
+
+.empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 30%;
+  color: var(--gpr-text-color);
+  font-size: 14px;
+}
+
+/* ── Placeholder (loading skeleton) ── */
+.placeholder {
+  background-color: var(--gpr-placeholder-color);
+  border-radius: var(--gpr-card-radius);
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* ── Attribution ── */
+.attribution {
+  text-align: center;
+  padding: 6px;
+  font-size: 11px;
+  color: var(--gpr-text-color);
+}

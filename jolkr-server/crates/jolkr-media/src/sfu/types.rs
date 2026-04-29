@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Commands sent from WebSocket handlers to the SFU thread.
-pub enum SfuCommand {
+pub(crate) enum SfuCommand {
     /// A new peer wants to join a voice channel.
     AddPeer {
         user_id: Uuid,
@@ -38,7 +38,7 @@ pub enum SfuCommand {
 /// Signaling messages sent from the SFU thread to a peer's WebSocket.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "op", content = "d")]
-pub enum SignalOut {
+pub(crate) enum SignalOut {
     /// Confirmation that the peer joined the room, with current participants.
     Joined {
         room_id: Uuid,
@@ -67,8 +67,14 @@ pub enum SignalOut {
         deafened: bool,
     },
     /// A participant started or stopped speaking (voice activity).
+    #[expect(
+        dead_code,
+        reason = "Reserved for upcoming voice-activity detection wiring."
+    )]
     Speaking {
+        /// User identifier whose voice activity changed.
         user_id: Uuid,
+        /// Whether the user is currently speaking.
         speaking: bool,
     },
     /// An error occurred.
@@ -79,7 +85,7 @@ pub enum SignalOut {
 
 /// Public info about a participant in a voice room.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ParticipantInfo {
+pub(crate) struct ParticipantInfo {
     pub user_id: Uuid,
     pub is_muted: bool,
     pub is_deafened: bool,

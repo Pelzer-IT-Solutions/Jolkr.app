@@ -9,6 +9,7 @@ import { getLocalKeys } from '../../services/e2ee'
 import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { orbsForHue } from '../../utils/theme'
 import { useMessagesStore } from '../../stores/messages'
+import { useVoiceStore } from '../../stores/voice'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -18,22 +19,21 @@ export function useAppHandlers(
   memos: ReturnType<typeof useAppMemos>,
 ) {
   const {
-    navigate, user, membersByServer,
+    navigate, user, membersByServer, categoriesByServer,
     dmList, dmActive, activeDmId, activeServerId, activeChannelId,
     tabbedIds, setTabbedIds, setActiveServerId, setActiveChannelId,
     setDmActive, setActiveDmId, setDmList, setDmUsers,
     setNewDmOpen, setJoinServerOpen, setCreateServerOpen,
-    setServerThemes, lastChannelPerServer,
+    setServerThemes, lastChannelPerServer, themeSaveTimer,
     fetchServers, fetchChannels, fetchCategories,
     sendMessage, sendDmMessage, editMessage, deleteMessage,
+    setPinnedCount, setPinnedVersion,
   } = init
 
   const { uiServers, effectiveChannelId, currentApiMessages } = memos
 
   // ── Muted servers (UI-only local state) ──
   const [mutedServerIds, setMutedServerIds] = useState<string[]>([])
-  // Counter to trigger PinnedMessagesPanel refetch after pin/unpin
-  const [pinVersion, setPinVersion] = useState(0)
   const handleToggleMuteServer = useCallback((serverId: string) => {
     setMutedServerIds(prev =>
       prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
@@ -53,15 +53,16 @@ export function useAppHandlers(
   }, [user?.id])
 
   // ── Profile update handler ──
-  const handleUpdateProfile = useCallback(async (data: { display_name?: string; username?: string }) => {
-    await useAuthStore.getState().updateProfile(data)
+  const handleUpdateProfile = useCallback(async (data: { display_name?: string; bio?: string; banner_color?: string; avatar_url?: string }) => {
+    const { banner_color, ...rest } = data
+    await useAuthStore.getState().updateProfile({ ...rest, ...(banner_color ? { banner_color } : {}) })
   }, [])
 
-  // ── Avatar upload handler ──
-  const handleUploadAvatar = useCallback(async (file: File) => {
+  // ── Avatar upload handler — only uploads to S3, returns the key.
+  //    The key is persisted to the profile only when the user clicks Save. ──
+  const handleUploadAvatar = useCallback(async (file: File): Promise<string> => {
     const { key } = await api.uploadFile(file, 'avatar')
-    // Store the S3 key — the avatar is served via /api/avatars/:userId (no presigned URL)
-    await useAuthStore.getState().updateProfile({ avatar_url: key })
+    return key
   }, [])
 
   // ── Password change handler ──
@@ -83,11 +84,16 @@ export function useAppHandlers(
   function handleSwitchServer(id: string) {
     if (id === activeServerId) return
     lastChannelPerServer.current[activeServerId] = activeChannelId
+    setDmActive(false)
     setActiveServerId(id)
-    const srv = uiServers.find(s => s.id === id)
+    // Try to restore last-used channel for this server, but only if we have fresh data
+    const channels = useServersStore.getState().channels[id]
     const saved = lastChannelPerServer.current[id]
-    const channelExists = saved && srv?.channels.some(c => c.id === saved)
-    setActiveChannelId(channelExists ? saved : (srv?.channels[0]?.id ?? ''))
+    if (channels?.length) {
+      const channelExists = saved && channels.some(c => c.id === saved)
+      setActiveChannelId(channelExists ? saved : (channels.find(c => c.kind === 'text')?.id ?? channels[0].id))
+    }
+    // If no cached channels, activeChannelId will be set by the fetch effect in useAppInit
   }
 
   function handleCloseTab(id: string) {
@@ -111,12 +117,26 @@ export function useAppHandlers(
   }
 
   function handleSwitchChannel(id: string) {
+    // Voice channels: join the SFU instead of switching the chat view.
+    // Text channels: standard channel switch.
+    const channels = useServersStore.getState().channels[activeServerId] ?? []
+    const target = channels.find(c => c.id === id)
+    if (target?.kind === 'voice') {
+      const { connectionState, channelId: currentVoiceId, joinChannel, leaveChannel } = useVoiceStore.getState()
+      if (currentVoiceId === id && connectionState !== 'disconnected') {
+        // Clicking the channel you're already in — disconnect.
+        void leaveChannel()
+        return
+      }
+      void joinChannel(id, activeServerId, target.name)
+      return
+    }
     if (id === activeChannelId) return
     setActiveChannelId(id)
   }
 
   // ── Message handlers ──
-  const handleSend = useCallback(async (text: string, replyTo?: ReplyRef) => {
+  const handleSend = useCallback(async (text: string, replyTo?: ReplyRef, files?: File[]) => {
     const channelId = dmActive ? activeDmId : activeChannelId
     const isDm = dmActive
     const localKeys = getLocalKeys()
@@ -136,17 +156,33 @@ export function useAppHandlers(
       return members.map(m => m.user_id)
     }
 
-    const encrypted = await encryptChannelMessage(channelId, localKeys, text, getMemberIds, isDm)
+    const encrypted = await encryptChannelMessage(channelId, localKeys, text || ' ', getMemberIds, isDm)
     if (!encrypted) {
       console.error('E2EE encryption failed — cannot send message')
       return
     }
 
     // content = encrypted ciphertext, nonce = encryption nonce
+    let msg
     if (isDm) {
-      sendDmMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
+      msg = await sendDmMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
     } else {
-      sendMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
+      msg = await sendMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
+    }
+
+    // Upload attachments after message is created
+    if (files?.length && msg?.id) {
+      for (const file of files) {
+        try {
+          if (isDm) {
+            await api.uploadDmAttachment(channelId, msg.id, file)
+          } else {
+            await api.uploadAttachment(channelId, msg.id, file)
+          }
+        } catch (err) {
+          console.error('Attachment upload failed:', err)
+        }
+      }
     }
   }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -188,13 +224,12 @@ export function useAppHandlers(
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    // Read fresh from store to avoid stale closure (preserves reactions etc.)
     const store = useMessagesStore.getState()
     const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
     if (!msg) return
     const newPinned = !msg.is_pinned
-    // Optimistically update local store immediately
-    store.updateMessage(channelId, { ...msg, is_pinned: newPinned })
+    // Optimistic update — only change is_pinned, preserve reactions and other fields
+    store.updateMessage(channelId, { ...msg, is_pinned: newPinned, reactions: undefined } as typeof msg)
     try {
       if (newPinned) {
         if (dmActive) await api.pinDmMessage(channelId, msgId)
@@ -203,45 +238,56 @@ export function useAppHandlers(
         if (dmActive) await api.unpinDmMessage(channelId, msgId)
         else await api.unpinMessage(channelId, msgId)
       }
-      // Bump pin version so PinnedMessagesPanel refetches
-      setPinVersion(v => v + 1)
+      const pinned = dmActive
+        ? await api.getDmPinnedMessages(channelId)
+        : await api.getPinnedMessages(channelId)
+      setPinnedCount(pinned.length)
+      setPinnedVersion(v => v + 1)
     } catch (err) {
       console.error('Pin toggle failed:', err)
-      // Revert optimistic update on failure
+      // Revert on failure
       const revertStore = useMessagesStore.getState()
       const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
-      if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned })
+      if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned, reactions: undefined } as typeof revertMsg)
     }
-  }, [dmActive, activeDmId, activeChannelId])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    // Optimistically update local store
-    const store = useMessagesStore.getState()
-    const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
-    if (msg) store.updateMessage(channelId, { ...msg, is_pinned: false })
     try {
       if (dmActive) await api.unpinDmMessage(channelId, msgId)
       else await api.unpinMessage(channelId, msgId)
-      setPinVersion(v => v + 1)
+      // Refresh pinned count
+      const pinned = dmActive
+        ? await api.getDmPinnedMessages(channelId)
+        : await api.getPinnedMessages(channelId)
+      setPinnedCount(pinned.length)
+      setPinnedVersion(v => v + 1)
+      // Find and update the message's is_pinned status in the store
+      // Pass reactions: undefined so updateMessage preserves existing reactions
+      const store = useMessagesStore.getState()
+      const channelMsgs = store.messages[channelId] ?? []
+      const msg = channelMsgs.find(m => m.id === msgId)
+      if (msg) {
+        store.updateMessage(channelId, { ...msg, is_pinned: false, reactions: undefined } as typeof msg)
+      }
     } catch (err) {
       console.error('Unpin failed:', err)
-      // Revert on failure
-      if (msg) {
-        const revertStore = useMessagesStore.getState()
-        const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
-        if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: true })
-      }
     }
-  }, [dmActive, activeDmId, activeChannelId])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
 
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
+    // Debounce the API save — orb drags fire many rapid updates
+    if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current)
+    themeSaveTimer.current = setTimeout(() => {
+      api.updateServer(activeServerId, { theme } as Parameters<typeof api.updateServer>[1])
+    }, 500)
   }
 
   // ── Channel CRUD handlers ──
-  const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice') => {
-    await api.createChannel(activeServerId, { name, kind })
+  const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice', categoryId?: string) => {
+    await api.createChannel(activeServerId, { name, kind, ...(categoryId ? { category_id: categoryId } : {}) })
     await fetchChannels(activeServerId)
   }, [activeServerId])
 
@@ -260,9 +306,19 @@ export function useAppHandlers(
     }
   }, [activeServerId, activeChannelId])
 
-  const handleDeleteCategory = useCallback(async (categoryId: string) => {
-    await api.deleteCategory(categoryId)
+  const handleDeleteCategory = useCallback(async (categoryName: string) => {
+    // Find the category by name to get its ID
+    const categories = categoriesByServer[activeServerId] ?? []
+    const category = categories.find(c => c.name === categoryName)
+    if (!category) return
+
+    await api.deleteCategory(category.id)
     await fetchCategories(activeServerId)
+    await fetchChannels(activeServerId)
+  }, [activeServerId, categoriesByServer])
+
+  const handleArchiveChannel = useCallback(async (channelId: string) => {
+    await api.updateChannel(channelId, { is_system: true })
     await fetchChannels(activeServerId)
   }, [activeServerId])
 
@@ -276,10 +332,39 @@ export function useAppHandlers(
     await fetchCategories(activeServerId)
   }, [activeServerId])
 
-  // ── Server management ──
-  async function handleJoinServer(serverId: string, _accessCode: string): Promise<boolean> {
+  // ── Channel reorder (drag & drop persist) ──
+  // `positions` is the new global ordering across all categories + uncategorized.
+  // `moves` is the subset of channels whose category_id changed (cross-category drag).
+  const handleReorderChannels = useCallback(async (
+    positions: Array<{ id: string; position: number }>,
+    moves: Array<{ id: string; categoryId: string | null }>,
+  ) => {
+    if (!activeServerId) return
     try {
-      await api.useInvite(serverId)
+      // Apply category moves first so the reorder applies on top of the new layout
+      for (const m of moves) {
+        await api.updateChannel(m.id, { category_id: m.categoryId })
+      }
+      if (positions.length > 0) {
+        await api.reorderChannels(activeServerId, positions)
+      }
+      await fetchChannels(activeServerId)
+    } catch (e) {
+      console.warn('Channel reorder failed, refetching to recover:', e)
+      // On error, force a refetch so the UI snaps back to the server's truth
+      await fetchChannels(activeServerId).catch(() => {})
+    }
+  }, [activeServerId, fetchChannels])
+
+  // ── Server management ──
+  async function handleJoinServer(serverId: string, accessCode: string): Promise<boolean> {
+    try {
+      // If access code is provided, use invite code path; otherwise join public server directly
+      if (accessCode && accessCode.trim()) {
+        await api.useInvite(accessCode.trim())
+      } else {
+        await api.joinPublicServer(serverId)
+      }
       await fetchServers()
       handleOpenServer(serverId)
       setJoinServerOpen(false)
@@ -297,6 +382,10 @@ export function useAppHandlers(
         ? { hue: data.hue, orbs: orbsForHue(data.hue) }
         : { hue: null, orbs: [] }
       setServerThemes(prev => ({ ...prev, [server.id]: newTheme }))
+      // Persist theme to backend
+      if (data.hue != null) {
+        api.updateServer(server.id, { theme: newTheme } as Parameters<typeof api.updateServer>[1])
+      }
       setTabbedIds(prev => [...prev, server.id])
       setDmActive(false)
       setActiveServerId(server.id)
@@ -347,9 +436,11 @@ export function useAppHandlers(
     handleUploadAvatar, handleChangePassword, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,
     handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
-    handlePinMessage, handleUnpinMessage, pinVersion, handleThemeChange,
+    handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
-    handleDeleteCategory, handleRenameChannel, handleRenameCategory,
+    handleDeleteCategory, handleArchiveChannel,
+    handleRenameChannel, handleRenameCategory,
+    handleReorderChannels,
     handleJoinServer, handleCreateServer, handleCreateDm,
   }
 }

@@ -1,3 +1,3 @@
-pub mod events;
-pub mod gateway;
-pub mod handler;
+pub(crate) mod events;
+pub(crate) mod gateway;
+pub(crate) mod handler;

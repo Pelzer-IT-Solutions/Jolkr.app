@@ -3,7 +3,7 @@
 //! Runs on a dedicated OS thread. Owns all `str0m::Rtc` instances and
 //! the shared UDP socket. Communicates with WebSocket handlers via channels.
 
-pub mod types;
+pub(crate) mod types;
 
 use std::collections::HashMap;
 use std::io;
@@ -30,7 +30,7 @@ struct Client {
     signal_tx: tokio::sync::mpsc::UnboundedSender<SignalOut>,
 
     /// Mid that receives this client's audio (their microphone).
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     recv_mid: Option<Mid>,
     /// Mids used to send other clients' audio TO this client.
     /// Key: the other user's ID. Value: the Mid on THIS client's Rtc.
@@ -40,8 +40,8 @@ struct Client {
     /// User IDs queued for re-negotiation (when a pending offer blocks immediate renegotiation).
     pending_renegotiations: Vec<Uuid>,
 
-    /// DTLS is only initialized after accept_answer(). Calling poll_output()
-    /// before that panics in dimpl. We skip poll_output until this is true.
+    /// DTLS is only initialized after `accept_answer()`. Calling `poll_output()`
+    /// before that panics in dimpl. We skip `poll_output` until this is true.
     dtls_ready: bool,
 
     is_muted: bool,
@@ -54,22 +54,22 @@ impl Client {
     }
 }
 
-/// Helper: call handle_timeout on an Rtc to satisfy dimpl's requirement.
-/// Must be called before poll_output() and sdp_api().apply().
+/// Helper: call `handle_timeout` on an Rtc to satisfy dimpl's requirement.
+/// Must be called before `poll_output()` and `sdp_api().apply()`.
 fn drive_time(rtc: &mut Rtc) {
-    let _ = rtc.handle_input(Input::Timeout(Instant::now()));
+    drop(rtc.handle_input(Input::Timeout(Instant::now())));
 }
 
 /// Run the SFU event loop. This function blocks forever and should be
 /// called on a dedicated `std::thread`.
-pub fn run_sfu(
+pub(crate) fn run_sfu(
     udp_socket: UdpSocket,
     cmd_rx: mpsc::Receiver<SfuCommand>,
     ice_addrs: Vec<SocketAddr>,
     room_list: RoomList,
 ) {
     info!("SFU media loop starting, ICE candidates: {:?}", ice_addrs);
-    let local_addr = ice_addrs[0];
+    let _local_addr = ice_addrs[0];
 
     let mut clients: Vec<Client> = Vec::new();
     let mut buf = vec![0u8; 65535];
@@ -189,9 +189,9 @@ pub fn run_sfu(
         }
 
         // ── 4. Forward media to other clients in the same room ──────────
-        for (sender_id, channel_id, ref media) in &propagations {
+        for (sender_id, channel_id, media) in &propagations {
             debug!("Media from {} in channel {} ({} bytes)", sender_id, channel_id, media.data.len());
-            for client in clients.iter_mut() {
+            for client in &mut clients {
                 if client.user_id == *sender_id
                     || client.channel_id != *channel_id
                     || client.is_deafened
@@ -199,20 +199,20 @@ pub fn run_sfu(
                     continue;
                 }
                 if let Some(&mid) = client.send_mids.get(sender_id) {
-                    if let Some(writer) = client.rtc.writer(mid) {
+                    match client.rtc.writer(mid) { Some(writer) => {
                         if let Some(pt) = writer.match_params(media.params) {
-                            let _ = writer.write(
+                            drop(writer.write(
                                 pt,
                                 media.network_time,
                                 media.time,
                                 media.data.clone(),
-                            );
+                            ));
                         } else {
                             warn!("No matching codec params for {} -> {} (mid {:?})", sender_id, client.user_id, mid);
                         }
-                    } else {
+                    } _ => {
                         warn!("No writer for mid {:?} on {} (forwarding from {})", mid, client.user_id, sender_id);
-                    }
+                    }}
                 } else {
                     warn!("No send_mid for {} on target {} (send_mids: {:?})", sender_id, client.user_id, client.send_mids.keys().collect::<Vec<_>>());
                 }
@@ -258,8 +258,8 @@ pub fn run_sfu(
             {
                 // Socket read timeout — drive Rtc timeouts
                 let now = Instant::now();
-                for client in clients.iter_mut() {
-                    let _ = client.rtc.handle_input(Input::Timeout(now));
+                for client in &mut clients {
+                    drop(client.rtc.handle_input(Input::Timeout(now)));
                 }
             }
             Err(e) => {
@@ -270,7 +270,7 @@ pub fn run_sfu(
         // ── 6. Update socket timeout for next iteration ─────────────────
         let remaining = next_timeout.saturating_duration_since(Instant::now());
         let timeout = remaining.max(Duration::from_millis(1));
-        let _ = udp_socket.set_read_timeout(Some(timeout));
+        drop(udp_socket.set_read_timeout(Some(timeout)));
 
         // ── 7. Periodically sync room state for REST API ────────────────
         room_sync_counter += 1;
@@ -292,9 +292,9 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
         } => {
             // Prevent duplicate joins
             if clients.iter().any(|c| c.user_id == user_id) {
-                let _ = signal_tx.send(SignalOut::Error {
+                drop(signal_tx.send(SignalOut::Error {
                     message: "Already in a voice channel".into(),
-                });
+                }));
                 return;
             }
 
@@ -350,55 +350,52 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
                 send_mids.insert(other_id, send_mid);
             }
 
-            match change.apply() {
-                Some((offer, pending)) => {
-                    // dimpl 0.2.7+ requires handle_timeout after apply()
-                    drive_time(&mut rtc);
+            match change.apply() { Some((offer, pending)) => {
+                // dimpl 0.2.7+ requires handle_timeout after apply()
+                drive_time(&mut rtc);
 
-                    let offer_sdp = offer.to_sdp_string();
+                let offer_sdp = offer.to_sdp_string();
 
-                    // Send Joined event with current participants
-                    let _ = signal_tx.send(SignalOut::Joined {
-                        room_id: channel_id,
-                        participants: existing,
-                    });
+                // Send Joined event with current participants
+                drop(signal_tx.send(SignalOut::Joined {
+                    room_id: channel_id,
+                    participants: existing,
+                }));
 
-                    // Send the SDP offer
-                    let _ = signal_tx.send(SignalOut::Offer { sdp: offer_sdp });
+                // Send the SDP offer
+                drop(signal_tx.send(SignalOut::Offer { sdp: offer_sdp }));
 
-                    // Add client to the list (dtls_ready=false until answer received)
-                    clients.push(Client {
-                        user_id,
-                        channel_id,
-                        rtc,
-                        signal_tx,
-                        recv_mid: Some(recv_mid),
-                        send_mids,
-                        pending: Some(pending),
-                        pending_renegotiations: Vec::new(),
-                        dtls_ready: false,
-                        is_muted: false,
-                        is_deafened: false,
-                    });
+                // Add client to the list (dtls_ready=false until answer received)
+                clients.push(Client {
+                    user_id,
+                    channel_id,
+                    rtc,
+                    signal_tx,
+                    recv_mid: Some(recv_mid),
+                    send_mids,
+                    pending: Some(pending),
+                    pending_renegotiations: Vec::new(),
+                    dtls_ready: false,
+                    is_muted: false,
+                    is_deafened: false,
+                });
 
-                    // Notify existing participants
-                    broadcast_to_room(
-                        clients,
-                        channel_id,
-                        user_id,
-                        SignalOut::ParticipantJoined { user_id },
-                    );
+                // Notify existing participants
+                broadcast_to_room(
+                    clients,
+                    channel_id,
+                    user_id,
+                    SignalOut::ParticipantJoined { user_id },
+                );
 
-                    // Re-negotiate with existing participants to add the new client's audio
-                    renegotiate_for_new_peer(clients, channel_id, user_id);
-                }
-                None => {
-                    error!("Failed to create SDP offer for {}: apply returned None", user_id);
-                    let _ = signal_tx.send(SignalOut::Error {
-                        message: "SDP offer creation failed".into(),
-                    });
-                }
-            }
+                // Re-negotiate with existing participants to add the new client's audio
+                renegotiate_for_new_peer(clients, channel_id, user_id);
+            } _ => {
+                error!("Failed to create SDP offer for {}: apply returned None", user_id);
+                drop(signal_tx.send(SignalOut::Error {
+                    message: "SDP offer creation failed".into(),
+                }));
+            }}
         }
 
         SfuCommand::Answer { user_id, sdp } => {
@@ -407,7 +404,7 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
             let mut channel_id_for_renego: Option<Uuid> = None;
 
             if let Some(client) = clients.iter_mut().find(|c| c.user_id == user_id) {
-                if let Some(pending) = client.pending.take() {
+                match client.pending.take() { Some(pending) => {
                     match SdpAnswer::from_sdp_string(&sdp) {
                         Ok(answer) => {
                             if let Err(e) = client.rtc.sdp_api().accept_answer(pending, answer) {
@@ -419,7 +416,7 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
 
                                 // Drain queued re-negotiations
                                 if !client.pending_renegotiations.is_empty() {
-                                    queued = std::mem::take(&mut client.pending_renegotiations);
+                                    queued = core::mem::take(&mut client.pending_renegotiations);
                                     channel_id_for_renego = Some(client.channel_id);
                                 }
                             }
@@ -428,9 +425,9 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
                             error!("Invalid SDP answer from {}: {}", user_id, e);
                         }
                     }
-                } else {
+                } _ => {
                     warn!("Answer from {} but no pending offer", user_id);
-                }
+                }}
             }
 
             // Flush queued re-negotiations now that the pending offer is resolved
@@ -537,7 +534,7 @@ fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_i
 
                 let offer_sdp = offer.to_sdp_string();
                 client.pending = Some(pending);
-                let _ = client.signal_tx.send(SignalOut::Offer { sdp: offer_sdp });
+                drop(client.signal_tx.send(SignalOut::Offer { sdp: offer_sdp }));
                 debug!(
                     "Sent re-negotiation offer to {} for new peer {}",
                     client.user_id, new_user_id
@@ -553,7 +550,7 @@ fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_i
     }
 }
 
-/// Re-negotiate a single client to add a SendOnly track for a new peer.
+/// Re-negotiate a single client to add a `SendOnly` track for a new peer.
 fn renegotiate_single_client(clients: &mut [Client], target_user_id: Uuid, new_peer_id: Uuid, _channel_id: Uuid) {
     if let Some(client) = clients.iter_mut().find(|c| c.user_id == target_user_id) {
         if client.pending.is_some() {
@@ -580,7 +577,7 @@ fn renegotiate_single_client(clients: &mut [Client], target_user_id: Uuid, new_p
                 drive_time(&mut client.rtc);
                 let offer_sdp = offer.to_sdp_string();
                 client.pending = Some(pending);
-                let _ = client.signal_tx.send(SignalOut::Offer { sdp: offer_sdp });
+                drop(client.signal_tx.send(SignalOut::Offer { sdp: offer_sdp }));
                 info!("Sent deferred re-negotiation offer to {} for peer {}", target_user_id, new_peer_id);
             }
             None => {
@@ -594,12 +591,12 @@ fn renegotiate_single_client(clients: &mut [Client], target_user_id: Uuid, new_p
 fn broadcast_to_room(clients: &[Client], channel_id: Uuid, exclude: Uuid, event: SignalOut) {
     for client in clients {
         if client.channel_id == channel_id && client.user_id != exclude {
-            let _ = client.signal_tx.send(event.clone());
+            drop(client.signal_tx.send(event.clone()));
         }
     }
 }
 
-/// Sync current room state to the shared RoomList for the REST API.
+/// Sync current room state to the shared `RoomList` for the REST API.
 fn sync_room_list(clients: &[Client], room_list: &RoomList) {
     let mut rooms: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
     for client in clients {

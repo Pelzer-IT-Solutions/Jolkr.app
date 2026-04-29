@@ -12,11 +12,17 @@ use jolkr_db::repo::EmbedRepo;
 /// Extracted metadata from a URL.
 #[derive(Debug, Clone, Serialize)]
 pub struct EmbedMetadata {
+    /// Resource URL.
     pub url: String,
+    /// Title text.
     pub title: Option<String>,
+    /// Description text.
     pub description: Option<String>,
+    /// Image URL.
     pub image_url: Option<String>,
+    /// Site name.
     pub site_name: Option<String>,
+    /// Color value (RGB).
     pub color: Option<String>,
 }
 
@@ -124,20 +130,12 @@ fn is_public_ip(ip: IpAddr) -> bool {
 
 /// Service for fetching link previews and storing them as embeds.
 #[derive(Clone)]
-pub struct LinkEmbedService {
-    client: Client,
-}
+pub struct LinkEmbedService {}
 
 impl LinkEmbedService {
+    /// Creates a new instance.
     pub fn new() -> Self {
-        let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .user_agent("JolkrBot/1.0 (link preview)")
-            .redirect(reqwest::redirect::Policy::limited(3))
-            .build()
-            .unwrap_or_else(|_| Client::new());
-
-        Self { client }
+        Self {}
     }
 
     /// Resolve DNS and build a one-shot client pinned to validated IPs.

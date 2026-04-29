@@ -35,11 +35,17 @@ services:
       VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
       VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@jolkr.app}"
       MEDIA_SERVER_URL: "http://jolkr-media:8081"
-      SMTP_HOST: "mailhog"
-      SMTP_PORT: "1025"
-      SMTP_FROM: "${SMTP_FROM:-noreply@jolkr.app}"
-      APP_URL: "${APP_URL:-http://localhost/app}"
-      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost,http://localhost:1420,https://tauri.localhost,https://jolkr.app}"
+      MAIL_HOST: "${MAIL_HOST:-}"
+      MAIL_PORT: "${MAIL_PORT:-587}"
+      MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-noreply@jolkr.app}"
+      MAIL_USERNAME: "${MAIL_USERNAME:-}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
+      # Public-facing URL for emails, OAuth callbacks, etc. Override via .env on
+      # dev machines that genuinely need a localhost link (e.g. throw-away test
+      # accounts) — production must always be https://jolkr.app/app.
+      APP_URL: "${APP_URL:-https://jolkr.app/app}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-https://jolkr.app,https://tauri.localhost,http://localhost,http://localhost:1420}"
+      GIPHY_API_KEY: "${GIPHY_API_KEY:-}"
       RUST_LOG: "${RUST_LOG:-info}"
     networks:
       - jolkr-net
@@ -75,7 +81,7 @@ services:
       PUBLIC_IP: "${PUBLIC_IP:-127.0.0.1}"
       LOCAL_IP: "${LOCAL_IP:-}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
-      RUST_LOG: "${RUST_LOG:-debug}"
+      RUST_LOG: "${RUST_LOG:-info}"
     networks:
       - jolkr-net
     restart: unless-stopped
@@ -155,7 +161,8 @@ services:
     container_name: jolkr-minio
     ports:
       - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
+      # Console port removed for security — access via: docker exec -it jolkr-minio mc
+      # - "127.0.0.1:9001:9001"
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in .env}"
@@ -185,7 +192,8 @@ services:
     container_name: jolkr-nats
     ports:
       - "127.0.0.1:4222:4222"
-      - "127.0.0.1:8222:8222"
+      # Monitoring port removed for security — access internally via http://nats:8222
+      # - "127.0.0.1:8222:8222"
     command: >
       --jetstream
       --store_dir /data
@@ -209,18 +217,6 @@ services:
       - jolkr-net
     restart: unless-stopped
 
-  # =============================================================================
-  # Mailhog — dev SMTP catch-all (emails visible at http://localhost:8025)
-  # =============================================================================
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: jolkr-mailhog
-    ports:
-      - "127.0.0.1:1025:1025"
-      - "127.0.0.1:8025:8025"
-    networks:
-      - jolkr-net
-    restart: unless-stopped
 
   # =============================================================================
   # Nginx — reverse proxy & TLS termination
@@ -233,6 +229,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./security_headers.conf:/etc/nginx/security_headers.conf:ro
       - ./certs:/etc/nginx/certs:ro
       - ../../jolkr-app/dist:/usr/share/nginx/html/app:ro
       - ./landing:/usr/share/nginx/html/landing:ro
@@ -244,7 +241,7 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 128M
+          memory: 512M
     networks:
       - jolkr-net
     restart: unless-stopped

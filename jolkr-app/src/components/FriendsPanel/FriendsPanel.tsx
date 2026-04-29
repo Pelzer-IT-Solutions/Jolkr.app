@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { X, UserPlus, Check, XCircle, MessageCircle, UserX } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
+import type { Friendship, User } from '../../api/types'
+import * as api from '../../api/client'
+import { useAuthStore } from '../../stores/auth'
+import { usePresenceStore } from '../../stores/presence'
 import Avatar from '../Avatar'
 import s from './FriendsPanel.module.css'
 
 type FriendTab = 'all' | 'online' | 'pending'
+type LiveStatus = 'online' | 'idle' | 'dnd' | 'offline'
 
 interface FriendRequest {
   id: string
@@ -16,7 +21,7 @@ interface FriendRequest {
 
 interface Friend {
   user: MemberDisplay
-  status: 'online' | 'idle' | 'dnd' | 'offline'
+  status: LiveStatus
   last_seen?: string
 }
 
@@ -30,9 +35,25 @@ interface Props {
   onRemoveFriend?: (userId: string) => void
 }
 
-// TODO: Replace mock data with real API calls
-const MOCK_FRIENDS: Friend[] = []
-const MOCK_REQUESTS: FriendRequest[] = []
+// Backend Friendship → MemberDisplay for the OTHER party (not the current user).
+function toDisplay(otherUser: User | undefined, fallbackUserId: string): MemberDisplay {
+  const username = otherUser?.username ?? fallbackUserId.slice(0, 8)
+  const displayName = otherUser?.display_name ?? null
+  return {
+    user_id: otherUser?.id ?? fallbackUserId,
+    username,
+    display_name: displayName,
+    status: 'offline',
+    color: 'oklch(60% 0.08 250)',
+    letter: (displayName ?? username).charAt(0).toUpperCase(),
+    avatar_url: otherUser?.avatar_url ?? null,
+  }
+}
+
+function liveStatus(raw: string | undefined): LiveStatus {
+  if (raw === 'online' || raw === 'idle' || raw === 'dnd') return raw
+  return 'offline'
+}
 
 export function FriendsPanel({
   isOpen,
@@ -43,10 +64,45 @@ export function FriendsPanel({
   onCancelRequest,
   onRemoveFriend,
 }: Props) {
+  const myId = useAuthStore(st => st.user?.id)
+  const presence = usePresenceStore(st => st.statuses)
   const [activeTab, setActiveTab] = useState<FriendTab>('all')
-  const [friends, setFriends] = useState<Friend[]>(MOCK_FRIENDS)
-  const [requests, setRequests] = useState<FriendRequest[]>(MOCK_REQUESTS)
+  const [friends, setFriends] = useState<Friend[]>([])
+  const [requests, setRequests] = useState<FriendRequest[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    if (!myId) return
+    const [accepted, pending] = await Promise.all([
+      api.getFriends().catch(() => [] as Friendship[]),
+      api.getPendingFriends().catch(() => [] as Friendship[]),
+    ])
+    setFriends(accepted.map(f => {
+        const other = f.requester_id === myId ? f.addressee : f.requester
+        const otherId = f.requester_id === myId ? f.addressee_id : f.requester_id
+        return {
+          user: toDisplay(other, otherId),
+          status: liveStatus(presence[otherId]),
+        }
+      }))
+      setRequests(pending.map(f => {
+        const isIncoming = f.addressee_id === myId
+        const other = isIncoming ? f.requester : f.addressee
+        const otherId = isIncoming ? f.requester_id : f.addressee_id
+        return {
+          id: f.id,
+          user: toDisplay(other, otherId),
+          type: isIncoming ? 'incoming' : 'outgoing',
+          created_at: '',
+        }
+      }))
+  }, [myId, presence])
+
+  // Refresh whenever the panel opens
+  useEffect(() => {
+    if (!isOpen) return
+    refresh()
+  }, [isOpen, refresh])
 
   useEffect(() => {
     if (!isOpen) return
@@ -63,25 +119,31 @@ export function FriendsPanel({
   const incomingRequests = requests.filter(r => r.type === 'incoming')
   const outgoingRequests = requests.filter(r => r.type === 'outgoing')
 
-  const handleAccept = (requestId: string) => {
-    onAcceptRequest?.(requestId)
+  const handleAccept = async (requestId: string) => {
     setRequests(prev => prev.filter(r => r.id !== requestId))
+    await Promise.resolve(onAcceptRequest?.(requestId))
+    refresh()
   }
 
-  const handleReject = (requestId: string) => {
-    onRejectRequest?.(requestId)
+  const handleReject = async (requestId: string) => {
     setRequests(prev => prev.filter(r => r.id !== requestId))
+    await Promise.resolve(onRejectRequest?.(requestId))
+    refresh()
   }
 
-  const handleCancel = (requestId: string) => {
-    onCancelRequest?.(requestId)
+  const handleCancel = async (requestId: string) => {
     setRequests(prev => prev.filter(r => r.id !== requestId))
+    // Cancel uses the same DELETE endpoint as decline; reuse onRejectRequest if onCancelRequest isn't wired.
+    const cb = onCancelRequest ?? onRejectRequest
+    await Promise.resolve(cb?.(requestId))
+    refresh()
   }
 
-  const handleRemove = (userId: string) => {
-    onRemoveFriend?.(userId)
+  const handleRemove = async (userId: string) => {
     setFriends(prev => prev.filter(f => f.user.user_id !== userId))
     setSelectedUserId(null)
+    await Promise.resolve(onRemoveFriend?.(userId))
+    refresh()
   }
 
   const handleStartDM = (userId: string) => {

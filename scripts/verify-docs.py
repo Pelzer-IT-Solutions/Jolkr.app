@@ -928,15 +928,48 @@ def check_client_routes() -> None:
     client_norm = {(m, norm(p)) for m, p in client_routes}
     code_norm   = {(m, norm(p)) for m, p in code_routes}
 
+    # Parse routes already documented in §4.23 ("Backend routes zonder client.ts functie")
+    # so we don't report them as missing.
+    doc_src = open(FRONTEND_DOC, encoding="utf-8").read()
+    sec423_m = re.search(
+        r"###\s*4\.23\b.*?\n(.*?)(?=\n##\s|\Z)", doc_src, re.DOTALL
+    )
+    documented_backend_only: set[tuple[str, str]] = set()
+    if sec423_m:
+        for row in re.finditer(
+            r"\|\s*(GET|POST|PUT|PATCH|DELETE)\s*\|\s*`?(/[^`|\s]+?)`?\s*\|",
+            sec423_m.group(1),
+        ):
+            raw_path = normalize_path_param(row.group(2).strip().split("?")[0])
+            # Doc §4.23 paths omit the /api prefix — add it to match code_norm
+            full_path = "/api" + raw_path if not raw_path.startswith("/api") else raw_path
+            documented_backend_only.add((row.group(1).strip(), norm(full_path)))
+
+    # Parse routes already marked as client-only (⚠️ Geen backend route) in the doc
+    documented_client_only: set[tuple[str, str]] = set()
+    for row in re.finditer(
+        r"\|\s*`?\w+`?\s*\|\s*(GET|POST|PUT|PATCH|DELETE)\s*\|\s*`?(/[^`|\s]+?)`?\s*\|"
+        r"[^|]*\|[^|]*\|[^\n]*(?:client.only|Geen backend route)",
+        doc_src,
+    ):
+        raw_path = normalize_path_param(row.group(2).strip().split("?")[0])
+        # Doc table paths omit the /api prefix — add it to match client_norm
+        full_path = "/api" + raw_path if not raw_path.startswith("/api") else raw_path
+        documented_client_only.add((row.group(1).strip(), norm(full_path)))
+
     only_client = sorted(client_norm - code_norm)
     only_code   = sorted(code_norm - client_norm)
 
     for method, path in only_client:
+        if (method, path) in documented_client_only:
+            continue
         fail(f"{method} {path} — in client.ts but no matching route in mod.rs",
              Finding(FD, "API client functions", "Update",
                      f"Client calls `{method} {path}` but no matching backend route"))
 
     for method, path in only_code:
+        if (method, path) in documented_backend_only:
+            continue
         fail(f"{method} {path} — in router but no client.ts function calls it",
              Finding(FD, "API client functions", "Add",
                      f"Backend route `{method} {path}` has no client.ts function"))

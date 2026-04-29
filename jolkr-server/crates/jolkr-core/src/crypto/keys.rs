@@ -31,6 +31,7 @@ pub struct KeyPair {
 /// A signed prekey with its Ed25519 signature.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedPreKey {
+    /// Key pair.
     pub key_pair: KeyPair,
     /// Ed25519 signature over the public prekey (64 bytes).
     pub signature: Vec<u8>,
@@ -40,9 +41,13 @@ pub struct SignedPreKey {
 /// Only contains public keys — private keys stay on the client.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PreKeyUploadBundle {
+    /// Identity key.
     pub identity_key: Vec<u8>,
+    /// Signed prekey.
     pub signed_prekey: Vec<u8>,
+    /// Signed prekey signature.
     pub signed_prekey_signature: Vec<u8>,
+    /// One time prekeys.
     pub one_time_prekeys: Vec<Vec<u8>>,
 }
 
@@ -60,6 +65,7 @@ pub fn generate_identity_keypair() -> IdentityKeyPair {
 
 /// Generate a signed X25519 prekey (medium-lived, rotated periodically).
 /// The prekey's public half is signed with the Ed25519 identity key.
+#[must_use] 
 pub fn generate_signed_prekey(identity_private_key: &[u8]) -> SignedPreKey {
     // Generate X25519 key pair
     let secret = StaticSecret::random_from_rng(OsRng);
@@ -82,6 +88,7 @@ pub fn generate_signed_prekey(identity_private_key: &[u8]) -> SignedPreKey {
 }
 
 /// Verify a signed prekey against an Ed25519 identity public key.
+#[must_use] 
 pub fn verify_signed_prekey(
     identity_public_key: &[u8],
     signed_prekey: &[u8],
@@ -101,6 +108,7 @@ pub fn verify_signed_prekey(
 }
 
 /// Generate a batch of one-time X25519 prekeys (ephemeral, consumed on first use).
+#[must_use] 
 pub fn generate_one_time_prekeys(count: usize) -> Vec<KeyPair> {
     (0..count)
         .map(|_| {
@@ -115,7 +123,8 @@ pub fn generate_one_time_prekeys(count: usize) -> Vec<KeyPair> {
 }
 
 /// Build a `PreKeyUploadBundle` from a freshly generated key set.
-/// Returns: (upload_bundle, identity_keypair, signed_prekey, one_time_prekeys)
+/// Returns: (`upload_bundle`, `identity_keypair`, `signed_prekey`, `one_time_prekeys`)
+#[must_use] 
 pub fn generate_upload_bundle(
     one_time_count: usize,
 ) -> (PreKeyUploadBundle, IdentityKeyPair, SignedPreKey, Vec<KeyPair>) {
@@ -177,6 +186,7 @@ pub fn decrypt_message(
 
 /// Perform X25519 Diffie-Hellman key agreement.
 /// Returns a 32-byte shared secret.
+#[must_use] 
 pub fn x25519_key_agreement(private_key: &[u8; 32], public_key: &[u8; 32]) -> [u8; 32] {
     let secret = StaticSecret::from(*private_key);
     let public = X25519PublicKey::from(*public_key);
@@ -185,6 +195,7 @@ pub fn x25519_key_agreement(private_key: &[u8; 32], public_key: &[u8; 32]) -> [u
 
 /// Derive an AES-256 encryption key from a shared secret using HKDF-SHA256.
 /// Uses RFC 5869 HKDF with empty salt (extract) and info context (expand).
+#[must_use] 
 pub fn derive_message_key(shared_secret: &[u8; 32], info: &[u8]) -> [u8; 32] {
     use hkdf::Hkdf;
     use sha2::Sha256;

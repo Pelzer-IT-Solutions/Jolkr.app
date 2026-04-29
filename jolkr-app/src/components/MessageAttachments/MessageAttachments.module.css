@@ -1,0 +1,115 @@
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+  max-width: 100%;
+}
+
+/* ── Image / video tile ── */
+.media {
+  position: relative;
+  border-radius: 0.625rem;
+  overflow: hidden;
+  background: var(--bg-dark-muted);
+  border: 1px solid var(--border-muted);
+  cursor: pointer;
+  display: block;
+  /* Match the visual footprint of video / link embeds (480px) so a chat
+     thread with a mix of attachments and oEmbed previews lines up. */
+  max-width: 480px;
+  width: 100%;
+  transition: filter var(--transition);
+  /* Vertical cap prevents a tall portrait from eating the chat column. */
+  max-height: 22rem;
+}
+.media:hover { filter: brightness(1.04); }
+.media img,
+.media video {
+  display: block;
+  max-width: 100%;
+  max-height: 22rem;
+  object-fit: contain;
+  background: oklch(0% 0 0);
+}
+.imgLoading {
+  filter: blur(8px);
+  transform: scale(1.04);
+}
+
+/* Placeholder shown while the authed blob URL is being fetched. Sized as
+   a small square — image's intrinsic dimensions will replace it once
+   loaded. */
+.loadingTile {
+  display: inline-block;
+  width: 12rem;
+  height: 9rem;
+  background: linear-gradient(
+    100deg,
+    var(--bg-dark-muted) 30%,
+    var(--bg-dark-default) 50%,
+    var(--bg-dark-muted) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ── Generic file chip (non-media) ── */
+.file {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.625rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color var(--transition), border-color var(--transition);
+  min-width: 16rem;
+  max-width: 24rem;
+}
+.file:hover {
+  background: var(--bg-dark-muted);
+  border-color: var(--border-strong);
+}
+.fileIcon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.4375rem;
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fileMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+.fileName {
+  color: var(--text-strong);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fileSize {
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+}
+.fileDownload {
+  flex-shrink: 0;
+  color: var(--icon-muted);
+  transition: color var(--transition);
+}
+.file:hover .fileDownload { color: var(--icon-strong); }

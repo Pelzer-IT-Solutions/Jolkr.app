@@ -1,11 +1,16 @@
+import { useCallback, useEffect } from 'react'
+import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
+import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
 import { useServersStore } from '../../stores/servers'
-import { useUnreadStore } from '../../stores/unread'
-import { hasPermission, KICK_MEMBERS, BAN_MEMBERS } from '../../utils/permissions'
+import { useToast } from '../../components/Toast'
+import { buildInviteUrl } from '../../platform/config'
+import { orbsForHue } from '../../utils/theme'
 import * as api from '../../api/client'
 
 import { TabBar } from '../../components/TabBar/TabBar'
 import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
+import { VoiceConnectionBar } from '../../components/VoiceConnectionBar/VoiceConnectionBar'
 import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
 import { ChatArea } from '../../components/ChatArea/ChatArea'
 import { MemberPanel } from '../../components/MemberPanel/MemberPanel'
@@ -15,9 +20,9 @@ import { NewDMModal } from '../../components/NewDMModal/NewDMModal'
 import { JoinServerModal } from '../../components/JoinServerModal/JoinServerModal'
 import { CreateServerModal } from '../../components/CreateServerModal/CreateServerModal'
 import { NotificationsPanel } from '../../components/NotificationsPanel/NotificationsPanel'
-import { PinnedMessagesPanel } from '../../components/PinnedMessagesPanel/PinnedMessagesPanel'
 import { FriendsPanel } from '../../components/FriendsPanel'
 import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
+import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
 import { ReportModal } from '../../components/ReportModal'
 import { UserContextMenu } from '../../components/UserContextMenu'
 
@@ -32,44 +37,123 @@ export default function AppShell() {
   const memos = useAppMemos(init)
   const handlers = useAppHandlers(init, memos)
 
+  // ── Destructure init ──
   const {
-    user, servers, channelsByServer, presences,
+    user, servers, channelsByServer, presences, serverPermissions,
     dmActive, activeDmId, activeServerId, activeChannelId,
-    tabbedIds, sidebarCollapsed, membersVisible, settingsOpen,
-    newDmOpen, joinServerOpen, createServerOpen, searchActive,
-    notificationsActive, friendsPanelOpen, serverSettingsOpen,
-    reportTarget, userContextMenu, pinnedPanelOpen,
-    setTabbedIds, setSidebarCollapsed, setMembersVisible,
-    setActiveServerId, setActiveChannelId,
-    setDmActive, setActiveDmId, setSettingsOpen, setNewDmOpen,
-    setJoinServerOpen, setCreateServerOpen, setSearchActive,
-    setNotificationsActive, setFriendsPanelOpen, setServerSettingsOpen,
-    setReportTarget, setUserContextMenu, setPinnedPanelOpen,
-    setDmList, ready, serverThemes,
+    tabbedIds, setTabbedIds, setActiveServerId, setActiveChannelId,
+    setRightPanelMode,
+    setUserOverrideLeft, setUserOverrideRight,
+    activeMobilePane, setActiveMobilePane,
+    setDmActive, setActiveDmId, dmList, setDmList,
+    settingsOpen, setSettingsOpen,
+    newDmOpen, setNewDmOpen,
+    joinServerOpen, setJoinServerOpen,
+    createServerOpen, setCreateServerOpen,
+    searchActive, setSearchActive,
+    notificationsActive, setNotificationsActive,
+    friendsPanelOpen, setFriendsPanelOpen,
+    serverSettingsOpen, setServerSettingsOpen,
+    channelSettingsOpen, setChannelSettingsOpen,
+    reportTarget, setReportTarget,
+    userContextMenu, setUserContextMenu,
+    pinnedCount, pinnedVersion, threadsCount,
+    ready, serverThemes, setServerThemes,
+    fetchServers,
   } = init
 
+  // ── Destructure memos ──
   const {
     isDark, colorPref, setColorPref,
     userInfo, userProfile, userMap,
-    uiServers, effectiveChannelId, uiDmList,
+    uiServers, uiDmList,
     tabbedServers, activeServer, isServerOwner, myPerms,
-    canAccessSettings, canManageChannels, ownerServerIds, settingsServerIds,
+    canAccessSettings, canManageChannels, canEditTheme,
+    canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
+    inviteableServerIds, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
     mentionableUsers,
+    viewport, effectiveLeftCollapsed, effectiveRightCollapsed, effectiveRightMode,
   } = memos
 
+  // ── Responsive layout helpers ──
+  const isMobile = viewport.isMobile
+  const showLeft  = !isMobile || activeMobilePane === 'left'
+  const showChat  = !isMobile || activeMobilePane === 'chat'
+  const showRight = !isMobile || activeMobilePane === 'right'
+
+  const handleExpandSidebar = useCallback(() => {
+    if (isMobile) setActiveMobilePane('left')
+    else setUserOverrideLeft('open')
+  }, [isMobile, setActiveMobilePane, setUserOverrideLeft])
+
+  const handleCollapseSidebar = useCallback(() => {
+    if (isMobile) setActiveMobilePane('chat')
+    else setUserOverrideLeft('closed')
+  }, [isMobile, setActiveMobilePane, setUserOverrideLeft])
+
+  const handleSetRightPanelMode = useCallback((mode: 'members' | 'pinned' | 'threads' | null) => {
+    if (isMobile) {
+      if (mode === null) setActiveMobilePane('chat')
+      else { setRightPanelMode(mode); setActiveMobilePane('right') }
+    } else {
+      if (mode === null) setUserOverrideRight('closed')
+      else { setRightPanelMode(mode); setUserOverrideRight('open') }
+    }
+  }, [isMobile, setActiveMobilePane, setRightPanelMode, setUserOverrideRight])
+
+  const mobileBackToChat = useCallback(() => setActiveMobilePane('chat'), [setActiveMobilePane])
+
+  const sidebarCollapsedForChannelSidebar = isMobile ? false : effectiveLeftCollapsed
+  const sidebarCollapsedForChatHeader     = isMobile ? true  : effectiveLeftCollapsed
+  const rightPanelHidden                   = isMobile ? false : effectiveRightCollapsed
+
+  // ── Destructure handlers ──
   const {
     mutedServerIds, handleToggleMuteServer,
     handleLogout, handleStatusChange, handleUpdateProfile,
-    handleUploadAvatar, handleChangePassword, handleTyping,
+    handleUploadAvatar, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,
     handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
-    handlePinMessage, handleUnpinMessage, pinVersion, handleThemeChange,
+    handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
-    handleDeleteCategory, handleRenameChannel, handleRenameCategory,
+    handleDeleteCategory, handleRenameChannel, handleRenameCategory, handleArchiveChannel,
+    handleReorderChannels,
     handleJoinServer, handleCreateServer, handleCreateDm,
   } = handlers
+
+  // ── Role assignment for context menu ──
+  const serverRoles = useServersStore(s => s.roles[activeServerId]) ?? []
+  const serverMembers = useServersStore(s => s.members[activeServerId]) ?? []
+  const fetchRoles = useServersStore(s => s.fetchRoles)
+  const canManageRoles = !dmActive && (isServerOwner || hasPermission(myPerms, MANAGE_ROLES))
+
+  // Fetch roles when context menu opens on a server (lazy load)
+  useEffect(() => {
+    if (userContextMenu && canManageRoles && activeServerId && serverRoles.length === 0) {
+      fetchRoles(activeServerId).catch(console.warn)
+    }
+  }, [userContextMenu, canManageRoles, activeServerId, serverRoles.length, fetchRoles])
+
+  const contextMenuUserRoleIds = userContextMenu
+    ? serverMembers.find(m => m.user_id === userContextMenu.user.user_id)?.role_ids ?? []
+    : []
+
+  const handleToggleRole = useCallback(async (userId: string, roleId: string, hasRole: boolean) => {
+    if (!activeServerId) return
+    try {
+      if (hasRole) {
+        await api.removeRole(activeServerId, roleId, userId)
+      } else {
+        await api.assignRole(activeServerId, roleId, userId)
+      }
+      // Refresh members to get updated role_ids
+      useServersStore.getState().fetchMembersWithRoles(activeServerId).catch(console.warn)
+    } catch (err) {
+      console.error('Role toggle failed:', err)
+    }
+  }, [activeServerId])
 
   // ── Render ──
 
@@ -102,9 +186,19 @@ export default function AppShell() {
           ownerServerIds={ownerServerIds}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
           onClose={handleCloseTab}
-          onReorder={ids => { setTabbedIds(ids); useServersStore.getState().reorderServers(ids) }}
+          onReorder={setTabbedIds}
           onOpenServer={id => { setDmActive(false); handleOpenServer(id) }}
-          onDmClick={() => { setDmActive(v => !v); setNotificationsActive(false) }}
+          onDmClick={() => {
+            setDmActive(v => {
+              if (!v) {
+                // Switching TO DM mode: select last active DM or first available
+                if (!activeDmId && dmList.length > 0) {
+                  setActiveDmId(dmList[0].id)
+                }
+              }
+              return !v
+            })
+          }}
           onSearchClick={() => setSearchActive(v => !v)}
           onNotificationsClick={() => setNotificationsActive(v => !v)}
           onOpenSettings={() => setSettingsOpen(true)}
@@ -124,12 +218,20 @@ export default function AppShell() {
           }}
           settingsServerIds={settingsServerIds}
           onOpenServerSettings={serverId => { handleSwitchServer(serverId); setServerSettingsOpen(true) }}
+          onLeaveServer={async (serverId) => {
+            try {
+              await api.leaveServer(serverId)
+              await fetchServers()
+            } catch (err) {
+              console.error('Leave server failed:', err)
+            }
+          }}
         />
 
         <div className={s.contentRow}>
           <div className={s.shell}>
             <div className={s.workspace}>
-              {!dmActive && !activeServer ? (
+              {showLeft && (!dmActive && !activeServer ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', opacity: 0.5 }}>
                   <div style={{ fontSize: '3rem' }}>👋</div>
                   <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
@@ -142,14 +244,18 @@ export default function AppShell() {
                   onSelect={setActiveDmId}
                   onNewMessage={() => setNewDmOpen(true)}
                   onOpenFriends={() => setFriendsPanelOpen(true)}
+                  collapsed={sidebarCollapsedForChannelSidebar}
+                  onCollapse={handleCollapseSidebar}
+                  isMobile={isMobile}
                 />
               ) : activeServer ? (
                 <ChannelSidebar
                   server={activeServer}
                   activeChannelId={activeChannelId}
                   onSwitch={handleSwitchChannel}
-                  onCollapse={() => setSidebarCollapsed(true)}
-                  collapsed={sidebarCollapsed}
+                  onCollapse={handleCollapseSidebar}
+                  collapsed={sidebarCollapsedForChannelSidebar}
+                  isMobile={isMobile}
                   theme={activeTheme}
                   onThemeChange={handleThemeChange}
                   isDark={isDark}
@@ -157,22 +263,26 @@ export default function AppShell() {
                   onSetColorPref={setColorPref}
                   onOpenSettings={canAccessSettings ? () => setServerSettingsOpen(true) : undefined}
                   canManageChannels={canManageChannels}
+                  canEditTheme={canEditTheme}
                   onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
                   onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
                   onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
                   onDeleteCategory={canManageChannels ? handleDeleteCategory : undefined}
                   onRenameChannel={canManageChannels ? handleRenameChannel : undefined}
                   onRenameCategory={canManageChannels ? handleRenameCategory : undefined}
+                  onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
+                  onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
+                  onReorderChannels={canManageChannels ? handleReorderChannels : undefined}
                 />
-              ) : null}
+              ) : null)}
 
-              <ChatArea
+              {showChat && <ChatArea
                 channel={activeChannel}
                 messages={displayMessages}
-                sidebarCollapsed={dmActive ? false : sidebarCollapsed}
-                membersVisible={membersVisible}
-                onExpandSidebar={() => setSidebarCollapsed(false)}
-                onToggleMembers={() => setMembersVisible(v => !v)}
+                sidebarCollapsed={sidebarCollapsedForChatHeader}
+                rightPanelMode={effectiveRightMode}
+                onExpandSidebar={handleExpandSidebar}
+                onSetRightPanelMode={handleSetRightPanelMode}
                 onSend={handleSend}
                 onToggleReaction={handleToggleReaction}
                 onDeleteMessage={handleDeleteMessage}
@@ -182,6 +292,10 @@ export default function AppShell() {
                 animationKey={chatAnimKey}
                 onTyping={handleTyping}
                 typingUsers={typingUsers}
+                hasPinnedMessages={pinnedCount > 0}
+                hasThreads={threadsCount > 0}
+                serverId={dmActive ? undefined : activeServerId}
+                userMap={userMap}
                 onLoadOlder={() => {
                   const { fetchOlder, loadingOlder } = useMessagesStore.getState()
                   const channelId = dmActive ? activeDmId : activeChannelId
@@ -190,29 +304,29 @@ export default function AppShell() {
                 hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
                 readOnly={isDmWithSystemUser}
                 onPinMessage={handlePinMessage}
-                onTogglePinPanel={() => setPinnedPanelOpen(v => !v)}
-                pinnedPanelOpen={pinnedPanelOpen}
                 mentionableUsers={mentionableUsers}
-              />
+                canManageMessages={canManageMessages}
+                canAddReactions={canAddReactions}
+                canSendMessages={canSendMessages}
+                canAttachFiles={canAttachFiles}
+              />}
 
-              {pinnedPanelOpen && (
-                <PinnedMessagesPanel
-                  key={`pins-${effectiveChannelId}-${pinVersion}`}
-                  channelId={effectiveChannelId}
-                  isDm={dmActive}
-                  onClose={() => setPinnedPanelOpen(false)}
+              {showRight && (dmActive ? (
+                <DMInfoPanel
+                  visible={!rightPanelHidden}
+                  dmId={activeDmId}
                   onUnpin={handleUnpinMessage}
                   users={userMap}
+                  pinnedVersion={pinnedVersion}
+                  onMobileClose={isMobile ? mobileBackToChat : undefined}
                 />
-              )}
-
-              {dmActive ? (
-                <DMInfoPanel visible={membersVisible} />
               ) : activeServer ? (
                 <MemberPanel
                   members={activeServer.members}
-                  visible={membersVisible}
+                  mode={effectiveRightMode}
                   serverId={activeServerId}
+                  channelId={activeChannelId}
+                  isDm={false}
                   onMemberClick={(member, e) => {
                     if (!member.userId) return
                     const u = userMap.get(member.userId)
@@ -230,23 +344,27 @@ export default function AppShell() {
                       },
                     })
                   }}
+                  onUnpin={handleUnpinMessage}
+                  users={userMap}
+                  pinnedVersion={pinnedVersion}
+                  onMobileClose={isMobile ? mobileBackToChat : undefined}
                 />
-              ) : null}
+              ) : null)}
             </div>
           </div>
 
-          {notificationsActive && (
-            <NotificationsPanel
-              onNavigate={(serverId, channelId) => {
-                setDmActive(false)
-                if (!tabbedIds.includes(serverId)) {
-                  setTabbedIds(prev => [serverId, ...prev])
-                }
-                setActiveServerId(serverId)
-                setActiveChannelId(channelId)
-              }}
-            />
-          )}
+          <NotificationsPanel
+            visible={notificationsActive}
+            onNavigate={(serverId, channelId) => {
+              setDmActive(false)
+              if (!tabbedIds.includes(serverId)) {
+                setTabbedIds(prev => [serverId, ...prev])
+              }
+              setActiveServerId(serverId)
+              setActiveChannelId(channelId)
+              setNotificationsActive(false)
+            }}
+          />
         </div>
       </div>
 
@@ -260,7 +378,6 @@ export default function AppShell() {
           onLogout={handleLogout}
           onUpdateProfile={handleUpdateProfile}
           onUploadAvatar={handleUploadAvatar}
-          onChangePassword={handleChangePassword}
         />
       )}
 
@@ -299,7 +416,7 @@ export default function AppShell() {
         }}
         onAcceptRequest={async (id) => { await api.acceptFriend(id) }}
         onRejectRequest={async (id) => { await api.declineFriend(id) }}
-        onRemoveFriend={async (id) => { await api.declineFriend(id) }}
+        onRemoveFriend={async (userId) => { await api.removeFriendByUserId(userId) }}
       />
 
       {serverSettingsOpen && activeServer && (() => {
@@ -310,24 +427,57 @@ export default function AppShell() {
           server={{
             ...rawServer,
             hue: serverThemes[activeServerId]?.hue ?? null,
-            discoverable: false,
+            discoverable: rawServer.is_public ?? false,
           }}
           onClose={() => setServerSettingsOpen(false)}
           onUpdate={async (serverId, data) => {
-            await api.updateServer(serverId, { name: data.name, description: data.description ?? undefined })
-            init.fetchServers()
+            // Map editable Overview fields → backend updateServer body.
+            // Anything not provided in `data` is left unchanged on the server.
+            const body: Parameters<typeof api.updateServer>[1] = {}
+            if (data.name !== undefined) body.name = data.name
+            if (data.description !== undefined) body.description = data.description ?? undefined
+            if (data.icon_url !== undefined) body.icon_url = data.icon_url ?? undefined
+            if (data.discoverable !== undefined) body.is_public = data.discoverable
+            // `hue` (and any banner_url) are wrapped into the theme blob the backend stores.
+            if (data.hue !== undefined || data.banner_url !== undefined) {
+              const nextHue = data.hue ?? serverThemes[serverId]?.hue ?? null
+              const orbs = nextHue != null ? orbsForHue(nextHue) : []
+              body.theme = { hue: nextHue, orbs }
+              // Persist the new local theme so subsequent renders reflect the save
+              setServerThemes(prev => ({ ...prev, [serverId]: { hue: nextHue, orbs } }))
+            }
+            await api.updateServer(serverId, body)
+            fetchServers()
           }}
           onDelete={async (serverId) => {
             await api.deleteServer(serverId)
             setServerSettingsOpen(false)
-            await init.fetchServers() // safety effect handles fallback
+            await fetchServers() // safety effect handles fallback
           }}
           onLeave={async (serverId) => {
             await api.leaveServer(serverId)
             setServerSettingsOpen(false)
-            await init.fetchServers() // safety effect handles fallback
+            await fetchServers() // safety effect handles fallback
           }}
         />
+        )
+      })()}
+
+      {channelSettingsOpen && activeChannel && activeServerId && (() => {
+        const rawChannels = channelsByServer[activeServerId] ?? []
+        const rawChannel = rawChannels.find(ch => ch.id === activeChannelId)
+        if (!rawChannel) return null
+        return (
+          <ChannelSettings
+            channel={rawChannel}
+            serverId={activeServerId}
+            serverPermissions={serverPermissions[activeServerId] ?? 0}
+            onClose={() => setChannelSettingsOpen(false)}
+            onUpdate={async (channelId, data) => {
+              await api.updateChannel(channelId, data)
+              await init.fetchChannels(activeServerId)
+            }}
+          />
         )
       })()}
 
@@ -336,6 +486,8 @@ export default function AppShell() {
         onClose={() => setReportTarget(null)}
         user={reportTarget}
       />
+
+      <VoiceConnectionBar />
 
       <UserContextMenu
         menu={userContextMenu}
@@ -355,9 +507,15 @@ export default function AppShell() {
         onInviteToServer={async (_userId: string, serverId: string) => {
           const invite = await api.createInvite(serverId, { max_uses: 1 }).catch(() => null)
           if (invite) {
-            // Copy invite link to clipboard
-            const url = `${window.location.origin}/invite/${invite.code}`
-            navigator.clipboard.writeText(url).catch(console.warn)
+            const url = buildInviteUrl(invite.code)
+            try {
+              await navigator.clipboard.writeText(url)
+              useToast.getState().show('Invite link copied!', 'success')
+            } catch {
+              useToast.getState().show(`Copy failed — link: ${url}`, 'error', 6000)
+            }
+          } else {
+            useToast.getState().show('Failed to create invite', 'error')
           }
           setUserContextMenu(null)
         }}
@@ -371,7 +529,11 @@ export default function AppShell() {
           if (activeServerId) await api.banMember(activeServerId, userId).catch(console.warn)
           setUserContextMenu(null)
         }}
-        servers={servers.map(s => ({ ...s, hue: serverThemes[s.id]?.hue ?? null }))}
+        servers={servers.filter(s => inviteableServerIds.includes(s.id)).map(s => ({ ...s, hue: serverThemes[s.id]?.hue ?? null }))}
+        roles={serverRoles}
+        userRoleIds={contextMenuUserRoleIds}
+        canManageRoles={canManageRoles}
+        onToggleRole={handleToggleRole}
       />
     </>
   )

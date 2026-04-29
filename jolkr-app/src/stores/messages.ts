@@ -4,18 +4,18 @@ import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
 
-/** Transform backend reaction format (user_ids) to frontend format (me boolean) */
+/** Transform backend reaction format (user_ids) to frontend format (me boolean + user_ids) */
 function transformReactions(msgs: Message[]): Message[] {
   const currentUserId = useAuthStore.getState().user?.id;
-  if (!currentUserId) return msgs;
   return msgs.map((m) => {
     if (!m.reactions?.length) return m;
     return {
       ...m,
-      reactions: m.reactions.map((r: Reaction & { user_ids?: string[] }) => ({
+      reactions: m.reactions.map((r) => ({
         emoji: r.emoji,
         count: r.count,
-        me: r.user_ids ? r.user_ids.includes(currentUserId) : r.me ?? false,
+        me: currentUserId ? (r.user_ids ? r.user_ids.includes(currentUserId) : r.me ?? false) : false,
+        user_ids: r.user_ids ?? [],
       })),
     };
   });
@@ -50,7 +50,7 @@ interface MessagesState {
   // Thread actions
   fetchThreadMessages: (threadId: string) => Promise<void>;
   fetchOlderThreadMessages: (threadId: string) => Promise<void>;
-  sendThreadMessage: (threadId: string, content: string, nonce?: string, replyToId?: string) => Promise<Message>;
+  sendThreadMessage: (threadId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   addThreadMessage: (threadId: string, message: Message) => void;
   updateThreadMessage: (threadId: string, message: Message) => void;
   removeThreadMessage: (threadId: string, messageId: string) => void;
@@ -163,7 +163,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     return api.sendDmMessage(dmId, { content, nonce, reply_to_id: replyToId });
   },
 
-  editMessage: async (messageId, channelId, content, isDm, nonce?) => {
+  editMessage: async (messageId, channelId, content, isDm, nonce) => {
     if (isDm) {
       const raw = await api.editDmMessage(messageId, content, nonce);
       const normalized = normalizeDmMessages([raw], channelId)[0];
@@ -196,7 +196,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ...get().messages,
         [channelId]: current.map((m) =>
           m.id === message.id
-            ? { ...m, ...message, reactions: message.reactions?.length ? message.reactions : m.reactions }
+            ? { ...m, ...message, reactions: message.reactions !== undefined ? message.reactions : m.reactions }
             : m,
         ),
       },
@@ -275,7 +275,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
-  sendThreadMessage: async (threadId, content, nonce, replyToId) => {
+  sendThreadMessage: async (threadId, content, replyToId, nonce) => {
     return api.sendThreadMessage(threadId, content, nonce, replyToId);
   },
 
@@ -292,7 +292,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ...get().threadMessages,
         [threadId]: current.map((m) =>
           m.id === message.id
-            ? { ...m, ...message, reactions: message.reactions?.length ? message.reactions : m.reactions }
+            ? { ...m, ...message, reactions: message.reactions !== undefined ? message.reactions : m.reactions }
             : m,
         ),
       },
@@ -345,7 +345,16 @@ function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
     thread_id: (raw.thread_id as string) ?? null,
     thread_reply_count: (raw.thread_reply_count as number) ?? null,
     attachments: (raw.attachments as Message['attachments']) ?? [],
-    reactions: (raw.reactions as Message['reactions']) ?? [],
+    reactions: (() => {
+      const currentUserId = useAuthStore.getState().user?.id;
+      const rawReactions = (raw.reactions as Array<Record<string, unknown>>) ?? [];
+      return rawReactions.map((r) => ({
+        emoji: (r.emoji as string) ?? '',
+        count: (r.count as number) ?? 0,
+        me: currentUserId ? ((r.user_ids as string[]) ?? []).includes(currentUserId) : (r.me as boolean) ?? false,
+        user_ids: (r.user_ids as string[]) ?? [],
+      }));
+    })(),
     embeds: (raw.embeds as Message['embeds']) ?? [],
   };
 }
@@ -431,6 +440,7 @@ wsClient.on((op, d) => {
         emoji: r.emoji,
         count: r.count,
         me: currentUserId ? (r.user_ids?.includes(currentUserId) ?? false) : false,
+        user_ids: r.user_ids ?? [],
       }));
       store.updateReactions(channelId, messageId, reactions);
       break;

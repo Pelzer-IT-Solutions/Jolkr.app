@@ -31,19 +31,27 @@ const MAX_WS_PER_IP: u32 = 10;
 static WS_CONNECTIONS: LazyLock<DashMap<IpAddr, AtomicU32>> = LazyLock::new(DashMap::new);
 
 /// Extract the real client IP from the request, considering trusted proxies.
-fn resolve_client_ip(connect_addr: std::net::SocketAddr, headers: &HeaderMap) -> IpAddr {
-    let connect_ip = connect_addr.ip();
-    // Trust X-Forwarded-For only from loopback or Docker network (172.16.0.0/12)
-    let is_trusted = match connect_ip {
+fn is_trusted_proxy_ip(ip: IpAddr) -> bool {
+    match ip {
         IpAddr::V4(v4) => v4.is_loopback() || (v4.octets()[0] == 172 && (v4.octets()[1] & 0xF0) == 16),
         IpAddr::V6(v6) => v6.is_loopback(),
-    };
-    if is_trusted {
+    }
+}
+
+fn resolve_client_ip(connect_addr: std::net::SocketAddr, headers: &HeaderMap) -> IpAddr {
+    let connect_ip = connect_addr.ip();
+    if is_trusted_proxy_ip(connect_ip) {
+        // Take the rightmost non-trusted IP (attacker can't control it)
         headers
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.split(',').next())
-            .and_then(|s| s.trim().parse::<IpAddr>().ok())
+            .and_then(|s| {
+                s.split(',')
+                    .rev()
+                    .map(|p| p.trim())
+                    .filter_map(|p| p.parse::<IpAddr>().ok())
+                    .find(|ip| !is_trusted_proxy_ip(*ip))
+            })
             .unwrap_or(connect_ip)
     } else {
         connect_ip
@@ -81,7 +89,7 @@ async fn can_access_channel(state: &AppState, user_id: Uuid, channel_id: Uuid) -
 
 /// HTTP handler that upgrades the connection to a WebSocket.
 /// Enforces per-IP connection limit before upgrading.
-pub async fn ws_upgrade(
+pub(crate) async fn ws_upgrade(
     State(state): State<AppState>,
     ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
     headers: HeaderMap,
@@ -157,9 +165,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 let s = t.to_string();
                 if s.len() > 65_536 {
                     warn!("WebSocket message too large: {} bytes", s.len());
-                    let _ = tx.try_send(GatewayEvent::Error {
+                    drop(tx.try_send(GatewayEvent::Error {
                         message: "Message too large".into(),
-                    });
+                    }));
                     continue;
                 }
                 s
@@ -174,9 +182,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         last_refill = now_rl;
         if rate_tokens < 1.0 {
             warn!("WebSocket rate limit exceeded");
-            let _ = tx.try_send(GatewayEvent::Error {
+            drop(tx.try_send(GatewayEvent::Error {
                 message: "Rate limit exceeded".into(),
-            });
+            }));
             continue;
         }
         rate_tokens -= 1.0;
@@ -188,7 +196,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 let err = GatewayEvent::Error {
                     message: "Invalid event format".to_string(),
                 };
-                let _ = tx.try_send(err);
+                drop(tx.try_send(err));
                 continue;
             }
         };
@@ -197,9 +205,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             ClientEvent::Identify { token } => {
                 // Reject re-identify on already authenticated connection
                 if session_id.is_some() {
-                    let _ = tx.try_send(GatewayEvent::Error {
+                    drop(tx.try_send(GatewayEvent::Error {
                         message: "Already identified".to_string(),
-                    });
+                    }));
                     continue;
                 }
                 // Validate the JWT and check blacklist (mirrors HTTP auth middleware)
@@ -213,7 +221,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                             let err = GatewayEvent::Error {
                                 message: "Token has been revoked".to_string(),
                             };
-                            let _ = tx.try_send(err);
+                            drop(tx.try_send(err));
                             continue;
                         }
 
@@ -245,7 +253,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                             user_id: claims.sub,
                             session_id: sid,
                         };
-                        let _ = tx.try_send(ready);
+                        drop(tx.try_send(ready));
                         info!(user_id = %claims.sub, session_id = %sid, "WebSocket identified");
                     }
                     Err(e) => {
@@ -253,7 +261,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         let err = GatewayEvent::Error {
                             message: "Authentication failed".to_string(),
                         };
-                        let _ = tx.try_send(err);
+                        drop(tx.try_send(err));
                     }
                 }
             }
@@ -265,7 +273,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     state.redis.refresh_presence(uid).await;
                     state.redis.refresh_sessions(uid).await;
                 }
-                let _ = tx.try_send(GatewayEvent::HeartbeatAck { seq });
+                drop(tx.try_send(GatewayEvent::HeartbeatAck { seq }));
             }
 
             ClientEvent::Subscribe { channel_id } => {
@@ -274,9 +282,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         if can_access_channel(&state, uid, channel_id).await {
                             state.gateway.subscribe(&sid, channel_id);
                         } else {
-                            let _ = tx.try_send(GatewayEvent::Error {
+                            drop(tx.try_send(GatewayEvent::Error {
                                 message: "Cannot subscribe: no access to channel".to_string(),
-                            });
+                            }));
                         }
                     }
                 }
@@ -316,7 +324,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         let err = GatewayEvent::Error {
                             message: format!("Invalid status. Must be one of: {}", valid.join(", ")),
                         };
-                        let _ = tx.try_send(err);
+                        drop(tx.try_send(err));
                     }
                 }
             }

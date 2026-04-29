@@ -26,6 +26,7 @@ pub struct PushService {
 }
 
 impl PushService {
+    /// Creates a new instance.
     pub fn new(
         pool: PgPool,
         gateway: GatewayState,

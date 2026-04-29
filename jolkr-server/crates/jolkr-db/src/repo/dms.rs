@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::models::{DmAttachmentRow, DmChannelRow, DmMemberRow, DmMessageRow, DmPinRow, DmReactionRow};
 use jolkr_common::JolkrError;
 
+/// Repository for `dm` persistence.
 pub struct DmRepo;
 
 impl DmRepo {
@@ -15,10 +16,10 @@ impl DmRepo {
         user_b: Uuid,
     ) -> Result<DmChannelRow, JolkrError> {
         let existing = sqlx::query_as::<_, DmChannelRow>(
-            r#"SELECT dc.* FROM dm_channels dc
+            "SELECT dc.* FROM dm_channels dc
                JOIN dm_members m1 ON m1.dm_channel_id = dc.id AND m1.user_id = $1
                JOIN dm_members m2 ON m2.dm_channel_id = dc.id AND m2.user_id = $2
-               WHERE dc.is_group = false"#,
+               WHERE dc.is_group = false",
         )
         .bind(user_a)
         .bind(user_b)
@@ -31,9 +32,9 @@ impl DmRepo {
 
         let channel_id = Uuid::new_v4();
         let channel = sqlx::query_as::<_, DmChannelRow>(
-            r#"INSERT INTO dm_channels (id, is_group)
+            "INSERT INTO dm_channels (id, is_group)
                VALUES ($1, false)
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(channel_id)
         .fetch_one(pool)
@@ -41,8 +42,8 @@ impl DmRepo {
 
         for user_id in [user_a, user_b] {
             sqlx::query(
-                r#"INSERT INTO dm_members (id, dm_channel_id, user_id)
-                   VALUES ($1, $2, $3)"#,
+                "INSERT INTO dm_members (id, dm_channel_id, user_id)
+                   VALUES ($1, $2, $3)",
             )
             .bind(Uuid::new_v4())
             .bind(channel_id)
@@ -54,17 +55,38 @@ impl DmRepo {
         Ok(channel)
     }
 
+    /// Lists dm channels.
     pub async fn list_dm_channels(
         pool: &PgPool,
         user_id: Uuid,
     ) -> Result<Vec<DmChannelRow>, JolkrError> {
         let rows = sqlx::query_as::<_, DmChannelRow>(
-            r#"SELECT dc.* FROM dm_channels dc
+            "SELECT dc.* FROM dm_channels dc
                JOIN dm_members m ON m.dm_channel_id = dc.id
                WHERE m.user_id = $1 AND m.closed_at IS NULL
-               ORDER BY dc.updated_at DESC"#,
+               ORDER BY dc.updated_at DESC",
         )
         .bind(user_id)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// Get the last message for each of the given DM channels in a single query.
+    pub async fn get_last_messages(
+        pool: &PgPool,
+        channel_ids: &[Uuid],
+    ) -> Result<Vec<DmMessageRow>, JolkrError> {
+        if channel_ids.is_empty() {
+            return Ok(vec![]);
+        }
+        let rows = sqlx::query_as::<_, DmMessageRow>(
+            "SELECT DISTINCT ON (dm_channel_id) *
+               FROM dm_messages
+               WHERE dm_channel_id = ANY($1)
+               ORDER BY dm_channel_id, created_at DESC",
+        )
+        .bind(channel_ids)
         .fetch_all(pool)
         .await?;
         Ok(rows)
@@ -77,8 +99,8 @@ impl DmRepo {
         user_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"UPDATE dm_members SET closed_at = NOW()
-               WHERE dm_channel_id = $1 AND user_id = $2"#,
+            "UPDATE dm_members SET closed_at = NOW()
+               WHERE dm_channel_id = $1 AND user_id = $2",
         )
         .bind(dm_channel_id)
         .bind(user_id)
@@ -93,8 +115,8 @@ impl DmRepo {
         dm_channel_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"UPDATE dm_members SET closed_at = NULL
-               WHERE dm_channel_id = $1 AND closed_at IS NOT NULL"#,
+            "UPDATE dm_members SET closed_at = NULL
+               WHERE dm_channel_id = $1 AND closed_at IS NOT NULL",
         )
         .bind(dm_channel_id)
         .execute(pool)
@@ -102,12 +124,13 @@ impl DmRepo {
         Ok(())
     }
 
+    /// Fetches dm members.
     pub async fn get_dm_members(
         pool: &PgPool,
         dm_channel_id: Uuid,
     ) -> Result<Vec<DmMemberRow>, JolkrError> {
         let rows = sqlx::query_as::<_, DmMemberRow>(
-            r#"SELECT * FROM dm_members WHERE dm_channel_id = $1"#,
+            "SELECT * FROM dm_members WHERE dm_channel_id = $1",
         )
         .bind(dm_channel_id)
         .fetch_all(pool)
@@ -115,14 +138,15 @@ impl DmRepo {
         Ok(rows)
     }
 
+    /// Returns `true` if member.
     pub async fn is_member(
         pool: &PgPool,
         dm_channel_id: Uuid,
         user_id: Uuid,
     ) -> Result<bool, JolkrError> {
         let row = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM dm_members
-               WHERE dm_channel_id = $1 AND user_id = $2"#,
+            "SELECT COUNT(*) FROM dm_members
+               WHERE dm_channel_id = $1 AND user_id = $2",
         )
         .bind(dm_channel_id)
         .bind(user_id)
@@ -143,9 +167,9 @@ impl DmRepo {
 
         let channel_id = Uuid::new_v4();
         let channel = sqlx::query_as::<_, DmChannelRow>(
-            r#"INSERT INTO dm_channels (id, is_group, name)
+            "INSERT INTO dm_channels (id, is_group, name)
                VALUES ($1, true, $2)
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(channel_id)
         .bind(name)
@@ -154,8 +178,8 @@ impl DmRepo {
 
         for &user_id in member_ids {
             sqlx::query(
-                r#"INSERT INTO dm_members (id, dm_channel_id, user_id)
-                   VALUES ($1, $2, $3)"#,
+                "INSERT INTO dm_members (id, dm_channel_id, user_id)
+                   VALUES ($1, $2, $3)",
             )
             .bind(Uuid::new_v4())
             .bind(channel_id)
@@ -175,7 +199,7 @@ impl DmRepo {
         dm_channel_id: Uuid,
     ) -> Result<DmChannelRow, JolkrError> {
         sqlx::query_as::<_, DmChannelRow>(
-            r#"SELECT * FROM dm_channels WHERE id = $1"#,
+            "SELECT * FROM dm_channels WHERE id = $1",
         )
         .bind(dm_channel_id)
         .fetch_optional(pool)
@@ -190,9 +214,9 @@ impl DmRepo {
         user_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"INSERT INTO dm_members (id, dm_channel_id, user_id)
+            "INSERT INTO dm_members (id, dm_channel_id, user_id)
                VALUES ($1, $2, $3)
-               ON CONFLICT DO NOTHING"#,
+               ON CONFLICT DO NOTHING",
         )
         .bind(Uuid::new_v4())
         .bind(dm_channel_id)
@@ -209,7 +233,7 @@ impl DmRepo {
         user_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"DELETE FROM dm_members WHERE dm_channel_id = $1 AND user_id = $2"#,
+            "DELETE FROM dm_members WHERE dm_channel_id = $1 AND user_id = $2",
         )
         .bind(dm_channel_id)
         .bind(user_id)
@@ -225,9 +249,9 @@ impl DmRepo {
         name: Option<&str>,
     ) -> Result<DmChannelRow, JolkrError> {
         sqlx::query_as::<_, DmChannelRow>(
-            r#"UPDATE dm_channels SET name = $2, updated_at = NOW()
+            "UPDATE dm_channels SET name = $2, updated_at = NOW()
                WHERE id = $1 AND is_group = true
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(dm_channel_id)
         .bind(name)
@@ -242,7 +266,7 @@ impl DmRepo {
         dm_channel_id: Uuid,
     ) -> Result<i64, JolkrError> {
         let count = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM dm_members WHERE dm_channel_id = $1"#,
+            "SELECT COUNT(*) FROM dm_members WHERE dm_channel_id = $1",
         )
         .bind(dm_channel_id)
         .fetch_one(pool)
@@ -260,8 +284,8 @@ impl DmRepo {
         message_id: Uuid,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"UPDATE dm_members SET last_read_message_id = $3
-               WHERE dm_channel_id = $1 AND user_id = $2"#,
+            "UPDATE dm_members SET last_read_message_id = $3
+               WHERE dm_channel_id = $1 AND user_id = $2",
         )
         .bind(dm_channel_id)
         .bind(user_id)
@@ -271,13 +295,13 @@ impl DmRepo {
         Ok(())
     }
 
-    /// Get read states (user_id, last_read_message_id) for all members of a DM channel.
+    /// Get read states (`user_id`, `last_read_message_id`) for all members of a DM channel.
     pub async fn get_read_states(
         pool: &PgPool,
         dm_channel_id: Uuid,
     ) -> Result<Vec<(Uuid, Option<Uuid>)>, JolkrError> {
         let rows = sqlx::query_as::<_, (Uuid, Option<Uuid>)>(
-            r#"SELECT user_id, last_read_message_id FROM dm_members WHERE dm_channel_id = $1"#,
+            "SELECT user_id, last_read_message_id FROM dm_members WHERE dm_channel_id = $1",
         )
         .bind(dm_channel_id)
         .fetch_all(pool)
@@ -287,6 +311,7 @@ impl DmRepo {
 
     // ── Messages ─────────────────────────────────────────────────────
 
+    /// Sends message.
     pub async fn send_message(
         pool: &PgPool,
         id: Uuid,
@@ -297,9 +322,9 @@ impl DmRepo {
         reply_to_id: Option<Uuid>,
     ) -> Result<DmMessageRow, JolkrError> {
         let row = sqlx::query_as::<_, DmMessageRow>(
-            r#"INSERT INTO dm_messages (id, dm_channel_id, author_id, content, nonce, reply_to_id)
+            "INSERT INTO dm_messages (id, dm_channel_id, author_id, content, nonce, reply_to_id)
                VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(id)
         .bind(dm_channel_id)
@@ -318,12 +343,13 @@ impl DmRepo {
         Ok(row)
     }
 
+    /// Fetches message.
     pub async fn get_message(
         pool: &PgPool,
         id: Uuid,
     ) -> Result<DmMessageRow, JolkrError> {
         let row = sqlx::query_as::<_, DmMessageRow>(
-            r#"SELECT * FROM dm_messages WHERE id = $1"#,
+            "SELECT * FROM dm_messages WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(pool)
@@ -332,6 +358,7 @@ impl DmRepo {
         Ok(row)
     }
 
+    /// Fetches messages.
     pub async fn get_messages(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -342,10 +369,10 @@ impl DmRepo {
         let before = before.unwrap_or_else(Utc::now);
 
         let rows = sqlx::query_as::<_, DmMessageRow>(
-            r#"SELECT * FROM dm_messages
+            "SELECT * FROM dm_messages
                WHERE dm_channel_id = $1 AND created_at < $2
                ORDER BY created_at DESC
-               LIMIT $3"#,
+               LIMIT $3",
         )
         .bind(dm_channel_id)
         .bind(before)
@@ -355,6 +382,7 @@ impl DmRepo {
         Ok(rows)
     }
 
+    /// Updates message.
     pub async fn update_message(
         pool: &PgPool,
         id: Uuid,
@@ -362,10 +390,10 @@ impl DmRepo {
         nonce: Option<&[u8]>,
     ) -> Result<DmMessageRow, JolkrError> {
         let row = sqlx::query_as::<_, DmMessageRow>(
-            r#"UPDATE dm_messages
+            "UPDATE dm_messages
                SET content = $1, nonce = $2, is_edited = true, updated_at = NOW()
                WHERE id = $3
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(content)
         .bind(nonce)
@@ -376,6 +404,7 @@ impl DmRepo {
         Ok(row)
     }
 
+    /// Deletes message.
     pub async fn delete_message(
         pool: &PgPool,
         id: Uuid,
@@ -392,6 +421,7 @@ impl DmRepo {
 
     // ── Attachments ──────────────────────────────────────────────────
 
+    /// Creates attachment.
     pub async fn create_attachment(
         pool: &PgPool,
         id: Uuid,
@@ -402,9 +432,9 @@ impl DmRepo {
         url: &str,
     ) -> Result<DmAttachmentRow, JolkrError> {
         let row = sqlx::query_as::<_, DmAttachmentRow>(
-            r#"INSERT INTO dm_attachments (id, dm_message_id, filename, content_type, size_bytes, url)
+            "INSERT INTO dm_attachments (id, dm_message_id, filename, content_type, size_bytes, url)
                VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(id)
         .bind(dm_message_id)
@@ -417,12 +447,13 @@ impl DmRepo {
         Ok(row)
     }
 
+    /// Lists attachments.
     pub async fn list_attachments(
         pool: &PgPool,
         dm_message_id: Uuid,
     ) -> Result<Vec<DmAttachmentRow>, JolkrError> {
         let rows = sqlx::query_as::<_, DmAttachmentRow>(
-            r#"SELECT * FROM dm_attachments WHERE dm_message_id = $1 ORDER BY created_at"#,
+            "SELECT * FROM dm_attachments WHERE dm_message_id = $1 ORDER BY created_at",
         )
         .bind(dm_message_id)
         .fetch_all(pool)
@@ -439,7 +470,7 @@ impl DmRepo {
             return Ok(Vec::new());
         }
         let rows = sqlx::query_as::<_, DmAttachmentRow>(
-            r#"SELECT * FROM dm_attachments WHERE dm_message_id = ANY($1) ORDER BY created_at"#,
+            "SELECT * FROM dm_attachments WHERE dm_message_id = ANY($1) ORDER BY created_at",
         )
         .bind(message_ids)
         .fetch_all(pool)
@@ -456,7 +487,7 @@ impl DmRepo {
             return Ok(Vec::new());
         }
         let rows = sqlx::query_as::<_, DmMemberRow>(
-            r#"SELECT * FROM dm_members WHERE dm_channel_id = ANY($1)"#,
+            "SELECT * FROM dm_members WHERE dm_channel_id = ANY($1)",
         )
         .bind(channel_ids)
         .fetch_all(pool)
@@ -466,6 +497,7 @@ impl DmRepo {
 
     // ── Reactions ────────────────────────────────────────────────────
 
+    /// Add reaction.
     pub async fn add_reaction(
         pool: &PgPool,
         dm_message_id: Uuid,
@@ -473,10 +505,10 @@ impl DmRepo {
         emoji: &str,
     ) -> Result<DmReactionRow, JolkrError> {
         let row = sqlx::query_as::<_, DmReactionRow>(
-            r#"INSERT INTO dm_reactions (id, dm_message_id, user_id, emoji)
+            "INSERT INTO dm_reactions (id, dm_message_id, user_id, emoji)
                VALUES ($1, $2, $3, $4)
                ON CONFLICT (dm_message_id, user_id, emoji) DO NOTHING
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(Uuid::new_v4())
         .bind(dm_message_id)
@@ -488,6 +520,7 @@ impl DmRepo {
         Ok(row)
     }
 
+    /// Removes reaction.
     pub async fn remove_reaction(
         pool: &PgPool,
         dm_message_id: Uuid,
@@ -495,8 +528,8 @@ impl DmRepo {
         emoji: &str,
     ) -> Result<(), JolkrError> {
         sqlx::query(
-            r#"DELETE FROM dm_reactions
-               WHERE dm_message_id = $1 AND user_id = $2 AND emoji = $3"#,
+            "DELETE FROM dm_reactions
+               WHERE dm_message_id = $1 AND user_id = $2 AND emoji = $3",
         )
         .bind(dm_message_id)
         .bind(user_id)
@@ -506,12 +539,13 @@ impl DmRepo {
         Ok(())
     }
 
+    /// Lists reactions.
     pub async fn list_reactions(
         pool: &PgPool,
         dm_message_id: Uuid,
     ) -> Result<Vec<DmReactionRow>, JolkrError> {
         let rows = sqlx::query_as::<_, DmReactionRow>(
-            r#"SELECT * FROM dm_reactions WHERE dm_message_id = $1 ORDER BY created_at"#,
+            "SELECT * FROM dm_reactions WHERE dm_message_id = $1 ORDER BY created_at",
         )
         .bind(dm_message_id)
         .fetch_all(pool)
@@ -528,9 +562,9 @@ impl DmRepo {
             return Ok(Vec::new());
         }
         let rows = sqlx::query_as::<_, DmReactionRow>(
-            r#"SELECT * FROM dm_reactions
+            "SELECT * FROM dm_reactions
                WHERE dm_message_id = ANY($1)
-               ORDER BY created_at ASC"#,
+               ORDER BY created_at ASC",
         )
         .bind(message_ids)
         .fetch_all(pool)
@@ -548,10 +582,10 @@ impl DmRepo {
         pinned_by: Uuid,
     ) -> Result<DmPinRow, JolkrError> {
         let row = sqlx::query_as::<_, DmPinRow>(
-            r#"INSERT INTO dm_pins (dm_channel_id, message_id, pinned_by)
+            "INSERT INTO dm_pins (dm_channel_id, message_id, pinned_by)
                VALUES ($1, $2, $3)
                ON CONFLICT (dm_channel_id, message_id) DO NOTHING
-               RETURNING *"#,
+               RETURNING *",
         )
         .bind(dm_channel_id)
         .bind(message_id)
@@ -566,18 +600,15 @@ impl DmRepo {
             .await?;
 
         // If ON CONFLICT hit, fetch the existing pin
-        match row {
-            Some(r) => Ok(r),
-            None => {
-                let existing = sqlx::query_as::<_, DmPinRow>(
-                    "SELECT * FROM dm_pins WHERE dm_channel_id = $1 AND message_id = $2",
-                )
-                .bind(dm_channel_id)
-                .bind(message_id)
-                .fetch_one(pool)
-                .await?;
-                Ok(existing)
-            }
+        if let Some(r) = row { Ok(r) } else {
+            let existing = sqlx::query_as::<_, DmPinRow>(
+                "SELECT * FROM dm_pins WHERE dm_channel_id = $1 AND message_id = $2",
+            )
+            .bind(dm_channel_id)
+            .bind(message_id)
+            .fetch_one(pool)
+            .await?;
+            Ok(existing)
         }
     }
 
@@ -607,10 +638,10 @@ impl DmRepo {
         dm_channel_id: Uuid,
     ) -> Result<Vec<DmMessageRow>, JolkrError> {
         let rows = sqlx::query_as::<_, DmMessageRow>(
-            r#"SELECT m.* FROM dm_messages m
+            "SELECT m.* FROM dm_messages m
                INNER JOIN dm_pins p ON p.message_id = m.id
                WHERE p.dm_channel_id = $1
-               ORDER BY p.pinned_at DESC"#,
+               ORDER BY p.pinned_at DESC",
         )
         .bind(dm_channel_id)
         .fetch_all(pool)

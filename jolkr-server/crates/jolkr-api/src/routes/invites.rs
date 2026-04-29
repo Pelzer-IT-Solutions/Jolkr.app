@@ -7,23 +7,23 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use jolkr_core::InviteService;
-use jolkr_core::services::invite::{CreateInviteRequest, InviteInfo};
+use jolkr_core::services::invite::{CreateInviteRequest, InviteInfo, UseInviteResult};
 
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
 #[derive(Serialize)]
-pub struct InviteResponse {
+pub(crate) struct InviteResponse {
     pub invite: InviteInfo,
 }
 
 #[derive(Serialize)]
-pub struct InvitesResponse {
+pub(crate) struct InvitesResponse {
     pub invites: Vec<InviteInfo>,
 }
 
-pub async fn create_invite(
+pub(crate) async fn create_invite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -34,35 +34,40 @@ pub async fn create_invite(
     Ok(Json(InviteResponse { invite }))
 }
 
-pub async fn use_invite(
+pub(crate) async fn use_invite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(code): Path<String>,
 ) -> Result<Json<InviteResponse>, AppError> {
-    let invite = InviteService::use_invite(&state.pool, &code, auth.user_id).await?;
+    let UseInviteResult { invite, freshly_joined } =
+        InviteService::use_invite(&state.pool, &code, auth.user_id).await?;
 
-    // Notify server members of the new member
-    let event = crate::ws::events::GatewayEvent::MemberJoin {
-        server_id: invite.server_id,
-        user_id: auth.user_id,
-    };
-    state.nats.publish_to_server(invite.server_id, &event).await;
+    // Only fan out the join + subscribe sessions on a fresh join. If the user
+    // was already a member, the call is idempotent — they're already
+    // subscribed and other members shouldn't see a phantom MemberJoin event.
+    if freshly_joined {
+        let event = crate::ws::events::GatewayEvent::MemberJoin {
+            server_id: invite.server_id,
+            user_id: auth.user_id,
+        };
+        state.nats.publish_to_server(invite.server_id, &event).await;
 
-    // Also auto-subscribe the joining user's WS sessions to this server.
-    // Collect session IDs first to avoid DashMap deadlock: iter() holds a
-    // read-lock on each shard, and subscribe_server() needs a write-lock.
-    let session_ids: Vec<Uuid> = state.gateway.clients.iter()
-        .filter(|entry| entry.value().user_id == auth.user_id)
-        .map(|entry| entry.value().session_id)
-        .collect();
-    for session_id in session_ids {
-        state.gateway.subscribe_server(&session_id, invite.server_id);
+        // Auto-subscribe the joining user's WS sessions to this server.
+        // Collect session IDs first to avoid DashMap deadlock: iter() holds a
+        // read-lock on each shard, and subscribe_server() needs a write-lock.
+        let session_ids: Vec<Uuid> = state.gateway.clients.iter()
+            .filter(|entry| entry.value().user_id == auth.user_id)
+            .map(|entry| entry.value().session_id)
+            .collect();
+        for session_id in session_ids {
+            state.gateway.subscribe_server(&session_id, invite.server_id);
+        }
     }
 
     Ok(Json(InviteResponse { invite }))
 }
 
-pub async fn list_invites(
+pub(crate) async fn list_invites(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(server_id): Path<Uuid>,
@@ -72,7 +77,7 @@ pub async fn list_invites(
     Ok(Json(InvitesResponse { invites }))
 }
 
-pub async fn delete_invite(
+pub(crate) async fn delete_invite(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((server_id, invite_id)): Path<(Uuid, Uuid)>,

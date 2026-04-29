@@ -4,6 +4,7 @@ import { useAuthStore } from '../../../stores/auth';
 import { useMobileNav } from '../../../hooks/useMobileNav';
 import Avatar from '../../../components/Avatar';
 import { hashColor } from '../../../adapters/transforms';
+import { displayName } from '../../../utils/format';
 import SettingsNavItem from '../../../components/ui/SettingsNavItem';
 import { ArrowLeft, ChevronLeft, ChevronRight, User, Palette, Bell, Monitor, LogOut } from 'lucide-react';
 
@@ -130,14 +131,14 @@ export default function Settings() {
                 >
                   <Avatar
                     url={user?.avatar_url}
-                    name={user?.display_name || user?.username || '?'}
+                    name={displayName(user)}
                     size={52}
                     userId={user?.id}
                     color={user ? hashColor(user.id) : undefined}
                   />
                   <div className="flex-1 flex flex-col gap-0.5 min-w-0">
                     <span className="text-lg font-bold text-text-primary truncate">
-                      {user?.display_name || user?.username || 'Unknown'}
+                      {displayName(user)}
                     </span>
                     <span className="text-sm text-accent truncate">
                       @{user?.username || 'unknown'}

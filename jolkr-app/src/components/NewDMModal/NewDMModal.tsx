@@ -6,6 +6,7 @@ import type { User, Friendship } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
 import { hashColor, avatarLetter } from '../../adapters/transforms'
+import { displayName } from '../../utils/format'
 import { rewriteStorageUrl } from '../../platform/config'
 import Avatar from '../Avatar'
 import s from './NewDMModal.module.css'
@@ -36,7 +37,7 @@ function friendToUser(f: Friendship, myId: string): User | null {
 function toDisplayUser(u: User, source: 'friend' | 'search'): DisplayUser {
   return {
     id:        u.id,
-    name:      u.display_name || u.username,
+    name:      displayName(u),
     username:  u.username,
     status:    u.is_online ? 'online' : 'offline',
     color:     hashColor(u.id),
