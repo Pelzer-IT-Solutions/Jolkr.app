@@ -136,18 +136,34 @@ jobs:
           echo "apk_path=$RENAMED" >> "$GITHUB_OUTPUT"
           echo "Renamed APK: $APK_PATH → $RENAMED"
 
-      - name: Locate signed AAB
+      - name: Locate AAB
         id: find-aab
         run: |
           AAB_PATH=$(find jolkr-app/src-tauri/gen/android -name '*.aab' -type f | head -1)
           if [ -z "$AAB_PATH" ]; then
-            echo "ERROR: No signed AAB found!"
+            echo "ERROR: No AAB found!"
             exit 1
           fi
           RENAMED_AAB="jolkr-app/src-tauri/gen/android/Jolkr_${VERSION_REF}_android.aab"
           mv "$AAB_PATH" "$RENAMED_AAB"
           echo "aab_path=$RENAMED_AAB" >> "$GITHUB_OUTPUT"
-          echo "Renamed AAB: $AAB_PATH → $RENAMED_AAB"
+          echo "Located AAB: $AAB_PATH → $RENAMED_AAB"
+
+      - name: Sign AAB with jarsigner (Tauri --aab does not auto-sign)
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/android-keystore.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          AAB_PATH: ${{ steps.find-aab.outputs.aab_path }}
+        run: |
+          jarsigner -keystore "$ANDROID_KEYSTORE_PATH" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            -sigalg SHA256withRSA -digestalg SHA-256 \
+            "$AAB_PATH" \
+            "$ANDROID_KEY_ALIAS"
+          jarsigner -verify -verbose -certs "$AAB_PATH" | tail -3
 
       - name: Upload APK + AAB as workflow artifact
         uses: actions/upload-artifact@v4
