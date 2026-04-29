@@ -36,6 +36,13 @@
   position: relative;
 }
 
+/* On Tauri mobile (touch) the drag listeners are skipped — restore the
+   default cursor and let horizontal pan-scroll through the tab. */
+.tab.tabNoDrag {
+  cursor: default;
+  touch-action: pan-x;
+}
+
 .tabClip {
   flex: 1;
   min-width: 0;
