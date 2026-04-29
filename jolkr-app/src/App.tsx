@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './stores/auth';
 import { useServersStore } from './stores/servers';
-import { getBasename, hasServerUrl, isDevMachine } from './platform/config';
+import { getBasename } from './platform/config';
 import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
@@ -24,7 +24,6 @@ import ForgotPassword from './pages/ForgotPassword';
 import NotFound from './pages/NotFound';
 import AppShell from './pages/App/AppShell';
 import InviteAccept from './pages/InviteAccept';
-import ServerSetup from './pages/ServerSetup';
 import VerifyEmail from './pages/VerifyEmail';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -182,17 +181,6 @@ function DeepLinkHandler() {
 }
 
 export default function App() {
-  const [serverReady, setServerReady] = useState(() => hasServerUrl());
-
-  // Tauri dev machine: show server selection on first launch
-  if (isTauri && isDevMachine && !serverReady) {
-    return (
-      <ErrorBoundary>
-        <ServerSetup onComplete={() => setServerReady(true)} />
-      </ErrorBoundary>
-    );
-  }
-
   return (
     <ErrorBoundary>
       <BrowserRouter basename={getBasename()}>

@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { User } from '../../../api/types';
 import { isTauri, isWeb } from '../../../platform/detect';
-import { getServerUrl, isDevMachine, isValidServerUrl } from '../../../platform/config';
 import { registerPush, unregisterPush } from '../../../services/pushRegistration';
 import { getRingtoneType } from '../../../hooks/useCallEvents';
 import Toggle from '../../../components/ui/Toggle';
-import Button from '../../../components/ui/Button';
 
 export interface NotificationsTabProps {
   user: User | null;
@@ -240,58 +238,7 @@ export default function NotificationsTab({ user, onProfileUpdate }: Notification
             <Toggle checked={autoStart} onChange={handleAutoStart} disabled={autoStartLoading} />
           </div>
         )}
-
-        {/* Server URL (dev machine only) */}
-        {isTauri && isDevMachine && (
-          <div className="px-6 py-4 border-t border-border-subtle">
-            <ServerUrlSetting />
-          </div>
-        )}
       </div>
     </>
-  );
-}
-
-function ServerUrlSetting() {
-  const current = getServerUrl();
-  const [url, setUrl] = useState(current);
-  const [saved, setSaved] = useState(false);
-  const dirty = url.trim().replace(/\/+$/, '') !== current;
-
-  const [urlError, setUrlError] = useState('');
-
-  const handleSave = () => {
-    const cleaned = url.trim().replace(/\/+$/, '');
-    if (!cleaned) return;
-    if (!isValidServerUrl(cleaned)) {
-      setUrlError('URL must use HTTPS (or HTTP for localhost only)');
-      return;
-    }
-    setUrlError('');
-    localStorage.setItem('jolkr_server_url', cleaned);
-    setSaved(true);
-    setTimeout(() => window.location.reload(), 500);
-  };
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Server URL</label>
-        <p className="text-sm text-text-secondary">The Jolkr server this app connects to. Changing this will reload the app.</p>
-      </div>
-      <div className="flex gap-2">
-        <input
-          value={url}
-          onChange={(e) => { setUrl(e.target.value); setSaved(false); setUrlError(''); }}
-          className="flex-1 rounded-lg bg-bg border border-divider px-4 py-3 text-sm text-text-primary"
-        />
-        {urlError && <span className="text-danger text-xs self-center">{urlError}</span>}
-        {dirty && (
-          <Button onClick={handleSave}>
-            {saved ? 'Saved!' : 'Save'}
-          </Button>
-        )}
-      </div>
-    </div>
   );
 }
