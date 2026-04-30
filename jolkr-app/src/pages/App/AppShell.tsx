@@ -105,6 +105,18 @@ export default function AppShell() {
 
   const mobileBackToChat = useCallback(() => setActiveMobilePane('chat'), [setActiveMobilePane])
 
+  // Mobile: clicking a channel or DM should auto-close the side panel and
+  // show the chat. Desktop keeps the multi-pane layout — no override needed.
+  const handleSwitchChannelMobile = useCallback((id: string) => {
+    handlers.handleSwitchChannel(id)
+    if (isMobile) setActiveMobilePane('chat')
+  }, [handlers, isMobile, setActiveMobilePane])
+
+  const handleSelectDmMobile = useCallback((id: string) => {
+    setActiveDmId(id)
+    if (isMobile) setActiveMobilePane('chat')
+  }, [setActiveDmId, isMobile, setActiveMobilePane])
+
   const sidebarCollapsedForChannelSidebar = isMobile ? false : effectiveLeftCollapsed
   const sidebarCollapsedForChatHeader     = isMobile ? true  : effectiveLeftCollapsed
   const rightPanelHidden                   = isMobile ? false : effectiveRightCollapsed
@@ -114,7 +126,7 @@ export default function AppShell() {
     mutedServerIds, handleToggleMuteServer,
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleTyping,
-    handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,
+    handleSwitchServer, handleCloseTab, handleOpenServer,
     handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
     handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
@@ -241,7 +253,7 @@ export default function AppShell() {
                 <DMSidebar
                   conversations={uiDmList}
                   activeId={activeDmId}
-                  onSelect={setActiveDmId}
+                  onSelect={handleSelectDmMobile}
                   onNewMessage={() => setNewDmOpen(true)}
                   onOpenFriends={() => setFriendsPanelOpen(true)}
                   collapsed={sidebarCollapsedForChannelSidebar}
@@ -252,7 +264,7 @@ export default function AppShell() {
                 <ChannelSidebar
                   server={activeServer}
                   activeChannelId={activeChannelId}
-                  onSwitch={handleSwitchChannel}
+                  onSwitch={handleSwitchChannelMobile}
                   onCollapse={handleCollapseSidebar}
                   collapsed={sidebarCollapsedForChannelSidebar}
                   isMobile={isMobile}
