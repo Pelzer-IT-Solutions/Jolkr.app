@@ -1,0 +1,4 @@
+# Raw device screenshots are reproducible; don't commit them
+raw/
+node_modules/
+package-lock.json
