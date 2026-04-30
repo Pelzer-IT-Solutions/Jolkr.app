@@ -62,6 +62,9 @@
       "webviewInstallMode": {
         "type": "embedBootstrapper"
       }
+    },
+    "android": {
+      "versionCode": 10002
     }
   }
 }
