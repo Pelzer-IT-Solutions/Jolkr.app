@@ -1,0 +1,16 @@
+{
+  "name": "jolkr-play-store-assets",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node render.mjs",
+    "render:screenshots": "node render.mjs screenshots",
+    "render:feature": "node render.mjs feature-graphic",
+    "verify": "node verify.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.1",
+    "sharp": "^0.33.5"
+  }
+}
