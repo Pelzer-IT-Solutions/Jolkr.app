@@ -11,7 +11,7 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, FolderPlus, Hash, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
+import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, FolderPlus, Hash, Volume2, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
 import type { Server, Channel, Category, ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
@@ -126,9 +126,11 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; categoryId: string } | null>(null)
   // `categoryId` (when set on a channel-create) routes the new channel into a
   // specific folder. Without it, the channel is created uncategorized.
+  // `kind` selects text vs voice — chosen at menu-open time, then carried
+  // through to the optimistic icon and the backend `kind` field.
   type CreatingState =
     | { type: 'folder' }
-    | { type: 'channel'; categoryId?: string }
+    | { type: 'channel'; kind: 'text' | 'voice'; categoryId?: string }
   const [creating,    setCreating]    = useState<CreatingState | null>(null)
   const [newName,     setNewName]     = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -343,7 +345,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       setLocalCats(prev => [...prev, { id: tempId, name, channels: [] }])
     } else {
       const tempId = `ch-${Date.now()}`
-      setLocalExtraChannels(prev => [...prev, { id: tempId, name, icon: '#', desc: '', unread: 0 }])
+      const tempIcon = intent.kind === 'voice' ? '🔊' : '#'
+      setLocalExtraChannels(prev => [...prev, { id: tempId, name, icon: tempIcon, desc: '', unread: 0, kind: intent.kind }])
       // For channels created inside a folder, also slot them into that folder
       // locally so they don't briefly flash in the uncategorized list.
       if (intent.categoryId) {
@@ -358,7 +361,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       if (intent.type === 'folder') {
         await onCreateCategory?.(name)
       } else {
-        await onCreateChannel?.(name, 'text', intent.categoryId)
+        await onCreateChannel?.(name, intent.kind, intent.categoryId)
       }
     } catch (err) {
       console.error('Failed to create:', err)
@@ -541,15 +544,17 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                   renameInputRef={renameInputRef}
                   onOpenChannelSettings={onOpenChannelSettings}
                   canManageChannels={canManageChannels}
-                  inlineCreateChannel={isCreatingHere ? (
+                  inlineCreateChannel={isCreatingHere && creating?.type === 'channel' ? (
                     <div className={s.newItemRow}>
                       <span className={s.newItemIcon}>
-                        <Hash size={13} strokeWidth={1.5} />
+                        {creating.kind === 'voice'
+                          ? <Volume2 size={13} strokeWidth={1.5} />
+                          : <Hash size={13} strokeWidth={1.5} />}
                       </span>
                       <input
                         ref={inputRef}
                         className={`${s.newItemInput} txt-small`}
-                        placeholder="channel-name…"
+                        placeholder={creating.kind === 'voice' ? 'voice-channel-name…' : 'channel-name…'}
                         value={newName}
                         onChange={e => setNewName(e.target.value)}
                         onKeyDown={confirmCreate}
@@ -599,12 +604,20 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
           {creating && (creating.type === 'folder' || !creating.categoryId) && (
             <div className={s.newItemRow}>
               <span className={s.newItemIcon}>
-                {creating.type === 'folder' ? <FolderPlus size={13} strokeWidth={1.5} /> : <Hash size={13} strokeWidth={1.5} />}
+                {creating.type === 'folder'
+                  ? <FolderPlus size={13} strokeWidth={1.5} />
+                  : creating.kind === 'voice'
+                    ? <Volume2 size={13} strokeWidth={1.5} />
+                    : <Hash size={13} strokeWidth={1.5} />}
               </span>
               <input
                 ref={inputRef}
                 className={`${s.newItemInput} txt-small`}
-                placeholder={creating.type === 'folder' ? 'Folder name…' : 'channel-name…'}
+                placeholder={
+                  creating.type === 'folder' ? 'Folder name…' :
+                  creating.kind === 'voice' ? 'voice-channel-name…' :
+                  'channel-name…'
+                }
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={confirmCreate}
@@ -632,7 +645,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       {/* ── Add / empty-space menu ── */}
       <Menu isOpen={contextMenu !== null} position={contextMenu ?? { x: 0, y: 0 }} onClose={() => setContextMenu(null)}>
         <MenuItem icon={<FolderPlus size={13} strokeWidth={1.5} />} label="New Folder" onClick={() => startCreating({ type: 'folder' })} />
-        <MenuItem icon={<Hash size={13} strokeWidth={1.5} />} label="New Channel" onClick={() => startCreating({ type: 'channel' })} />
+        <MenuItem icon={<Hash size={13} strokeWidth={1.5} />} label="New Text Channel" onClick={() => startCreating({ type: 'channel', kind: 'text' })} />
+        <MenuItem icon={<Volume2 size={13} strokeWidth={1.5} />} label="New Voice Channel" onClick={() => startCreating({ type: 'channel', kind: 'voice' })} />
       </Menu>
 
       {/* ── Channel context menu ── */}
@@ -688,25 +702,34 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
       {/* ── Category/folder context menu ── */}
       <Menu isOpen={categoryContextMenu !== null} position={categoryContextMenu ?? { x: 0, y: 0 }} onClose={() => setCategoryContextMenu(null)}>
-        {canManageChannels && categoryContextMenu && onCreateChannel && (
-          <MenuItem
-            icon={<Hash size={13} strokeWidth={1.5} />}
-            label="Create Channel"
-            onClick={() => {
-              const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
-              if (category) {
-                // Make sure the folder is expanded so the inline input is visible
-                setCollapsedCats(prev => {
-                  if (!prev.has(category.name)) return prev
-                  const next = new Set(prev)
-                  next.delete(category.name)
-                  return next
-                })
-                startCreating({ type: 'channel', categoryId: category.id })
-              }
-            }}
-          />
-        )}
+        {canManageChannels && categoryContextMenu && onCreateChannel && (() => {
+          const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
+          if (!category) return null
+          const startInFolder = (kind: 'text' | 'voice') => {
+            // Make sure the folder is expanded so the inline input is visible
+            setCollapsedCats(prev => {
+              if (!prev.has(category.name)) return prev
+              const next = new Set(prev)
+              next.delete(category.name)
+              return next
+            })
+            startCreating({ type: 'channel', kind, categoryId: category.id })
+          }
+          return (
+            <>
+              <MenuItem
+                icon={<Hash size={13} strokeWidth={1.5} />}
+                label="Create Text Channel"
+                onClick={() => startInFolder('text')}
+              />
+              <MenuItem
+                icon={<Volume2 size={13} strokeWidth={1.5} />}
+                label="Create Voice Channel"
+                onClick={() => startInFolder('voice')}
+              />
+            </>
+          )
+        })()}
         {canManageChannels && categoryContextMenu && (
           <MenuItem
             icon={<Edit3 size={13} strokeWidth={1.5} />}
