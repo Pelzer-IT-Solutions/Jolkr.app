@@ -38,7 +38,8 @@
         "decorations": true,
         "visible": true,
         "backgroundColor": [30, 31, 34, 255],
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "useHttpsScheme": true
       }
     ],
     "security": {
