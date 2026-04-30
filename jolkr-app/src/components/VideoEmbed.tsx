@@ -107,22 +107,15 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
     return <IframePlayer src={`https://player.vimeo.com/video/${id}`} title="Vimeo video" />;
 
   if (platform === 'twitch' && id) {
-    const twitchUrl = kind === 'vod' ? `https://www.twitch.tv/videos/${id}` : kind === 'clip' ? `https://clips.twitch.tv/${id}` : `https://www.twitch.tv/${id}`;
-
-    // Twitch's player validates parent against `window.parent.location` from
-    // inside the iframe — spoofing the `parent=` query string isn't enough.
-    // In Tauri the parent is `tauri.localhost`, so the embed always fails.
-    // Show a fallback that opens Twitch in the user's default browser.
+    // Twitch's player validates parent against window.parent.location from
+    // inside its iframe. In Tauri the webview origin is `tauri.localhost`,
+    // which Twitch rejects. Workaround: load a tiny HTML page hosted at
+    // jolkr.app that itself iframes the Twitch player — Twitch then sees
+    // its parent as jolkr.app (the real hosting domain) and embeds normally.
     if (isTauri) {
-      return (
-        <div className={s.tauriFallback}>
-          <svg style={{ width: '2.5rem', height: '2.5rem', color: '#9146FF' }} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
-          </svg>
-          <span>{embed.title || 'Twitch'}</span>
-          <a href={twitchUrl} target="_blank" rel="noopener noreferrer">Watch on Twitch</a>
-        </div>
-      );
+      const k = kind === 'vod' ? 'vod' : kind === 'clip' ? 'clip' : 'channel';
+      const bridgeSrc = `https://jolkr.app/app/twitch-embed.html?kind=${k}&id=${encodeURIComponent(id)}`;
+      return <IframePlayer src={bridgeSrc} title={kind === 'clip' ? 'Twitch clip' : 'Twitch stream'} />;
     }
 
     const host = window.location.hostname;
