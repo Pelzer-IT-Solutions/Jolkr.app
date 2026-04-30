@@ -6,6 +6,17 @@ import 'highlight.js/styles/github-dark.css';
 import { useServersStore } from '../stores/servers';
 import { useGifFavoritesStore, extractGiphyId } from '../stores/gif-favorites';
 import { renderUnicodeEmojis, isEmojiOnly } from '../utils/emoji';
+import { getApiBaseUrl } from '../platform/config';
+import { isTauri } from '../platform/detect';
+
+// Tauri's webview origin is `tauri.localhost`, so a relative `/api/...` URL
+// stored by a web client resolves to a non-existent path. Prepend the public
+// API origin in Tauri so cross-platform messages (GIFs, embeds) render.
+const apiOrigin = getApiBaseUrl().replace(/\/api$/, '');
+function resolveContentUrl(href: string): string {
+  if (isTauri && href.startsWith('/api/')) return apiOrigin + href;
+  return href;
+}
 
 // Unescape HTML entities that marked escapes in code blocks
 function unescapeHtml(html: string): string {
@@ -62,7 +73,8 @@ marked.use({
       return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-sm font-mono hljs !p-0">${highlighted}</code></pre>`;
     },
     image({ href, title }) {
-      const safeHref = /^(https?:\/\/|\/api\/)/i.test(href ?? '') ? escapeAttr(href ?? '') : '#';
+      const resolved = resolveContentUrl(href ?? '');
+      const safeHref = /^(https?:\/\/|\/api\/)/i.test(resolved) ? escapeAttr(resolved) : '#';
       const safeTitle = title ? ` title="${escapeAttr(title)}"` : '';
       const isGif = GIF_PROXY_RE.test(href ?? '') || /\.gif(\?[^\s]*)?$/i.test(href ?? '');
       const maxW = isGif ? '250px' : '450px';
