@@ -66,7 +66,7 @@ marked.use({
       const safeTitle = title ? ` title="${escapeAttr(title)}"` : '';
       const isGif = GIF_PROXY_RE.test(href ?? '') || /\.gif(\?[^\s]*)?$/i.test(href ?? '');
       const maxW = isGif ? '250px' : '450px';
-      const imgTag = `<img src="${safeHref}" alt="GIF"${safeTitle} style="max-width:${maxW};max-height:300px;border-radius:0.5rem" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
+      const imgTag = `<img src="${safeHref}" alt="GIF"${safeTitle} style="max-width:${maxW};max-height:300px;border-radius:0.5rem" loading="lazy" referrerpolicy="no-referrer" />`;
       // Wrap GIF proxy images with a heart overlay for favorites
       if (GIF_PROXY_RE.test(href ?? '')) {
         const gifId = extractGiphyId(href ?? '');
@@ -144,7 +144,7 @@ function renderCustomEmojis(html: string, emojiMap?: Map<string, string>): strin
           try { new URL(url); } catch { return match; }
           const safeUrl = escapeAttr(url);
           const safeName = escapeAttr(name);
-          return `<img src="${safeUrl}" alt=":${safeName}:" title=":${safeName}:" style="display:inline-block;vertical-align:text-bottom;width:1.25rem;height:1.25rem" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" />`;
+          return `<img src="${safeUrl}" alt=":${safeName}:" title=":${safeName}:" style="display:inline-block;vertical-align:text-bottom;width:1.25rem;height:1.25rem" loading="lazy" referrerpolicy="no-referrer" />`;
         }
       }
       return match;
