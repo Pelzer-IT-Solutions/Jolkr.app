@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Twitch</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+    iframe { display: block; width: 100%; height: 100%; border: 0; }
+  </style>
+</head>
+<body>
+  <script>
+    // Renders Twitch's player inside a page hosted on jolkr.app so Twitch's
+    // window.parent.location check sees the public domain — required because
+    // a Tauri webview's origin is `tauri.localhost`, which Twitch rejects.
+    (function () {
+      var p = new URLSearchParams(window.location.search);
+      var kind = p.get('kind');
+      var id = p.get('id');
+      if (!id) return;
+      var parent = location.hostname; // "jolkr.app" in production
+      var src;
+      if (kind === 'clip') {
+        src = 'https://clips.twitch.tv/embed?clip=' + encodeURIComponent(id) + '&parent=' + parent;
+      } else if (kind === 'vod') {
+        src = 'https://player.twitch.tv/?video=' + encodeURIComponent(id) + '&parent=' + parent;
+      } else {
+        src = 'https://player.twitch.tv/?channel=' + encodeURIComponent(id) + '&parent=' + parent;
+      }
+      var iframe = document.createElement('iframe');
+      iframe.src = src;
+      iframe.allow = 'accelerometer; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true;
+      document.body.appendChild(iframe);
+    })();
+  </script>
+</body>
+</html>
