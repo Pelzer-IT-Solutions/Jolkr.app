@@ -212,6 +212,9 @@ export function useAppInit() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync state → URL (only AFTER init is done) ──
+  // Uses push (not replace) so each user-driven server/channel/DM switch
+  // adds a webview history entry. The Android hardware back button then
+  // navigates to the previous channel instead of closing the app.
   useEffect(() => {
     if (!ready) return
     let target: string
@@ -227,9 +230,31 @@ export function useAppInit() {
       target = '/'
     }
     if (location.pathname !== target) {
-      navigate(target, { replace: true })
+      navigate(target)
     }
   }, [ready, dmActive, activeDmId, activeServerId, activeChannelId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Sync URL → state (popstate / programmatic history.back) ──
+  // When the user presses the Android back button or otherwise pops history,
+  // the URL changes but state doesn't. Re-derive activeServerId / activeChannelId
+  // / activeDmId / dmActive from the current path so the UI follows the URL.
+  useEffect(() => {
+    if (!ready) return
+    const path = location.pathname
+    const dmMatch = path.match(/^\/dm(?:\/([^/]+))?/)
+    const serverMatch = path.match(/^\/servers\/([^/]+)(?:\/channels\/([^/]+))?/)
+    if (dmMatch) {
+      const dmId = dmMatch[1] ?? ''
+      if (!dmActive) setDmActive(true)
+      if (dmId !== activeDmId) setActiveDmId(dmId)
+    } else if (serverMatch) {
+      const sid = serverMatch[1]
+      const cid = serverMatch[2] ?? ''
+      if (dmActive) setDmActive(false)
+      if (sid !== activeServerId) setActiveServerId(sid)
+      if (cid !== activeChannelId) setActiveChannelId(cid)
+    }
+  }, [ready, location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Fetch channel data when switching servers (after init) ──
   useEffect(() => {
