@@ -107,28 +107,20 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
     return <IframePlayer src={`https://player.vimeo.com/video/${id}`} title="Vimeo video" />;
 
   if (platform === 'twitch' && id) {
-    const twitchUrl = kind === 'vod' ? `https://www.twitch.tv/videos/${id}` : kind === 'clip' ? `https://clips.twitch.tv/${id}` : `https://www.twitch.tv/${id}`;
-
-    // Twitch's player ships a Content-Security-Policy with frame-ancestors
-    // restricted to twitch.tv plus any value passed via the `parent=` query
-    // string — but only after Twitch's server validates the request origin.
-    // In Tauri the webview origin is "tauri.localhost", which Twitch rejects
-    // with "refused to connect" regardless of what we put in `parent=`.
-    // Fall back to opening Twitch in the user's default browser.
-    if (isTauri) {
-      return (
-        <div className={s.tauriFallback}>
-          <svg style={{ width: '2.5rem', height: '2.5rem', color: '#9146FF' }} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
-          </svg>
-          <span>{embed.title || 'Twitch'}</span>
-          <a href={twitchUrl} target="_blank" rel="noopener noreferrer">Watch on Twitch</a>
-        </div>
-      );
-    }
-
-    const host = window.location.hostname;
-    const twitchSrc = kind === 'clip' ? `https://clips.twitch.tv/embed?clip=${id}&parent=${host}` : kind === 'vod' ? `https://player.twitch.tv/?video=${id}&parent=${host}` : `https://player.twitch.tv/?channel=${id}&parent=${host}`;
+    // Twitch's response sets `Content-Security-Policy: frame-ancestors <parent>`
+    // where <parent> is whatever the `parent=` query string contains — there's
+    // no server-side validation, the browser just enforces frame-ancestors.
+    // To make the embed load from Tauri (origin "tauri.localhost") and from
+    // web (origin "jolkr.app"), pass both as parents. Twitch supports multiple
+    // `parent=` values and concatenates them all into the CSP.
+    const parents = isTauri
+      ? 'parent=tauri.localhost&parent=jolkr.app'
+      : `parent=${window.location.hostname}`;
+    const twitchSrc = kind === 'clip'
+      ? `https://clips.twitch.tv/embed?clip=${id}&${parents}`
+      : kind === 'vod'
+        ? `https://player.twitch.tv/?video=${id}&${parents}`
+        : `https://player.twitch.tv/?channel=${id}&${parents}`;
     return <IframePlayer src={twitchSrc} title={kind === 'clip' ? 'Twitch clip' : 'Twitch stream'} />;
   }
 
