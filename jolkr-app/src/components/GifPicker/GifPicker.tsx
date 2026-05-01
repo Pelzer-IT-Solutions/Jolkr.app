@@ -5,6 +5,7 @@ import { getGifFavorites } from '../../api/client'
 // addGifFavorite/removeGifFavorite are called by the shared store
 import type { GifFavorite } from '../../api/types'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
+import { useColorMode } from '../../utils/colorMode'
 import s from './GifPicker.module.css'
 
 const apiBase = getApiBaseUrl().replace(/\/api$/, '')
@@ -48,7 +49,8 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
   const scrollRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const theme = localStorage.getItem('jolkr_theme') === 'light' ? 'light' : 'dark'
+  const { isDark } = useColorMode()
+  const theme = isDark ? 'dark' : 'light'
 
   // Load categories on mount
   useEffect(() => {
