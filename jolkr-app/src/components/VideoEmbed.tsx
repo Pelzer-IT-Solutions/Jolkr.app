@@ -116,11 +116,13 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
     const parents = isTauri
       ? 'parent=tauri.localhost&parent=jolkr.app'
       : `parent=${window.location.hostname}`;
+    // Twitch player/clip embeds default to autoplay=true; force to false so the
+    // iframe loads paused (consistent with YouTube/Vimeo/VidMount behavior).
     const twitchSrc = kind === 'clip'
-      ? `https://clips.twitch.tv/embed?clip=${id}&${parents}`
+      ? `https://clips.twitch.tv/embed?clip=${id}&${parents}&autoplay=false`
       : kind === 'vod'
-        ? `https://player.twitch.tv/?video=${id}&${parents}`
-        : `https://player.twitch.tv/?channel=${id}&${parents}`;
+        ? `https://player.twitch.tv/?video=${id}&${parents}&autoplay=false`
+        : `https://player.twitch.tv/?channel=${id}&${parents}&autoplay=false`;
     return <IframePlayer src={twitchSrc} title={kind === 'clip' ? 'Twitch clip' : 'Twitch stream'} />;
   }
 
@@ -134,7 +136,7 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
     return <IframePlayer src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(src)}&show_text=false`} title="Facebook video" />;
 
   if (platform === 'dailymotion' && id)
-    return <IframePlayer src={`https://www.dailymotion.com/embed/video/${id}`} title="Dailymotion video" />;
+    return <IframePlayer src={`https://www.dailymotion.com/embed/video/${id}?autoplay=false`} title="Dailymotion video" />;
 
   if (platform === 'bitchute' && id)
     return <IframePlayer src={`https://www.bitchute.com/embed/${id}/`} title="BitChute video" />;
@@ -186,10 +188,7 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
   };
 
   const toggleFullscreen = () => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) document.exitFullscreen();
-    else el.requestFullscreen().catch(() => { });
+    player.requestFullscreen(wrapperRef.current);
   };
 
   if (player.error) return <div className={s.errorMsg}>{player.error}</div>;
