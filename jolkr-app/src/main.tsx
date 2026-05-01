@@ -6,12 +6,40 @@ import './styles/scroll-fade.css'
 import App from './App'
 import { isTauri, isMobile } from './platform/detect'
 
+declare global {
+  interface Window {
+    /** Injected by MainActivity.onWebViewCreate on Tauri Android only. */
+    JolkrNative?: {
+      enterFullscreen(): void
+      exitFullscreen(): void
+    }
+  }
+}
+
 // Tauri Android/iOS: tag <html> so CSS can apply hardcoded safe-area
 // fallbacks. The WebView doesn't propagate env(safe-area-inset-*) values
 // even though the host activity uses enableEdgeToEdge(), so we provide
 // sensible defaults (status bar / gesture bar) for this platform only.
 if (isTauri && isMobile()) {
   document.documentElement.classList.add('tauri-mobile')
+
+  // Cross-origin iframe embeds (VidMount, YouTube, Vimeo, …) request
+  // fullscreen on their own elements inside the iframe; Android WebView
+  // CSS-fullscreens the iframe but doesn't notify the host activity, so
+  // the system status / nav bars stay visible. Drive native immersive
+  // mode + landscape lock via a direct JS→Kotlin bridge installed by
+  // MainActivity.onWebViewCreate. (Tauri/Wry intercepts console messages
+  // via its own Rust path, so the console side-channel isn't reachable.)
+  // For <video> elements we let MainActivity's onShowCustomView path
+  // handle it natively — no bridge call needed.
+  document.addEventListener('fullscreenchange', () => {
+    const el = document.fullscreenElement
+    if (el?.tagName === 'IFRAME') {
+      window.JolkrNative?.enterFullscreen()
+    } else if (!el) {
+      window.JolkrNative?.exitFullscreen()
+    }
+  })
 }
 
 // Block UI zoom in the Tauri desktop and mobile apps. Webview zoom (pinch,
