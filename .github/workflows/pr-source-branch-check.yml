@@ -1,0 +1,26 @@
+name: PR source branch check
+
+# Enforces: only PRs from the `dev` branch can target `main`.
+# Branch protection on main blocks direct pushes and requires a PR, but
+# GitHub doesn't natively restrict which branches may open a PR. This
+# workflow fills that gap by failing the check on any PR to main whose
+# head branch isn't `dev`.
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify PR source is dev
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" != "dev" ]; then
+            echo "::error::PRs to main may only originate from 'dev'. This PR's head branch is '$HEAD_REF'."
+            echo "Open the PR from dev instead, or merge your branch into dev first."
+            exit 1
+          fi
+          echo "OK — PR source is dev."
