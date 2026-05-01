@@ -10,6 +10,7 @@ import {
   closestCenter,
 } from '@dnd-kit/core'
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 import {
   SortableContext,
   horizontalListSortingStrategy,
@@ -117,7 +118,6 @@ interface Props {
   user?:                UserInfo
   // New optional props — all backward-compatible
   mutedServerIds?:      string[]
-  currentUserId?:       string
   currentStatus?:       UserStatus
   ownerServerIds?:      string[]
   settingsServerIds?:   string[]
@@ -147,7 +147,7 @@ interface Props {
 
 export function TabBar({
   allServers, tabbedServers, activeServerId, dmActive, searchActive, notificationsActive,
-  user, mutedServerIds, currentUserId: _currentUserId, currentStatus: statusProp, ownerServerIds, settingsServerIds, userProfile,
+  user, mutedServerIds, currentStatus: statusProp, ownerServerIds, settingsServerIds, userProfile,
   onSwitch, onClose, onOpenServer, onReorder, onDmClick, onSearchClick,
   onNotificationsClick, onOpenSettings, onJoinServer, onCreateServer,
   onLogout, onStatusChange, onOpenServerSettings, onToggleMuteServer, onMarkAllRead, onLeaveServer,
@@ -366,7 +366,14 @@ export function TabBar({
                     style={{ '--row-color': server.color } as React.CSSProperties}
                     onClick={() => { onOpenServer(server.id); setBrowserOpen(false) }}
                   >
-                    <div className={s.browserIcon} style={{ background: server.color }}>{server.icon}</div>
+                    <div
+                      className={s.browserIcon}
+                      style={server.iconUrl ? undefined : { background: server.color }}
+                    >
+                      {server.iconUrl
+                        ? <img src={server.iconUrl} alt="" className={s.browserIconImg} />
+                        : server.icon}
+                    </div>
                     <div className={s.browserMeta}>
                       <span className={`${s.browserName} txt-small txt-medium txt-truncate`}>{server.name}</span>
                       <span className={`${s.browserSub} txt-tiny txt-truncate`}>{server.channels.length} channels</span>
@@ -387,6 +394,7 @@ export function TabBar({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        modifiers={[restrictToHorizontalAxis]}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveDragId(null)}
@@ -419,7 +427,14 @@ export function TabBar({
               <div className={`${s.tab} ${srv.id === activeServerId ? s.active : ''} ${s.dragOverlay}`}>
                 <div className={s.tabClip}>
                   <div className={s.tabIconWrapper}>
-                    <div className={s.tabIcon} style={{ background: serverColor }}>{srv.icon}</div>
+                    <div
+                      className={s.tabIcon}
+                      style={srv.iconUrl ? undefined : { background: serverColor }}
+                    >
+                      {srv.iconUrl
+                        ? <img src={srv.iconUrl} alt="" className={s.tabIconImg} />
+                        : srv.icon}
+                    </div>
                   </div>
                   <span className={`${s.tabName} txt-small txt-medium txt-truncate`}>{srv.name}</span>
                 </div>
