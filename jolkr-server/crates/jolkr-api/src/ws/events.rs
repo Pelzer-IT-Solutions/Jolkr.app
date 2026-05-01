@@ -238,6 +238,13 @@ pub enum GatewayEvent {
         bio: Option<String>,
     },
 
+    /// A user's email has been verified. Fired to all sessions of the user
+    /// (incl. the one that initiated the verification flow) so any pending
+    /// "verify your email" UI can refresh the user object and unblock.
+    EmailVerified {
+        user_id: Uuid,
+    },
+
     /// Generic error event.
     Error {
         message: String,

@@ -109,5 +109,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 wsClient.on((op, d) => {
   if (op === 'UserUpdate') {
     useAuthStore.getState().applyUserUpdate(d as Record<string, unknown>);
+  } else if (op === 'EmailVerified') {
+    // Backend confirmed verification — refresh the user object so
+    // /verify-email's email_verified guard navigates to the app.
+    useAuthStore.getState().loadUser().catch((e) => {
+      console.warn('loadUser after EmailVerified failed:', e);
+    });
   }
 });

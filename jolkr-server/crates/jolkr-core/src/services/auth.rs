@@ -315,7 +315,7 @@ impl AuthService {
     pub async fn confirm_email_verification(
         pool: &PgPool,
         token: &str,
-    ) -> Result<(), JolkrError> {
+    ) -> Result<Uuid, JolkrError> {
         let token_hash = Self::hash_reset_token(token);
         let row = EmailVerificationRepo::get_by_token_hash(pool, &token_hash).await.map_err(|_| {
             warn!("Invalid or expired email verification token used");
@@ -332,7 +332,7 @@ impl AuthService {
         EmailVerificationRepo::delete_for_user(pool, row.user_id).await?;
 
         info!(user_id = %row.user_id, "Email verified successfully");
-        Ok(())
+        Ok(row.user_id)
     }
 
     // ── Token validation ───────────────────────────────────────────────

@@ -394,7 +394,13 @@ pub(crate) async fn verify_email(
     State(state): State<AppState>,
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<StatusCode, AppError> {
-    AuthService::confirm_email_verification(&state.pool, &body.token).await?;
+    let user_id = AuthService::confirm_email_verification(&state.pool, &body.token).await?;
+
+    // Notify all sessions of this user so any "verify your email" UI can
+    // refresh and unblock without a manual reload.
+    let event = crate::ws::events::GatewayEvent::EmailVerified { user_id };
+    state.nats.publish_to_user(user_id, &event).await;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
