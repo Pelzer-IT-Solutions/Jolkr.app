@@ -187,6 +187,8 @@ pub enum GatewayEvent {
         dm_id: Uuid,
         caller_id: Uuid,
         caller_username: String,
+        /// `true` if the caller is starting a video call, `false` for voice-only.
+        is_video: bool,
     },
 
     /// A DM call was accepted.
