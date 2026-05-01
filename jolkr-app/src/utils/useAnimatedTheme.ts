@@ -33,6 +33,12 @@ const NEUTRAL_ORBS: OrbSnap[] = [
   { x: 0.12, y: 0.22, hue: 164, scale: 1 },
 ]
 
+// Default hue for the neutral (DM / no-server) theme. This drives --theme-hue
+// for CSS variables that always carry a small chroma (e.g. --jolkr-base-heavy
+// at 0.066, --jolkr-neutral-light at 0.011). Must match the :root fallback in
+// tokens.css so a hard refresh on DMs doesn't tint the UI red (hue 0).
+const NEUTRAL_BASE_HUE = 182
+
 function getNeutralOrbPosition(x: number, y: number): { x: number; y: number } {
   const toLeft = x < 0.5
   const toTop = y < 0.5
@@ -58,7 +64,7 @@ function snap(theme: ServerTheme, fallbackOrbs?: OrbSnap[]): ThemeSnap {
         })
 
     return {
-      baseHue: 0,
+      baseHue: NEUTRAL_BASE_HUE,
       intensity: 0,
       orbs: neutralOrbs,
     }
