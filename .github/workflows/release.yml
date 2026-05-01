@@ -200,65 +200,6 @@ jobs:
           status: draft
           releaseName: ${{ github.ref_name }}
 
-  # ─── Post-release: bump version for next development cycle ───
-  version-bump:
-    needs: [build-desktop, build-android]
-    if: success() && github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Calculate next version
-        id: next
-        run: |
-          # Strip 'v' prefix from tag: v0.3.0 → 0.3.0
-          CURRENT="${GITHUB_REF_NAME#v}"
-          # Bump patch: 0.3.0 → 0.4.0
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          NEXT="$MAJOR.$((MINOR + 1)).0"
-          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
-          echo "Bumping version: $CURRENT → $NEXT"
-
-      - name: Update version in all files
-        env:
-          CURRENT: ${{ github.ref_name }}
-          NEXT: ${{ steps.next.outputs.version }}
-        run: |
-          CURRENT_VER="${CURRENT#v}"
-
-          # Frontend
-          sed -i "s/\"version\": \"$CURRENT_VER\"/\"version\": \"$NEXT\"/" jolkr-app/package.json
-          sed -i "s/\"version\": \"$CURRENT_VER\"/\"version\": \"$NEXT\"/" jolkr-app/src-tauri/tauri.conf.json
-
-          # Tauri Rust crate
-          sed -i "s/^version = \"$CURRENT_VER\"/version = \"$NEXT\"/" jolkr-app/src-tauri/Cargo.toml
-
-          # Backend workspace
-          sed -i "s/^version = \"$CURRENT_VER\"/version = \"$NEXT\"/" jolkr-server/Cargo.toml
-
-          # Regenerate lockfile with new version
-          cd jolkr-app && npm install --package-lock-only && cd ..
-
-          echo "Updated files:"
-          grep -n '"version"' jolkr-app/package.json jolkr-app/src-tauri/tauri.conf.json
-          grep -n '^version' jolkr-app/src-tauri/Cargo.toml jolkr-server/Cargo.toml
-
-      - name: Commit and push version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "Version already bumped — nothing to commit"
-          else
-            git commit -m "chore: bump version to ${{ steps.next.outputs.version }} after ${{ github.ref_name }} release"
-            git push origin main
-          fi
-
   # ─── iOS build (disabled — requires Apple Developer Account) ───
   # build-ios:
   #   ...
