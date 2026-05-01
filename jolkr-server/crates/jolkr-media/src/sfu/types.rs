@@ -8,6 +8,8 @@ pub(crate) enum SfuCommand {
         user_id: Uuid,
         channel_id: Uuid,
         signal_tx: tokio::sync::mpsc::UnboundedSender<SignalOut>,
+        /// Whether this peer wants to send/receive video in addition to audio.
+        with_video: bool,
     },
     /// Peer sent an SDP answer to a server-initiated offer.
     Answer {
@@ -49,8 +51,14 @@ pub(crate) enum SignalOut {
         sdp: String,
     },
     /// A new participant joined the voice channel.
+    ///
+    /// `audio_mid` / `video_mid` are the Mids on the recipient's Rtc where this
+    /// participant's media will be received — different for each recipient.
     ParticipantJoined {
         user_id: Uuid,
+        has_video: bool,
+        audio_mid: String,
+        video_mid: Option<String>,
     },
     /// A participant left the voice channel.
     ParticipantLeft {
@@ -84,9 +92,16 @@ pub(crate) enum SignalOut {
 }
 
 /// Public info about a participant in a voice room.
+///
+/// `audio_mid` / `video_mid` are the Mids on the *recipient's* Rtc where this
+/// participant's media is received. They differ per recipient, so this struct
+/// is built per-recipient when sending `Joined`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ParticipantInfo {
     pub user_id: Uuid,
     pub is_muted: bool,
     pub is_deafened: bool,
+    pub has_video: bool,
+    pub audio_mid: String,
+    pub video_mid: Option<String>,
 }
