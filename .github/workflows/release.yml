@@ -187,14 +187,17 @@ jobs:
 
       - name: Upload AAB to Play Store internal track
         if: github.event_name == 'push'
-        continue-on-error: true
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
           packageName: io.jolkr.app
           releaseFiles: ${{ steps.find-aab.outputs.aab_path }}
           track: internal
-          status: completed
+          # 'draft' is required while the app itself is still in draft on
+          # Play Console (= not yet officially published). Once the app is
+          # promoted to a public testing track or production, switch to
+          # 'completed' so internal releases roll out automatically.
+          status: draft
           releaseName: ${{ github.ref_name }}
 
   # ─── Post-release: bump version for next development cycle ───
