@@ -43,7 +43,7 @@ marked.use({
       const body = this.parser.parseInline(tokens);
       // Block dangerous protocols (javascript:, data:, vbscript:)
       const safeHref = /^(https?:\/\/|mailto:|#)/i.test(href ?? '') ? href : '#';
-      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">${body}</a>`;
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="md-link">${body}</a>`;
     },
     strong({ tokens }) {
       const body = this.parser.parseInline(tokens);
