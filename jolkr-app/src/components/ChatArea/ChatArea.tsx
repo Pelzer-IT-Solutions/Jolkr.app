@@ -330,13 +330,24 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const startCall      = useCallStore((st) => st.startCall)
   const voiceState     = useVoiceStore((st) => st.connectionState)
   const inAnyCall      = !!activeCallDmId || !!outgoingCall || !!incomingCall || voiceState !== 'disconnected'
-  const callDisabled   = !isDm || !dmConversation || inAnyCall
-  const callTitle      = inAnyCall ? 'Already in a call' : 'Start voice call'
+  const callDisabled      = !isDm || !dmConversation || inAnyCall
+  const videoCallDisabled = callDisabled || isGroupDm
+  const callTitle         = inAnyCall ? 'Already in a call' : 'Start voice call'
+  const videoCallTitle    = inAnyCall
+    ? 'Already in a call'
+    : isGroupDm
+      ? 'Video calls are 1-on-1 only'
+      : 'Start video call'
 
   const handleStartCall = useCallback(() => {
     if (callDisabled || !dmConversation) return
     void startCall(dmConversation.id, dmName, recipientUserId)
   }, [callDisabled, dmConversation, dmName, recipientUserId, startCall])
+
+  const handleStartVideoCall = useCallback(() => {
+    if (videoCallDisabled || !dmConversation) return
+    void startCall(dmConversation.id, dmName, recipientUserId, { video: true })
+  }, [videoCallDisabled, dmConversation, dmName, recipientUserId, startCall])
 
   // Only treat drags that actually carry files as attachable — a regular
   // text/HTML drag (e.g. dragging a message link around) shouldn't show the
@@ -446,9 +457,10 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <CallIcon />
               </button>
               <button
-                className={`${s.iconBtn} ${s.iconBtnDisabled}`}
-                title="Video calls — coming soon"
-                disabled
+                className={`${s.iconBtn} ${videoCallDisabled ? s.iconBtnDisabled : ''}`}
+                title={videoCallTitle}
+                disabled={videoCallDisabled}
+                onClick={handleStartVideoCall}
               >
                 <VideoIcon />
               </button>

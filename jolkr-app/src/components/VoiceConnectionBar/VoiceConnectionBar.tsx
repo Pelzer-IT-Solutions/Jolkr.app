@@ -6,6 +6,7 @@ import s from './VoiceConnectionBar.module.css';
 export function VoiceConnectionBar() {
   const connectionState = useVoiceStore((st) => st.connectionState);
   const channelName     = useVoiceStore((st) => st.channelName);
+  const callType        = useVoiceStore((st) => st.callType);
   const isMuted         = useVoiceStore((st) => st.isMuted);
   const isDeafened      = useVoiceStore((st) => st.isDeafened);
   const error           = useVoiceStore((st) => st.error);
@@ -30,6 +31,8 @@ export function VoiceConnectionBar() {
   }
 
   if (connectionState === 'disconnected') return null;
+  // Video calls are owned by CallWindow (full-screen + PiP) — bar would be redundant.
+  if (callType === 'video') return null;
 
   const isConnecting = connectionState === 'connecting';
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { PhoneOff, User as UserIcon } from 'lucide-react';
+import { PhoneOff, Video, User as UserIcon } from 'lucide-react';
 import { useCallStore } from '../stores/call';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import s from './CallDialogs.module.css';
@@ -21,16 +21,20 @@ export default function OutgoingCallDialog() {
 
   if (!outgoingCall) return null;
 
+  const isVideo = outgoingCall.isVideo;
+  const subtitle = isVideo ? 'Calling — video…' : 'Calling…';
+  const ariaLabel = isVideo ? 'Outgoing video call' : 'Outgoing call';
+
   return (
     <div className={s.overlay}>
-      <div ref={cardRef} className={s.card} role="dialog" aria-modal="true" aria-label="Outgoing call">
+      <div ref={cardRef} className={s.card} role="dialog" aria-modal="true" aria-label={ariaLabel}>
         <div className={s.avatarWrap}>
-          <UserIcon size={32} strokeWidth={1.5} />
+          {isVideo ? <Video size={32} strokeWidth={1.5} /> : <UserIcon size={32} strokeWidth={1.5} />}
         </div>
 
         <div className={s.textBlock}>
           <span className={s.title}>{outgoingCall.recipientName}</span>
-          <span className={s.subtitle}>Calling…</span>
+          <span className={s.subtitle}>{subtitle}</span>
         </div>
 
         <div className={s.dots}>
