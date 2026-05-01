@@ -1,6 +1,8 @@
 package io.jolkr.app
 
+import android.Manifest
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -19,6 +21,9 @@ import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -37,6 +42,13 @@ class MainActivity : TauriActivity() {
   // "LifecycleOwners must call register before they are STARTED".
   private lateinit var rustChromeDelegate: RustWebChromeClient
 
+  // Pending WebView permission request held while we ask the user for runtime
+  // perms. Same lifecycle constraint as `rustChromeDelegate`: the launcher
+  // must be registered before the Activity transitions to STARTED.
+  private var pendingMediaRequest: PermissionRequest? = null
+  private var pendingGrantedResources: Array<String> = emptyArray()
+  private lateinit var mediaPermLauncher: ActivityResultLauncher<Array<String>>
+
   private val exitFullscreenOnBack = object : OnBackPressedCallback(false) {
     override fun handleOnBackPressed() {
       when {
@@ -54,7 +66,71 @@ class MainActivity : TauriActivity() {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     rustChromeDelegate = RustWebChromeClient(this)
+    mediaPermLauncher = registerForActivityResult(
+      ActivityResultContracts.RequestMultiplePermissions(),
+    ) { results ->
+      val request = pendingMediaRequest ?: return@registerForActivityResult
+      val resources = mutableListOf<String>().apply { addAll(pendingGrantedResources) }
+      if (results[Manifest.permission.RECORD_AUDIO] == true) {
+        resources.add(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+      }
+      if (results[Manifest.permission.CAMERA] == true) {
+        resources.add(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
+      }
+      if (resources.isEmpty()) request.deny() else request.grant(resources.toTypedArray())
+      pendingMediaRequest = null
+      pendingGrantedResources = emptyArray()
+    }
     onBackPressedDispatcher.addCallback(this, exitFullscreenOnBack)
+  }
+
+  /**
+   * Handle a WebView getUserMedia permission request: check OS-level runtime
+   * permissions, ask the user for any that are missing, and grant the
+   * corresponding WebView resources once approved.
+   *
+   * Returns `true` if this method consumed the request (caller should NOT
+   * delegate it). Returns `false` if the request had no audio/video capture
+   * resources we could handle — caller delegates to Tauri.
+   */
+  fun handleMediaPermissionRequest(request: PermissionRequest): Boolean {
+    val grantedNow = mutableListOf<String>()
+    val toAsk = mutableListOf<String>()
+    var sawMedia = false
+
+    for (resource in request.resources) {
+      when (resource) {
+        PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+          sawMedia = true
+          if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+              == PackageManager.PERMISSION_GRANTED) {
+            grantedNow.add(resource)
+          } else {
+            toAsk.add(Manifest.permission.RECORD_AUDIO)
+          }
+        }
+        PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+          sawMedia = true
+          if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+              == PackageManager.PERMISSION_GRANTED) {
+            grantedNow.add(resource)
+          } else {
+            toAsk.add(Manifest.permission.CAMERA)
+          }
+        }
+      }
+    }
+
+    if (!sawMedia) return false
+
+    if (toAsk.isEmpty()) {
+      request.grant(grantedNow.toTypedArray())
+    } else {
+      pendingMediaRequest = request
+      pendingGrantedResources = grantedNow.toTypedArray()
+      mediaPermLauncher.launch(toAsk.toTypedArray())
+    }
+    return true
   }
 
   override fun onWebViewCreate(webView: WebView) {
@@ -151,8 +227,14 @@ private class FullscreenWebChromeClient(
     fileChooserParams: FileChooserParams,
   ): Boolean = delegate.onShowFileChooser(webView, filePathCallback, fileChooserParams)
 
-  override fun onPermissionRequest(request: PermissionRequest) =
-    delegate.onPermissionRequest(request)
+  override fun onPermissionRequest(request: PermissionRequest) {
+    // Audio/video capture (getUserMedia) goes through our own runtime-perm
+    // flow so that mic and camera prompts surface natively. Anything else
+    // (geolocation, MIDI, etc.) falls through to Tauri's default handler.
+    if (!activity.handleMediaPermissionRequest(request)) {
+      delegate.onPermissionRequest(request)
+    }
+  }
 
   override fun onGeolocationPermissionsShowPrompt(
     origin: String,
