@@ -134,6 +134,7 @@ export function useCallEvents() {
             d.dm_id as string,
             d.caller_id as string,
             d.caller_username as string,
+            (d.is_video as boolean | undefined) ?? false,
           );
           break;
         case 'DmCallAccept':

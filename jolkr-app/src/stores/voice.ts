@@ -9,14 +9,25 @@ interface VoiceState {
   channelId: string | null;
   serverId: string | null;
   channelName: string | null;
+  /** `'video'` for DM video calls, `'voice'` otherwise. `null` when disconnected. */
+  callType: 'voice' | 'video' | null;
   isMuted: boolean;
   isDeafened: boolean;
+  isCameraOn: boolean;
+  isCameraUnavailable: boolean;
+  cameraFacing: 'user' | 'environment';
+  /** Local camera stream (for self-preview). `null` when no camera or voice-only call. */
+  localVideoStream: MediaStream | null;
+  /** Remote video streams keyed by userId. */
+  remoteVideoStreams: Map<string, MediaStream>;
   participants: VoiceParticipant[];
   error: string | null;
-  joinChannel: (channelId: string, serverId: string | null, channelName: string, recipientUserId?: string) => Promise<void>;
+  joinChannel: (channelId: string, serverId: string | null, channelName: string, recipientUserId?: string, opts?: { withVideo?: boolean }) => Promise<void>;
   leaveChannel: () => Promise<void>;
   toggleMute: () => void;
   toggleDeafen: () => void;
+  toggleCamera: () => void;
+  switchCamera: () => Promise<void>;
   clearError: () => void;
 }
 
@@ -32,6 +43,7 @@ function getVoiceService(): VoiceService {
         update.channelId = null;
         update.serverId = null;
         update.channelName = null;
+        update.callType = null;
         update.isMuted = false;
         update.isDeafened = false;
         update.participants = [];
@@ -46,6 +58,21 @@ function getVoiceService(): VoiceService {
     _voiceService.onError((message) => {
       useVoiceStore.setState({ error: message });
     });
+    _voiceService.onRemoteVideo((userId, stream) => {
+      const current = new Map(useVoiceStore.getState().remoteVideoStreams);
+      if (stream) {
+        current.set(userId, stream);
+      } else {
+        current.delete(userId);
+      }
+      useVoiceStore.setState({ remoteVideoStreams: current });
+    });
+    _voiceService.onLocalVideo((stream) => {
+      useVoiceStore.setState({
+        localVideoStream: stream,
+        isCameraOn: stream != null,
+      });
+    });
   }
   return _voiceService;
 }
@@ -55,12 +82,18 @@ export const useVoiceStore = create<VoiceState>((set) => ({
   channelId: null,
   serverId: null,
   channelName: null,
+  callType: null,
   isMuted: false,
   isDeafened: false,
+  isCameraOn: false,
+  isCameraUnavailable: false,
+  cameraFacing: 'user',
+  localVideoStream: null,
+  remoteVideoStreams: new Map(),
   participants: [],
   error: null,
 
-  joinChannel: async (channelId, serverId, channelName, recipientUserId) => {
+  joinChannel: async (channelId, serverId, channelName, recipientUserId, opts) => {
     set({ error: null });
     const token = getAccessToken();
     if (!token) {
@@ -69,8 +102,8 @@ export const useVoiceStore = create<VoiceState>((set) => ({
     }
     try {
       const svc = getVoiceService();
-      await svc.joinChannel(channelId, token);
-      set({ channelId, serverId, channelName });
+      await svc.joinChannel(channelId, token, { withVideo: opts?.withVideo ?? false });
+      set({ channelId, serverId, channelName, callType: opts?.withVideo ? 'video' : 'voice' });
 
       // Voice E2EE for DM calls: ephemeral X25519 DH + ML-KEM-768 hybrid key
       if (recipientUserId) {
@@ -124,6 +157,7 @@ export const useVoiceStore = create<VoiceState>((set) => ({
         channelId: null,
         serverId: null,
         channelName: null,
+        callType: null,
       });
     }
   },
@@ -135,8 +169,14 @@ export const useVoiceStore = create<VoiceState>((set) => ({
       channelId: null,
       serverId: null,
       channelName: null,
+      callType: null,
       isMuted: false,
       isDeafened: false,
+      isCameraOn: false,
+      isCameraUnavailable: false,
+      cameraFacing: 'user',
+      localVideoStream: null,
+      remoteVideoStreams: new Map(),
       participants: [],
       error: null,
     });
@@ -152,6 +192,18 @@ export const useVoiceStore = create<VoiceState>((set) => ({
     const svc = getVoiceService();
     svc.toggleDeafen();
     set({ isMuted: svc.isMuted, isDeafened: svc.isDeafened });
+  },
+
+  toggleCamera: () => {
+    const svc = getVoiceService();
+    svc.toggleCamera();
+    set({ isCameraOn: svc.isCameraOn });
+  },
+
+  switchCamera: async () => {
+    const svc = getVoiceService();
+    await svc.switchCamera();
+    set({ cameraFacing: svc.cameraFacing });
   },
 
   clearError: () => {

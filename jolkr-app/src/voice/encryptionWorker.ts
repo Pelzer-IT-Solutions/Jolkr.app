@@ -1,7 +1,7 @@
 /**
- * Voice E2EE — Frame Encryption Worker
+ * Voice + Video E2EE — Frame Encryption Worker
  *
- * Encrypts/decrypts WebRTC audio frames using AES-256-GCM.
+ * Encrypts/decrypts WebRTC audio AND video frames using AES-256-GCM.
  * Runs in a dedicated Web Worker, driven by RTCRtpScriptTransform.
  *
  * Frame format (encrypted):
@@ -12,6 +12,11 @@
  *
  * The SSRC is per-sender and available from frame metadata, preventing IV
  * collisions when multiple senders share the same key.
+ *
+ * Audio and video frames have identical `.data`, `.timestamp`, and
+ * `.getMetadata().synchronizationSource` shapes, so the same code path
+ * handles both. Video keyframes can be ~100KB; AES-GCM remains fast enough
+ * (<2ms on modern hardware, <10ms on low-end Android).
  */
 
 let voiceKey: CryptoKey | null = null;
@@ -74,7 +79,7 @@ function buildIV(ssrc: number, counter: number): ArrayBuffer {
 }
 
 async function encryptFrame(
-  frame: RTCEncodedAudioFrame,
+  frame: RTCEncodedAudioFrame | RTCEncodedVideoFrame,
   controller: TransformStreamDefaultController,
 ) {
   if (!voiceKey) {
@@ -109,7 +114,7 @@ async function encryptFrame(
 // ── Frame decryption ────────────────────────────────────────────────
 
 async function decryptFrame(
-  frame: RTCEncodedAudioFrame,
+  frame: RTCEncodedAudioFrame | RTCEncodedVideoFrame,
   controller: TransformStreamDefaultController,
 ) {
   if (!voiceKey) {
