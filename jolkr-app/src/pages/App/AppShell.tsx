@@ -193,7 +193,6 @@ export default function AppShell() {
           user={userInfo}
           userProfile={userProfile}
           mutedServerIds={mutedServerIds}
-          currentUserId={user?.id ?? ''}
           currentStatus={(user?.id ? presences[user.id] : undefined) as 'online' | 'idle' | 'dnd' | 'offline' | undefined}
           ownerServerIds={ownerServerIds}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
