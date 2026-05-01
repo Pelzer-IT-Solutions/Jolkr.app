@@ -19,6 +19,7 @@ interface NMPlayerActions {
   seek: (time: number) => void;
   setVolume: (vol: number) => void;
   toggleMute: () => void;
+  requestFullscreen: (fallback?: HTMLElement | null) => void;
 }
 
 export interface NMPlayerResult extends NMPlayerState, NMPlayerActions {
@@ -182,6 +183,24 @@ export function useNMPlayer(config: UseNMPlayerConfig): NMPlayerResult {
     if (p && p.videoElement) p.videoElement.muted = !p.videoElement.muted;
   }, []);
 
+  // Android WebView only triggers WebChromeClient.onShowCustomView (the
+  // host's native fullscreen path) when requestFullscreen is called on
+  // the actual <video> element. The SDK's `videoElement` field may not
+  // be wired immediately, so fall back to a DOM query.
+  const requestFullscreen = useCallback((fallback?: HTMLElement | null) => {
+    const target =
+      (playerRef.current?.videoElement as HTMLElement | undefined) ??
+      containerRef.current?.querySelector('video') ??
+      fallback ??
+      null;
+    if (!target) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => { });
+    } else {
+      target.requestFullscreen().catch(() => { });
+    }
+  }, []);
+
   return {
     containerRef,
     ...state,
@@ -191,5 +210,6 @@ export function useNMPlayer(config: UseNMPlayerConfig): NMPlayerResult {
     seek,
     setVolume,
     toggleMute,
+    requestFullscreen,
   };
 }
