@@ -334,6 +334,14 @@
   font-weight: 700;
   color: #fff;
   letter-spacing: 0;
+  overflow: hidden;
+}
+
+.browserIconImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .browserMeta {
