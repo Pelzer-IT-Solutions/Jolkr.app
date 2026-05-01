@@ -188,20 +188,15 @@ export class VoiceService {
 
     this.cleanups.push(this.client.on('offer', async (d) => {
       const sdp = d.sdp as string;
-      console.log('[Voice] Received SDP offer, setting up PeerConnection...');
       try {
         await this.ensurePeerConnection();
-        console.log('[Voice] PeerConnection ready, setting remote description...');
         await this.pc!.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
-        console.log('[Voice] Remote description set, creating answer...');
         const answer = await this.pc!.createAnswer();
         await this.pc!.setLocalDescription(answer);
-        console.log('[Voice] Local description set, sending answer...');
         this.client.sendAnswer(answer.sdp!);
         if (this.connectingTimer) { clearTimeout(this.connectingTimer); this.connectingTimer = null; }
         // Don't set 'connected' yet — wait for PeerConnection to actually connect
         // The onconnectionstatechange handler will set it to 'connected'
-        console.log('[Voice] SDP answer sent, waiting for ICE to connect...');
       } catch (e) {
         const msg = (e as Error).message || 'Failed to establish voice connection';
         console.error('[Voice] Failed to handle SDP offer:', e);
@@ -254,7 +249,6 @@ export class VoiceService {
       // The WS is only for signaling — media flows over UDP independently.
       const pcState = this.pc?.connectionState;
       if (pcState === 'connected' || pcState === 'connecting' || pcState === 'new') {
-        console.log('[Voice] WS lost but PeerConnection still active, keeping voice alive');
         return;
       }
       // PeerConnection is dead or doesn't exist — clean up
@@ -327,20 +321,14 @@ export class VoiceService {
       this.audioElements.push(audio);
     };
 
-    this.pc.oniceconnectionstatechange = () => {
-      console.log('[Voice] ICE connection state:', this.pc?.iceConnectionState);
-    };
-
     this.pc.onconnectionstatechange = () => {
       const s = this.pc?.connectionState;
-      console.log('[Voice] PeerConnection state:', s, '| voice state:', this._state);
       if (s === 'connected') {
         clearTimeout(this.disconnectTimer);
         if (this._state === 'connecting') {
           if (this.connectingTimer) { clearTimeout(this.connectingTimer); this.connectingTimer = null; }
           this.setState('connected');
         }
-        console.log('[Voice] PeerConnection connected! Voice is live.');
       } else if (s === 'failed') {
         console.warn('PeerConnection failed');
         this.emitError('Voice connection failed');
