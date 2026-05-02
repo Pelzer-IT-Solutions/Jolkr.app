@@ -207,7 +207,7 @@ export function FriendsPanel({
                   {incomingRequests.map(req => (
                     <div key={req.id} className={s.requestRow}>
                       <div className={s.userInfo}>
-                        <Avatar url={null} name={req.user.display_name ?? req.user.username} size="sm" userId={req.user.user_id} color={req.user.color} />
+                        <Avatar url={req.user.avatar_url} name={req.user.display_name ?? req.user.username} size="sm" userId={req.user.user_id} color={req.user.color} />
                         <div className={s.names}>
                           <span className={`${s.displayName} txt-small txt-medium`}>{req.user.display_name ?? req.user.username}</span>
                           <span className={`${s.username} txt-tiny`}>@{req.user.username}</span>
@@ -232,7 +232,7 @@ export function FriendsPanel({
                   {outgoingRequests.map(req => (
                     <div key={req.id} className={s.requestRow}>
                       <div className={s.userInfo}>
-                        <Avatar url={null} name={req.user.display_name ?? req.user.username} size="sm" userId={req.user.user_id} color={req.user.color} />
+                        <Avatar url={req.user.avatar_url} name={req.user.display_name ?? req.user.username} size="sm" userId={req.user.user_id} color={req.user.color} />
                         <div className={s.names}>
                           <span className={`${s.displayName} txt-small txt-medium`}>{req.user.display_name ?? req.user.username}</span>
                           <span className={`${s.username} txt-tiny`}>@{req.user.username}</span>
@@ -262,7 +262,7 @@ export function FriendsPanel({
                   onClick={() => setSelectedUserId(selectedUserId === friend.user.user_id ? null : friend.user.user_id)}
                 >
                   <div className={s.userInfo}>
-                    <Avatar url={null} name={friend.user.display_name ?? friend.user.username} size="sm" status={friend.status} userId={friend.user.user_id} color={friend.user.color} />
+                    <Avatar url={friend.user.avatar_url} name={friend.user.display_name ?? friend.user.username} size="sm" status={friend.status} userId={friend.user.user_id} color={friend.user.color} />
                     <div className={s.names}>
                       <span className={`${s.displayName} txt-small txt-medium`}>{friend.user.display_name ?? friend.user.username}</span>
                       <span className={`${s.statusText} txt-tiny`}>
