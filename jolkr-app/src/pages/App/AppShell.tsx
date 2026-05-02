@@ -25,6 +25,8 @@ import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
 import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
 import { ReportModal } from '../../components/ReportModal'
 import { UserContextMenu } from '../../components/UserContextMenu'
+import { ProfileCard } from '../../components/ProfileCard/ProfileCard'
+import { invalidateFriendsCache } from '../../services/friendshipCache'
 
 import { useAppInit } from './useAppInit'
 import { useAppMemos } from './useAppMemos'
@@ -57,6 +59,8 @@ export default function AppShell() {
     channelSettingsOpen, setChannelSettingsOpen,
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
+    contextMenuIsFriend,
+    profileCard, setProfileCard,
     pinnedCount, pinnedVersion, threadsCount,
     ready, serverThemes, setServerThemes,
     fetchServers,
@@ -255,6 +259,27 @@ export default function AppShell() {
                   onSelect={handleSelectDmMobile}
                   onNewMessage={() => setNewDmOpen(true)}
                   onOpenFriends={() => setFriendsPanelOpen(true)}
+                  onConversationContextMenu={(conv, e) => {
+                    // Group DMs don't have a single "other user" to target — skip.
+                    if (conv.type !== 'direct') return
+                    const p = conv.participants[0]
+                    if (!p?.userId) return
+                    setUserContextMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      user: {
+                        user_id: p.userId,
+                        username: p.name,
+                        display_name: p.name,
+                        status: p.status,
+                        color: p.color,
+                        letter: p.letter,
+                        avatar_url: p.avatarUrl,
+                      },
+                      // Carry the DM id so the "Close DM" handler knows what to close.
+                      dmId: conv.id,
+                    })
+                  }}
                   collapsed={sidebarCollapsedForChannelSidebar}
                   onCollapse={handleCollapseSidebar}
                   isMobile={isMobile}
@@ -315,6 +340,9 @@ export default function AppShell() {
                 hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
                 readOnly={isDmWithSystemUser}
                 onPinMessage={handlePinMessage}
+                onOpenAuthorProfile={(authorId, e) => {
+                  setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
+                }}
                 mentionableUsers={mentionableUsers}
                 canManageMessages={canManageMessages}
                 canAddReactions={canAddReactions}
@@ -354,6 +382,10 @@ export default function AppShell() {
                         avatar_url: member.avatarUrl,
                       },
                     })
+                  }}
+                  onMemberOpenProfile={(member, e) => {
+                    if (!member.userId) return
+                    setProfileCard({ userId: member.userId, x: e.clientX, y: e.clientY })
                   }}
                   onUnpin={handleUnpinMessage}
                   users={userMap}
@@ -503,16 +535,39 @@ export default function AppShell() {
       <UserContextMenu
         menu={userContextMenu}
         onClose={() => setUserContextMenu(null)}
+        onViewProfile={(userId, anchor) => {
+          setProfileCard({ userId, x: anchor.x, y: anchor.y })
+        }}
+        onCloseDm={userContextMenu?.dmId ? async () => {
+          const dmId = userContextMenu.dmId!
+          try {
+            await api.closeDm(dmId)
+            setDmList(prev => prev.filter(d => d.id !== dmId))
+            if (activeDmId === dmId) {
+              setActiveDmId('')
+              setDmActive(false)
+            }
+          } catch (e) {
+            console.warn('Failed to close DM:', e)
+          }
+        } : undefined}
         onReport={() => {
           if (userContextMenu) setReportTarget(userContextMenu.user)
           setUserContextMenu(null)
         }}
         onAddFriend={async (userId: string) => {
           await api.sendFriendRequest(userId).catch(console.warn)
+          invalidateFriendsCache()
+          setUserContextMenu(null)
+        }}
+        onRemoveFriend={async (userId: string) => {
+          await api.removeFriendByUserId(userId).catch(console.warn)
+          invalidateFriendsCache()
           setUserContextMenu(null)
         }}
         onBlock={async (userId: string) => {
           await api.blockUser(userId).catch(console.warn)
+          invalidateFriendsCache()
           setUserContextMenu(null)
         }}
         onInviteToServer={async (_userId: string, serverId: string) => {
@@ -544,8 +599,16 @@ export default function AppShell() {
         roles={serverRoles}
         userRoleIds={contextMenuUserRoleIds}
         canManageRoles={canManageRoles}
+        isFriend={contextMenuIsFriend}
         onToggleRole={handleToggleRole}
       />
+
+      {profileCard && (
+        <ProfileCard
+          state={profileCard}
+          onClose={() => setProfileCard(null)}
+        />
+      )}
     </>
   )
 }

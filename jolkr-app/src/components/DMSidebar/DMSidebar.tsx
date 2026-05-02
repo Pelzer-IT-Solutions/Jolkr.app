@@ -10,12 +10,14 @@ interface Props {
   onSelect:      (id: string) => void
   onNewMessage:  () => void
   onOpenFriends?: () => void
+  /** Right-click on a DM row → open the user-context menu. Group DMs are skipped. */
+  onConversationContextMenu?: (conv: DMConversation, e: React.MouseEvent) => void
   collapsed?:     boolean
   onCollapse?:    () => void
   isMobile?:      boolean
 }
 
-export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onOpenFriends, collapsed = false, onCollapse, isMobile = false }: Props) {
+export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onOpenFriends, onConversationContextMenu, collapsed = false, onCollapse, isMobile = false }: Props) {
   return (
     <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
       <div className={s.header}>
@@ -54,6 +56,11 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
               key={conv.id}
               className={`${s.conv} ${isActive ? s.active : ''}`}
               onClick={() => onSelect(conv.id)}
+              onContextMenu={(e) => {
+                if (!onConversationContextMenu) return
+                e.preventDefault()
+                onConversationContextMenu(conv, e)
+              }}
             >
               <ConvAvatar conv={conv} />
               <div className={s.meta}>
