@@ -459,11 +459,10 @@ pub(crate) struct FavoritesResponse {
 
 /// A favorite GIF as exposed over HTTP and the WebSocket. URLs are clean
 /// `/api/gifs/i/{id}/...` proxy paths (the GIPHY CDN is never seen by the
-/// frontend). `pub` so it can appear in `GatewayEvent::GifFavoriteUpdate`;
-/// `Deserialize` is required because `GatewayEvent` derives it (the WS bus
-/// only serializes, but the derive bound is unconditional).
+/// frontend). `Deserialize` is required because `GatewayEvent` derives it
+/// (the WS bus only serializes, but the derive bound is unconditional).
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FavoriteItem {
+pub(crate) struct FavoriteItem {
     pub gif_id: String,
     pub gif_url: String,
     pub preview_url: String,
