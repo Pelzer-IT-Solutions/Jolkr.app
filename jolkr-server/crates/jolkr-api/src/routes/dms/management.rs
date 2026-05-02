@@ -113,6 +113,39 @@ pub(crate) async fn close_dm(
     Path(dm_id): Path<Uuid>,
 ) -> Result<axum::http::StatusCode, AppError> {
     DmService::close_dm(&state.pool, dm_id, auth.user_id).await?;
+
+    // 1. Tell the closer's other sessions to hide this DM.
+    let close_event = crate::ws::events::GatewayEvent::DmClose { dm_id };
+    state.nats.publish_to_user(auth.user_id, &close_event).await;
+
+    // 2. Tell remaining (still-open) members the membership changed so their
+    //    UI can refresh. close_dm is a soft-close, so the closer still has a
+    //    row in dm_members — filter on closed_at IS NULL to get the live set.
+    if let Ok(channel_row) = DmRepo::get_channel(&state.pool, dm_id).await {
+        if let Ok(all_members) = DmRepo::get_dm_members(&state.pool, dm_id).await {
+            let open_member_ids: Vec<Uuid> = all_members
+                .iter()
+                .filter(|m| m.closed_at.is_none())
+                .map(|m| m.user_id)
+                .collect();
+
+            let dm_info = jolkr_core::services::dm::DmChannelInfo {
+                id: channel_row.id,
+                is_group: channel_row.is_group,
+                name: channel_row.name,
+                members: open_member_ids,
+                created_at: channel_row.created_at,
+                last_message: None,
+            };
+            let update_event = crate::ws::events::GatewayEvent::DmUpdate { channel: dm_info };
+            for m in &all_members {
+                if m.user_id != auth.user_id && m.closed_at.is_none() {
+                    state.nats.publish_to_user(m.user_id, &update_event).await;
+                }
+            }
+        }
+    }
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 

@@ -377,8 +377,26 @@ export function useAppInit() {
   // because the backend's MessageCreate event lands in messages store but the
   // recipient has no entry in dmList for that channel — so it's invisible.
   // Backend fires DmUpdate on create, reopen, member-add, group rename, leave.
+  // Mirror activeDmId into a ref so the WS subscriber (set up once with []
+  // deps) can read the latest value without re-subscribing on every change.
+  const activeDmIdRef = useRef(activeDmId)
+  useEffect(() => { activeDmIdRef.current = activeDmId }, [activeDmId])
+
   useEffect(() => {
     return wsClient.on((event) => {
+      // DmClose: closer's other sessions get told to hide the DM. Channel keys
+      // stay in the cache — if the DM gets reopened later in this session, we
+      // can keep decrypting without a re-fetch.
+      if (event.op === 'DmClose') {
+        const closedId = event.d.dm_id
+        setDmList(prev => prev.filter(d => d.id !== closedId))
+        if (activeDmIdRef.current === closedId) {
+          setDmActive(false)
+          setActiveDmId('')
+        }
+        return
+      }
+
       if (event.op !== 'DmUpdate' && event.op !== 'DmCreate') return
       const channel = event.d.channel
       if (!channel?.id) return

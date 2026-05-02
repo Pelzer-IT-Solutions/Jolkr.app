@@ -97,6 +97,13 @@ pub enum GatewayEvent {
         channel: DmChannelInfo,
     },
 
+    /// A DM channel was closed (hidden) for the receiving user. Sent to all
+    /// of the closer's sessions so sibling clients hide the DM from the list.
+    /// Other DM members receive a `DmUpdate` with the closer removed instead.
+    DmClose {
+        dm_id: Uuid,
+    },
+
     /// A new thread was created.
     ThreadCreate {
         thread: ThreadInfo,
