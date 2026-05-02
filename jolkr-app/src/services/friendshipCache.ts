@@ -11,11 +11,15 @@
 
 import type { Friendship } from '../api/types';
 import * as api from '../api/client';
+import { createTtlCache } from '../utils/cache';
 
-let friendsCacheData: Friendship[] | null = null;
-let pendingCacheData: Friendship[] | null = null;
-let friendsCacheTime = 0;
+interface FriendshipBundle {
+  friends: Friendship[];
+  pending: Friendship[];
+}
+
 const FRIENDS_CACHE_TTL = 30_000;
+const cache = createTtlCache<'all', FriendshipBundle>({ ttl: FRIENDS_CACHE_TTL });
 
 export type FriendshipState = 'none' | 'pending' | 'accepted' | 'blocked';
 
@@ -24,22 +28,20 @@ export interface FriendshipLookup {
   friendship?: Friendship;
 }
 
-export async function loadFriendships(): Promise<{ friends: Friendship[]; pending: Friendship[] }> {
-  const now = Date.now();
-  if (friendsCacheData && pendingCacheData && now - friendsCacheTime < FRIENDS_CACHE_TTL) {
-    return { friends: friendsCacheData, pending: pendingCacheData };
-  }
+export async function loadFriendships(): Promise<FriendshipBundle> {
+  const cached = cache.get('all');
+  if (cached) return cached;
   const [friends, pending] = await Promise.all([api.getFriends(), api.getPendingFriends()]);
-  friendsCacheData = friends;
-  pendingCacheData = pending;
-  friendsCacheTime = now;
-  return { friends, pending };
+  const bundle = { friends, pending };
+  cache.set('all', bundle);
+  return bundle;
 }
 
 /** Synchronously check the cached friendship — returns `null` when cache is cold. */
 export function peekFriendship(userId: string): FriendshipLookup | null {
-  if (!friendsCacheData || !pendingCacheData) return null;
-  return matchInLists(userId, friendsCacheData, pendingCacheData);
+  const cached = cache.peek('all');
+  if (!cached) return null;
+  return matchInLists(userId, cached.friends, cached.pending);
 }
 
 /** Look up the friendship, hitting the cache (or fetching) as needed. */
@@ -58,7 +60,5 @@ function matchInLists(userId: string, friends: Friendship[], pending: Friendship
 }
 
 export function invalidateFriendsCache(): void {
-  friendsCacheData = null;
-  pendingCacheData = null;
-  friendsCacheTime = 0;
+  cache.clear();
 }

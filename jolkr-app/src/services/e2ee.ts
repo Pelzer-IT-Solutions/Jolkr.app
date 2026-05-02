@@ -11,6 +11,7 @@ import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import { createTtlCache } from '../utils/cache';
 
 // ── Seed storage ─────────────────────────────────────────────────
 // Goes through `storage` so on Tauri desktop the seed lives in the
@@ -49,12 +50,12 @@ async function loadSeed(): Promise<Uint8Array | null> {
 
 let localKeys: LocalKeySet | null = null;
 
-/** Cache TTL for successful bundles: 5 minutes. */
-const BUNDLE_CACHE_TTL = 5 * 60 * 1000;
-/** Cache TTL for failed/null bundles: 10 seconds (recipient may log in soon). */
-const BUNDLE_NULL_CACHE_TTL = 10 * 1000;
-interface CachedBundle { bundle: PreKeyBundle | null; fetchedAt: number; }
-const bundleCache = new Map<string, CachedBundle>();
+/** Cache TTL for successful bundles: 5 minutes. Failed/null bundles use 10s
+ *  so recipients who log in shortly after a failure are picked up quickly. */
+const bundleCache = createTtlCache<string, PreKeyBundle | null>({
+  ttl: 5 * 60 * 1000,
+  nullTtl: 10 * 1000,
+});
 
 // ── Public API ─────────────────────────────────────────────────────
 
@@ -151,13 +152,11 @@ export function getLocalKeys(): LocalKeySet | null {
  * Fetch and cache a recipient's prekey bundle. Returns null if no keys available.
  */
 export async function getRecipientBundle(userId: string): Promise<PreKeyBundle | null> {
-  // Check cache with TTL (shorter TTL for null results so we retry quickly)
-  const cached = bundleCache.get(userId);
-  if (cached) {
-    const ttl = cached.bundle ? BUNDLE_CACHE_TTL : BUNDLE_NULL_CACHE_TTL;
-    if (Date.now() - cached.fetchedAt < ttl) {
-      return cached.bundle;
-    }
+  // TTL handled by the cache (shorter for null results so we retry quickly).
+  // `has()` distinguishes "fresh null cached" from "miss".
+  if (bundleCache.has(userId)) {
+    const cached = bundleCache.get(userId);
+    return cached === undefined ? null : cached;
   }
 
   try {
@@ -172,11 +171,11 @@ export async function getRecipientBundle(userId: string): Promise<PreKeyBundle |
       pqSignedPrekey: resp.pq_signed_prekey ? fromBase64(resp.pq_signed_prekey) : undefined,
       pqSignedPrekeySignature: resp.pq_signed_prekey_signature ? fromBase64(resp.pq_signed_prekey_signature) : undefined,
     };
-    bundleCache.set(userId, { bundle, fetchedAt: Date.now() });
+    bundleCache.set(userId, bundle);
     return bundle;
   } catch {
     // Cache null result to prevent repeated 404 requests (browser still shows red 404 once)
-    bundleCache.set(userId, { bundle: null, fetchedAt: Date.now() });
+    bundleCache.set(userId, null);
     return null;
   }
 }
