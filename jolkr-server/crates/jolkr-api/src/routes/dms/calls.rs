@@ -101,6 +101,7 @@ pub(crate) async fn accept_call(
             auth.user_id,
             &crate::ws::events::GatewayEvent::UserCallPresence {
                 dm_id: Some(dm_id),
+                channel_id: None,
                 is_video: None,
             },
         )
@@ -159,6 +160,7 @@ pub(crate) async fn end_call(
             auth.user_id,
             &crate::ws::events::GatewayEvent::UserCallPresence {
                 dm_id: None,
+                channel_id: None,
                 is_video: None,
             },
         )

@@ -2572,11 +2572,14 @@ dependencies = [
 name = "jolkr-media"
 version = "0.10.4"
 dependencies = [
+ "async-nats",
  "axum",
  "futures-util",
+ "hmac",
  "jsonwebtoken",
  "serde",
  "serde_json",
+ "sha2",
  "str0m",
  "tokio",
  "tracing",

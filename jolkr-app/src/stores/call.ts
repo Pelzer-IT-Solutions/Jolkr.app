@@ -32,10 +32,12 @@ interface CallState {
   activeCallType: 'voice' | 'video' | null;
 
   /** Set by the `UserCallPresence` WS event when ANOTHER session of this user
-   *  is in a DM call. The local session uses `activeCallDmId` instead — this
-   *  field reflects sibling sessions only, so the user chip can show an
-   *  "On a call" pill when the call is happening on a different device/tab. */
-  remoteSessionCall: { dmId: string; isVideo: boolean } | null;
+   *  is in a DM call OR a server voice channel. The local session uses
+   *  `activeCallDmId` instead — this field reflects sibling sessions only,
+   *  so the user chip can show an "On a call" pill when the call is
+   *  happening on a different device/tab. `dmId` and `channelId` are
+   *  mutually exclusive — at most one is set. */
+  remoteSessionCall: { dmId?: string; channelId?: string; isVideo: boolean } | null;
 
   startCall: (dmId: string, recipientName: string, recipientUserId?: string, opts?: { video?: boolean }) => Promise<void>;
   acceptIncoming: () => Promise<void>;
@@ -48,9 +50,10 @@ interface CallState {
   handleAccepted: (dmId: string) => void;
   handleRejected: (dmId: string) => void;
   handleEnded: (dmId: string) => void;
-  /** Apply a `UserCallPresence` payload from the server. `dm_id: null|undefined`
-   *  clears `remoteSessionCall`; otherwise it sets it. */
-  applyServerEvent: (payload: { dm_id?: string | null; is_video?: boolean | null }) => void;
+  /** Apply a `UserCallPresence` payload from the server. When both `dm_id`
+   *  and `channel_id` are null/undefined, clears `remoteSessionCall`;
+   *  otherwise it sets it (with whichever id is populated). */
+  applyServerEvent: (payload: { dm_id?: string | null; channel_id?: string | null; is_video?: boolean | null }) => void;
 
   reset: () => void;
 }
@@ -243,10 +246,12 @@ export const useCallStore = create<CallState>((set, get) => ({
   },
 
   applyServerEvent: (payload) => {
-    if (payload.dm_id) {
-      set({ remoteSessionCall: { dmId: payload.dm_id, isVideo: !!payload.is_video } });
-    } else {
+    const dmId = payload.dm_id ?? undefined;
+    const channelId = payload.channel_id ?? undefined;
+    if (!dmId && !channelId) {
       set({ remoteSessionCall: null });
+    } else {
+      set({ remoteSessionCall: { dmId, channelId, isVideo: !!payload.is_video } });
     }
   },
 

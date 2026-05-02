@@ -279,10 +279,14 @@ pub enum GatewayEvent {
 
     /// Sync the user's call participation across their open sessions.
     /// Sent only to the user's own user-channel so sibling sessions can show
-    /// an "On a call" indicator. `dm_id: None` means the user is no longer in
-    /// a call (left, ended, or rejected an incoming ring).
+    /// an "On a call" indicator. Both `dm_id` and `channel_id` are mutually
+    /// exclusive — at most one is `Some`. When both are `None`, the user is
+    /// no longer in a call (left, ended, or rejected an incoming ring).
     UserCallPresence {
+        /// DM call room id (mutually exclusive with `channel_id`).
         dm_id: Option<Uuid>,
+        /// Server voice channel id (mutually exclusive with `dm_id`).
+        channel_id: Option<Uuid>,
         is_video: Option<bool>,
     },
 

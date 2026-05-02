@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::io;
 use std::net::{SocketAddr, UdpSocket};
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
 use str0m::net::{Protocol, Receive};
@@ -19,8 +19,36 @@ use str0m::media::{Direction, MediaData, MediaKind, Mid};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
+use crate::presence::PresencePublisher;
 use crate::rooms::RoomList;
 use types::{ParticipantInfo, SfuCommand, SignalOut};
+
+/// Fire-and-forget a NATS publish from the synchronous SFU thread.
+/// Uses the shared tokio runtime handle so we never block the SFU loop on
+/// network I/O.
+fn spawn_voice_join(
+    handle: &tokio::runtime::Handle,
+    presence: &Arc<PresencePublisher>,
+    user_id: Uuid,
+    channel_id: Uuid,
+    is_video: bool,
+) {
+    let presence = Arc::clone(presence);
+    handle.spawn(async move {
+        presence.publish_voice_join(user_id, channel_id, is_video).await;
+    });
+}
+
+fn spawn_voice_leave(
+    handle: &tokio::runtime::Handle,
+    presence: &Arc<PresencePublisher>,
+    user_id: Uuid,
+) {
+    let presence = Arc::clone(presence);
+    handle.spawn(async move {
+        presence.publish_voice_leave(user_id).await;
+    });
+}
 
 /// Mids used to send another client's media TO this client (one per kind).
 #[derive(Debug, Clone)]
@@ -73,11 +101,17 @@ fn drive_time(rtc: &mut Rtc) {
 
 /// Run the SFU event loop. This function blocks forever and should be
 /// called on a dedicated `std::thread`.
+///
+/// `presence` + `tokio_handle` are used to broadcast `UserCallPresence`
+/// events to NATS whenever a peer joins or leaves a voice channel — the
+/// gateway then fans those out to the user's other open sessions.
 pub(crate) fn run_sfu(
     udp_socket: UdpSocket,
     cmd_rx: mpsc::Receiver<SfuCommand>,
     ice_addrs: Vec<SocketAddr>,
     room_list: RoomList,
+    presence: Arc<PresencePublisher>,
+    tokio_handle: tokio::runtime::Handle,
 ) {
     info!("SFU media loop starting, ICE candidates: {:?}", ice_addrs);
     let _local_addr = ice_addrs[0];
@@ -106,13 +140,16 @@ pub(crate) fn run_sfu(
         });
         for &(user_id, channel_id) in &dead {
             broadcast_to_room(&clients, channel_id, user_id, SignalOut::ParticipantLeft { user_id });
+            // Sibling sessions of the same user should clear their
+            // "On a call" indicator now that the dead client is gone.
+            spawn_voice_leave(&tokio_handle, &presence, user_id);
         }
 
         // ── 2. Process commands from WebSocket handlers ─────────────────
         while let Ok(cmd) = cmd_rx.try_recv() {
             // Catch panics from str0m/dimpl to keep the SFU thread alive
             let result = catch_unwind(AssertUnwindSafe(|| {
-                handle_command(&mut clients, cmd, &ice_addrs);
+                handle_command(&mut clients, cmd, &ice_addrs, &presence, &tokio_handle);
             }));
             if let Err(e) = result {
                 error!("SFU handle_command panic caught: {:?}", e);
@@ -197,6 +234,8 @@ pub(crate) fn run_sfu(
             let user_id = client.user_id;
             clients.remove(idx);
             broadcast_to_room(&clients, channel_id, user_id, SignalOut::ParticipantLeft { user_id });
+            // Sibling sessions should clear their "On a call" indicator.
+            spawn_voice_leave(&tokio_handle, &presence, user_id);
         }
 
         // ── 4. Forward media to other clients in the same room ──────────
@@ -336,7 +375,13 @@ pub(crate) fn run_sfu(
 
 // ── Command handling ────────────────────────────────────────────────────
 
-fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[SocketAddr]) {
+fn handle_command(
+    clients: &mut Vec<Client>,
+    cmd: SfuCommand,
+    ice_addrs: &[SocketAddr],
+    presence: &Arc<PresencePublisher>,
+    tokio_handle: &tokio::runtime::Handle,
+) {
     match cmd {
         SfuCommand::AddPeer {
             user_id,
@@ -471,6 +516,10 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
                     is_deafened: false,
                 });
 
+                // Tell the user's other sessions they're now in a voice channel.
+                // Fire-and-forget over NATS so the SFU loop never blocks on I/O.
+                spawn_voice_join(tokio_handle, presence, user_id, channel_id, with_video);
+
                 // Re-negotiate with existing participants to add the new client's media.
                 // Each renegotiation also emits a per-recipient ParticipantJoined with mids.
                 renegotiate_for_new_peer(clients, channel_id, user_id, with_video);
@@ -547,6 +596,8 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
                     user_id,
                     SignalOut::ParticipantLeft { user_id },
                 );
+                // Sibling sessions should clear their "On a call" indicator.
+                spawn_voice_leave(tokio_handle, presence, user_id);
             }
         }
 

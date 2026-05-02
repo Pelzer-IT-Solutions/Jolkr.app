@@ -72,8 +72,10 @@ export type WsEvent =
 
   // ── Cross-session call presence ───────────────────────────────────
   /** Sibling sessions of the same user get this when the user joins/leaves
-   *  a DM call. `dm_id: null` means no longer in a call. */
-  | { op: 'UserCallPresence'; d: { dm_id?: string | null; is_video?: boolean | null } }
+   *  a DM call OR a server voice channel. `dm_id` and `channel_id` are
+   *  mutually exclusive — at most one is set. Both `null` means the user
+   *  is no longer in a call. */
+  | { op: 'UserCallPresence'; d: { dm_id?: string | null; channel_id?: string | null; is_video?: boolean | null } }
 
   // ── Notification settings (cross-session sync) ────────────────────
   /** A per-target notification setting (mute, suppress_everyone) was

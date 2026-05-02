@@ -4,7 +4,7 @@
     reason = "Edition-2024 drop-order audit: tail expressions involve awaited futures and message-bus sends; destructors observed are benign. Will be revisited during the 2024 edition migration."
 )]
 use core::net::SocketAddr;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use axum::{routing::get, Json, Router};
 use tokio::net::TcpListener;
@@ -12,11 +12,13 @@ use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 mod config;
+mod presence;
 mod rooms;
 mod signaling;
 mod sfu;
 
 use config::Config;
+use presence::PresencePublisher;
 use rooms::{RoomInfo, RoomList};
 use signaling::{ws_voice_upgrade, VoiceState};
 use sfu::types::SfuCommand;
@@ -35,6 +37,24 @@ async fn main() {
         "HTTP port: {}, UDP port: {}, public IP: {}, local IP: {:?}",
         config.http_port, config.udp_port, config.public_ip, config.local_ip
     );
+
+    // ── NATS presence publisher ────────────────────────────────────────
+    // Connect early so we fail fast on bad creds — the SFU thread needs an
+    // Arc<PresencePublisher> + a tokio runtime handle to fire-and-forget
+    // user-presence events when peers join/leave voice channels.
+    let presence = PresencePublisher::connect(
+        &config.nats_url,
+        &config.nats_hmac_secret,
+        &config.nats_user,
+        &config.nats_password,
+    )
+    .await
+    .expect("Failed to connect PresencePublisher to NATS");
+    let presence: Arc<PresencePublisher> = Arc::new(presence);
+
+    // Tokio runtime handle for scheduling NATS publishes from the sync SFU
+    // thread without blocking it on the await.
+    let tokio_handle = tokio::runtime::Handle::current();
 
     // ── Shared state ────────────────────────────────────────────────────
     let room_list = RoomList::new();
@@ -74,10 +94,12 @@ async fn main() {
 
     // ── Start the SFU thread ────────────────────────────────────────────
     let sfu_room_list = room_list.clone();
+    let sfu_presence = Arc::clone(&presence);
+    let sfu_tokio_handle = tokio_handle.clone();
     std::thread::Builder::new()
         .name("sfu-media-loop".into())
         .spawn(move || {
-            sfu::run_sfu(udp_socket, sfu_rx, ice_addrs, sfu_room_list);
+            sfu::run_sfu(udp_socket, sfu_rx, ice_addrs, sfu_room_list, sfu_presence, sfu_tokio_handle);
         })
         .expect("Failed to spawn SFU thread");
 

@@ -81,6 +81,10 @@ services:
       PUBLIC_IP: "${PUBLIC_IP:-127.0.0.1}"
       LOCAL_IP: "${LOCAL_IP:-}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
+      NATS_URL: "nats://nats:4222"
+      NATS_USER: "${NATS_USER:?NATS_USER must be set in .env}"
+      NATS_PASSWORD: "${NATS_PASSWORD:?NATS_PASSWORD must be set in .env}"
+      NATS_HMAC_SECRET: "${NATS_HMAC_SECRET:?NATS_HMAC_SECRET must be set in .env}"
       RUST_LOG: "${RUST_LOG:-info}"
     networks:
       - jolkr-net
