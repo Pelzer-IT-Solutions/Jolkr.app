@@ -7,6 +7,7 @@ import type {
 } from './types';
 import { getApiBaseUrl } from '../platform/config';
 import { storage } from '../platform/storage';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 let apiBase = '/api';
 let accessToken: string | null = null;
@@ -19,14 +20,14 @@ let loggedOut = false;
 // Persistent logout flag — survives page refresh unlike in-memory flag
 function setLogoutFlag() {
   loggedOut = true;
-  try { localStorage.setItem('jolkr_logged_out', '1'); } catch { /* ignore */ }
+  try { localStorage.setItem(STORAGE_KEYS.LOGGED_OUT_FLAG, '1'); } catch { /* ignore */ }
 }
 function clearLogoutFlag() {
   loggedOut = false;
-  try { localStorage.removeItem('jolkr_logged_out'); } catch { /* ignore */ }
+  try { localStorage.removeItem(STORAGE_KEYS.LOGGED_OUT_FLAG); } catch { /* ignore */ }
 }
 function checkLogoutFlag(): boolean {
-  try { return localStorage.getItem('jolkr_logged_out') === '1'; } catch { return false; }
+  try { return localStorage.getItem(STORAGE_KEYS.LOGGED_OUT_FLAG) === '1'; } catch { return false; }
 }
 
 /** Load tokens from secure storage on startup. Must be called before any API request. */

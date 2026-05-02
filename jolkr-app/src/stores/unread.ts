@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
 import { useMessagesStore } from './messages';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 function persistLastSeen(data: Record<string, string>) {
-  try { localStorage.setItem('jolkr_last_seen', JSON.stringify(data)); }
+  try { localStorage.setItem(STORAGE_KEYS.LAST_SEEN, JSON.stringify(data)); }
   catch { /* quota exceeded */ }
 }
 
@@ -33,7 +34,7 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
   activeChannel: null,
   lastSeenMessageId: (() => {
     try {
-      return JSON.parse(localStorage.getItem('jolkr_last_seen') ?? '{}');
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.LAST_SEEN) ?? '{}');
     } catch { return {}; }
   })(),
 
@@ -83,7 +84,7 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
 
   reset: () => {
     set({ counts: {}, activeChannel: null, lastSeenMessageId: {} });
-    localStorage.removeItem('jolkr_last_seen');
+    localStorage.removeItem(STORAGE_KEYS.LAST_SEEN);
   },
 }));
 

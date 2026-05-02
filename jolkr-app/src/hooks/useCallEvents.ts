@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { wsClient } from '../api/ws';
 import { useCallStore } from '../stores/call';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 let ringAudio: HTMLAudioElement | null = null;
 let audioCtx: AudioContext | null = null;
@@ -11,7 +12,7 @@ let secondOsc: OscillatorNode | null = null;
 let ringing = false;
 
 export function getRingtoneType(): string {
-  return localStorage.getItem('jolkr_ringtone') ?? 'classic';
+  return localStorage.getItem(STORAGE_KEYS.RINGTONE) ?? 'classic';
 }
 
 function startRingSound() {

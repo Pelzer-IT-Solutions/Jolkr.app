@@ -2,12 +2,13 @@ import { wsClient } from '../api/ws';
 import { useUnreadStore } from '../stores/unread';
 import { useAuthStore } from '../stores/auth';
 import type { Message } from '../api/types';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 // Simple notification sound using Web Audio API (no external file needed)
 let audioCtx: AudioContext | null = null;
 
 function playNotificationSound() {
-  if (localStorage.getItem('jolkr_sound') === 'false') return;
+  if (localStorage.getItem(STORAGE_KEYS.SOUND_ENABLED) === 'false') return;
   try {
     if (!audioCtx) audioCtx = new AudioContext();
     const osc = audioCtx.createOscillator();
@@ -25,7 +26,7 @@ function playNotificationSound() {
 }
 
 function showDesktopNotification(title: string, body: string) {
-  if (localStorage.getItem('jolkr_desktop_notif') === 'false') return;
+  if (localStorage.getItem(STORAGE_KEYS.DESKTOP_NOTIF) === 'false') return;
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
   if (document.hasFocus()) return; // Don't notify if app is focused

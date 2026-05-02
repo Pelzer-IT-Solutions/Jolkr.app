@@ -5,6 +5,7 @@ import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
 import Button from '../components/ui/Button';
 import s from './InviteAccept.module.css';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 export default function InviteAccept() {
   const { code } = useParams<{ code: string }>();
@@ -19,7 +20,7 @@ export default function InviteAccept() {
 
     if (!user) {
       // Save invite code and redirect to login
-      sessionStorage.setItem('jolkr_pending_invite', code);
+      sessionStorage.setItem(STORAGE_KEYS.PENDING_INVITE, code);
       navigate('/login', { replace: true });
       return;
     }

@@ -10,14 +10,15 @@ import { clearKeySet } from '../crypto/keyStore';
 import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 // ── Seed storage ─────────────────────────────────────────────────
 // Goes through `storage` so on Tauri desktop the seed lives in the
 // Stronghold encrypted vault, not plain localStorage.
 
-const SEED_KEY = 'e2ee_seed';
+const SEED_KEY = STORAGE_KEYS.E2EE_SEED;
 /** Legacy plain-localStorage key used before this seed moved to Stronghold. */
-const LEGACY_SEED_KEY = 'jolkr_e2ee_seed';
+const LEGACY_SEED_KEY = STORAGE_KEYS.E2EE_SEED_LEGACY;
 
 async function storeSeed(seed: Uint8Array): Promise<void> {
   await storage.set(SEED_KEY, toBase64(seed));
