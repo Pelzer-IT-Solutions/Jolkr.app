@@ -11,7 +11,7 @@
  */
 
 import type {
-  Message, Server, Channel, Member, Category, DmChannel, GifFavorite,
+  Message, Server, Channel, Member, Category, DmChannel, GifFavorite, Friendship,
 } from './types';
 
 /** Reactions on the wire have `user_ids` (snake) — see `Reaction` in api/types.ts. */
@@ -66,6 +66,9 @@ export type WsEvent =
 
   // ── GIF favorites (cross-session sync) ────────────────────────────
   | { op: 'GifFavoriteUpdate'; d: { added?: GifFavorite | null; removed_gif_id?: string | null } }
+
+  // ── Friend lifecycle (sent to both parties so panels refresh live) ─
+  | { op: 'FriendshipUpdate'; d: { friendship: Friendship; kind: 'created' | 'accepted' | 'declined' | 'removed' | 'blocked' } }
 
   // ── Cross-session call presence ───────────────────────────────────
   /** Sibling sessions of the same user get this when the user joins/leaves

@@ -12,6 +12,7 @@ use jolkr_core::services::friendship::FriendshipInfo;
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
+use crate::ws::events::{FriendshipUpdateKind, GatewayEvent};
 
 #[derive(Serialize)]
 pub(crate) struct FriendshipResponse {
@@ -35,6 +36,12 @@ pub(crate) async fn send_request(
 ) -> Result<Json<FriendshipResponse>, AppError> {
     let friendship =
         FriendshipService::send_request(&state.pool, auth.user_id, body.user_id).await?;
+    let event = GatewayEvent::FriendshipUpdate {
+        friendship: friendship.clone(),
+        kind: FriendshipUpdateKind::Created,
+    };
+    state.nats.publish_to_user(friendship.requester_id, &event).await;
+    state.nats.publish_to_user(friendship.addressee_id, &event).await;
     Ok(Json(FriendshipResponse { friendship }))
 }
 
@@ -44,6 +51,12 @@ pub(crate) async fn accept_request(
     Path(id): Path<Uuid>,
 ) -> Result<Json<FriendshipResponse>, AppError> {
     let friendship = FriendshipService::accept_request(&state.pool, id, auth.user_id).await?;
+    let event = GatewayEvent::FriendshipUpdate {
+        friendship: friendship.clone(),
+        kind: FriendshipUpdateKind::Accepted,
+    };
+    state.nats.publish_to_user(friendship.requester_id, &event).await;
+    state.nats.publish_to_user(friendship.addressee_id, &event).await;
     Ok(Json(FriendshipResponse { friendship }))
 }
 
@@ -52,7 +65,17 @@ pub(crate) async fn decline_or_remove(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    FriendshipService::decline_or_remove(&state.pool, id, auth.user_id).await?;
+    // Service returns the deleted row so we can notify both participants.
+    // `Declined` is used for both decline-pending and unfriend-accepted; the
+    // distinction doesn't matter for the panel — clients just refresh either
+    // way.
+    let friendship = FriendshipService::decline_or_remove(&state.pool, id, auth.user_id).await?;
+    let event = GatewayEvent::FriendshipUpdate {
+        friendship: friendship.clone(),
+        kind: FriendshipUpdateKind::Declined,
+    };
+    state.nats.publish_to_user(friendship.requester_id, &event).await;
+    state.nats.publish_to_user(friendship.addressee_id, &event).await;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -63,6 +86,13 @@ pub(crate) async fn block_user(
 ) -> Result<Json<FriendshipResponse>, AppError> {
     let friendship =
         FriendshipService::block_user(&state.pool, auth.user_id, body.user_id).await?;
+    // Only the actor learns about the block; the blocked user must not be
+    // told they were blocked (that's the whole point of blocking).
+    let event = GatewayEvent::FriendshipUpdate {
+        friendship: friendship.clone(),
+        kind: FriendshipUpdateKind::Blocked,
+    };
+    state.nats.publish_to_user(auth.user_id, &event).await;
     Ok(Json(FriendshipResponse { friendship }))
 }
 

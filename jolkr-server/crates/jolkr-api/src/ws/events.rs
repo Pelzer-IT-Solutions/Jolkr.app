@@ -4,11 +4,25 @@ use uuid::Uuid;
 use jolkr_core::services::category::CategoryInfo;
 use jolkr_core::services::channel::ChannelInfo;
 use jolkr_core::services::dm::DmChannelInfo;
+use jolkr_core::services::friendship::FriendshipInfo;
 use jolkr_core::services::message::MessageInfo;
 use jolkr_core::services::server::ServerInfo;
 use jolkr_core::services::thread::ThreadInfo;
 
 use crate::routes::gifs::FavoriteItem;
+
+/// Type of friendship state change carried by `GatewayEvent::FriendshipUpdate`.
+/// Lets clients decide which list (incoming/outgoing/friends) the update
+/// belongs in without re-deriving it from the friendship status.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum FriendshipUpdateKind {
+    Created,
+    Accepted,
+    Declined,
+    Removed,
+    Blocked,
+}
 
 /// Events sent FROM the client TO the server over the WebSocket.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -270,6 +284,15 @@ pub enum GatewayEvent {
     UserCallPresence {
         dm_id: Option<Uuid>,
         is_video: Option<bool>,
+    },
+
+    /// A friendship state changed for one of the participants. Sent to both
+    /// parties so their friends panels can refresh. `kind` indicates the
+    /// type of change so clients can decide which list (incoming/outgoing/
+    /// friends) the update belongs in.
+    FriendshipUpdate {
+        friendship: FriendshipInfo,
+        kind: FriendshipUpdateKind,
     },
 
     /// Generic error event.

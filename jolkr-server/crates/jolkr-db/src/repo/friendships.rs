@@ -86,25 +86,24 @@ impl FriendshipRepo {
         Ok(row)
     }
 
-    /// Decline or remove.
+    /// Decline or remove. Returns the deleted row so callers (e.g. the API
+    /// layer) can publish a WS event to both participants.
     pub async fn decline_or_remove(
         pool: &PgPool,
         friendship_id: Uuid,
         user_id: Uuid,
-    ) -> Result<(), JolkrError> {
-        let result = sqlx::query(
+    ) -> Result<FriendshipRow, JolkrError> {
+        let row = sqlx::query_as::<_, FriendshipRow>(
             "DELETE FROM friendships
-               WHERE id = $1 AND (requester_id = $2 OR addressee_id = $2)",
+               WHERE id = $1 AND (requester_id = $2 OR addressee_id = $2)
+               RETURNING *",
         )
         .bind(friendship_id)
         .bind(user_id)
-        .execute(pool)
-        .await?;
-
-        if result.rows_affected() == 0 {
-            return Err(JolkrError::NotFound);
-        }
-        Ok(())
+        .fetch_optional(pool)
+        .await?
+        .ok_or(JolkrError::NotFound)?;
+        Ok(row)
     }
 
     /// Block user.

@@ -112,13 +112,15 @@ impl FriendshipService {
         Ok(FriendshipInfo::from(row))
     }
 
-    /// Decline or remove.
+    /// Decline or remove. Returns the deleted friendship so the caller can
+    /// publish a WS event to both participants before forgetting about it.
     pub async fn decline_or_remove(
         pool: &PgPool,
         friendship_id: Uuid,
         caller_id: Uuid,
-    ) -> Result<(), JolkrError> {
-        FriendshipRepo::decline_or_remove(pool, friendship_id, caller_id).await
+    ) -> Result<FriendshipInfo, JolkrError> {
+        let row = FriendshipRepo::decline_or_remove(pool, friendship_id, caller_id).await?;
+        Ok(FriendshipInfo::from(row))
     }
 
     /// Block user.

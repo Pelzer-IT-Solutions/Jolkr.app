@@ -4,6 +4,7 @@ import { X, UserPlus, Check, XCircle, MessageCircle, UserX } from 'lucide-react'
 import type { MemberDisplay, MemberStatus } from '../../types'
 import type { Friendship, User } from '../../api/types'
 import * as api from '../../api/client'
+import { wsClient } from '../../api/ws'
 import { useAuthStore } from '../../stores/auth'
 import { usePresenceStore } from '../../stores/presence'
 import Avatar from '../Avatar/Avatar'
@@ -102,6 +103,19 @@ export function FriendsPanel({
   useEffect(() => {
     if (!open) return
     refresh()
+  }, [open, refresh])
+
+  // Live-sync: backend publishes FriendshipUpdate to both parties on
+  // send/accept/decline/remove/block, so the open panel re-fetches without
+  // polling. Subscribe is gated on `open` to keep the blast radius small.
+  useEffect(() => {
+    if (!open) return
+    const off = wsClient.on(ev => {
+      if (ev.op === 'FriendshipUpdate') {
+        refresh()
+      }
+    })
+    return off
   }, [open, refresh])
 
   useEffect(() => {
