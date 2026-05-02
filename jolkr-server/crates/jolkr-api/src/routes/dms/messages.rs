@@ -5,7 +5,9 @@ use axum::{
 use uuid::Uuid;
 
 use jolkr_core::DmService;
-use jolkr_core::services::dm::{DmMessageInfo, DmMessageQuery, EditDmRequest, SendDmRequest};
+use jolkr_core::services::dm::{
+    DmChannelInfo, DmLastMessage, DmMessageInfo, DmMessageQuery, EditDmRequest, SendDmRequest,
+};
 use jolkr_core::services::message::EmbedInfo;
 use jolkr_db::repo::{DmRepo, EmbedRepo, UserRepo};
 
@@ -31,9 +33,41 @@ pub(crate) async fn send_dm_message(
 
     // Also broadcast to each DM participant by user_id, so their DM list
     // updates even if they haven't subscribed to this channel yet.
-    if let Ok(members) = DmRepo::get_dm_members(&state.pool, dm_id).await {
-        for member in &members {
+    let members_opt = DmRepo::get_dm_members(&state.pool, dm_id).await.ok();
+    if let Some(members) = &members_opt {
+        for member in members {
             state.nats.publish_to_user(member.user_id, &event).await;
+        }
+    }
+
+    // Emit DmCreate to every member so their DM list shows the conversation,
+    // even if the recipient has never seen this DM before (or previously closed
+    // it). Frontend dedupe is idempotent: existing entries are replaced, missing
+    // ones are prepended. The event also surfaces last_message so the sidebar
+    // preview is correct without a separate fetch.
+    if let (Some(members), Ok(channel_row)) = (
+        members_opt.as_ref(),
+        DmRepo::get_channel(&state.pool, dm_id).await,
+    ) {
+        let dm_info = DmChannelInfo {
+            id: channel_row.id,
+            is_group: channel_row.is_group,
+            name: channel_row.name,
+            members: members.iter().map(|m| m.user_id).collect(),
+            created_at: channel_row.created_at,
+            last_message: Some(DmLastMessage {
+                id: message.id,
+                author_id: message.author_id,
+                content: message.content.clone(),
+                nonce: message.nonce.clone(),
+                created_at: message.created_at,
+            }),
+        };
+        let dm_event = crate::ws::events::GatewayEvent::DmCreate {
+            channel: dm_info,
+        };
+        for member in members {
+            state.nats.publish_to_user(member.user_id, &dm_event).await;
         }
     }
 
