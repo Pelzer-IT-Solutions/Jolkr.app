@@ -378,9 +378,9 @@ export function useAppInit() {
   // recipient has no entry in dmList for that channel — so it's invisible.
   // Backend fires DmUpdate on create, reopen, member-add, group rename, leave.
   useEffect(() => {
-    return wsClient.on((op, d) => {
-      if (op !== 'DmUpdate' && op !== 'DmCreate') return
-      const channel = d.channel as DmChannel | undefined
+    return wsClient.on((event) => {
+      if (event.op !== 'DmUpdate' && event.op !== 'DmCreate') return
+      const channel = event.d.channel
       if (!channel?.id) return
 
       setDmList(prev => {

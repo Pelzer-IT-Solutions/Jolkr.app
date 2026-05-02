@@ -106,10 +106,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 }));
 
 // Sync profile updates from other sessions
-wsClient.on((op, d) => {
-  if (op === 'UserUpdate') {
-    useAuthStore.getState().applyUserUpdate(d as Record<string, unknown>);
-  } else if (op === 'EmailVerified') {
+wsClient.on((event) => {
+  if (event.op === 'UserUpdate') {
+    useAuthStore.getState().applyUserUpdate(event.d);
+  } else if (event.op === 'EmailVerified') {
     // Backend confirmed verification — refresh the user object so
     // /verify-email's email_verified guard navigates to the app.
     useAuthStore.getState().loadUser().catch((e) => {

@@ -26,13 +26,11 @@ export const useDmReadsStore = create<DmReadsState>((set, get) => ({
 }));
 
 // Wire up WS events
-wsClient.on((op, d) => {
-  if (op === 'DmMessagesRead') {
-    const dmId = d.dm_id as string;
-    const userId = d.user_id as string;
-    const messageId = d.message_id as string;
-    if (dmId && userId && messageId) {
-      useDmReadsStore.getState().setReadState(dmId, userId, messageId);
+wsClient.on((event) => {
+  if (event.op === 'DmMessagesRead') {
+    const { dm_id, user_id, message_id } = event.d;
+    if (dm_id && user_id && message_id) {
+      useDmReadsStore.getState().setReadState(dm_id, user_id, message_id);
     }
   }
 });

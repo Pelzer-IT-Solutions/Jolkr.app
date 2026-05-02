@@ -1,7 +1,8 @@
 import { getAccessToken, refreshAccessTokenIfNeeded } from './client';
 import { getWsUrl } from '../platform/config';
+import type { WsListenerEvent } from './ws-events';
 
-type WsListener = (op: string, data: Record<string, unknown>) => void;
+type WsListener = (event: WsListenerEvent) => void;
 
 const HEARTBEAT_INTERVAL = 30_000;
 const RECONNECT_BASE = 1000;
@@ -123,7 +124,11 @@ class WsClient {
       default:
         break;
     }
-    this.listeners.forEach((fn) => fn(op, d));
+    // The discriminated union is structural — runtime events that match a
+    // known `op` literal will narrow correctly inside consumer `switch`
+    // statements; unknown ops fall through to the UnknownWsEvent branch.
+    const event = { op, d } as WsListenerEvent;
+    this.listeners.forEach((fn) => fn(event));
   }
 
   private startHeartbeat() {
@@ -149,7 +154,8 @@ class WsClient {
   private scheduleReconnect() {
     if (this.reconnectAttempts >= MAX_ATTEMPTS) {
       // Notify listeners that reconnection has given up
-      this.listeners.forEach((fn) => fn('Disconnected', { reason: 'max_reconnect_attempts' }));
+      const event: WsListenerEvent = { op: 'Disconnected', d: { reason: 'max_reconnect_attempts' } };
+      this.listeners.forEach((fn) => fn(event));
       return;
     }
     const delay = Math.min(

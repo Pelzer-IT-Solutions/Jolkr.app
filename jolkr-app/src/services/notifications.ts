@@ -53,15 +53,16 @@ export async function requestNotificationPermission(): Promise<void> {
 /** Initialize notification listeners. Call once on app startup. */
 export function initNotifications() {
   if (unsubNotifications) unsubNotifications();
-  unsubNotifications = wsClient.on((op, d) => {
-    if (op !== 'MessageCreate') return;
+  unsubNotifications = wsClient.on((event) => {
+    if (event.op !== 'MessageCreate') return;
 
-    const raw = d.message as Record<string, unknown>;
+    const raw = event.d.message;
     if (!raw) return;
     // Normalize: DM messages have dm_channel_id instead of channel_id
-    const channelId = (raw.channel_id ?? raw.dm_channel_id) as string | undefined;
+    const rawAny = raw as Message & { dm_channel_id?: string };
+    const channelId = rawAny.channel_id ?? rawAny.dm_channel_id;
     if (!channelId) return;
-    const msg = { ...raw, channel_id: channelId } as unknown as Message;
+    const msg: Message = { ...rawAny, channel_id: channelId };
 
     // Don't notify for own messages
     const currentUserId = useAuthStore.getState().user?.id;

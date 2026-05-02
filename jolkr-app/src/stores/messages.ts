@@ -363,12 +363,11 @@ function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
 // GatewayEvent uses serde(tag="op", content="d"), so:
 //   MessageCreate/Update → d = { message: { id, channel_id, ... } }
 //   MessageDelete        → d = { message_id, channel_id }
-wsClient.on((op, d) => {
+wsClient.on((event) => {
   const store = useMessagesStore.getState();
-  switch (op) {
+  switch (event.op) {
     case 'MessageCreate': {
-      const raw = d.message as Record<string, unknown>;
-      const msg = normalizeWsMessage(raw);
+      const msg = normalizeWsMessage(event.d.message as unknown as Record<string, unknown>);
       if (!msg) break;
       if (msg.thread_id) {
         // Thread message → add to thread store + increment parent's thread_reply_count
@@ -388,8 +387,7 @@ wsClient.on((op, d) => {
       break;
     }
     case 'MessageUpdate': {
-      const raw = d.message as Record<string, unknown>;
-      const msg = normalizeWsMessage(raw);
+      const msg = normalizeWsMessage(event.d.message as unknown as Record<string, unknown>);
       if (!msg) break;
       if (msg.thread_id) {
         // Update in thread store
@@ -400,8 +398,8 @@ wsClient.on((op, d) => {
       break;
     }
     case 'MessageDelete': {
-      const channelId = (d.channel_id ?? d.dm_channel_id) as string | undefined;
-      const messageId = d.message_id as string | undefined;
+      const channelId = event.d.channel_id ?? event.d.dm_channel_id;
+      const messageId = event.d.message_id;
       if (!channelId || !messageId) break;
       // Remove from channel messages
       store.removeMessage(channelId, messageId);
@@ -431,33 +429,29 @@ wsClient.on((op, d) => {
       break;
     }
     case 'ReactionUpdate': {
-      const channelId = d.channel_id as string;
-      const messageId = d.message_id as string;
-      const rawReactions = d.reactions as Array<{ emoji: string; count: number; user_ids?: string[] }>;
-      if (!channelId || !messageId || !rawReactions) break;
+      const { channel_id, message_id, reactions: raw } = event.d;
+      if (!channel_id || !message_id || !raw) break;
       const currentUserId = useAuthStore.getState().user?.id;
-      const reactions = rawReactions.map((r) => ({
+      const reactions = raw.map((r) => ({
         emoji: r.emoji,
         count: r.count,
         me: currentUserId ? (r.user_ids?.includes(currentUserId) ?? false) : false,
         user_ids: r.user_ids ?? [],
       }));
-      store.updateReactions(channelId, messageId, reactions);
+      store.updateReactions(channel_id, message_id, reactions);
       break;
     }
     case 'PollUpdate': {
-      const poll = d.poll as unknown as Message['poll'];
-      const messageId = d.message_id as string;
-      const channelId = d.channel_id as string;
-      if (!poll || !messageId || !channelId) break;
+      const { poll, message_id, channel_id } = event.d;
+      if (!poll || !message_id || !channel_id) break;
       // Update the message's poll data in the store
-      const msgs = store.messages[channelId];
+      const msgs = store.messages[channel_id];
       if (msgs) {
         useMessagesStore.setState({
           messages: {
             ...store.messages,
-            [channelId]: msgs.map((m) =>
-              m.id === messageId ? { ...m, poll } : m
+            [channel_id]: msgs.map((m) =>
+              m.id === message_id ? { ...m, poll: poll as Message['poll'] } : m
             ),
           },
         });
