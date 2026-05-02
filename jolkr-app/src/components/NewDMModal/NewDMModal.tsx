@@ -262,7 +262,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
 function UserRow({ user, selected, onClick }: { user: DisplayUser; selected: boolean; onClick: () => void }) {
   return (
     <button className={`${s.userRow} ${selected ? s.selected : ''}`} onClick={onClick}>
-      <Avatar url={user.avatarUrl} name={user.name} size="sm" status={user.status} color={user.color} />
+      <Avatar url={user.avatarUrl} name={user.name} size="sm" status={user.status} color={user.color} userId={user.id} />
       <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <span className={`${s.userName} txt-small txt-medium txt-truncate`}>{user.name}</span>
         {user.name !== user.username && (
