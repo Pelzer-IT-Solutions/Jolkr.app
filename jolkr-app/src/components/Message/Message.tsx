@@ -18,6 +18,7 @@ import VideoEmbed from '../VideoEmbed/VideoEmbed'
 import LinkEmbed from '../LinkEmbed/LinkEmbed'
 import Avatar from '../Avatar/Avatar'
 import { MessageAttachments } from '../MessageAttachments/MessageAttachments'
+import { PollDisplay } from '../Poll/PollDisplay'
 import { ReactionTooltip } from './ReactionTooltip'
 import s from './Message.module.css'
 
@@ -240,6 +241,10 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
     <MessageAttachments attachments={message.attachments!} />
   ) : null
 
+  // Inline poll renderer. The store updates `message.poll` live via PollUpdate
+  // WS events, so this just re-renders when the prop changes.
+  const pollBlock = message.poll ? <PollDisplay poll={message.poll} /> : null
+
   // Thread reply badge — shown when this message is a thread parent (has a
   // thread_id) and at least one reply exists. Clicking opens the right-panel
   // thread view. Threads are server-only — never shown in DMs.
@@ -263,6 +268,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
       {textContent}
       {attachmentsBlock}
       {embedsBlock}
+      {pollBlock}
       {reactionsBlock}
       {threadBadge}
     </>
@@ -510,6 +516,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             )}
             {attachmentsBlock}
             {embedsBlock}
+            {pollBlock}
           </div>
 
           {/* Reactions — overlaid on the card's bottom edge */}

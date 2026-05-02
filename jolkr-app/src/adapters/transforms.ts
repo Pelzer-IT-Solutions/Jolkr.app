@@ -162,6 +162,7 @@ export function transformMessage(
     attachments: msg.attachments,
     thread_id: msg.thread_id ?? null,
     thread_reply_count: msg.thread_reply_count ?? null,
+    poll: msg.poll ?? null,
   }
 }
 

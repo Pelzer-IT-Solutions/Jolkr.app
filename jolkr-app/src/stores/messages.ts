@@ -451,7 +451,7 @@ wsClient.on((event) => {
           messages: {
             ...store.messages,
             [channel_id]: msgs.map((m) =>
-              m.id === message_id ? { ...m, poll: poll as Message['poll'] } : m
+              m.id === message_id ? { ...m, poll } : m
             ),
           },
         });

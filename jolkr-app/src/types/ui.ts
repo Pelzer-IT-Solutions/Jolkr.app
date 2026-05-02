@@ -120,6 +120,10 @@ export interface MessageVM {
   // thread currently has — drives the "{n} replies in thread" badge.
   thread_id?:         string | null
   thread_reply_count?: number | null
+  // Poll attached to this message (set by the backend when the message is a
+  // poll-host message). Refreshed live via `PollUpdate` WS events handled by
+  // the messages store.
+  poll?:              import('../api/types').Poll | null
 }
 
 export type MessageStore = Record<string, Record<string, MessageVM[]>>

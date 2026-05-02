@@ -3,7 +3,7 @@ import {
   Phone, Video, Files, CornerUpLeft, X,
   PanelLeftOpen, AlignLeft, Users, Smile,
   Paperclip, ImagePlay, SendHorizontal,
-  Bold, Italic, Strikethrough, Code, Pin,
+  Bold, Italic, Strikethrough, Code, Pin, BarChart3,
 } from 'lucide-react'
 import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
@@ -14,6 +14,7 @@ import GifPickerPopup from '../GifPickerPopup'
 import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
 import { RichInput, type RichInputHandle } from './RichInput'
 import { createEmojiImg } from './richInputHelpers'
+import { PollCreator } from '../Poll/PollCreator'
 import { useCallStore } from '../../stores/call'
 import { useVoiceStore } from '../../stores/voice'
 import s from './ChatArea.module.css'
@@ -155,6 +156,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const [showGifPicker, setShowGifPicker] = useState(false)
   const [gifPickerPos, setGifPickerPos] = useState<{ top: number; left: number } | null>(null)
   const gifBtnRef = useRef<HTMLButtonElement>(null)
+  // Poll creator modal — server channels only (gated on !isDm).
+  const [pollCreatorOpen, setPollCreatorOpen] = useState(false)
 
   // Clear reply context + content when channel changes
   useEffect(() => {
@@ -760,6 +763,15 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                     )}
                   </>
                 )}
+                {!isDm && (
+                  <button
+                    className={s.composerBtn}
+                    title="Create poll"
+                    onClick={() => setPollCreatorOpen(true)}
+                  >
+                    <PollIcon />
+                  </button>
+                )}
                 <button className={s.sendBtn} title="Send (Enter)" onClick={send}>
                   <SendIcon />
                 </button>
@@ -769,6 +781,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         </div>
         )}
       </div>
+      {!isDm && (
+        <PollCreator
+          open={pollCreatorOpen}
+          channelId={channel.id}
+          onClose={() => setPollCreatorOpen(false)}
+        />
+      )}
     </main>
   )
 }
@@ -784,4 +803,5 @@ function MembersIcon()    { return <Users         size={14} strokeWidth={1.5} />
 function EmojiIcon()      { return <Smile         size={15} strokeWidth={1.25} /> }
 function AttachIcon()     { return <Paperclip     size={15} strokeWidth={1.25} /> }
 function GifIcon()        { return <ImagePlay     size={15} strokeWidth={1.25} /> }
+function PollIcon()       { return <BarChart3     size={15} strokeWidth={1.25} /> }
 function SendIcon()       { return <SendHorizontal size={15} strokeWidth={1.5} /> }
