@@ -1,8 +1,40 @@
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::models::FriendshipRow;
 use jolkr_common::JolkrError;
+
+/// Friendship row joined with both participants' public user fields.
+///
+/// Used by `list_friends` / `list_pending` so the API can return embedded user
+/// objects without an extra round-trip.
+#[derive(Debug, Clone, FromRow)]
+pub struct FriendshipWithUsersRow {
+    /// Friendship identifier.
+    pub id: Uuid,
+    /// Requester user identifier.
+    pub requester_id: Uuid,
+    /// Addressee user identifier.
+    pub addressee_id: Uuid,
+    /// Current status.
+    pub status: String,
+
+    // ── Requester public fields (LEFT JOIN, may be NULL if user was deleted) ──
+    /// Requester username.
+    pub req_username: Option<String>,
+    /// Requester display name.
+    pub req_display_name: Option<String>,
+    /// Requester avatar URL.
+    pub req_avatar_url: Option<String>,
+
+    // ── Addressee public fields ──
+    /// Addressee username.
+    pub addr_username: Option<String>,
+    /// Addressee display name.
+    pub addr_display_name: Option<String>,
+    /// Addressee avatar URL.
+    pub addr_avatar_url: Option<String>,
+}
 
 /// Repository for `friendship` persistence.
 pub struct FriendshipRepo;
@@ -110,16 +142,29 @@ impl FriendshipRepo {
         Ok(row)
     }
 
-    /// Lists friends.
+    /// Lists accepted friends with both participants' public profile fields.
     pub async fn list_friends(
         pool: &PgPool,
         user_id: Uuid,
-    ) -> Result<Vec<FriendshipRow>, JolkrError> {
-        let rows = sqlx::query_as::<_, FriendshipRow>(
-            "SELECT * FROM friendships
-               WHERE (requester_id = $1 OR addressee_id = $1)
-                 AND status = 'accepted'
-               ORDER BY updated_at DESC",
+    ) -> Result<Vec<FriendshipWithUsersRow>, JolkrError> {
+        let rows = sqlx::query_as::<_, FriendshipWithUsersRow>(
+            "SELECT
+                 f.id,
+                 f.requester_id,
+                 f.addressee_id,
+                 f.status,
+                 req.username      AS req_username,
+                 req.display_name  AS req_display_name,
+                 req.avatar_url    AS req_avatar_url,
+                 addr.username     AS addr_username,
+                 addr.display_name AS addr_display_name,
+                 addr.avatar_url   AS addr_avatar_url
+               FROM friendships f
+               LEFT JOIN users req  ON req.id  = f.requester_id
+               LEFT JOIN users addr ON addr.id = f.addressee_id
+               WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+                 AND f.status = 'accepted'
+               ORDER BY f.updated_at DESC",
         )
         .bind(user_id)
         .fetch_all(pool)
@@ -127,15 +172,31 @@ impl FriendshipRepo {
         Ok(rows)
     }
 
-    /// Lists pending.
+    /// Lists pending requests addressed to the user, with both participants'
+    /// public profile fields hydrated so the panel can render names + avatars
+    /// without a follow-up batch fetch.
     pub async fn list_pending(
         pool: &PgPool,
         user_id: Uuid,
-    ) -> Result<Vec<FriendshipRow>, JolkrError> {
-        let rows = sqlx::query_as::<_, FriendshipRow>(
-            "SELECT * FROM friendships
-               WHERE addressee_id = $1 AND status = 'pending'
-               ORDER BY created_at DESC",
+    ) -> Result<Vec<FriendshipWithUsersRow>, JolkrError> {
+        let rows = sqlx::query_as::<_, FriendshipWithUsersRow>(
+            "SELECT
+                 f.id,
+                 f.requester_id,
+                 f.addressee_id,
+                 f.status,
+                 req.username      AS req_username,
+                 req.display_name  AS req_display_name,
+                 req.avatar_url    AS req_avatar_url,
+                 addr.username     AS addr_username,
+                 addr.display_name AS addr_display_name,
+                 addr.avatar_url   AS addr_avatar_url
+               FROM friendships f
+               LEFT JOIN users req  ON req.id  = f.requester_id
+               LEFT JOIN users addr ON addr.id = f.addressee_id
+               WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+                 AND f.status = 'pending'
+               ORDER BY f.created_at DESC",
         )
         .bind(user_id)
         .fetch_all(pool)

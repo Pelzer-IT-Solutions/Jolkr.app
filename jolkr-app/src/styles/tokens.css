@@ -191,7 +191,7 @@
   --status-dnd:    oklch(55% 0.2 25);
 
   /* Overlay backdrop */
-  --overlay-backdrop: oklch(25% 0 0 / 0.5);
+  --overlay-backdrop: oklch(20% 0 0 / 0.7);
 }
 
 /* ─── Dark mode overrides ────────────────────────────────────────────── */
