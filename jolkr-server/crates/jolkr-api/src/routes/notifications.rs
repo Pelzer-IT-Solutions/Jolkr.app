@@ -11,6 +11,7 @@ use jolkr_db::repo::NotificationSettingRepo;
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
+use crate::ws::events::{GatewayEvent, NotificationSettingPayload};
 
 #[derive(Debug, Serialize)]
 pub(crate) struct NotificationSettingResponse {
@@ -103,6 +104,12 @@ pub(crate) async fn update_notification_setting(
     // If unmuting and no other settings, just delete the row
     if !body.muted && !body.suppress_everyone {
         NotificationSettingRepo::delete(&state.pool, auth.user_id, &target_type, target_id).await?;
+        let event = GatewayEvent::NotificationSettingUpdate {
+            target_type: target_type.clone(),
+            target_id,
+            setting: None,
+        };
+        state.nats.publish_to_user(auth.user_id, &event).await;
         return Ok(Json(NotificationSettingResponse {
             target_type,
             target_id,
@@ -122,6 +129,17 @@ pub(crate) async fn update_notification_setting(
         body.suppress_everyone,
     )
     .await?;
+
+    let event = GatewayEvent::NotificationSettingUpdate {
+        target_type: row.target_type.clone(),
+        target_id: row.target_id,
+        setting: Some(NotificationSettingPayload {
+            muted: row.muted,
+            mute_until: row.mute_until,
+            suppress_everyone: row.suppress_everyone,
+        }),
+    };
+    state.nats.publish_to_user(auth.user_id, &event).await;
 
     Ok(Json(NotificationSettingResponse {
         target_type: row.target_type,

@@ -295,8 +295,27 @@ pub enum GatewayEvent {
         kind: FriendshipUpdateKind,
     },
 
+    /// A per-target notification setting (mute, suppress @everyone) was
+    /// changed. Sent to the user's own user-channel so sibling sessions
+    /// reflect the new state without polling. `setting: None` means the
+    /// row was deleted (defaults restored).
+    NotificationSettingUpdate {
+        target_type: String,
+        target_id: Uuid,
+        setting: Option<NotificationSettingPayload>,
+    },
+
     /// Generic error event.
     Error {
         message: String,
     },
+}
+
+/// Payload mirror of `NotificationSettingResponse` from the REST API,
+/// inlined here so the WS layer doesn't depend on the routes module.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NotificationSettingPayload {
+    pub muted: bool,
+    pub mute_until: Option<chrono::DateTime<chrono::Utc>>,
+    pub suppress_everyone: bool,
 }

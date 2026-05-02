@@ -74,6 +74,12 @@ export type WsEvent =
   /** Sibling sessions of the same user get this when the user joins/leaves
    *  a DM call. `dm_id: null` means no longer in a call. */
   | { op: 'UserCallPresence'; d: { dm_id?: string | null; is_video?: boolean | null } }
+
+  // ── Notification settings (cross-session sync) ────────────────────
+  /** A per-target notification setting (mute, suppress_everyone) was
+   *  changed. Sent to the user's own user-channel. `setting: null` means
+   *  the row was deleted (defaults restored). */
+  | { op: 'NotificationSettingUpdate'; d: { target_type: string; target_id: string; setting?: { muted: boolean; mute_until?: string | null; suppress_everyone: boolean } | null } }
   ;
 
 /**
