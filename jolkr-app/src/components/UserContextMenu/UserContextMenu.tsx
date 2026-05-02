@@ -5,6 +5,7 @@ import type { MemberDisplay } from '../../types'
 import type { Server as ApiServer, Role } from '../../api/types'
 import Avatar from '../Avatar/Avatar'
 import ServerIconComp from '../ServerIcon/ServerIcon'
+import { useClampedMenuPosition } from '../../hooks/useClampedMenuPosition'
 import s from './UserContextMenu.module.css'
 
 // Extend API Server with frontend-only display fields
@@ -71,6 +72,9 @@ export function UserContextMenu({
   isFriend = false,
 }: Props) {
   const menuRef = useRef<HTMLDivElement>(null)
+  // Clamp the menu inside the viewport — without this it overflows when the
+  // user right-clicks near a screen edge (e.g. inside the left sidebar).
+  const clamped = useClampedMenuPosition(menu ? { x: menu.x, y: menu.y } : null, menuRef)
 
   useEffect(() => {
     if (!menu) return
@@ -130,11 +134,18 @@ export function UserContextMenu({
 
   const hasServerOptions = servers.length > 0 && onInviteToServer
 
+  // First render: position absolute at the click point but invisible so the
+  // measurement happens. The clamped pass then makes it visible at the clamped
+  // coordinates — avoids a one-frame flash at the wrong edge.
+  const style: React.CSSProperties = clamped
+    ? { left: clamped.left, top: clamped.top, visibility: 'visible' }
+    : { left: menu.x, top: menu.y, visibility: 'hidden' }
+
   return createPortal(
       <div
         ref={menuRef}
         className={s.menu}
-        style={{ right: `calc(100vw - ${menu.x}px)`, top: menu.y }}
+        style={style}
       >
         {/* User Header */}
         <div className={s.header}>
