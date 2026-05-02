@@ -31,6 +31,12 @@ interface CallState {
   /** `'video'` for active video calls, `'voice'` otherwise. `null` when no active call. */
   activeCallType: 'voice' | 'video' | null;
 
+  /** Set by the `UserCallPresence` WS event when ANOTHER session of this user
+   *  is in a DM call. The local session uses `activeCallDmId` instead — this
+   *  field reflects sibling sessions only, so the user chip can show an
+   *  "On a call" pill when the call is happening on a different device/tab. */
+  remoteSessionCall: { dmId: string; isVideo: boolean } | null;
+
   startCall: (dmId: string, recipientName: string, recipientUserId?: string, opts?: { video?: boolean }) => Promise<void>;
   acceptIncoming: () => Promise<void>;
   rejectIncoming: () => Promise<void>;
@@ -42,6 +48,9 @@ interface CallState {
   handleAccepted: (dmId: string) => void;
   handleRejected: (dmId: string) => void;
   handleEnded: (dmId: string) => void;
+  /** Apply a `UserCallPresence` payload from the server. `dm_id: null|undefined`
+   *  clears `remoteSessionCall`; otherwise it sets it. */
+  applyServerEvent: (payload: { dm_id?: string | null; is_video?: boolean | null }) => void;
 
   reset: () => void;
 }
@@ -61,6 +70,7 @@ export const useCallStore = create<CallState>((set, get) => ({
   outgoingCall: null,
   activeCallDmId: null,
   activeCallType: null,
+  remoteSessionCall: null,
 
   startCall: async (dmId, recipientName, recipientUserId, opts) => {
     const { activeCallDmId, outgoingCall, incomingCall } = get();
@@ -232,10 +242,18 @@ export const useCallStore = create<CallState>((set, get) => ({
     }
   },
 
+  applyServerEvent: (payload) => {
+    if (payload.dm_id) {
+      set({ remoteSessionCall: { dmId: payload.dm_id, isVideo: !!payload.is_video } });
+    } else {
+      set({ remoteSessionCall: null });
+    }
+  },
+
   reset: () => {
     clearRingTimer();
     stopRingSound();
-    set({ incomingCall: null, outgoingCall: null, activeCallDmId: null, activeCallType: null });
+    set({ incomingCall: null, outgoingCall: null, activeCallDmId: null, activeCallType: null, remoteSessionCall: null });
   },
 }));
 

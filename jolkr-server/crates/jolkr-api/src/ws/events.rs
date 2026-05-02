@@ -263,6 +263,15 @@ pub enum GatewayEvent {
         removed_gif_id: Option<String>,
     },
 
+    /// Sync the user's call participation across their open sessions.
+    /// Sent only to the user's own user-channel so sibling sessions can show
+    /// an "On a call" indicator. `dm_id: None` means the user is no longer in
+    /// a call (left, ended, or rejected an incoming ring).
+    UserCallPresence {
+        dm_id: Option<Uuid>,
+        is_video: Option<bool>,
+    },
+
     /// Generic error event.
     Error {
         message: String,

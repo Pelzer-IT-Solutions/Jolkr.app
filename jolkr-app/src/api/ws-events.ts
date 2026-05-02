@@ -66,6 +66,11 @@ export type WsEvent =
 
   // ── GIF favorites (cross-session sync) ────────────────────────────
   | { op: 'GifFavoriteUpdate'; d: { added?: GifFavorite | null; removed_gif_id?: string | null } }
+
+  // ── Cross-session call presence ───────────────────────────────────
+  /** Sibling sessions of the same user get this when the user joins/leaves
+   *  a DM call. `dm_id: null` means no longer in a call. */
+  | { op: 'UserCallPresence'; d: { dm_id?: string | null; is_video?: boolean | null } }
   ;
 
 /**

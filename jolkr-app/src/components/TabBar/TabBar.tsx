@@ -21,6 +21,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { ServerDisplay, MemberStatus } from '../../types'
 import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
 import { isTauri, isMobile } from '../../platform/detect'
+import { useCallStore } from '../../stores/call'
 import s from './TabBar.module.css'
 
 // Tauri Android/iOS: disable drag-to-reorder so finger scrolling along the
@@ -157,6 +158,13 @@ export function TabBar({
   const [menuOpen,     setMenuOpen]     = useState(false)
   const status: MemberStatus = statusProp ?? 'online'
   const [menuPos,      setMenuPos]      = useState({ top: 0, right: 0 })
+
+  // Cross-session call presence: set when ANOTHER session of this user is on a
+  // DM call. The local session uses its own activeCallDmId / VoiceConnectionBar
+  // for in-call UI, so we deliberately only show the pill for SIBLING sessions.
+  const remoteSessionCall = useCallStore(st => st.remoteSessionCall)
+  const localActiveCallDmId = useCallStore(st => st.activeCallDmId)
+  const showRemoteCallPill = !!remoteSessionCall && remoteSessionCall.dmId !== localActiveCallDmId
 
   // Server tab context menu
   const [serverTabMenuOpen, setServerTabMenuOpen] = useState<string | null>(null)
@@ -526,7 +534,9 @@ export function TabBar({
           ref={chipRef}
           className={`${s.userChip} ${menuOpen ? s.userChipActive : ''}`}
           onClick={openMenu}
-          title="Profile"
+          title={showRemoteCallPill
+            ? (remoteSessionCall!.isVideo ? 'On a video call (other device)' : 'On a call (other device)')
+            : 'Profile'}
         >
           <div className={s.avatarWrap}>
             <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ background: avatarBg }}>
@@ -537,6 +547,11 @@ export function TabBar({
             <span className={s.statusDot} style={{ background: currentStatus.color }} />
           </div>
           <span className={`${s.userName} txt-small txt-medium`}>{displayName}</span>
+          {showRemoteCallPill && (
+            <span className={s.callPill} aria-label={remoteSessionCall!.isVideo ? 'On a video call' : 'On a call'}>
+              {remoteSessionCall!.isVideo ? 'On video call' : 'On a call'}
+            </span>
+          )}
         </button>
       </div>
 

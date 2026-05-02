@@ -90,6 +90,22 @@ pub(crate) async fn accept_call(
         state.nats.publish_to_user(uid, &event).await;
     }
     state.nats.publish_to_user(auth.user_id, &event).await;
+
+    // Notify the accepting user's other sessions that they are now in a call,
+    // so cross-session UI (e.g. "On a call" pill in the user chip) can sync.
+    // We don't track call state server-side, so `is_video` is unknown here —
+    // FE defaults to voice for the indicator.
+    state
+        .nats
+        .publish_to_user(
+            auth.user_id,
+            &crate::ws::events::GatewayEvent::UserCallPresence {
+                dm_id: Some(dm_id),
+                is_video: None,
+            },
+        )
+        .await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
@@ -108,6 +124,21 @@ pub(crate) async fn reject_call(
         state.nats.publish_to_user(uid, &event).await;
     }
     state.nats.publish_to_user(auth.user_id, &event).await;
+
+    // Tell the rejecting user's other sessions they're no longer being rung,
+    // so any sibling-shown "On a call" indicator (set speculatively, etc.)
+    // gets cleared. Reject never enters a call, so dm_id is None.
+    state
+        .nats
+        .publish_to_user(
+            auth.user_id,
+            &crate::ws::events::GatewayEvent::UserCallPresence {
+                dm_id: None,
+                is_video: None,
+            },
+        )
+        .await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
@@ -127,5 +158,19 @@ pub(crate) async fn end_call(
         state.nats.publish_to_user(uid, &event).await;
     }
     state.nats.publish_to_user(auth.user_id, &event).await;
+
+    // Sync the ending user's other sessions: the user is no longer in a call,
+    // so any "On a call" indicator should clear.
+    state
+        .nats
+        .publish_to_user(
+            auth.user_id,
+            &crate::ws::events::GatewayEvent::UserCallPresence {
+                dm_id: None,
+                is_video: None,
+            },
+        )
+        .await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

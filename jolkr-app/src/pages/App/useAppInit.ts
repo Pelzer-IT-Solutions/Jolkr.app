@@ -10,6 +10,7 @@ import { useUnreadStore } from '../../stores/unread'
 import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
+import { useCallStore } from '../../stores/call'
 
 import type { DmChannel, User } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
@@ -402,6 +403,14 @@ export function useAppInit() {
       // without polling. Idempotent — see store.applyServerEvent.
       if (event.op === 'GifFavoriteUpdate') {
         useGifFavoritesStore.getState().applyServerEvent(event.d)
+        return
+      }
+
+      // UserCallPresence: another session of this user joined/left a DM call.
+      // Mirror into the call store so the user-chip can show an "On a call"
+      // pill on this device while the call runs elsewhere.
+      if (event.op === 'UserCallPresence') {
+        useCallStore.getState().applyServerEvent(event.d)
         return
       }
 
