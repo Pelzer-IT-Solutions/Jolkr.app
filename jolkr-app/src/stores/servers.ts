@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Server, Channel, Member, Role, Category, ServerEmoji } from '../api/types';
+import type { Server, Channel, ChannelKind, Member, Role, Category, ServerEmoji } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
@@ -23,7 +23,7 @@ interface ServersState {
   fetchChannelPermissions: (channelId: string) => Promise<void>;
   fetchMembersWithRoles: (serverId: string) => Promise<void>;
   createServer: (name: string, description?: string) => Promise<Server>;
-  createChannel: (serverId: string, name: string, kind: string, topic?: string, categoryId?: string) => Promise<Channel>;
+  createChannel: (serverId: string, name: string, kind: ChannelKind, topic?: string, categoryId?: string) => Promise<Channel>;
   updateServer: (id: string, body: { name?: string; description?: string; icon_url?: string }) => Promise<Server>;
   updateChannel: (id: string, serverId: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) => Promise<Channel>;
   deleteServer: (id: string) => Promise<void>;

@@ -3,7 +3,7 @@ import type {
   DmChannel, Friendship, Invite, TokenPair, Attachment,
   PreKeyBundleResponse, Role, Category, ChannelOverwrite, Thread,
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
-  GifFavorite,
+  GifFavorite, ChannelKind,
 } from './types';
 import { getApiBaseUrl } from '../platform/config';
 import { storage } from '../platform/storage';
@@ -412,7 +412,7 @@ export const getMyPermissions = (serverId: string) =>
 // Channels
 export const getChannels = (serverId: string) =>
   request<Channel[]>(`/servers/${serverId}/channels/list`, {}, 'channels');
-export const createChannel = (serverId: string, body: { name: string; kind: string; topic?: string; category_id?: string }) =>
+export const createChannel = (serverId: string, body: { name: string; kind: ChannelKind; topic?: string; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
 export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
 export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>

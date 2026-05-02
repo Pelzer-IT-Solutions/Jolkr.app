@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
+import type { MemberStatus } from '../../types'
 import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
 import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
@@ -200,7 +201,7 @@ export default function AppShell() {
           user={userInfo}
           userProfile={userProfile}
           mutedServerIds={mutedServerIds}
-          currentStatus={(user?.id ? presences[user.id] : undefined) as 'online' | 'idle' | 'dnd' | 'offline' | undefined}
+          currentStatus={(user?.id ? presences[user.id] : undefined) as MemberStatus | undefined}
           ownerServerIds={ownerServerIds}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
           onClose={handleCloseTab}

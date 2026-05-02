@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { X, UserPlus, Check, XCircle, MessageCircle, UserX } from 'lucide-react'
-import type { MemberDisplay } from '../../types'
+import type { MemberDisplay, MemberStatus } from '../../types'
 import type { Friendship, User } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
@@ -10,7 +10,7 @@ import Avatar from '../Avatar'
 import s from './FriendsPanel.module.css'
 
 type FriendTab = 'all' | 'online' | 'pending'
-type LiveStatus = 'online' | 'idle' | 'dnd' | 'offline'
+
 
 interface FriendRequest {
   id: string
@@ -21,7 +21,7 @@ interface FriendRequest {
 
 interface Friend {
   user: MemberDisplay
-  status: LiveStatus
+  status: MemberStatus
   last_seen?: string
 }
 
@@ -50,7 +50,7 @@ function toDisplay(otherUser: User | undefined, fallbackUserId: string): MemberD
   }
 }
 
-function liveStatus(raw: string | undefined): LiveStatus {
+function liveStatus(raw: string | undefined): MemberStatus {
   if (raw === 'online' || raw === 'idle' || raw === 'dnd') return raw
   return 'offline'
 }
