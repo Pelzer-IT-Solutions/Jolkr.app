@@ -89,7 +89,11 @@ export default function AppShell() {
   const showLeft  = !isMobile || activeMobilePane === 'left'
   const showChat  = !isMobile || activeMobilePane === 'chat'
   const showRight = !isMobile || activeMobilePane === 'right'
-  const isEmptyState = !activeServer && (!dmActive || (!activeDmId && dmList.length === 0))
+  // Whether the chat area has actual content to render (a DM with an active id,
+  // or a server with an active channel). When false, the center slot shows the
+  // welcome panel instead of ChatArea — sidebars still render normally so the
+  // user can navigate (e.g. clicking DMs shows the DM list even with no DMs).
+  const hasChatContent = (dmActive && !!activeDmId) || (!!activeServer && !!activeChannelId)
 
   const handleExpandSidebar = useCallback(() => {
     if (isMobile) setActiveMobilePane('left')
@@ -263,15 +267,7 @@ export default function AppShell() {
         <div className={s.contentRow}>
           <div className={s.shell}>
             <div className={s.workspace}>
-              {isEmptyState ? (
-                <div className={s.emptyState}>
-                  <div style={{ fontSize: '3rem' }}>👋</div>
-                  <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
-                  <p className="txt-small">Join or create a server to get started, or send a direct message.</p>
-                </div>
-              ) : (
-                <>
-                  {showLeft && (dmActive ? (
+              {showLeft && (dmActive ? (
                     <DMSidebar
                       conversations={uiDmList}
                       activeId={activeDmId}
@@ -331,58 +327,66 @@ export default function AppShell() {
                     />
                   ) : null)}
 
-                  {showChat && <ChatArea
-                    channel={activeChannel}
-                    messages={displayMessages}
-                    sidebarCollapsed={sidebarCollapsedForChatHeader}
-                    rightPanelMode={effectiveRightMode}
-                    onExpandSidebar={handleExpandSidebar}
-                    onSetRightPanelMode={handleSetRightPanelMode}
-                    onSend={handleSend}
-                    onToggleReaction={handleToggleReaction}
-                    onDeleteMessage={handleDeleteMessage}
-                    onEditMessage={handleEditMessage}
-                    isDm={dmActive}
-                    dmConversation={dmActive ? activeDmConv : undefined}
-                    animationKey={chatAnimKey}
-                    onTyping={handleTyping}
-                    typingUsers={typingUsers}
-                    hasPinnedMessages={pinnedCount > 0}
-                    hasThreads={threadsCount > 0}
-                    serverId={dmActive ? undefined : activeServerId}
-                    userMap={userMap}
-                    onLoadOlder={() => {
-                      const { fetchOlder, loadingOlder } = useMessagesStore.getState()
-                      const channelId = dmActive ? activeDmId : activeChannelId
-                      if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
-                    }}
-                    hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
-                    readOnly={isDmWithSystemUser}
-                    onPinMessage={handlePinMessage}
-                    onOpenAuthorProfile={(authorId, e) => {
-                      setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
-                    }}
-                    mentionableUsers={mentionableUsers}
-                    canManageMessages={canManageMessages}
-                    canAddReactions={canAddReactions}
-                    canSendMessages={canSendMessages}
-                    canAttachFiles={canAttachFiles}
-                    onOpenThread={handleOpenThreadById}
-                    onStartThread={async (messageId) => {
-                      if (dmActive || !activeChannelId) return
-                      const name = window.prompt('Thread name (optional)')?.trim()
-                      try {
-                        await api.createThread(activeChannelId, messageId, name || undefined)
-                        // Backend will emit ThreadCreate WS event → store bumps
-                        // threadListVersion → ThreadListPanel + threadsCount refresh.
-                      } catch (err) {
-                        const msg = err instanceof Error ? err.message : 'Failed to create thread'
-                        useToast.getState().show(msg, 'error')
-                      }
-                    }}
-                  />}
+                  {showChat && (hasChatContent ? (
+                    <ChatArea
+                      channel={activeChannel}
+                      messages={displayMessages}
+                      sidebarCollapsed={sidebarCollapsedForChatHeader}
+                      rightPanelMode={effectiveRightMode}
+                      onExpandSidebar={handleExpandSidebar}
+                      onSetRightPanelMode={handleSetRightPanelMode}
+                      onSend={handleSend}
+                      onToggleReaction={handleToggleReaction}
+                      onDeleteMessage={handleDeleteMessage}
+                      onEditMessage={handleEditMessage}
+                      isDm={dmActive}
+                      dmConversation={dmActive ? activeDmConv : undefined}
+                      animationKey={chatAnimKey}
+                      onTyping={handleTyping}
+                      typingUsers={typingUsers}
+                      hasPinnedMessages={pinnedCount > 0}
+                      hasThreads={threadsCount > 0}
+                      serverId={dmActive ? undefined : activeServerId}
+                      userMap={userMap}
+                      onLoadOlder={() => {
+                        const { fetchOlder, loadingOlder } = useMessagesStore.getState()
+                        const channelId = dmActive ? activeDmId : activeChannelId
+                        if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
+                      }}
+                      hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
+                      readOnly={isDmWithSystemUser}
+                      onPinMessage={handlePinMessage}
+                      onOpenAuthorProfile={(authorId, e) => {
+                        setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
+                      }}
+                      mentionableUsers={mentionableUsers}
+                      canManageMessages={canManageMessages}
+                      canAddReactions={canAddReactions}
+                      canSendMessages={canSendMessages}
+                      canAttachFiles={canAttachFiles}
+                      onOpenThread={handleOpenThreadById}
+                      onStartThread={async (messageId) => {
+                        if (dmActive || !activeChannelId) return
+                        const name = window.prompt('Thread name (optional)')?.trim()
+                        try {
+                          await api.createThread(activeChannelId, messageId, name || undefined)
+                          // Backend will emit ThreadCreate WS event → store bumps
+                          // threadListVersion → ThreadListPanel + threadsCount refresh.
+                        } catch (err) {
+                          const msg = err instanceof Error ? err.message : 'Failed to create thread'
+                          useToast.getState().show(msg, 'error')
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className={s.emptyState}>
+                      <div style={{ fontSize: '3rem' }}>👋</div>
+                      <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
+                      <p className="txt-small">Join or create a server to get started, or send a direct message.</p>
+                    </div>
+                  ))}
 
-                  {showRight && (dmActive ? (
+                  {showRight && hasChatContent && (dmActive ? (
                     <DMInfoPanel
                       open={!rightPanelHidden}
                       dmId={activeDmId}
@@ -428,8 +432,6 @@ export default function AppShell() {
                       onCloseThread={() => setOpenThreadId(null)}
                     />
                   ) : null)}
-                </>
-              )}
             </div>
           </div>
 
