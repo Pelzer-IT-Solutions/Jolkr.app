@@ -6,6 +6,14 @@ import type { User } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import s from './PinnedMessagesPanel.module.css'
 
+// Module-level cache so toggling the panel off and back on doesn't trigger a
+// "Loading..." flash. Keyed by `${isDm ? 'dm' : 'ch'}:${channelId}:${pinnedVersion}`
+// so a `pinnedVersion` bump (pin/unpin event) invalidates the cached entry.
+const cache = new Map<string, Message[]>()
+function cacheKey(channelId: string, isDm: boolean, version: number): string {
+  return `${isDm ? 'dm' : 'ch'}:${channelId}:${version}`
+}
+
 interface Props {
   channelId: string
   isDm?: boolean
@@ -45,18 +53,30 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
 }
 
 export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, users, pinnedVersion }: Props) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = cacheKey(channelId, isDm, pinnedVersion ?? 0)
+  const cached = cache.get(key)
+  const [messages, setMessages] = useState<Message[]>(cached ?? [])
+  // No "Loading..." if we already have data for this key — show stale data
+  // immediately and revalidate in the background.
+  const [loading, setLoading] = useState(cached === undefined)
 
   useEffect(() => {
+    const k = cacheKey(channelId, isDm, pinnedVersion ?? 0)
+    const cachedNow = cache.get(k)
+    if (cachedNow !== undefined) {
+      setMessages(cachedNow)
+      setLoading(false)
+      return
+    }
     setLoading(true)
-    const fetch = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
-    fetch.then(msgs => {
+    const fetchPromise = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
+    fetchPromise.then(msgs => {
       // Normalize DM messages: dm_channel_id → channel_id
       const normalized = msgs.map((m) => ({
         ...m,
         channel_id: m.channel_id ?? (m as unknown as { dm_channel_id?: string }).dm_channel_id ?? channelId,
       }))
+      cache.set(k, normalized)
       setMessages(normalized)
       setLoading(false)
     }).catch(() => setLoading(false))
@@ -64,7 +84,11 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)
-    setMessages(prev => prev.filter(m => m.id !== msgId))
+    setMessages(prev => {
+      const next = prev.filter(m => m.id !== msgId)
+      cache.set(cacheKey(channelId, isDm, pinnedVersion ?? 0), next)
+      return next
+    })
   }
 
   return (

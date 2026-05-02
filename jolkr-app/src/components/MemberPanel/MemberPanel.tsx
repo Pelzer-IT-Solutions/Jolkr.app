@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import type { MemberGroup, MemberSummary } from '../../types'
 import type { User, Thread } from '../../api/types'
@@ -8,6 +9,9 @@ import { ThreadPanel } from '../Thread/ThreadPanel'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './MemberPanel.module.css'
+
+/** How long the panel's collapse animation takes (matches `--transition`). */
+const HIDE_TRANSITION_MS = 200
 
 interface Props {
   members: MemberGroup
@@ -34,6 +38,27 @@ interface Props {
 export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, users, pinnedVersion, onMobileClose, openThreadId, onOpenThread, onCloseThread }: Props) {
   const visible = mode !== null
 
+  // Hold the previous non-null mode while the panel is collapsing so we keep
+  // rendering THAT mode's content during the close transition. Without this,
+  // closing 'pinned' would immediately swap to the 'members' default branch
+  // and you'd see a brief Members flash slide out instead of Pinned.
+  const [displayMode, setDisplayMode] = useState<typeof mode>(mode)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+    if (mode !== null) {
+      setDisplayMode(mode)
+    } else {
+      hideTimerRef.current = setTimeout(() => setDisplayMode(null), HIDE_TRANSITION_MS)
+    }
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
+  }, [mode])
+
   const total = members.online.length + members.offline.length
 
   // 2 group headers + all member rows
@@ -50,7 +75,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
 
   // Render different content based on mode
   const renderContent = () => {
-    switch (mode) {
+    switch (displayMode) {
       case 'pinned':
         return (
           <PinnedMessagesPanel
@@ -146,7 +171,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
 
   // Get header title based on mode
   const getHeaderTitle = () => {
-    switch (mode) {
+    switch (displayMode) {
       case 'pinned': return 'Pinned Messages'
       case 'threads': return 'Threads'
       case 'members': return `Members — ${total}`
@@ -156,7 +181,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
 
   // Hide the outer header in single-thread view — ThreadPanel renders its own
   // header (with back button + thread name) so we'd otherwise stack two bars.
-  const hideOuterHeader = mode === 'threads' && !!openThreadId
+  const hideOuterHeader = displayMode === 'threads' && !!openThreadId
 
   return (
     <aside className={`${s.panel} ${!visible ? s.hidden : ''}`}>
