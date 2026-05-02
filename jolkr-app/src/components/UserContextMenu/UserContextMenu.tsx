@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { VolumeX, Flag, UserPlus, Link2, CircleSlash, UserMinus, Gavel, Shield } from 'lucide-react'
+import { VolumeX, Flag, UserPlus, Link2, CircleSlash, UserMinus, Gavel, Shield, User as UserIcon, X } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
 import type { Server as ApiServer, Role } from '../../api/types'
 import Avatar from '../Avatar'
@@ -14,15 +14,23 @@ export interface UserContextMenuState {
   x: number
   y: number
   user: MemberDisplay
+  /** Set when the menu is opened from a DM row — enables the "Close DM" item. */
+  dmId?: string
 }
 
 interface Props {
   menu: UserContextMenuState | null
   onClose: () => void
+  /** "View Profile" — opens the ProfileCard popover anchored at the click. */
+  onViewProfile?: (userId: string, anchor: { x: number; y: number }) => void
   onBlock?: (userId: string) => void
   onMute?: (userId: string) => void
   onReport?: (userId: string) => void
   onAddFriend?: (userId: string) => void
+  /** Shown when `isFriend` is true (replaces Add Friend). */
+  onRemoveFriend?: (userId: string) => void
+  /** Shown only when provided — i.e. the menu is opened from a DM context. */
+  onCloseDm?: () => void
   onKick?: (userId: string) => void
   onBan?: (userId: string) => void
   onInviteToServer?: (userId: string, serverId: string) => void
@@ -41,10 +49,13 @@ interface Props {
 export function UserContextMenu({
   menu,
   onClose,
+  onViewProfile,
   onBlock,
   onMute,
   onReport,
   onAddFriend,
+  onRemoveFriend,
+  onCloseDm,
   onKick,
   onBan,
   onInviteToServer,
@@ -97,6 +108,21 @@ export function UserContextMenu({
     onClose()
   }
 
+  const handleRemoveFriend = () => {
+    onRemoveFriend?.(menu.user.user_id)
+    onClose()
+  }
+
+  const handleViewProfile = () => {
+    onViewProfile?.(menu.user.user_id, { x: menu.x, y: menu.y })
+    onClose()
+  }
+
+  const handleCloseDm = () => {
+    onCloseDm?.()
+    onClose()
+  }
+
   const handleInvite = (serverId: string) => {
     onInviteToServer?.(menu.user.user_id, serverId)
     onClose()
@@ -133,10 +159,23 @@ export function UserContextMenu({
         <div className={s.divider} />
 
         {/* Actions */}
+        {onViewProfile && (
+          <button className={s.item} onClick={handleViewProfile}>
+            <UserIcon size={14} strokeWidth={1.5} />
+            <span className="txt-small">View Profile</span>
+          </button>
+        )}
+
         {!isFriend && onAddFriend && (
           <button className={s.item} onClick={handleAddFriend}>
             <UserPlus size={14} strokeWidth={1.5} />
             <span className="txt-small">Add Friend</span>
+          </button>
+        )}
+        {isFriend && onRemoveFriend && (
+          <button className={`${s.item} ${s.danger}`} onClick={handleRemoveFriend}>
+            <UserMinus size={14} strokeWidth={1.5} />
+            <span className="txt-small">Remove Friend</span>
           </button>
         )}
 
@@ -151,6 +190,13 @@ export function UserContextMenu({
           <button className={`${s.item} ${s.danger}`} onClick={handleBlock}>
             <CircleSlash size={14} strokeWidth={1.5} />
             <span className="txt-small">{isBlocked ? 'Unblock' : 'Block'}</span>
+          </button>
+        )}
+
+        {onCloseDm && (
+          <button className={`${s.item} ${s.danger}`} onClick={handleCloseDm}>
+            <X size={14} strokeWidth={1.5} />
+            <span className="txt-small">Close DM</span>
           </button>
         )}
 

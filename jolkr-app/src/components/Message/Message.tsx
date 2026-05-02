@@ -28,6 +28,8 @@ interface Props {
   onReply?:              () => void
   onEdit?:               (newText: string) => void
   onPin?:                () => void
+  /** Click on author avatar/name → open profile card. */
+  onOpenAuthorProfile?:  (authorId: string, e: React.MouseEvent) => void
   isDm?:                 boolean
   serverId?:             string
   userMap?:              Map<string, User>
@@ -36,7 +38,7 @@ interface Props {
   canAddReactions?:      boolean
 }
 
-export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, isDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false }: Props) {
+export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, onOpenAuthorProfile, isDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
   const shiftHeld = useShiftKey()
@@ -499,12 +501,24 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
     )
   }
 
+  const handleAuthorClick = onOpenAuthorProfile && message.author_id
+    ? (e: React.MouseEvent) => onOpenAuthorProfile(message.author_id!, e)
+    : undefined
+
   return (
     <article className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
-      <MessageAvatar message={message} />
+      <MessageAvatar message={message} onClick={handleAuthorClick} />
       <div className={s.body}>
         <div className={s.meta}>
-          <span className={`${s.author} txt-body txt-semibold`}>{message.author}</span>
+          {handleAuthorClick ? (
+            <button
+              type="button"
+              className={`${s.author} ${s.authorClickable} txt-body txt-semibold`}
+              onClick={handleAuthorClick}
+            >{message.author}</button>
+          ) : (
+            <span className={`${s.author} txt-body txt-semibold`}>{message.author}</span>
+          )}
           <time className={`${s.time} txt-tiny`}>{message.time}</time>
           {message.is_pinned && <Pin size={11} strokeWidth={1.4} className={s.pinnedBadge} />}
           {showUnencryptedBadge && <span className={`${s.unencryptedBadge} txt-tiny`}>unencrypted</span>}
@@ -517,8 +531,16 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 }
 
 /* ─── Icons ─── */
-function MessageAvatar({ message }: { message: MessageType }) {
-  return <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} color={message.color} />
+function MessageAvatar({ message, onClick }: { message: MessageType; onClick?: (e: React.MouseEvent) => void }) {
+  const avatar = (
+    <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} color={message.color} />
+  )
+  if (!onClick) return avatar
+  return (
+    <button type="button" onClick={onClick} className={s.avatarClickable} aria-label={`Open profile of ${message.author}`}>
+      {avatar}
+    </button>
+  )
 }
 
 function EmojiAddIcon() { return <SmilePlus      size={14} strokeWidth={1.4} /> }

@@ -41,6 +41,27 @@
 }
 
 .author { color: var(--text-shout); }
+/* Button reset for the clickable variants — preserve the inline-flex layout
+   the meta row expects without the default button look. */
+.authorClickable {
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.authorClickable:hover { text-decoration: underline; }
+.avatarClickable {
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  border-radius: 50%;
+}
+.avatarClickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .time   { color: var(--text-faint); }
 
 .pinnedBadge {

@@ -13,6 +13,8 @@ import { useGifFavoritesStore } from '../../stores/gif-favorites'
 
 import type { DmChannel, User } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
+import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
+import { lookupFriendship } from '../../services/friendshipCache'
 import type { MemberDisplay } from '../../types/ui'
 
 export function useAppInit() {
@@ -85,6 +87,11 @@ export function useAppInit() {
   const [channelSettingsOpen, setChannelSettingsOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<MemberDisplay | null>(null)
   const [userContextMenu, setUserContextMenu] = useState<UserContextMenuState | null>(null)
+  /** Whether the user the context menu targets is already an accepted friend.
+   *  Resolved asynchronously from the friendship cache when the menu opens —
+   *  drives the "Add Friend" ↔ "Remove Friend" toggle. */
+  const [contextMenuIsFriend, setContextMenuIsFriend] = useState(false)
+  const [profileCard, setProfileCard] = useState<ProfileCardState | null>(null)
 
   // ── Content availability for conditional icon display ──
   const [pinnedCount, setPinnedCount] = useState(0)
@@ -351,6 +358,20 @@ export function useAppInit() {
     return () => { wsClient.unsubscribe(channelId) }
   }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Resolve friendship state for the open user-context-menu ──
+  // Drives the "Add Friend" ↔ "Remove Friend" toggle in the menu.
+  useEffect(() => {
+    if (!userContextMenu?.user.user_id) {
+      setContextMenuIsFriend(false)
+      return
+    }
+    let cancelled = false
+    lookupFriendship(userContextMenu.user.user_id)
+      .then((lookup) => { if (!cancelled) setContextMenuIsFriend(lookup.state === 'accepted') })
+      .catch(() => { if (!cancelled) setContextMenuIsFriend(false) })
+    return () => { cancelled = true }
+  }, [userContextMenu?.user.user_id])
+
   // ── Real-time DM channel sync ──
   // Without this, a new DM from a stranger only shows up after a manual refresh
   // because the backend's MessageCreate event lands in messages store but the
@@ -438,6 +459,8 @@ export function useAppInit() {
     channelSettingsOpen, setChannelSettingsOpen,
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
+    contextMenuIsFriend, setContextMenuIsFriend,
+    profileCard, setProfileCard,
     pinnedCount, setPinnedCount, pinnedVersion, setPinnedVersion, threadsCount, setThreadsCount,
     lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
   }
