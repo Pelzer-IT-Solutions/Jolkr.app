@@ -40,8 +40,6 @@ function showDesktopNotification(title: string, body: string) {
   } catch { /* notification not available */ }
 }
 
-let unsubNotifications: (() => void) | null = null;
-
 /** Request notification permission if not already decided. */
 export async function requestNotificationPermission(): Promise<void> {
   if (!('Notification' in window)) return;
@@ -50,41 +48,32 @@ export async function requestNotificationPermission(): Promise<void> {
   }
 }
 
-/** Initialize notification listeners. Call once on app startup. */
-export function initNotifications() {
-  if (unsubNotifications) unsubNotifications();
-  unsubNotifications = wsClient.on((event) => {
-    if (event.op !== 'MessageCreate') return;
+// ── WS subscription (module-init, matches stores/* convention) ──
+// Stays attached for the app lifetime. On logout the WS is disconnected
+// and no events flow through; on re-login the same listener resumes.
+wsClient.on((event) => {
+  if (event.op !== 'MessageCreate') return;
 
-    const raw = event.d.message;
-    if (!raw) return;
-    // Normalize: DM messages have dm_channel_id instead of channel_id
-    const rawAny = raw as Message & { dm_channel_id?: string };
-    const channelId = rawAny.channel_id ?? rawAny.dm_channel_id;
-    if (!channelId) return;
-    const msg: Message = { ...rawAny, channel_id: channelId };
+  const raw = event.d.message;
+  if (!raw) return;
+  // Normalize: DM messages have dm_channel_id instead of channel_id
+  const rawAny = raw as Message & { dm_channel_id?: string };
+  const channelId = rawAny.channel_id ?? rawAny.dm_channel_id;
+  if (!channelId) return;
+  const msg: Message = { ...rawAny, channel_id: channelId };
 
-    // Don't notify for own messages
-    const currentUserId = useAuthStore.getState().user?.id;
-    if (msg.author_id === currentUserId) return;
+  // Don't notify for own messages
+  const currentUserId = useAuthStore.getState().user?.id;
+  if (msg.author_id === currentUserId) return;
 
-    const { activeChannel } = useUnreadStore.getState();
-    if (channelId === activeChannel) return;
+  const { activeChannel } = useUnreadStore.getState();
+  if (channelId === activeChannel) return;
 
-    // Play sound for messages in non-active channels
-    playNotificationSound();
+  // Play sound for messages in non-active channels
+  playNotificationSound();
 
-    // Show desktop notification
-    // All messages are encrypted — show generic notification
-    const notifContent = msg.nonce ? 'Sent an encrypted message' : (msg.content?.slice(0, 100) || 'New message');
-    showDesktopNotification('New Message', notifContent);
-  });
-}
-
-/** Clean up notification listener (e.g. on logout). */
-export function stopNotifications() {
-  if (unsubNotifications) {
-    unsubNotifications();
-    unsubNotifications = null;
-  }
-}
+  // Show desktop notification
+  // All messages are encrypted — show generic notification
+  const notifContent = msg.nonce ? 'Sent an encrypted message' : (msg.content?.slice(0, 100) || 'New message');
+  showDesktopNotification('New Message', notifContent);
+});

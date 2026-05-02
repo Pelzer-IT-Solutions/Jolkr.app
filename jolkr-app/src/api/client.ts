@@ -913,3 +913,56 @@ export const addGifFavorite = (gifId: string) =>
 export const removeGifFavorite = (gifId: string) =>
   request<void>(`/gifs/favorites/${encodeURIComponent(gifId)}`, { method: 'DELETE' })
 
+// ── Tenor proxy (used by GifPicker) ─────────────────────────────────
+
+export interface TenorMediaFormat {
+  url: string;
+  dims?: [number, number];
+}
+
+export interface TenorResult {
+  id: string;
+  title?: string;
+  content_description?: string;
+  url: string;
+  media_formats?: {
+    tinygif?: TenorMediaFormat;
+    gif?: TenorMediaFormat;
+  };
+}
+
+export interface TenorSearchResponse {
+  results: TenorResult[];
+  next?: string;
+}
+
+export interface TenorCategory {
+  name: string;
+  searchterm: string;
+  image: string;
+}
+
+export const getGifCategories = () =>
+  request<{ tags: TenorCategory[] }>('/gifs/categories');
+
+export const searchGifs = (query: string, limit: number, pos: string) =>
+  request<TenorSearchResponse>(`/gifs/search?q=${encodeURIComponent(query)}&limit=${limit}&pos=${encodeURIComponent(pos)}`);
+
+export const getFeaturedGifs = (limit: number, pos: string) =>
+  request<TenorSearchResponse>(`/gifs/featured?limit=${limit}&pos=${encodeURIComponent(pos)}`);
+
+// ── oEmbed proxy (used by VideoEmbed) ───────────────────────────────
+
+export interface OembedResponse {
+  title?: string;
+  thumbnail_url?: string;
+  thumbnail_width?: number;
+  thumbnail_height?: number;
+  provider_name?: string;
+  author_name?: string;
+  html?: string;
+}
+
+export const getOembed = (url: string) =>
+  request<OembedResponse>(`/oembed?url=${encodeURIComponent(url)}`);
+

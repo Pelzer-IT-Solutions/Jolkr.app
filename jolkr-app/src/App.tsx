@@ -7,7 +7,7 @@ import { getBasename } from './platform/config';
 import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
-import { initNotifications, requestNotificationPermission } from './services/notifications';
+import { requestNotificationPermission } from './services/notifications';
 import { registerPush } from './services/pushRegistration';
 import { initE2EE } from './services/e2ee';
 import { checkForUpdate, type UpdateInfo } from './services/updater';
@@ -108,7 +108,6 @@ function AppInit({ children }: { children: React.ReactNode }) {
       }
     }).finally(() => {
       setReady(true);
-      initNotifications();
     });
   }, [loadUser]);
 

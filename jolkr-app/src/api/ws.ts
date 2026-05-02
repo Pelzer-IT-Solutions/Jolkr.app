@@ -48,6 +48,8 @@ class WsClient {
 
     this.ws.onclose = () => {
       this.cleanup();
+      // Null the socket so a subsequent connect() doesn't no-op via `if (this.ws) return`.
+      this.ws = null;
       this.scheduleReconnect();
     };
 

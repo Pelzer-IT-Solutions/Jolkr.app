@@ -2,10 +2,9 @@ import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import type { MessageEmbed } from '../../api/types';
 import type { VideoInfo } from '../../utils/videoUrl';
 import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../../utils/videoUrl';
-import { getApiBaseUrl } from '../../platform/config';
+import { getOembed } from '../../api/client';
 import { useNMPlayer } from '../../hooks/useNMPlayer';
 
-const apiBase = getApiBaseUrl().replace(/\/api$/, '');
 import Spinner from '../ui/Spinner';
 import { isTauri } from '../../platform/detect';
 import { Play, Pause, Volume2, VolumeX, Maximize, Video } from 'lucide-react';
@@ -34,11 +33,8 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
           return;
         }
         // All platforms: fetch title via our oEmbed proxy
-        const res = await fetch(`${apiBase}/api/oembed?url=${encodeURIComponent(embed.url)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.title && !cancelled) setResolvedTitle(data.title);
-        }
+        const data = await getOembed(embed.url);
+        if (data.title && !cancelled) setResolvedTitle(data.title);
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
