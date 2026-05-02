@@ -22,6 +22,13 @@ use uuid::Uuid;
 use crate::rooms::RoomList;
 use types::{ParticipantInfo, SfuCommand, SignalOut};
 
+/// Mids used to send another client's media TO this client (one per kind).
+#[derive(Debug, Clone)]
+struct PeerMids {
+    audio: Mid,
+    video: Option<Mid>,
+}
+
 /// A connected client in the SFU.
 struct Client {
     user_id: Uuid,
@@ -29,12 +36,16 @@ struct Client {
     rtc: Rtc,
     signal_tx: tokio::sync::mpsc::UnboundedSender<SignalOut>,
 
+    /// Whether this client negotiated to send/receive video.
+    with_video: bool,
+
     /// Mid that receives this client's audio (their microphone).
-    #[expect(dead_code)]
-    recv_mid: Option<Mid>,
-    /// Mids used to send other clients' audio TO this client.
-    /// Key: the other user's ID. Value: the Mid on THIS client's Rtc.
-    send_mids: HashMap<Uuid, Mid>,
+    recv_audio_mid: Option<Mid>,
+    /// Mid that receives this client's video (their camera). `None` if `with_video=false`.
+    recv_video_mid: Option<Mid>,
+    /// Mids used to send other clients' media TO this client (per kind).
+    /// Key: the other user's ID. Value: that peer's audio + optional video Mid.
+    send_mids: HashMap<Uuid, PeerMids>,
     /// Pending SDP offer waiting for the client's answer.
     pending: Option<SdpPendingOffer>,
     /// User IDs queued for re-negotiation (when a pending offer blocks immediate renegotiation).
@@ -190,32 +201,74 @@ pub(crate) fn run_sfu(
 
         // ── 4. Forward media to other clients in the same room ──────────
         for (sender_id, channel_id, media) in &propagations {
-            debug!("Media from {} in channel {} ({} bytes)", sender_id, channel_id, media.data.len());
+            // Determine kind by matching the source mid against the sender's
+            // recv_audio_mid / recv_video_mid. Audio receivers ignore deafen,
+            // video does not.
+            let (is_video, source_kind_known) = clients
+                .iter()
+                .find(|c| c.user_id == *sender_id)
+                .map(|sender| {
+                    if Some(media.mid) == sender.recv_video_mid {
+                        (true, true)
+                    } else if Some(media.mid) == sender.recv_audio_mid {
+                        (false, true)
+                    } else {
+                        (false, false)
+                    }
+                })
+                .unwrap_or((false, false));
+
+            if !source_kind_known {
+                debug!("Media from {} on unknown mid {:?} ({} bytes) — skipping", sender_id, media.mid, media.data.len());
+                continue;
+            }
+
+            debug!("Media from {} in channel {} ({} bytes, video={})", sender_id, channel_id, media.data.len(), is_video);
+
             for client in &mut clients {
                 if client.user_id == *sender_id
                     || client.channel_id != *channel_id
-                    || client.is_deafened
                 {
                     continue;
                 }
-                if let Some(&mid) = client.send_mids.get(sender_id) {
-                    match client.rtc.writer(mid) { Some(writer) => {
-                        if let Some(pt) = writer.match_params(media.params) {
-                            drop(writer.write(
-                                pt,
-                                media.network_time,
-                                media.time,
-                                media.data.clone(),
-                            ));
-                        } else {
-                            warn!("No matching codec params for {} -> {} (mid {:?})", sender_id, client.user_id, mid);
-                        }
-                    } _ => {
-                        warn!("No writer for mid {:?} on {} (forwarding from {})", mid, client.user_id, sender_id);
-                    }}
-                } else {
-                    warn!("No send_mid for {} on target {} (send_mids: {:?})", sender_id, client.user_id, client.send_mids.keys().collect::<Vec<_>>());
+                // Deafen suppresses audio only — video keeps flowing.
+                if !is_video && client.is_deafened {
+                    continue;
                 }
+
+                let target_mid = match client.send_mids.get(sender_id) {
+                    Some(peer_mids) => {
+                        if is_video {
+                            peer_mids.video
+                        } else {
+                            Some(peer_mids.audio)
+                        }
+                    }
+                    None => {
+                        warn!("No send_mids for {} on target {} (have: {:?})", sender_id, client.user_id, client.send_mids.keys().collect::<Vec<_>>());
+                        continue;
+                    }
+                };
+
+                let Some(mid) = target_mid else {
+                    // Receiver has no track of this kind for this sender — silently skip.
+                    continue;
+                };
+
+                match client.rtc.writer(mid) { Some(writer) => {
+                    if let Some(pt) = writer.match_params(media.params) {
+                        drop(writer.write(
+                            pt,
+                            media.network_time,
+                            media.time,
+                            media.data.clone(),
+                        ));
+                    } else {
+                        warn!("No matching codec params for {} -> {} (mid {:?}, video={})", sender_id, client.user_id, mid, is_video);
+                    }
+                } _ => {
+                    warn!("No writer for mid {:?} on {} (forwarding from {}, video={})", mid, client.user_id, sender_id, is_video);
+                }}
             }
         }
 
@@ -289,6 +342,7 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
             user_id,
             channel_id,
             signal_tx,
+            with_video,
         } => {
             // Prevent duplicate joins
             if clients.iter().any(|c| c.user_id == user_id) {
@@ -298,18 +352,13 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
                 return;
             }
 
-            // Collect existing participants
-            let existing: Vec<ParticipantInfo> = clients
+            // Snapshot existing peers' user_ids + their video state — needed both for
+            // build below and for the ParticipantInfo we hand back to the new client.
+            let existing_peers: Vec<(Uuid, bool, bool, bool)> = clients
                 .iter()
                 .filter(|c| c.channel_id == channel_id)
-                .map(|c| ParticipantInfo {
-                    user_id: c.user_id,
-                    is_muted: c.is_muted,
-                    is_deafened: c.is_deafened,
-                })
+                .map(|c| (c.user_id, c.is_muted, c.is_deafened, c.with_video))
                 .collect();
-
-            let existing_ids: Vec<Uuid> = existing.iter().map(|p| p.user_id).collect();
 
             // Create Rtc instance (ICE lite for server)
             let mut rtc = Rtc::builder()
@@ -328,26 +377,49 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
 
             // Build SDP offer:
             //   - 1x RecvOnly audio (receive client's microphone)
-            //   - Nx SendOnly audio (send each existing participant's audio)
+            //   - Optional 1x RecvOnly video (receive client's camera)
+            //   - Per existing peer: SendOnly audio (always) + SendOnly video (only if both peers have video)
             let mut change = rtc.sdp_api();
-            let recv_mid = change.add_media(
+            let recv_audio_mid = change.add_media(
                 MediaKind::Audio,
                 Direction::RecvOnly,
                 None,
                 None,
                 None,
             );
+            let recv_video_mid = if with_video {
+                Some(change.add_media(
+                    MediaKind::Video,
+                    Direction::RecvOnly,
+                    None,
+                    None,
+                    None,
+                ))
+            } else {
+                None
+            };
 
-            let mut send_mids = HashMap::new();
-            for &other_id in &existing_ids {
-                let send_mid = change.add_media(
+            let mut send_mids: HashMap<Uuid, PeerMids> = HashMap::new();
+            for &(other_id, _, _, other_has_video) in &existing_peers {
+                let audio_mid = change.add_media(
                     MediaKind::Audio,
                     Direction::SendOnly,
                     None,
                     None,
                     None,
                 );
-                send_mids.insert(other_id, send_mid);
+                let video_mid = if with_video && other_has_video {
+                    Some(change.add_media(
+                        MediaKind::Video,
+                        Direction::SendOnly,
+                        None,
+                        None,
+                        None,
+                    ))
+                } else {
+                    None
+                };
+                send_mids.insert(other_id, PeerMids { audio: audio_mid, video: video_mid });
             }
 
             match change.apply() { Some((offer, pending)) => {
@@ -356,10 +428,27 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
 
                 let offer_sdp = offer.to_sdp_string();
 
-                // Send Joined event with current participants
+                // Build the Joined event with per-recipient mids: each entry tells the
+                // new client which Mid on its OWN Rtc receives that existing peer's media.
+                let participants: Vec<ParticipantInfo> = existing_peers
+                    .iter()
+                    .map(|&(peer_id, is_muted, is_deafened, peer_has_video)| {
+                        let peer_mids = &send_mids[&peer_id];
+                        ParticipantInfo {
+                            user_id: peer_id,
+                            is_muted,
+                            is_deafened,
+                            has_video: peer_has_video,
+                            audio_mid: peer_mids.audio.to_string(),
+                            video_mid: peer_mids.video.map(|m| m.to_string()),
+                        }
+                    })
+                    .collect();
+
+                // Send Joined event with current participants (with mid mapping)
                 drop(signal_tx.send(SignalOut::Joined {
                     room_id: channel_id,
-                    participants: existing,
+                    participants,
                 }));
 
                 // Send the SDP offer
@@ -371,7 +460,9 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
                     channel_id,
                     rtc,
                     signal_tx,
-                    recv_mid: Some(recv_mid),
+                    with_video,
+                    recv_audio_mid: Some(recv_audio_mid),
+                    recv_video_mid,
                     send_mids,
                     pending: Some(pending),
                     pending_renegotiations: Vec::new(),
@@ -380,16 +471,9 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
                     is_deafened: false,
                 });
 
-                // Notify existing participants
-                broadcast_to_room(
-                    clients,
-                    channel_id,
-                    user_id,
-                    SignalOut::ParticipantJoined { user_id },
-                );
-
-                // Re-negotiate with existing participants to add the new client's audio
-                renegotiate_for_new_peer(clients, channel_id, user_id);
+                // Re-negotiate with existing participants to add the new client's media.
+                // Each renegotiation also emits a per-recipient ParticipantJoined with mids.
+                renegotiate_for_new_peer(clients, channel_id, user_id, with_video);
             } _ => {
                 error!("Failed to create SDP offer for {}: apply returned None", user_id);
                 drop(signal_tx.send(SignalOut::Error {
@@ -497,8 +581,14 @@ fn handle_command(clients: &mut Vec<Client>, cmd: SfuCommand, ice_addrs: &[Socke
 // ── Helpers ─────────────────────────────────────────────────────────────
 
 /// Re-negotiate with all existing participants in a channel so they receive
-/// the new peer's audio.
-fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_id: Uuid) {
+/// the new peer's audio (and video if both peers have it). Also emits a
+/// per-recipient `ParticipantJoined` with the recipient-specific Mids.
+fn renegotiate_for_new_peer(
+    clients: &mut [Client],
+    channel_id: Uuid,
+    new_user_id: Uuid,
+    new_peer_with_video: bool,
+) {
     for client in clients.iter_mut() {
         if client.channel_id != channel_id || client.user_id == new_user_id {
             continue;
@@ -516,16 +606,29 @@ fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_i
         // dimpl requires handle_timeout before sdp_api().apply()
         drive_time(&mut client.rtc);
 
-        // Add a SendOnly track for the new participant's audio
+        // Add a SendOnly track for the new participant's audio (always),
+        // plus video if both peers have video enabled.
+        let want_video = new_peer_with_video && client.with_video;
         let mut change = client.rtc.sdp_api();
-        let send_mid = change.add_media(
+        let audio_mid = change.add_media(
             MediaKind::Audio,
             Direction::SendOnly,
             None,
             None,
             None,
         );
-        client.send_mids.insert(new_user_id, send_mid);
+        let video_mid = if want_video {
+            Some(change.add_media(
+                MediaKind::Video,
+                Direction::SendOnly,
+                None,
+                None,
+                None,
+            ))
+        } else {
+            None
+        };
+        client.send_mids.insert(new_user_id, PeerMids { audio: audio_mid, video: video_mid });
 
         match change.apply() {
             Some((offer, pending)) => {
@@ -534,10 +637,19 @@ fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_i
 
                 let offer_sdp = offer.to_sdp_string();
                 client.pending = Some(pending);
+
+                // Notify this recipient about the new participant with their specific Mids
+                drop(client.signal_tx.send(SignalOut::ParticipantJoined {
+                    user_id: new_user_id,
+                    has_video: new_peer_with_video,
+                    audio_mid: audio_mid.to_string(),
+                    video_mid: video_mid.map(|m| m.to_string()),
+                }));
+
                 drop(client.signal_tx.send(SignalOut::Offer { sdp: offer_sdp }));
                 debug!(
-                    "Sent re-negotiation offer to {} for new peer {}",
-                    client.user_id, new_user_id
+                    "Sent re-negotiation offer to {} for new peer {} (video={})",
+                    client.user_id, new_user_id, want_video
                 );
             }
             None => {
@@ -550,8 +662,16 @@ fn renegotiate_for_new_peer(clients: &mut [Client], channel_id: Uuid, new_user_i
     }
 }
 
-/// Re-negotiate a single client to add a `SendOnly` track for a new peer.
+/// Re-negotiate a single client to add `SendOnly` track(s) for a new peer.
+/// Also emits the deferred `ParticipantJoined` event for that target.
 fn renegotiate_single_client(clients: &mut [Client], target_user_id: Uuid, new_peer_id: Uuid, _channel_id: Uuid) {
+    // Look up the new peer's video state first (immutable borrow)
+    let new_peer_with_video = clients
+        .iter()
+        .find(|c| c.user_id == new_peer_id)
+        .map(|c| c.with_video)
+        .unwrap_or(false);
+
     if let Some(client) = clients.iter_mut().find(|c| c.user_id == target_user_id) {
         if client.pending.is_some() {
             // Still pending — re-queue
@@ -562,23 +682,43 @@ fn renegotiate_single_client(clients: &mut [Client], target_user_id: Uuid, new_p
 
         drive_time(&mut client.rtc);
 
+        let want_video = new_peer_with_video && client.with_video;
         let mut change = client.rtc.sdp_api();
-        let send_mid = change.add_media(
+        let audio_mid = change.add_media(
             MediaKind::Audio,
             Direction::SendOnly,
             None,
             None,
             None,
         );
-        client.send_mids.insert(new_peer_id, send_mid);
+        let video_mid = if want_video {
+            Some(change.add_media(
+                MediaKind::Video,
+                Direction::SendOnly,
+                None,
+                None,
+                None,
+            ))
+        } else {
+            None
+        };
+        client.send_mids.insert(new_peer_id, PeerMids { audio: audio_mid, video: video_mid });
 
         match change.apply() {
             Some((offer, pending)) => {
                 drive_time(&mut client.rtc);
                 let offer_sdp = offer.to_sdp_string();
                 client.pending = Some(pending);
+
+                drop(client.signal_tx.send(SignalOut::ParticipantJoined {
+                    user_id: new_peer_id,
+                    has_video: new_peer_with_video,
+                    audio_mid: audio_mid.to_string(),
+                    video_mid: video_mid.map(|m| m.to_string()),
+                }));
+
                 drop(client.signal_tx.send(SignalOut::Offer { sdp: offer_sdp }));
-                info!("Sent deferred re-negotiation offer to {} for peer {}", target_user_id, new_peer_id);
+                info!("Sent deferred re-negotiation offer to {} for peer {} (video={})", target_user_id, new_peer_id, want_video);
             }
             None => {
                 error!("Deferred re-negotiation failed for {}: apply returned None", target_user_id);

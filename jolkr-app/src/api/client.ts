@@ -582,9 +582,11 @@ export const markDmRead = (dmId: string, messageId: string) =>
     body: JSON.stringify({ message_id: messageId }),
   });
 
-// DM Voice Call Signaling
-export const initiateCall = (dmId: string) =>
-  request<void>(`/dms/${dmId}/call`, { method: 'POST' });
+// DM Voice/Video Call Signaling
+export const initiateCall = (dmId: string, opts?: { isVideo?: boolean }) => {
+  const qs = opts?.isVideo ? '?is_video=true' : '';
+  return request<void>(`/dms/${dmId}/call${qs}`, { method: 'POST' });
+};
 export const acceptCall = (dmId: string) =>
   request<void>(`/dms/${dmId}/call/accept`, { method: 'POST' });
 export const rejectCall = (dmId: string) =>

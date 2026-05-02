@@ -7,27 +7,31 @@ interface IncomingCall {
   dmId: string;
   callerId: string;
   callerUsername: string;
+  isVideo: boolean;
 }
 
 interface OutgoingCall {
   dmId: string;
   recipientName: string;
   recipientUserId?: string;
+  isVideo: boolean;
 }
 
 interface CallState {
   incomingCall: IncomingCall | null;
   outgoingCall: OutgoingCall | null;
   activeCallDmId: string | null;
+  /** `'video'` for active video calls, `'voice'` otherwise. `null` when no active call. */
+  activeCallType: 'voice' | 'video' | null;
 
-  startCall: (dmId: string, recipientName: string, recipientUserId?: string) => Promise<void>;
+  startCall: (dmId: string, recipientName: string, recipientUserId?: string, opts?: { video?: boolean }) => Promise<void>;
   acceptIncoming: () => Promise<void>;
   rejectIncoming: () => Promise<void>;
   cancelOutgoing: () => Promise<void>;
   endActiveCall: () => Promise<void>;
 
   // WS event handlers
-  handleRing: (dmId: string, callerId: string, callerUsername: string) => void;
+  handleRing: (dmId: string, callerId: string, callerUsername: string, isVideo: boolean) => void;
   handleAccepted: (dmId: string) => void;
   handleRejected: (dmId: string) => void;
   handleEnded: (dmId: string) => void;
@@ -49,14 +53,17 @@ export const useCallStore = create<CallState>((set, get) => ({
   incomingCall: null,
   outgoingCall: null,
   activeCallDmId: null,
+  activeCallType: null,
 
-  startCall: async (dmId, recipientName, recipientUserId) => {
+  startCall: async (dmId, recipientName, recipientUserId, opts) => {
     const { activeCallDmId, outgoingCall, incomingCall } = get();
     if (activeCallDmId || outgoingCall || incomingCall) return;
 
+    const isVideo = opts?.video ?? false;
+
     try {
-      await api.initiateCall(dmId);
-      set({ outgoingCall: { dmId, recipientName, recipientUserId } });
+      await api.initiateCall(dmId, { isVideo });
+      set({ outgoingCall: { dmId, recipientName, recipientUserId, isVideo } });
 
       // Auto-cancel after 60s if no answer
       clearRingTimer();
@@ -78,18 +85,18 @@ export const useCallStore = create<CallState>((set, get) => ({
 
     clearRingTimer();
     stopRingSound();
-    const { dmId, callerUsername } = incomingCall;
+    const { dmId, callerUsername, isVideo } = incomingCall;
     set({ incomingCall: null });
 
     try {
       await api.acceptCall(dmId);
-      set({ activeCallDmId: dmId });
+      set({ activeCallDmId: dmId, activeCallType: isVideo ? 'video' : 'voice' });
 
       // Join voice channel (dmId as channelId, serverId=null for DM calls)
-      await useVoiceStore.getState().joinChannel(dmId, null, callerUsername, incomingCall.callerId);
+      await useVoiceStore.getState().joinChannel(dmId, null, callerUsername, incomingCall.callerId, { withVideo: isVideo });
     } catch (e) {
       console.warn('Failed to accept call:', e);
-      set({ incomingCall: null, activeCallDmId: null });
+      set({ incomingCall: null, activeCallDmId: null, activeCallType: null });
     }
   },
 
@@ -130,17 +137,17 @@ export const useCallStore = create<CallState>((set, get) => ({
       console.warn('Failed to end call:', e);
     }
     await useVoiceStore.getState().leaveChannel();
-    set({ activeCallDmId: null });
+    set({ activeCallDmId: null, activeCallType: null });
   },
 
   // ── WS event handlers ──────────────────────────────────────────────
 
-  handleRing: (dmId, callerId, callerUsername) => {
+  handleRing: (dmId, callerId, callerUsername, isVideo) => {
     const { activeCallDmId, incomingCall, outgoingCall } = get();
     // Ignore if already in a call or already ringing
     if (activeCallDmId || incomingCall || outgoingCall) return;
 
-    set({ incomingCall: { dmId, callerId, callerUsername } });
+    set({ incomingCall: { dmId, callerId, callerUsername, isVideo } });
 
     // Auto-reject after 60s
     clearRingTimer();
@@ -168,13 +175,13 @@ export const useCallStore = create<CallState>((set, get) => ({
     if (!outgoingCall || outgoingCall.dmId !== dmId) return;
 
     clearRingTimer();
-    const { recipientName, recipientUserId } = outgoingCall;
-    set({ outgoingCall: null, activeCallDmId: dmId });
+    const { recipientName, recipientUserId, isVideo } = outgoingCall;
+    set({ outgoingCall: null, activeCallDmId: dmId, activeCallType: isVideo ? 'video' : 'voice' });
 
     // Join voice channel
-    useVoiceStore.getState().joinChannel(dmId, null, recipientName, recipientUserId).catch((e) => {
+    useVoiceStore.getState().joinChannel(dmId, null, recipientName, recipientUserId, { withVideo: isVideo }).catch((e) => {
       console.warn('Failed to join voice after call accepted:', e);
-      set({ activeCallDmId: null });
+      set({ activeCallDmId: null, activeCallType: null });
     });
   },
 
@@ -200,7 +207,7 @@ export const useCallStore = create<CallState>((set, get) => ({
 
     if (activeCallDmId === dmId) {
       useVoiceStore.getState().leaveChannel();
-      set({ activeCallDmId: null });
+      set({ activeCallDmId: null, activeCallType: null });
       return;
     }
     if (incomingCall?.dmId === dmId) {
@@ -218,7 +225,7 @@ export const useCallStore = create<CallState>((set, get) => ({
   reset: () => {
     clearRingTimer();
     stopRingSound();
-    set({ incomingCall: null, outgoingCall: null, activeCallDmId: null });
+    set({ incomingCall: null, outgoingCall: null, activeCallDmId: null, activeCallType: null });
   },
 }));
 
@@ -228,7 +235,7 @@ useVoiceStore.subscribe((state, prev) => {
     const { activeCallDmId } = useCallStore.getState();
     if (activeCallDmId) {
       api.endCall(activeCallDmId).catch(e => console.warn('Failed to end call:', e));
-      useCallStore.setState({ activeCallDmId: null });
+      useCallStore.setState({ activeCallDmId: null, activeCallType: null });
     }
   }
 });

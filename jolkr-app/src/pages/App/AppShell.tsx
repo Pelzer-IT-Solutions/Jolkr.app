@@ -11,6 +11,7 @@ import * as api from '../../api/client'
 import { TabBar } from '../../components/TabBar/TabBar'
 import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
 import { VoiceConnectionBar } from '../../components/VoiceConnectionBar/VoiceConnectionBar'
+import { CallWindow } from '../../components/CallWindow/CallWindow'
 import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
 import { ChatArea } from '../../components/ChatArea/ChatArea'
 import { MemberPanel } from '../../components/MemberPanel/MemberPanel'
@@ -531,6 +532,7 @@ export default function AppShell() {
       />
 
       <VoiceConnectionBar />
+      <CallWindow />
 
       <UserContextMenu
         menu={userContextMenu}
