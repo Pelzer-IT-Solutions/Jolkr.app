@@ -351,6 +351,52 @@ export function useAppInit() {
     return () => { wsClient.unsubscribe(channelId) }
   }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Real-time DM channel sync ──
+  // Without this, a new DM from a stranger only shows up after a manual refresh
+  // because the backend's MessageCreate event lands in messages store but the
+  // recipient has no entry in dmList for that channel — so it's invisible.
+  // Backend fires DmUpdate on create, reopen, member-add, group rename, leave.
+  useEffect(() => {
+    return wsClient.on((op, d) => {
+      if (op !== 'DmUpdate' && op !== 'DmCreate') return
+      const channel = d.channel as DmChannel | undefined
+      if (!channel?.id) return
+
+      setDmList(prev => {
+        const idx = prev.findIndex(c => c.id === channel.id)
+        if (idx >= 0) {
+          // Existing DM — replace with the fresh server view
+          const next = prev.slice()
+          next[idx] = channel
+          return next
+        }
+        // New DM — prepend so it's visible at the top of the list
+        return [channel, ...prev]
+      })
+
+      // Fetch user details for any unknown members so the DM can render with
+      // a name + avatar instead of "Unknown".
+      setDmUsers(prevUsers => {
+        const missing = channel.members.filter(id => !prevUsers.has(id))
+        if (missing.length === 0) return prevUsers
+        Promise.all(missing.map(id => api.getUser(id).catch(() => null)))
+          .then(fetched => {
+            setDmUsers(curr => {
+              const merged = new Map(curr)
+              fetched.forEach(u => { if (u) merged.set(u.id, u) })
+              return merged
+            })
+          })
+          .catch(console.warn)
+        // Also fetch presence so the status dot is correct.
+        api.queryPresence(missing)
+          .then(p => usePresenceStore.getState().setBulk(p))
+          .catch(console.warn)
+        return prevUsers
+      })
+    })
+  }, [])
+
   // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
   useEffect(() => {
     setServerThemes(prev => {
