@@ -23,6 +23,14 @@ pub(crate) async fn send_dm_message(
     Path(dm_id): Path<Uuid>,
     Json(body): Json<SendDmRequest>,
 ) -> Result<Json<DmMessageResponse>, AppError> {
+    // Fetch channel metadata up-front so the DmCreate fan-out below has it
+    // without an extra roundtrip. This is a pure read; if it fails we still
+    // proceed with the send and just skip the optional DmCreate fan-out.
+    let channel_row_result = DmRepo::get_channel(&state.pool, dm_id).await;
+    if let Err(ref e) = channel_row_result {
+        tracing::warn!("DmCreate fan-out skipped for channel {dm_id}: {e}");
+    }
+
     let message = DmService::send_message(&state.pool, dm_id, auth.user_id, body).await?;
 
     // Broadcast via WebSocket so both participants see the message in real-time
@@ -45,30 +53,39 @@ pub(crate) async fn send_dm_message(
     // it). Frontend dedupe is idempotent: existing entries are replaced, missing
     // ones are prepended. The event also surfaces last_message so the sidebar
     // preview is correct without a separate fetch.
-    if let (Some(members), Ok(channel_row)) = (
-        members_opt.as_ref(),
-        DmRepo::get_channel(&state.pool, dm_id).await,
-    ) {
-        let dm_info = DmChannelInfo {
-            id: channel_row.id,
-            is_group: channel_row.is_group,
-            name: channel_row.name,
-            members: members.iter().map(|m| m.user_id).collect(),
-            created_at: channel_row.created_at,
-            last_message: Some(DmLastMessage {
-                id: message.id,
-                author_id: message.author_id,
-                content: message.content.clone(),
-                nonce: message.nonce.clone(),
-                created_at: message.created_at,
-            }),
-        };
-        let dm_event = crate::ws::events::GatewayEvent::DmCreate {
-            channel: dm_info,
-        };
-        for member in members {
-            state.nats.publish_to_user(member.user_id, &dm_event).await;
+    //
+    // members_opt = None is rare but possible if get_dm_members hit a transient
+    // DB error above; log it so this regression class is observable.
+    match (members_opt.as_ref(), channel_row_result) {
+        (Some(members), Ok(channel_row)) => {
+            let dm_info = DmChannelInfo {
+                id: channel_row.id,
+                is_group: channel_row.is_group,
+                name: channel_row.name,
+                members: members.iter().map(|m| m.user_id).collect(),
+                created_at: channel_row.created_at,
+                last_message: Some(DmLastMessage {
+                    id: message.id,
+                    author_id: message.author_id,
+                    content: message.content.clone(),
+                    nonce: message.nonce.clone(),
+                    created_at: message.created_at,
+                }),
+            };
+            let dm_event = crate::ws::events::GatewayEvent::DmCreate {
+                channel: dm_info,
+            };
+            for member in members {
+                state.nats.publish_to_user(member.user_id, &dm_event).await;
+            }
         }
+        (None, _) => {
+            tracing::warn!(
+                "DmCreate fan-out skipped for channel {dm_id}: get_dm_members returned None"
+            );
+        }
+        // get_channel error path already logged above where it occurred.
+        (Some(_), Err(_)) => {}
     }
 
     // Link embed processing (fire-and-forget) for DM messages
