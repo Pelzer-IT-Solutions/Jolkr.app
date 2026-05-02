@@ -11,7 +11,7 @@
  */
 
 import type {
-  Message, Server, Channel, Member, Category, DmChannel,
+  Message, Server, Channel, Member, Category, DmChannel, GifFavorite,
 } from './types';
 
 /** Reactions on the wire have `user_ids` (snake) — see `Reaction` in api/types.ts. */
@@ -63,6 +63,9 @@ export type WsEvent =
   // ── User profile ──────────────────────────────────────────────────
   | { op: 'UserUpdate'; d: Record<string, unknown> }
   | { op: 'EmailVerified'; d: { user_id?: string } }
+
+  // ── GIF favorites (cross-session sync) ────────────────────────────
+  | { op: 'GifFavoriteUpdate'; d: { added?: GifFavorite | null; removed_gif_id?: string | null } }
   ;
 
 /**

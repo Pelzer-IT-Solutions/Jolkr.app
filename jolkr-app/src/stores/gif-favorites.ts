@@ -6,6 +6,10 @@ interface GifFavoritesState {
   loaded: boolean
   load: () => Promise<void>
   toggle: (gifId: string) => void
+  /** Apply a server-pushed favorite change from another session.
+   *  Idempotent: a no-op if the local set already reflects the change
+   *  (the optimistic update from this session may have already won). */
+  applyServerEvent: (payload: { added?: { gif_id: string } | null; removed_gif_id?: string | null }) => void
 }
 
 export const useGifFavoritesStore = create<GifFavoritesState>((set, get) => ({
@@ -41,6 +45,25 @@ export const useGifFavoritesStore = create<GifFavoritesState>((set, get) => ({
         reverted.delete(gifId)
         set({ ids: reverted })
       })
+    }
+  },
+
+  applyServerEvent: (payload) => {
+    const current = get().ids
+    if (payload.added) {
+      const newId = payload.added.gif_id
+      if (current.has(newId)) return
+      const next = new Set(current)
+      next.add(newId)
+      set({ ids: next })
+      return
+    }
+    if (payload.removed_gif_id) {
+      const rmId = payload.removed_gif_id
+      if (!current.has(rmId)) return
+      const next = new Set(current)
+      next.delete(rmId)
+      set({ ids: next })
     }
   },
 }))

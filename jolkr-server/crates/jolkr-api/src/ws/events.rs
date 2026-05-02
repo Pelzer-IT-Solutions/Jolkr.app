@@ -8,6 +8,8 @@ use jolkr_core::services::message::MessageInfo;
 use jolkr_core::services::server::ServerInfo;
 use jolkr_core::services::thread::ThreadInfo;
 
+use crate::routes::gifs::FavoriteItem;
+
 /// Events sent FROM the client TO the server over the WebSocket.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "op", content = "d")]
@@ -250,6 +252,15 @@ pub enum GatewayEvent {
     /// "verify your email" UI can refresh the user object and unblock.
     EmailVerified {
         user_id: Uuid,
+    },
+
+    /// A GIF favorite was added or removed in one of the user's sessions.
+    /// Sent only to the user's own user-channel so all their sessions sync.
+    GifFavoriteUpdate {
+        /// Populated when the change is an add. None means a remove.
+        added: Option<FavoriteItem>,
+        /// Populated when the change is a remove. None means an add.
+        removed_gif_id: Option<String>,
     },
 
     /// Generic error event.

@@ -397,6 +397,14 @@ export function useAppInit() {
         return
       }
 
+      // GifFavoriteUpdate: another session of this user added/removed a GIF
+      // favorite. Mirror the change locally so the favorites tab stays in sync
+      // without polling. Idempotent — see store.applyServerEvent.
+      if (event.op === 'GifFavoriteUpdate') {
+        useGifFavoritesStore.getState().applyServerEvent(event.d)
+        return
+      }
+
       if (event.op !== 'DmUpdate' && event.op !== 'DmCreate') return
       const channel = event.d.channel
       if (!channel?.id) return
