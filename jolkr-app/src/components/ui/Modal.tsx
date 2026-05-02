@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import s from './Modal.module.css';
 
 interface ModalProps {
   open: boolean;
@@ -25,17 +26,20 @@ export default function Modal({ open, onClose, children, className, overlayClass
 
   if (!open) return null;
 
+  const overlayCls = overlayClassName ? `${s.overlay} ${overlayClassName}` : s.overlay;
+  const contentCls = className ? `${s.content} ${className}` : s.content;
+
   return (
     <div
       ref={overlayRef}
-      className={`fixed inset-0 z-50 flex items-center justify-center animate-fade-in ${overlayClassName ?? 'bg-black/50'}`}
+      className={overlayCls}
       onClick={onClose ? (e) => { if (e.target === overlayRef.current) onClose(); } : undefined}
     >
       <div
         ref={contentRef}
         role="dialog"
         aria-modal="true"
-        className={`bg-sidebar rounded-3xl border border-divider shadow-popup animate-modal-scale max-h-[85vh] overflow-y-auto ${className ?? ''}`}
+        className={contentCls}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

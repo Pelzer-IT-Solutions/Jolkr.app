@@ -47,18 +47,18 @@ marked.use({
     },
     strong({ tokens }) {
       const body = this.parser.parseInline(tokens);
-      return `<strong class="font-bold">${body}</strong>`;
+      return `<strong>${body}</strong>`;
     },
     em({ tokens }) {
       const body = this.parser.parseInline(tokens);
-      return `<em class="italic">${body}</em>`;
+      return `<em>${body}</em>`;
     },
     del({ tokens }) {
       const body = this.parser.parseInline(tokens);
-      return `<del class="line-through">${body}</del>`;
+      return `<del>${body}</del>`;
     },
     codespan({ text }) {
-      return `<code class="px-1 py-0.5 bg-black/30 rounded text-sm text-teal-300 font-mono">${text}</code>`;
+      return `<code class="md-inline-code">${text}</code>`;
     },
     code({ text, lang }) {
       const raw = unescapeHtml(text);
@@ -69,8 +69,8 @@ marked.use({
         highlighted = hljs.highlightAuto(raw).value;
       }
       const safeLang = lang ? lang.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : '';
-      const langLabel = safeLang ? `<div class="text-xs text-text-tertiary">${safeLang}</div>` : '';
-      return `<pre class="bg-black/30 rounded-md p-3 my-1 overflow-x-auto">${langLabel}<code class="text-sm font-mono hljs !p-0">${highlighted}</code></pre>`;
+      const langLabel = safeLang ? `<div class="md-codelang">${safeLang}</div>` : '';
+      return `<pre class="md-codeblock">${langLabel}<code class="hljs">${highlighted}</code></pre>`;
     },
     image({ href, title }) {
       const resolved = resolveContentUrl(href ?? '');
@@ -90,11 +90,11 @@ marked.use({
     },
     heading({ tokens, depth }) {
       const body = this.parser.parseInline(tokens);
-      return `<h${depth} class="font-bold">${body}</h${depth}>`;
+      return `<h${depth}>${body}</h${depth}>`;
     },
     blockquote({ tokens }) {
       const body = this.parser.parse(tokens);
-      return `<blockquote class="border-l-4 border-text-muted/30 pl-3 my-1 text-text-secondary">${body}</blockquote>`;
+      return `<blockquote class="md-blockquote">${body}</blockquote>`;
     },
     listitem({ tokens }) {
       const body = this.parser.parse(tokens);
@@ -131,7 +131,7 @@ function highlightMentions(html: string): string {
     /(<[^>]*>)|(@\w+)/g,
     (match, tag, mention) => {
       if (tag) return tag;
-      if (mention) return `<span class="px-0.5 rounded bg-accent/20 text-accent font-medium cursor-pointer hover:underline">${mention}</span>`;
+      if (mention) return `<span class="md-mention">${mention}</span>`;
       return match;
     },
   );

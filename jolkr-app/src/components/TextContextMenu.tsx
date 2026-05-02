@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Undo2, Redo2, Scissors, Copy, ClipboardPaste, Trash2, TextSelect } from 'lucide-react';
+import s from './TextContextMenu.module.css';
 
 interface MenuPosition {
   x: number;
@@ -8,15 +9,14 @@ interface MenuPosition {
   target: HTMLInputElement | HTMLTextAreaElement;
 }
 
-// Lucide icon references for context menu items
 const icons = {
-  undo: <Undo2 className="w-4 h-4" />,
-  redo: <Redo2 className="w-4 h-4" />,
-  cut: <Scissors className="w-4 h-4" />,
-  copy: <Copy className="w-4 h-4" />,
-  paste: <ClipboardPaste className="w-4 h-4" />,
-  delete: <Trash2 className="w-4 h-4" />,
-  selectAll: <TextSelect className="w-4 h-4" />,
+  undo: <Undo2 className={s.icon} />,
+  redo: <Redo2 className={s.icon} />,
+  cut: <Scissors className={s.icon} />,
+  copy: <Copy className={s.icon} />,
+  paste: <ClipboardPaste className={s.icon} />,
+  delete: <Trash2 className={s.icon} />,
+  selectAll: <TextSelect className={s.icon} />,
 };
 
 export default function TextContextMenu() {
@@ -141,25 +141,25 @@ export default function TextContextMenu() {
   return createPortal(
       <div
         ref={menuRef}
-        className="fixed z-[1001] bg-surface border border-divider rounded-lg shadow-xl py-1 min-w-50 animate-dropdown-enter backdrop-blur-sm"
+        className={s.menu}
         style={{ left: menu.x, top: menu.y }}
         role="menu"
       >
         {items.map((item, i) =>
           item.type === 'divider' ? (
-            <div key={`divider-${i}`} className="my-1 border-t border-divider" />
+            <div key={`divider-${i}`} className={s.divider} />
           ) : (
             <button
               key={item.label}
               role="menuitem"
               disabled={item.disabled}
               onClick={item.onClick}
-              className="w-full px-3 py-1.5 text-sm text-left flex items-center gap-2.5 disabled:opacity-30 disabled:cursor-default text-text-secondary hover:bg-hover hover:text-text-primary disabled:hover:bg-transparent disabled:hover:text-text-secondary transition-colors"
+              className={s.item}
             >
-              <span className="shrink-0 opacity-70">{item.icon}</span>
-              <span className="flex-1">{item.label}</span>
+              <span className={s.iconWrap}>{item.icon}</span>
+              <span className={s.label}>{item.label}</span>
               {item.shortcut && (
-                <span className="text-xs text-text-tertiary ml-auto tracking-wide">{item.shortcut}</span>
+                <span className={s.shortcut}>{item.shortcut}</span>
               )}
             </button>
           )

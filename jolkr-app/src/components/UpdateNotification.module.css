@@ -1,0 +1,65 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: color-mix(in oklch, var(--accent) 10%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--accent) 20%, transparent);
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.label {
+  color: var(--text-strong);
+}
+
+.notes {
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 18.75rem;
+}
+
+@media (max-width: 639px) {
+  .notes { display: none; }
+}
+
+.actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error {
+  color: var(--danger-default);
+  font-size: 0.75rem;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progressBar {
+  width: 8rem;
+  height: 0.5rem;
+  background: var(--bg-loud);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 9999px;
+  transition: width 300ms ease;
+}
+
+.progressText {
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  width: 2rem;
+}

@@ -1,0 +1,43 @@
+.item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text-default);
+  transition: background var(--transition), color var(--transition);
+}
+
+.item:hover {
+  background: var(--bg-strong);
+  color: var(--text-strong);
+}
+
+.item.active {
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.item.danger {
+  color: var(--danger-default);
+}
+
+.item.danger:hover {
+  background: var(--danger-muted);
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  display: inline-flex;
+}
