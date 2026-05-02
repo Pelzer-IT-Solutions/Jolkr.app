@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
 import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
-import { useServersStore } from '../../stores/servers'
+import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
 import { useToast } from '../../components/Toast'
 import { buildInviteUrl } from '../../platform/config'
 import { orbsForHue } from '../../utils/theme'
@@ -141,8 +141,10 @@ export default function AppShell() {
   } = handlers
 
   // ── Role assignment for context menu ──
-  const serverRoles = useServersStore(s => s.roles[activeServerId]) ?? []
-  const serverMembers = useServersStore(s => s.members[activeServerId]) ?? []
+  // Use stable sentinel selectors so empty arrays share identity across renders
+  // (prevents infinite-render loops via Zustand selector returning new array per render)
+  const serverRoles = useServersStore(selectServerRoles(activeServerId))
+  const serverMembers = useServersStore(selectServerMembers(activeServerId))
   const fetchRoles = useServersStore(s => s.fetchRoles)
   const canManageRoles = !dmActive && (isServerOwner || hasPermission(myPerms, MANAGE_ROLES))
 
@@ -239,6 +241,8 @@ export default function AppShell() {
               await api.leaveServer(serverId)
               await fetchServers()
             } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              useToast.getState().show(msg, 'error')
               console.error('Leave server failed:', err)
             }
           }}
@@ -494,14 +498,26 @@ export default function AppShell() {
             fetchServers()
           }}
           onDelete={async (serverId) => {
-            await api.deleteServer(serverId)
-            setServerSettingsOpen(false)
-            await fetchServers() // safety effect handles fallback
+            try {
+              await api.deleteServer(serverId)
+              setServerSettingsOpen(false)
+              await fetchServers() // safety effect handles fallback
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Delete server failed'
+              useToast.getState().show(msg, 'error')
+              throw err
+            }
           }}
           onLeave={async (serverId) => {
-            await api.leaveServer(serverId)
-            setServerSettingsOpen(false)
-            await fetchServers() // safety effect handles fallback
+            try {
+              await api.leaveServer(serverId)
+              setServerSettingsOpen(false)
+              await fetchServers() // safety effect handles fallback
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              useToast.getState().show(msg, 'error')
+              throw err
+            }
           }}
         />
         )

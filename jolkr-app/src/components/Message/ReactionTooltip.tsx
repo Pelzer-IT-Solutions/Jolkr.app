@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { Reaction } from '../../types';
+import type { ReactionDisplay } from '../../types';
 import type { User } from '../../api/types';
 import { useAuthStore } from '../../stores/auth';
 import { useServersStore } from '../../stores/servers';
@@ -11,7 +11,7 @@ import Avatar from '../Avatar';
 import s from './ReactionTooltip.module.css';
 
 interface Props {
-  reaction: Reaction;
+  reaction: ReactionDisplay;
   children: React.ReactNode;
   serverId?: string;
   userMap?: Map<string, User>;

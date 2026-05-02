@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import * as api from '../api/client';
 import { useVoiceStore } from './voice';
 import { stopRingSound } from '../hooks/useCallEvents';
+import { useToast } from '../components/Toast';
+
+function toastErr(prefix: string, err: unknown) {
+  const m = err instanceof Error ? err.message : prefix;
+  useToast.getState().show(m, 'error');
+  console.warn(prefix + ':', err);
+}
 
 interface IncomingCall {
   dmId: string;
@@ -75,7 +82,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         }
       }, RING_TIMEOUT_MS);
     } catch (e) {
-      console.warn('Failed to initiate call:', e);
+      toastErr('Failed to initiate call', e);
     }
   },
 
@@ -95,7 +102,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       // Join voice channel (dmId as channelId, serverId=null for DM calls)
       await useVoiceStore.getState().joinChannel(dmId, null, callerUsername, incomingCall.callerId, { withVideo: isVideo });
     } catch (e) {
-      console.warn('Failed to accept call:', e);
+      toastErr('Failed to accept call', e);
       set({ incomingCall: null, activeCallDmId: null, activeCallType: null });
     }
   },
@@ -109,7 +116,8 @@ export const useCallStore = create<CallState>((set, get) => ({
     try {
       await api.rejectCall(incomingCall.dmId);
     } catch (e) {
-      console.warn('Failed to reject call:', e);
+      // Reject is best-effort — local state cleared regardless. Log only, no toast.
+      console.warn('Failed to reject call (server-side):', e);
     }
     set({ incomingCall: null });
   },
@@ -122,7 +130,8 @@ export const useCallStore = create<CallState>((set, get) => ({
     try {
       await api.endCall(outgoingCall.dmId);
     } catch (e) {
-      console.warn('Failed to cancel call:', e);
+      // Cancel is best-effort — local state cleared regardless. Log only, no toast.
+      console.warn('Failed to cancel call (server-side):', e);
     }
     set({ outgoingCall: null });
   },
@@ -134,7 +143,8 @@ export const useCallStore = create<CallState>((set, get) => ({
     try {
       await api.endCall(activeCallDmId);
     } catch (e) {
-      console.warn('Failed to end call:', e);
+      // End-call is best-effort — local state cleared regardless. Log only, no toast.
+      console.warn('Failed to end call (server-side):', e);
     }
     await useVoiceStore.getState().leaveChannel();
     set({ activeCallDmId: null, activeCallType: null });

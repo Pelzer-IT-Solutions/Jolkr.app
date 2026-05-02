@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
-import type { MemberGroup, Member } from '../../types'
+import type { MemberGroup, MemberSummary } from '../../types'
 import type { User } from '../../api/types'
 import Avatar from '../Avatar'
 import { PinnedMessagesPanel } from '../PinnedMessagesPanel/PinnedMessagesPanel'
@@ -14,9 +14,9 @@ interface Props {
   channelId: string
   isDm?: boolean
   /** Right-click on a member row → context menu. */
-  onMemberClick?: (member: Member, e: React.MouseEvent) => void
+  onMemberClick?: (member: MemberSummary, e: React.MouseEvent) => void
   /** Plain (left) click on a member row → open the profile card. */
-  onMemberOpenProfile?: (member: Member, e: React.MouseEvent) => void
+  onMemberOpenProfile?: (member: MemberSummary, e: React.MouseEvent) => void
   onUnpin?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number

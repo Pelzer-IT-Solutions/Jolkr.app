@@ -4,7 +4,7 @@ import {
   SmilePlus, CornerUpLeft, Pencil, MoreHorizontal,
   Copy, Pin, Trash2, Flag,
 } from 'lucide-react'
-import type { Message as MessageType } from '../../types'
+import type { MessageVM } from '../../types'
 import type { User, MessageEmbed } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useShiftKey } from '../../hooks/useShiftKey'
@@ -22,7 +22,7 @@ import { ReactionTooltip } from './ReactionTooltip'
 import s from './Message.module.css'
 
 interface Props {
-  message:               MessageType
+  message:               MessageVM
   onToggleReaction?:     (emoji: string) => void
   onDelete?:             () => void
   onReply?:              () => void
@@ -531,7 +531,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
 }
 
 /* ─── Icons ─── */
-function MessageAvatar({ message, onClick }: { message: MessageType; onClick?: (e: React.MouseEvent) => void }) {
+function MessageAvatar({ message, onClick }: { message: MessageVM; onClick?: (e: React.MouseEvent) => void }) {
   const avatar = (
     <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} color={message.color} />
   )

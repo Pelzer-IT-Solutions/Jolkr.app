@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, FolderPlus, Hash, Volume2, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
-import type { Server, Channel, Category, ServerTheme } from '../../types'
+import type { ServerDisplay, ChannelDisplay, CategoryDisplay, ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import { Menu, MenuItem, MenuDivider } from '../Menu'
@@ -23,8 +23,8 @@ import s from './ChannelSidebar.module.css'
 // - `positions`: new global ordering across categories + uncategorized
 // - `moves`: channels whose category_id changed (cross-category drag)
 async function persistLayout(
-  prevCats: Category[],
-  nextCats: Category[],
+  prevCats: CategoryDisplay[],
+  nextCats: CategoryDisplay[],
   allChannelIds: string[],
   persist: (
     positions: Array<{ id: string; position: number }>,
@@ -85,7 +85,7 @@ const collisionDetection: CollisionDetection = (args) => {
 }
 
 interface Props {
-  server:          Server
+  server:          ServerDisplay
   activeChannelId: string
   onSwitch:        (id: string) => void
   onCollapse:      () => void
@@ -115,8 +115,8 @@ interface Props {
 
 export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, isMobile = false, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, canEditTheme, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings, onReorderChannels }: Props) {
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
-  const [localCats,          setLocalCats]           = useState<Category[]>(server.categories)
-  const [localExtraChannels, setLocalExtraChannels]  = useState<Channel[]>([])
+  const [localCats,          setLocalCats]           = useState<CategoryDisplay[]>(server.categories)
+  const [localExtraChannels, setLocalExtraChannels]  = useState<ChannelDisplay[]>([])
   const [activeDragId,       setActiveDragId]        = useState<string | null>(null)
   const [isRevealing,        setIsRevealing]         = useState(false)
 
@@ -182,7 +182,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     if (editingCategoryId) setTimeout(() => catRenameInputRef.current?.focus(), 0)
   }, [editingCategoryId])
 
-  const channelMap: Record<string, Channel> = {
+  const channelMap: Record<string, ChannelDisplay> = {
     ...Object.fromEntries(server.channels.map(c => [c.id, c])),
     ...Object.fromEntries(localExtraChannels.map(c => [c.id, c])),
   }
@@ -198,7 +198,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   ]
   const uncategorizedIds = allChannelIds.filter(id => !categorizedSet.has(id))
 
-  function findCatFor(channelId: string, cats: Category[]): string | null {
+  function findCatFor(channelId: string, cats: CategoryDisplay[]): string | null {
     return cats.find(c => c.channels.includes(channelId))?.name ?? null
   }
 
@@ -211,7 +211,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   // ── Inline rename handlers ──
-  function startChannelRename(channel: Channel) {
+  function startChannelRename(channel: ChannelDisplay) {
     if (!canManageChannels) return
     setEditingChannelId(channel.id)
     setEditingName(channel.name)
@@ -244,7 +244,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   // ── Category rename handlers ──
-  function startCategoryRename(category: Category) {
+  function startCategoryRename(category: CategoryDisplay) {
     if (!canManageChannels) return
     // Find the actual category ID from server data
     const serverCat = server.categories.find(c => c.name === category.name)
@@ -371,7 +371,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   // ── DnD handlers (require MANAGE_CHANNELS) ──
   // Snapshot the categories at drag start so we can diff (move-between-categories)
   // against the post-drag layout when persisting.
-  const dragStartCatsRef = useRef<Category[] | null>(null)
+  const dragStartCatsRef = useRef<CategoryDisplay[] | null>(null)
   function handleDragStart({ active }: DragStartEvent) {
     if (!canManageChannels) return
     dragStartCatsRef.current = localCats
@@ -768,8 +768,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
 /* ── Sortable category wrapper ── */
 function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapsed, onToggle, activeDragId: _activeDragId, isRevealing, catStaggerIdx, chanStaggerStart, onChannelContextMenu, onFolderContextMenu, isCatEditing, editingCatName, onStartCatRename, onSaveCatRename, onCatRenameKeyDown, onCatRenameChange, catRenameInputRef, editingChannelId, editingName, onStartChannelRename, onSaveChannelRename, onRenameKeyDown, onRenameChange, renameInputRef, onOpenChannelSettings, canManageChannels, inlineCreateChannel }: {
-  cat:             Category
-  channelMap:      Record<string, Channel>
+  cat:             CategoryDisplay
+  channelMap:      Record<string, ChannelDisplay>
   activeChannelId: string
   onSwitch:        (id: string) => void
   collapsed:       boolean
@@ -789,7 +789,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
   catRenameInputRef?: React.RefObject<HTMLInputElement | null>
   editingChannelId?: string | null
   editingName?: string
-  onStartChannelRename?: (channel: Channel) => void
+  onStartChannelRename?: (channel: ChannelDisplay) => void
   onSaveChannelRename?: (channelId: string) => void
   onRenameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>, channelId: string) => void
   onRenameChange?: (value: string) => void
@@ -937,7 +937,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
 /* ── Sortable channel row wrapper ── */
 function SortableChannelRow({ id, channel, active, onClick, isRevealing, staggerIdx, onContextMenu, isEditing, editingName, onStartRename, onSaveRename, onRenameKeyDown, onRenameChange, renameInputRef, onOpenChannelSettings, canManageChannels }: {
   id:               string
-  channel:          Channel
+  channel:          ChannelDisplay
   active:           boolean
   onClick:          () => void
   isRevealing:      boolean
@@ -1010,7 +1010,7 @@ function UncategorizedZone({ children }: { children: React.ReactNode }) {
 
 /* ── Presentational channel row ── */
 function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx, onContextMenu, isEditing, editingName, onStartRename, onSaveRename, onRenameKeyDown, onRenameChange, renameInputRef }: {
-  channel:          Channel
+  channel:          ChannelDisplay
   active:           boolean
   onClick:          () => void
   isRevealing?:     boolean

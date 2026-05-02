@@ -18,7 +18,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Server } from '../../types'
+import type { ServerDisplay } from '../../types'
 import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
 import { isTauri, isMobile } from '../../platform/detect'
 import s from './TabBar.module.css'
@@ -109,8 +109,8 @@ interface UserInfo {
 }
 
 interface Props {
-  allServers:           Server[]
-  tabbedServers:        Server[]
+  allServers:           ServerDisplay[]
+  tabbedServers:        ServerDisplay[]
   activeServerId:       string
   dmActive:             boolean
   searchActive:         boolean
@@ -611,7 +611,7 @@ export function TabBar({
 
 /* ── Sortable tab wrapper ── */
 function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwitch, onClose, onOpenMenu, menuBtnRefSetter }: {
-  server:           Server
+  server:           ServerDisplay
   isActive:         boolean
   isDragging:       boolean
   isMuted:          boolean

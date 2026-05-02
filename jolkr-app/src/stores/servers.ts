@@ -290,6 +290,8 @@ export const useServersStore = create<ServersState>((set, get) => ({
 
 const EMPTY_CHANNELS: Channel[] = [];
 const EMPTY_MEMBERS: Member[] = [];
+const EMPTY_ROLES: Role[] = [];
+const EMPTY_CATEGORIES: Category[] = [];
 
 /** Selector: channels for a specific server */
 export const selectServerChannels = (serverId: string) =>
@@ -298,6 +300,14 @@ export const selectServerChannels = (serverId: string) =>
 /** Selector: members for a specific server */
 export const selectServerMembers = (serverId: string) =>
   (s: { members: Record<string, Member[]> }) => s.members[serverId] ?? EMPTY_MEMBERS;
+
+/** Selector: roles for a specific server */
+export const selectServerRoles = (serverId: string) =>
+  (s: { roles: Record<string, Role[]> }) => s.roles[serverId] ?? EMPTY_ROLES;
+
+/** Selector: categories for a specific server */
+export const selectServerCategories = (serverId: string) =>
+  (s: { categories: Record<string, Category[]> }) => s.categories[serverId] ?? EMPTY_CATEGORIES;
 
 /** Selector: current user's permissions for a server */
 export const selectMyPermissions = (serverId: string) =>

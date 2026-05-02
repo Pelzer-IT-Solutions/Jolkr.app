@@ -17,14 +17,14 @@ import type {
 import { getApiBaseUrl } from '../platform/config'
 
 import type {
-  Server as UiServer,
-  Channel as UiChannel,
-  Category as UiCategory,
-  Member as UiMember,
+  ServerDisplay,
+  ChannelDisplay,
+  CategoryDisplay,
+  MemberSummary,
   MemberGroup,
   MemberStatus,
-  Message as UiMessage,
-  Reaction,
+  MessageVM,
+  ReactionDisplay,
   ReplyRef,
   DMConversation,
   DMParticipant,
@@ -110,7 +110,7 @@ export function transformMessage(
   users: Map<string, User>,
   allMessages: Map<string, ApiMessage>,
   prevMsg?: ApiMessage | null,
-): UiMessage {
+): MessageVM {
   const author = users.get(msg.author_id) ?? msg.author
   const { color, letter, avatarUrl } = author ? userToAvatar(author) : { color: 'oklch(50% 0 0)', letter: '?', avatarUrl: null }
   const authorName = displayName(author)
@@ -133,7 +133,7 @@ export function transformMessage(
   }
 
   // Reactions — map to UI format with userIds for tooltip
-  const reactions: Reaction[] = (msg.reactions ?? []).map(r => ({
+  const reactions: ReactionDisplay[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
     me: r.me,
@@ -168,7 +168,7 @@ export function transformMessages(
   msgs: ApiMessage[],
   users: Map<string, User>,
   isDm?: boolean,
-): UiMessage[] {
+): MessageVM[] {
   const msgMap = new Map(msgs.map(m => [m.id, m]))
   return msgs.map((msg, i) => {
     const ui = transformMessage(msg, users, msgMap, i > 0 ? msgs[i - 1] : null)
@@ -186,12 +186,12 @@ export function transformServer(
   memberGroup: MemberGroup,
   unreadCount: number,
   channelUnreads?: Record<string, number>,
-): UiServer {
+): ServerDisplay {
   // Sort categories by position
   const sortedCats = [...categories].sort((a, b) => a.position - b.position)
 
   // Build UI categories (name + channel ID list)
-  const uiCategories: UiCategory[] = sortedCats.map(cat => ({
+  const uiCategories: CategoryDisplay[] = sortedCats.map(cat => ({
     id: cat.id,
     name: cat.name,
     channels: channels
@@ -212,7 +212,7 @@ export function transformServer(
   }
 
   // Build UI channels
-  const uiChannels: UiChannel[] = channels
+  const uiChannels: ChannelDisplay[] = channels
     .sort((a, b) => a.position - b.position)
     .map(ch => ({
       id: ch.id,
@@ -244,8 +244,8 @@ export function transformMemberGroup(
   users: Map<string, User>,
   presences: Map<string, string>,
 ): MemberGroup {
-  const online: UiMember[] = []
-  const offline: UiMember[] = []
+  const online: MemberSummary[] = []
+  const offline: MemberSummary[] = []
 
   for (const member of members) {
     const user = member.user ?? users.get(member.user_id)
@@ -253,7 +253,7 @@ export function transformMemberGroup(
 
     const status = toMemberStatus(presences.get(user.id) ?? user.status)
     const { color, letter, avatarUrl } = userToAvatar(user)
-    const uiMember: UiMember = {
+    const uiMember: MemberSummary = {
       name: member.nickname || displayName(user),
       status,
       color,

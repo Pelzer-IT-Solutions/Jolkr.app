@@ -5,7 +5,7 @@ import {
   Paperclip, ImagePlay, SendHorizontal,
   Bold, Italic, Strikethrough, Code, Pin,
 } from 'lucide-react'
-import type { Channel, DMConversation, Message as MessageType, ReplyRef } from '../../types'
+import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { Message } from '../Message/Message'
@@ -24,8 +24,8 @@ export interface MentionableUser {
 }
 
 interface Props {
-  channel:            Channel
-  messages:           MessageType[]
+  channel:            ChannelDisplay
+  messages:           MessageVM[]
   sidebarCollapsed:   boolean
   rightPanelMode:     'members' | 'pinned' | 'threads' | null
   onExpandSidebar:    () => void
@@ -65,7 +65,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   // System channels are read-only; also hide composer if user lacks SEND_MESSAGES
   const isReadOnly = readOnly || channel.is_system || !canSendMessages
 
-  const [replyingTo,  setReplyingTo]  = useState<MessageType | null>(null)
+  const [replyingTo,  setReplyingTo]  = useState<MessageVM | null>(null)
   const [isRevealing, setIsRevealing] = useState(false)
 
   // Emoji autocomplete state
