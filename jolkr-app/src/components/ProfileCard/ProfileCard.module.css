@@ -1,0 +1,224 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  background: transparent;
+}
+
+.card {
+  position: fixed;
+  z-index: 951;
+  width: 19rem;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.875rem;
+  box-shadow: var(--shadow-elevation-large);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: cardIn 160ms var(--ease-out-quart) both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+.banner {
+  height: 3.75rem;
+  flex-shrink: 0;
+  /* `background` is supplied inline via banner_color from the user's profile theme */
+}
+
+.avatarWrap {
+  margin: -2.25rem 0 0 1rem;
+  padding: 0.25rem;
+  background: var(--bg-loud);
+  border-radius: 50%;
+  width: fit-content;
+  position: relative;
+  z-index: 1;
+}
+
+.body {
+  padding: 0.5rem 1rem 0.875rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.nameBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.displayName {
+  color: var(--text-strong);
+  line-height: 1.15;
+  word-break: break-word;
+}
+.handle {
+  color: var(--text-muted);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+}
+.statusDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
+}
+.status_online  { background: var(--success-default); }
+.status_idle    { background: oklch(75% 0.15 90); }
+.status_dnd     { background: var(--danger-default); }
+.status_offline { background: var(--text-faint); }
+.statusLabel { color: var(--text-muted); }
+
+.customStatus {
+  margin-top: 0.25rem;
+  color: var(--text-default);
+  font-style: italic;
+  word-break: break-word;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-muted);
+  margin: 0.75rem 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+.section:last-child { margin-bottom: 0; }
+
+.sectionLabel {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin: 0;
+}
+
+.bio {
+  color: var(--text-default);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 8rem;
+  overflow-y: auto;
+}
+
+.dim { color: var(--text-muted); }
+
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: transparent;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.sectionToggle:hover { color: var(--text-default); }
+.chevron       { transition: transform var(--transition); }
+.chevronOpen   { transition: transform var(--transition); transform: rotate(180deg); }
+
+.safetyNumber {
+  margin-top: 0.25rem;
+  padding: 0.5rem;
+  background: var(--bg-deep);
+  border-radius: 0.375rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  color: var(--text-default);
+  user-select: all;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 8rem;
+  overflow-y: auto;
+}
+
+.actions {
+  padding: 0.75rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  border-top: 1px solid var(--border-muted);
+  background: var(--bg-default, var(--bg-loud));
+  flex-shrink: 0;
+}
+
+.errorMsg {
+  color: var(--danger-default);
+  background: var(--danger-muted);
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--bg-dark-default);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: background-color var(--transition), filter var(--transition);
+}
+.btn:hover:not(:disabled) { background: var(--bg-dark-hover, oklch(28% 0 0)); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnPrimary {
+  background: var(--accent);
+  color: #fff;
+}
+.btnPrimary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+
+.btnDanger {
+  background: var(--danger-muted);
+  color: var(--danger-default);
+}
+.btnDanger:hover:not(:disabled) { background: var(--danger-muted); filter: brightness(1.08); }
+
+.btnDangerSubtle {
+  background: transparent;
+  color: var(--danger-default);
+  opacity: 0.85;
+}
+.btnDangerSubtle:hover:not(:disabled) {
+  background: var(--danger-muted);
+  opacity: 1;
+}
+
+.statusInline {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 0.375rem;
+}
+.statusBlocked { color: var(--danger-default); }
+
+.loadingBody {
+  padding: 1.5rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.875rem;
+}

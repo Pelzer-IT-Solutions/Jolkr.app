@@ -43,6 +43,8 @@ interface Props {
   readOnly?:          boolean
   typingUsers?:       string[]
   onPinMessage?:      (msgId: string) => void
+  /** Click on a message author's avatar/name → open profile card. */
+  onOpenAuthorProfile?: (authorId: string, e: React.MouseEvent) => void
   hasPinnedMessages?: boolean
   hasThreads?:        boolean
   serverId?:          string
@@ -54,7 +56,7 @@ interface Props {
   canAttachFiles?:    boolean
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false }: Props) {
   const listRef    = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<RichInputHandle>(null)
   const contentRef = useRef('')
@@ -534,6 +536,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       onEdit={readOnly || channel.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
                       onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
                       onPin={() => onPinMessage?.(msg.id)}
+                      onOpenAuthorProfile={onOpenAuthorProfile}
                       isDm={isDm}
                       serverId={isDm ? undefined : serverId}
                       userMap={userMap}
