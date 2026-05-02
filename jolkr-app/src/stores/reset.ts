@@ -6,6 +6,9 @@ import { useCallStore } from './call';
 import { useDmReadsStore } from './dm-reads';
 import { useTypingStore } from './typing';
 import { useGifFavoritesStore } from './gif-favorites';
+import { useVoiceStore } from './voice';
+import { useContextMenuStore } from './context-menu';
+import { useToast } from '../components/Toast';
 
 /** Reset all stores to initial state — call on logout to prevent stale data on re-login */
 export function resetAllStores() {
@@ -16,5 +19,8 @@ export function resetAllStores() {
   useCallStore.getState().reset();
   useDmReadsStore.getState().reset();
   useTypingStore.getState().reset();
+  useVoiceStore.getState().reset();
   useGifFavoritesStore.setState({ ids: new Set(), loaded: false });
+  useContextMenuStore.getState().close();
+  useToast.getState().clear();
 }

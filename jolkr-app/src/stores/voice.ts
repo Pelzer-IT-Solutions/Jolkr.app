@@ -29,6 +29,8 @@ interface VoiceState {
   toggleCamera: () => void;
   switchCamera: () => Promise<void>;
   clearError: () => void;
+  /** Reset voice state (logout, store reset). Tears down VoiceService singleton too. */
+  reset: () => void;
 }
 
 let _voiceService: VoiceService | null = null;
@@ -208,6 +210,30 @@ export const useVoiceStore = create<VoiceState>((set) => ({
 
   clearError: () => {
     set({ error: null });
+  },
+
+  reset: () => {
+    // Best-effort tear down active call; ignore errors during logout.
+    if (_voiceService) {
+      _voiceService.leaveChannel().catch(() => { /* noop */ });
+      _voiceService = null;
+    }
+    set({
+      connectionState: 'disconnected',
+      channelId: null,
+      serverId: null,
+      channelName: null,
+      callType: null,
+      isMuted: false,
+      isDeafened: false,
+      isCameraOn: false,
+      isCameraUnavailable: false,
+      cameraFacing: 'user',
+      localVideoStream: null,
+      remoteVideoStreams: new Map(),
+      participants: [],
+      error: null,
+    });
   },
 }));
 
