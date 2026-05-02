@@ -1,1 +1,0 @@
-export { ChannelPermissions } from './ChannelPermissions'
