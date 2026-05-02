@@ -175,6 +175,11 @@ impl DmService {
         }
 
         let channel = DmRepo::get_or_create_dm(pool, caller_id, target_user_id).await?;
+        // Clear `closed_at` for any soft-closed members so a reopened DM
+        // reappears in their list immediately. Without this, `list_dms`
+        // filters the channel out for the caller and the new conversation
+        // never shows up on the initiator's side.
+        DmRepo::reopen_dm(pool, channel.id).await.ok();
         let members = DmRepo::get_dm_members(pool, channel.id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 

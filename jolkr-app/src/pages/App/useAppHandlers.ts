@@ -420,8 +420,11 @@ export function useAppHandlers(
         const foundUser = found.find(u => u.username === name || u.display_name === name)
         if (foundUser) {
           const dm = await api.openDm(foundUser.id)
-          const dms = await api.getDms()
-          setDmList(dms)
+          // Merge the new DM into the local list. Don't refetch the full list
+          // here — the WS DmUpdate event also lands at this session and the
+          // dispatcher dedupes by id, so a wholesale `setDmList(getDms())`
+          // would race the WS handler and risk wiping a freshly-arrived entry.
+          setDmList(prev => prev.some(d => d.id === dm.id) ? prev : [dm, ...prev])
           // Add all DM members to user map so names resolve immediately
           setDmUsers(prev => {
             const next = new Map(prev)
