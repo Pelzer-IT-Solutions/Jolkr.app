@@ -358,7 +358,7 @@ export default function AppShell() {
 
               {showRight && (dmActive ? (
                 <DMInfoPanel
-                  visible={!rightPanelHidden}
+                  open={!rightPanelHidden}
                   dmId={activeDmId}
                   onUnpin={handleUnpinMessage}
                   users={userMap}
@@ -403,7 +403,7 @@ export default function AppShell() {
           </div>
 
           <NotificationsPanel
-            visible={notificationsActive}
+            open={notificationsActive}
             onNavigate={(serverId, channelId) => {
               setDmActive(false)
               if (!tabbedIds.includes(serverId)) {
@@ -453,7 +453,7 @@ export default function AppShell() {
       )}
 
       <FriendsPanel
-        isOpen={friendsPanelOpen}
+        open={friendsPanelOpen}
         onClose={() => setFriendsPanelOpen(false)}
         onStartDM={async (userId) => {
           const dm = await api.openDm(userId)
@@ -543,7 +543,7 @@ export default function AppShell() {
       })()}
 
       <ReportModal
-        isOpen={reportTarget !== null}
+        open={reportTarget !== null}
         onClose={() => setReportTarget(null)}
         user={reportTarget}
       />

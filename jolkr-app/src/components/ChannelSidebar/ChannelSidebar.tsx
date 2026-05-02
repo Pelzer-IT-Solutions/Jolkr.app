@@ -643,14 +643,14 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       </DndContext>
 
       {/* ── Add / empty-space menu ── */}
-      <Menu isOpen={contextMenu !== null} position={contextMenu ?? { x: 0, y: 0 }} onClose={() => setContextMenu(null)}>
+      <Menu open={contextMenu !== null} position={contextMenu ?? { x: 0, y: 0 }} onClose={() => setContextMenu(null)}>
         <MenuItem icon={<FolderPlus size={13} strokeWidth={1.5} />} label="New Folder" onClick={() => startCreating({ type: 'folder' })} />
         <MenuItem icon={<Hash size={13} strokeWidth={1.5} />} label="New Text Channel" onClick={() => startCreating({ type: 'channel', kind: 'text' })} />
         <MenuItem icon={<Volume2 size={13} strokeWidth={1.5} />} label="New Voice Channel" onClick={() => startCreating({ type: 'channel', kind: 'voice' })} />
       </Menu>
 
       {/* ── Channel context menu ── */}
-      <Menu isOpen={channelContextMenu !== null} position={channelContextMenu ?? { x: 0, y: 0 }} onClose={() => setChannelContextMenu(null)}>
+      <Menu open={channelContextMenu !== null} position={channelContextMenu ?? { x: 0, y: 0 }} onClose={() => setChannelContextMenu(null)}>
         {onOpenChannelSettings && channelContextMenu && (
           <MenuItem
             icon={<Settings size={13} strokeWidth={1.5} />}
@@ -701,7 +701,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       </Menu>
 
       {/* ── Category/folder context menu ── */}
-      <Menu isOpen={categoryContextMenu !== null} position={categoryContextMenu ?? { x: 0, y: 0 }} onClose={() => setCategoryContextMenu(null)}>
+      <Menu open={categoryContextMenu !== null} position={categoryContextMenu ?? { x: 0, y: 0 }} onClose={() => setCategoryContextMenu(null)}>
         {canManageChannels && categoryContextMenu && onCreateChannel && (() => {
           const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
           if (!category) return null

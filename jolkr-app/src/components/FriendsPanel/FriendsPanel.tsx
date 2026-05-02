@@ -26,7 +26,7 @@ interface Friend {
 }
 
 interface Props {
-  isOpen: boolean
+  open: boolean
   onClose: () => void
   onStartDM?: (userId: string) => void
   onAcceptRequest?: (requestId: string) => void
@@ -56,7 +56,7 @@ function liveStatus(raw: string | undefined): MemberStatus {
 }
 
 export function FriendsPanel({
-  isOpen,
+  open,
   onClose,
   onStartDM,
   onAcceptRequest,
@@ -100,16 +100,16 @@ export function FriendsPanel({
 
   // Refresh whenever the panel opens
   useEffect(() => {
-    if (!isOpen) return
+    if (!open) return
     refresh()
-  }, [isOpen, refresh])
+  }, [open, refresh])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!open) return
     function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [isOpen, onClose])
+  }, [open, onClose])
 
   const filteredFriends = friends.filter(f => {
     if (activeTab === 'online') return f.status !== 'offline'
@@ -151,7 +151,7 @@ export function FriendsPanel({
     onClose()
   }
 
-  if (!isOpen) return null
+  if (!open) return null
 
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>

@@ -446,7 +446,7 @@ export function TabBar({
 
       {/* ── Server tab context menu ── */}
       <Menu
-        isOpen={!!serverTabMenuOpen}
+        open={!!serverTabMenuOpen}
         position={serverTabMenuPos}
         onClose={() => setServerTabMenuOpen(null)}
         minWidth="10rem"

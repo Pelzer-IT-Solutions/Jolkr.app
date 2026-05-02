@@ -41,35 +41,35 @@ const REPORT_OPTIONS: ReportOption[] = [
 ]
 
 interface Props {
-  isOpen: boolean
+  open: boolean
   onClose: () => void
   user: MemberDisplay | null
   onSubmit?: (userId: string, reason: ReportReason, details: string) => void
 }
 
-export function ReportModal({ isOpen, onClose, user, onSubmit }: Props) {
+export function ReportModal({ open, onClose, user, onSubmit }: Props) {
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null)
   const [details, setDetails] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!open) {
       setSelectedReason(null)
       setDetails('')
       setIsSubmitting(false)
       setIsSuccess(false)
     }
-  }, [isOpen])
+  }, [open])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!open) return
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [isOpen, onClose])
+  }, [open, onClose])
 
   const handleSubmit = async () => {
     if (!user || !selectedReason) return
@@ -84,7 +84,7 @@ export function ReportModal({ isOpen, onClose, user, onSubmit }: Props) {
     setIsSuccess(true)
   }
 
-  if (!isOpen || !user) return null
+  if (!open || !user) return null
 
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>

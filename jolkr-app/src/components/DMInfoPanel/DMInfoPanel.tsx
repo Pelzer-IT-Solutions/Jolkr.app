@@ -7,7 +7,7 @@ import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './DMInfoPanel.module.css'
 
 interface Props {
-  visible: boolean
+  open: boolean
   dmId: string
   onUnpin?: (messageId: string) => void
   users?: Map<string, User>
@@ -37,14 +37,14 @@ function PinnedItem({ msg, dmId, onUnpin, users }: {
   )
 }
 
-export function DMInfoPanel({ visible, dmId, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
-  const isRevealing = useRevealAnimation(0, [visible], visible, 300)
+export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
+  const isRevealing = useRevealAnimation(0, [open], open, 300)
   const [pinned, setPinned] = useState<Message[]>([])
   const [loadingPins, setLoadingPins] = useState(false)
 
-  // Fetch pinned messages when panel becomes visible or dmId changes
+  // Fetch pinned messages when panel becomes open or dmId changes
   useEffect(() => {
-    if (!visible || !dmId) return
+    if (!open || !dmId) return
     setLoadingPins(true)
     api.getDmPinnedMessages(dmId).then(msgs => {
       const normalized = msgs.map(m => ({
@@ -53,7 +53,7 @@ export function DMInfoPanel({ visible, dmId, onUnpin, users, pinnedVersion, onMo
       }))
       setPinned(normalized)
     }).catch(() => setPinned([])).finally(() => setLoadingPins(false))
-  }, [visible, dmId, pinnedVersion])
+  }, [open, dmId, pinnedVersion])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)
@@ -61,7 +61,7 @@ export function DMInfoPanel({ visible, dmId, onUnpin, users, pinnedVersion, onMo
   }
 
   return (
-    <aside className={`${s.panel} ${!visible ? s.hidden : ''}`}>
+    <aside className={`${s.panel} ${!open ? s.hidden : ''}`}>
       <div className={s.header}>
         {onMobileClose && (
           <button className={s.backBtn} title="Back to chat" onClick={onMobileClose}>
