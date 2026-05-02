@@ -125,20 +125,12 @@ pub(crate) async fn reject_call(
     }
     state.nats.publish_to_user(auth.user_id, &event).await;
 
-    // Tell the rejecting user's other sessions they're no longer being rung,
-    // so any sibling-shown "On a call" indicator (set speculatively, etc.)
-    // gets cleared. Reject never enters a call, so dm_id is None.
-    state
-        .nats
-        .publish_to_user(
-            auth.user_id,
-            &crate::ws::events::GatewayEvent::UserCallPresence {
-                dm_id: None,
-                is_video: None,
-            },
-        )
-        .await;
-
+    // NOTE: reject does not affect call presence — siblings learn ring is
+    // over via the DmCallReject event above. Emitting UserCallPresence
+    // { dm_id: None } here would race with an Accept on a sibling device:
+    // if device A accepts and device B then rejects the same ring, the
+    // None emit would clear A's "On a call" pill while A is still in the
+    // call.
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
