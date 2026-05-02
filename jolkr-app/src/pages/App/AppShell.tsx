@@ -88,6 +88,7 @@ export default function AppShell() {
   const showLeft  = !isMobile || activeMobilePane === 'left'
   const showChat  = !isMobile || activeMobilePane === 'chat'
   const showRight = !isMobile || activeMobilePane === 'right'
+  const isEmptyState = !dmActive && !activeServer
 
   const handleExpandSidebar = useCallback(() => {
     if (isMobile) setActiveMobilePane('left')
@@ -252,153 +253,157 @@ export default function AppShell() {
         <div className={s.contentRow}>
           <div className={s.shell}>
             <div className={s.workspace}>
-              {showLeft && (!dmActive && !activeServer ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', opacity: 0.5 }}>
+              {isEmptyState ? (
+                <div className={s.emptyState}>
                   <div style={{ fontSize: '3rem' }}>👋</div>
                   <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
                   <p className="txt-small">Join or create a server to get started, or send a direct message.</p>
                 </div>
-              ) : dmActive ? (
-                <DMSidebar
-                  conversations={uiDmList}
-                  activeId={activeDmId}
-                  onSelect={handleSelectDmMobile}
-                  onNewMessage={() => setNewDmOpen(true)}
-                  onOpenFriends={() => setFriendsPanelOpen(true)}
-                  onConversationContextMenu={(conv, e) => {
-                    // Group DMs don't have a single "other user" to target — skip.
-                    if (conv.type !== 'direct') return
-                    const p = conv.participants[0]
-                    if (!p?.userId) return
-                    setUserContextMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      user: {
-                        user_id: p.userId,
-                        username: p.name,
-                        display_name: p.name,
-                        status: p.status,
-                        color: p.color,
-                        letter: p.letter,
-                        avatar_url: p.avatarUrl,
-                      },
-                      // Carry the DM id so the "Close DM" handler knows what to close.
-                      dmId: conv.id,
-                    })
-                  }}
-                  collapsed={sidebarCollapsedForChannelSidebar}
-                  onCollapse={handleCollapseSidebar}
-                  isMobile={isMobile}
-                />
-              ) : activeServer ? (
-                <ChannelSidebar
-                  server={activeServer}
-                  activeChannelId={activeChannelId}
-                  onSwitch={handleSwitchChannelMobile}
-                  onCollapse={handleCollapseSidebar}
-                  collapsed={sidebarCollapsedForChannelSidebar}
-                  isMobile={isMobile}
-                  theme={activeTheme}
-                  onThemeChange={handleThemeChange}
-                  isDark={isDark}
-                  colorPref={colorPref}
-                  onSetColorPref={setColorPref}
-                  onOpenSettings={canAccessSettings ? () => setServerSettingsOpen(true) : undefined}
-                  canManageChannels={canManageChannels}
-                  canEditTheme={canEditTheme}
-                  onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
-                  onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
-                  onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
-                  onDeleteCategory={canManageChannels ? handleDeleteCategory : undefined}
-                  onRenameChannel={canManageChannels ? handleRenameChannel : undefined}
-                  onRenameCategory={canManageChannels ? handleRenameCategory : undefined}
-                  onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
-                  onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
-                  onReorderChannels={canManageChannels ? handleReorderChannels : undefined}
-                />
-              ) : null)}
+              ) : (
+                <>
+                  {showLeft && (dmActive ? (
+                    <DMSidebar
+                      conversations={uiDmList}
+                      activeId={activeDmId}
+                      onSelect={handleSelectDmMobile}
+                      onNewMessage={() => setNewDmOpen(true)}
+                      onOpenFriends={() => setFriendsPanelOpen(true)}
+                      onConversationContextMenu={(conv, e) => {
+                        // Group DMs don't have a single "other user" to target — skip.
+                        if (conv.type !== 'direct') return
+                        const p = conv.participants[0]
+                        if (!p?.userId) return
+                        setUserContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          user: {
+                            user_id: p.userId,
+                            username: p.name,
+                            display_name: p.name,
+                            status: p.status,
+                            color: p.color,
+                            letter: p.letter,
+                            avatar_url: p.avatarUrl,
+                          },
+                          // Carry the DM id so the "Close DM" handler knows what to close.
+                          dmId: conv.id,
+                        })
+                      }}
+                      collapsed={sidebarCollapsedForChannelSidebar}
+                      onCollapse={handleCollapseSidebar}
+                      isMobile={isMobile}
+                    />
+                  ) : activeServer ? (
+                    <ChannelSidebar
+                      server={activeServer}
+                      activeChannelId={activeChannelId}
+                      onSwitch={handleSwitchChannelMobile}
+                      onCollapse={handleCollapseSidebar}
+                      collapsed={sidebarCollapsedForChannelSidebar}
+                      isMobile={isMobile}
+                      theme={activeTheme}
+                      onThemeChange={handleThemeChange}
+                      isDark={isDark}
+                      colorPref={colorPref}
+                      onSetColorPref={setColorPref}
+                      onOpenSettings={canAccessSettings ? () => setServerSettingsOpen(true) : undefined}
+                      canManageChannels={canManageChannels}
+                      canEditTheme={canEditTheme}
+                      onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
+                      onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
+                      onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
+                      onDeleteCategory={canManageChannels ? handleDeleteCategory : undefined}
+                      onRenameChannel={canManageChannels ? handleRenameChannel : undefined}
+                      onRenameCategory={canManageChannels ? handleRenameCategory : undefined}
+                      onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
+                      onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
+                      onReorderChannels={canManageChannels ? handleReorderChannels : undefined}
+                    />
+                  ) : null)}
 
-              {showChat && <ChatArea
-                channel={activeChannel}
-                messages={displayMessages}
-                sidebarCollapsed={sidebarCollapsedForChatHeader}
-                rightPanelMode={effectiveRightMode}
-                onExpandSidebar={handleExpandSidebar}
-                onSetRightPanelMode={handleSetRightPanelMode}
-                onSend={handleSend}
-                onToggleReaction={handleToggleReaction}
-                onDeleteMessage={handleDeleteMessage}
-                onEditMessage={handleEditMessage}
-                isDm={dmActive}
-                dmConversation={dmActive ? activeDmConv : undefined}
-                animationKey={chatAnimKey}
-                onTyping={handleTyping}
-                typingUsers={typingUsers}
-                hasPinnedMessages={pinnedCount > 0}
-                hasThreads={threadsCount > 0}
-                serverId={dmActive ? undefined : activeServerId}
-                userMap={userMap}
-                onLoadOlder={() => {
-                  const { fetchOlder, loadingOlder } = useMessagesStore.getState()
-                  const channelId = dmActive ? activeDmId : activeChannelId
-                  if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
-                }}
-                hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
-                readOnly={isDmWithSystemUser}
-                onPinMessage={handlePinMessage}
-                onOpenAuthorProfile={(authorId, e) => {
-                  setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
-                }}
-                mentionableUsers={mentionableUsers}
-                canManageMessages={canManageMessages}
-                canAddReactions={canAddReactions}
-                canSendMessages={canSendMessages}
-                canAttachFiles={canAttachFiles}
-              />}
+                  {showChat && <ChatArea
+                    channel={activeChannel}
+                    messages={displayMessages}
+                    sidebarCollapsed={sidebarCollapsedForChatHeader}
+                    rightPanelMode={effectiveRightMode}
+                    onExpandSidebar={handleExpandSidebar}
+                    onSetRightPanelMode={handleSetRightPanelMode}
+                    onSend={handleSend}
+                    onToggleReaction={handleToggleReaction}
+                    onDeleteMessage={handleDeleteMessage}
+                    onEditMessage={handleEditMessage}
+                    isDm={dmActive}
+                    dmConversation={dmActive ? activeDmConv : undefined}
+                    animationKey={chatAnimKey}
+                    onTyping={handleTyping}
+                    typingUsers={typingUsers}
+                    hasPinnedMessages={pinnedCount > 0}
+                    hasThreads={threadsCount > 0}
+                    serverId={dmActive ? undefined : activeServerId}
+                    userMap={userMap}
+                    onLoadOlder={() => {
+                      const { fetchOlder, loadingOlder } = useMessagesStore.getState()
+                      const channelId = dmActive ? activeDmId : activeChannelId
+                      if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
+                    }}
+                    hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
+                    readOnly={isDmWithSystemUser}
+                    onPinMessage={handlePinMessage}
+                    onOpenAuthorProfile={(authorId, e) => {
+                      setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
+                    }}
+                    mentionableUsers={mentionableUsers}
+                    canManageMessages={canManageMessages}
+                    canAddReactions={canAddReactions}
+                    canSendMessages={canSendMessages}
+                    canAttachFiles={canAttachFiles}
+                  />}
 
-              {showRight && (dmActive ? (
-                <DMInfoPanel
-                  open={!rightPanelHidden}
-                  dmId={activeDmId}
-                  onUnpin={handleUnpinMessage}
-                  users={userMap}
-                  pinnedVersion={pinnedVersion}
-                  onMobileClose={isMobile ? mobileBackToChat : undefined}
-                />
-              ) : activeServer ? (
-                <MemberPanel
-                  members={activeServer.members}
-                  mode={effectiveRightMode}
-                  serverId={activeServerId}
-                  channelId={activeChannelId}
-                  isDm={false}
-                  onMemberClick={(member, e) => {
-                    if (!member.userId) return
-                    const u = userMap.get(member.userId)
-                    setUserContextMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      user: {
-                        user_id: member.userId,
-                        username: u?.username ?? member.name,
-                        display_name: u?.display_name ?? member.name,
-                        status: member.status,
-                        color: member.color,
-                        letter: member.letter,
-                        avatar_url: member.avatarUrl,
-                      },
-                    })
-                  }}
-                  onMemberOpenProfile={(member, e) => {
-                    if (!member.userId) return
-                    setProfileCard({ userId: member.userId, x: e.clientX, y: e.clientY })
-                  }}
-                  onUnpin={handleUnpinMessage}
-                  users={userMap}
-                  pinnedVersion={pinnedVersion}
-                  onMobileClose={isMobile ? mobileBackToChat : undefined}
-                />
-              ) : null)}
+                  {showRight && (dmActive ? (
+                    <DMInfoPanel
+                      open={!rightPanelHidden}
+                      dmId={activeDmId}
+                      onUnpin={handleUnpinMessage}
+                      users={userMap}
+                      pinnedVersion={pinnedVersion}
+                      onMobileClose={isMobile ? mobileBackToChat : undefined}
+                    />
+                  ) : activeServer ? (
+                    <MemberPanel
+                      members={activeServer.members}
+                      mode={effectiveRightMode}
+                      serverId={activeServerId}
+                      channelId={activeChannelId}
+                      isDm={false}
+                      onMemberClick={(member, e) => {
+                        if (!member.userId) return
+                        const u = userMap.get(member.userId)
+                        setUserContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          user: {
+                            user_id: member.userId,
+                            username: u?.username ?? member.name,
+                            display_name: u?.display_name ?? member.name,
+                            status: member.status,
+                            color: member.color,
+                            letter: member.letter,
+                            avatar_url: member.avatarUrl,
+                          },
+                        })
+                      }}
+                      onMemberOpenProfile={(member, e) => {
+                        if (!member.userId) return
+                        setProfileCard({ userId: member.userId, x: e.clientX, y: e.clientY })
+                      }}
+                      onUnpin={handleUnpinMessage}
+                      users={userMap}
+                      pinnedVersion={pinnedVersion}
+                      onMobileClose={isMobile ? mobileBackToChat : undefined}
+                    />
+                  ) : null)}
+                </>
+              )}
             </div>
           </div>
 

@@ -54,6 +54,19 @@
   overflow: hidden;
 }
 
+/* Full-width centered welcome shown when user has no servers and no active DM.
+   Replaces the workspace split (sidebar + chat + right panel) entirely. */
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  opacity: 0.6;
+  min-height: 0;
+}
+
 /* ── Splash screen ── */
 
 .splash {
