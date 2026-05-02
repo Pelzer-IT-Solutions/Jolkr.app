@@ -692,9 +692,9 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
 
 /* ── Icons ── */
 function PlusIcon({ open }: { open: boolean }) {
-  return <Plus size={14} strokeWidth={1.5} style={{ transition: 'transform 200ms ease', transform: open ? 'rotate(45deg)' : 'none' }} />
+  return <Plus size={18} strokeWidth={1.5} style={{ transition: 'transform 200ms ease', transform: open ? 'rotate(45deg)' : 'none' }} />
 }
 function SmallPlusIcon() { return <Plus          size={10} strokeWidth={1.75} /> }
-function DmIcon()        { return <MessagesSquare size={14} strokeWidth={1.5} /> }
-function SearchIcon()    { return <Search        size={14} strokeWidth={1.5} /> }
-function BellIcon()      { return <Bell          size={14} strokeWidth={1.5} /> }
+function DmIcon()        { return <MessagesSquare size={18} strokeWidth={1.5} /> }
+function SearchIcon()    { return <Search        size={18} strokeWidth={1.5} /> }
+function BellIcon()      { return <Bell          size={18} strokeWidth={1.5} /> }
