@@ -9,7 +9,7 @@ import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../
 import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { Message } from '../Message/Message'
-import EmojiPickerPopup from '../EmojiPickerPopup'
+import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
 import GifPickerPopup from '../GifPickerPopup'
 import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
 import { RichInput, type RichInputHandle } from './RichInput'

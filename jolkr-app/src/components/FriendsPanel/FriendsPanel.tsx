@@ -6,7 +6,7 @@ import type { Friendship, User } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
 import { usePresenceStore } from '../../stores/presence'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import s from './FriendsPanel.module.css'
 
 type FriendTab = 'all' | 'online' | 'pending'

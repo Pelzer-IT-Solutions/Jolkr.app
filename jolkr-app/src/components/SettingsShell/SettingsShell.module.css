@@ -106,7 +106,7 @@
   width: 100%;
   padding: 0.5rem;
   border-radius: 0.5rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: background-color var(--transition), color var(--transition);
 }
 .navItem:hover {
@@ -160,7 +160,7 @@
 .navItem:hover .navBadge,
 .navItem.navItemActive .navBadge {
   background: var(--bg-dark-default);
-  color: var(--text-muted);
+  color: var(--text-default);
 }
 
 .navSpacer { flex: 1; }

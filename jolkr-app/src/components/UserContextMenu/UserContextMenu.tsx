@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import { VolumeX, Flag, UserPlus, Link2, CircleSlash, UserMinus, Gavel, Shield, User as UserIcon, X } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
 import type { Server as ApiServer, Role } from '../../api/types'
-import Avatar from '../Avatar'
-import ServerIconComp from '../ServerIcon'
+import Avatar from '../Avatar/Avatar'
+import ServerIconComp from '../ServerIcon/ServerIcon'
 import s from './UserContextMenu.module.css'
 
 // Extend API Server with frontend-only display fields

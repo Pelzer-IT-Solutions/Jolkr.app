@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { PhoneOff, Video, User as UserIcon } from 'lucide-react';
-import { useCallStore } from '../stores/call';
-import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useCallStore } from '../../stores/call';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import s from './CallDialogs.module.css';
 
 export default function OutgoingCallDialog() {

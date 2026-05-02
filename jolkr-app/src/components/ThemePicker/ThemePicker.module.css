@@ -198,7 +198,7 @@
 
 .presetActive    {
   border-color: var(--bg-loud);
-  box-shadow: 0 0 0 1.5px var(--text-muted);
+  box-shadow: 0 0 0 1.5px var(--text-default);
   transform: scale(1.1);
 }
 
@@ -230,7 +230,7 @@
   color: var(--text-faint);
   transition: background-color var(--transition), color var(--transition), box-shadow var(--transition);
 }
-.modeBtn:hover { color: var(--text-muted); }
+.modeBtn:hover { color: var(--text-default); }
 .modeBtn.modeBtnActive {
   background: var(--bg-shout);
   color: var(--text-strong);

@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { useClickOutside } from '../hooks/useClickOutside'
-import { useColorMode } from '../utils/colorMode'
+import { useClickOutside } from '../../hooks/useClickOutside'
+import { useColorMode } from '../../utils/colorMode'
 import s from './EmojiPickerPopup.module.css'
 
 const LazyEmojiPicker = lazy(() => import('emoji-picker-react'))

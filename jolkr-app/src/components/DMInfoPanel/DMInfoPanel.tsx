@@ -76,10 +76,10 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
           Pinned Messages
         </div>
         {loadingPins && (
-          <div className={`txt-tiny`} style={{ padding: '0.5rem 1rem', color: 'var(--text-muted)' }}>Loading...</div>
+          <div className={`txt-tiny`} style={{ padding: '0.5rem 1rem', color: 'var(--text-default)' }}>Loading...</div>
         )}
         {!loadingPins && pinned.length === 0 && (
-          <div className={`txt-tiny ${s.emptyHint}`} style={{ padding: '0.5rem 1rem', color: 'var(--text-muted)' }}>
+          <div className={`txt-tiny ${s.emptyHint}`} style={{ padding: '0.5rem 1rem', color: 'var(--text-default)' }}>
             No pinned messages yet
           </div>
         )}
@@ -90,7 +90,7 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
         <div className={`${s.sectionTitle} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}>
           Shared Files
         </div>
-        <div className={`txt-tiny`} style={{ padding: '0.5rem 1rem', color: 'var(--text-muted)' }}>
+        <div className={`txt-tiny`} style={{ padding: '0.5rem 1rem', color: 'var(--text-default)' }}>
           No shared files yet
         </div>
       </div>

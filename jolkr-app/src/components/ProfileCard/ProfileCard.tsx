@@ -6,7 +6,7 @@ import type { User } from '../../api/types';
 import { useAuthStore } from '../../stores/auth';
 import { usePresenceStore } from '../../stores/presence';
 import * as api from '../../api/client';
-import Avatar from '../Avatar';
+import Avatar from '../Avatar/Avatar';
 import { hashColor } from '../../adapters/transforms';
 import {
   lookupFriendship,

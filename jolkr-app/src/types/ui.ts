@@ -77,6 +77,20 @@ export interface ReplyRef {
   text:   string
 }
 
+/**
+ * View-model for a chat message. Mixes camelCase display fields
+ * (`author`, `color`, `letter`, `time`, `replyTo`, …) with snake_case
+ * passthrough fields (`author_id`, `channel_id`, `is_pinned`, …) for
+ * the e2ee/edit/reaction handlers that need the raw API identifiers.
+ *
+ * The two halves serve different layers: display fields are produced by
+ * `adapters/transforms.ts`, while passthrough fields are kept verbatim
+ * from the wire. A "pure" UI shape would force every consumer to
+ * re-map the API record on access, so the mix is intentional. New
+ * fields should follow the same rule:
+ *   - displayed in the UI directly  →  camelCase
+ *   - sent back to the API verbatim →  snake_case (mirror api/types.ts)
+ */
 export interface MessageVM {
   id:        string
   author:    string

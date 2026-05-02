@@ -4,11 +4,11 @@ import {
   X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, ExternalLink,
   MoreHorizontal, Copy, Link, Info, ChevronRight as ArrowRight,
 } from 'lucide-react'
-import type { Attachment } from '../api/types'
-import { useFocusTrap } from '../hooks/useFocusTrap'
-import { useAuthedFileUrl } from '../hooks/useAuthedFileUrl'
-import { rewriteStorageUrl } from '../platform/config'
-import { formatBytes } from '../utils/format'
+import type { Attachment } from '../../api/types'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
+import { rewriteStorageUrl } from '../../platform/config'
+import { formatBytes } from '../../utils/format'
 import s from './ImageLightbox.module.css'
 
 export interface LightboxImage {

@@ -11,7 +11,7 @@ import * as P from '../../utils/permissions'
 import { useAuthStore } from '../../stores/auth'
 import { buildInviteUrl } from '../../platform/config'
 import { useToast } from '../Toast'
-import ServerIcon from '../ServerIcon'
+import ServerIcon from '../ServerIcon/ServerIcon'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 
 // Extend API Server with frontend-only display fields

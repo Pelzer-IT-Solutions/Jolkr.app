@@ -63,7 +63,7 @@
   width: 100%;
   padding: 0.5rem;
   border-radius: 0.5rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: background-color var(--transition), color var(--transition);
 }
 .navItem:hover {
@@ -95,7 +95,7 @@
   width: 2rem;
   height: 2rem;
   border-radius: 0.5rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: background-color var(--transition), color var(--transition);
   z-index: 10;
 }
@@ -128,7 +128,7 @@
 
 .label {
   display: block;
-  color: var(--text-muted);
+  color: var(--text-default);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 0.5rem;
@@ -240,7 +240,7 @@
   background: var(--bg-dark-muted);
   border: 1px solid var(--border-muted);
   border-radius: 0.5rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   margin-bottom: 1.5rem;
 }
 
@@ -304,7 +304,7 @@
   gap: 0.625rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-muted);
-  color: var(--text-muted);
+  color: var(--text-default);
   cursor: pointer;
   transition: background-color var(--transition), color var(--transition);
 }
@@ -363,7 +363,7 @@
   justify-content: space-between;
   padding: 0.625rem 0.75rem;
   border-radius: 0.375rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: background-color var(--transition);
 }
 .permissionRow:hover {
@@ -379,7 +379,7 @@
   border-radius: 0.375rem;
   border: 1px solid var(--border-muted);
   background: var(--bg-dark-default);
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: all var(--transition);
 }
 .permissionToggle:hover {
@@ -446,7 +446,7 @@
   padding: 0.625rem 1rem;
   border-radius: 0.5rem;
   background: var(--bg-dark-muted);
-  color: var(--text-muted);
+  color: var(--text-default);
   font-weight: 600;
   transition: background-color var(--transition), color var(--transition);
 }

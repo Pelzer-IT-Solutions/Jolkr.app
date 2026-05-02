@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MessageEmbed } from '../api/types';
+import type { MessageEmbed } from '../../api/types';
 import s from './LinkEmbed.module.css';
 
 interface LinkEmbedProps {

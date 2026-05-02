@@ -8,7 +8,7 @@ import { useAuthStore } from '../../stores/auth'
 import { hashColor, avatarLetter } from '../../adapters/transforms'
 import { displayName } from '../../utils/format'
 import { rewriteStorageUrl } from '../../platform/config'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import s from './NewDMModal.module.css'
 
 interface Props {

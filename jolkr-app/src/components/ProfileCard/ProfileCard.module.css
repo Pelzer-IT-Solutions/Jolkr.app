@@ -60,7 +60,7 @@
   word-break: break-word;
 }
 .handle {
-  color: var(--text-muted);
+  color: var(--text-default);
 }
 
 .statusRow {
@@ -80,7 +80,7 @@
 .status_idle    { background: oklch(75% 0.15 90); }
 .status_dnd     { background: var(--danger-default); }
 .status_offline { background: var(--text-faint); }
-.statusLabel { color: var(--text-muted); }
+.statusLabel { color: var(--text-default); }
 
 .customStatus {
   margin-top: 0.25rem;
@@ -104,7 +104,7 @@
 .section:last-child { margin-bottom: 0; }
 
 .sectionLabel {
-  color: var(--text-muted);
+  color: var(--text-default);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;
@@ -119,14 +119,14 @@
   overflow-y: auto;
 }
 
-.dim { color: var(--text-muted); }
+.dim { color: var(--text-default); }
 
 .sectionToggle {
   display: flex;
   align-items: center;
   gap: 0.375rem;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-default);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;
@@ -211,14 +211,14 @@
 
 .statusInline {
   text-align: center;
-  color: var(--text-muted);
+  color: var(--text-default);
   padding: 0.375rem;
 }
 .statusBlocked { color: var(--danger-default); }
 
 .loadingBody {
   padding: 1.5rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   text-align: center;
   font-size: 0.875rem;
 }

@@ -62,7 +62,7 @@
   width: 100%;
   padding: 0.4375rem 0.5rem;
   border-radius: 0.5rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   text-align: left;
   transition: background-color var(--transition), color var(--transition);
   cursor: pointer;

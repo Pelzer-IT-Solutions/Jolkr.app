@@ -119,7 +119,7 @@ svg { display: block; flex-shrink: 0; }
 }
 
 .md-blockquote {
-  border-left: 4px solid color-mix(in oklch, var(--text-muted) 30%, transparent);
+  border-left: 4px solid color-mix(in oklch, var(--text-default) 30%, transparent);
   padding-left: 0.75rem;
   margin: 0.25rem 0;
   color: var(--text-default);

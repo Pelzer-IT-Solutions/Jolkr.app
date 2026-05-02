@@ -107,7 +107,7 @@
   color: var(--text-faint);
   transition: background-color var(--transition), color var(--transition);
 }
-.categoryHeader:hover  { background: var(--bg-dark-muted); color: var(--text-muted); }
+.categoryHeader:hover  { background: var(--bg-dark-muted); color: var(--text-default); }
 .categoryHeader:active { cursor: grabbing; }
 
 .chevron {
@@ -156,7 +156,7 @@
 
 .channelName {
   flex: 1;
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: color var(--transition);
   min-width: 0;
 }
@@ -252,7 +252,7 @@
   text-align: left;
 }
 .ctxItem:hover { background: var(--bg-dark-muted); }
-.ctxItem svg   { flex-shrink: 0; color: var(--text-muted); }
+.ctxItem svg   { flex-shrink: 0; color: var(--text-default); }
 .ctxItemDanger { color: oklch(55% 0.2 25); }
 .ctxItemDanger:hover { background: oklch(55% 0.2 25 / 0.12); }
 .ctxItemDanger svg { color: oklch(55% 0.2 25); }

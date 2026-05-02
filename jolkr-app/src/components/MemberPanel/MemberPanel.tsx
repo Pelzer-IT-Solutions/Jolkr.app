@@ -1,7 +1,7 @@
 import { ArrowLeft } from 'lucide-react'
 import type { MemberGroup, MemberSummary } from '../../types'
 import type { User } from '../../api/types'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import { PinnedMessagesPanel } from '../PinnedMessagesPanel/PinnedMessagesPanel'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'

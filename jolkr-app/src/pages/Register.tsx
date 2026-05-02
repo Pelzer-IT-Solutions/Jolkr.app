@@ -125,7 +125,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '0.375rem',
   },
   subtitle: {
-    color: 'var(--text-muted)',
+    color: 'var(--text-default)',
     textAlign: 'center',
     marginBottom: '1.5rem',
     fontSize: '0.875rem',
@@ -181,7 +181,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   footer: {
     fontSize: '0.875rem',
-    color: 'var(--text-muted)',
+    color: 'var(--text-default)',
     marginTop: '1rem',
   },
 };

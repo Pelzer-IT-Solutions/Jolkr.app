@@ -7,7 +7,7 @@ import { useServersStore } from '../../stores/servers';
 import { hashColor } from '../../adapters/transforms';
 import { displayName } from '../../utils/format';
 import { emojiToImgUrl } from '../../utils/emoji';
-import Avatar from '../Avatar';
+import Avatar from '../Avatar/Avatar';
 import s from './ReactionTooltip.module.css';
 
 interface Props {

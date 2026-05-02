@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
-import { getApiBaseUrl } from '../platform/config'
-import { useAuthStore } from '../stores/auth'
+import { getApiBaseUrl } from '../../platform/config'
+import { useAuthStore } from '../../stores/auth'
 import s from './Avatar.module.css'
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'

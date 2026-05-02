@@ -25,7 +25,7 @@ import { NotificationsPanel } from '../../components/NotificationsPanel/Notifica
 import { FriendsPanel } from '../../components/FriendsPanel'
 import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
 import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
-import { ReportModal } from '../../components/ReportModal'
+import { ReportModal } from '../../components/ReportModal/ReportModal'
 import { UserContextMenu } from '../../components/UserContextMenu'
 import { ProfileCard } from '../../components/ProfileCard/ProfileCard'
 import { invalidateFriendsCache } from '../../services/friendshipCache'

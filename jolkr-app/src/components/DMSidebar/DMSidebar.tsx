@@ -1,7 +1,7 @@
 import { SquarePen, Users, PanelLeftClose, ArrowLeft } from 'lucide-react'
 import type { DMConversation } from '../../types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import s from './DMSidebar.module.css'
 
 interface Props {

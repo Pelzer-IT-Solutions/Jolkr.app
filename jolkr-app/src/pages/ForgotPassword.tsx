@@ -7,14 +7,14 @@ const s: Record<string, React.CSSProperties> = {
   page: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-default)' },
   card: { background: 'var(--surface-raised)', borderRadius: '1.25rem', padding: '2rem', width: '26rem', maxWidth: '90vw', border: '1px solid var(--border-muted)', boxShadow: 'var(--shadow-elevation-large)' },
   title: { fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-shout)', textAlign: 'center', marginBottom: '0.375rem' },
-  subtitle: { color: 'var(--text-muted)', textAlign: 'center', marginBottom: '1.5rem', fontSize: '0.875rem' },
+  subtitle: { color: 'var(--text-default)', textAlign: 'center', marginBottom: '1.5rem', fontSize: '0.875rem' },
   error: { background: 'oklch(55% 0.2 25 / 0.1)', color: 'oklch(55% 0.2 25)', fontSize: '0.875rem', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid oklch(55% 0.2 25 / 0.2)', marginBottom: '1rem' },
   label: { display: 'flex', flexDirection: 'column', gap: '0.375rem' },
   labelText: { fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-strong)', textTransform: 'uppercase' as const, letterSpacing: '0.02em' },
   input: { background: 'var(--surface-field)', border: '1px solid var(--border-muted)', borderRadius: '0.5rem', padding: '0.625rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-default)', outline: 'none', width: '100%', boxSizing: 'border-box' as const },
   button: { background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '0.5rem', padding: '0.625rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', width: '100%', marginTop: '0.5rem' },
   link: { color: 'var(--accent)', fontSize: '0.875rem', textDecoration: 'none' },
-  footer: { fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '1rem' },
+  footer: { fontSize: '0.875rem', color: 'var(--text-default)', marginTop: '1rem' },
 };
 
 export default function ForgotPassword() {

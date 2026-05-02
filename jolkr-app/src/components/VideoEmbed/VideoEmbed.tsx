@@ -1,13 +1,13 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react';
-import type { MessageEmbed } from '../api/types';
-import type { VideoInfo } from '../utils/videoUrl';
-import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../utils/videoUrl';
-import { getApiBaseUrl } from '../platform/config';
-import { useNMPlayer } from '../hooks/useNMPlayer';
+import type { MessageEmbed } from '../../api/types';
+import type { VideoInfo } from '../../utils/videoUrl';
+import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../../utils/videoUrl';
+import { getApiBaseUrl } from '../../platform/config';
+import { useNMPlayer } from '../../hooks/useNMPlayer';
 
 const apiBase = getApiBaseUrl().replace(/\/api$/, '');
-import Spinner from './ui/Spinner';
-import { isTauri } from '../platform/detect';
+import Spinner from '../ui/Spinner';
+import { isTauri } from '../../platform/detect';
 import { Play, Pause, Volume2, VolumeX, Maximize, Video } from 'lucide-react';
 import s from './VideoEmbed.module.css';
 

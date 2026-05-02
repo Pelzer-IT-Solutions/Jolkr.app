@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { getApiBaseUrl } from '../platform/config';
+import { getApiBaseUrl } from '../../platform/config';
 import css from './ServerIcon.module.css';
 
 interface ServerIconProps {

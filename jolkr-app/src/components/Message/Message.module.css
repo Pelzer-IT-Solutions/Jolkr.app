@@ -156,7 +156,7 @@
   pointer-events: none;
 }
 
-.reactionCount { color: var(--text-muted); }
+.reactionCount { color: var(--text-default); }
 .reaction.active .reactionCount { color: var(--accent-text); }
 
 /* ─── Reply context (quoted message above text) ─── */
@@ -178,7 +178,7 @@
 
 .replyAuthor { color: var(--text-strong); }
 .replyPreview {
-  color: var(--text-muted);
+  color: var(--text-default);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -226,7 +226,7 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 0.4375rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: background-color var(--transition), color var(--transition);
 }
 .actionBtn:hover {
@@ -302,7 +302,7 @@
   text-align: left;
 }
 .menuItem:hover { background: var(--bg-dark-muted); }
-.menuItem svg   { flex-shrink: 0; color: var(--text-muted); }
+.menuItem svg   { flex-shrink: 0; color: var(--text-default); }
 
 .menuDivider {
   height: 1px;
