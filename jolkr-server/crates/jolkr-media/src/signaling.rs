@@ -29,7 +29,11 @@ pub(crate) enum VoiceClientEvent {
     /// Authenticate with a JWT access token.
     Identify { token: String },
     /// Join a voice channel.
-    Join { channel_id: Uuid },
+    Join {
+        channel_id: Uuid,
+        #[serde(default)]
+        with_video: bool,
+    },
     /// SDP answer to a server-initiated offer.
     Answer { sdp: String },
     /// ICE candidate from the client.
@@ -127,7 +131,7 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
                 }
             }
 
-            VoiceClientEvent::Join { channel_id } => {
+            VoiceClientEvent::Join { channel_id, with_video } => {
                 let uid = if let Some(id) = user_id { id } else {
                     drop(signal_tx.send(SignalOut::Error {
                         message: "Not authenticated".into(),
@@ -141,6 +145,7 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
                     user_id: uid,
                     channel_id,
                     signal_tx: signal_tx.clone(),
+                    with_video,
                 }));
             }
 

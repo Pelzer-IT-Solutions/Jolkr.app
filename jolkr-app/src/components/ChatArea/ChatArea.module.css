@@ -48,7 +48,7 @@
   box-shadow: var(--shadow-elevation-medium);
 }
 .dropHint {
-  color: var(--text-muted);
+  color: var(--text-default);
 }
 
 /* ─── Header — always full width ─── */
@@ -291,7 +291,7 @@
 .replyCardLabel strong { font-weight: 600; }
 
 .replyCardPreview {
-  color: var(--text-muted);
+  color: var(--text-default);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -529,7 +529,7 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 0.4375rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: background-color var(--transition), color var(--transition);
 }
 .fmtBtn:hover {

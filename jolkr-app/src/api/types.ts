@@ -27,11 +27,13 @@ export interface Server {
   created_at?: string | null;
 }
 
+export type ChannelKind = 'text' | 'voice' | 'category';
+
 export interface Channel {
   id: string;
   server_id: string;
   name: string;
-  kind: 'text' | 'voice' | 'category';
+  kind: ChannelKind;
   topic?: string | null;
   position: number;
   category_id?: string | null;

@@ -187,6 +187,8 @@ pub enum GatewayEvent {
         dm_id: Uuid,
         caller_id: Uuid,
         caller_username: String,
+        /// `true` if the caller is starting a video call, `false` for voice-only.
+        is_video: bool,
     },
 
     /// A DM call was accepted.
@@ -234,6 +236,13 @@ pub enum GatewayEvent {
         display_name: Option<String>,
         avatar_url: Option<String>,
         bio: Option<String>,
+    },
+
+    /// A user's email has been verified. Fired to all sessions of the user
+    /// (incl. the one that initiated the verification flow) so any pending
+    /// "verify your email" UI can refresh the user object and unblock.
+    EmailVerified {
+        user_id: Uuid,
     },
 
     /// Generic error event.

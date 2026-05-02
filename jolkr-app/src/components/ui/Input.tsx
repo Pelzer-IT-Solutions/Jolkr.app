@@ -1,4 +1,5 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
+import s from './Input.module.css';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: ReactNode;
@@ -9,35 +10,26 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helper, icon, className, id, ...props }, ref) => {
+    const wrapClass = error ? `${s.wrap} ${s.invalid}` : s.wrap;
+    const inputClass = [
+      s.input,
+      icon ? s.withIcon : '',
+      className ?? '',
+    ].filter(Boolean).join(' ');
+
     return (
-      <div className="flex flex-col gap-1">
+      <div className={s.field}>
         {label && (
-          <label htmlFor={id} className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+          <label htmlFor={id} className={s.label}>
             {label}
           </label>
         )}
-        <div className={`relative rounded-lg border bg-bg focus-within:border-border-accent transition-colors ${error ? 'border-danger' : 'border-divider'}`}>
-          {icon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">
-              {icon}
-            </div>
-          )}
-          <input
-            ref={ref}
-            id={id}
-            className={`
-              w-full bg-transparent text-text-primary text-sm rounded-lg
-              py-3 px-4 placeholder:text-text-tertiary
-              focus:outline-none
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${icon ? 'pl-10' : ''}
-              ${className ?? ''}
-            `.trim()}
-            {...props}
-          />
+        <div className={wrapClass}>
+          {icon && <div className={s.icon}>{icon}</div>}
+          <input ref={ref} id={id} className={inputClass} {...props} />
         </div>
-        {error && <span className="text-xs text-danger">{error}</span>}
-        {helper && !error && <span className="text-xs text-text-tertiary">{helper}</span>}
+        {error && <span className={s.error}>{error}</span>}
+        {helper && !error && <span className={s.helper}>{helper}</span>}
       </div>
     );
   }

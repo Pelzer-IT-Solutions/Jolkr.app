@@ -155,7 +155,7 @@
   flex-direction: column;
   gap: 0.0625rem;
 }
-.fileName { color: var(--text-muted); display: block; }
+.fileName { color: var(--text-default); display: block; }
 .fileSize  { color: var(--text-faint); }
 
 /* ── Links ── */

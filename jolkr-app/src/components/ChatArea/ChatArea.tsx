@@ -5,11 +5,11 @@ import {
   Paperclip, ImagePlay, SendHorizontal,
   Bold, Italic, Strikethrough, Code, Pin,
 } from 'lucide-react'
-import type { Channel, DMConversation, Message as MessageType, ReplyRef } from '../../types'
+import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { Message } from '../Message/Message'
-import EmojiPickerPopup from '../EmojiPickerPopup'
+import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
 import GifPickerPopup from '../GifPickerPopup'
 import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
 import { RichInput, type RichInputHandle } from './RichInput'
@@ -24,8 +24,8 @@ export interface MentionableUser {
 }
 
 interface Props {
-  channel:            Channel
-  messages:           MessageType[]
+  channel:            ChannelDisplay
+  messages:           MessageVM[]
   sidebarCollapsed:   boolean
   rightPanelMode:     'members' | 'pinned' | 'threads' | null
   onExpandSidebar:    () => void
@@ -43,6 +43,8 @@ interface Props {
   readOnly?:          boolean
   typingUsers?:       string[]
   onPinMessage?:      (msgId: string) => void
+  /** Click on a message author's avatar/name → open profile card. */
+  onOpenAuthorProfile?: (authorId: string, e: React.MouseEvent) => void
   hasPinnedMessages?: boolean
   hasThreads?:        boolean
   serverId?:          string
@@ -54,7 +56,7 @@ interface Props {
   canAttachFiles?:    boolean
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false }: Props) {
   const listRef    = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<RichInputHandle>(null)
   const contentRef = useRef('')
@@ -63,7 +65,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   // System channels are read-only; also hide composer if user lacks SEND_MESSAGES
   const isReadOnly = readOnly || channel.is_system || !canSendMessages
 
-  const [replyingTo,  setReplyingTo]  = useState<MessageType | null>(null)
+  const [replyingTo,  setReplyingTo]  = useState<MessageVM | null>(null)
   const [isRevealing, setIsRevealing] = useState(false)
 
   // Emoji autocomplete state
@@ -330,13 +332,24 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const startCall      = useCallStore((st) => st.startCall)
   const voiceState     = useVoiceStore((st) => st.connectionState)
   const inAnyCall      = !!activeCallDmId || !!outgoingCall || !!incomingCall || voiceState !== 'disconnected'
-  const callDisabled   = !isDm || !dmConversation || inAnyCall
-  const callTitle      = inAnyCall ? 'Already in a call' : 'Start voice call'
+  const callDisabled      = !isDm || !dmConversation || inAnyCall
+  const videoCallDisabled = callDisabled || isGroupDm
+  const callTitle         = inAnyCall ? 'Already in a call' : 'Start voice call'
+  const videoCallTitle    = inAnyCall
+    ? 'Already in a call'
+    : isGroupDm
+      ? 'Video calls are 1-on-1 only'
+      : 'Start video call'
 
   const handleStartCall = useCallback(() => {
     if (callDisabled || !dmConversation) return
     void startCall(dmConversation.id, dmName, recipientUserId)
   }, [callDisabled, dmConversation, dmName, recipientUserId, startCall])
+
+  const handleStartVideoCall = useCallback(() => {
+    if (videoCallDisabled || !dmConversation) return
+    void startCall(dmConversation.id, dmName, recipientUserId, { video: true })
+  }, [videoCallDisabled, dmConversation, dmName, recipientUserId, startCall])
 
   // Only treat drags that actually carry files as attachable — a regular
   // text/HTML drag (e.g. dragging a message link around) shouldn't show the
@@ -446,9 +459,10 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <CallIcon />
               </button>
               <button
-                className={`${s.iconBtn} ${s.iconBtnDisabled}`}
-                title="Video calls — coming soon"
-                disabled
+                className={`${s.iconBtn} ${videoCallDisabled ? s.iconBtnDisabled : ''}`}
+                title={videoCallTitle}
+                disabled={videoCallDisabled}
+                onClick={handleStartVideoCall}
               >
                 <VideoIcon />
               </button>
@@ -522,6 +536,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       onEdit={readOnly || channel.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
                       onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
                       onPin={() => onPinMessage?.(msg.id)}
+                      onOpenAuthorProfile={onOpenAuthorProfile}
                       isDm={isDm}
                       serverId={isDm ? undefined : serverId}
                       userMap={userMap}

@@ -1,4 +1,5 @@
 import { isTauri } from './detect';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 export interface SecureStorage {
   get(key: string): Promise<string | null>;
@@ -46,7 +47,7 @@ class TauriStorage implements SecureStorage {
    * launch. A new random password is generated per install.
    */
   private getVaultPassword(): string {
-    const VAULT_KEY = 'jolkr_vault_key';
+    const VAULT_KEY = STORAGE_KEYS.VAULT_PASSWORD;
     // Check sessionStorage first (session-scoped), then localStorage (migration)
     let pw = sessionStorage.getItem(VAULT_KEY);
     if (!pw) {

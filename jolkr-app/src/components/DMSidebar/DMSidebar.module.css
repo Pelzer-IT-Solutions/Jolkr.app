@@ -173,7 +173,7 @@
   gap: 0.0625rem;
 }
 
-.convName { color: var(--text-muted); display: block; }
+.convName { color: var(--text-default); display: block; }
 .conv:hover .convName,
 .conv.active .convName { color: var(--text-strong); }
 

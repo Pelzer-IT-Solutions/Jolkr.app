@@ -3,7 +3,6 @@ import type { User } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
-import { stopNotifications } from '../services/notifications';
 import { useVoiceStore } from './voice';
 import { resetAllStores } from './reset';
 
@@ -96,7 +95,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Leave voice channel before disconnecting
     try { await useVoiceStore.getState().leaveChannel(); } catch { /* ignore */ }
     wsClient.disconnect();
-    stopNotifications();
     try { await api.clearTokens(); } catch (e) { console.warn('clearTokens failed:', e); }
     resetE2EE().catch(console.warn);
     // Reset all stores to prevent stale data on re-login
@@ -106,8 +104,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 }));
 
 // Sync profile updates from other sessions
-wsClient.on((op, d) => {
-  if (op === 'UserUpdate') {
-    useAuthStore.getState().applyUserUpdate(d as Record<string, unknown>);
+wsClient.on((event) => {
+  if (event.op === 'UserUpdate') {
+    useAuthStore.getState().applyUserUpdate(event.d);
+  } else if (event.op === 'EmailVerified') {
+    // Backend confirmed verification — refresh the user object so
+    // /verify-email's email_verified guard navigates to the app.
+    useAuthStore.getState().loadUser().catch((e) => {
+      console.warn('loadUser after EmailVerified failed:', e);
+    });
   }
 });

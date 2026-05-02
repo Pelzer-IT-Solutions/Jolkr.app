@@ -10,6 +10,7 @@ import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { orbsForHue } from '../../utils/theme'
 import { useMessagesStore } from '../../stores/messages'
 import { useVoiceStore } from '../../stores/voice'
+import { useToast } from '../../components/Toast'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -190,10 +191,15 @@ export function useAppHandlers(
     // Check if user already reacted
     const msg = currentApiMessages.find(m => m.id === msgId)
     const existing = msg?.reactions?.find(r => r.emoji === emoji)
+    const onErr = (err: unknown) => {
+      const m = err instanceof Error ? err.message : 'Reaction failed'
+      useToast.getState().show(m, 'error')
+      console.error('Reaction toggle failed:', err)
+    }
     if (existing?.me) {
-      (dmActive ? api.removeDmReaction : api.removeReaction)(msgId, emoji).catch(console.error)
+      (dmActive ? api.removeDmReaction : api.removeReaction)(msgId, emoji).catch(onErr)
     } else {
-      (dmActive ? api.addDmReaction : api.addReaction)(msgId, emoji).catch(console.error)
+      (dmActive ? api.addDmReaction : api.addReaction)(msgId, emoji).catch(onErr)
     }
   }, [currentApiMessages, dmActive])
 
@@ -245,6 +251,8 @@ export function useAppHandlers(
       setPinnedVersion(v => v + 1)
     } catch (err) {
       console.error('Pin toggle failed:', err)
+      const m = err instanceof Error ? err.message : 'Pin/unpin failed'
+      useToast.getState().show(m, 'error')
       // Revert on failure
       const revertStore = useMessagesStore.getState()
       const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
@@ -273,6 +281,8 @@ export function useAppHandlers(
       }
     } catch (err) {
       console.error('Unpin failed:', err)
+      const m = err instanceof Error ? err.message : 'Unpin failed'
+      useToast.getState().show(m, 'error')
     }
   }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
 
@@ -298,11 +308,17 @@ export function useAppHandlers(
   }, [activeServerId])
 
   const handleDeleteChannel = useCallback(async (channelId: string) => {
-    await api.deleteChannel(channelId)
-    await fetchChannels(activeServerId)
-    if (channelId === activeChannelId) {
-      const chs = useServersStore.getState().channels[activeServerId]
-      setActiveChannelId(chs?.find(c => c.kind === 'text')?.id ?? chs?.[0]?.id ?? '')
+    try {
+      await api.deleteChannel(channelId)
+      await fetchChannels(activeServerId)
+      if (channelId === activeChannelId) {
+        const chs = useServersStore.getState().channels[activeServerId]
+        setActiveChannelId(chs?.find(c => c.kind === 'text')?.id ?? chs?.[0]?.id ?? '')
+      }
+    } catch (err) {
+      const m = err instanceof Error ? err.message : 'Delete channel failed'
+      useToast.getState().show(m, 'error')
+      throw err
     }
   }, [activeServerId, activeChannelId])
 

@@ -5,6 +5,10 @@ import './styles/globals.css'
 import './styles/scroll-fade.css'
 import App from './App'
 import { isTauri, isMobile } from './platform/detect'
+import { migrateLegacyStorageKeys } from './utils/storageKeys'
+
+// Apply one-time storage-key migrations before any other code reads localStorage.
+migrateLegacyStorageKeys()
 
 declare global {
   interface Window {

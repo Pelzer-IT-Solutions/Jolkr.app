@@ -3,10 +3,11 @@ import type {
   DmChannel, Friendship, Invite, TokenPair, Attachment,
   PreKeyBundleResponse, Role, Category, ChannelOverwrite, Thread,
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
-  GifFavorite,
+  GifFavorite, ChannelKind,
 } from './types';
 import { getApiBaseUrl } from '../platform/config';
 import { storage } from '../platform/storage';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 let apiBase = '/api';
 let accessToken: string | null = null;
@@ -19,14 +20,14 @@ let loggedOut = false;
 // Persistent logout flag — survives page refresh unlike in-memory flag
 function setLogoutFlag() {
   loggedOut = true;
-  try { localStorage.setItem('jolkr_logged_out', '1'); } catch { /* ignore */ }
+  try { localStorage.setItem(STORAGE_KEYS.LOGGED_OUT_FLAG, '1'); } catch { /* ignore */ }
 }
 function clearLogoutFlag() {
   loggedOut = false;
-  try { localStorage.removeItem('jolkr_logged_out'); } catch { /* ignore */ }
+  try { localStorage.removeItem(STORAGE_KEYS.LOGGED_OUT_FLAG); } catch { /* ignore */ }
 }
 function checkLogoutFlag(): boolean {
-  try { return localStorage.getItem('jolkr_logged_out') === '1'; } catch { return false; }
+  try { return localStorage.getItem(STORAGE_KEYS.LOGGED_OUT_FLAG) === '1'; } catch { return false; }
 }
 
 /** Load tokens from secure storage on startup. Must be called before any API request. */
@@ -411,7 +412,7 @@ export const getMyPermissions = (serverId: string) =>
 // Channels
 export const getChannels = (serverId: string) =>
   request<Channel[]>(`/servers/${serverId}/channels/list`, {}, 'channels');
-export const createChannel = (serverId: string, body: { name: string; kind: string; topic?: string; category_id?: string }) =>
+export const createChannel = (serverId: string, body: { name: string; kind: ChannelKind; topic?: string; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
 export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
 export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
@@ -582,9 +583,11 @@ export const markDmRead = (dmId: string, messageId: string) =>
     body: JSON.stringify({ message_id: messageId }),
   });
 
-// DM Voice Call Signaling
-export const initiateCall = (dmId: string) =>
-  request<void>(`/dms/${dmId}/call`, { method: 'POST' });
+// DM Voice/Video Call Signaling
+export const initiateCall = (dmId: string, opts?: { isVideo?: boolean }) => {
+  const qs = opts?.isVideo ? '?is_video=true' : '';
+  return request<void>(`/dms/${dmId}/call${qs}`, { method: 'POST' });
+};
 export const acceptCall = (dmId: string) =>
   request<void>(`/dms/${dmId}/call/accept`, { method: 'POST' });
 export const rejectCall = (dmId: string) =>
@@ -909,4 +912,57 @@ export const addGifFavorite = (gifId: string) =>
 
 export const removeGifFavorite = (gifId: string) =>
   request<void>(`/gifs/favorites/${encodeURIComponent(gifId)}`, { method: 'DELETE' })
+
+// ── Tenor proxy (used by GifPicker) ─────────────────────────────────
+
+export interface TenorMediaFormat {
+  url: string;
+  dims?: [number, number];
+}
+
+export interface TenorResult {
+  id: string;
+  title?: string;
+  content_description?: string;
+  url: string;
+  media_formats?: {
+    tinygif?: TenorMediaFormat;
+    gif?: TenorMediaFormat;
+  };
+}
+
+export interface TenorSearchResponse {
+  results: TenorResult[];
+  next?: string;
+}
+
+export interface TenorCategory {
+  name: string;
+  searchterm: string;
+  image: string;
+}
+
+export const getGifCategories = () =>
+  request<{ tags: TenorCategory[] }>('/gifs/categories');
+
+export const searchGifs = (query: string, limit: number, pos: string) =>
+  request<TenorSearchResponse>(`/gifs/search?q=${encodeURIComponent(query)}&limit=${limit}&pos=${encodeURIComponent(pos)}`);
+
+export const getFeaturedGifs = (limit: number, pos: string) =>
+  request<TenorSearchResponse>(`/gifs/featured?limit=${limit}&pos=${encodeURIComponent(pos)}`);
+
+// ── oEmbed proxy (used by VideoEmbed) ───────────────────────────────
+
+export interface OembedResponse {
+  title?: string;
+  thumbnail_url?: string;
+  thumbnail_width?: number;
+  thumbnail_height?: number;
+  provider_name?: string;
+  author_name?: string;
+  html?: string;
+}
+
+export const getOembed = (url: string) =>
+  request<OembedResponse>(`/oembed?url=${encodeURIComponent(url)}`);
 

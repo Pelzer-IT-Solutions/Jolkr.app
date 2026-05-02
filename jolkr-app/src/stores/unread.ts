@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
 import { useMessagesStore } from './messages';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 function persistLastSeen(data: Record<string, string>) {
-  try { localStorage.setItem('jolkr_last_seen', JSON.stringify(data)); }
+  try { localStorage.setItem(STORAGE_KEYS.LAST_SEEN, JSON.stringify(data)); }
   catch { /* quota exceeded */ }
 }
 
@@ -33,7 +34,7 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
   activeChannel: null,
   lastSeenMessageId: (() => {
     try {
-      return JSON.parse(localStorage.getItem('jolkr_last_seen') ?? '{}');
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.LAST_SEEN) ?? '{}');
     } catch { return {}; }
   })(),
 
@@ -83,7 +84,7 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
 
   reset: () => {
     set({ counts: {}, activeChannel: null, lastSeenMessageId: {} });
-    localStorage.removeItem('jolkr_last_seen');
+    localStorage.removeItem(STORAGE_KEYS.LAST_SEEN);
   },
 }));
 
@@ -93,38 +94,39 @@ export const selectTotalUnread = (channelIds: string[]) =>
     channelIds.reduce((sum, id) => sum + (s.counts[id] ?? 0), 0);
 
 // Wire up WebSocket — increment unread when new message arrives in non-active channel
-wsClient.on((op, d) => {
-  if (op === 'MessageCreate') {
-    const raw = d.message as Record<string, unknown>;
-    // Normalize: DM messages have dm_channel_id instead of channel_id
-    const channelId = (raw?.channel_id ?? raw?.dm_channel_id) as string | undefined;
-    if (!channelId) return;
-    // Don't count own messages as unread
-    const currentUserId = useAuthStore.getState().user?.id;
-    if ((raw?.author_id as string) === currentUserId) return;
-    useUnreadStore.getState().increment(channelId);
-  }
+wsClient.on((event) => {
+  const currentUserId = useAuthStore.getState().user?.id;
 
-  // Sync read state across sessions: when current user reads on another device
-  if (op === 'DmMessagesRead') {
-    const currentUserId = useAuthStore.getState().user?.id;
-    if ((d.user_id as string) === currentUserId) {
-      useUnreadStore.getState().markRead(d.dm_id as string);
+  switch (event.op) {
+    case 'MessageCreate': {
+      const msg = event.d.message as { channel_id?: string; dm_channel_id?: string; author_id?: string };
+      // Normalize: DM messages have dm_channel_id instead of channel_id
+      const channelId = msg.channel_id ?? msg.dm_channel_id;
+      if (!channelId) return;
+      // Don't count own messages as unread
+      if (msg.author_id === currentUserId) return;
+      useUnreadStore.getState().increment(channelId);
+      break;
     }
-  }
-
-  if (op === 'ChannelMessagesRead') {
-    const currentUserId = useAuthStore.getState().user?.id;
-    if ((d.user_id as string) === currentUserId) {
-      useUnreadStore.getState().markRead(d.channel_id as string);
+    // Sync read state across sessions: when current user reads on another device
+    case 'DmMessagesRead': {
+      if (event.d.user_id === currentUserId) {
+        useUnreadStore.getState().markRead(event.d.dm_id);
+      }
+      break;
     }
-  }
-
-  if (op === 'ServerMessagesRead') {
-    const currentUserId = useAuthStore.getState().user?.id;
-    if ((d.user_id as string) === currentUserId) {
-      // Clear all counts — this event is only sent to the user who triggered it
-      useUnreadStore.setState({ counts: {} });
+    case 'ChannelMessagesRead': {
+      if (event.d.user_id === currentUserId) {
+        useUnreadStore.getState().markRead(event.d.channel_id);
+      }
+      break;
+    }
+    case 'ServerMessagesRead': {
+      if (event.d.user_id === currentUserId) {
+        // Clear all counts — this event is only sent to the user who triggered it
+        useUnreadStore.setState({ counts: {} });
+      }
+      break;
     }
   }
 });

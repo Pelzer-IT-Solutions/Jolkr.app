@@ -2,13 +2,13 @@ import { Bell } from 'lucide-react'
 import s from './NotificationsPanel.module.css'
 
 interface Props {
-  visible: boolean
+  open: boolean
   onNavigate: (serverId: string, channelId: string) => void
 }
 
-export function NotificationsPanel({ visible, onNavigate: _onNavigate }: Props) {
+export function NotificationsPanel({ open, onNavigate: _onNavigate }: Props) {
   return (
-    <aside className={`${s.panel} ${!visible ? s.hidden : ''}`}>
+    <aside className={`${s.panel} ${!open ? s.hidden : ''}`}>
       <div className={s.header}>
         <span className={`${s.title} txt-tiny txt-semibold`}>Notifications</span>
       </div>

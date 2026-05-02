@@ -188,7 +188,7 @@
 
 .userName {
   flex: 1;
-  color: var(--text-muted);
+  color: var(--text-default);
   min-width: 0;
 }
 .userRow:hover .userName,

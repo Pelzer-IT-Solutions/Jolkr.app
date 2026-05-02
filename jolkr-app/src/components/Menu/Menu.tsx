@@ -9,7 +9,7 @@ export interface MenuPosition {
 }
 
 export interface MenuProps {
-  isOpen: boolean
+  open: boolean
   position: MenuPosition
   onClose: () => void
   children: React.ReactNode
@@ -18,13 +18,13 @@ export interface MenuProps {
   disableAutoPosition?: boolean
 }
 
-export function Menu({ isOpen, position, onClose, children, minWidth = '11rem', className, disableAutoPosition = false }: MenuProps) {
+export function Menu({ open, position, onClose, children, minWidth = '11rem', className, disableAutoPosition = false }: MenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [safePos, setSafePos] = useState(position)
 
   // Recalculate safe position when menu mounts or position changes
   useEffect(() => {
-    if (!isOpen || !menuRef.current || disableAutoPosition) {
+    if (!open || !menuRef.current || disableAutoPosition) {
       setSafePos(position)
       return
     }
@@ -35,11 +35,11 @@ export function Menu({ isOpen, position, onClose, children, minWidth = '11rem', 
       { width: rect.width, height: rect.height }
     )
     setSafePos(adjusted)
-  }, [isOpen, position, disableAutoPosition])
+  }, [open, position, disableAutoPosition])
 
   // Close on outside click or Escape
   useEffect(() => {
-    if (!isOpen) return
+    if (!open) return
 
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -58,9 +58,9 @@ export function Menu({ isOpen, position, onClose, children, minWidth = '11rem', 
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [isOpen, onClose])
+  }, [open, onClose])
 
-  if (!isOpen) return null
+  if (!open) return null
 
   return createPortal(
     <div

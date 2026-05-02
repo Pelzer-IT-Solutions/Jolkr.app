@@ -1,0 +1,88 @@
+.tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-deep, #0a0a0a);
+  border-radius: 0.625rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+}
+
+.tile.speaking {
+  box-shadow: 0 0 0 2px var(--success-default);
+  animation: speakingPulse 1.6s ease-in-out infinite;
+}
+@keyframes speakingPulse {
+  0%, 100% { box-shadow: 0 0 0 2px oklch(65% 0.18 145 / 0.85); }
+  50%      { box-shadow: 0 0 0 4px oklch(65% 0.18 145 / 0.45); }
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.video.mirrored {
+  transform: scaleX(-1);
+}
+
+.fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-loud, #1a1a1a);
+}
+.avatarImg {
+  width: 35%;
+  max-width: 6rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.avatarInitial {
+  width: 35%;
+  max-width: 6rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.25rem, 8cqw, 3rem);
+  font-weight: 600;
+  container-type: size;
+}
+
+.label {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.5rem;
+  background: oklch(0% 0 0 / 0.55);
+  color: #fff;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  max-width: calc(100% - 1rem);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.muteIcon {
+  color: var(--danger-default);
+  flex-shrink: 0;
+}
+.username {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

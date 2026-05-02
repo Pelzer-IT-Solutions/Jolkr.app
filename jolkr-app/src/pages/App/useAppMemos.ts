@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import appIconUrl from '/icon.png?url'
-import type { Channel, DMConversation } from '../../types/ui'
+import type { ChannelDisplay, DMConversation } from '../../types/ui'
 import { useTypingUsers } from '../../stores/typing'
 import { getApiBaseUrl } from '../../platform/config'
 import {
@@ -184,7 +184,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     return otherUser?.is_system === true
   }, [dmActive, activeDmId, dmList, user, userMap])
 
-  const activeChannel: Channel = dmActive
+  const activeChannel: ChannelDisplay = dmActive
     ? (activeDmConv
       ? { id: 'main', name: activeDmConv.name ?? activeDmConv.participants[0]?.name ?? 'DM', icon: '@', desc: '', unread: 0 }
       : { id: '', name: 'Direct Messages', icon: '@', desc: '', unread: 0 })

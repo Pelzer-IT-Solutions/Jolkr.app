@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Check, UserPlus, Search } from 'lucide-react'
 import type { DMConversation } from '../../types'
 import type { User, Friendship } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { hashColor, avatarLetter } from '../../adapters/transforms'
 import { displayName } from '../../utils/format'
 import { rewriteStorageUrl } from '../../platform/config'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import s from './NewDMModal.module.css'
 
 interface Props {
@@ -55,8 +56,8 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
   const [loading, setLoading]         = useState(true)
   const [searching, setSearching]     = useState(false)
   const inputRef  = useRef<HTMLInputElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const myId = useAuthStore(s => s.user?.id ?? '')
+  const debouncedSearch = useDebouncedValue(search, 300)
 
   // Load friends on mount
   useEffect(() => {
@@ -79,34 +80,32 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
     return () => { cancelled = true }
   }, [myId])
 
-  // Debounced user search
-  const doSearch = useCallback((query: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.length < 2) {
+  // Run the search whenever the debounced query settles. Short queries
+  // clear the result list without hitting the network.
+  useEffect(() => {
+    let cancelled = false
+    if (debouncedSearch.length < 2) {
       setSearchResults([])
       setSearching(false)
       return
     }
     setSearching(true)
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const users = await api.searchUsers(query)
-        // Exclude self and already-selected users
-        const filtered = users
-          .filter(u => u.id !== myId)
-          .map(u => toDisplayUser(u, 'search'))
-        setSearchResults(filtered)
-      } catch (e) {
-        console.error('User search failed:', e)
-      } finally {
-        setSearching(false)
-      }
-    }, 300)
-  }, [myId])
+    api.searchUsers(debouncedSearch).then(users => {
+      if (cancelled) return
+      const filtered = users
+        .filter(u => u.id !== myId)
+        .map(u => toDisplayUser(u, 'search'))
+      setSearchResults(filtered)
+    }).catch(e => {
+      if (!cancelled) console.error('User search failed:', e)
+    }).finally(() => {
+      if (!cancelled) setSearching(false)
+    })
+    return () => { cancelled = true }
+  }, [debouncedSearch, myId])
 
   function handleSearchChange(value: string) {
     setSearch(value)
-    doSearch(value)
   }
 
   // Merge friends + search results, dedup by id, exclude selected

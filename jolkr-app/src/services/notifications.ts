@@ -2,12 +2,13 @@ import { wsClient } from '../api/ws';
 import { useUnreadStore } from '../stores/unread';
 import { useAuthStore } from '../stores/auth';
 import type { Message } from '../api/types';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 // Simple notification sound using Web Audio API (no external file needed)
 let audioCtx: AudioContext | null = null;
 
 function playNotificationSound() {
-  if (localStorage.getItem('jolkr_sound') === 'false') return;
+  if (localStorage.getItem(STORAGE_KEYS.SOUND_ENABLED) === 'false') return;
   try {
     if (!audioCtx) audioCtx = new AudioContext();
     const osc = audioCtx.createOscillator();
@@ -25,7 +26,7 @@ function playNotificationSound() {
 }
 
 function showDesktopNotification(title: string, body: string) {
-  if (localStorage.getItem('jolkr_desktop_notif') === 'false') return;
+  if (localStorage.getItem(STORAGE_KEYS.DESKTOP_NOTIF) === 'false') return;
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
   if (document.hasFocus()) return; // Don't notify if app is focused
@@ -39,8 +40,6 @@ function showDesktopNotification(title: string, body: string) {
   } catch { /* notification not available */ }
 }
 
-let unsubNotifications: (() => void) | null = null;
-
 /** Request notification permission if not already decided. */
 export async function requestNotificationPermission(): Promise<void> {
   if (!('Notification' in window)) return;
@@ -49,40 +48,32 @@ export async function requestNotificationPermission(): Promise<void> {
   }
 }
 
-/** Initialize notification listeners. Call once on app startup. */
-export function initNotifications() {
-  if (unsubNotifications) unsubNotifications();
-  unsubNotifications = wsClient.on((op, d) => {
-    if (op !== 'MessageCreate') return;
+// ── WS subscription (module-init, matches stores/* convention) ──
+// Stays attached for the app lifetime. On logout the WS is disconnected
+// and no events flow through; on re-login the same listener resumes.
+wsClient.on((event) => {
+  if (event.op !== 'MessageCreate') return;
 
-    const raw = d.message as Record<string, unknown>;
-    if (!raw) return;
-    // Normalize: DM messages have dm_channel_id instead of channel_id
-    const channelId = (raw.channel_id ?? raw.dm_channel_id) as string | undefined;
-    if (!channelId) return;
-    const msg = { ...raw, channel_id: channelId } as unknown as Message;
+  const raw = event.d.message;
+  if (!raw) return;
+  // Normalize: DM messages have dm_channel_id instead of channel_id
+  const rawAny = raw as Message & { dm_channel_id?: string };
+  const channelId = rawAny.channel_id ?? rawAny.dm_channel_id;
+  if (!channelId) return;
+  const msg: Message = { ...rawAny, channel_id: channelId };
 
-    // Don't notify for own messages
-    const currentUserId = useAuthStore.getState().user?.id;
-    if (msg.author_id === currentUserId) return;
+  // Don't notify for own messages
+  const currentUserId = useAuthStore.getState().user?.id;
+  if (msg.author_id === currentUserId) return;
 
-    const { activeChannel } = useUnreadStore.getState();
-    if (channelId === activeChannel) return;
+  const { activeChannel } = useUnreadStore.getState();
+  if (channelId === activeChannel) return;
 
-    // Play sound for messages in non-active channels
-    playNotificationSound();
+  // Play sound for messages in non-active channels
+  playNotificationSound();
 
-    // Show desktop notification
-    // All messages are encrypted — show generic notification
-    const notifContent = msg.nonce ? 'Sent an encrypted message' : (msg.content?.slice(0, 100) || 'New message');
-    showDesktopNotification('New Message', notifContent);
-  });
-}
-
-/** Clean up notification listener (e.g. on logout). */
-export function stopNotifications() {
-  if (unsubNotifications) {
-    unsubNotifications();
-    unsubNotifications = null;
-  }
-}
+  // Show desktop notification
+  // All messages are encrypted — show generic notification
+  const notifContent = msg.nonce ? 'Sent an encrypted message' : (msg.content?.slice(0, 100) || 'New message');
+  showDesktopNotification('New Message', notifContent);
+});

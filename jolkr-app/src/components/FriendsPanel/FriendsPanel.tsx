@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { X, UserPlus, Check, XCircle, MessageCircle, UserX } from 'lucide-react'
-import type { MemberDisplay } from '../../types'
+import type { MemberDisplay, MemberStatus } from '../../types'
 import type { Friendship, User } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
 import { usePresenceStore } from '../../stores/presence'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import s from './FriendsPanel.module.css'
 
 type FriendTab = 'all' | 'online' | 'pending'
-type LiveStatus = 'online' | 'idle' | 'dnd' | 'offline'
+
 
 interface FriendRequest {
   id: string
@@ -21,12 +21,12 @@ interface FriendRequest {
 
 interface Friend {
   user: MemberDisplay
-  status: LiveStatus
+  status: MemberStatus
   last_seen?: string
 }
 
 interface Props {
-  isOpen: boolean
+  open: boolean
   onClose: () => void
   onStartDM?: (userId: string) => void
   onAcceptRequest?: (requestId: string) => void
@@ -50,13 +50,13 @@ function toDisplay(otherUser: User | undefined, fallbackUserId: string): MemberD
   }
 }
 
-function liveStatus(raw: string | undefined): LiveStatus {
+function liveStatus(raw: string | undefined): MemberStatus {
   if (raw === 'online' || raw === 'idle' || raw === 'dnd') return raw
   return 'offline'
 }
 
 export function FriendsPanel({
-  isOpen,
+  open,
   onClose,
   onStartDM,
   onAcceptRequest,
@@ -100,16 +100,16 @@ export function FriendsPanel({
 
   // Refresh whenever the panel opens
   useEffect(() => {
-    if (!isOpen) return
+    if (!open) return
     refresh()
-  }, [isOpen, refresh])
+  }, [open, refresh])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!open) return
     function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [isOpen, onClose])
+  }, [open, onClose])
 
   const filteredFriends = friends.filter(f => {
     if (activeTab === 'online') return f.status !== 'offline'
@@ -151,7 +151,7 @@ export function FriendsPanel({
     onClose()
   }
 
-  if (!isOpen) return null
+  if (!open) return null
 
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>

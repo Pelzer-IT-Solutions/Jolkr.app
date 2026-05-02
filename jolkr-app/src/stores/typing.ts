@@ -76,13 +76,12 @@ export function useTypingUsers(channelId: string, ownUserId: string | undefined)
 }
 
 // Wire WS listener — receive typing events from other users
-wsClient.on((op, d) => {
-  if (op === 'TypingStart') {
-    const channelId = d.channel_id as string
-    const userId = d.user_id as string
-    const username = (d.username as string) ?? (d.display_name as string) ?? 'Someone'
-    if (channelId && userId) {
-      useTypingStore.getState().setTyping(channelId, userId, username)
+wsClient.on((event) => {
+  if (event.op === 'TypingStart') {
+    const { channel_id, user_id, username, display_name } = event.d
+    const name = username ?? display_name ?? 'Someone'
+    if (channel_id && user_id) {
+      useTypingStore.getState().setTyping(channel_id, user_id, name)
     }
   }
 })

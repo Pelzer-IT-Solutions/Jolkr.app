@@ -1,6 +1,7 @@
 import { Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import Button from './ui/Button';
+import s from './ErrorBoundary.module.css';
 
 export interface ErrorBoundaryProps {
   children: ReactNode;
@@ -32,23 +33,23 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, State> 
     if (this.state.hasError) {
       const canRetry = this.state.retryCount < MAX_RETRIES;
       return (
-        <div className="h-full flex flex-col items-center justify-center bg-bg text-center p-8">
-          <div className="text-4xl mb-4">:(</div>
-          <h1 className="text-xl font-bold text-text-primary mb-2">Something went wrong</h1>
-          <p className="text-text-secondary text-sm mb-6 max-w-md">
+        <div className={s.fallback}>
+          <div className={s.emoji}>:(</div>
+          <h1 className={s.title}>Something went wrong</h1>
+          <p className={s.message}>
             {this.state.error?.message || 'An unexpected error occurred.'}
           </p>
-          <div className="flex gap-3">
+          <div className={s.actions}>
             {canRetry ? (
               <Button onClick={() => this.setState((prev) => ({ hasError: false, error: null, retryCount: prev.retryCount + 1 }))}>
                 Try Again
               </Button>
             ) : (
-              <p className="text-text-tertiary text-xs">Too many retries.</p>
+              <p className={s.exhausted}>Too many retries.</p>
             )}
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-surface text-text-primary text-sm rounded-lg hover:bg-hover"
+              className={s.reloadBtn}
             >
               Reload Page
             </button>

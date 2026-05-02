@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { STORAGE_KEYS } from './utils/storageKeys';
 import { useAuthStore } from './stores/auth';
 import { useServersStore } from './stores/servers';
 import { getBasename } from './platform/config';
 import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
-import { initNotifications, requestNotificationPermission } from './services/notifications';
+import { requestNotificationPermission } from './services/notifications';
 import { registerPush } from './services/pushRegistration';
 import { initE2EE } from './services/e2ee';
 import { checkForUpdate, type UpdateInfo } from './services/updater';
@@ -15,8 +16,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import TextContextMenu from './components/TextContextMenu';
 import ContextMenu from './components/ContextMenu';
 import UpdateNotification from './components/UpdateNotification';
-import IncomingCallDialog from './components/IncomingCallDialog';
-import OutgoingCallDialog from './components/OutgoingCallDialog';
+import IncomingCallDialog from './components/CallDialogs/IncomingCallDialog';
+import OutgoingCallDialog from './components/CallDialogs/OutgoingCallDialog';
 import { useCallEvents } from './hooks/useCallEvents';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -93,7 +94,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
       if (getAccessToken()) {
         requestNotificationPermission().then(() => registerPush()).catch(console.warn);
         // Load E2EE keys from storage (no seed — keys were set during login)
-        const deviceId = localStorage.getItem('jolkr_e2ee_device_id');
+        const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
         if (deviceId) {
           initE2EE(deviceId).catch(console.warn);
         }
@@ -107,7 +108,6 @@ function AppInit({ children }: { children: React.ReactNode }) {
       }
     }).finally(() => {
       setReady(true);
-      initNotifications();
     });
   }, [loadUser]);
 
@@ -146,7 +146,7 @@ function DeepLinkHandler() {
     onDeepLink(async (path, params) => {
       if (path === 'invite' && params.code) {
         if (!userRef.current) {
-          sessionStorage.setItem('jolkr_pending_invite', params.code);
+          sessionStorage.setItem(STORAGE_KEYS.PENDING_INVITE, params.code);
           navigate('/login');
           return;
         }
@@ -161,7 +161,7 @@ function DeepLinkHandler() {
 
       if (path === 'add' && params.userId) {
         if (!userRef.current) {
-          sessionStorage.setItem('jolkr_pending_add_friend', params.userId);
+          sessionStorage.setItem(STORAGE_KEYS.PENDING_ADD_FRIEND, params.userId);
           navigate('/login');
           return;
         }

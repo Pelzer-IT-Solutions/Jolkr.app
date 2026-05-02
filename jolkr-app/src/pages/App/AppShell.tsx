@@ -1,8 +1,9 @@
 import { useCallback, useEffect } from 'react'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
+import type { MemberStatus } from '../../types'
 import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
-import { useServersStore } from '../../stores/servers'
+import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
 import { useToast } from '../../components/Toast'
 import { buildInviteUrl } from '../../platform/config'
 import { orbsForHue } from '../../utils/theme'
@@ -11,6 +12,7 @@ import * as api from '../../api/client'
 import { TabBar } from '../../components/TabBar/TabBar'
 import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
 import { VoiceConnectionBar } from '../../components/VoiceConnectionBar/VoiceConnectionBar'
+import { CallWindow } from '../../components/CallWindow/CallWindow'
 import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
 import { ChatArea } from '../../components/ChatArea/ChatArea'
 import { MemberPanel } from '../../components/MemberPanel/MemberPanel'
@@ -23,8 +25,10 @@ import { NotificationsPanel } from '../../components/NotificationsPanel/Notifica
 import { FriendsPanel } from '../../components/FriendsPanel'
 import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
 import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
-import { ReportModal } from '../../components/ReportModal'
+import { ReportModal } from '../../components/ReportModal/ReportModal'
 import { UserContextMenu } from '../../components/UserContextMenu'
+import { ProfileCard } from '../../components/ProfileCard/ProfileCard'
+import { invalidateFriendsCache } from '../../services/friendshipCache'
 
 import { useAppInit } from './useAppInit'
 import { useAppMemos } from './useAppMemos'
@@ -57,6 +61,8 @@ export default function AppShell() {
     channelSettingsOpen, setChannelSettingsOpen,
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
+    contextMenuIsFriend,
+    profileCard, setProfileCard,
     pinnedCount, pinnedVersion, threadsCount,
     ready, serverThemes, setServerThemes,
     fetchServers,
@@ -136,8 +142,10 @@ export default function AppShell() {
   } = handlers
 
   // ── Role assignment for context menu ──
-  const serverRoles = useServersStore(s => s.roles[activeServerId]) ?? []
-  const serverMembers = useServersStore(s => s.members[activeServerId]) ?? []
+  // Use stable sentinel selectors so empty arrays share identity across renders
+  // (prevents infinite-render loops via Zustand selector returning new array per render)
+  const serverRoles = useServersStore(selectServerRoles(activeServerId))
+  const serverMembers = useServersStore(selectServerMembers(activeServerId))
   const fetchRoles = useServersStore(s => s.fetchRoles)
   const canManageRoles = !dmActive && (isServerOwner || hasPermission(myPerms, MANAGE_ROLES))
 
@@ -193,7 +201,7 @@ export default function AppShell() {
           user={userInfo}
           userProfile={userProfile}
           mutedServerIds={mutedServerIds}
-          currentStatus={(user?.id ? presences[user.id] : undefined) as 'online' | 'idle' | 'dnd' | 'offline' | undefined}
+          currentStatus={(user?.id ? presences[user.id] : undefined) as MemberStatus | undefined}
           ownerServerIds={ownerServerIds}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
           onClose={handleCloseTab}
@@ -234,6 +242,8 @@ export default function AppShell() {
               await api.leaveServer(serverId)
               await fetchServers()
             } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              useToast.getState().show(msg, 'error')
               console.error('Leave server failed:', err)
             }
           }}
@@ -255,6 +265,27 @@ export default function AppShell() {
                   onSelect={handleSelectDmMobile}
                   onNewMessage={() => setNewDmOpen(true)}
                   onOpenFriends={() => setFriendsPanelOpen(true)}
+                  onConversationContextMenu={(conv, e) => {
+                    // Group DMs don't have a single "other user" to target — skip.
+                    if (conv.type !== 'direct') return
+                    const p = conv.participants[0]
+                    if (!p?.userId) return
+                    setUserContextMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      user: {
+                        user_id: p.userId,
+                        username: p.name,
+                        display_name: p.name,
+                        status: p.status,
+                        color: p.color,
+                        letter: p.letter,
+                        avatar_url: p.avatarUrl,
+                      },
+                      // Carry the DM id so the "Close DM" handler knows what to close.
+                      dmId: conv.id,
+                    })
+                  }}
                   collapsed={sidebarCollapsedForChannelSidebar}
                   onCollapse={handleCollapseSidebar}
                   isMobile={isMobile}
@@ -315,6 +346,9 @@ export default function AppShell() {
                 hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
                 readOnly={isDmWithSystemUser}
                 onPinMessage={handlePinMessage}
+                onOpenAuthorProfile={(authorId, e) => {
+                  setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
+                }}
                 mentionableUsers={mentionableUsers}
                 canManageMessages={canManageMessages}
                 canAddReactions={canAddReactions}
@@ -324,7 +358,7 @@ export default function AppShell() {
 
               {showRight && (dmActive ? (
                 <DMInfoPanel
-                  visible={!rightPanelHidden}
+                  open={!rightPanelHidden}
                   dmId={activeDmId}
                   onUnpin={handleUnpinMessage}
                   users={userMap}
@@ -355,6 +389,10 @@ export default function AppShell() {
                       },
                     })
                   }}
+                  onMemberOpenProfile={(member, e) => {
+                    if (!member.userId) return
+                    setProfileCard({ userId: member.userId, x: e.clientX, y: e.clientY })
+                  }}
                   onUnpin={handleUnpinMessage}
                   users={userMap}
                   pinnedVersion={pinnedVersion}
@@ -365,7 +403,7 @@ export default function AppShell() {
           </div>
 
           <NotificationsPanel
-            visible={notificationsActive}
+            open={notificationsActive}
             onNavigate={(serverId, channelId) => {
               setDmActive(false)
               if (!tabbedIds.includes(serverId)) {
@@ -415,7 +453,7 @@ export default function AppShell() {
       )}
 
       <FriendsPanel
-        isOpen={friendsPanelOpen}
+        open={friendsPanelOpen}
         onClose={() => setFriendsPanelOpen(false)}
         onStartDM={async (userId) => {
           const dm = await api.openDm(userId)
@@ -461,14 +499,26 @@ export default function AppShell() {
             fetchServers()
           }}
           onDelete={async (serverId) => {
-            await api.deleteServer(serverId)
-            setServerSettingsOpen(false)
-            await fetchServers() // safety effect handles fallback
+            try {
+              await api.deleteServer(serverId)
+              setServerSettingsOpen(false)
+              await fetchServers() // safety effect handles fallback
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Delete server failed'
+              useToast.getState().show(msg, 'error')
+              throw err
+            }
           }}
           onLeave={async (serverId) => {
-            await api.leaveServer(serverId)
-            setServerSettingsOpen(false)
-            await fetchServers() // safety effect handles fallback
+            try {
+              await api.leaveServer(serverId)
+              setServerSettingsOpen(false)
+              await fetchServers() // safety effect handles fallback
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              useToast.getState().show(msg, 'error')
+              throw err
+            }
           }}
         />
         )
@@ -493,26 +543,50 @@ export default function AppShell() {
       })()}
 
       <ReportModal
-        isOpen={reportTarget !== null}
+        open={reportTarget !== null}
         onClose={() => setReportTarget(null)}
         user={reportTarget}
       />
 
       <VoiceConnectionBar />
+      <CallWindow />
 
       <UserContextMenu
         menu={userContextMenu}
         onClose={() => setUserContextMenu(null)}
+        onViewProfile={(userId, anchor) => {
+          setProfileCard({ userId, x: anchor.x, y: anchor.y })
+        }}
+        onCloseDm={userContextMenu?.dmId ? async () => {
+          const dmId = userContextMenu.dmId!
+          try {
+            await api.closeDm(dmId)
+            setDmList(prev => prev.filter(d => d.id !== dmId))
+            if (activeDmId === dmId) {
+              setActiveDmId('')
+              setDmActive(false)
+            }
+          } catch (e) {
+            console.warn('Failed to close DM:', e)
+          }
+        } : undefined}
         onReport={() => {
           if (userContextMenu) setReportTarget(userContextMenu.user)
           setUserContextMenu(null)
         }}
         onAddFriend={async (userId: string) => {
           await api.sendFriendRequest(userId).catch(console.warn)
+          invalidateFriendsCache()
+          setUserContextMenu(null)
+        }}
+        onRemoveFriend={async (userId: string) => {
+          await api.removeFriendByUserId(userId).catch(console.warn)
+          invalidateFriendsCache()
           setUserContextMenu(null)
         }}
         onBlock={async (userId: string) => {
           await api.blockUser(userId).catch(console.warn)
+          invalidateFriendsCache()
           setUserContextMenu(null)
         }}
         onInviteToServer={async (_userId: string, serverId: string) => {
@@ -544,8 +618,16 @@ export default function AppShell() {
         roles={serverRoles}
         userRoleIds={contextMenuUserRoleIds}
         canManageRoles={canManageRoles}
+        isFriend={contextMenuIsFriend}
         onToggleRole={handleToggleRole}
       />
+
+      {profileCard && (
+        <ProfileCard
+          state={profileCard}
+          onClose={() => setProfileCard(null)}
+        />
+      )}
     </>
   )
 }

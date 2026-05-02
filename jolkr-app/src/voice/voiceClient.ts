@@ -100,7 +100,9 @@ export class VoiceClient {
     });
   }
 
-  join(channelId: string) { this.send('Join', { channel_id: channelId }); }
+  join(channelId: string, opts?: { withVideo?: boolean }) {
+    this.send('Join', { channel_id: channelId, with_video: opts?.withVideo ?? false });
+  }
   sendAnswer(sdp: string) { this.send('Answer', { sdp }); }
   sendIceCandidate(candidate: string) { this.send('IceCandidate', { candidate }); }
   leave() { this.send('Leave', {}); }

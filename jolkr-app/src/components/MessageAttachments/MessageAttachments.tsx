@@ -4,7 +4,7 @@ import type { Attachment } from '../../api/types'
 import { rewriteStorageUrl } from '../../platform/config'
 import { formatBytes } from '../../utils/format'
 import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
-import ImageLightbox from '../ImageLightbox'
+import ImageLightbox from '../ImageLightbox/ImageLightbox'
 import s from './MessageAttachments.module.css'
 
 interface Props {

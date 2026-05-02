@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { type UpdateInfo, downloadAndInstallUpdate } from '../services/updater';
 import Button from './ui/Button';
+import s from './UpdateNotification.module.css';
 
 export interface UpdateNotificationProps {
   update: UpdateInfo;
@@ -23,26 +24,26 @@ export default function UpdateNotification({ update }: UpdateNotificationProps) 
   };
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-accent/10 border-b border-accent/20 text-sm shrink-0">
-      <span className="text-text-primary">
+    <div className={s.banner}>
+      <span className={s.label}>
         Update <strong>v{update.version}</strong> available
       </span>
       {update.notes && (
-        <span className="text-text-tertiary hidden sm:inline truncate max-w-75">
+        <span className={s.notes}>
           — {update.notes}
         </span>
       )}
-      <div className="ml-auto flex items-center gap-2">
-        {error && <span className="text-red-400 text-xs">{error}</span>}
+      <div className={s.actions}>
+        {error && <span className={s.error}>{error}</span>}
         {downloading ? (
-          <div className="flex items-center gap-2">
-            <div className="w-32 h-2 bg-active rounded-full overflow-hidden">
+          <div className={s.progress}>
+            <div className={s.progressBar}>
               <div
-                className="h-full bg-accent rounded-full transition-all duration-300"
+                className={s.progressFill}
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-text-tertiary text-xs w-8">{progress}%</span>
+            <span className={s.progressText}>{progress}%</span>
           </div>
         ) : (
           <Button onClick={handleUpdate} size="xs">

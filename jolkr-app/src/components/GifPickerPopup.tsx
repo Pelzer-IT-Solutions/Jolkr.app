@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useClickOutside } from '../hooks/useClickOutside'
 import GifPicker from './GifPicker/GifPicker'
-import s from './EmojiPickerPopup.module.css'
+import s from './EmojiPickerPopup/EmojiPickerPopup.module.css'
 
 interface Props {
   position: { top: number; left: number }

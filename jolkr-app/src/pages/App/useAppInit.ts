@@ -13,6 +13,8 @@ import { useGifFavoritesStore } from '../../stores/gif-favorites'
 
 import type { DmChannel, User } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
+import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
+import { lookupFriendship } from '../../services/friendshipCache'
 import type { MemberDisplay } from '../../types/ui'
 
 export function useAppInit() {
@@ -85,6 +87,11 @@ export function useAppInit() {
   const [channelSettingsOpen, setChannelSettingsOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<MemberDisplay | null>(null)
   const [userContextMenu, setUserContextMenu] = useState<UserContextMenuState | null>(null)
+  /** Whether the user the context menu targets is already an accepted friend.
+   *  Resolved asynchronously from the friendship cache when the menu opens —
+   *  drives the "Add Friend" ↔ "Remove Friend" toggle. */
+  const [contextMenuIsFriend, setContextMenuIsFriend] = useState(false)
+  const [profileCard, setProfileCard] = useState<ProfileCardState | null>(null)
 
   // ── Content availability for conditional icon display ──
   const [pinnedCount, setPinnedCount] = useState(0)
@@ -351,6 +358,66 @@ export function useAppInit() {
     return () => { wsClient.unsubscribe(channelId) }
   }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Resolve friendship state for the open user-context-menu ──
+  // Drives the "Add Friend" ↔ "Remove Friend" toggle in the menu.
+  useEffect(() => {
+    if (!userContextMenu?.user.user_id) {
+      setContextMenuIsFriend(false)
+      return
+    }
+    let cancelled = false
+    lookupFriendship(userContextMenu.user.user_id)
+      .then((lookup) => { if (!cancelled) setContextMenuIsFriend(lookup.state === 'accepted') })
+      .catch(() => { if (!cancelled) setContextMenuIsFriend(false) })
+    return () => { cancelled = true }
+  }, [userContextMenu?.user.user_id])
+
+  // ── Real-time DM channel sync ──
+  // Without this, a new DM from a stranger only shows up after a manual refresh
+  // because the backend's MessageCreate event lands in messages store but the
+  // recipient has no entry in dmList for that channel — so it's invisible.
+  // Backend fires DmUpdate on create, reopen, member-add, group rename, leave.
+  useEffect(() => {
+    return wsClient.on((event) => {
+      if (event.op !== 'DmUpdate' && event.op !== 'DmCreate') return
+      const channel = event.d.channel
+      if (!channel?.id) return
+
+      setDmList(prev => {
+        const idx = prev.findIndex(c => c.id === channel.id)
+        if (idx >= 0) {
+          // Existing DM — replace with the fresh server view
+          const next = prev.slice()
+          next[idx] = channel
+          return next
+        }
+        // New DM — prepend so it's visible at the top of the list
+        return [channel, ...prev]
+      })
+
+      // Fetch user details for any unknown members so the DM can render with
+      // a name + avatar instead of "Unknown".
+      setDmUsers(prevUsers => {
+        const missing = channel.members.filter(id => !prevUsers.has(id))
+        if (missing.length === 0) return prevUsers
+        Promise.all(missing.map(id => api.getUser(id).catch(() => null)))
+          .then(fetched => {
+            setDmUsers(curr => {
+              const merged = new Map(curr)
+              fetched.forEach(u => { if (u) merged.set(u.id, u) })
+              return merged
+            })
+          })
+          .catch(console.warn)
+        // Also fetch presence so the status dot is correct.
+        api.queryPresence(missing)
+          .then(p => usePresenceStore.getState().setBulk(p))
+          .catch(console.warn)
+        return prevUsers
+      })
+    })
+  }, [])
+
   // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
   useEffect(() => {
     setServerThemes(prev => {
@@ -392,6 +459,8 @@ export function useAppInit() {
     channelSettingsOpen, setChannelSettingsOpen,
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
+    contextMenuIsFriend, setContextMenuIsFriend,
+    profileCard, setProfileCard,
     pinnedCount, setPinnedCount, pinnedVersion, setPinnedVersion, threadsCount, setThreadsCount,
     lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
   }

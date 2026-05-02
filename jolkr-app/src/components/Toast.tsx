@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import s from './Toast.module.css';
 
 interface ToastState {
   message: string | null;
@@ -41,20 +42,18 @@ export default function Toast() {
 
   if (!message) return null;
 
-  const accent =
-    kind === 'error' ? 'text-danger border-danger/30' :
-    kind === 'success' ? 'text-accent border-accent/30' :
-    'text-accent border-accent/30';
+  const toastClass = closing ? `${s.toast} ${s.closing}` : s.toast;
+  const bodyClass = `${s.body} ${s[kind]}`;
 
   return (
-    <div role="status" aria-live="polite" className={`fixed bottom-6 right-6 z-[100] ${closing ? 'animate-toast-exit' : 'animate-toast-enter'}`}>
-      <div className={`bg-surface text-text-primary text-sm px-4 py-2.5 rounded-lg shadow-elevated flex items-center gap-2 border ${accent}`}>
-        {kind === 'success' && <CheckCircle className="w-4 h-4 shrink-0" />}
-        {kind === 'error' && <AlertCircle className="w-4 h-4 shrink-0" />}
-        {kind === 'info' && <Info className="w-4 h-4 shrink-0" />}
-        <span className="text-text-primary">{message}</span>
-        <button onClick={() => setClosing(true)} className="ml-1 text-text-tertiary hover:text-text-primary" aria-label="Dismiss">
-          <X className="w-3.5 h-3.5" />
+    <div role="status" aria-live="polite" className={toastClass}>
+      <div className={bodyClass}>
+        {kind === 'success' && <CheckCircle className={s.icon} />}
+        {kind === 'error' && <AlertCircle className={s.icon} />}
+        {kind === 'info' && <Info className={s.icon} />}
+        <span className={s.message}>{message}</span>
+        <button onClick={() => setClosing(true)} className={s.dismiss} aria-label="Dismiss">
+          <X className={s.dismissIcon} />
         </button>
       </div>
     </div>

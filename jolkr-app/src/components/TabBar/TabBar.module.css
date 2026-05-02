@@ -271,7 +271,7 @@
 }
 
 .browserActionLabel {
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: color var(--transition);
 }
 .browserActionRow:hover .browserActionLabel { color: var(--text-strong); }
@@ -535,7 +535,7 @@
   flex-shrink: 0;
 }
 
-.statusLabel { flex: 1; color: var(--text-muted); }
+.statusLabel { flex: 1; color: var(--text-default); }
 .statusItem:hover .statusLabel,
 .statusItem.statusItemActive .statusLabel { color: var(--text-strong); }
 
@@ -593,7 +593,7 @@
   width: 100%;
   padding: 0.4375rem 0.5rem;
   border-radius: 0.5rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   text-align: left;
   transition: background-color var(--transition), color var(--transition);
 }

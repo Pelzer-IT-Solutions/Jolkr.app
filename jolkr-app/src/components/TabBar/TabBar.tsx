@@ -18,7 +18,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Server } from '../../types'
+import type { ServerDisplay, MemberStatus } from '../../types'
 import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
 import { isTauri, isMobile } from '../../platform/detect'
 import s from './TabBar.module.css'
@@ -91,9 +91,9 @@ function applyTabsMask(el: HTMLDivElement | null, left: number, right: number) {
   el.style.webkitMaskImage = img
 }
 
-type UserStatus = 'online' | 'idle' | 'dnd' | 'offline'
 
-const STATUS_META: Record<UserStatus, { label: string; color: string }> = {
+
+const STATUS_META: Record<MemberStatus, { label: string; color: string }> = {
   online:  { label: 'Online',          color: 'oklch(65% 0.18 143)' },
   idle:    { label: 'Idle',            color: 'oklch(75% 0.18 65)'  },
   dnd:     { label: 'Do Not Disturb',  color: 'oklch(55% 0.2 25)'   },
@@ -109,8 +109,8 @@ interface UserInfo {
 }
 
 interface Props {
-  allServers:           Server[]
-  tabbedServers:        Server[]
+  allServers:           ServerDisplay[]
+  tabbedServers:        ServerDisplay[]
   activeServerId:       string
   dmActive:             boolean
   searchActive:         boolean
@@ -118,7 +118,7 @@ interface Props {
   user?:                UserInfo
   // New optional props — all backward-compatible
   mutedServerIds?:      string[]
-  currentStatus?:       UserStatus
+  currentStatus?:       MemberStatus
   ownerServerIds?:      string[]
   settingsServerIds?:   string[]
   userProfile?: {
@@ -138,7 +138,7 @@ interface Props {
   onJoinServer:         () => void
   onCreateServer:       () => void
   onLogout?:            () => void
-  onStatusChange?:      (status: UserStatus) => void
+  onStatusChange?:      (status: MemberStatus) => void
   onOpenServerSettings?:(serverId: string) => void
   onToggleMuteServer?:  (serverId: string) => void
   onMarkAllRead?:       (serverId: string) => void
@@ -155,7 +155,7 @@ export function TabBar({
   const [browserOpen,  setBrowserOpen]  = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [menuOpen,     setMenuOpen]     = useState(false)
-  const status: UserStatus = statusProp ?? 'online'
+  const status: MemberStatus = statusProp ?? 'online'
   const [menuPos,      setMenuPos]      = useState({ top: 0, right: 0 })
 
   // Server tab context menu
@@ -446,7 +446,7 @@ export function TabBar({
 
       {/* ── Server tab context menu ── */}
       <Menu
-        isOpen={!!serverTabMenuOpen}
+        open={!!serverTabMenuOpen}
         position={serverTabMenuPos}
         onClose={() => setServerTabMenuOpen(null)}
         minWidth="10rem"
@@ -570,7 +570,7 @@ export function TabBar({
           {/* Status selector */}
           <div className={s.menuSection}>
             <span className={`${s.menuSectionLabel} txt-tiny txt-semibold`}>Set status</span>
-            {(Object.entries(STATUS_META) as [UserStatus, typeof STATUS_META[UserStatus]][]).map(([key, meta]) => (
+            {(Object.entries(STATUS_META) as [MemberStatus, typeof STATUS_META[MemberStatus]][]).map(([key, meta]) => (
               <button
                 key={key}
                 className={`${s.statusItem} ${status === key ? s.statusItemActive : ''}`}
@@ -611,7 +611,7 @@ export function TabBar({
 
 /* ── Sortable tab wrapper ── */
 function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwitch, onClose, onOpenMenu, menuBtnRefSetter }: {
-  server:           Server
+  server:           ServerDisplay
   isActive:         boolean
   isDragging:       boolean
   isMuted:          boolean

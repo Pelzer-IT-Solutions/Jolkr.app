@@ -1,7 +1,7 @@
 import { ArrowLeft } from 'lucide-react'
-import type { MemberGroup, Member } from '../../types'
+import type { MemberGroup, MemberSummary } from '../../types'
 import type { User } from '../../api/types'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import { PinnedMessagesPanel } from '../PinnedMessagesPanel/PinnedMessagesPanel'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
@@ -13,14 +13,17 @@ interface Props {
   serverId: string
   channelId: string
   isDm?: boolean
-  onMemberClick?: (member: Member, e: React.MouseEvent) => void
+  /** Right-click on a member row → context menu. */
+  onMemberClick?: (member: MemberSummary, e: React.MouseEvent) => void
+  /** Plain (left) click on a member row → open the profile card. */
+  onMemberOpenProfile?: (member: MemberSummary, e: React.MouseEvent) => void
   onUnpin?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number
   onMobileClose?: () => void
 }
 
-export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
+export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
   const visible = mode !== null
 
   const total = members.online.length + members.offline.length
@@ -74,6 +77,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
                 key={m.userId}
                 className={`${s.member} ${isRevealing ? 'revealing' : ''}`}
                 style={revealStyle(1 + i)}
+                onClick={e => onMemberOpenProfile?.(m, e)}
                 onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
               >
                 <Avatar
@@ -99,6 +103,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
                 key={m.userId}
                 className={`${s.member} ${s.memberOffline} ${isRevealing ? 'revealing' : ''}`}
                 style={revealStyle(offlineStart + i)}
+                onClick={e => onMemberOpenProfile?.(m, e)}
                 onContextMenu={e => { e.preventDefault(); onMemberClick?.(m, e) }}
               >
                 <Avatar

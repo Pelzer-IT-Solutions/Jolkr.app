@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
+import { STORAGE_KEYS } from './storageKeys'
 
 export type ColorPreference = 'light' | 'dark' | 'system'
 
-const LS_KEY   = 'jolkr-color-mode'
+const LS_KEY   = STORAGE_KEYS.COLOR_MODE
 const TRANS_MS = 300
 
 function getSystemDark() {

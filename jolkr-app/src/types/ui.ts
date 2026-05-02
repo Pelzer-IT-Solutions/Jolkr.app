@@ -1,4 +1,4 @@
-export interface Channel {
+export interface ChannelDisplay {
   id:        string
   name:      string
   icon:      string
@@ -8,13 +8,13 @@ export interface Channel {
   kind?:     'text' | 'voice'
 }
 
-export interface Category {
+export interface CategoryDisplay {
   id:       string
   name:     string
   channels: string[]
 }
 
-export interface Server {
+export interface ServerDisplay {
   id:         string
   name:       string
   icon:       string
@@ -22,8 +22,8 @@ export interface Server {
   unread:     boolean
   hue?:       number
   iconUrl?:   string | null
-  categories: Category[]
-  channels:   Channel[]
+  categories: CategoryDisplay[]
+  channels:   ChannelDisplay[]
   members:    MemberGroup
 }
 
@@ -49,7 +49,8 @@ export interface DMConversation {
   unread:       number
 }
 
-export interface Member {
+/** Lightweight member used by MemberPanel and other "card"-style listings. */
+export interface MemberSummary {
   name:      string
   status:    MemberStatus
   color:     string
@@ -59,11 +60,11 @@ export interface Member {
 }
 
 export interface MemberGroup {
-  online:  Member[]
-  offline: Member[]
+  online:  MemberSummary[]
+  offline: MemberSummary[]
 }
 
-export interface Reaction {
+export interface ReactionDisplay {
   emoji:   string
   count:   number
   me:      boolean
@@ -76,7 +77,21 @@ export interface ReplyRef {
   text:   string
 }
 
-export interface Message {
+/**
+ * View-model for a chat message. Mixes camelCase display fields
+ * (`author`, `color`, `letter`, `time`, `replyTo`, …) with snake_case
+ * passthrough fields (`author_id`, `channel_id`, `is_pinned`, …) for
+ * the e2ee/edit/reaction handlers that need the raw API identifiers.
+ *
+ * The two halves serve different layers: display fields are produced by
+ * `adapters/transforms.ts`, while passthrough fields are kept verbatim
+ * from the wire. A "pure" UI shape would force every consumer to
+ * re-map the API record on access, so the mix is intentional. New
+ * fields should follow the same rule:
+ *   - displayed in the UI directly  →  camelCase
+ *   - sent back to the API verbatim →  snake_case (mirror api/types.ts)
+ */
+export interface MessageVM {
   id:        string
   author:    string
   color:     string
@@ -86,7 +101,7 @@ export interface Message {
   /** Raw ISO timestamp from the backend — used for day-boundary separators. */
   created_at: string
   content:   string
-  reactions: Reaction[]
+  reactions: ReactionDisplay[]
   continued: boolean
   replyTo?:  ReplyRef
   edited?:   boolean
@@ -101,7 +116,7 @@ export interface Message {
   attachments?:       import('../api/types').Attachment[]
 }
 
-export type MessageStore = Record<string, Record<string, Message[]>>
+export type MessageStore = Record<string, Record<string, MessageVM[]>>
 
 export interface ThemeOrb {
   id:     string
@@ -118,6 +133,7 @@ export interface ServerTheme {
 
 // ── Display types for components ──
 
+/** Member rendered in lists/profile cards with original snake_case API fields. */
 export interface MemberDisplay {
   user_id:       string
   username:      string
@@ -128,7 +144,7 @@ export interface MemberDisplay {
   avatar_url?:   string | null
 }
 
-export interface PermissionOverwrite {
+export interface PermissionOverwriteDisplay {
   id:          string
   channel_id:  string
   target_type: 'role' | 'member'
