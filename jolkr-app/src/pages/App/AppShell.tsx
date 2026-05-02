@@ -88,7 +88,7 @@ export default function AppShell() {
   const showLeft  = !isMobile || activeMobilePane === 'left'
   const showChat  = !isMobile || activeMobilePane === 'chat'
   const showRight = !isMobile || activeMobilePane === 'right'
-  const isEmptyState = !dmActive && !activeServer
+  const isEmptyState = !activeServer && (!dmActive || (!activeDmId && dmList.length === 0))
 
   const handleExpandSidebar = useCallback(() => {
     if (isMobile) setActiveMobilePane('left')
