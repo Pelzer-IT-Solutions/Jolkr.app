@@ -1,8 +1,10 @@
 import { ArrowLeft } from 'lucide-react'
 import type { MemberGroup, MemberSummary } from '../../types'
-import type { User } from '../../api/types'
+import type { User, Thread } from '../../api/types'
 import Avatar from '../Avatar/Avatar'
 import { PinnedMessagesPanel } from '../PinnedMessagesPanel/PinnedMessagesPanel'
+import { ThreadListPanel } from '../Thread/ThreadListPanel'
+import { ThreadPanel } from '../Thread/ThreadPanel'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import s from './MemberPanel.module.css'
@@ -21,9 +23,15 @@ interface Props {
   users?: Map<string, User>
   pinnedVersion?: number
   onMobileClose?: () => void
+  /** When set, the threads view renders ThreadPanel for this thread instead of the list. */
+  openThreadId?: string | null
+  /** Open a specific thread from the list. */
+  onOpenThread?: (thread: Thread) => void
+  /** Go back from a single-thread view to the thread list. */
+  onCloseThread?: () => void
 }
 
-export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
+export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, users, pinnedVersion, onMobileClose, openThreadId, onOpenThread, onCloseThread }: Props) {
   const visible = mode !== null
 
   const total = members.online.length + members.offline.length
@@ -56,9 +64,23 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
         )
 
       case 'threads':
+        if (openThreadId) {
+          return (
+            <ThreadPanel
+              threadId={openThreadId}
+              channelId={channelId}
+              serverId={serverId}
+              users={users}
+              onBack={() => onCloseThread?.()}
+            />
+          )
+        }
         return (
           <div className={`${s.scroll} scrollbar-thin scroll-view-y`}>
-            <div className={`${s.empty} txt-small`}>Threads coming soon...</div>
+            <ThreadListPanel
+              channelId={channelId}
+              onOpenThread={t => onOpenThread?.(t)}
+            />
           </div>
         )
 
@@ -132,18 +154,24 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
     }
   }
 
+  // Hide the outer header in single-thread view — ThreadPanel renders its own
+  // header (with back button + thread name) so we'd otherwise stack two bars.
+  const hideOuterHeader = mode === 'threads' && !!openThreadId
+
   return (
     <aside className={`${s.panel} ${!visible ? s.hidden : ''}`}>
-      <div className={s.header}>
-        {onMobileClose && (
-          <button className={s.backBtn} title="Back to chat" onClick={onMobileClose}>
-            <ArrowLeft size={14} strokeWidth={1.5} />
-          </button>
-        )}
-        <span className={`${s.title} txt-tiny txt-semibold`}>
-          {getHeaderTitle()}
-        </span>
-      </div>
+      {!hideOuterHeader && (
+        <div className={s.header}>
+          {onMobileClose && (
+            <button className={s.backBtn} title="Back to chat" onClick={onMobileClose}>
+              <ArrowLeft size={14} strokeWidth={1.5} />
+            </button>
+          )}
+          <span className={`${s.title} txt-tiny txt-semibold`}>
+            {getHeaderTitle()}
+          </span>
+        </div>
+      )}
       {renderContent()}
     </aside>
   )

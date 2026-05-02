@@ -11,7 +11,7 @@
  */
 
 import type {
-  Message, Server, Channel, Member, Category, DmChannel, GifFavorite, Friendship,
+  Message, Server, Channel, Member, Category, DmChannel, GifFavorite, Friendship, Thread,
 } from './types';
 
 /** Reactions on the wire have `user_ids` (snake) — see `Reaction` in api/types.ts. */
@@ -34,7 +34,7 @@ export type WsEvent =
   | { op: 'MessageDelete'; d: { message_id: string; channel_id?: string; dm_channel_id?: string } }
   | { op: 'ReactionUpdate'; d: { channel_id: string; message_id: string; reactions: ReactionPayload[] } }
   | { op: 'PollUpdate'; d: { channel_id: string; message_id: string; poll: unknown } }
-  | { op: 'ThreadCreate' | 'ThreadUpdate'; d: { thread: unknown } }
+  | { op: 'ThreadCreate' | 'ThreadUpdate'; d: { thread: Thread } }
 
   // ── Server / channel / category ───────────────────────────────────
   | { op: 'ChannelCreate' | 'ChannelUpdate'; d: { channel: Channel } }

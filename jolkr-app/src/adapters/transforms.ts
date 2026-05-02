@@ -160,6 +160,8 @@ export function transformMessage(
     is_pinned: msg.is_pinned,
     embeds: msg.embeds,
     attachments: msg.attachments,
+    thread_id: msg.thread_id ?? null,
+    thread_reply_count: msg.thread_reply_count ?? null,
   }
 }
 

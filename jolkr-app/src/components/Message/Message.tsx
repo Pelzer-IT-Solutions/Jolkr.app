@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   SmilePlus, CornerUpLeft, Pencil, MoreHorizontal,
-  Copy, Pin, Trash2, Flag,
+  Copy, Pin, Trash2, Flag, MessageSquare,
 } from 'lucide-react'
 import type { MessageVM } from '../../types'
 import type { User, MessageEmbed } from '../../api/types'
@@ -36,9 +36,13 @@ interface Props {
   dmParticipantNames?:   Record<string, string>
   canManageMessages?:    boolean
   canAddReactions?:      boolean
+  /** Open the thread that hangs off this message in the right panel. */
+  onOpenThread?:         (threadId: string) => void
+  /** Start a brand-new thread from this message (server channels only). */
+  onStartThread?:        (messageId: string) => void
 }
 
-export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, onOpenAuthorProfile, isDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false }: Props) {
+export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, onOpenAuthorProfile, isDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false, onOpenThread, onStartThread }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
   const shiftHeld = useShiftKey()
@@ -236,6 +240,23 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
     <MessageAttachments attachments={message.attachments!} />
   ) : null
 
+  // Thread reply badge — shown when this message is a thread parent (has a
+  // thread_id) and at least one reply exists. Clicking opens the right-panel
+  // thread view. Threads are server-only — never shown in DMs.
+  const threadReplyCount = message.thread_reply_count ?? 0
+  const threadBadge = !isDm && message.thread_id && threadReplyCount > 0 && onOpenThread ? (
+    <button
+      type="button"
+      className={s.threadReplyLink}
+      onClick={() => onOpenThread(message.thread_id!)}
+    >
+      <MessageSquare size={11} strokeWidth={1.6} />
+      <span className="txt-tiny txt-semibold">
+        {threadReplyCount} {threadReplyCount === 1 ? 'reply' : 'replies'} in thread
+      </span>
+    </button>
+  ) : null
+
   const body = (
     <>
       {replyBlock}
@@ -243,6 +264,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
       {attachmentsBlock}
       {embedsBlock}
       {reactionsBlock}
+      {threadBadge}
     </>
   )
 
@@ -327,6 +349,16 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             {canManageMessages && onPin && (
               <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
                 <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
+              </button>
+            )}
+            {!isDm && onStartThread && !message.thread_id && (
+              <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onStartThread(message.id) }}>
+                <ThreadIcon /><span>Start Thread</span>
+              </button>
+            )}
+            {!isDm && message.thread_id && onOpenThread && (
+              <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onOpenThread(message.thread_id!) }}>
+                <ThreadIcon /><span>Open Thread</span>
               </button>
             )}
             <div className={s.menuDivider} />
@@ -551,3 +583,4 @@ function CopyIcon()     { return <Copy           size={14} strokeWidth={1.4} /> 
 function PinIcon()      { return <Pin            size={14} strokeWidth={1.4} /> }
 function TrashIcon()    { return <Trash2         size={14} strokeWidth={1.4} /> }
 function FlagIcon()     { return <Flag           size={14} strokeWidth={1.4} /> }
+function ThreadIcon()   { return <MessageSquare  size={14} strokeWidth={1.4} /> }

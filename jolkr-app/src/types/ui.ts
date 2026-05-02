@@ -114,6 +114,12 @@ export interface MessageVM {
   is_system?:         boolean
   embeds?:            import('../api/types').MessageEmbed[]
   attachments?:       import('../api/types').Attachment[]
+  // Thread metadata. `thread_id` on a parent message is the id of the
+  // thread that hangs off it (set by the backend when the thread is created
+  // from this message). `thread_reply_count` is the number of replies the
+  // thread currently has — drives the "{n} replies in thread" badge.
+  thread_id?:         string | null
+  thread_reply_count?: number | null
 }
 
 export type MessageStore = Record<string, Record<string, MessageVM[]>>

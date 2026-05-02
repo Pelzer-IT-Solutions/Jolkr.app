@@ -64,6 +64,7 @@ export default function AppShell() {
     contextMenuIsFriend,
     profileCard, setProfileCard,
     pinnedCount, pinnedVersion, threadsCount,
+    openThreadId, setOpenThreadId,
     ready, serverThemes, setServerThemes,
     fetchServers,
   } = init
@@ -109,6 +110,15 @@ export default function AppShell() {
       else { setRightPanelMode(mode); setUserOverrideRight('open') }
     }
   }, [isMobile, setActiveMobilePane, setRightPanelMode, setUserOverrideRight])
+
+  // Open a specific thread in the right panel — used by Message.tsx's
+  // "{n} replies in thread" badge and by ThreadListPanel item clicks.
+  const handleOpenThreadById = useCallback((threadId: string) => {
+    setOpenThreadId(threadId)
+    setRightPanelMode('threads')
+    if (isMobile) setActiveMobilePane('right')
+    else setUserOverrideRight('open')
+  }, [setOpenThreadId, setRightPanelMode, isMobile, setActiveMobilePane, setUserOverrideRight])
 
   const mobileBackToChat = useCallback(() => setActiveMobilePane('chat'), [setActiveMobilePane])
 
@@ -357,6 +367,19 @@ export default function AppShell() {
                     canAddReactions={canAddReactions}
                     canSendMessages={canSendMessages}
                     canAttachFiles={canAttachFiles}
+                    onOpenThread={handleOpenThreadById}
+                    onStartThread={async (messageId) => {
+                      if (dmActive || !activeChannelId) return
+                      const name = window.prompt('Thread name (optional)')?.trim()
+                      try {
+                        await api.createThread(activeChannelId, messageId, name || undefined)
+                        // Backend will emit ThreadCreate WS event → store bumps
+                        // threadListVersion → ThreadListPanel + threadsCount refresh.
+                      } catch (err) {
+                        const msg = err instanceof Error ? err.message : 'Failed to create thread'
+                        useToast.getState().show(msg, 'error')
+                      }
+                    }}
                   />}
 
                   {showRight && (dmActive ? (
@@ -400,6 +423,9 @@ export default function AppShell() {
                       users={userMap}
                       pinnedVersion={pinnedVersion}
                       onMobileClose={isMobile ? mobileBackToChat : undefined}
+                      openThreadId={openThreadId}
+                      onOpenThread={(t) => setOpenThreadId(t.id)}
+                      onCloseThread={() => setOpenThreadId(null)}
                     />
                   ) : null)}
                 </>

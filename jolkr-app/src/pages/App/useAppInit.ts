@@ -29,6 +29,7 @@ export function useAppInit() {
   const membersByServer = useServersStore(s => s.members)
   const categoriesByServer = useServersStore(s => s.categories)
   const storeMessages = useMessagesStore(s => s.messages)
+  const threadListVersion = useMessagesStore(s => s.threadListVersion)
   const presences = usePresenceStore(s => s.statuses)
   const unreadCounts = useUnreadStore(s => s.counts)
   const serverPermissions = useServersStore(s => s.permissions)
@@ -98,6 +99,11 @@ export function useAppInit() {
   const [pinnedCount, setPinnedCount] = useState(0)
   const [pinnedVersion, setPinnedVersion] = useState(0)
   const [threadsCount, setThreadsCount] = useState(0)
+
+  // Currently-open thread inside the right panel. null = show the list view.
+  // Lives here (not in messages store) so it follows the existing pattern of
+  // ephemeral UI state living next to the panel mode.
+  const [openThreadId, setOpenThreadId] = useState<string | null>(null)
 
   const lastChannelPerServer = useRef<Record<string, string>>({})
   const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -341,15 +347,32 @@ export function useAppInit() {
       } catch {
         setPinnedCount(0)
       }
-      // TODO: Fetch threads count when API is available
-      setThreadsCount(0)
+      // Threads only exist in server text channels — DMs have none.
+      if (dmActive) {
+        setThreadsCount(0)
+        return
+      }
+      try {
+        const threads = await api.getThreads(channelId, false)
+        setThreadsCount(threads.filter(t => !t.is_archived).length)
+      } catch {
+        setThreadsCount(0)
+      }
     }
     fetchCounts()
 
     return () => {
       useUnreadStore.getState().setActiveChannel(null)
     }
-  }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+    // threadListVersion is included so the count refreshes when ThreadCreate/Update fires.
+  }, [dmActive ? activeDmId : activeChannelId, dmActive, threadListVersion]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Reset open thread when channel/DM changes ──
+  // Otherwise the thread panel would try to render messages from a thread
+  // that doesn't belong to the new channel.
+  useEffect(() => {
+    setOpenThreadId(null)
+  }, [activeChannelId, activeDmId, dmActive])
 
   // ── WS channel subscribe/unsubscribe ──
   useEffect(() => {
@@ -497,6 +520,7 @@ export function useAppInit() {
     contextMenuIsFriend, setContextMenuIsFriend,
     profileCard, setProfileCard,
     pinnedCount, setPinnedCount, pinnedVersion, setPinnedVersion, threadsCount, setThreadsCount,
+    openThreadId, setOpenThreadId,
     lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
   }
 }
