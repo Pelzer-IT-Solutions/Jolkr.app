@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom'
+import type { RefObject } from 'react'
 import { useClickOutside } from '../hooks/useClickOutside'
 import GifPicker from './GifPicker/GifPicker'
 import s from './EmojiPickerPopup/EmojiPickerPopup.module.css'
@@ -7,10 +8,12 @@ interface Props {
   position: { top: number; left: number }
   onSelect: (gifUrl: string) => void
   onClose: () => void
+  /** Trigger button — clicks here are not treated as outside, so toggling works. */
+  anchor?: RefObject<HTMLElement | null>
 }
 
-export default function GifPickerPopup({ position, onSelect, onClose }: Props) {
-  const ref = useClickOutside<HTMLDivElement>(onClose, true)
+export default function GifPickerPopup({ position, onSelect, onClose, anchor }: Props) {
+  const ref = useClickOutside<HTMLDivElement>(onClose, true, anchor)
 
   return createPortal(
     <div

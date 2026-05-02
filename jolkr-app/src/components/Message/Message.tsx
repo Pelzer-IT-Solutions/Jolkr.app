@@ -303,6 +303,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           position={{ top: pickerPos.top, left: pickerPos.left }}
           onSelect={(emoji) => handleReactionClick(emoji)}
           onClose={() => setShowEmoji(false)}
+          anchor={emojiTriggerRef}
         />
       )}
 
@@ -426,6 +427,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                   position={{ top: pickerPos.top, left: pickerPos.left }}
                   onSelect={(emoji) => handleReactionClick(emoji)}
                   onClose={() => setShowEmoji(false)}
+                  anchor={emojiTriggerRef}
                 />
               )}
 

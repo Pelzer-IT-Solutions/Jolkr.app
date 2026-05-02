@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useClickOutside } from '../../hooks/useClickOutside'
 import { useColorMode } from '../../utils/colorMode'
@@ -11,10 +11,12 @@ interface Props {
   position: { top: number; left: number }
   onSelect: (emoji: string) => void
   onClose: () => void
+  /** Trigger button — clicks here are not treated as outside, so toggling works. */
+  anchor?: RefObject<HTMLElement | null>
 }
 
-export default function EmojiPickerPopup({ position, onSelect, onClose }: Props) {
-  const ref = useClickOutside<HTMLDivElement>(onClose, true)
+export default function EmojiPickerPopup({ position, onSelect, onClose, anchor }: Props) {
+  const ref = useClickOutside<HTMLDivElement>(onClose, true, anchor)
   const { isDark } = useColorMode()
   const theme = (isDark ? 'dark' : 'light') as never
 

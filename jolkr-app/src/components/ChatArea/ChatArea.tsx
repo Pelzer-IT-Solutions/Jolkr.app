@@ -708,6 +708,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       inputRef.current?.insertEmojiAtCursor(emoji)
                     }}
                     onClose={() => setShowComposerEmoji(false)}
+                    anchor={composerEmojiBtnRef}
                   />
                 )}
               </div>
@@ -759,6 +760,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                           inputRef.current?.focus()
                         }}
                         onClose={() => setShowGifPicker(false)}
+                        anchor={gifBtnRef}
                       />
                     )}
                   </>
