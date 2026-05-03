@@ -288,25 +288,11 @@ async function request<T>(
   const payload = (unwrapKey && json[unwrapKey] !== undefined) ? json[unwrapKey] : json;
   if (schema) {
     const result = schema.safeParse(payload);
-    if (!result.success) {
-      // Log the mismatch loudly so we can iterate on the schemas without
-      // taking the UI down — early adoption phase. Tighten back to a thrown
-      // ApiError once schemas have been verified against live backend
-      // responses for a release cycle.
-      const summary = result.error.issues.map((i): Record<string, unknown> => {
-        const r = i as unknown as Record<string, unknown>;
-        return {
-          path: i.path.join('.'),
-          code: i.code,
-          message: i.message,
-          expected: r.expected,
-          received: r.received,
-        };
-      });
-      console.warn(`[api] schema validation failed for ${path}:`, summary, 'payload sample:', payload);
-      return payload as T;
-    }
-    return result.data;
+    // Soft-fail: when validation fails, pass the raw payload through unchanged
+    // so the UI is never gated on schema parity. Schemas are still being
+    // hardened (DmMessageSchema is on the backlog); when they are stable for
+    // a release cycle the failure path will switch to throwing an ApiError.
+    return result.success ? result.data : (payload as T);
   }
   return payload as T;
 }
