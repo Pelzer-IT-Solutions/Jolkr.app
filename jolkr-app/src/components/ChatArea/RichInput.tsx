@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useCallback } from 'react'
+import { useImperativeHandle, useRef, useCallback, type Ref } from 'react'
 import {
   getPlainText,
   getTextBeforeCursor,
@@ -24,12 +24,12 @@ interface Props {
   onInput?: (plainText: string) => void
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void
   onSelectionChange?: () => void
+  /** Imperative handle exposing focus / getPlainText / replaceBeforeCursor /
+   *  insertEmojiAtCursor / clear. Accepts a regular ref-prop (React 19). */
+  ref?: Ref<RichInputHandle>
 }
 
-export const RichInput = forwardRef<RichInputHandle, Props>(function RichInput(
-  { placeholder = '', onInput, onKeyDown, onSelectionChange },
-  ref,
-) {
+export function RichInput({ ref, placeholder = '', onInput, onKeyDown, onSelectionChange }: Props) {
   const divRef = useRef<HTMLDivElement>(null)
   const savedRange = useRef<Range | null>(null)
 
@@ -202,7 +202,7 @@ export const RichInput = forwardRef<RichInputHandle, Props>(function RichInput(
       updateEmpty()
       onInput?.(getPlainText(el))
     },
-  }), [restoreCursor, saveRange, updateEmpty, onInput])
+  }), [restoreCursor, saveRange, updateEmpty, onInput, ref])
 
   // ── event handlers ────────────────────────────────────────────────────────
 
@@ -271,4 +271,4 @@ export const RichInput = forwardRef<RichInputHandle, Props>(function RichInput(
       onSelect={handleSelect}
     />
   )
-})
+}
