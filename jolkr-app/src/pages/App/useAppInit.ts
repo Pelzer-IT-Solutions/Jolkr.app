@@ -10,7 +10,6 @@ import { useUnreadStore } from '../../stores/unread'
 import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
 import { ServerThemeSchema } from '../../api/schemas'
-import { useGifFavoritesStore } from '../../stores/gif-favorites'
 
 import type { DmChannel, User } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
@@ -19,6 +18,7 @@ import { lookupFriendship } from '../../services/friendshipCache'
 import { syncPresence } from '../../services/presenceSync'
 import type { MemberDisplay } from '../../types/ui'
 import { useWsSubscriptions } from './useWsSubscriptions'
+import { useRouting } from './useRouting'
 
 export function useAppInit() {
   const navigate = useNavigate()
@@ -123,181 +123,17 @@ export function useAppInit() {
   // ── Per-server themes ──
   const [serverThemes, setServerThemes] = useState<Record<string, ServerTheme>>({})
 
-  // ── Init: fetch servers + DMs, then navigate to correct place ──
-  useEffect(() => {
-    let cancelled = false
-
-    async function init() {
-      // ── Parse URL FIRST — we need to know where to go ──
-      const path = location.pathname
-      const urlDmId = path.match(/\/dm\/([^/]+)/)?.[1]
-      const urlServerId = path.match(/\/servers\/([^/]+)/)?.[1]
-      const urlChannelId = path.match(/\/servers\/[^/]+\/channels\/([^/]+)/)?.[1]
-
-      // Fetch servers, DMs, and GIF favorites in parallel
-      const [, dms] = await Promise.all([
-        fetchServers(),
-        api.getDms(),
-        useGifFavoritesStore.getState().load(),
-      ])
-      if (cancelled) return
-
-      setDmList(dms)
-
-      // DM user details — fire & forget, don't block init
-      const userIds = new Set<string>()
-      dms.forEach(dm => dm.members.forEach(id => userIds.add(id)))
-      if (userIds.size > 0) {
-        const idArr = Array.from(userIds)
-        Promise.all(
-          idArr.map(id => api.getUser(id).catch(() => null))
-        ).then(users => {
-          if (cancelled) return
-          const map = new Map<string, User>()
-          users.forEach(u => { if (u) map.set(u.id, u) })
-          setDmUsers(map)
-        })
-        // Fetch presence for DM participants (batched / deduped via service).
-        syncPresence(idArr)
-      }
-
-      const srvs = useServersStore.getState().servers
-      const themes: Record<string, ServerTheme> = {}
-      srvs.forEach(srv => {
-        const parsed = ServerThemeSchema.safeParse(srv.theme)
-        themes[srv.id] = parsed.success ? parsed.data : { hue: null, orbs: [] }
-      })
-      setServerThemes(themes)
-
-      const ids = srvs.slice(0, 5).map(s => s.id)
-
-      if (urlDmId) {
-        setDmActive(true)
-        setActiveDmId(urlDmId)
-        setTabbedIds(ids)
-        // Load first server data in background — don't block
-        if (ids[0]) {
-          setActiveServerId(ids[0])
-          loadServerData(ids[0], null) // no await
-        }
-      } else if (urlServerId && srvs.some(s => s.id === urlServerId)) {
-        if (!ids.includes(urlServerId)) ids.unshift(urlServerId)
-        setTabbedIds(ids)
-        setDmActive(false)
-        setActiveServerId(urlServerId)
-        await loadServerData(urlServerId, urlChannelId ?? null)
-      } else if (srvs.length > 0) {
-        setTabbedIds(ids)
-        setDmActive(false)
-        setActiveServerId(ids[0])
-        await loadServerData(ids[0], null)
-        if (!cancelled) navigate(`/servers/${ids[0]}`, { replace: true })
-      } else if (dms.length > 0) {
-        setTabbedIds([])
-        setDmActive(true)
-        setActiveDmId(dms[0].id)
-        if (!cancelled) navigate(`/dm/${dms[0].id}`, { replace: true })
-      }
-
-      if (!cancelled) setReady(true)
-    }
-
-    async function loadServerData(serverId: string, wantedChannelId: string | null) {
-      await Promise.all([
-        fetchChannels(serverId),
-        fetchMembers(serverId),
-        fetchCategories(serverId),
-        fetchPermissions(serverId),
-      ])
-      if (cancelled) return
-      const chs = useServersStore.getState().channels[serverId]
-      if (chs?.length > 0) {
-        const channelId = wantedChannelId && chs.some(c => c.id === wantedChannelId)
-          ? wantedChannelId
-          : chs.find(c => c.kind === 'text')?.id ?? chs[0].id
-        setActiveChannelId(channelId)
-      }
-      // Fetch presence for all server members (batched / deduped via service).
-      const mems = useServersStore.getState().members[serverId]
-      if (mems?.length) {
-        syncPresence(mems.map(m => m.user_id))
-      }
-    }
-
-    init().catch(console.error)
-    return () => { cancelled = true }
-    // MOUNT-ONLY by design. `location.pathname` in deps would re-run the
-    // entire init (refetch servers + DMs + reset active*Id) on every nav —
-    // creating a redirect loop with the state↔URL sync effects below. Same
-    // for `navigate`. The fetch* refs are stable zustand actions so they
-    // would technically be safe to list, but we keep [] for clarity that
-    // this effect deliberately runs once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // ── Sync state → URL (only AFTER init is done) ──
-  // Uses push (not replace) so each user-driven server/channel/DM switch
-  // adds a webview history entry. The Android hardware back button then
-  // navigates to the previous channel instead of closing the app.
-  useEffect(() => {
-    if (!ready) return
-    let target: string
-    if (dmActive && activeDmId && !activeDmId.startsWith('draft:')) {
-      // Drafts are session-only; we never expose their synthetic id in the
-      // URL. Navigating to `/dm` keeps the sidebar visible while the draft
-      // chat renders so the user can still see and switch DMs.
-      target = `/dm/${activeDmId}`
-    } else if (dmActive) {
-      target = `/dm`
-    } else if (activeServerId && activeChannelId) {
-      target = `/servers/${activeServerId}/channels/${activeChannelId}`
-    } else if (activeServerId) {
-      target = `/servers/${activeServerId}`
-    } else {
-      target = '/'
-    }
-    if (location.pathname !== target) {
-      navigate(target)
-    }
-    // Drives URL FROM state — listing `location.pathname` in deps would
-    // make this effect re-fire on URL changes too and feedback-loop with
-    // the URL→state effect below. `navigate` is stable.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, dmActive, activeDmId, activeServerId, activeChannelId])
-
-  // ── Sync URL → state (popstate / programmatic history.back) ──
-  // When the user presses the Android back button or otherwise pops history,
-  // the URL changes but state doesn't. Re-derive activeServerId / activeChannelId
-  // / activeDmId / dmActive from the current path so the UI follows the URL.
-  useEffect(() => {
-    if (!ready) return
-    const path = location.pathname
-    const dmMatch = path.match(/^\/dm(?:\/([^/]+))?/)
-    const serverMatch = path.match(/^\/servers\/([^/]+)(?:\/channels\/([^/]+))?/)
-    if (dmMatch) {
-      const dmId = dmMatch[1] ?? ''
-      if (!dmActive) setDmActive(true)
-      // A draft id reaching us via the URL means the page was reloaded
-      // mid-draft; the local entry no longer exists, so fall back to the
-      // empty DM list rather than trying to render a phantom conversation.
-      if (dmId.startsWith('draft:')) {
-        if (activeDmId) setActiveDmId('')
-      } else if (dmId !== activeDmId) {
-        setActiveDmId(dmId)
-      }
-    } else if (serverMatch) {
-      const sid = serverMatch[1]
-      const cid = serverMatch[2] ?? ''
-      if (dmActive) setDmActive(false)
-      if (sid !== activeServerId) setActiveServerId(sid)
-      if (cid !== activeChannelId) setActiveChannelId(cid)
-    }
-    // Drives state FROM url — listing the state vars would make this
-    // effect re-fire on every state change and feedback-loop with the
-    // state→URL effect above. The conditionals are no-op guards, not
-    // reactive triggers.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, location.pathname])
+  // ── Routing: mount-only init + state↔URL sync ──
+  // The three load-bearing effects (init / state→URL / URL→state) plus their
+  // exhaustive-deps disables live in useRouting; see that file for the full
+  // rationale on why each effect runs only on its specific deps.
+  useRouting({
+    ready, dmActive, activeDmId, activeServerId, activeChannelId,
+    setDmList, setDmUsers, setServerThemes, setTabbedIds,
+    setActiveServerId, setActiveDmId, setActiveChannelId,
+    setDmActive, setReady,
+    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions,
+  })
 
   // ── Fetch channel data when switching servers (after init) ──
   // activeChannelId is read inside the .then to validate selection but we
