@@ -9,6 +9,7 @@ import { usePresenceStore } from '../../stores/presence'
 import { useUnreadStore } from '../../stores/unread'
 import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
+import { ServerThemeSchema } from '../../api/schemas'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useCallStore } from '../../stores/call'
 
@@ -164,11 +165,8 @@ export function useAppInit() {
       const srvs = useServersStore.getState().servers
       const themes: Record<string, ServerTheme> = {}
       srvs.forEach(srv => {
-        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
-          themes[srv.id] = srv.theme as unknown as ServerTheme
-        } else {
-          themes[srv.id] = { hue: null, orbs: [] }
-        }
+        const parsed = ServerThemeSchema.safeParse(srv.theme)
+        themes[srv.id] = parsed.success ? parsed.data : { hue: null, orbs: [] }
       })
       setServerThemes(themes)
 
@@ -677,12 +675,12 @@ export function useAppInit() {
       const next = { ...prev }
       let changed = false
       for (const srv of servers) {
-        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
-          const t = srv.theme as unknown as ServerTheme
-          if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
-            next[srv.id] = t
-            changed = true
-          }
+        const parsed = ServerThemeSchema.safeParse(srv.theme)
+        if (!parsed.success) continue
+        const t = parsed.data
+        if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
+          next[srv.id] = t
+          changed = true
         }
       }
       return changed ? next : prev

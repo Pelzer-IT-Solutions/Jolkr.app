@@ -1,10 +1,18 @@
+import type { ZodType } from 'zod';
 import type {
-  User, Server, Channel, Message, Member, Ban,
+  User, Channel, Message, Ban,
   DmChannel, Friendship, Invite, TokenPair, Attachment,
   PreKeyBundleResponse, Role, Category, ChannelOverwrite, Thread,
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
   GifFavorite, ChannelKind, UpdateMeBody,
 } from './types';
+import {
+  UserSchema, UserArraySchema, ServerSchema, ServerArraySchema,
+  ChannelSchema, ChannelArraySchema, CategoryArraySchema,
+  MemberArraySchema, RoleArraySchema, MessageArraySchema, MessageSchema,
+  AttachmentArraySchema, DmChannelSchema, DmChannelArraySchema,
+  ChannelOverwriteArraySchema, BanArraySchema, ThreadArraySchema,
+} from './schemas';
 import { getApiBaseUrl } from '../platform/config';
 import { storage } from '../platform/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
@@ -192,11 +200,29 @@ async function refreshAccessToken(): Promise<boolean> {
   return false;
 }
 
+/**
+ * Optional runtime validation. When `schema` is provided, the parsed JSON
+ * (after optional unwrap) is run through `schema.parse()` so a backend that
+ * silently changes shape fails fast rather than corrupting the UI.
+ *
+ * Migration is incremental — endpoints can opt in by passing a schema; the
+ * rest keep their previous (no-validation) behavior. See `src/api/schemas.ts`
+ * for available schemas.
+ */
+interface RequestOpts<T> {
+  unwrapKey?: string
+  schema?: ZodType<T>
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  unwrapKey?: string,
+  unwrapOrOpts?: string | RequestOpts<T>,
 ): Promise<T> {
+  const opts: RequestOpts<T> = typeof unwrapOrOpts === 'string'
+    ? { unwrapKey: unwrapOrOpts }
+    : (unwrapOrOpts ?? {})
+  const { unwrapKey, schema } = opts
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> || {}),
   };
@@ -259,10 +285,16 @@ async function request<T>(
   if (!text) return undefined as T;
 
   const json = JSON.parse(text);
-  if (unwrapKey && json[unwrapKey] !== undefined) {
-    return json[unwrapKey] as T;
+  const payload = (unwrapKey && json[unwrapKey] !== undefined) ? json[unwrapKey] : json;
+  if (schema) {
+    const result = schema.safeParse(payload);
+    if (!result.success) {
+      console.warn(`[api] schema validation failed for ${path}:`, result.error.issues);
+      throw new ApiError(500, `Malformed response from ${path}`);
+    }
+    return result.data;
   }
-  return json as T;
+  return payload as T;
 }
 
 // Auth
@@ -347,27 +379,27 @@ export async function changePassword(currentPassword: string, newPassword: strin
 }
 
 // Users
-export const getMe = () => request<User>('/users/@me', {}, 'user');
+export const getMe = () => request('/users/@me', {}, { unwrapKey: 'user', schema: UserSchema });
 export const updateMe = (body: UpdateMeBody) =>
-  request<User>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
-export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
+  request('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, { unwrapKey: 'user', schema: UserSchema });
+export const getUser = (id: string) => request(`/users/${id}`, {}, { unwrapKey: 'user', schema: UserSchema });
 export const getUsersBatch = async (ids: string[]): Promise<User[]> => {
   const results = await Promise.all(ids.map((id) => getUser(id).catch(() => null)));
   return results.filter((u): u is User => u !== null);
 };
-export const searchUsers = (q: string) => request<User[]>(`/users/search?q=${encodeURIComponent(q)}`, {}, 'users');
+export const searchUsers = (q: string) => request(`/users/search?q=${encodeURIComponent(q)}`, {}, { unwrapKey: 'users', schema: UserArraySchema });
 
 // Servers
-export const getServers = () => request<Server[]>('/servers', {}, 'servers');
+export const getServers = () => request('/servers', {}, { unwrapKey: 'servers', schema: ServerArraySchema });
 export const createServer = (body: { name: string; description?: string }) =>
-  request<Server>('/servers', { method: 'POST', body: JSON.stringify(body) }, 'server');
-export const getServer = (id: string) => request<Server>(`/servers/${id}`, {}, 'server');
+  request('/servers', { method: 'POST', body: JSON.stringify(body) }, { unwrapKey: 'server', schema: ServerSchema });
+export const getServer = (id: string) => request(`/servers/${id}`, {}, { unwrapKey: 'server', schema: ServerSchema });
 export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean; theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null }) =>
-  request<Server>(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'server');
+  request(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, { unwrapKey: 'server', schema: ServerSchema });
 export const deleteServer = (id: string) =>
   request<void>(`/servers/${id}`, { method: 'DELETE' });
 export const getServerMembers = (serverId: string) =>
-  request<Member[]>(`/servers/${serverId}/members`, {}, 'members');
+  request(`/servers/${serverId}/members`, {}, { unwrapKey: 'members', schema: MemberArraySchema });
 export const leaveServer = (serverId: string) =>
   request<void>(`/servers/${serverId}/members/@me`, { method: 'DELETE' });
 
@@ -377,7 +409,7 @@ export const reorderServers = (serverIds: string[]) =>
     body: JSON.stringify({ server_ids: serverIds }),
   });
 export const discoverServers = (limit = 20, offset = 0) =>
-  request<Server[]>(`/servers/discover?limit=${limit}&offset=${offset}`, {}, 'servers');
+  request(`/servers/discover?limit=${limit}&offset=${offset}`, {}, { unwrapKey: 'servers', schema: ServerArraySchema });
 
 export const joinPublicServer = (serverId: string) =>
   request<void>(`/servers/${serverId}/join`, { method: 'POST' });
@@ -393,7 +425,7 @@ export const banMember = (serverId: string, userId: string, reason?: string) =>
 export const unbanMember = (serverId: string, userId: string) =>
   request<void>(`/servers/${serverId}/bans/${userId}`, { method: 'DELETE' });
 export const getBans = (serverId: string) =>
-  request<Ban[]>(`/servers/${serverId}/bans`, {}, 'bans');
+  request(`/servers/${serverId}/bans`, {}, { unwrapKey: 'bans', schema: BanArraySchema });
 export const setNickname = (serverId: string, userId: string, nickname?: string) =>
   request<void>(`/servers/${serverId}/members/${userId}/nickname`, {
     method: 'PATCH',
@@ -402,7 +434,7 @@ export const setNickname = (serverId: string, userId: string, nickname?: string)
 
 // Categories
 export const getCategories = (serverId: string) =>
-  request<Category[]>(`/servers/${serverId}/categories`, {}, 'categories');
+  request(`/servers/${serverId}/categories`, {}, { unwrapKey: 'categories', schema: CategoryArraySchema });
 export const createCategory = (serverId: string, body: { name: string }) =>
   request<Category>(`/servers/${serverId}/categories`, { method: 'POST', body: JSON.stringify(body) }, 'category');
 export const updateCategory = (id: string, body: { name?: string; position?: number }) =>
@@ -412,7 +444,7 @@ export const deleteCategory = (id: string) =>
 
 // Roles
 export const getRoles = (serverId: string) =>
-  request<Role[]>(`/servers/${serverId}/roles`, {}, 'roles');
+  request(`/servers/${serverId}/roles`, {}, { unwrapKey: 'roles', schema: RoleArraySchema });
 export const createRole = (serverId: string, body: { name: string; color?: number; permissions?: number }) =>
   request<Role>(`/servers/${serverId}/roles`, { method: 'POST', body: JSON.stringify(body) }, 'role');
 export const updateRole = (id: string, body: { name?: string; color?: number; position?: number; permissions?: number }) =>
@@ -424,16 +456,16 @@ export const assignRole = (serverId: string, roleId: string, userId: string) =>
 export const removeRole = (serverId: string, roleId: string, userId: string) =>
   request<void>(`/servers/${serverId}/roles/${roleId}/members/${userId}`, { method: 'DELETE' });
 export const getMembersWithRoles = (serverId: string) =>
-  request<Member[]>(`/servers/${serverId}/members-with-roles`, {}, 'members');
+  request(`/servers/${serverId}/members-with-roles`, {}, { unwrapKey: 'members', schema: MemberArraySchema });
 export const getMyPermissions = (serverId: string) =>
   request<{ permissions: number }>(`/servers/${serverId}/permissions/@me`);
 
 // Channels
 export const getChannels = (serverId: string) =>
-  request<Channel[]>(`/servers/${serverId}/channels/list`, {}, 'channels');
+  request(`/servers/${serverId}/channels/list`, {}, { unwrapKey: 'channels', schema: ChannelArraySchema });
 export const createChannel = (serverId: string, body: { name: string; kind: ChannelKind; topic?: string; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
-export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
+export const getChannel = (id: string) => request(`/channels/${id}`, {}, { unwrapKey: 'channel', schema: ChannelSchema });
 export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
 export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>
@@ -449,7 +481,7 @@ export const getMyChannelPermissions = (channelId: string) =>
   request<{ permissions: number }>(`/channels/${channelId}/permissions/@me`);
 
 export const getChannelOverwrites = (channelId: string) =>
-  request<ChannelOverwrite[]>(`/channels/${channelId}/overwrites`, {}, 'overwrites');
+  request(`/channels/${channelId}/overwrites`, {}, { unwrapKey: 'overwrites', schema: ChannelOverwriteArraySchema });
 
 export const upsertChannelOverwrite = (channelId: string, body: {
   target_type: 'role' | 'member'; target_id: string; allow: number; deny: number;
@@ -464,32 +496,32 @@ export const deleteChannelOverwrite = (channelId: string, targetType: string, ta
 export const getMessages = (channelId: string, limit = 50, before?: string) => {
   let path = `/channels/${channelId}/messages?limit=${limit}`;
   if (before) path += `&before=${before}`;
-  return request<Message[]>(path, {}, 'messages');
+  return request(path, {}, { unwrapKey: 'messages', schema: MessageArraySchema });
 };
 export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string) =>
-  request<Message>(`/channels/${channelId}/messages`, {
+  request(`/channels/${channelId}/messages`, {
     method: 'POST',
     body: JSON.stringify({ content, nonce, reply_to_id }),
-  }, 'message');
+  }, { unwrapKey: 'message', schema: MessageSchema });
 export const editMessage = (messageId: string, content: string, nonce?: string) =>
-  request<Message>(`/messages/${messageId}`, {
+  request(`/messages/${messageId}`, {
     method: 'PATCH',
     body: JSON.stringify({ content, nonce }),
-  }, 'message');
+  }, { unwrapKey: 'message', schema: MessageSchema });
 export const deleteMessage = (messageId: string) =>
   request<void>(`/messages/${messageId}`, { method: 'DELETE' });
 
 // Search
 export const searchMessages = (channelId: string, q: string, limit = 50) =>
-  request<Message[]>(`/channels/${channelId}/messages/search?q=${encodeURIComponent(q)}&limit=${limit}`, {}, 'messages');
+  request(`/channels/${channelId}/messages/search?q=${encodeURIComponent(q)}&limit=${limit}`, {}, { unwrapKey: 'messages', schema: MessageArraySchema });
 
 // Pins
 export const pinMessage = (channelId: string, messageId: string) =>
-  request<Message>(`/channels/${channelId}/pins/${messageId}`, { method: 'POST' }, 'message');
+  request(`/channels/${channelId}/pins/${messageId}`, { method: 'POST' }, { unwrapKey: 'message', schema: MessageSchema });
 export const unpinMessage = (channelId: string, messageId: string) =>
-  request<Message>(`/channels/${channelId}/pins/${messageId}`, { method: 'DELETE' }, 'message');
+  request(`/channels/${channelId}/pins/${messageId}`, { method: 'DELETE' }, { unwrapKey: 'message', schema: MessageSchema });
 export const getPinnedMessages = (channelId: string) =>
-  request<Message[]>(`/channels/${channelId}/pins`, {}, 'messages');
+  request(`/channels/${channelId}/pins`, {}, { unwrapKey: 'messages', schema: MessageArraySchema });
 
 // Read state
 export const markChannelRead = (channelId: string, messageId: string) =>
@@ -503,7 +535,7 @@ export const markServerRead = (serverId: string) =>
 
 // Attachments
 export const getMessageAttachments = (messageId: string) =>
-  request<Attachment[]>(`/messages/${messageId}/attachments`, {}, 'attachments');
+  request(`/messages/${messageId}/attachments`, {}, { unwrapKey: 'attachments', schema: AttachmentArraySchema });
 export const uploadAttachment = async (channelId: string, messageId: string, file: File): Promise<Attachment> => {
   const form = new FormData();
   form.append('file', file);
@@ -515,31 +547,31 @@ export const uploadAttachment = async (channelId: string, messageId: string, fil
 };
 
 // DMs
-export const getDms = () => request<DmChannel[]>('/dms', {}, 'channels');
+export const getDms = () => request('/dms', {}, { unwrapKey: 'channels', schema: DmChannelArraySchema });
 /** Every attachment shared in this DM, newest first. Powers the "Shared Files" panel. */
 export const getDmAttachments = (dmId: string) =>
-  request<Attachment[]>(`/dms/${dmId}/attachments`, {}, 'attachments');
+  request(`/dms/${dmId}/attachments`, {}, { unwrapKey: 'attachments', schema: AttachmentArraySchema });
 export const openDm = (userId: string) =>
-  request<DmChannel>('/dms', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'channel');
+  request('/dms', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, { unwrapKey: 'channel', schema: DmChannelSchema });
 export const getDmMessages = (dmId: string, limit = 50, before?: string) => {
   let path = `/dms/${dmId}/messages?limit=${limit}`;
   if (before) path += `&before=${before}`;
-  return request<Message[]>(path, {}, 'messages');
+  return request(path, {}, { unwrapKey: 'messages', schema: MessageArraySchema });
 };
 export const sendDmMessage = (dmId: string, body: {
   content: string;
   nonce?: string;
   reply_to_id?: string;
 }) =>
-  request<Message>(`/dms/${dmId}/messages`, {
+  request(`/dms/${dmId}/messages`, {
     method: 'POST',
     body: JSON.stringify(body),
-  }, 'message');
+  }, { unwrapKey: 'message', schema: MessageSchema });
 export const editDmMessage = (messageId: string, content: string, nonce?: string) =>
-  request<Message>(`/dms/messages/${messageId}`, {
+  request(`/dms/messages/${messageId}`, {
     method: 'PATCH',
     body: JSON.stringify({ content, nonce }),
-  }, 'message');
+  }, { unwrapKey: 'message', schema: MessageSchema });
 export const deleteDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}`, { method: 'DELETE' });
 export const hideDmMessage = (messageId: string) =>
@@ -547,11 +579,11 @@ export const hideDmMessage = (messageId: string) =>
 
 // DM Pins
 export const pinDmMessage = (dmId: string, messageId: string) =>
-  request<Message>(`/dms/${dmId}/pins/${messageId}`, { method: 'POST' }, 'message');
+  request(`/dms/${dmId}/pins/${messageId}`, { method: 'POST' }, { unwrapKey: 'message', schema: MessageSchema });
 export const unpinDmMessage = (dmId: string, messageId: string) =>
-  request<Message>(`/dms/${dmId}/pins/${messageId}`, { method: 'DELETE' }, 'message');
+  request(`/dms/${dmId}/pins/${messageId}`, { method: 'DELETE' }, { unwrapKey: 'message', schema: MessageSchema });
 export const getDmPinnedMessages = (dmId: string) =>
-  request<Message[]>(`/dms/${dmId}/pins`, {}, 'messages');
+  request(`/dms/${dmId}/pins`, {}, { unwrapKey: 'messages', schema: MessageArraySchema });
 
 export const addDmReaction = (messageId: string, emoji: string) =>
   request<void>(`/dms/messages/${messageId}/reactions`, {
@@ -767,7 +799,7 @@ export const createThread = (channelId: string, messageId: string, name?: string
   });
 
 export const getThreads = (channelId: string, includeArchived = false) =>
-  request<Thread[]>(`/channels/${channelId}/threads?include_archived=${includeArchived}`, {}, 'threads');
+  request(`/channels/${channelId}/threads?include_archived=${includeArchived}`, {}, { unwrapKey: 'threads', schema: ThreadArraySchema });
 
 export const getThread = (threadId: string) =>
   request<Thread>(`/threads/${threadId}`, {}, 'thread');
