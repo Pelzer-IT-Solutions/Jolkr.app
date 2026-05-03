@@ -89,7 +89,7 @@ export function RolesTab({ edit }: Props) {
               >
                 <div
                   className={s.roleColorDot}
-                  style={{ background: `#${r.color.toString(16).padStart(6, '0')}` }}
+                  style={{ '--role-color': `#${r.color.toString(16).padStart(6, '0')}` } as React.CSSProperties}
                 />
                 <span className={`${s.roleName} txt-small`}>{r.name}</span>
               </button>

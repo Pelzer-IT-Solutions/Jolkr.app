@@ -182,7 +182,7 @@ export function OverviewTab({
       {/* Server Preview Card - Visual Editor */}
       <div className={s.serverPreviewCard}>
         <div className={s.bannerEditorWrap}>
-          <div className={s.bannerEditor} style={{ background: getBannerBackground() }} />
+          <div className={s.bannerEditor} style={{ '--banner-bg': getBannerBackground() } as React.CSSProperties} />
           <div className={s.serverPreviewActions}>
             <button
               ref={bannerMenuBtnRef}
@@ -215,7 +215,7 @@ export function OverviewTab({
                       key={c.value}
                       type="button"
                       className={`${s.colorPickerSwatch} ${isSolidColorActive(c.value) ? s.colorPickerSwatchActive : ''}`}
-                      style={{ background: c.value }}
+                      style={{ '--swatch-color': c.value } as React.CSSProperties}
                       onClick={() => handleBannerColorSelect(c.value)}
                       title={c.name}
                     />
@@ -231,7 +231,7 @@ export function OverviewTab({
                       key={g.name}
                       type="button"
                       className={`${s.colorPickerSwatch} ${currentGradient === g.value ? s.colorPickerSwatchActive : ''}`}
-                      style={{ background: g.value }}
+                      style={{ '--swatch-color': g.value } as React.CSSProperties}
                       onClick={() => handleGradientSelect(g.value)}
                       title={g.name}
                     />
@@ -292,7 +292,7 @@ export function OverviewTab({
               ref={iconFileRef}
               type="file"
               accept="image/*"
-              style={{ display: 'none' }}
+              className={s.fileInputHidden}
               onChange={onIconUpload}
             />
             <div className={s.previewAvatar}>
