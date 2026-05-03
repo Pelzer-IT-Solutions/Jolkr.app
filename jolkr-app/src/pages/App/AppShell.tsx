@@ -75,7 +75,7 @@ export default function AppShell() {
   const {
     isDark, colorPref, setColorPref,
     userInfo, userProfile, userMap,
-    uiServers, uiDmList,
+    uiServers, activeServerMembers, uiDmList,
     tabbedServers, activeServer, isServerOwner, myPerms,
     canAccessSettings, canManageChannels, canEditTheme,
     canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
@@ -433,7 +433,7 @@ export default function AppShell() {
                     />
                   ) : activeServer ? (
                     <MemberPanel
-                      members={activeServer.members}
+                      members={activeServerMembers}
                       mode={effectiveRightMode}
                       serverId={activeServerId}
                       channelId={activeChannelId}
