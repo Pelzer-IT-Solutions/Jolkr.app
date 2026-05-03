@@ -4,6 +4,7 @@ import {
   Mic, Bell, Keyboard, Globe, Camera,
 } from 'lucide-react'
 import type { ColorPreference } from '../../utils/colorMode'
+import type { DmFilter } from '../../api/types'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import { useAuthStore } from '../../stores/auth'
 import s from './Settings.module.css'
@@ -365,13 +366,13 @@ function PrivacySection() {
   // Defaults match the server's defaults (all / true / true). When the user
   // object hasn't loaded yet we still render — values are corrected on the
   // first render after `user` becomes available.
-  const dmFilter = (user?.dm_filter ?? 'all') as 'all' | 'friends' | 'none'
+  const dmFilter: DmFilter = user?.dm_filter ?? 'all'
   const friendReqs = user?.allow_friend_requests ?? true
   const readReceipts = user?.show_read_receipts ?? true
   // TODO: wire up analytics opt-in (telemetry SDK + persistence)
   const [analytics, setAnalytics] = useState(false)
 
-  const setDmFilter = (v: 'all' | 'friends' | 'none') =>
+  const setDmFilter = (v: DmFilter) =>
     updateProfile({ dm_filter: v }).catch(console.warn)
   const setFriendReqs = (v: boolean) =>
     updateProfile({ allow_friend_requests: v }).catch(console.warn)

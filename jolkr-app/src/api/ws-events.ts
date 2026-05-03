@@ -11,7 +11,7 @@
  */
 
 import type {
-  Message, Server, Channel, Member, Category, DmChannel, GifFavorite, Friendship, Thread, Poll, Role, ChannelOverwrite,
+  Message, Server, Channel, Member, Category, DmChannel, GifFavorite, Friendship, Thread, Poll, Role, ChannelOverwrite, DmFilter,
 } from './types';
 
 /** Reactions on the wire have `user_ids` (snake) — see `Reaction` in api/types.ts. */
@@ -81,7 +81,7 @@ export type WsEvent =
    * Fanned out to the user themselves PLUS every mutual server/DM member so
    * everyone's local cache stays in sync without polling.
    */
-  | { op: 'UserUpdate'; d: { user_id: string; display_name?: string | null; avatar_url?: string | null; bio?: string | null; status?: string | null; banner_color?: string | null; show_read_receipts?: boolean | null; dm_filter?: 'all' | 'friends' | 'none' | null; allow_friend_requests?: boolean | null } }
+  | { op: 'UserUpdate'; d: { user_id: string; display_name?: string | null; avatar_url?: string | null; bio?: string | null; status?: string | null; banner_color?: string | null; show_read_receipts?: boolean | null; dm_filter?: DmFilter | null; allow_friend_requests?: boolean | null } }
   | { op: 'EmailVerified'; d: { user_id?: string } }
 
   // ── GIF favorites (cross-session sync) ────────────────────────────

@@ -1,3 +1,6 @@
+/** Who is allowed to start a new DM with the user. */
+export type DmFilter = 'all' | 'friends' | 'none';
+
 export interface User {
   id: string;
   username: string;
@@ -7,15 +10,32 @@ export interface User {
   status?: string | null;
   bio?: string | null;
   is_online?: boolean;
-  show_read_receipts?: boolean;
+  show_read_receipts?: boolean | null;
   is_system?: boolean;
   email_verified?: boolean;
   banner_color?: string | null;
   /** Privacy: who can start a new DM with this user. */
-  dm_filter?: 'all' | 'friends' | 'none';
+  dm_filter?: DmFilter | null;
   /** Privacy: whether others can send friend requests to this user. */
-  allow_friend_requests?: boolean;
+  allow_friend_requests?: boolean | null;
   created_at?: string | null;
+}
+
+/**
+ * Body accepted by `PATCH /users/@me`. Mirrors the server `UpdateMeRequest`.
+ * Used by both `api.updateMe` and `useAuthStore.updateProfile` so the shape
+ * stays in one place.
+ */
+export interface UpdateMeBody {
+  username?: string;
+  display_name?: string;
+  bio?: string;
+  avatar_url?: string;
+  status?: string | null;
+  show_read_receipts?: boolean;
+  banner_color?: string;
+  dm_filter?: DmFilter;
+  allow_friend_requests?: boolean;
 }
 
 export interface Server {

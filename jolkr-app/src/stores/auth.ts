@@ -1,10 +1,19 @@
 import { create } from 'zustand';
-import type { User } from '../api/types';
+import type { User, UpdateMeBody } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
 import { useVoiceStore } from './voice';
 import { resetAllStores } from './reset';
+
+/**
+ * Subset of `User` carried by `UserUpdate` WS events. Each field is optional;
+ * the backend omits fields it didn't touch via `skip_serializing_if`.
+ */
+type UserPatch = Partial<Pick<User,
+  'status' | 'display_name' | 'avatar_url' | 'bio' | 'banner_color'
+  | 'show_read_receipts' | 'dm_filter' | 'allow_friend_requests'
+>>;
 
 interface AuthState {
   user: User | null;
@@ -13,8 +22,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
   loadUser: () => Promise<void>;
-  updateProfile: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean; banner_color?: string; dm_filter?: 'all' | 'friends' | 'none'; allow_friend_requests?: boolean }) => Promise<void>;
-  applyUserUpdate: (data: Record<string, unknown>) => void;
+  updateProfile: (body: UpdateMeBody) => Promise<void>;
+  applyUserUpdate: (data: UserPatch) => void;
   logout: () => Promise<void>;
 }
 
@@ -76,20 +85,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
 
-  applyUserUpdate: (data: Record<string, unknown>) => {
+  applyUserUpdate: (data) => {
     set((state) => {
       if (!state.user) return state;
+      // Each field is spread only when present so we don't overwrite existing
+      // values with `undefined` for fields the server omitted from this patch.
       return {
         user: {
           ...state.user,
-          ...(data.status !== undefined && { status: data.status as string | undefined }),
-          ...(data.display_name !== undefined && { display_name: data.display_name as string | undefined }),
-          ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url as string | undefined }),
-          ...(data.bio !== undefined && { bio: data.bio as string | undefined }),
-          ...(data.banner_color !== undefined && { banner_color: data.banner_color as string | undefined }),
-          ...(data.show_read_receipts !== undefined && { show_read_receipts: data.show_read_receipts as boolean | undefined }),
-          ...(data.dm_filter !== undefined && { dm_filter: data.dm_filter as 'all' | 'friends' | 'none' | undefined }),
-          ...(data.allow_friend_requests !== undefined && { allow_friend_requests: data.allow_friend_requests as boolean | undefined }),
+          ...(data.status !== undefined && { status: data.status }),
+          ...(data.display_name !== undefined && { display_name: data.display_name }),
+          ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url }),
+          ...(data.bio !== undefined && { bio: data.bio }),
+          ...(data.banner_color !== undefined && { banner_color: data.banner_color }),
+          ...(data.show_read_receipts !== undefined && { show_read_receipts: data.show_read_receipts }),
+          ...(data.dm_filter !== undefined && { dm_filter: data.dm_filter }),
+          ...(data.allow_friend_requests !== undefined && { allow_friend_requests: data.allow_friend_requests }),
         },
       };
     });
@@ -115,7 +126,7 @@ wsClient.on((event) => {
     // and we must NOT overwrite the local user with a different user's data.
     const me = useAuthStore.getState().user;
     if (me && event.d.user_id === me.id) {
-      useAuthStore.getState().applyUserUpdate(event.d as Record<string, unknown>);
+      useAuthStore.getState().applyUserUpdate(event.d);
     }
   } else if (event.op === 'EmailVerified') {
     // Backend confirmed verification — refresh the user object so
