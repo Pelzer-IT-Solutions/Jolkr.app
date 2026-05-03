@@ -38,7 +38,7 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [embed.title, videoInfo.platform, videoInfo.id, videoInfo.kind]);
+  }, [embed.title, embed.url, videoInfo.platform, videoInfo.id, videoInfo.kind]);
 
   const thumbnailUrl = embed.image_url || (videoInfo.platform === 'youtube' && videoInfo.id ? getYouTubeThumbnail(videoInfo.id) : null);
 

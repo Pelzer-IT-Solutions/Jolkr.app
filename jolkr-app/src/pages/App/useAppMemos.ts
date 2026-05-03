@@ -105,7 +105,12 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
 
   // ── Transform: messages → UI ──
   const effectiveChannelId = dmActive ? activeDmId : activeChannelId
-  const currentApiMessages = storeMessages[effectiveChannelId] ?? []
+  // Stabilize the empty-array fallback so the useMemo below does not re-run
+  // every render when a channel has no messages yet.
+  const currentApiMessages = useMemo(
+    () => storeMessages[effectiveChannelId] ?? [],
+    [storeMessages, effectiveChannelId],
+  )
   const uiMessages = useMemo(() => {
     return transformMessages(currentApiMessages, userMap, dmActive)
   }, [currentApiMessages, userMap, dmActive])

@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   DndContext, DragOverlay, closestCenter,
   PointerSensor, useSensor, useSensors,
@@ -148,27 +148,38 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   // Reset all server-specific state synchronously before paint so there is
   // no flash of the previous server's content, and simultaneously kick off
   // the staggered reveal animation for the incoming server's channels.
-  // Use JSON key to avoid resetting on presence-only changes (categories reference changes)
+  // Use JSON key to avoid resetting on presence-only changes (categories
+  // reference changes when presence ticks).
   const categoriesKey = useMemo(
     () => server.categories.map(c => `${c.name}:${c.channels.join(',')}`).join('|'),
     [server.categories],
   )
-  const prevServerRef = useRef(server.id)
-  useLayoutEffect(() => {
+  const [prevServerId, setPrevServerId] = useState(server.id)
+  const [prevCategoriesKey, setPrevCategoriesKey] = useState(categoriesKey)
+
+  if (prevServerId !== server.id) {
+    setPrevServerId(server.id)
+    setPrevCategoriesKey(categoriesKey)
     setLocalCats(server.categories)
     setLocalExtraChannels([])
-    // Only reset collapsed + reveal animation when switching servers
-    if (prevServerRef.current !== server.id) {
-      setCollapsedCats(new Set())
-      setIsRevealing(true)
-      const totalItems =
-        server.categories.length +
-        server.categories.reduce((sum, c) => sum + c.channels.length, 0)
-      const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
-      prevServerRef.current = server.id
-      return () => clearTimeout(timer)
-    }
-  }, [server.id, categoriesKey])
+    setCollapsedCats(new Set())
+    setIsRevealing(true)
+  } else if (prevCategoriesKey !== categoriesKey) {
+    setPrevCategoriesKey(categoriesKey)
+    setLocalCats(server.categories)
+    setLocalExtraChannels([])
+  }
+
+  // Schedule the end of the reveal animation. Cleanup cancels the timer if
+  // a second server-switch lands before the first one finishes.
+  useEffect(() => {
+    if (!isRevealing) return
+    const totalItems =
+      server.categories.length +
+      server.categories.reduce((sum, c) => sum + c.channels.length, 0)
+    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
+    return () => clearTimeout(timer)
+  }, [isRevealing, server.categories])
 
   useEffect(() => {
     if (creating) setTimeout(() => inputRef.current?.focus(), 0)

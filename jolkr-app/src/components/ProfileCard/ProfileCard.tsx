@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, ChevronDown, MessageCircle, UserPlus, UserMinus, Ban, Pencil } from 'lucide-react';
@@ -42,7 +42,7 @@ export interface ProfileCardProps {
 
 export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
   const { userId, user: preloaded, x, y } = state;
-  const anchor = { x, y };
+  const anchor = useMemo(() => ({ x, y }), [x, y]);
   const navigate = useNavigate();
   const currentUser = useAuthStore((st) => st.user);
   const presenceStatus = usePresenceStore((st) => st.statuses[userId]);

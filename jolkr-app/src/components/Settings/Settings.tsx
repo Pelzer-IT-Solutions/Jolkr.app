@@ -649,10 +649,11 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
       if (!cancelled) setError(e.message || 'Camera unavailable')
     })
 
+    const videoEl = videoRef.current
     return () => {
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
-      if (videoRef.current) videoRef.current.srcObject = null
+      if (videoEl) videoEl.srcObject = null
     }
   }, [deviceId])
 

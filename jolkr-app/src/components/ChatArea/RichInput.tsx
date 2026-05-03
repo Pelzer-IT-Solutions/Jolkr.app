@@ -202,7 +202,7 @@ export function RichInput({ ref, placeholder = '', onInput, onKeyDown, onSelecti
       updateEmpty()
       onInput?.(getPlainText(el))
     },
-  }), [restoreCursor, saveRange, updateEmpty, onInput, ref])
+  }), [restoreCursor, saveRange, updateEmpty, onInput])
 
   // ── event handlers ────────────────────────────────────────────────────────
 
