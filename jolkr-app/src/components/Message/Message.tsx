@@ -81,7 +81,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   // Client-side embed generation: extract URLs from displayed content and create
   // video embeds for known platforms (essential for E2EE where server can't read content)
   const clientEmbeds = useMemo<MessageEmbed[]>(() => {
-    if ((message.embeds ?? []).length > 0) return message.embeds!
+    if (message.embeds && message.embeds.length > 0) return message.embeds
     if (!messageContent) return []
     const urls = messageContent.match(/https?:\/\/[^\s<>)"]+/gi)
     if (!urls) return []
@@ -135,7 +135,11 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   }
 
   function handleCopyText() {
-    navigator.clipboard.writeText(messageContent).catch(() => {})
+    // Best-effort copy — fall back silently if the OS denies clipboard access
+    // (e.g. focus lost, permission revoked). Logged so we can spot a pattern.
+    navigator.clipboard.writeText(messageContent).catch((e) => {
+      console.warn('[Message.copy] clipboard.writeText failed:', e)
+    })
     setShowMore(false)
   }
 
@@ -221,9 +225,9 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
 
   const reactionsBlock = message.reactions.length > 0 ? (
     <div className={s.reactions}>
-      {message.reactions.map((r, i) => (
+      {message.reactions.map((r) => (
         <ReactionTooltip
-          key={i}
+          key={r.emoji}
           reaction={r}
           serverId={serverId}
           userMap={userMap}
@@ -275,8 +279,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     </div>
   ) : null
 
-  const attachmentsBlock = (message.attachments?.length ?? 0) > 0 ? (
-    <MessageAttachments attachments={message.attachments!} />
+  const attachmentsBlock = message.attachments && message.attachments.length > 0 ? (
+    <MessageAttachments attachments={message.attachments} />
   ) : null
 
   // Inline poll renderer. The store updates `message.poll` live via PollUpdate
@@ -287,11 +291,12 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   // thread_id) and at least one reply exists. Clicking opens the right-panel
   // thread view. Threads are server-only — never shown in DMs.
   const threadReplyCount = message.thread_reply_count ?? 0
-  const threadBadge = !isDm && message.thread_id && threadReplyCount > 0 && onOpenThread ? (
+  const threadId = message.thread_id
+  const threadBadge = !isDm && threadId && threadReplyCount > 0 && onOpenThread ? (
     <button
       type="button"
       className={s.threadReplyLink}
-      onClick={() => onOpenThread(message.thread_id!)}
+      onClick={() => onOpenThread(threadId)}
     >
       <MessageSquare size={11} strokeWidth={1.6} />
       <span className="txt-tiny txt-semibold">
@@ -413,8 +418,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                 <ThreadIcon /><span>Start Thread</span>
               </button>
             )}
-            {!isDm && message.thread_id && onOpenThread && (
-              <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onOpenThread(message.thread_id!) }}>
+            {!isDm && threadId && onOpenThread && (
+              <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onOpenThread(threadId) }}>
                 <ThreadIcon /><span>Open Thread</span>
               </button>
             )}
@@ -610,8 +615,9 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     )
   }
 
-  const handleAuthorClick = onOpenAuthorProfile && message.author_id
-    ? (e: React.MouseEvent) => onOpenAuthorProfile(message.author_id!, e)
+  const authorId = message.author_id
+  const handleAuthorClick = onOpenAuthorProfile && authorId
+    ? (e: React.MouseEvent) => onOpenAuthorProfile(authorId, e)
     : undefined
 
   return (

@@ -198,9 +198,9 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const mentionableUsers = useMemo(() => {
     if (dmActive) return []
     const members = membersByServer[activeServerId] ?? []
-    return members
-      .filter(m => m.user?.username)
-      .map(m => ({ id: m.user_id, username: m.user!.username }))
+    return members.flatMap(m =>
+      m.user?.username ? [{ id: m.user_id, username: m.user.username }] : []
+    )
   }, [dmActive, activeServerId, membersByServer])
 
   return {

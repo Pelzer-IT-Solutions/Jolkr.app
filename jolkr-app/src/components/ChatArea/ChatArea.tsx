@@ -8,6 +8,8 @@ import {
 import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
+import { MAX_ATTACHMENT_BYTES } from '../../utils/constants'
+import { formatDayLabel, dayKey } from '../../utils/dateFormat'
 import { Message } from '../Message/Message'
 import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
 import GifPickerPopup from '../GifPickerPopup'
@@ -93,14 +95,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const dragDepthRef = useRef(0)
 
   // Limit + filter helper shared by the file picker and drop handler.
-  const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB — matches server cap
   const acceptValidFiles = useCallback((incoming: FileList | File[]) => {
     const list = Array.from(incoming)
-    const oversized = list.filter((f) => f.size > MAX_FILE_SIZE)
+    const oversized = list.filter((f) => f.size > MAX_ATTACHMENT_BYTES)
     if (oversized.length) {
       alert(`File too large (max 25 MB): ${oversized.map((f) => f.name).join(', ')}`)
     }
-    const valid = list.filter((f) => f.size <= MAX_FILE_SIZE)
+    const valid = list.filter((f) => f.size <= MAX_ATTACHMENT_BYTES)
     if (valid.length) setPendingFiles((prev) => [...prev, ...valid])
   }, [])
 
@@ -245,6 +246,9 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const syncContent = useCallback((plainText: string) => {
     contentRef.current = plainText
     if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
+    // 100 ms debounce: keeps autocomplete feel instant for ordinary typing
+    // while skipping the regex + filter work for in-burst keystrokes. The
+    // ref-based timer ensures only the latest scan runs.
     mentionTimerRef.current = setTimeout(() => {
       const text = inputRef.current?.getTextBeforeCursor() ?? null
       if (text) {
@@ -267,7 +271,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         setEmojiQuery(null)
         setMentionQuery(null)
       }
-    }, 0)
+    }, 100)
     onTyping?.()
   }, [onTyping])
 
@@ -299,26 +303,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); insertFormatting('*', '*'); return }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
     if (e.key === 'Escape' && replyingTo) setReplyingTo(null)
-  }
-
-  // Format a message's day as a separator label. Locale-aware, weekday + date.
-  // Same format for every separator — no "Today" / "Yesterday" smartness.
-  const formatDayLabel = (iso: string) => {
-    const d = new Date(iso)
-    if (isNaN(d.getTime())) return ''
-    return d.toLocaleDateString(undefined, {
-      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-    })
-  }
-
-  // Cheap day key: YYYY-MM-DD in local time. Used to detect day boundaries.
-  const dayKey = (iso: string) => {
-    const d = new Date(iso)
-    if (isNaN(d.getTime())) return ''
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
   }
 
   // `participants[0]` can be undefined for one-sided DMs — e.g. when the other
@@ -419,7 +403,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
       )}
       <header className={s.header}>
         {sidebarCollapsed && (
-          <button className={s.iconBtn} title="Expand channels" onClick={onExpandSidebar}>
+          <button className={s.iconBtn} title="Expand channels" aria-label="Expand channels" onClick={onExpandSidebar}>
             <SidebarIcon />
           </button>
         )}
@@ -430,12 +414,12 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               <div className={s.groupAvatars}>
                 {dmConversation.participants.slice(0, 2).map((p, i) => (
                   <div
-                    key={i}
+                    key={p.userId ?? `${p.name}-${i}`}
                     className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}
                     style={p.avatarUrl ? undefined : { background: p.color }}
                   >
                     {p.avatarUrl
-                      ? <img src={p.avatarUrl} alt="" width={20} height={20} style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
+                      ? <img src={p.avatarUrl} alt={`${p.name} avatar`} width={20} height={20} style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
                       : p.letter}
                   </div>
                 ))}
@@ -443,7 +427,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
             ) : (
               <div className={s.dmAvatar} style={dmFirstP?.avatarUrl ? undefined : { background: dmFirstP?.color }}>
                 {dmFirstP?.avatarUrl
-                  ? <img src={dmFirstP.avatarUrl} alt="" width={28} height={28} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  ? <img src={dmFirstP.avatarUrl} alt={dmFirstP.name ? `${dmFirstP.name} avatar` : ''} width={28} height={28} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                   : dmFirstP?.letter}
                 <span className={`${s.dmStatusDot} ${s[dmFirstP?.status ?? 'offline']}`} />
               </div>
@@ -465,6 +449,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               <button
                 className={`${s.iconBtn} ${callDisabled ? s.iconBtnDisabled : ''}`}
                 title={callTitle}
+                aria-label={callTitle}
                 disabled={callDisabled}
                 onClick={handleStartCall}
               >
@@ -473,6 +458,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               <button
                 className={`${s.iconBtn} ${videoCallDisabled ? s.iconBtnDisabled : ''}`}
                 title={videoCallTitle}
+                aria-label={videoCallTitle}
                 disabled={videoCallDisabled}
                 onClick={handleStartVideoCall}
               >
@@ -486,6 +472,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <button
                   className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
                   title="Threads"
+                  aria-label="Toggle threads panel"
                   onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
                 >
                   <ThreadsIcon />
@@ -495,6 +482,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <button
                   className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
                   title="Pinned messages"
+                  aria-label="Toggle pinned messages panel"
                   onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
                 >
                   <Pin size={14} strokeWidth={1.5} />
@@ -505,6 +493,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           <button
             className={`${s.iconBtn} ${rightPanelMode === 'members' ? s.active : ''}`}
             title={isDm ? 'Files & pins' : 'Members'}
+            aria-label={isDm ? 'Toggle files and pins panel' : 'Toggle members panel'}
             onClick={() => onSetRightPanelMode(rightPanelMode === 'members' ? null : 'members')}
           >
             {isDm ? <FilesIcon /> : <MembersIcon />}

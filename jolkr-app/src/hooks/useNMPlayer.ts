@@ -195,9 +195,12 @@ export function useNMPlayer(config: UseNMPlayerConfig): NMPlayerResult {
       null;
     if (!target) return;
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => { });
+      // Fullscreen toggles are best-effort: the browser/WebView may refuse
+      // (e.g. user denied permission, no ancestor allows it). Log once so a
+      // failure is visible during dev without spamming the toast.
+      document.exitFullscreen().catch((e) => console.warn('[useNMPlayer] exitFullscreen:', e));
     } else {
-      target.requestFullscreen().catch(() => { });
+      target.requestFullscreen().catch((e) => console.warn('[useNMPlayer] requestFullscreen:', e));
     }
   }, []);
 

@@ -12,6 +12,9 @@ import { useMessagesStore } from '../../stores/messages'
 import { useVoiceStore } from '../../stores/voice'
 import { useToast } from '../../components/Toast'
 import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
+import { TYPING_THROTTLE_MS } from '../../utils/constants'
+import { log } from '../../utils/log'
+import { chatApi } from '../../api/chatApi'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -76,7 +79,7 @@ export function useAppHandlers(
   const lastTypingRef = useRef(0)
   const handleTyping = useCallback(() => {
     const now = Date.now()
-    if (now - lastTypingRef.current < 3000) return // throttle 3s
+    if (now - lastTypingRef.current < TYPING_THROTTLE_MS) return
     lastTypingRef.current = now
     const channelId = dmActive ? activeDmId : activeChannelId
     if (channelId) wsClient.sendTyping(channelId)
@@ -127,10 +130,16 @@ export function useAppHandlers(
       const { connectionState, channelId: currentVoiceId, joinChannel, leaveChannel } = useVoiceStore.getState()
       if (currentVoiceId === id && connectionState !== 'disconnected') {
         // Clicking the channel you're already in — disconnect.
-        void leaveChannel()
+        leaveChannel().catch(e => {
+          log.warn('voice.leaveChannel', e)
+          useToast.getState().show('Could not leave the voice channel cleanly.', 'error')
+        })
         return
       }
-      void joinChannel(id, activeServerId, target.name)
+      joinChannel(id, activeServerId, target.name).catch(e => {
+        log.warn('voice.joinChannel', e)
+        useToast.getState().show('Could not join the voice channel.', 'error')
+      })
       return
     }
     if (id === activeChannelId) return
@@ -242,10 +251,11 @@ export function useAppHandlers(
       useToast.getState().show(m, 'error')
       console.error('Reaction toggle failed:', err)
     }
+    const ops = chatApi(dmActive)
     if (existing?.me) {
-      (dmActive ? api.removeDmReaction : api.removeReaction)(msgId, emoji).catch(onErr)
+      ops.removeReaction(msgId, emoji).catch(onErr)
     } else {
-      (dmActive ? api.addDmReaction : api.addReaction)(msgId, emoji).catch(onErr)
+      ops.addReaction(msgId, emoji).catch(onErr)
     }
   }, [currentApiMessages, dmActive])
 
@@ -290,6 +300,7 @@ export function useAppHandlers(
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
+    const ops = chatApi(dmActive)
     const store = useMessagesStore.getState()
     const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
     if (!msg) return
@@ -297,16 +308,9 @@ export function useAppHandlers(
     // Optimistic update — only change is_pinned, preserve reactions and other fields
     store.updateMessage(channelId, { ...msg, is_pinned: newPinned, reactions: undefined } as typeof msg)
     try {
-      if (newPinned) {
-        if (dmActive) await api.pinDmMessage(channelId, msgId)
-        else await api.pinMessage(channelId, msgId)
-      } else {
-        if (dmActive) await api.unpinDmMessage(channelId, msgId)
-        else await api.unpinMessage(channelId, msgId)
-      }
-      const pinned = dmActive
-        ? await api.getDmPinnedMessages(channelId)
-        : await api.getPinnedMessages(channelId)
+      if (newPinned) await ops.pinMessage(channelId, msgId)
+      else await ops.unpinMessage(channelId, msgId)
+      const pinned = await ops.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       setPinnedVersion(v => v + 1)
     } catch (err) {
@@ -322,13 +326,11 @@ export function useAppHandlers(
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
+    const ops = chatApi(dmActive)
     try {
-      if (dmActive) await api.unpinDmMessage(channelId, msgId)
-      else await api.unpinMessage(channelId, msgId)
+      await ops.unpinMessage(channelId, msgId)
       // Refresh pinned count
-      const pinned = dmActive
-        ? await api.getDmPinnedMessages(channelId)
-        : await api.getPinnedMessages(channelId)
+      const pinned = await ops.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       setPinnedVersion(v => v + 1)
       // Find and update the message's is_pinned status in the store

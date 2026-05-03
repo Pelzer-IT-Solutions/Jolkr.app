@@ -44,6 +44,10 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
   const [offset, setOffset] = useState('0')
   const [hasMore, setHasMore] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
+  // Monotonic request id — ensures only the latest fetch result wins.
+  // Without this, a fast typer can produce out-of-order resolves
+  // ("dog" → "cat" → "cat" returns first then "dog" overwrites with stale).
+  const fetchSeqRef = useRef(0)
 
   const { isDark } = useColorMode()
   const theme = isDark ? 'dark' : 'light'
@@ -52,7 +56,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
   useEffect(() => {
     getGifCategories()
       .then((data) => setCategories(data.tags ?? []))
-      .catch(() => {})
+      .catch((e) => console.warn('[GifPicker] getGifCategories:', e))
   }, [])
 
   // Load favorites on mount
@@ -63,7 +67,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
         // Also populate the shared store
         useGifFavoritesStore.setState({ ids: new Set(favs.map((f) => f.gif_id)), loaded: true })
       })
-      .catch(() => {})
+      .catch((e) => console.warn('[GifPicker] getGifFavorites:', e))
   }, [])
 
   const parseTenorResults = (results: TenorResult[]): GifItem[] =>
@@ -79,19 +83,24 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
 
   const fetchGifs = useCallback(
     async (q: string, pos: string = '0', append = false) => {
+      const seq = ++fetchSeqRef.current
       setLoading(true)
       try {
         const data = q
           ? await searchGifs(q, 30, pos)
           : await getFeaturedGifs(30, pos);
+        // Drop result if a newer fetch was issued meanwhile.
+        if (seq !== fetchSeqRef.current) return
         const items = parseTenorResults(data.results ?? [])
         setGifs((prev) => (append ? [...prev, ...items] : items))
         setOffset(data.next ?? '0')
         setHasMore(items.length >= 30)
-      } catch {
+      } catch (e) {
+        if (seq !== fetchSeqRef.current) return
+        console.warn('[GifPicker] fetchGifs:', e)
         if (!append) setGifs([])
       } finally {
-        setLoading(false)
+        if (seq === fetchSeqRef.current) setLoading(false)
       }
     },
     [],

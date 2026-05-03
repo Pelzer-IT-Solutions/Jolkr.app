@@ -45,20 +45,21 @@ export function useDecryptedContent(
     let cancelled = false;
 
     const attempt = () => {
+      if (cancelled) return;
       if (!isE2EEReady()) {
         if (retryRef.current < 5) {
           retryRef.current++;
           retryTimerRef.current = setTimeout(attempt, 1000);
           return;
         }
-        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        if (!cancelled) setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
         return;
       }
 
       retryRef.current = 0;
       const localKeys = getLocalKeys();
       if (!localKeys) {
-        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        if (!cancelled) setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
         return;
       }
 
@@ -80,7 +81,10 @@ export function useDecryptedContent(
 
     return () => {
       cancelled = true;
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
     };
   }, [content, nonce, isDm, channelId]);
 

@@ -16,6 +16,7 @@ import type { DmChannel, User, Role } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
 import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
 import { lookupFriendship } from '../../services/friendshipCache'
+import { syncPresence } from '../../services/presenceSync'
 import { makeDraftDmId } from '../../utils/draftDm'
 import type { MemberDisplay } from '../../types/ui'
 
@@ -147,10 +148,8 @@ export function useAppInit() {
           users.forEach(u => { if (u) map.set(u.id, u) })
           setDmUsers(map)
         })
-        // Fetch presence for DM participants
-        api.queryPresence(idArr).then(p => {
-          if (!cancelled) usePresenceStore.getState().setBulk(p)
-        }).catch(console.warn)
+        // Fetch presence for DM participants (batched / deduped via service).
+        syncPresence(idArr)
       }
 
       const srvs = useServersStore.getState().servers
@@ -212,13 +211,10 @@ export function useAppInit() {
           : chs.find(c => c.kind === 'text')?.id ?? chs[0].id
         setActiveChannelId(channelId)
       }
-      // Fetch presence for all server members
+      // Fetch presence for all server members (batched / deduped via service).
       const mems = useServersStore.getState().members[serverId]
       if (mems?.length) {
-        const userIds = mems.map(m => m.user_id)
-        api.queryPresence(userIds).then(p => {
-          if (!cancelled) usePresenceStore.getState().setBulk(p)
-        }).catch(console.warn)
+        syncPresence(mems.map(m => m.user_id))
       }
     }
 
@@ -299,9 +295,7 @@ export function useAppInit() {
       }
       const mems = useServersStore.getState().members[activeServerId]
       if (mems?.length) {
-        api.queryPresence(mems.map(m => m.user_id)).then(p => {
-          usePresenceStore.getState().setBulk(p)
-        }).catch(console.warn)
+        syncPresence(mems.map(m => m.user_id))
       }
     })
   }, [activeServerId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -642,10 +636,8 @@ export function useAppInit() {
             })
           })
           .catch(console.warn)
-        // Also fetch presence so the status dot is correct.
-        api.queryPresence(missing)
-          .then(p => usePresenceStore.getState().setBulk(p))
-          .catch(console.warn)
+        // Also fetch presence so the status dot is correct (batched/deduped).
+        syncPresence(missing)
         return prevUsers
       })
     })
