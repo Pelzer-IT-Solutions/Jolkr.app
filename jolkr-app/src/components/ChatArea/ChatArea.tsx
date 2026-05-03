@@ -1,20 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import {
-  CornerUpLeft, X,
-  Smile, Paperclip, ImagePlay, SendHorizontal,
-  Bold, Italic, Strikethrough, Code, BarChart3,
-} from 'lucide-react'
+import { Paperclip } from 'lucide-react'
 import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
 import { MAX_ATTACHMENT_BYTES } from '../../utils/constants'
-import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
-import GifPickerPopup from '../GifPickerPopup'
-import { emojiToImgUrl } from '../../utils/emoji'
-import { RichInput, type RichInputHandle } from './RichInput'
-import { useAutocomplete } from './useAutocomplete'
-import { PollCreator } from '../Poll/PollCreator'
+import { type RichInputHandle } from './RichInput'
 import { ChatHeader } from './ChatHeader'
 import { MessageList } from './MessageList'
+import { Composer } from './Composer'
 import s from './ChatArea.module.css'
 
 export interface MentionableUser {
@@ -62,16 +54,12 @@ interface Props {
 }
 
 export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
-  const inputRef   = useRef<RichInputHandle>(null)
-  const contentRef = useRef('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<RichInputHandle>(null)
 
   // System channels are read-only; also hide composer if user lacks SEND_MESSAGES
   const isReadOnly = readOnly || channel.is_system || !canSendMessages
 
-  const [replyingTo,  setReplyingTo]  = useState<MessageVM | null>(null)
-
-  // File attachment state
+  const [replyingTo,   setReplyingTo]   = useState<MessageVM | null>(null)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
   // Drag & drop state. We use a counter to handle the dragenter/leave bubble
@@ -96,95 +84,18 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     inputRef.current?.focus()
   }, [])
 
-  const [fmtBar, setFmtBar] = useState<{ top: number; left: number } | null>(null)
-  const [showComposerEmoji, setShowComposerEmoji] = useState(false)
-  const [composerEmojiPos, setComposerEmojiPos] = useState<{ top: number; left: number } | null>(null)
-  const composerEmojiBtnRef = useRef<HTMLButtonElement>(null)
-  const [showGifPicker, setShowGifPicker] = useState(false)
-  const [gifPickerPos, setGifPickerPos] = useState<{ top: number; left: number } | null>(null)
-  const gifBtnRef = useRef<HTMLButtonElement>(null)
-  // Poll creator modal — server channels only (gated on !isDm).
-  const [pollCreatorOpen, setPollCreatorOpen] = useState(false)
-
-  // Clear reply context synchronously on channel switch — the ref + input
-  // resets stay in an effect since they're side-effects on imperative APIs.
+  // Clear reply context synchronously on channel switch — the input/content
+  // resets live in Composer's own channel-switch effect.
   const [prevChannelId, setPrevChannelId] = useState(channel.id)
   if (prevChannelId !== channel.id) {
     setPrevChannelId(channel.id)
     setReplyingTo(null)
   }
 
+  // Sync handle clear on channel switch — Composer focuses + clears internally.
   useEffect(() => {
-    contentRef.current = ''
-    inputRef.current?.clear()
     inputRef.current?.focus()
   }, [channel.id])
-
-  // ── Autocomplete (emoji `:foo` + `@mention`) ──
-  const ac = useAutocomplete(inputRef, mentionableUsers, onTyping)
-  const {
-    emojiQuery, emojiIndex, emojiMatches,
-    mentionQuery, mentionIndex, mentionMatches,
-    syncContent, insertEmoji, insertMention,
-  } = ac
-
-  // ── Formatting (selection-based on contentEditable) ──
-  const insertFormatting = useCallback((prefix: string, suffix: string) => {
-    inputRef.current?.focus()
-    const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0) return
-    const range = sel.getRangeAt(0)
-    const selectedText = range.toString()
-    range.deleteContents()
-    const textNode = document.createTextNode(prefix + selectedText + suffix)
-    range.insertNode(textNode)
-    const newRange = document.createRange()
-    if (selectedText) {
-      newRange.setStart(textNode, prefix.length)
-      newRange.setEnd(textNode, prefix.length + selectedText.length)
-    } else {
-      newRange.setStart(textNode, prefix.length)
-      newRange.collapse(true)
-    }
-    sel.removeAllRanges()
-    sel.addRange(newRange)
-  }, [])
-
-  const checkSelection = useCallback(() => {
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed) { setFmtBar(null); return }
-    const range = sel.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
-    if (rect.width > 0) {
-      setFmtBar({ top: rect.top - 6, left: rect.left + rect.width / 2 })
-    } else { setFmtBar(null) }
-  }, [])
-
-  const handleInputChange = useCallback((plainText: string) => {
-    contentRef.current = plainText
-    syncContent(plainText)
-  }, [syncContent])
-
-  function send() {
-    const text = contentRef.current.trim()
-    if (!text && pendingFiles.length === 0) return
-    const replyRef = replyingTo ? { id: replyingTo.id, author: replyingTo.author, text: replyingTo.content } : undefined
-    onSend(text || '', replyRef, pendingFiles.length > 0 ? pendingFiles : undefined)
-    inputRef.current?.clear()
-    contentRef.current = ''
-    setPendingFiles([])
-    setReplyingTo(null)
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    // Autocomplete picker has first crack at the keystroke (arrow / tab /
-    // enter / escape). Returns true if it consumed the event.
-    if (ac.handleKeyDown(e)) return
-    if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); insertFormatting('**', '**'); return }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); insertFormatting('*', '*'); return }
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-    if (e.key === 'Escape' && replyingTo) setReplyingTo(null)
-  }
 
   // `participants[0]` can be undefined for one-sided DMs — e.g. when the other
   // member just closed it and a DmUpdate with only the current user as
@@ -304,223 +215,24 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           </div>
         )}
 
-        {isReadOnly ? (
-          <div className={s.composerWrap}>
-            <div className={`${s.composer} ${s.readOnly}`} style={{ padding: '.725rem .625rem' }}>
-              <span className="txt-small" style={{ opacity: 0.4, textAlign: 'center', width: '100%' }}>
-                {channel.is_system ? 'This is a system channel' : !canSendMessages ? 'You do not have permission to send messages in this channel' : 'This is a read-only channel'}
-              </span>
-            </div>
-          </div>
-        ) : (
-        <div className={s.composerWrap}>
-          <div className={s.composerStack}>
-            {replyingTo && (
-              <div className={s.replyCard}>
-                <div className={s.replyCardInner}>
-                  <ReplySmallIcon />
-                  <span className={`${s.replyCardLabel} txt-tiny`}>
-                    Replying to <strong>{replyingTo.author}</strong>
-                  </span>
-                  <span className={`${s.replyCardPreview} txt-tiny`}>
-                    {replyingTo.content.length > 72 ? replyingTo.content.slice(0, 72) + '…' : replyingTo.content}
-                  </span>
-                </div>
-                <button className={s.replyCardClose} title="Cancel reply" onClick={() => setReplyingTo(null)}>
-                  <CloseIcon />
-                </button>
-              </div>
-            )}
-
-            {mentionQuery !== null && mentionMatches.length > 0 && (
-              <div role="listbox" className={s.autocomplete}>
-                <div className={s.autocompleteHeader}>Members</div>
-                {mentionMatches.map((u, i) => (
-                  <button
-                    key={u.id}
-                    role="option"
-                    aria-selected={i === mentionIndex}
-                    onClick={() => insertMention(u.username)}
-                    className={`${s.autocompleteItem} ${i === mentionIndex ? s.autocompleteItemActive : ''}`}
-                  >
-                    <span className={s.accentChar}>@</span>
-                    <span>{u.username}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {emojiQuery !== null && emojiMatches.length > 0 && (
-              <div role="listbox" className={s.autocomplete}>
-                <div className={s.autocompleteHeader}>Emoji matching :{emojiQuery}</div>
-                {emojiMatches.map((entry, i) => (
-                  <button
-                    key={entry.name}
-                    role="option"
-                    aria-selected={i === emojiIndex}
-                    onClick={() => insertEmoji(entry.emoji)}
-                    className={`${s.autocompleteItem} ${i === emojiIndex ? s.autocompleteItemActive : ''}`}
-                  >
-                    <img src={emojiToImgUrl(entry.emoji)} alt={entry.emoji} className={s.autocompleteEmoji} loading="lazy" draggable={false} />
-                    <span className={s.autocompleteEmojiName}>:{entry.name}:</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {pendingFiles.length > 0 && (
-              <div className={s.pendingFiles}>
-                {pendingFiles.map((file, i) => (
-                  <div key={`${file.name}-${i}`} className={s.pendingFile}>
-                    {file.type.startsWith('image/') ? (
-                      <img src={URL.createObjectURL(file)} alt={file.name} className={s.pendingFileThumb} />
-                    ) : (
-                      <div className={s.pendingFileIcon}><AttachIcon /></div>
-                    )}
-                    <span className={`${s.pendingFileName} txt-tiny`}>{file.name}</span>
-                    <button
-                      className={s.pendingFileRemove}
-                      onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className={s.composer}>
-              {fmtBar && (
-                <div
-                  className={s.fmtBar}
-                  style={{ top: fmtBar.top, left: fmtBar.left }}
-                  onMouseDown={e => e.preventDefault()}
-                >
-                  <button className={s.fmtBtn} title="Bold (Ctrl+B)" onClick={() => insertFormatting('**', '**')}>
-                    <Bold size={14} strokeWidth={2} />
-                  </button>
-                  <button className={s.fmtBtn} title="Italic (Ctrl+I)" onClick={() => insertFormatting('*', '*')}>
-                    <Italic size={14} strokeWidth={2} />
-                  </button>
-                  <button className={s.fmtBtn} title="Strikethrough" onClick={() => insertFormatting('~~', '~~')}>
-                    <Strikethrough size={14} strokeWidth={2} />
-                  </button>
-                  <button className={s.fmtBtn} title="Code" onClick={() => insertFormatting('`', '`')}>
-                    <Code size={14} strokeWidth={2} />
-                  </button>
-                </div>
-              )}
-              <div style={{ position: 'relative' }}>
-                <button
-                  ref={composerEmojiBtnRef}
-                  className={s.emojiBtn}
-                  title="Emoji"
-                  onClick={() => {
-                    if (!showComposerEmoji && composerEmojiBtnRef.current) {
-                      const r = composerEmojiBtnRef.current.getBoundingClientRect()
-                      setComposerEmojiPos({ top: r.top, left: r.left + r.width / 2 })
-                    }
-                    setShowComposerEmoji(v => !v)
-                  }}
-                >
-                  <EmojiIcon />
-                </button>
-                {showComposerEmoji && composerEmojiPos && (
-                  <EmojiPickerPopup
-                    position={composerEmojiPos}
-                    onSelect={(emoji) => {
-                      inputRef.current?.insertEmojiAtCursor(emoji)
-                    }}
-                    onClose={() => setShowComposerEmoji(false)}
-                    anchor={composerEmojiBtnRef}
-                  />
-                )}
-              </div>
-              <div className={s.inputWrap}>
-                <RichInput
-                  ref={inputRef}
-                  placeholder={inputPlaceholder}
-                  onInput={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  onSelectionChange={checkSelection}
-                />
-              </div>
-              <div className={s.composerActions}>
-                {canAttachFiles && (
-                  <>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*,video/*,.pdf,.txt,.zip,.doc,.docx"
-                      multiple
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        if (e.target.files) acceptValidFiles(e.target.files)
-                        e.target.value = ''
-                      }}
-                    />
-                    <button className={s.composerBtn} title="Attach file" onClick={() => fileInputRef.current?.click()}>
-                      <AttachIcon />
-                    </button>
-                    <button
-                      ref={gifBtnRef}
-                      className={s.composerBtn}
-                      title="GIF"
-                      onClick={() => {
-                        if (!showGifPicker && gifBtnRef.current) {
-                          const r = gifBtnRef.current.getBoundingClientRect()
-                          setGifPickerPos({ top: r.top, left: r.left + r.width / 2 })
-                        }
-                        setShowGifPicker(v => !v)
-                      }}
-                    >
-                      <GifIcon />
-                    </button>
-                    {showGifPicker && gifPickerPos && (
-                      <GifPickerPopup
-                        position={gifPickerPos}
-                        onSelect={(gifUrl) => {
-                          onSend(gifUrl)
-                          inputRef.current?.focus()
-                        }}
-                        onClose={() => setShowGifPicker(false)}
-                        anchor={gifBtnRef}
-                      />
-                    )}
-                  </>
-                )}
-                {!isDm && (
-                  <button
-                    className={s.composerBtn}
-                    title="Create poll"
-                    onClick={() => setPollCreatorOpen(true)}
-                  >
-                    <PollIcon />
-                  </button>
-                )}
-                <button className={s.sendBtn} title="Send (Enter)" onClick={send}>
-                  <SendIcon />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        )}
-      </div>
-      {!isDm && (
-        <PollCreator
-          open={pollCreatorOpen}
-          channelId={channel.id}
-          onClose={() => setPollCreatorOpen(false)}
+        <Composer
+          channel={channel}
+          isDm={isDm}
+          isReadOnly={isReadOnly}
+          canSendMessages={canSendMessages}
+          canAttachFiles={canAttachFiles}
+          inputPlaceholder={inputPlaceholder}
+          mentionableUsers={mentionableUsers}
+          onTyping={onTyping}
+          onSend={onSend}
+          inputRef={inputRef}
+          replyingTo={replyingTo}
+          setReplyingTo={setReplyingTo}
+          pendingFiles={pendingFiles}
+          setPendingFiles={setPendingFiles}
+          acceptValidFiles={acceptValidFiles}
         />
-      )}
+      </div>
     </main>
   )
 }
-
-function ReplySmallIcon() { return <CornerUpLeft  size={12} strokeWidth={1.5} /> }
-function CloseIcon()      { return <X             size={11} strokeWidth={1.75} /> }
-function EmojiIcon()      { return <Smile         size={15} strokeWidth={1.25} /> }
-function AttachIcon()     { return <Paperclip     size={15} strokeWidth={1.25} /> }
-function GifIcon()        { return <ImagePlay     size={15} strokeWidth={1.25} /> }
-function PollIcon()       { return <BarChart3     size={15} strokeWidth={1.25} /> }
-function SendIcon()       { return <SendHorizontal size={15} strokeWidth={1.5} /> }
