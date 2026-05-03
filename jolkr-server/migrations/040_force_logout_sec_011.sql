@@ -1,0 +1,14 @@
+-- SEC-011 forced logout: invalidate all refresh tokens.
+--
+-- The desktop FE release that ships alongside this migration deletes the
+-- legacy stronghold vault snapshot on first init and opens a fresh one
+-- under a per-install random password. Wiping `sessions` here ensures
+-- that every existing user is forced through the login flow at the next
+-- refresh attempt, which is what triggers the FE vault rotation. The
+-- companion `JWT_MIN_ISSUED_AT` env var, set to the deploy time, blocks
+-- access tokens older than the baseline so the forced-logout takes
+-- effect immediately rather than at access-token expiry (24h).
+--
+-- Web and mobile clients use plain localStorage (no vault), so they only
+-- experience the forced re-login here; no vault migration runs there.
+TRUNCATE sessions;
