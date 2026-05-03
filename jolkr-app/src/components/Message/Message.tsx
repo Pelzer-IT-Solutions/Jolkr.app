@@ -50,7 +50,10 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   // Shift+click on the toolbar's "more" affordance acts as instant-delete
   // when the viewer can actually delete this message. We don't gate on the
   // toolbar being visible — pressing Shift while hovering swaps the icon.
-  const canDelete = !!onDelete && (isOwn || canManageMessages)
+  // In DMs there's no moderator concept, so users can only delete their OWN
+  // messages — `canManageMessages` may be true server-side (admin role on a
+  // shared server) but it doesn't carry into the DM context.
+  const canDelete = !!onDelete && (isDm ? isOwn : (isOwn || canManageMessages))
   const shiftDeleteArmed = shiftHeld && canDelete
 
   // Decrypt E2EE content
