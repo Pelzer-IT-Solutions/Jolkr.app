@@ -288,10 +288,11 @@ async function request<T>(
   const payload = (unwrapKey && json[unwrapKey] !== undefined) ? json[unwrapKey] : json;
   if (schema) {
     const result = schema.safeParse(payload);
-    // Soft-fail: when validation fails, pass the raw payload through unchanged
-    // so the UI is never gated on schema parity. Schemas are still being
-    // hardened (DmMessageSchema is on the backlog); when they are stable for
-    // a release cycle the failure path will switch to throwing an ApiError.
+    // Soft-fail: when a schema is too strict for the live backend, fall back
+    // to the raw payload so the UI never breaks on a contract mismatch. Real
+    // mismatches are tracked in `jolkr-app/backend-audit-todo.md` for the
+    // next backend audit; once the schemas are stable for a release cycle
+    // this branch will switch to throwing an `ApiError`.
     return result.success ? result.data : (payload as T);
   }
   return payload as T;

@@ -138,11 +138,14 @@ export function transformMessage(
     }
   }
 
-  // Reactions — map to UI format with userIds for tooltip
+  // Reactions — map to UI format with userIds for tooltip.
+  // `r.me` is populated by `stores/messages.ts::transformReactions` before
+  // a Message reaches the store; the `?? false` is a type-narrowing safety
+  // net for the (theoretical) wire-DTO path that does not include `me`.
   const reactions: ReactionDisplay[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
-    me: r.me,
+    me: r.me ?? false,
     userIds: r.user_ids ?? [],
   }))
 

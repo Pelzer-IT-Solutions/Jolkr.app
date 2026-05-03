@@ -183,7 +183,8 @@ export const MessageEmbedSchema: z.ZodType<MessageEmbed> = z.object({
 export const ReactionSchema: z.ZodType<Reaction> = z.object({
   emoji: z.string(),
   count: z.number(),
-  me: z.boolean(),
+  // Backend omits `me` — derived in `stores/messages.ts::transformReactions`.
+  me: z.boolean().optional(),
   user_ids: z.array(z.string()).optional(),
 })
 
