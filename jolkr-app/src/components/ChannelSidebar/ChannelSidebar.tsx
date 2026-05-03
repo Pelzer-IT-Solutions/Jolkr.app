@@ -11,13 +11,14 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, FolderPlus, Hash, Volume2, MoreHorizontal } from 'lucide-react'
+import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, MoreHorizontal } from 'lucide-react'
 import type { ServerDisplay, ChannelDisplay, CategoryDisplay, ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import { persistLayout } from '../../utils/channelLayout'
 import { ThemePicker } from '../ThemePicker/ThemePicker'
 import { ChannelContextMenu, type CreatingState } from './ChannelContextMenu'
+import { CreateChannelForm } from './CreateChannelForm'
 import s from './ChannelSidebar.module.css'
 
 // When dragging a category, only collide with other categories — never with channels inside them
@@ -503,22 +504,14 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                   onOpenChannelSettings={onOpenChannelSettings}
                   canManageChannels={canManageChannels}
                   inlineCreateChannel={isCreatingHere && creating?.type === 'channel' ? (
-                    <div className={s.newItemRow}>
-                      <span className={s.newItemIcon}>
-                        {creating.kind === 'voice'
-                          ? <Volume2 size={13} strokeWidth={1.5} />
-                          : <Hash size={13} strokeWidth={1.5} />}
-                      </span>
-                      <input
-                        ref={inputRef}
-                        className={`${s.newItemInput} txt-small`}
-                        placeholder={creating.kind === 'voice' ? 'voice-channel-name…' : 'channel-name…'}
-                        value={newName}
-                        onChange={e => setNewName(e.target.value)}
-                        onKeyDown={confirmCreate}
-                        onBlur={() => setCreating(null)}
-                      />
-                    </div>
+                    <CreateChannelForm
+                      creating={creating}
+                      value={newName}
+                      onChange={setNewName}
+                      onConfirm={confirmCreate}
+                      onCancel={() => setCreating(null)}
+                      inputRef={inputRef}
+                    />
                   ) : undefined}
                 />
               )
@@ -560,28 +553,14 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               and uncategorized channel creation. Per-folder channel creation
               renders the input inside the category itself (SortableCategory). */}
           {creating && (creating.type === 'folder' || !creating.categoryId) && (
-            <div className={s.newItemRow}>
-              <span className={s.newItemIcon}>
-                {creating.type === 'folder'
-                  ? <FolderPlus size={13} strokeWidth={1.5} />
-                  : creating.kind === 'voice'
-                    ? <Volume2 size={13} strokeWidth={1.5} />
-                    : <Hash size={13} strokeWidth={1.5} />}
-              </span>
-              <input
-                ref={inputRef}
-                className={`${s.newItemInput} txt-small`}
-                placeholder={
-                  creating.type === 'folder' ? 'Folder name…' :
-                  creating.kind === 'voice' ? 'voice-channel-name…' :
-                  'channel-name…'
-                }
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={confirmCreate}
-                onBlur={() => setCreating(null)}
-              />
-            </div>
+            <CreateChannelForm
+              creating={creating}
+              value={newName}
+              onChange={setNewName}
+              onConfirm={confirmCreate}
+              onCancel={() => setCreating(null)}
+              inputRef={inputRef}
+            />
           )}
         </nav>
 
