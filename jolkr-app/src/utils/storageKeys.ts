@@ -20,6 +20,19 @@ export const STORAGE_KEYS = {
   RINGTONE: 'jolkr_ringtone',
   SOUND_ENABLED: 'jolkr_sound',
   DESKTOP_NOTIF: 'jolkr_desktop_notif',
+  MENTION_NOTIF: 'jolkr_mention_notif',
+  DM_NOTIF: 'jolkr_dm_notif',
+  UNREAD_BADGE: 'jolkr_unread_badge',
+
+  // ── Voice & video (localStorage, per-device) ─────────────────────
+  AUDIO_INPUT_DEVICE:  'jolkr_audio_input_device',
+  AUDIO_OUTPUT_DEVICE: 'jolkr_audio_output_device',
+  VIDEO_INPUT_DEVICE:  'jolkr_video_input_device',
+  INPUT_VOLUME:        'jolkr_input_volume',
+  OUTPUT_VOLUME:       'jolkr_output_volume',
+  NOISE_SUPPRESSION:   'jolkr_noise_suppression',
+  ECHO_CANCELLATION:   'jolkr_echo_cancellation',
+  AUTO_GAIN_CONTROL:   'jolkr_auto_gain_control',
 
   // ── Push (localStorage) ──────────────────────────────────────────
   PUSH_DEVICE_ID: 'jolkr_push_device_id',
