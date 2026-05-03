@@ -468,16 +468,10 @@
 }
 
 /* ── Select ── */
-.select {
-  width: 100%;
+/* Width constraint applied on top of the shared `<Select>` styling so device
+   dropdowns don't span the full settings panel width. */
+.selectMaxWidth {
   max-width: 18rem;
-  padding: 0.4375rem 0.75rem;
-  border-radius: 0.5rem;
-  background: var(--surface-field);
-  border: 1px solid var(--border-muted);
-  color: var(--text-strong);
-  font-size: 0.875rem;
-  cursor: pointer;
 }
 
 /* ── Connections grid ── */

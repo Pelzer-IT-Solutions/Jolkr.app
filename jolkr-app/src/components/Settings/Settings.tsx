@@ -6,6 +6,7 @@ import {
 import type { ColorPreference } from '../../utils/colorMode'
 import type { DmFilter } from '../../api/types'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
+import { Select } from '../ui/Select'
 import { useAuthStore } from '../../stores/auth'
 import s from './Settings.module.css'
 
@@ -520,7 +521,7 @@ function VoiceSection() {
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Voice & Video</h2>
 
       <SettingBlock title="Input Device">
-        <select className={s.select}><option>Default — Microphone</option></select>
+        <Select className={s.selectMaxWidth}><option>Default — Microphone</option></Select>
       </SettingBlock>
       <SettingBlock title={`Input Volume — ${inputVol}%`}>
         <div className={s.sliderRow}>
@@ -533,7 +534,7 @@ function VoiceSection() {
 
       <Divider />
       <SettingBlock title="Output Device">
-        <select className={s.select}><option>Default — Speakers</option></select>
+        <Select className={s.selectMaxWidth}><option>Default — Speakers</option></Select>
       </SettingBlock>
       <SettingBlock title={`Output Volume — ${outputVol}%`}>
         <div className={s.sliderRow}>
@@ -623,9 +624,9 @@ function LanguageSection() {
     <div className={s.section}>
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Language</h2>
       <SettingBlock title="Display Language" description="Choose the language used throughout the app.">
-        <select className={s.select} value={lang} onChange={e => setLang(e.target.value)}>
+        <Select className={s.selectMaxWidth} value={lang} onChange={e => setLang(e.target.value)}>
           {LANGUAGES.map(l => <option key={l}>{l}</option>)}
-        </select>
+        </Select>
       </SettingBlock>
     </div>
   )

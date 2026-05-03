@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/auth'
 import { buildInviteUrl } from '../../platform/config'
 import { useToast } from '../Toast'
 import ServerIcon from '../ServerIcon/ServerIcon'
+import { Select } from '../ui/Select'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 
 // Extend API Server with frontend-only display fields
@@ -566,9 +567,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                 <div className={s.inviteCreateRow}>
                   <div className={s.inviteCreateField}>
                     <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>Expire after</label>
-                    <select
-                      className={s.inviteSelect}
-                      style={{ maxHeight: '32px' }}
+                    <Select
                       value={createInviteMaxAge}
                       onChange={e => setCreateInviteMaxAge(Number(e.target.value))}
                       disabled={creatingInvite}
@@ -580,12 +579,11 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                       <option value={43200}>12 hours</option>
                       <option value={86400}>1 day</option>
                       <option value={604800}>7 days</option>
-                    </select>
+                    </Select>
                   </div>
                   <div className={s.inviteCreateField}>
                     <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>Max uses</label>
-                    <select
-                      className={s.inviteSelect}
+                    <Select
                       value={createInviteMaxUses}
                       onChange={e => setCreateInviteMaxUses(Number(e.target.value))}
                       disabled={creatingInvite}
@@ -597,7 +595,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                       <option value={25}>25 uses</option>
                       <option value={50}>50 uses</option>
                       <option value={100}>100 uses</option>
-                    </select>
+                    </Select>
                   </div>
                   <button
                     className={`${s.createBtn} ${s.inviteRowBtn}`}

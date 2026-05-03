@@ -1,0 +1,39 @@
+/* Shared dropdown — same height as Button + TabBar action buttons (32px). */
+.select {
+  box-sizing: border-box;
+  height: 2rem;
+  width: 100%;
+  /* Right padding reserves space for the custom chevron */
+  padding: 0 1.75rem 0 0.625rem;
+  border-radius: 0.5rem;
+  background-color: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  color: var(--text-strong);
+  font-size: 0.8125rem;
+  line-height: 1;
+  cursor: pointer;
+  /* Strip the native chevron so we can position our own */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  /* Custom chevron — sits 0.625rem from the right edge */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.625rem center;
+  background-size: 12px 12px;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--border-strong, var(--text-faint));
+}
+
+.select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

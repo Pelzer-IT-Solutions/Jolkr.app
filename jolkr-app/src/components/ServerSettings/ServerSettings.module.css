@@ -1094,13 +1094,12 @@
   margin-bottom: 1rem;
 }
 
-/* Make the Create Invite button match the height of the sibling selects.
-   Selects have a 1px border so their content box is 2px shorter than a borderless
-   button at the same padding — a transparent border evens it out without changing
-   the look or the global .createBtn class. */
+/* Lock the Create Invite button to the same 32px height as the shared <Select>
+   sibling so they line up regardless of font metrics or padding drift. */
 .inviteRowBtn {
-  border: 1px solid transparent;
+  height: 2rem;
   box-sizing: border-box;
+  padding: 0 0.875rem;
 }
 
 .inviteCreateField {
@@ -1115,32 +1114,6 @@
   color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.inviteSelect {
-  width: 100%;
-  /* Reserve right-edge space for our custom chevron */
-  padding: 0.5rem 1.75rem 0.5rem 0.625rem;
-  border-radius: 0.5rem;
-  background-color: var(--bg-loud);
-  border: 1px solid var(--border-muted);
-  color: var(--text-strong);
-  font-size: 0.8125rem;
-  cursor: pointer;
-  /* Strip the native chevron so we can position our own */
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  /* Custom chevron — sits 0.625rem from the right edge, snug against the value */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 0.625rem center;
-  background-size: 12px 12px;
-}
-
-.inviteSelect:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .inviteError {
