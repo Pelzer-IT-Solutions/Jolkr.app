@@ -10,6 +10,7 @@ import {
   UserSchema, UserArraySchema, ServerSchema, ServerArraySchema,
   ChannelSchema, ChannelArraySchema, CategoryArraySchema,
   MemberArraySchema, RoleArraySchema, MessageArraySchema, MessageSchema,
+  DmMessageSchema, DmMessageArraySchema,
   AttachmentArraySchema, DmChannelSchema, DmChannelArraySchema,
   ChannelOverwriteArraySchema, BanArraySchema, ThreadArraySchema,
 } from './schemas';
@@ -554,42 +555,41 @@ export const getDmAttachments = (dmId: string) =>
   request(`/dms/${dmId}/attachments`, {}, { unwrapKey: 'attachments', schema: AttachmentArraySchema });
 export const openDm = (userId: string) =>
   request('/dms', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, { unwrapKey: 'channel', schema: DmChannelSchema });
-// DM message endpoints intentionally skip schema validation — the backend
-// DmMessageInfo DTO uses `dm_channel_id` (not `channel_id`) and omits
-// thread/poll/webhook fields, so MessageSchema doesn't match and the
-// downstream normalization in PinnedMessagesPanel etc. already handles
-// the dm-specific shape. A dedicated DmMessageSchema is on the backlog.
+// DM message endpoints validate via `DmMessageSchema` which translates
+// `dm_channel_id` → `channel_id` and fills empty defaults so the rest of
+// the app can treat the result as a regular `Message` (see backend audit
+// item D-001 for the long-term unification).
 export const getDmMessages = (dmId: string, limit = 50, before?: string) => {
   let path = `/dms/${dmId}/messages?limit=${limit}`;
   if (before) path += `&before=${before}`;
-  return request<Message[]>(path, {}, 'messages');
+  return request(path, {}, { unwrapKey: 'messages', schema: DmMessageArraySchema });
 };
 export const sendDmMessage = (dmId: string, body: {
   content: string;
   nonce?: string;
   reply_to_id?: string;
 }) =>
-  request<Message>(`/dms/${dmId}/messages`, {
+  request(`/dms/${dmId}/messages`, {
     method: 'POST',
     body: JSON.stringify(body),
-  }, 'message');
+  }, { unwrapKey: 'message', schema: DmMessageSchema });
 export const editDmMessage = (messageId: string, content: string, nonce?: string) =>
-  request<Message>(`/dms/messages/${messageId}`, {
+  request(`/dms/messages/${messageId}`, {
     method: 'PATCH',
     body: JSON.stringify({ content, nonce }),
-  }, 'message');
+  }, { unwrapKey: 'message', schema: DmMessageSchema });
 export const deleteDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}`, { method: 'DELETE' });
 export const hideDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}/hide`, { method: 'POST' });
 
-// DM Pins — see comment above getDmMessages for why these skip validation.
+// DM Pins — see comment above getDmMessages.
 export const pinDmMessage = (dmId: string, messageId: string) =>
-  request<Message>(`/dms/${dmId}/pins/${messageId}`, { method: 'POST' }, 'message');
+  request(`/dms/${dmId}/pins/${messageId}`, { method: 'POST' }, { unwrapKey: 'message', schema: DmMessageSchema });
 export const unpinDmMessage = (dmId: string, messageId: string) =>
-  request<Message>(`/dms/${dmId}/pins/${messageId}`, { method: 'DELETE' }, 'message');
+  request(`/dms/${dmId}/pins/${messageId}`, { method: 'DELETE' }, { unwrapKey: 'message', schema: DmMessageSchema });
 export const getDmPinnedMessages = (dmId: string) =>
-  request<Message[]>(`/dms/${dmId}/pins`, {}, 'messages');
+  request(`/dms/${dmId}/pins`, {}, { unwrapKey: 'messages', schema: DmMessageArraySchema });
 
 export const addDmReaction = (messageId: string, emoji: string) =>
   request<void>(`/dms/messages/${messageId}/reactions`, {

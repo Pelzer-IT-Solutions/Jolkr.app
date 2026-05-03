@@ -279,6 +279,52 @@ export const DmChannelSchema: z.ZodType<DmChannel> = z.object({
 
 export const DmChannelArraySchema = z.array(DmChannelSchema)
 
+// ── DM Message ──
+//
+// Backend `DmMessageInfo` uses `dm_channel_id` instead of `channel_id` and
+// omits the server-only fields (`thread_id`, `thread_reply_count`, `author`,
+// `poll`, `webhook_*`). To keep a single `Message` shape across the rest of
+// the app, this schema validates the wire DTO and transforms it into a
+// `Message`-compatible object in one pass — so DM endpoints can use the
+// same downstream pipeline as server-channel endpoints (no more `as`-cast
+// `normalizeDmMessages` helper in the store).
+//
+// Backend audit item D-001: ideally the backend unifies `MessageInfo` and
+// `DmMessageInfo` so this transform is unnecessary.
+const DmMessageWireSchema = z.object({
+  id: z.string(),
+  dm_channel_id: z.string(),
+  author_id: z.string(),
+  content: z.string().nullish(),
+  nonce: nullish(z.string()),
+  is_edited: z.boolean(),
+  is_pinned: z.boolean(),
+  reply_to_id: nullish(z.string()),
+  attachments: z.array(AttachmentSchema).nullish(),
+  reactions: z.array(ReactionSchema).nullish(),
+  embeds: z.array(MessageEmbedSchema).nullish(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export const DmMessageSchema: z.ZodType<Message> = DmMessageWireSchema.transform(m => ({
+  id: m.id,
+  channel_id: m.dm_channel_id,
+  author_id: m.author_id,
+  content: m.content ?? '',
+  nonce: m.nonce ?? null,
+  created_at: m.created_at,
+  updated_at: m.updated_at,
+  is_edited: m.is_edited,
+  is_pinned: m.is_pinned,
+  reply_to_id: m.reply_to_id ?? null,
+  attachments: m.attachments ?? [],
+  reactions: m.reactions ?? [],
+  embeds: m.embeds ?? [],
+}))
+
+export const DmMessageArraySchema = z.array(DmMessageSchema)
+
 // ── Friendship / Ban / Invite ──
 
 export const FriendshipSchema: z.ZodType<Friendship> = z.object({
