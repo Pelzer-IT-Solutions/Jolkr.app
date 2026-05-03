@@ -19,6 +19,7 @@ import type { MemberDisplay } from '../../types/ui'
 import { useWsSubscriptions } from './useWsSubscriptions'
 import { useRouting } from './useRouting'
 import { useDmSync } from './useDmSync'
+import { useAuthInit } from './useAuthInit'
 
 export function useAppInit() {
   const navigate = useNavigate()
@@ -117,21 +118,28 @@ export function useAppInit() {
 
   const lastChannelPerServer = useRef<Record<string, string>>({})
   const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [ready, setReady] = useState(false)
 
   // ── Per-server themes ──
   const [serverThemes, setServerThemes] = useState<Record<string, ServerTheme>>({})
 
-  // ── Routing: mount-only init + state↔URL sync ──
-  // The three load-bearing effects (init / state→URL / URL→state) plus their
-  // exhaustive-deps disables live in useRouting; see that file for the full
-  // rationale on why each effect runs only on its specific deps.
+  // ── Bootstrap: mount-only fetch flow + initial routing decision ──
+  // useAuthInit owns the `ready` flag and the parallel servers + DMs + GIF
+  // favorites fetch; only after that completes does it flip ready=true and
+  // every other effect (URL sync, channel data fetch, WS subscribe) gates on
+  // ready before doing anything.
+  const { ready } = useAuthInit({
+    setDmList, setDmUsers, setServerThemes, setTabbedIds,
+    setActiveServerId, setActiveDmId, setActiveChannelId, setDmActive,
+    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions,
+  })
+
+  // ── URL ↔ state sync (only after ready) ──
+  // useRouting owns the two effects that keep activeServerId/Channel/Dm in
+  // sync with the browser URL. See useRouting for the rationale on why both
+  // effects keep an exhaustive-deps disable.
   useRouting({
     ready, dmActive, activeDmId, activeServerId, activeChannelId,
-    setDmList, setDmUsers, setServerThemes, setTabbedIds,
-    setActiveServerId, setActiveDmId, setActiveChannelId,
-    setDmActive, setReady,
-    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions,
+    setActiveServerId, setActiveDmId, setActiveChannelId, setDmActive,
   })
 
   // ── Fetch channel data when switching servers (after init) ──
