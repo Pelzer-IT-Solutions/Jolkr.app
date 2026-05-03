@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { getApiBaseUrl } from '../../platform/config';
 import css from './ServerIcon.module.css';
 
@@ -24,11 +24,11 @@ const fontClass: Record<string, string> = {
 export default function ServerIcon({ name, iconUrl, serverId, size = 'md', className }: ServerIconProps) {
   const imgSrc = serverId && iconUrl ? iconEndpoint(serverId) : (iconUrl ?? undefined);
   const [imgError, setImgError] = useState(false);
-  const prevKey = useRef(serverId ?? iconUrl);
-
   const currentKey = serverId ?? iconUrl;
-  if (currentKey !== prevKey.current) {
-    prevKey.current = currentKey;
+  const [prevKey, setPrevKey] = useState(currentKey);
+
+  if (currentKey !== prevKey) {
+    setPrevKey(currentKey);
     setImgError(false);
   }
 
