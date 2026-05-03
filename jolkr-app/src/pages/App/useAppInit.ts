@@ -226,10 +226,14 @@ export function useAppInit() {
 
     init().catch(console.error)
     return () => { cancelled = true }
-    // Mount-only init. The fetch* + navigate values are stable (zustand
-    // actions / react-router NavigateFunction), so listing them is a no-op
-    // at runtime but keeps exhaustive-deps satisfied.
-  }, [fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions, navigate, location.pathname])
+    // MOUNT-ONLY by design. `location.pathname` in deps would re-run the
+    // entire init (refetch servers + DMs + reset active*Id) on every nav —
+    // creating a redirect loop with the state↔URL sync effects below. Same
+    // for `navigate`. The fetch* refs are stable zustand actions so they
+    // would technically be safe to list, but we keep [] for clarity that
+    // this effect deliberately runs once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Sync state → URL (only AFTER init is done) ──
   // Uses push (not replace) so each user-driven server/channel/DM switch
@@ -255,7 +259,11 @@ export function useAppInit() {
     if (location.pathname !== target) {
       navigate(target)
     }
-  }, [ready, dmActive, activeDmId, activeServerId, activeChannelId, navigate, location.pathname])
+    // Drives URL FROM state — listing `location.pathname` in deps would
+    // make this effect re-fire on URL changes too and feedback-loop with
+    // the URL→state effect below. `navigate` is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, dmActive, activeDmId, activeServerId, activeChannelId])
 
   // ── Sync URL → state (popstate / programmatic history.back) ──
   // When the user presses the Android back button or otherwise pops history,
@@ -284,10 +292,12 @@ export function useAppInit() {
       if (sid !== activeServerId) setActiveServerId(sid)
       if (cid !== activeChannelId) setActiveChannelId(cid)
     }
-    // The state vars below are read only for "is the current state already
-    // in sync with the URL" no-op guards — adding them costs an extra
-    // re-run per state change but never sets state when it's already right.
-  }, [ready, location.pathname, dmActive, activeDmId, activeServerId, activeChannelId])
+    // Drives state FROM url — listing the state vars would make this
+    // effect re-fire on every state change and feedback-loop with the
+    // state→URL effect above. The conditionals are no-op guards, not
+    // reactive triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, location.pathname])
 
   // ── Fetch channel data when switching servers (after init) ──
   // activeChannelId is read inside the .then to validate selection but we
