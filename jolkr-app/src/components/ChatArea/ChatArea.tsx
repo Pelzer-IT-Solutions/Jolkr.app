@@ -1,9 +1,8 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import {
-  Phone, Video, Files, CornerUpLeft, X,
-  PanelLeftOpen, AlignLeft, Users, Smile,
-  Paperclip, ImagePlay, SendHorizontal,
-  Bold, Italic, Strikethrough, Code, Pin, BarChart3,
+  CornerUpLeft, X,
+  Smile, Paperclip, ImagePlay, SendHorizontal,
+  Bold, Italic, Strikethrough, Code, BarChart3,
 } from 'lucide-react'
 import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
@@ -17,8 +16,7 @@ import { emojiToImgUrl } from '../../utils/emoji'
 import { RichInput, type RichInputHandle } from './RichInput'
 import { useAutocomplete } from './useAutocomplete'
 import { PollCreator } from '../Poll/PollCreator'
-import { useCallStore } from '../../stores/call'
-import { useVoiceStore } from '../../stores/voice'
+import { ChatHeader } from './ChatHeader'
 import s from './ChatArea.module.css'
 
 export interface MentionableUser {
@@ -246,39 +244,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     ? `Message ${dmName}`
     : `Message #${channel.name}`
 
-  // ── Voice call wiring (DM) ───────────────────────────────────────
-  // Works for both 1-on-1 and group DMs. The SFU treats `dm_id` as a room id
-  // and routes audio between any number of participants, so group calls are
-  // an N-way join into the same room. E2EE is only derived for 1-on-1 calls
-  // (where there's a single peer to do the X25519/ML-KEM handshake against);
-  // group calls fall back to DTLS-SRTP only.
-  const isGroupDm = isDm && dmConversation?.type === 'group'
-  const recipientUserId = !isGroupDm ? dmFirstP?.userId : undefined
-  const activeCallDmId = useCallStore((st) => st.activeCallDmId)
-  const incomingCall   = useCallStore((st) => st.incomingCall)
-  const outgoingCall   = useCallStore((st) => st.outgoingCall)
-  const startCall      = useCallStore((st) => st.startCall)
-  const voiceState     = useVoiceStore((st) => st.connectionState)
-  const inAnyCall      = !!activeCallDmId || !!outgoingCall || !!incomingCall || voiceState !== 'disconnected'
-  const callDisabled      = !isDm || !dmConversation || inAnyCall
-  const videoCallDisabled = callDisabled || isGroupDm
-  const callTitle         = inAnyCall ? 'Already in a call' : 'Start voice call'
-  const videoCallTitle    = inAnyCall
-    ? 'Already in a call'
-    : isGroupDm
-      ? 'Video calls are 1-on-1 only'
-      : 'Start video call'
-
-  const handleStartCall = useCallback(() => {
-    if (callDisabled || !dmConversation) return
-    void startCall(dmConversation.id, dmName, recipientUserId)
-  }, [callDisabled, dmConversation, dmName, recipientUserId, startCall])
-
-  const handleStartVideoCall = useCallback(() => {
-    if (videoCallDisabled || !dmConversation) return
-    void startCall(dmConversation.id, dmName, recipientUserId, { video: true })
-  }, [videoCallDisabled, dmConversation, dmName, recipientUserId, startCall])
-
   // Only treat drags that actually carry files as attachable — a regular
   // text/HTML drag (e.g. dragging a message link around) shouldn't show the
   // overlay.
@@ -333,105 +298,17 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           </div>
         </div>
       )}
-      <header className={s.header}>
-        {sidebarCollapsed && (
-          <button className={s.iconBtn} title="Expand channels" aria-label="Expand channels" onClick={onExpandSidebar}>
-            <SidebarIcon />
-          </button>
-        )}
-
-        {isDm && dmConversation ? (
-          <>
-            {dmConversation.type === 'group' ? (
-              <div className={s.groupAvatars}>
-                {dmConversation.participants.slice(0, 2).map((p, i) => (
-                  <div
-                    key={p.userId ?? `${p.name}-${i}`}
-                    className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}
-                    style={p.avatarUrl ? undefined : { background: p.color }}
-                  >
-                    {p.avatarUrl
-                      ? <img src={p.avatarUrl} alt={`${p.name} avatar`} width={20} height={20} style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
-                      : p.letter}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={s.dmAvatar} style={dmFirstP?.avatarUrl ? undefined : { background: dmFirstP?.color }}>
-                {dmFirstP?.avatarUrl
-                  ? <img src={dmFirstP.avatarUrl} alt={dmFirstP.name ? `${dmFirstP.name} avatar` : ''} width={28} height={28} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                  : dmFirstP?.letter}
-                <span className={`${s.dmStatusDot} ${s[dmFirstP?.status ?? 'offline']}`} />
-              </div>
-            )}
-            <span className={`${s.headerName} txt-body txt-semibold`}>{dmName}</span>
-          </>
-        ) : (
-          <>
-            <span className={`${s.headerIcon} ${!sidebarCollapsed ? s.headerIconPadded : ''}`}>{channel.icon === '#' ? '#' : channel.icon}</span>
-            <span className={`${s.headerName} txt-body txt-semibold`}>{channel.name}</span>
-            <div className={s.headerDivider} />
-            <span className={`${s.headerDesc} txt-small txt-truncate`}>{channel.desc}</span>
-          </>
-        )}
-
-        <div className={s.headerActions}>
-          {isDm ? (
-            <>
-              <button
-                className={`${s.iconBtn} ${callDisabled ? s.iconBtnDisabled : ''}`}
-                title={callTitle}
-                aria-label={callTitle}
-                disabled={callDisabled}
-                onClick={handleStartCall}
-              >
-                <CallIcon />
-              </button>
-              <button
-                className={`${s.iconBtn} ${videoCallDisabled ? s.iconBtnDisabled : ''}`}
-                title={videoCallTitle}
-                aria-label={videoCallTitle}
-                disabled={videoCallDisabled}
-                onClick={handleStartVideoCall}
-              >
-                <VideoIcon />
-              </button>
-              <div className={s.headerSep} />
-            </>
-          ) : (
-            <>
-              {hasThreads && (
-                <button
-                  className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
-                  title="Threads"
-                  aria-label="Toggle threads panel"
-                  onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
-                >
-                  <ThreadsIcon />
-                </button>
-              )}
-              {hasPinnedMessages && (
-                <button
-                  className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
-                  title="Pinned messages"
-                  aria-label="Toggle pinned messages panel"
-                  onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
-                >
-                  <Pin size={14} strokeWidth={1.5} />
-                </button>
-              )}
-            </>
-          )}
-          <button
-            className={`${s.iconBtn} ${rightPanelMode === 'members' ? s.active : ''}`}
-            title={isDm ? 'Files & pins' : 'Members'}
-            aria-label={isDm ? 'Toggle files and pins panel' : 'Toggle members panel'}
-            onClick={() => onSetRightPanelMode(rightPanelMode === 'members' ? null : 'members')}
-          >
-            {isDm ? <FilesIcon /> : <MembersIcon />}
-          </button>
-        </div>
-      </header>
+      <ChatHeader
+        channel={channel}
+        isDm={isDm}
+        dmConversation={dmConversation}
+        sidebarCollapsed={sidebarCollapsed}
+        rightPanelMode={rightPanelMode}
+        onExpandSidebar={onExpandSidebar}
+        onSetRightPanelMode={onSetRightPanelMode}
+        hasPinnedMessages={hasPinnedMessages}
+        hasThreads={hasThreads}
+      />
 
       <div className={s.chatBody}>
         <div className={`${s.messageList} scrollbar-thin scroll-view-y-chat`} ref={listRef} onScroll={handleScroll}>
@@ -737,14 +614,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   )
 }
 
-function CallIcon()       { return <Phone         size={14} strokeWidth={1.5} /> }
-function VideoIcon()      { return <Video         size={14} strokeWidth={1.5} /> }
-function FilesIcon()      { return <Files         size={14} strokeWidth={1.5} /> }
 function ReplySmallIcon() { return <CornerUpLeft  size={12} strokeWidth={1.5} /> }
 function CloseIcon()      { return <X             size={11} strokeWidth={1.75} /> }
-function SidebarIcon()    { return <PanelLeftOpen size={14} strokeWidth={1.5} /> }
-function ThreadsIcon()    { return <AlignLeft     size={14} strokeWidth={1.5} /> }
-function MembersIcon()    { return <Users         size={14} strokeWidth={1.5} /> }
 function EmojiIcon()      { return <Smile         size={15} strokeWidth={1.25} /> }
 function AttachIcon()     { return <Paperclip     size={15} strokeWidth={1.25} /> }
 function GifIcon()        { return <ImagePlay     size={15} strokeWidth={1.25} /> }
