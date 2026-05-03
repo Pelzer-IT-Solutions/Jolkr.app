@@ -47,6 +47,16 @@ export default function Login() {
         } catch { /* invite expired or invalid, proceed normally */ }
       }
 
+      // Handle pending deep-link friend add (jolkr://add/<userId> when not logged in)
+      const pendingAdd = sessionStorage.getItem(STORAGE_KEYS.PENDING_ADD_FRIEND);
+      if (pendingAdd) {
+        sessionStorage.removeItem(STORAGE_KEYS.PENDING_ADD_FRIEND);
+        // Best-effort — failures (already friends, blocked, expired user) are
+        // surfaced by the deep-link handler the next time the user opens the
+        // friends panel; we don't want to block login on it.
+        api.sendFriendRequest(pendingAdd).catch(() => {});
+      }
+
       navigate('/');
     } catch { /* error is in store */ }
   };

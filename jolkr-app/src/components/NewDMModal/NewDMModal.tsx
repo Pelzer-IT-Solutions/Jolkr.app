@@ -176,11 +176,11 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
   return createPortal(
     <div className={s.overlay} onClick={handleOverlayClick}>
       <div className={s.modal}>
+        <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
+          <X size={18} strokeWidth={1.5} />
+        </button>
         <div className={s.header}>
           <span className={s.title}>New Message</span>
-          <button className={s.closeBtn} onClick={onClose}>
-            <X size={14} strokeWidth={1.5} />
-          </button>
         </div>
 
         <div className={s.searchArea}>

@@ -1,16 +1,22 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { X, UserPlus, Check, XCircle, MessageCircle, UserX } from 'lucide-react'
+import { X, UserPlus, Check, XCircle, MessageCircle, UserX, QrCode, ScanLine, Search } from 'lucide-react'
 import type { MemberDisplay, MemberStatus } from '../../types'
 import type { Friendship, User } from '../../api/types'
 import * as api from '../../api/client'
 import { wsClient } from '../../api/ws'
 import { useAuthStore } from '../../stores/auth'
 import { usePresenceStore } from '../../stores/presence'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { invalidateFriendsCache } from '../../services/friendshipCache'
+import { hashColor } from '../../adapters/transforms'
+import { useToast } from '../Toast'
 import Avatar from '../Avatar/Avatar'
+import { QrCodeDisplay } from '../QrCodeDisplay'
+import { QrCodeScanner } from '../QrCodeScanner'
 import s from './FriendsPanel.module.css'
 
-type FriendTab = 'all' | 'online' | 'pending'
+type FriendTab = 'all' | 'online' | 'pending' | 'add'
 
 
 interface FriendRequest {
@@ -72,6 +78,15 @@ export function FriendsPanel({
   const [requests, setRequests] = useState<FriendRequest[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
+  // 'add' tab state — search + QR modals
+  const [searchQuery, setSearchQuery] = useState('')
+  const debouncedQuery = useDebouncedValue(searchQuery, 300)
+  const [searchResults, setSearchResults] = useState<User[]>([])
+  const [searching, setSearching] = useState(false)
+  const [pendingAddIds, setPendingAddIds] = useState<Set<string>>(new Set())
+  const [qrDisplayOpen, setQrDisplayOpen] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
+
   const refresh = useCallback(async () => {
     if (!myId) return
     const [accepted, pending] = await Promise.all([
@@ -125,6 +140,36 @@ export function FriendsPanel({
     return () => document.removeEventListener('keydown', handleKey)
   }, [open, onClose])
 
+  // Live debounced user search for the 'add' tab. Mirrors the pattern used in
+  // NewDMModal: short queries clear the result list without hitting the API.
+  useEffect(() => {
+    if (activeTab !== 'add') return
+    const q = debouncedQuery.trim()
+    if (q.length < 2) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+    let cancelled = false
+    setSearching(true)
+    api.searchUsers(q)
+      .then(users => {
+        if (cancelled) return
+        setSearchResults(users.filter(u => u.id !== myId))
+      })
+      .catch(() => { if (!cancelled) setSearchResults([]) })
+      .finally(() => { if (!cancelled) setSearching(false) })
+    return () => { cancelled = true }
+  }, [debouncedQuery, activeTab, myId])
+
+  // Reset search state whenever the panel closes so reopening starts clean.
+  useEffect(() => {
+    if (open) return
+    setSearchQuery('')
+    setSearchResults([])
+    setActiveTab('all')
+  }, [open])
+
   const filteredFriends = friends.filter(f => {
     if (activeTab === 'online') return f.status !== 'offline'
     return true
@@ -165,11 +210,33 @@ export function FriendsPanel({
     onClose()
   }
 
+  const handleSendRequest = async (userId: string) => {
+    setPendingAddIds(prev => new Set(prev).add(userId))
+    try {
+      await api.sendFriendRequest(userId)
+      invalidateFriendsCache()
+      useToast.getState().show('Friend request sent', 'success')
+      refresh()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to send friend request'
+      useToast.getState().show(msg, 'error')
+    } finally {
+      setPendingAddIds(prev => {
+        const next = new Set(prev)
+        next.delete(userId)
+        return next
+      })
+    }
+  }
+
   if (!open) return null
 
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={s.panel}>
+        <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
+          <X size={18} strokeWidth={1.5} />
+        </button>
         <div className={s.header}>
           <div className={s.tabs}>
             <button
@@ -192,10 +259,13 @@ export function FriendsPanel({
               Pending
               {requests.length > 0 && <span className={s.badge}>{requests.length}</span>}
             </button>
+            <button
+              className={`${s.tab} ${activeTab === 'add' ? s.active : ''} txt-small`}
+              onClick={() => setActiveTab('add')}
+            >
+              Add Friend
+            </button>
           </div>
-          <button className={s.closeBtn} onClick={onClose}>
-            <X size={18} strokeWidth={1.5} />
-          </button>
         </div>
 
         <div className={`${s.content} scrollbar-thin`}>
@@ -253,6 +323,82 @@ export function FriendsPanel({
                 </div>
               )}
             </>
+          ) : activeTab === 'add' ? (
+            <div className={s.addPane}>
+              <p className={`${s.addIntro} txt-small`}>
+                Add friends with their username, email, or QR code.
+              </p>
+
+              <div className={s.qrButtons}>
+                <button
+                  className={`${s.qrBtn} txt-small txt-medium`}
+                  onClick={() => setQrDisplayOpen(true)}
+                >
+                  <QrCode size={14} strokeWidth={1.5} />
+                  My QR Code
+                </button>
+                <button
+                  className={`${s.qrBtn} txt-small txt-medium`}
+                  onClick={() => setScannerOpen(true)}
+                >
+                  <ScanLine size={14} strokeWidth={1.5} />
+                  Scan QR
+                </button>
+              </div>
+
+              <div className={s.divider}>
+                <span className={`${s.dividerLabel} txt-tiny`}>or search</span>
+              </div>
+
+              <div className={s.searchWrap}>
+                <Search size={14} strokeWidth={1.75} className={s.searchIcon} />
+                <input
+                  className={`${s.searchInput} txt-small`}
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Username or email…"
+                  autoFocus
+                />
+              </div>
+
+              {searching && searchQuery.trim().length >= 2 && (
+                <div className={`${s.empty} txt-small`}>Searching…</div>
+              )}
+
+              {!searching && searchResults.map(u => (
+                <div key={u.id} className={s.friendRow}>
+                  <div className={s.userInfo}>
+                    <Avatar
+                      url={u.avatar_url}
+                      name={u.display_name ?? u.username}
+                      size="sm"
+                      userId={u.id}
+                      color={hashColor(u.id)}
+                    />
+                    <div className={s.names}>
+                      <span className={`${s.displayName} txt-small txt-medium`}>
+                        {u.display_name ?? u.username}
+                      </span>
+                      <span className={`${s.username} txt-tiny`}>@{u.username}</span>
+                    </div>
+                  </div>
+                  <button
+                    className={`${s.addBtn} txt-tiny txt-medium`}
+                    onClick={() => handleSendRequest(u.id)}
+                    disabled={pendingAddIds.has(u.id)}
+                  >
+                    {pendingAddIds.has(u.id) ? 'Sending…' : 'Add'}
+                  </button>
+                </div>
+              ))}
+
+              {!searching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                <div className={s.empty}>
+                  <p className="txt-small">No users found</p>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               {filteredFriends.map(friend => (
@@ -293,6 +439,13 @@ export function FriendsPanel({
           )}
         </div>
       </div>
+
+      <QrCodeDisplay open={qrDisplayOpen} onClose={() => setQrDisplayOpen(false)} />
+      <QrCodeScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onFriendRequestSent={refresh}
+      />
     </div>,
     document.body
   )
