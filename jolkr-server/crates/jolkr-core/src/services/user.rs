@@ -31,6 +31,10 @@ pub struct UserProfile {
     pub email_verified: bool,
     /// Banner color.
     pub banner_color: Option<String>,
+    /// Privacy: who can start a new DM with this user (`all` | `friends` | `none`).
+    pub dm_filter: String,
+    /// Privacy: whether others can send friend requests to this user.
+    pub allow_friend_requests: bool,
 }
 
 impl From<UserRow> for UserProfile {
@@ -47,6 +51,8 @@ impl From<UserRow> for UserProfile {
             is_system: row.is_system,
             email_verified: row.email_verified,
             banner_color: row.banner_color,
+            dm_filter: row.dm_filter,
+            allow_friend_requests: row.allow_friend_requests,
         }
     }
 }
@@ -66,6 +72,10 @@ pub struct UpdateProfileRequest {
     pub show_read_receipts: Option<bool>,
     /// Banner color.
     pub banner_color: Option<String>,
+    /// Privacy: DM filter (`all` | `friends` | `none`).
+    pub dm_filter: Option<String>,
+    /// Privacy: whether others can send friend requests to this user.
+    pub allow_friend_requests: Option<bool>,
 }
 
 /// Domain service for `user` operations.
@@ -99,6 +109,13 @@ impl UserService {
                 return Err(JolkrError::Validation("bio must be at most 2000 characters".into()));
             }
         }
+        if let Some(ref dm_filter) = req.dm_filter {
+            if !matches!(dm_filter.as_str(), "all" | "friends" | "none") {
+                return Err(JolkrError::Validation(
+                    "dm_filter must be one of: all, friends, none".into(),
+                ));
+            }
+        }
         let row = UserRepo::update_user(
             pool,
             user_id,
@@ -108,6 +125,8 @@ impl UserService {
             req.bio.as_deref(),
             req.show_read_receipts,
             req.banner_color.as_deref(),
+            req.dm_filter.as_deref(),
+            req.allow_friend_requests,
         )
         .await?;
         Ok(UserProfile::from(row))

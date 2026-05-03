@@ -171,6 +171,28 @@ impl FriendshipRepo {
         Ok(rows)
     }
 
+    /// Returns `true` when an `accepted` friendship row exists between the
+    /// two users, in either direction. Used by privacy gates such as DM
+    /// filter `friends`.
+    pub async fn are_friends(
+        pool: &PgPool,
+        user_a: Uuid,
+        user_b: Uuid,
+    ) -> Result<bool, JolkrError> {
+        let row: Option<(Uuid,)> = sqlx::query_as(
+            "SELECT id FROM friendships
+               WHERE status = 'accepted'
+                 AND ((requester_id = $1 AND addressee_id = $2)
+                   OR (requester_id = $2 AND addressee_id = $1))
+               LIMIT 1",
+        )
+        .bind(user_a)
+        .bind(user_b)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.is_some())
+    }
+
     /// Lists pending requests addressed to the user, with both participants'
     /// public profile fields hydrated so the panel can render names + avatars
     /// without a follow-up batch fetch.

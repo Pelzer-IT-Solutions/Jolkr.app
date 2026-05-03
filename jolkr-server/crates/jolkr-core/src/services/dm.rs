@@ -7,7 +7,7 @@ use tracing::warn;
 
 use jolkr_common::JolkrError;
 use jolkr_db::models::DmMessageRow;
-use jolkr_db::repo::{DmRepo, UserRepo};
+use jolkr_db::repo::{DmRepo, FriendshipRepo, UserRepo};
 
 use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, attachment_proxy_url};
 
@@ -174,6 +174,29 @@ impl DmService {
             return Err(JolkrError::BadRequest("Cannot DM yourself".into()));
         }
 
+        // Enforce target user's DM privacy filter. `Forbidden` is the
+        // semantically correct status, but `JolkrError::Forbidden` is unit-
+        // only and would lose the user-facing message. `BadRequest` is the
+        // closest variant that carries a string and surfaces it via the
+        // existing toast plumbing.
+        let target = UserRepo::get_by_id(pool, target_user_id).await?;
+        match target.dm_filter.as_str() {
+            "none" => {
+                return Err(JolkrError::BadRequest(
+                    "This user is not accepting DMs".into(),
+                ));
+            }
+            "friends" => {
+                let are_friends = FriendshipRepo::are_friends(pool, caller_id, target_user_id).await?;
+                if !are_friends {
+                    return Err(JolkrError::BadRequest(
+                        "This user only accepts DMs from friends".into(),
+                    ));
+                }
+            }
+            _ => {} // "all" — no gate
+        }
+
         let channel = DmRepo::get_or_create_dm(pool, caller_id, target_user_id).await?;
         // Clear `closed_at` for any soft-closed members so a reopened DM
         // reappears in their list immediately. Without this, `list_dms`
@@ -273,9 +296,30 @@ impl DmService {
             }
         }
 
-        // Verify all users exist
+        // Verify all users exist + enforce per-member DM privacy filter so
+        // group creation is consistent with 1:1 `open_dm`. If ANY non-caller
+        // member rejects DMs from the caller, the whole group fails.
         for &uid in &member_ids {
-            UserRepo::get_by_id(pool, uid).await?;
+            let row = UserRepo::get_by_id(pool, uid).await?;
+            if uid == caller_id { continue; }
+            match row.dm_filter.as_str() {
+                "none" => {
+                    return Err(JolkrError::BadRequest(format!(
+                        "{} is not accepting DMs",
+                        row.display_name.clone().unwrap_or(row.username),
+                    )));
+                }
+                "friends" => {
+                    let are_friends = FriendshipRepo::are_friends(pool, caller_id, uid).await?;
+                    if !are_friends {
+                        return Err(JolkrError::BadRequest(format!(
+                            "{} only accepts DMs from friends",
+                            row.display_name.clone().unwrap_or(row.username),
+                        )));
+                    }
+                }
+                _ => {}
+            }
         }
 
         let channel = DmRepo::create_group_dm(pool, name.as_deref(), &member_ids).await?;

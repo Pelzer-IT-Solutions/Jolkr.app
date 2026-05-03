@@ -95,8 +95,15 @@ impl FriendshipService {
             ));
         }
 
-        // Verify addressee exists
-        jolkr_db::repo::UserRepo::get_by_id(pool, addressee_id).await?;
+        // Verify addressee exists + enforce their friend-request privacy gate.
+        // BadRequest is used (instead of unit-only Forbidden) so the message
+        // reaches the user-facing toast.
+        let addressee = jolkr_db::repo::UserRepo::get_by_id(pool, addressee_id).await?;
+        if !addressee.allow_friend_requests {
+            return Err(JolkrError::BadRequest(
+                "This user is not accepting friend requests".into(),
+            ));
+        }
 
         let row = FriendshipRepo::send_request(pool, requester_id, addressee_id).await?;
         Ok(FriendshipInfo::from(row))

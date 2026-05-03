@@ -84,6 +84,7 @@ impl UserRepo {
     }
 
     /// Update mutable user profile fields.
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_user(
         pool: &PgPool,
         id: Uuid,
@@ -93,18 +94,22 @@ impl UserRepo {
         bio: Option<&str>,
         show_read_receipts: Option<bool>,
         banner_color: Option<&str>,
+        dm_filter: Option<&str>,
+        allow_friend_requests: Option<bool>,
     ) -> Result<UserRow, JolkrError> {
         let now = Utc::now();
         let user = sqlx::query_as::<_, UserRow>(
             "
             UPDATE users
-            SET display_name       = COALESCE($2, display_name),
-                avatar_url         = COALESCE($3, avatar_url),
-                status             = COALESCE($4, status),
-                bio                = COALESCE($5, bio),
-                show_read_receipts = COALESCE($6, show_read_receipts),
-                banner_color       = COALESCE($7, banner_color),
-                updated_at         = $8
+            SET display_name          = COALESCE($2, display_name),
+                avatar_url            = COALESCE($3, avatar_url),
+                status                = COALESCE($4, status),
+                bio                   = COALESCE($5, bio),
+                show_read_receipts    = COALESCE($6, show_read_receipts),
+                banner_color          = COALESCE($7, banner_color),
+                dm_filter             = COALESCE($8, dm_filter),
+                allow_friend_requests = COALESCE($9, allow_friend_requests),
+                updated_at            = $10
             WHERE id = $1
             RETURNING *
             ",
@@ -116,6 +121,8 @@ impl UserRepo {
         .bind(bio)
         .bind(show_read_receipts)
         .bind(banner_color)
+        .bind(dm_filter)
+        .bind(allow_friend_requests)
         .bind(now)
         .fetch_optional(pool)
         .await?
