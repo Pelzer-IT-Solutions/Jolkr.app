@@ -14,6 +14,8 @@ import ServerIcon from '../ServerIcon/ServerIcon'
 import { Select } from '../ui/Select'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import { OverviewTab } from './OverviewTab'
+import { BansTab } from './BansTab'
+import { AuditTab } from './AuditTab'
 
 // Extend API Server with frontend-only display fields
 type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
@@ -660,121 +662,12 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
 
             {/* Bans Section */}
             {section === 'bans' && (
-              <div className={s.section}>
-                {bans.length === 0 ? (
-                  <div className={s.emptyState}>
-                    <div className={s.emptyStateIcon}>
-                      <Shield size={32} strokeWidth={1.5} />
-                    </div>
-                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Banned Users</span>
-                    <span className={`${s.emptyStateDesc} txt-small`}>Your server is clean! Banned users will appear here.</span>
-                  </div>
-                ) : (
-                  <div className={s.bansList}>
-                    {bans.map(ban => (
-                      <div key={ban.id} className={s.banItem}>
-                        <div className={s.banInfo}>
-                          <div className={s.banAvatar}>
-                            ?
-                          </div>
-                          <div className={s.banDetails}>
-                            <span className={`${s.banName} txt-small txt-medium`}>
-                              {ban.user_id}
-                            </span>
-                            <span className={s.banMeta}>
-                              {ban.reason ? `Reason: ${ban.reason}` : 'No reason provided'}
-                              {' \u00B7 '}
-                              Banned {new Date(ban.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          className={s.unbanBtn}
-                          onClick={() => handleUnban(ban.id)}
-                        >
-                          Unban
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <BansTab bans={bans} onUnban={handleUnban} />
             )}
 
             {/* Audit Log Section */}
             {section === 'audit' && (
-              <div className={s.section}>
-                {auditLog.length === 0 ? (
-                  <div className={s.emptyState}>
-                    <div className={s.emptyStateIcon}>
-                      <ScrollText size={32} strokeWidth={1.5} />
-                    </div>
-                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Activity Yet</span>
-                    <span className={`${s.emptyStateDesc} txt-small`}>Audit log entries will appear here when server actions are performed.</span>
-                  </div>
-                ) : (
-                  <div className={s.auditList}>
-                    {(() => {
-                      // Group entries by day
-                      const grouped = auditLog.reduce((acc, entry) => {
-                        const date = new Date(entry.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                        if (!acc[date]) acc[date] = []
-                        acc[date].push(entry)
-                        return acc
-                      }, {} as Record<string, typeof auditLog>)
-
-                      return Object.entries(grouped).map(([date, entries]) => (
-                        <div key={date} className={s.auditDayGroup}>
-                          <div className={s.auditDayHeader}>{date}</div>
-                          <div className={s.auditDayEntries}>
-                            {entries.map(entry => (
-                              <div key={entry.id} className={s.auditItem}>
-                                <div className={s.auditIcon}>
-                                  <AuditIcon actionType={entry.action_type} />
-                                </div>
-                                <div className={s.auditContent}>
-                                  <div className={s.auditHeader}>
-                                    <span className={`${s.auditAction} txt-small txt-medium`}>
-                                      {formatActionType(entry.action_type)}
-                                    </span>
-                                    <span className={`${s.auditTime} txt-tiny`}>
-                                      {new Date(entry.created_at).toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className={s.auditDetails}>
-                                    <span className={`${s.auditUser} txt-tiny`}>
-                                      by {members.find(m => m.user_id === entry.user_id)?.nickname || entry.user_id}
-                                    </span>
-                                    {entry.target_type && entry.target_id && (
-                                      <span className={`${s.auditTarget} txt-tiny`}>
-                                        {' '}on {entry.target_type}: {entry.target_id.slice(0, 8)}...
-                                      </span>
-                                    )}
-                                  </div>
-                                  {entry.reason && (
-                                    <span className={`${s.auditReason} txt-tiny`}>
-                                      Reason: {entry.reason}
-                                    </span>
-                                  )}
-                                  {entry.changes && Object.keys(entry.changes).length > 0 && (
-                                    <div className={s.auditChanges}>
-                                      {Object.entries(entry.changes).map(([key, value]) => (
-                                        <span key={key} className={`${s.changeItem} txt-tiny`}>
-                                          {key}: {JSON.stringify(value)}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))
-                    })()}
-                  </div>
-                )}
-              </div>
+              <AuditTab auditLog={auditLog} members={members} />
             )}
 
             {/* Delete Server Section */}
@@ -845,47 +738,6 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   )
 }
 
-
-// Helper functions for Audit Log
-function AuditIcon({ actionType }: { actionType: string }) {
-  const iconMap: Record<string, string> = {
-    'MemberJoin': '\uD83D\uDC64',
-    'MemberLeave': '\uD83D\uDC4B',
-    'MemberUpdate': '\u270F\uFE0F',
-    'ChannelCreate': '\uD83D\uDCDD',
-    'ChannelUpdate': '\uD83D\uDCCB',
-    'ChannelDelete': '\uD83D\uDDD1\uFE0F',
-    'RoleCreate': '\uD83D\uDEE1\uFE0F',
-    'RoleUpdate': '\u2699\uFE0F',
-    'RoleDelete': '\u274C',
-    'ServerUpdate': '\uD83D\uDD27',
-    'ServerDelete': '\uD83D\uDCA5',
-    'BanCreate': '\uD83D\uDD28',
-    'BanDelete': '\uD83D\uDD13',
-    'Kick': '\uD83D\uDC62',
-  }
-  return <span className={s.auditIconInner}>{iconMap[actionType] || '\uD83D\uDCCC'}</span>
-}
-
-function formatActionType(actionType: string): string {
-  const formatMap: Record<string, string> = {
-    'MemberJoin': 'Member Joined',
-    'MemberLeave': 'Member Left',
-    'MemberUpdate': 'Member Updated',
-    'ChannelCreate': 'Channel Created',
-    'ChannelUpdate': 'Channel Updated',
-    'ChannelDelete': 'Channel Deleted',
-    'RoleCreate': 'Role Created',
-    'RoleUpdate': 'Role Updated',
-    'RoleDelete': 'Role Deleted',
-    'ServerUpdate': 'Server Updated',
-    'ServerDelete': 'Server Deleted',
-    'BanCreate': 'User Banned',
-    'BanDelete': 'User Unbanned',
-    'Kick': 'User Kicked',
-  }
-  return formatMap[actionType] || actionType.replace(/([A-Z])/g, ' $1').trim()
-}
 
 // Permission Group Component
 interface PermissionDef {
