@@ -11,7 +11,7 @@
  */
 
 import type {
-  Message, Server, Channel, Member, Category, DmChannel, GifFavorite, Friendship, Thread, Poll,
+  Message, Server, Channel, Member, Category, DmChannel, GifFavorite, Friendship, Thread, Poll, Role, ChannelOverwrite,
 } from './types';
 
 /** Reactions on the wire have `user_ids` (snake) — see `Reaction` in api/types.ts. */
@@ -45,7 +45,22 @@ export type WsEvent =
   | { op: 'ServerDelete'; d: { server_id: string } }
   | { op: 'MemberJoin'; d: { server_id: string; user_id: string; member?: Member } }
   | { op: 'MemberLeave'; d: { server_id: string; user_id: string } }
-  | { op: 'MemberUpdate'; d: { server_id: string; user_id: string; timeout_until?: string | null; nickname?: string | null; role_ids?: string[] } }
+  /**
+   * Per-field semantics:
+   *   - `nickname`/`timeout_until`: empty string `""` = cleared, RFC3339/string = set, missing = unchanged.
+   *   - `role_ids`: full new role-id array, or missing = unchanged.
+   * Consumers MUST use `'field' in event.d` to detect presence — backend
+   * omits fields it didn't touch in this update.
+   */
+  | { op: 'MemberUpdate'; d: { server_id: string; user_id: string; timeout_until?: string; nickname?: string; role_ids?: string[] } }
+
+  // ── Roles (server-wide CRUD) ──────────────────────────────────────
+  | { op: 'RoleCreate' | 'RoleUpdate'; d: { server_id: string; role: Role } }
+  | { op: 'RoleDelete'; d: { server_id: string; role_id: string } }
+
+  // ── Channel permission overwrites ─────────────────────────────────
+  /** Full overwrite list for a channel — replaces local cache wholesale. */
+  | { op: 'ChannelPermissionUpdate'; d: { channel_id: string; server_id: string; overwrites: ChannelOverwrite[] } }
 
   // ── DM ────────────────────────────────────────────────────────────
   | { op: 'DmCreate' | 'DmUpdate'; d: { channel: DmChannel } }
@@ -61,7 +76,12 @@ export type WsEvent =
   | { op: 'TypingStart'; d: { channel_id: string; user_id: string; username?: string; display_name?: string } }
 
   // ── User profile ──────────────────────────────────────────────────
-  | { op: 'UserUpdate'; d: Record<string, unknown> }
+  /**
+   * Profile changed (display_name / avatar_url / bio / status).
+   * Fanned out to the user themselves PLUS every mutual server/DM member so
+   * everyone's local cache stays in sync without polling.
+   */
+  | { op: 'UserUpdate'; d: { user_id: string; display_name?: string | null; avatar_url?: string | null; bio?: string | null; status?: string | null } }
   | { op: 'EmailVerified'; d: { user_id?: string } }
 
   // ── GIF favorites (cross-session sync) ────────────────────────────

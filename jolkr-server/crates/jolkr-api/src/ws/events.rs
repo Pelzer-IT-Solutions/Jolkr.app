@@ -2,10 +2,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_core::services::category::CategoryInfo;
-use jolkr_core::services::channel::ChannelInfo;
+use jolkr_core::services::channel::{ChannelInfo, ChannelOverwriteInfo};
 use jolkr_core::services::dm::DmChannelInfo;
 use jolkr_core::services::friendship::FriendshipInfo;
 use jolkr_core::services::message::MessageInfo;
+use jolkr_core::services::role::RoleInfo;
 use jolkr_core::services::server::ServerInfo;
 use jolkr_core::services::thread::ThreadInfo;
 
@@ -184,11 +185,71 @@ pub enum GatewayEvent {
         server_id: Uuid,
     },
 
-    /// A member was updated (timeout, etc).
+    /// A member was updated.
+    ///
+    /// `timeout_until` is always present on the wire (legacy behaviour):
+    /// `null` = no/cleared timeout, `Some(rfc3339)` = active timeout. Emit
+    /// sites that don't touch the timeout MUST pass the existing value (read
+    /// it back from the DB) rather than `None`, OR pass `None` if and only
+    /// if they're emitting a nickname/role-only update — in that case the FE
+    /// will skip the `timeout_until` field because of `'timeout_until' in d`
+    /// being false.
+    ///
+    /// `nickname` and `role_ids` are additive: omitted (not serialised) when
+    /// `None`. To CLEAR a nickname, send `Some(String::new())` — the FE
+    /// treats empty as "no nickname, fall back to global display_name".
     MemberUpdate {
+        /// Owning server identifier.
         server_id: Uuid,
+        /// Affected user identifier.
         user_id: Uuid,
+        /// New timeout expiry (RFC3339); `None` is omitted on the wire.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         timeout_until: Option<String>,
+        /// New nickname; `None` is omitted, empty string clears.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        nickname: Option<String>,
+        /// New full set of role IDs the member holds.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        role_ids: Option<Vec<Uuid>>,
+    },
+
+    /// A role was created in a server.
+    RoleCreate {
+        /// Owning server identifier.
+        server_id: Uuid,
+        /// Created role.
+        role: RoleInfo,
+    },
+
+    /// A role was updated (name/color/position/permissions).
+    /// Members holding this role have new effective permissions; clients
+    /// should re-fetch their channel permissions for the affected server.
+    RoleUpdate {
+        /// Owning server identifier.
+        server_id: Uuid,
+        /// Updated role.
+        role: RoleInfo,
+    },
+
+    /// A role was deleted.
+    RoleDelete {
+        /// Owning server identifier.
+        server_id: Uuid,
+        /// Deleted role identifier.
+        role_id: Uuid,
+    },
+
+    /// A channel's permission overwrites changed (upsert or delete).
+    /// Carries the full updated overwrite list so clients don't need to
+    /// reason about which row changed; they just refresh their cache.
+    ChannelPermissionUpdate {
+        /// Affected channel identifier.
+        channel_id: Uuid,
+        /// Owning server identifier.
+        server_id: Uuid,
+        /// Full set of overwrites currently on the channel.
+        overwrites: Vec<ChannelOverwriteInfo>,
     },
 
     /// Reactions on a message were updated.
