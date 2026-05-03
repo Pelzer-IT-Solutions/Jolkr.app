@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import {
   Phone, Video, Files, CornerUpLeft, X,
   PanelLeftOpen, AlignLeft, Users, Smile,
@@ -13,9 +13,9 @@ import { formatDayLabel, dayKey } from '../../utils/dateFormat'
 import { Message } from '../Message/Message'
 import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
 import GifPickerPopup from '../GifPickerPopup'
-import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
+import { emojiToImgUrl } from '../../utils/emoji'
 import { RichInput, type RichInputHandle } from './RichInput'
-import { createEmojiImg } from './richInputHelpers'
+import { useAutocomplete } from './useAutocomplete'
 import { PollCreator } from '../Poll/PollCreator'
 import { useCallStore } from '../../stores/call'
 import { useVoiceStore } from '../../stores/voice'
@@ -77,14 +77,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const [replyingTo,  setReplyingTo]  = useState<MessageVM | null>(null)
   const [isRevealing, setIsRevealing] = useState(false)
 
-  // Emoji autocomplete state
-  const [emojiQuery, setEmojiQuery]   = useState<string | null>(null)
-  const [emojiIndex, setEmojiIndex]   = useState(0)
-
-  // Mention autocomplete state
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
-  const [mentionIndex, setMentionIndex] = useState(0)
-
   // File attachment state
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
@@ -109,7 +101,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const prevAnimKeyRef    = useRef<string | null>(null)
   const prevMsgCountRef   = useRef(0)
   const navTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const mentionTimerRef   = useRef<ReturnType<typeof setTimeout>>(undefined)
   const scrollBehaviorRef = useRef<ScrollBehavior>('auto')
 
   useLayoutEffect(() => {
@@ -143,7 +134,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
   useEffect(() => () => {
     if (navTimerRef.current) clearTimeout(navTimerRef.current)
-    if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
   }, [])
 
   function handleScroll() {
@@ -172,44 +162,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   // Auto-focus input on channel switch
   useEffect(() => { inputRef.current?.focus() }, [channel.id])
 
-  // ── Emoji autocomplete ──
-  const emojiMatches = useMemo(() => {
-    if (emojiQuery === null) return []
-    return searchEmojis(emojiQuery, 8)
-  }, [emojiQuery])
-
-  const insertEmoji = useCallback((emoji: string) => {
-    const handle = inputRef.current
-    if (!handle) return
-    const text = handle.getTextBeforeCursor()
-    if (!text) return
-    const lastColon = text.lastIndexOf(':')
-    if (lastColon === -1) return
-    const charCount = text.length - lastColon
-    handle.replaceBeforeCursor(charCount, createEmojiImg(emoji))
-    setEmojiQuery(null)
-    setEmojiIndex(0)
-  }, [])
-
-  // ── Mention autocomplete ──
-  const mentionMatches = useMemo(() => {
-    if (mentionQuery === null || mentionableUsers.length === 0) return []
-    const q = mentionQuery.toLowerCase()
-    return mentionableUsers.filter((u) => u.username.toLowerCase().includes(q)).slice(0, 8)
-  }, [mentionQuery, mentionableUsers])
-
-  const insertMention = useCallback((username: string) => {
-    const handle = inputRef.current
-    if (!handle) return
-    const text = handle.getTextBeforeCursor()
-    if (!text) return
-    const lastAt = text.lastIndexOf('@')
-    if (lastAt === -1) return
-    const charCount = text.length - lastAt
-    handle.replaceBeforeCursor(charCount, `@${username} `)
-    setMentionQuery(null)
-    setMentionIndex(0)
-  }, [])
+  // ── Autocomplete (emoji `:foo` + `@mention`) ──
+  const ac = useAutocomplete(inputRef, mentionableUsers, onTyping)
+  const {
+    emojiQuery, emojiIndex, emojiMatches,
+    mentionQuery, mentionIndex, mentionMatches,
+    syncContent, insertEmoji, insertMention,
+  } = ac
 
   // ── Formatting (selection-based on contentEditable) ──
   const insertFormatting = useCallback((prefix: string, suffix: string) => {
@@ -243,37 +202,10 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     } else { setFmtBar(null) }
   }, [])
 
-  const syncContent = useCallback((plainText: string) => {
+  const handleInputChange = useCallback((plainText: string) => {
     contentRef.current = plainText
-    if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
-    // 100 ms debounce: keeps autocomplete feel instant for ordinary typing
-    // while skipping the regex + filter work for in-burst keystrokes. The
-    // ref-based timer ensures only the latest scan runs.
-    mentionTimerRef.current = setTimeout(() => {
-      const text = inputRef.current?.getTextBeforeCursor() ?? null
-      if (text) {
-        const lastColon = text.lastIndexOf(':')
-        if (lastColon !== -1 && (lastColon === 0 || /\s/.test(text[lastColon - 1]))) {
-          const query = text.slice(lastColon + 1)
-          if (query.length >= 2 && /^[a-zA-Z0-9_]+$/.test(query)) {
-            setEmojiQuery(query); setEmojiIndex(0)
-          } else { setEmojiQuery(null) }
-        } else { setEmojiQuery(null) }
-
-        const lastAt = text.lastIndexOf('@')
-        if (lastAt !== -1 && (lastAt === 0 || /\s/.test(text[lastAt - 1]))) {
-          const mQuery = text.slice(lastAt + 1)
-          if (!/\s/.test(mQuery)) {
-            setMentionQuery(mQuery); setMentionIndex(0)
-          } else { setMentionQuery(null) }
-        } else { setMentionQuery(null) }
-      } else {
-        setEmojiQuery(null)
-        setMentionQuery(null)
-      }
-    }, 100)
-    onTyping?.()
-  }, [onTyping])
+    syncContent(plainText)
+  }, [syncContent])
 
   function send() {
     const text = contentRef.current.trim()
@@ -287,18 +219,9 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (emojiQuery !== null && emojiMatches.length > 0) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); setEmojiIndex((i) => (i + 1) % emojiMatches.length); return }
-      if (e.key === 'ArrowUp')   { e.preventDefault(); setEmojiIndex((i) => (i - 1 + emojiMatches.length) % emojiMatches.length); return }
-      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); insertEmoji(emojiMatches[emojiIndex].emoji); return }
-      if (e.key === 'Escape') { e.preventDefault(); setEmojiQuery(null); return }
-    }
-    if (mentionQuery !== null && mentionMatches.length > 0) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex((i) => (i + 1) % mentionMatches.length); return }
-      if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionIndex((i) => (i - 1 + mentionMatches.length) % mentionMatches.length); return }
-      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); insertMention(mentionMatches[mentionIndex].username); return }
-      if (e.key === 'Escape') { e.preventDefault(); setMentionQuery(null); return }
-    }
+    // Autocomplete picker has first crack at the keystroke (arrow / tab /
+    // enter / escape). Returns true if it consumed the event.
+    if (ac.handleKeyDown(e)) return
     if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); insertFormatting('**', '**'); return }
     if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); insertFormatting('*', '*'); return }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
@@ -727,7 +650,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <RichInput
                   ref={inputRef}
                   placeholder={inputPlaceholder}
-                  onInput={syncContent}
+                  onInput={handleInputChange}
                   onKeyDown={handleKeyDown}
                   onSelectionChange={checkSelection}
                 />
