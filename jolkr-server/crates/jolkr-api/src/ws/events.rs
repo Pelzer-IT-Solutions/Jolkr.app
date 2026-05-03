@@ -328,6 +328,14 @@ pub enum GatewayEvent {
         /// reflect a settings toggle without a refresh. Other users ignore it.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         show_read_receipts: Option<bool>,
+        /// Self-only privacy preference — DM filter (`all` | `friends` | `none`).
+        /// Sent only on the user's own user-channel, so other peers ignore it.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        dm_filter: Option<String>,
+        /// Self-only privacy preference — whether others can send friend requests.
+        /// Sent only on the user's own user-channel, so other peers ignore it.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        allow_friend_requests: Option<bool>,
     },
 
     /// A user's email has been verified. Fired to all sessions of the user
