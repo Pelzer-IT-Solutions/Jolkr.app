@@ -61,6 +61,13 @@ pub(crate) async fn create_role(
 ) -> Result<Json<RoleResponse>, AppError> {
     let role =
         RoleService::create_role(&state.pool, server_id, auth.user_id, body).await?;
+
+    let event = crate::ws::events::GatewayEvent::RoleCreate {
+        server_id,
+        role: role.clone(),
+    };
+    state.nats.publish_to_server(server_id, &event).await;
+
     Ok(Json(RoleResponse { role }))
 }
 
@@ -85,6 +92,15 @@ pub(crate) async fn update_role(
     Json(body): Json<UpdateRoleRequest>,
 ) -> Result<Json<RoleResponse>, AppError> {
     let role = RoleService::update_role(&state.pool, id, auth.user_id, body).await?;
+
+    // Members holding this role have new effective permissions; the FE will
+    // re-fetch its `myPerms` for the affected server when this lands.
+    let event = crate::ws::events::GatewayEvent::RoleUpdate {
+        server_id: role.server_id,
+        role: role.clone(),
+    };
+    state.nats.publish_to_server(role.server_id, &event).await;
+
     Ok(Json(RoleResponse { role }))
 }
 
@@ -94,7 +110,19 @@ pub(crate) async fn delete_role(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<axum::http::StatusCode, AppError> {
+    // Look up the role's server_id BEFORE deletion so the WS event can route
+    // to the correct server channel.
+    let role = jolkr_db::repo::RoleRepo::get_by_id(&state.pool, id).await?;
+    let server_id = role.server_id;
+
     RoleService::delete_role(&state.pool, id, auth.user_id).await?;
+
+    let event = crate::ws::events::GatewayEvent::RoleDelete {
+        server_id,
+        role_id: id,
+    };
+    state.nats.publish_to_server(server_id, &event).await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
@@ -106,6 +134,7 @@ pub(crate) async fn assign_role(
     Json(body): Json<AssignRoleBody>,
 ) -> Result<axum::http::StatusCode, AppError> {
     RoleService::assign_role(&state.pool, server_id, body.user_id, role_id, auth.user_id).await?;
+    broadcast_member_role_update(&state, server_id, body.user_id).await;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
@@ -116,7 +145,40 @@ pub(crate) async fn remove_role(
     Path((server_id, role_id, user_id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<axum::http::StatusCode, AppError> {
     RoleService::remove_role(&state.pool, server_id, user_id, role_id, auth.user_id).await?;
+    broadcast_member_role_update(&state, server_id, user_id).await;
     Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// Fetch the target user's current member.id and role_ids, then publish a
+/// `MemberUpdate` carrying the new role list to BOTH the server channel (so
+/// other members see the update) AND the user channel (so the affected user's
+/// other sessions recompute their permissions even if they aren't subscribed
+/// to the server channel for some reason).
+async fn broadcast_member_role_update(state: &AppState, server_id: Uuid, target_user_id: Uuid) {
+    let member = match MemberRepo::get_member(&state.pool, server_id, target_user_id).await {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::warn!("MemberUpdate broadcast skipped — member lookup failed: {e}");
+            return;
+        }
+    };
+    let role_ids = match RoleRepo::get_member_role_ids(&state.pool, member.id).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!("MemberUpdate broadcast skipped — role lookup failed: {e}");
+            return;
+        }
+    };
+
+    let event = crate::ws::events::GatewayEvent::MemberUpdate {
+        server_id,
+        user_id: target_user_id,
+        timeout_until: None,
+        nickname: None,
+        role_ids: Some(role_ids),
+    };
+    state.nats.publish_to_server(server_id, &event).await;
+    state.nats.publish_to_user(target_user_id, &event).await;
 }
 
 /// GET /api/servers/:server_id/members-with-roles — members with their role_ids

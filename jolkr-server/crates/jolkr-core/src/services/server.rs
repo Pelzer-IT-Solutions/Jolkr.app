@@ -401,13 +401,16 @@ impl ServerService {
     }
 
     /// Set a member's nickname. Requires `MANAGE_NICKNAMES` for others, `CHANGE_NICKNAME` for self.
+    /// Set or clear a member's nickname. Returns the canonical (trimmed,
+    /// empty→None) nickname that was actually persisted so callers can emit
+    /// a `MemberUpdate` WS event with the correct value.
     pub async fn set_nickname(
         pool: &PgPool,
         server_id: Uuid,
         caller_id: Uuid,
         target_user_id: Uuid,
         req: SetNicknameRequest,
-    ) -> Result<(), JolkrError> {
+    ) -> Result<Option<String>, JolkrError> {
         let server = ServerRepo::get_by_id(pool, server_id).await?;
 
         if caller_id == target_user_id {
@@ -432,7 +435,7 @@ impl ServerService {
         }
         MemberRepo::update_nickname(pool, server_id, target_user_id, nickname.as_deref()).await?;
         info!(server_id = %server_id, target = %target_user_id, "Nickname updated");
-        Ok(())
+        Ok(nickname)
     }
 
     /// Timeout a member. Requires `MODERATE_MEMBERS` permission.

@@ -161,11 +161,25 @@ pub(crate) async fn leave_server(
 ) -> Result<axum::http::StatusCode, AppError> {
     ServerService::leave_server(&state.pool, id, auth.user_id).await?;
 
-    let event = crate::ws::events::GatewayEvent::MemberLeave {
+    // Tell remaining members that this user is gone.
+    let leave_event = crate::ws::events::GatewayEvent::MemberLeave {
         server_id: id,
         user_id: auth.user_id,
     };
-    state.nats.publish_to_server(id, &event).await;
+    state.nats.publish_to_server(id, &leave_event).await;
+
+    // Tell the leaver's OTHER sessions/devices that the server is gone for
+    // them too — from their perspective the server no longer exists. Without
+    // this, sibling tabs keep the server in the sidebar and a click 403s.
+    // Done after the publish_to_server above so a session that was subscribed
+    // to both subjects still sees both events.
+    let delete_event = crate::ws::events::GatewayEvent::ServerDelete { server_id: id };
+    state.nats.publish_to_user(auth.user_id, &delete_event).await;
+
+    // Revoke the WS server subscription for this user across all their
+    // sessions so they stop receiving events for a server they no longer
+    // belong to.
+    state.gateway.revoke_server_for_user(auth.user_id, id);
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
@@ -295,10 +309,14 @@ pub(crate) async fn timeout_member(
     ).await?;
 
     let member = MemberRepo::get_member(&state.pool, server_id, user_id).await?;
+    // FE convention: empty string = cleared timeout, RFC3339 = active.
+    let timeout_str = member.timeout_until.map_or_else(String::new, |t| t.to_rfc3339());
     let event = crate::ws::events::GatewayEvent::MemberUpdate {
         server_id,
         user_id,
-        timeout_until: member.timeout_until.map(|t| t.to_rfc3339()),
+        timeout_until: Some(timeout_str),
+        nickname: None,
+        role_ids: None,
     };
     state.nats.publish_to_server(server_id, &event).await;
 
@@ -325,10 +343,13 @@ pub(crate) async fn remove_timeout(
         &state.pool, server_id, auth.user_id, user_id,
     ).await?;
 
+    // Cleared timeout — empty string is the "cleared" sentinel.
     let event = crate::ws::events::GatewayEvent::MemberUpdate {
         server_id,
         user_id,
-        timeout_until: None,
+        timeout_until: Some(String::new()),
+        nickname: None,
+        role_ids: None,
     };
     state.nats.publish_to_server(server_id, &event).await;
 
@@ -342,7 +363,7 @@ pub(crate) async fn set_nickname(
     Path((server_id, user_id)): Path<(Uuid, Uuid)>,
     Json(body): Json<NicknameBody>,
 ) -> Result<axum::http::StatusCode, AppError> {
-    ServerService::set_nickname(
+    let new_nickname = ServerService::set_nickname(
         &state.pool,
         server_id,
         auth.user_id,
@@ -350,6 +371,20 @@ pub(crate) async fn set_nickname(
         SetNicknameRequest { nickname: body.nickname },
     )
     .await?;
+
+    // Broadcast nickname change so all server members re-render the affected
+    // member with their new display label. Empty string `""` is the "cleared"
+    // sentinel — FE falls back to the user's global display_name.
+    let nickname_payload = new_nickname.unwrap_or_default();
+    let event = crate::ws::events::GatewayEvent::MemberUpdate {
+        server_id,
+        user_id,
+        timeout_until: None,
+        nickname: Some(nickname_payload),
+        role_ids: None,
+    };
+    state.nats.publish_to_server(server_id, &event).await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
