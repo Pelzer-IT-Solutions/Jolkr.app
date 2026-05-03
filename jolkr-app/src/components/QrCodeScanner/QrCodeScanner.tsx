@@ -62,17 +62,27 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
     onClose()
   }, [stopScanner, onClose])
 
+  // Reset transient state synchronously when the modal opens so a stale
+  // error or scanned-user from a previous open doesn't briefly flash. The
+  // processingRef reset lives in the start-scanner effect since refs may
+  // only be mutated outside of render.
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (prevOpen !== open) {
+    setPrevOpen(open)
+    if (open) {
+      setError('')
+      setScannedUser(null)
+      setSending(false)
+    }
+  }
+
   // Start the scanner whenever the modal opens. The viewfinder div is
   // rendered conditionally, so we defer one tick to let it mount before
   // html5-qrcode tries to attach to it.
   useEffect(() => {
     if (!open) return
 
-    setError('')
-    setScannedUser(null)
-    setSending(false)
     processingRef.current = false
-
     let cancelled = false
 
     async function start() {

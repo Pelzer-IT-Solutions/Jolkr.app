@@ -10,12 +10,19 @@ export default function Toast() {
   const clear = useToast((s) => s.clear);
   const [closing, setClosing] = useState(false);
 
-  useEffect(() => {
-    if (!message) return;
+  // Reset closing state synchronously when a new message arrives so the
+  // transition restarts cleanly across consecutive toasts.
+  const [prevMessage, setPrevMessage] = useState(message);
+  if (prevMessage !== message) {
+    setPrevMessage(message);
     setClosing(false);
+  }
+
+  useEffect(() => {
+    if (!message || closing) return;
     const timer = setTimeout(() => setClosing(true), duration);
     return () => clearTimeout(timer);
-  }, [message, duration]);
+  }, [message, duration, closing]);
 
   useEffect(() => {
     if (!closing) return;

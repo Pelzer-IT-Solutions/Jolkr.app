@@ -98,43 +98,48 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   }, [])
 
   // Tracks previous values to distinguish navigation from message sends
-  const prevAnimKeyRef    = useRef<string | null>(null)
   const prevMsgCountRef   = useRef(0)
-  const navTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollBehaviorRef = useRef<ScrollBehavior>('auto')
 
+  // Flip the reveal animation on synchronously when navigating to a new
+  // channel/DM. Detecting the change in render keeps a single coherent
+  // render cycle instead of an effect-driven double-render flicker.
+  const [prevAnimKey, setPrevAnimKey] = useState(animationKey)
+  if (prevAnimKey !== animationKey) {
+    setPrevAnimKey(animationKey)
+    setIsRevealing(true)
+  }
+
+  // Clear the reveal flag after the animation window expires. Re-runs only
+  // when isRevealing flips to true; the cleanup cancels the timer if a
+  // second navigation lands before the first finishes.
+  useEffect(() => {
+    if (!isRevealing) return
+    const animCount = Math.min(messages.length, CHAT_REVEAL_LIMIT)
+    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(animCount))
+    return () => clearTimeout(timer)
+  }, [isRevealing, messages.length, setIsRevealing])
+
+  // Scroll to top on channel/DM navigation.
   useLayoutEffect(() => {
-    const prevAnimKey  = prevAnimKeyRef.current
+    if (listRef.current) listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [animationKey])
+
+  // Track message count to flag a smooth-scroll on the next paint when new
+  // messages arrive (vs. initial load).
+  useLayoutEffect(() => {
     const prevMsgCount = prevMsgCountRef.current
-    prevAnimKeyRef.current  = animationKey
     prevMsgCountRef.current = messages.length
-
-    if (animationKey !== prevAnimKey) {
-      if (navTimerRef.current) clearTimeout(navTimerRef.current)
-      if (listRef.current) listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
-      setIsRevealing(true)
-      const animCount = Math.min(messages.length, CHAT_REVEAL_LIMIT)
-      navTimerRef.current = setTimeout(() => {
-        setIsRevealing(false)
-        navTimerRef.current = null
-      }, revealWindowMs(animCount))
-      return
-    }
-
     if (messages.length > prevMsgCount) {
       scrollBehaviorRef.current = 'smooth'
     }
-  }, [animationKey, messages])
+  }, [messages])
 
   useEffect(() => {
     if (!listRef.current || scrollBehaviorRef.current !== 'smooth') return
     listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     scrollBehaviorRef.current = 'auto'
   }, [messages])
-
-  useEffect(() => () => {
-    if (navTimerRef.current) clearTimeout(navTimerRef.current)
-  }, [])
 
   function handleScroll() {
     if (!listRef.current || !hasMore || !onLoadOlder) return
@@ -152,15 +157,19 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   // Poll creator modal — server channels only (gated on !isDm).
   const [pollCreatorOpen, setPollCreatorOpen] = useState(false)
 
-  // Clear reply context + content when channel changes
-  useEffect(() => {
+  // Clear reply context synchronously on channel switch — the ref + input
+  // resets stay in an effect since they're side-effects on imperative APIs.
+  const [prevChannelId, setPrevChannelId] = useState(channel.id)
+  if (prevChannelId !== channel.id) {
+    setPrevChannelId(channel.id)
     setReplyingTo(null)
+  }
+
+  useEffect(() => {
     contentRef.current = ''
     inputRef.current?.clear()
+    inputRef.current?.focus()
   }, [channel.id])
-
-  // Auto-focus input on channel switch
-  useEffect(() => { inputRef.current?.focus() }, [channel.id])
 
   // ── Autocomplete (emoji `:foo` + `@mention`) ──
   const ac = useAutocomplete(inputRef, mentionableUsers, onTyping)

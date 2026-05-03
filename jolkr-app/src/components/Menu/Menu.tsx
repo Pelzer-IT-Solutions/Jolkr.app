@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getSafePosition } from '../../utils/position'
 import s from './Menu.module.css'
@@ -22,13 +22,18 @@ export function Menu({ open, position, onClose, children, minWidth = '11rem', cl
   const menuRef = useRef<HTMLDivElement>(null)
   const [safePos, setSafePos] = useState(position)
 
-  // Recalculate safe position when menu mounts or position changes
-  useEffect(() => {
-    if (!open || !menuRef.current || disableAutoPosition) {
-      setSafePos(position)
-      return
-    }
+  // Mirror `position` immediately on prop change — adopt the click point as
+  // the initial render position. The useLayoutEffect below measures the menu
+  // and adjusts before paint when auto-position is enabled.
+  const [prevPosition, setPrevPosition] = useState(position)
+  if (prevPosition !== position) {
+    setPrevPosition(position)
+    setSafePos(position)
+  }
 
+  // Recalculate safe position after mount when bounds are known.
+  useLayoutEffect(() => {
+    if (!open || !menuRef.current || disableAutoPosition) return
     const rect = menuRef.current.getBoundingClientRect()
     const adjusted = getSafePosition(
       position,

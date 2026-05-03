@@ -141,14 +141,17 @@ export default function ImageLightbox(props: Props) {
   const zoomIn  = useCallback(() => applyScale(scale + SCALE_STEP), [scale, applyScale])
   const zoomOut = useCallback(() => applyScale(scale - SCALE_STEP), [scale, applyScale])
 
-  // Reset per-image state when navigating
-  useEffect(() => {
+  // Reset per-image state when navigating (canonical "store info from
+  // previous render" pattern — runs once per index change, single render).
+  const [prevIndex, setPrevIndex] = useState(index)
+  if (prevIndex !== index) {
+    setPrevIndex(index)
     setScale(1)
     setOffset({ x: 0, y: 0 })
     setShowMore(false)
     setShowDetails(false)
     setNaturalDims(null)
-  }, [index])
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

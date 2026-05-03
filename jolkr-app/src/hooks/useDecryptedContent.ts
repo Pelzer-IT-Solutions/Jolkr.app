@@ -26,21 +26,32 @@ export function useDecryptedContent(
       // No nonce = plain text (shouldn't happen, but handle gracefully)
       return { displayContent: content, isEncrypted: false, decrypting: false };
     }
+    if (!channelId) {
+      return { displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false };
+    }
     return { displayContent: '', isEncrypted: true, decrypting: true };
   });
   const retryRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  // Sync the visible state with the inputs synchronously: a content/nonce/key
+  // swap should reset to the right placeholder immediately rather than
+  // flashing the previous decryption.
+  const inputKey = `${content}|${nonce ?? ''}|${channelId ?? ''}|${isDm ? '1' : '0'}`;
+  const [prevInputKey, setPrevInputKey] = useState(inputKey);
+  if (prevInputKey !== inputKey) {
+    setPrevInputKey(inputKey);
     if (!nonce) {
       setState({ displayContent: content, isEncrypted: false, decrypting: false });
-      return;
-    }
-
-    if (!channelId) {
+    } else if (!channelId) {
       setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
-      return;
+    } else {
+      setState({ displayContent: '', isEncrypted: true, decrypting: true });
     }
+  }
+
+  useEffect(() => {
+    if (!nonce || !channelId) return;
 
     let cancelled = false;
 

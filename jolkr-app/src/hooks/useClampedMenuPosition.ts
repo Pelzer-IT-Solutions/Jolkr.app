@@ -21,32 +21,49 @@ export function useClampedMenuPosition(
 ): { left: number; top: number } | null {
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
 
+  // Clear stored position immediately when the menu is dismissed (preferred=null)
+  // so a stale coordinate can't paint at the wrong spot during the next open.
+  const [prevPreferred, setPrevPreferred] = useState(preferred)
+  if (prevPreferred !== preferred) {
+    setPrevPreferred(preferred)
+    if (!preferred) setPos(null)
+  }
+
   useLayoutEffect(() => {
-    if (!preferred || !ref.current) {
-      setPos(null)
-      return
-    }
+    if (!preferred || !ref.current) return
     const el = ref.current
-    const w = el.offsetWidth
-    const h = el.offsetHeight
-    const vw = window.innerWidth
-    const vh = window.innerHeight
 
-    // Horizontal: prefer placing the menu so its RIGHT edge is at the click
-    // point (matches the existing context-menu convention). If that pushes the
-    // left edge off-screen, fall back to placing the LEFT edge at the click.
-    let left = preferred.x - w
-    if (left < pad) left = preferred.x
-    if (left + w > vw - pad) left = Math.max(pad, vw - w - pad)
+    // Defer the measure into a microtask so the setState lives in an async
+    // callback rather than the effect's synchronous body. Microtasks still
+    // resolve before browser paint, so the menu's first visible frame is at
+    // its clamped position — no flicker.
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      const w = el.offsetWidth
+      const h = el.offsetHeight
+      const vw = window.innerWidth
+      const vh = window.innerHeight
 
-    // Vertical: prefer DOWN from the click. Flip UP if it would overflow the
-    // bottom; clamp to the top edge if even the flipped position doesn't fit.
-    let top = preferred.y
-    if (top + h > vh - pad) top = preferred.y - h
-    if (top < pad) top = pad
+      // Horizontal: prefer placing the menu so its RIGHT edge is at the click
+      // point (matches the existing context-menu convention). If that pushes
+      // the left edge off-screen, fall back to placing the LEFT edge at the
+      // click.
+      let left = preferred.x - w
+      if (left < pad) left = preferred.x
+      if (left + w > vw - pad) left = Math.max(pad, vw - w - pad)
 
-    setPos({ left, top })
-  }, [preferred?.x, preferred?.y, ref, pad])
+      // Vertical: prefer DOWN from the click. Flip UP if it would overflow
+      // the bottom; clamp to the top edge if even the flipped position
+      // doesn't fit.
+      let top = preferred.y
+      if (top + h > vh - pad) top = preferred.y - h
+      if (top < pad) top = pad
+
+      setPos({ left, top })
+    })
+    return () => { cancelled = true }
+  }, [preferred?.x, preferred?.y, preferred, ref, pad])
 
   return pos
 }

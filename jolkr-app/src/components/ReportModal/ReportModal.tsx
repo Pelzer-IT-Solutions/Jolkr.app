@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Flag, AlertCircle } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
 import Modal from '../ui/Modal'
@@ -53,14 +53,17 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
-  useEffect(() => {
+  // Reset form fields when modal closes (canonical store-info-from-prev-render).
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (prevOpen !== open) {
+    setPrevOpen(open)
     if (!open) {
       setSelectedReason(null)
       setDetails('')
       setIsSubmitting(false)
       setIsSuccess(false)
     }
-  }, [open])
+  }
 
   const handleSubmit = async () => {
     if (!user || !selectedReason) return
