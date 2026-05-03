@@ -22,10 +22,13 @@ const VIEWFINDER_ID = 'jolkr-qr-scanner-viewfinder'
 // QR payload formats accepted (both written by QrCodeDisplay):
 //   https://jolkr.app/app/add/<uuid>  (web share)
 //   jolkr://add/<uuid>                (Tauri deep-link)
+// UUID v4 shape enforced so 36-char garbage doesn't slip through to the
+// backend with a confusing 404.
+const UUID_RE = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 function parseJolkrUserId(text: string): string | null {
-  const web = text.match(/jolkr\.app\/(?:app\/)?add\/([0-9a-f-]{36})/i)
+  const web = text.match(new RegExp(`jolkr\\.app/(?:app/)?add/(${UUID_RE})`, 'i'))
   if (web) return web[1]
-  const deep = text.match(/jolkr:\/\/add\/([0-9a-f-]{36})/i)
+  const deep = text.match(new RegExp(`jolkr://add/(${UUID_RE})`, 'i'))
   if (deep) return deep[1]
   return null
 }

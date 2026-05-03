@@ -128,8 +128,11 @@ async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<
       pq_signed_prekey_signature: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.signature) : undefined,
     });
     await storage.set(uploadedKey, 'true');
-  } catch (e) {
-    console.warn('E2EE: Failed to upload prekeys (will retry next init):', e);
+  } catch {
+    // Body intentionally redacted — the upstream error sometimes echoes the
+    // request payload (which contains base64 public key material). Retry
+    // happens on next init() automatically.
+    console.warn('[e2ee] prekey upload deferred to next init');
   }
 }
 

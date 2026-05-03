@@ -138,6 +138,9 @@ export async function clearTokens() {
   // Clear from secure storage (Stronghold on Tauri, localStorage on web)
   await storage.remove('access_token');
   await storage.remove('refresh_token');
+  // Wipe Stronghold vault password from sessionStorage so a fresh login on the
+  // same browser process can't reach the previous user's vault material.
+  try { sessionStorage.removeItem(STORAGE_KEYS.VAULT_PASSWORD); } catch { /* ignore */ }
 }
 
 export function getAccessToken() {
@@ -263,13 +266,29 @@ async function request<T>(
 }
 
 // Auth
+// Older backend versions returned the TokenPair directly; current versions
+// wrap it in `{ tokens: TokenPair }`. This helper accepts both shapes without
+// using an `as unknown as TokenPair` escape hatch.
+function extractTokens(data: unknown): TokenPair {
+  if (data && typeof data === 'object') {
+    const wrapper = data as { tokens?: unknown; access_token?: unknown; refresh_token?: unknown };
+    if (wrapper.tokens && typeof wrapper.tokens === 'object') {
+      return wrapper.tokens as TokenPair;
+    }
+    if (typeof wrapper.access_token === 'string' && typeof wrapper.refresh_token === 'string') {
+      return data as TokenPair;
+    }
+  }
+  throw new ApiError(500, 'Malformed auth response');
+}
+
 export async function register(email: string, username: string, password: string): Promise<TokenPair> {
   clearLogoutFlag(); // Allow token writes for explicit register
   const data = await request<{ tokens: TokenPair }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, username, password }),
   });
-  const tokens = data.tokens ?? (data as unknown as TokenPair);
+  const tokens = extractTokens(data);
   await setTokens(tokens);
   return tokens;
 }
@@ -280,7 +299,7 @@ export async function login(email: string, password: string): Promise<TokenPair>
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  const tokens = data.tokens ?? (data as unknown as TokenPair);
+  const tokens = extractTokens(data);
   await setTokens(tokens);
   return tokens;
 }

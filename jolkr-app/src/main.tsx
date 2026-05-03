@@ -36,14 +36,23 @@ if (isTauri && isMobile()) {
   // via its own Rust path, so the console side-channel isn't reachable.)
   // For <video> elements we let MainActivity's onShowCustomView path
   // handle it natively — no bridge call needed.
-  document.addEventListener('fullscreenchange', () => {
-    const el = document.fullscreenElement
-    if (el?.tagName === 'IFRAME') {
-      window.JolkrNative?.enterFullscreen()
-    } else if (!el) {
-      window.JolkrNative?.exitFullscreen()
-    }
-  })
+  //
+  // Defense-in-depth: only the top-level frame is allowed to invoke the
+  // bridge. Android's addJavascriptInterface already scopes the binding to
+  // the main frame, but if an attacker ever convinces a same-origin iframe
+  // to import this module the guard keeps the privileged channel closed.
+  // Privilege rule: never extend the bridge with file/process/credential
+  // access — the surface MUST stay limited to UI-scope operations.
+  if (window.self === window.top) {
+    document.addEventListener('fullscreenchange', () => {
+      const el = document.fullscreenElement
+      if (el?.tagName === 'IFRAME') {
+        window.JolkrNative?.enterFullscreen()
+      } else if (!el) {
+        window.JolkrNative?.exitFullscreen()
+      }
+    })
+  }
 }
 
 // Block UI zoom in the Tauri desktop and mobile apps. Webview zoom (pinch,

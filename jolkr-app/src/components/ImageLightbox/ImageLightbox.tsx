@@ -237,7 +237,7 @@ export default function ImageLightbox(props: Props) {
       a.download = current?.filename || current?.alt || 'image'
       a.click()
     } catch {
-      window.open(displaySrc, '_blank')
+      window.open(displaySrc, '_blank', 'noopener')
     }
   }, [displaySrc, current])
 

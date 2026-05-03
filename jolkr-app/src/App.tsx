@@ -139,6 +139,11 @@ function CallOverlays() {
   );
 }
 
+// Per-user-id cooldown so a malicious QR scanned twice in a row can't spam the
+// friend-request endpoint. Backend rate-limits anyway; this is just UX polish.
+const FRIEND_REQUEST_COOLDOWN_MS = 5_000;
+const lastFriendRequestAt = new Map<string, number>();
+
 function DeepLinkHandler() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -168,6 +173,9 @@ function DeepLinkHandler() {
           navigate('/login');
           return;
         }
+        const last = lastFriendRequestAt.get(params.userId) ?? 0;
+        if (Date.now() - last < FRIEND_REQUEST_COOLDOWN_MS) return;
+        lastFriendRequestAt.set(params.userId, Date.now());
         try {
           await api.sendFriendRequest(params.userId);
           useToast.getState().show('Friend request sent', 'success');

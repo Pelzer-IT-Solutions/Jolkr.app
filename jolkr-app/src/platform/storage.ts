@@ -78,8 +78,16 @@ class TauriStorage implements SecureStorage {
       // Try with per-installation password (new installs or already migrated)
       this.stronghold = await Stronghold.load(vaultPath, vaultPassword);
     } catch {
-      // Existing vault with legacy hardcoded password — use it for compatibility
-      console.warn('[TauriStorage] Using legacy vault password — will migrate on next fresh install');
+      // Existing vault from a previous version: open with the legacy password.
+      // We do NOT auto-rotate the vault password here — Stronghold's password
+      // change semantics need a verified path that survives interrupted
+      // writes; getting that wrong would lock users out of their tokens.
+      // Sunset plan (out of this audit's autonomous scope): require user to
+      // sign out + sign in once, which deletes the vault file and creates a
+      // fresh one under the per-install password.
+      // (Console wording redacted — the previous text hinted at the legacy
+      // passphrase to anyone with devtools open.)
+      console.info('[TauriStorage] vault opened in compatibility mode');
       this.stronghold = await Stronghold.load(vaultPath, 'io.jolkr.app');
     }
 
