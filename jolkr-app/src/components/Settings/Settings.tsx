@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import type { ColorPreference } from '../../utils/colorMode'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
+import { useAuthStore } from '../../stores/auth'
 import s from './Settings.module.css'
 
 type Section =
@@ -358,10 +359,24 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
    SECTION: Privacy & Safety
 ───────────────────────────────────────── */
 function PrivacySection() {
-  const [dmFilter,    setDmFilter]    = useState<'all' | 'friends' | 'none'>('friends')
-  const [friendReqs,  setFriendReqs]  = useState(true)
-  const [readReceipts,setReadReceipts]= useState(true)
-  const [analytics,   setAnalytics]   = useState(false)
+  const user = useAuthStore(s => s.user)
+  const updateProfile = useAuthStore(s => s.updateProfile)
+
+  // Defaults match the server's defaults (all / true / true). When the user
+  // object hasn't loaded yet we still render — values are corrected on the
+  // first render after `user` becomes available.
+  const dmFilter = (user?.dm_filter ?? 'all') as 'all' | 'friends' | 'none'
+  const friendReqs = user?.allow_friend_requests ?? true
+  const readReceipts = user?.show_read_receipts ?? true
+  // TODO: wire up analytics opt-in (telemetry SDK + persistence)
+  const [analytics, setAnalytics] = useState(false)
+
+  const setDmFilter = (v: 'all' | 'friends' | 'none') =>
+    updateProfile({ dm_filter: v }).catch(console.warn)
+  const setFriendReqs = (v: boolean) =>
+    updateProfile({ allow_friend_requests: v }).catch(console.warn)
+  const setReadReceipts = (v: boolean) =>
+    updateProfile({ show_read_receipts: v }).catch(console.warn)
 
   return (
     <div className={s.section}>

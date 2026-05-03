@@ -11,6 +11,10 @@ export interface User {
   is_system?: boolean;
   email_verified?: boolean;
   banner_color?: string | null;
+  /** Privacy: who can start a new DM with this user. */
+  dm_filter?: 'all' | 'friends' | 'none';
+  /** Privacy: whether others can send friend requests to this user. */
+  allow_friend_requests?: boolean;
   created_at?: string | null;
 }
 

@@ -445,6 +445,7 @@ export function useAppHandlers(
       }
     } catch (e) {
       console.error('Failed to create DM:', e)
+      useToast.getState().show((e as Error).message || 'Failed to create DM', 'error')
     }
     setNewDmOpen(false)
   }

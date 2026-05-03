@@ -489,12 +489,16 @@ export default function AppShell() {
         open={friendsPanelOpen}
         onClose={() => setFriendsPanelOpen(false)}
         onStartDM={async (userId) => {
-          const dm = await api.openDm(userId)
-          const dms = await api.getDms()
-          setDmList(dms)
-          setActiveDmId(dm.id)
-          setDmActive(true)
-          setFriendsPanelOpen(false)
+          try {
+            const dm = await api.openDm(userId)
+            const dms = await api.getDms()
+            setDmList(dms)
+            setActiveDmId(dm.id)
+            setDmActive(true)
+            setFriendsPanelOpen(false)
+          } catch (e) {
+            useToast.getState().show((e as Error).message || 'Failed to open DM', 'error')
+          }
         }}
         onAcceptRequest={async (id) => { await api.acceptFriend(id) }}
         onRejectRequest={async (id) => { await api.declineFriend(id) }}
@@ -608,8 +612,12 @@ export default function AppShell() {
           setUserContextMenu(null)
         }}
         onAddFriend={async (userId: string) => {
-          await api.sendFriendRequest(userId).catch(console.warn)
-          invalidateFriendsCache()
+          try {
+            await api.sendFriendRequest(userId)
+            invalidateFriendsCache()
+          } catch (e) {
+            useToast.getState().show((e as Error).message || 'Failed to send friend request', 'error')
+          }
           setUserContextMenu(null)
         }}
         onRemoveFriend={async (userId: string) => {

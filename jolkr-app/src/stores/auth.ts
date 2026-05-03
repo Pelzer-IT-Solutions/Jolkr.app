@@ -13,7 +13,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
   loadUser: () => Promise<void>;
-  updateProfile: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean; banner_color?: string }) => Promise<void>;
+  updateProfile: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean; banner_color?: string; dm_filter?: 'all' | 'friends' | 'none'; allow_friend_requests?: boolean }) => Promise<void>;
   applyUserUpdate: (data: Record<string, unknown>) => void;
   logout: () => Promise<void>;
 }
@@ -88,6 +88,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           ...(data.bio !== undefined && { bio: data.bio as string | undefined }),
           ...(data.banner_color !== undefined && { banner_color: data.banner_color as string | undefined }),
           ...(data.show_read_receipts !== undefined && { show_read_receipts: data.show_read_receipts as boolean | undefined }),
+          ...(data.dm_filter !== undefined && { dm_filter: data.dm_filter as 'all' | 'friends' | 'none' | undefined }),
+          ...(data.allow_friend_requests !== undefined && { allow_friend_requests: data.allow_friend_requests as boolean | undefined }),
         },
       };
     });
