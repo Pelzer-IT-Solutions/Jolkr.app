@@ -223,11 +223,13 @@ impl DmService {
     ) -> Result<Vec<DmChannelInfo>, JolkrError> {
         let channels = DmRepo::list_dm_channels(pool, user_id).await?;
 
-        // Batch load members + last messages in parallel
+        // Batch load members + last messages in parallel. The caller's hidden
+        // messages are filtered out so the sidebar preview never shows
+        // something they removed from their own view.
         let channel_ids: Vec<Uuid> = channels.iter().map(|ch| ch.id).collect();
         let (all_members, last_messages) = tokio::try_join!(
             DmRepo::get_members_for_channels(pool, &channel_ids),
-            DmRepo::get_last_messages(pool, &channel_ids),
+            DmRepo::get_last_messages_for_user(pool, &channel_ids, Some(user_id)),
         )?;
 
         let result = channels
@@ -612,6 +614,56 @@ impl DmService {
         Ok(dm_channel_id)
     }
 
+    /// Soft-hide a DM message for the calling user only. Anyone who is a
+    /// member of the channel may hide any message — used for the "Only for
+    /// me" delete option and for shift-deleting messages from other users.
+    /// Returns the DM channel id so the route can broadcast to the user's
+    /// other sessions.
+    pub async fn hide_message_for_me(
+        pool: &PgPool,
+        message_id: Uuid,
+        caller_id: Uuid,
+    ) -> Result<Uuid, JolkrError> {
+        let msg = DmRepo::get_message(pool, message_id).await?;
+        if !DmRepo::is_member(pool, msg.dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+        DmRepo::hide_message_for_user(pool, message_id, caller_id, msg.dm_channel_id).await?;
+        Ok(msg.dm_channel_id)
+    }
+
+    /// List every attachment shared in a DM channel for the "Shared Files"
+    /// side panel. Membership is enforced and per-user hidden messages are
+    /// excluded so the caller never sees an attachment from a message they
+    /// removed from their view.
+    pub async fn list_attachments(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        caller_id: Uuid,
+        limit: Option<i64>,
+    ) -> Result<Vec<AttachmentInfo>, JolkrError> {
+        if !DmRepo::is_member(pool, dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+        let rows = DmRepo::list_attachments_for_dm(
+            pool,
+            dm_channel_id,
+            caller_id,
+            limit.unwrap_or(100),
+        )
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|a| AttachmentInfo {
+                id: a.id,
+                filename: a.filename,
+                content_type: a.content_type,
+                size_bytes: a.size_bytes,
+                url: attachment_proxy_url(a.id),
+            })
+            .collect())
+    }
+
     /// Get messages in a DM channel with cursor pagination (batch loads attachments).
     pub async fn get_messages(
         pool: &PgPool,
@@ -624,7 +676,7 @@ impl DmService {
         }
 
         let limit = query.limit.unwrap_or(50).min(100).max(1);
-        let rows = DmRepo::get_messages(pool, dm_channel_id, query.before, limit).await?;
+        let rows = DmRepo::get_messages(pool, dm_channel_id, caller_id, query.before, limit).await?;
         let mut messages: Vec<DmMessageInfo> = rows.into_iter().map(DmMessageInfo::from).collect();
 
         // Batch load all attachments in one query

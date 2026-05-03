@@ -229,3 +229,23 @@ pub(crate) async fn delete_dm_message(
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
+
+/// POST /api/dms/messages/:id/hide — soft-hide a DM message for the caller
+/// only. Used for "Only for me" deletes and for shift-deleting messages from
+/// other users. Authors hiding their own message keeps the message visible
+/// for the other side (use the hard DELETE route for "delete for everyone").
+pub(crate) async fn hide_dm_message(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(message_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    let dm_id = DmService::hide_message_for_me(&state.pool, message_id, auth.user_id).await?;
+
+    // Only the hider's other sessions need to know — nobody else can see this
+    // change. publish_to_user fans out across the same user's connected
+    // gateways without leaking the event to other DM members.
+    let event = crate::ws::events::GatewayEvent::DmMessageHide { dm_id, message_id };
+    state.nats.publish_to_user(auth.user_id, &event).await;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}

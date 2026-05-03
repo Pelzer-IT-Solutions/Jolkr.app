@@ -121,6 +121,14 @@ pub enum GatewayEvent {
         dm_id: Uuid,
     },
 
+    /// A single DM message was hidden ("Only for me" delete) by the receiving
+    /// user. Sent only to the hider's other sessions so they can drop the
+    /// message from their local view; nobody else sees the event.
+    DmMessageHide {
+        dm_id: Uuid,
+        message_id: Uuid,
+    },
+
     /// A new thread was created.
     ThreadCreate {
         thread: ThreadInfo,

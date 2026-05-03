@@ -30,13 +30,14 @@ pub(crate) async fn create_dm(
         }
     };
 
-    // Notify all DM members about the new/reopened channel
+    // Only notify the *caller's* other sessions about the new DM. Other
+    // members must not see a phantom conversation in their DM list before any
+    // message has been sent — the recipient gets a `DmCreate` once the first
+    // `send_dm_message` lands (see routes/dms/messages.rs).
     let event = crate::ws::events::GatewayEvent::DmUpdate {
         channel: channel.clone(),
     };
-    for &member_id in &channel.members {
-        state.nats.publish_to_user(member_id, &event).await;
-    }
+    state.nats.publish_to_user(auth.user_id, &event).await;
 
     Ok(Json(DmChannelResponse { channel }))
 }
@@ -107,6 +108,14 @@ pub(crate) async fn leave_dm(
 }
 
 /// POST /api/dms/:dm_id/close — close (hide) a DM from the user's list.
+///
+/// `close_dm` is a per-user soft-close: only the caller's row in `dm_members`
+/// gets `closed_at` set, and only the caller's sessions need to react. Other
+/// members keep seeing the conversation exactly as it was — the same name,
+/// the same membership, the same history — so we deliberately do NOT
+/// broadcast a `DmUpdate` to them. (A previous version did, with the closer
+/// stripped from the member list, which made the other side's sidebar render
+/// as "Unknown" because there was no remaining participant to display.)
 pub(crate) async fn close_dm(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -114,68 +123,10 @@ pub(crate) async fn close_dm(
 ) -> Result<axum::http::StatusCode, AppError> {
     DmService::close_dm(&state.pool, dm_id, auth.user_id).await?;
 
-    // 1. Tell the closer's other sessions to hide this DM.
+    // Tell the closer's other sessions to hide this DM. Nobody else gets
+    // notified — the conversation still exists for them unchanged.
     let close_event = crate::ws::events::GatewayEvent::DmClose { dm_id };
     state.nats.publish_to_user(auth.user_id, &close_event).await;
-
-    // 2. Tell remaining (still-open) members the membership changed so their
-    //    UI can refresh. close_dm is a soft-close, so the closer still has a
-    //    row in dm_members — filter on closed_at IS NULL to get the live set.
-    let channel_row = match DmRepo::get_channel(&state.pool, dm_id).await {
-        Ok(row) => Some(row),
-        Err(e) => {
-            tracing::warn!("DmUpdate fan-out skipped for channel {dm_id}: {e}");
-            None
-        }
-    };
-    let all_members = match DmRepo::get_dm_members(&state.pool, dm_id).await {
-        Ok(rows) => Some(rows),
-        Err(e) => {
-            tracing::warn!("DmUpdate fan-out skipped for channel {dm_id}: {e}");
-            None
-        }
-    };
-
-    if let (Some(channel_row), Some(all_members)) = (channel_row, all_members) {
-        let open_members: Vec<_> = all_members.iter().filter(|m| m.closed_at.is_none()).collect();
-        let open_member_ids: Vec<Uuid> = open_members.iter().map(|m| m.user_id).collect();
-
-        // Fetch the actual last message so the DmUpdate carries the real preview
-        // — without it, bystander sidebars would momentarily blank out (the
-        // upsert pattern in useAppInit replaces existing entries wholesale).
-        let last_message = match DmRepo::get_last_messages(&state.pool, &[dm_id]).await {
-            Ok(msgs) => msgs.into_iter().next().map(|m| {
-                use base64::Engine;
-                let engine = base64::engine::general_purpose::STANDARD;
-                jolkr_core::services::dm::DmLastMessage {
-                    id: m.id,
-                    author_id: m.author_id,
-                    content: m.content,
-                    nonce: m.nonce.as_ref().map(|n| engine.encode(n)),
-                    created_at: m.created_at,
-                }
-            }),
-            Err(e) => {
-                tracing::warn!("DmUpdate last_message fetch failed for channel {dm_id}: {e}");
-                None
-            }
-        };
-
-        let dm_info = jolkr_core::services::dm::DmChannelInfo {
-            id: channel_row.id,
-            is_group: channel_row.is_group,
-            name: channel_row.name,
-            members: open_member_ids,
-            created_at: channel_row.created_at,
-            last_message,
-        };
-        let update_event = crate::ws::events::GatewayEvent::DmUpdate { channel: dm_info };
-        for m in &open_members {
-            if m.user_id != auth.user_id {
-                state.nats.publish_to_user(m.user_id, &update_event).await;
-            }
-        }
-    }
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
