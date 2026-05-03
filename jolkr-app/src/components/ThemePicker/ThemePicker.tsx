@@ -225,7 +225,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
           <div
             ref={canvasRef}
             className={s.canvas}
-            style={{ background: canvasBg }}
+            style={{ '--canvas-bg': canvasBg } as React.CSSProperties}
             onWheel={handleCanvasScroll}
           >
             {/* Dot grid overlay */}
@@ -249,11 +249,10 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
                   key={orb.id}
                   className={`${s.orbHandle} ${isSelected ? s.orbHandleSelected : ''}`}
                   style={{
-                    left:        `${(orb.x * 100).toFixed(2)}%`,
-                    top:         `${(orb.y * 100).toFixed(2)}%`,
-                    width:       size,
-                    height:      size,
-                    borderWidth: isSelected ? 3 : 2.5,
+                    left:   `${(orb.x * 100).toFixed(2)}%`,
+                    top:    `${(orb.y * 100).toFixed(2)}%`,
+                    width:  size,
+                    height: size,
                   }}
                   onMouseDown={e => handleOrbDown(e, orb.id)}
                   onClick={() => handleOrbClick(orb.id)}
@@ -312,7 +311,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
                 <button
                   key={p.hue}
                   className={`${s.preset} ${isActive ? s.presetActive : ''}`}
-                  style={{ background: `oklch(72% 0.18 ${p.hue})` }}
+                  style={{ '--preset-color': `oklch(72% 0.18 ${p.hue})` } as React.CSSProperties}
                   title={p.label}
                   onClick={() => handlePresetClick(p.hue)}
                 />
