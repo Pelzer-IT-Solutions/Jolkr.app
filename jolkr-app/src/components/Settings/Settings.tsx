@@ -12,6 +12,9 @@ import { useToast } from '../Toast'
 import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
 import { ensureNotificationPermission } from '../../services/notifications'
 import { STORAGE_KEYS } from '../../utils/storageKeys'
+import {
+  voicePrefs, useVoiceMediaDevices, useOutputSinkSupported,
+} from '../../voice/voicePrefs'
 import s from './Settings.module.css'
 
 type Section =
@@ -514,46 +517,142 @@ function AccessibilitySection() {
    SECTION: Voice & Video
 ───────────────────────────────────────── */
 function VoiceSection() {
-  const [inputVol,  setInputVol]  = useState(80)
-  const [outputVol, setOutputVol] = useState(100)
-  const [noiseSup,  setNoiseSup]  = useState(true)
-  const [echoCan,   setEchoCan]   = useState(true)
-  const [autoGain,  setAutoGain]  = useState(false)
+  const { audioInputs, audioOutputs, videoInputs } = useVoiceMediaDevices()
+  const sinkSupported = useOutputSinkSupported()
+
+  // Read once into local state and write back through the helper so changes
+  // are persisted AND broadcast to an active call via voicePrefs.
+  const [prefs, setPrefs] = useState(() => voicePrefs.get())
+  useEffect(() => voicePrefs.subscribe(setPrefs), [])
+
+  const set = <K extends keyof typeof prefs>(key: K, value: (typeof prefs)[K]) =>
+    voicePrefs.set(key, value)
 
   return (
     <div className={s.section}>
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Voice & Video</h2>
 
       <SettingBlock title="Input Device">
-        <Select className={s.selectMaxWidth}><option>Default — Microphone</option></Select>
+        <Select
+          className={s.selectMaxWidth}
+          value={prefs.audioInputDeviceId}
+          onChange={(e) => set('audioInputDeviceId', e.target.value)}
+        >
+          <option value="">System default</option>
+          {audioInputs.map((d) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || `Microphone (${d.deviceId.slice(0, 6)}…)`}
+            </option>
+          ))}
+        </Select>
       </SettingBlock>
-      <SettingBlock title={`Input Volume — ${inputVol}%`}>
+      <SettingBlock title={`Input Volume — ${prefs.inputVolume}%`}>
         <div className={s.sliderRow}>
           <span className={s.sliderLabel}>0</span>
-          <input type="range" min={0} max={100} value={inputVol}
-            onChange={e => setInputVol(+e.target.value)} className={s.slider} />
+          <input type="range" min={0} max={100} value={prefs.inputVolume}
+            onChange={(e) => set('inputVolume', +e.target.value)} className={s.slider} />
           <span className={s.sliderLabel}>100</span>
         </div>
       </SettingBlock>
 
       <Divider />
-      <SettingBlock title="Output Device">
-        <Select className={s.selectMaxWidth}><option>Default — Speakers</option></Select>
+      <SettingBlock
+        title="Output Device"
+        description={sinkSupported ? undefined : 'Output device selection is not supported in this browser.'}
+      >
+        <Select
+          className={s.selectMaxWidth}
+          value={prefs.audioOutputDeviceId}
+          onChange={(e) => set('audioOutputDeviceId', e.target.value)}
+          disabled={!sinkSupported}
+          title={sinkSupported ? undefined : 'Not supported in this browser'}
+        >
+          <option value="">System default</option>
+          {audioOutputs.map((d) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || `Speakers (${d.deviceId.slice(0, 6)}…)`}
+            </option>
+          ))}
+        </Select>
       </SettingBlock>
-      <SettingBlock title={`Output Volume — ${outputVol}%`}>
+      <SettingBlock title={`Output Volume — ${prefs.outputVolume}%`}>
         <div className={s.sliderRow}>
           <span className={s.sliderLabel}>0</span>
-          <input type="range" min={0} max={100} value={outputVol}
-            onChange={e => setOutputVol(+e.target.value)} className={s.slider} />
+          <input type="range" min={0} max={100} value={prefs.outputVolume}
+            onChange={(e) => set('outputVolume', +e.target.value)} className={s.slider} />
           <span className={s.sliderLabel}>100</span>
         </div>
+      </SettingBlock>
+
+      <Divider />
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Camera</h3>
+      <SettingBlock title="Camera Device">
+        <Select
+          className={s.selectMaxWidth}
+          value={prefs.videoInputDeviceId}
+          onChange={(e) => set('videoInputDeviceId', e.target.value)}
+        >
+          <option value="">System default</option>
+          {videoInputs.map((d) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || `Camera (${d.deviceId.slice(0, 6)}…)`}
+            </option>
+          ))}
+        </Select>
+        <CameraPreview deviceId={prefs.videoInputDeviceId} />
       </SettingBlock>
 
       <Divider />
       <h3 className={`${s.subTitle} txt-small txt-semibold`}>Advanced</h3>
-      <ToggleRow label="Noise suppression"    description="Filter out background noise during voice calls." value={noiseSup} onChange={setNoiseSup} />
-      <ToggleRow label="Echo cancellation"    description="Remove echo from microphone input." value={echoCan}  onChange={setEchoCan} />
-      <ToggleRow label="Automatic gain control" description="Automatically adjust microphone sensitivity." value={autoGain} onChange={setAutoGain} />
+      <ToggleRow label="Noise suppression"      description="Filter out background noise during voice calls." value={prefs.noiseSuppression} onChange={(v) => set('noiseSuppression', v)} />
+      <ToggleRow label="Echo cancellation"      description="Remove echo from microphone input."              value={prefs.echoCancellation} onChange={(v) => set('echoCancellation', v)} />
+      <ToggleRow label="Automatic gain control" description="Automatically adjust microphone sensitivity."     value={prefs.autoGainControl}  onChange={(v) => set('autoGainControl', v)} />
+    </div>
+  )
+}
+
+/**
+ * Live preview of the selected camera. Acquires its own MediaStream so it
+ * doesn't conflict with an active call, and stops the stream as soon as the
+ * Settings dialog closes (component unmount).
+ */
+function CameraPreview({ deviceId }: { deviceId: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    let stream: MediaStream | null = null
+
+    navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        deviceId: deviceId ? { exact: deviceId } : undefined,
+        width:  { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    }).then((s) => {
+      if (cancelled) { s.getTracks().forEach((t) => t.stop()); return }
+      stream = s
+      if (videoRef.current) videoRef.current.srcObject = s
+      setError(null)
+    }).catch((e: Error) => {
+      if (!cancelled) setError(e.message || 'Camera unavailable')
+    })
+
+    return () => {
+      cancelled = true
+      stream?.getTracks().forEach((t) => t.stop())
+      if (videoRef.current) videoRef.current.srcObject = null
+    }
+  }, [deviceId])
+
+  return (
+    <div className={s.cameraPreview}>
+      {error
+        ? <div className={s.cameraPreviewError}>{error}</div>
+        : <video ref={videoRef} className={s.cameraPreviewVideo} autoPlay playsInline muted />
+      }
     </div>
   )
 }
