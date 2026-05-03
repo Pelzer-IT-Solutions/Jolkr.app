@@ -22,9 +22,16 @@ export function useColorMode() {
 
   const isDark = pref === 'dark' || (pref === 'system' && systemDark)
 
-  // Apply/remove .dark class on <html>; briefly add transition-enable class
+  // Apply/remove .dark class on <html>; briefly add transition-enable class.
+  // Skip the transition when the class is already in sync with isDark — the
+  // inline theme-init script in index.html runs synchronously before React
+  // mounts, so on first render the class is usually already correct and
+  // re-toggling it would trigger a 300ms cross-fade for nothing (visible as
+  // a flash on the login → AppShell handoff).
   useEffect(() => {
     const root = document.documentElement
+    const currentlyDark = root.classList.contains('dark')
+    if (currentlyDark === isDark) return
     root.classList.add('color-mode-transition')
     if (isDark) root.classList.add('dark')
     else        root.classList.remove('dark')
