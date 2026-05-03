@@ -16,6 +16,7 @@ import type { DmChannel, User, Role } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
 import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
 import { lookupFriendship } from '../../services/friendshipCache'
+import { makeDraftDmId } from '../../utils/draftDm'
 import type { MemberDisplay } from '../../types/ui'
 
 export function useAppInit() {
@@ -232,7 +233,10 @@ export function useAppInit() {
   useEffect(() => {
     if (!ready) return
     let target: string
-    if (dmActive && activeDmId) {
+    if (dmActive && activeDmId && !activeDmId.startsWith('draft:')) {
+      // Drafts are session-only; we never expose their synthetic id in the
+      // URL. Navigating to `/dm` keeps the sidebar visible while the draft
+      // chat renders so the user can still see and switch DMs.
       target = `/dm/${activeDmId}`
     } else if (dmActive) {
       target = `/dm`
@@ -260,7 +264,14 @@ export function useAppInit() {
     if (dmMatch) {
       const dmId = dmMatch[1] ?? ''
       if (!dmActive) setDmActive(true)
-      if (dmId !== activeDmId) setActiveDmId(dmId)
+      // A draft id reaching us via the URL means the page was reloaded
+      // mid-draft; the local entry no longer exists, so fall back to the
+      // empty DM list rather than trying to render a phantom conversation.
+      if (dmId.startsWith('draft:')) {
+        if (activeDmId) setActiveDmId('')
+      } else if (dmId !== activeDmId) {
+        setActiveDmId(dmId)
+      }
     } else if (serverMatch) {
       const sid = serverMatch[1]
       const cid = serverMatch[2] ?? ''
@@ -319,6 +330,15 @@ export function useAppInit() {
   useEffect(() => {
     const channelId = dmActive ? activeDmId : activeChannelId
     if (!channelId) return
+    // Draft DMs only exist locally — skip every server-side load (messages,
+    // pinned, presence-marker) so we don't 404 on an id the server doesn't
+    // know about. The draft is promoted on first send (handleSend).
+    const isDraft = dmActive && channelId.startsWith('draft:')
+    if (isDraft) {
+      setPinnedCount(0)
+      setThreadsCount(0)
+      return
+    }
     fetchMessages(channelId, dmActive)
 
     // Fetch channel-level permissions (accounts for channel overwrites)
@@ -378,6 +398,8 @@ export function useAppInit() {
   useEffect(() => {
     const channelId = dmActive ? activeDmId : activeChannelId
     if (!channelId) return
+    // Draft DMs aren't subscribable — the server has no channel for them.
+    if (dmActive && channelId.startsWith('draft:')) return
     wsClient.subscribe(channelId)
     return () => { wsClient.unsubscribe(channelId) }
   }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -410,14 +432,27 @@ export function useAppInit() {
     return wsClient.on((event) => {
       // DmClose: closer's other sessions get told to hide the DM. Channel keys
       // stay in the cache — if the DM gets reopened later in this session, we
-      // can keep decrypting without a re-fetch.
+      // can keep decrypting without a re-fetch. Crucially we keep `dmActive`
+      // on so the URL sync stays on `/dm` (with no selection) instead of
+      // falling back to whatever server/channel was last viewed.
       if (event.op === 'DmClose') {
         const closedId = event.d.dm_id
         setDmList(prev => prev.filter(d => d.id !== closedId))
         if (activeDmIdRef.current === closedId) {
-          setDmActive(false)
           setActiveDmId('')
         }
+        return
+      }
+
+      // DmMessageHide: another session of the same user soft-hid a single DM
+      // message. Drop it from the local message list so all of the user's
+      // open clients agree on which messages are visible. The sidebar
+      // last_message preview may briefly stay stale until the next fetch —
+      // acceptable because a fresh DmCreate/DmUpdate or refetch will correct
+      // it.
+      if (event.op === 'DmMessageHide') {
+        const { dm_id, message_id } = event.d
+        useMessagesStore.getState().removeMessage(dm_id, message_id)
         return
       }
 
@@ -568,6 +603,20 @@ export function useAppInit() {
       if (!channel?.id) return
 
       setDmList(prev => {
+        // If this user already has a draft for the same member set, replace
+        // the draft in place — we promote it rather than ending up with two
+        // sidebar entries pointing at the same conversation.
+        const draftId = makeDraftDmId(channel.members)
+        const draftIdx = prev.findIndex(c => c.id === draftId)
+        if (draftIdx >= 0) {
+          const next = prev.slice()
+          next[draftIdx] = channel
+          // If the draft was the active conversation, point at the real id.
+          if (activeDmIdRef.current === draftId) {
+            setActiveDmId(channel.id)
+          }
+          return next
+        }
         const idx = prev.findIndex(c => c.id === channel.id)
         if (idx >= 0) {
           // Existing DM — replace with the fresh server view

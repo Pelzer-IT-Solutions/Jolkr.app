@@ -11,6 +11,7 @@ import { orbsForHue } from '../../utils/theme'
 import { useMessagesStore } from '../../stores/messages'
 import { useVoiceStore } from '../../stores/voice'
 import { useToast } from '../../components/Toast'
+import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -137,8 +138,34 @@ export function useAppHandlers(
   }
 
   // ── Message handlers ──
+  // Materialise a session-only draft DM by creating it on the server right
+  // before the first message goes out. Returns the real DM channel; throws
+  // if the create fails so the caller can abort the send.
+  const materialiseDraftDm = useCallback(async (draftId: string) => {
+    const draft = dmList.find(d => d.id === draftId)
+    if (!draft) throw new Error('Draft DM not found')
+    if (!user) throw new Error('No authenticated user')
+
+    const otherIds = draft.members.filter(id => id !== user.id)
+    const real = draft.is_group
+      ? await api.createGroupDm(otherIds, draft.name ?? undefined)
+      : await api.openDm(otherIds[0])
+
+    // Swap the draft for the real entry; keep its position in the list so
+    // the sidebar doesn't visibly re-order on send.
+    setDmList(prev => {
+      const idx = prev.findIndex(d => d.id === draftId)
+      if (idx === -1) return prev.some(d => d.id === real.id) ? prev : [real, ...prev]
+      const next = prev.slice()
+      next[idx] = real
+      return next
+    })
+    setActiveDmId(real.id)
+    return real
+  }, [dmList, user, setDmList, setActiveDmId])
+
   const handleSend = useCallback(async (text: string, replyTo?: ReplyRef, files?: File[]) => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    let channelId = dmActive ? activeDmId : activeChannelId
     const isDm = dmActive
     const localKeys = getLocalKeys()
 
@@ -147,9 +174,28 @@ export function useAppHandlers(
       return
     }
 
+    // First-send promotion: turn the local draft into a real DM on the server
+    // so the recipient gets a `DmCreate` together with this message. Failing
+    // here aborts the send; we deliberately don't fall back to a fake send.
+    // We also capture the resolved members directly because the closure's
+    // `dmList` is stale relative to the setDmList that just ran.
+    let materialisedMembers: string[] | null = null
+    if (isDm && isDraftDmId(channelId)) {
+      try {
+        const real = await materialiseDraftDm(channelId)
+        channelId = real.id
+        materialisedMembers = real.members
+      } catch (e) {
+        console.error('Failed to create DM on first send:', e)
+        useToast.getState().show((e as Error).message || 'Failed to start conversation', 'error')
+        return
+      }
+    }
+
     // Get member IDs for key distribution (first message in channel creates the key)
     const getMemberIds = async () => {
       if (isDm) {
+        if (materialisedMembers) return materialisedMembers
         const dm = dmList.find(d => d.id === channelId)
         return dm?.members ?? []
       }
@@ -185,7 +231,7 @@ export function useAppHandlers(
         }
       }
     }
-  }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer, materialiseDraftDm]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleReaction = useCallback((msgId: string, emoji: string) => {
     // Check if user already reacted
@@ -206,6 +252,20 @@ export function useAppHandlers(
   const handleDeleteMessage = useCallback((msgId: string) => {
     deleteMessage(msgId, effectiveChannelId, dmActive)
   }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Soft-hide a DM message for the calling user only. The server emits a
+  // DmMessageHide event back to this user's other sessions; the central WS
+  // dispatcher in useAppInit handles those. We still optimistically remove
+  // the message locally so the active session updates immediately.
+  const handleHideDmMessage = useCallback((msgId: string) => {
+    if (!dmActive) return
+    useMessagesStore.getState().removeMessage(effectiveChannelId, msgId)
+    api.hideDmMessage(msgId).catch((err) => {
+      // Re-fetch is the safest recovery — keep silent on the optimistic removal
+      // since the user's intent was clear; reload only on hard failure.
+      console.warn('hideDmMessage failed', err)
+    })
+  }, [effectiveChannelId, dmActive])
 
   const handleEditMessage = useCallback(async (msgId: string, newText: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
@@ -413,36 +473,58 @@ export function useAppHandlers(
   }
 
   // ── DM creation ──
+  // Picks up a list of usernames (one for 1-on-1, multiple for group) from
+  // NewDMModal and either opens an existing conversation or sets up a
+  // session-only draft. The DM is materialised on the server lazily on the
+  // first message — see `materialiseDraftDm` inside `handleSend`.
   async function handleCreateDm(names: string[]) {
+    if (!user) return
     try {
-      for (const name of names) {
-        const found = await api.searchUsers(name)
-        const foundUser = found.find(u => u.username === name || u.display_name === name)
-        if (foundUser) {
-          const dm = await api.openDm(foundUser.id)
-          // Merge the new DM into the local list. Don't refetch the full list
-          // here — the WS DmUpdate event also lands at this session and the
-          // dispatcher dedupes by id, so a wholesale `setDmList(getDms())`
-          // would race the WS handler and risk wiping a freshly-arrived entry.
-          setDmList(prev => prev.some(d => d.id === dm.id) ? prev : [dm, ...prev])
-          // Add all DM members to user map so names resolve immediately
-          setDmUsers(prev => {
-            const next = new Map(prev)
-            next.set(foundUser.id, foundUser)
-            // Also fetch any other members we don't have yet
-            for (const memberId of dm.members) {
-              if (!next.has(memberId)) {
-                api.getUser(memberId).then(u => {
-                  if (u) setDmUsers(p => new Map(p).set(u.id, u))
-                }).catch(() => {})
-              }
-            }
-            return next
-          })
-          setActiveDmId(dm.id)
+      // Resolve every selected name to a User in parallel; ignore unknowns.
+      const resolved = (await Promise.all(
+        names.map(async (name) => {
+          const found = await api.searchUsers(name)
+          return found.find(u => u.username === name || u.display_name === name) ?? null
+        }),
+      )).filter((u): u is NonNullable<typeof u> => u !== null)
+
+      if (resolved.length === 0) return
+
+      // Cache user objects so the sidebar can resolve names + avatars.
+      setDmUsers(prev => {
+        const next = new Map(prev)
+        for (const u of resolved) next.set(u.id, u)
+        return next
+      })
+
+      const memberIds = [user.id, ...resolved.map(u => u.id)]
+
+      // 1-on-1: reuse an existing real DM with the same partner if we already
+      // have one — no point in spawning a new draft when the conversation
+      // already exists on the server.
+      if (resolved.length === 1) {
+        const otherId = resolved[0].id
+        const existing = dmList.find(d =>
+          !d.is_group
+          && !isDraftDmId(d.id)
+          && d.members.includes(otherId)
+          && d.members.length === 2,
+        )
+        if (existing) {
+          setActiveDmId(existing.id)
           setDmActive(true)
+          setNewDmOpen(false)
+          return
         }
       }
+
+      // No existing conversation — drop a draft into the sidebar. It lives
+      // only in this session until the user sends a message; closing it
+      // simply removes the local entry.
+      const draft = buildDraftDm(memberIds)
+      setDmList(prev => (prev.some(d => d.id === draft.id) ? prev : [draft, ...prev]))
+      setActiveDmId(draft.id)
+      setDmActive(true)
     } catch (e) {
       console.error('Failed to create DM:', e)
       useToast.getState().show((e as Error).message || 'Failed to create DM', 'error')
@@ -455,7 +537,7 @@ export function useAppHandlers(
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleChangePassword, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,
-    handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
+    handleSend, handleToggleReaction, handleDeleteMessage, handleHideDmMessage, handleEditMessage,
     handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleArchiveChannel,

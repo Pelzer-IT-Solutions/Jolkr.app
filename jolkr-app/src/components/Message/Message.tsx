@@ -20,18 +20,24 @@ import Avatar from '../Avatar/Avatar'
 import { MessageAttachments } from '../MessageAttachments/MessageAttachments'
 import { PollDisplay } from '../Poll/PollDisplay'
 import { ReactionTooltip } from './ReactionTooltip'
+import { DeleteMessageDialog } from '../DeleteMessageDialog/DeleteMessageDialog'
 import s from './Message.module.css'
 
 interface Props {
   message:               MessageVM
   onToggleReaction?:     (emoji: string) => void
+  /** Hard delete (visible to all members). Author-only on the server. */
   onDelete?:             () => void
+  /** Soft-hide for the caller only — DM context only. */
+  onHideForMe?:          () => void
   onReply?:              () => void
   onEdit?:               (newText: string) => void
   onPin?:                () => void
   /** Click on author avatar/name → open profile card. */
   onOpenAuthorProfile?:  (authorId: string, e: React.MouseEvent) => void
   isDm?:                 boolean
+  /** Group DM (>2 members) — only used to label the "everyone" delete button. */
+  isGroupDm?:            boolean
   serverId?:             string
   userMap?:              Map<string, User>
   dmParticipantNames?:   Record<string, string>
@@ -43,18 +49,24 @@ interface Props {
   onStartThread?:        (messageId: string) => void
 }
 
-export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, onPin, onOpenAuthorProfile, isDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false, onOpenThread, onStartThread }: Props) {
+export function Message({ message, onToggleReaction, onDelete, onHideForMe, onReply, onEdit, onPin, onOpenAuthorProfile, isDm = false, isGroupDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false, onOpenThread, onStartThread }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
   const shiftHeld = useShiftKey()
-  // Shift+click on the toolbar's "more" affordance acts as instant-delete
-  // when the viewer can actually delete this message. We don't gate on the
-  // toolbar being visible — pressing Shift while hovering swaps the icon.
-  // In DMs there's no moderator concept, so users can only delete their OWN
-  // messages — `canManageMessages` may be true server-side (admin role on a
-  // shared server) but it doesn't carry into the DM context.
-  const canDelete = !!onDelete && (isDm ? isOwn : (isOwn || canManageMessages))
-  const shiftDeleteArmed = shiftHeld && canDelete
+  // Hard-delete (server-side) is restricted to the author in DMs and to
+  // moderators or the author in server channels. `canManageMessages` is
+  // server-only and doesn't carry into the DM context.
+  const canHardDelete = !!onDelete && (isDm ? isOwn : (isOwn || canManageMessages))
+  // Soft-hide ("Only for me") is available to anyone in a DM — that's how
+  // non-authors remove a message from their own view without affecting the
+  // other side.
+  const canHideForMe = isDm && !!onHideForMe
+  // Shift+click acts as an instant-remove. For own DM messages and server
+  // mod actions it still hard-deletes; for non-own DM messages it falls back
+  // to a soft-hide so the user can clean up their own view at a glance.
+  const canShiftRemove = canHardDelete || canHideForMe
+  const shiftDeleteArmed = shiftHeld && canShiftRemove
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Decrypt E2EE content
   const { displayContent, isEncrypted, decrypting } = useDecryptedContent(
@@ -130,6 +142,29 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   function handleDelete() {
     setShowMore(false)
     onDelete?.()
+  }
+
+  // In DMs, normal-click delete opens a confirmation dialog so the user can
+  // pick "Delete for me" vs. "Delete for everyone". In server channels we
+  // keep the existing behaviour (single-step hard delete) because moderators
+  // already expect that.
+  function handleNormalDeleteClick() {
+    setShowMore(false)
+    if (isDm) {
+      setShowDeleteDialog(true)
+    } else {
+      onDelete?.()
+    }
+  }
+
+  // Shift+click on a non-own DM message hides it for the caller only.
+  // For everything else (own DM message, server-channel mods) it hard-deletes.
+  function handleShiftRemove() {
+    if (isDm && !isOwn) {
+      onHideForMe?.()
+    } else {
+      onDelete?.()
+    }
   }
 
   function startEdit() {
@@ -277,6 +312,18 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
     </>
   )
 
+  // Single dialog instance shared across the three return paths below — it
+  // portals to document.body so its physical position in the tree is moot.
+  const deleteDialog = showDeleteDialog ? (
+    <DeleteMessageDialog
+      isOwn={isOwn}
+      isGroup={isGroupDm}
+      onClose={() => setShowDeleteDialog(false)}
+      onDeleteForEveryone={onDelete}
+      onDeleteForMe={() => onHideForMe?.()}
+    />
+  ) : null
+
   const hasActions = !!(onToggleReaction || onDelete || onReply || onEdit)
 
   const toolbar = !hasActions ? null : (
@@ -325,9 +372,9 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             // Use the actual click event's shift state, not the hook — that
             // way a click never desyncs from what the user thinks they did
             // (e.g. they release Shift mid-click).
-            if (canDelete && e.shiftKey) {
+            if (canShiftRemove && e.shiftKey) {
               e.stopPropagation()
-              handleDelete()
+              handleShiftRemove()
               return
             }
             const r = e.currentTarget.getBoundingClientRect()
@@ -373,12 +420,20 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
             )}
             <div className={s.menuDivider} />
             {isOwn ? (
-              <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+              <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleNormalDeleteClick}>
                 <TrashIcon /><span>Delete Message</span>
               </button>
             ) : canManageMessages ? (
               <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
                 <TrashIcon /><span>Delete Message</span>
+              </button>
+            ) : isDm && canHideForMe ? (
+              <button
+                role="menuitem"
+                className={`${s.menuItem} ${s.danger}`}
+                onClick={() => { setShowMore(false); onHideForMe?.() }}
+              >
+                <TrashIcon /><span>Delete for me</span>
               </button>
             ) : (
               <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
@@ -395,6 +450,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
   /* ─── DM card layout ─── */
   if (isDm) {
     return (
+      <>
       <article className={`${s.dmRow} ${isOwn ? s.dmRowOwn : ''}`}>
         <div className={`${s.dmCard} ${isOwn ? s.dmCardOwn : ''}`}>
           {/* Header: sender on left, actions on right */}
@@ -441,9 +497,9 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                   className={`${s.dmActionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
                   title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
                   onClick={(e) => {
-                    if (canDelete && e.shiftKey) {
+                    if (canShiftRemove && e.shiftKey) {
                       e.stopPropagation()
-                      handleDelete()
+                      handleShiftRemove()
                       return
                     }
                     const r = e.currentTarget.getBoundingClientRect()
@@ -478,12 +534,16 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
                     )}
                     <div className={s.menuDivider} />
                     {isOwn ? (
-                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
+                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleNormalDeleteClick}>
                         <TrashIcon /><span>Delete Message</span>
                       </button>
-                    ) : canManageMessages ? (
-                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
-                        <TrashIcon /><span>Delete Message</span>
+                    ) : canHideForMe ? (
+                      <button
+                        role="menuitem"
+                        className={`${s.menuItem} ${s.danger}`}
+                        onClick={() => { setShowMore(false); onHideForMe?.() }}
+                      >
+                        <TrashIcon /><span>Delete for me</span>
                       </button>
                     ) : (
                       <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
@@ -532,16 +592,21 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
           )}
         </div>
       </article>
+      {deleteDialog}
+      </>
     )
   }
 
   /* ─── Standard channel layout ─── */
   if (message.continued) {
     return (
+      <>
       <article className={`${s.msg} ${s.continued} ${anyOpen ? s.hasMenu : ''}`}>
         <div className={s.body}>{body}</div>
         {toolbar}
       </article>
+      {deleteDialog}
+      </>
     )
   }
 
@@ -550,6 +615,7 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
     : undefined
 
   return (
+    <>
     <article className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
       <MessageAvatar message={message} onClick={handleAuthorClick} />
       <div className={s.body}>
@@ -571,6 +637,8 @@ export function Message({ message, onToggleReaction, onDelete, onReply, onEdit, 
       </div>
       {toolbar}
     </article>
+    {deleteDialog}
+    </>
   )
 }
 

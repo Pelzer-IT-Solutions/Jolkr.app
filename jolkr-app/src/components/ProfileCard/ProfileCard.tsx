@@ -36,9 +36,11 @@ export interface ProfileCardState {
 export interface ProfileCardProps {
   state: ProfileCardState;
   onClose: () => void;
+  /** Open (or draft) a DM with this user. Falls back to URL navigation if absent. */
+  onStartDm?: (userId: string) => void;
 }
 
-export function ProfileCard({ state, onClose }: ProfileCardProps) {
+export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
   const { userId, user: preloaded, x, y } = state;
   const anchor = { x, y };
   const navigate = useNavigate();
@@ -132,15 +134,19 @@ export function ProfileCard({ state, onClose }: ProfileCardProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
+    // Defer to the parent so it can drop a session-only draft into the
+    // sidebar — `useAppHandlers.handleSend` materialises the DM on the
+    // server when the user actually sends, so the recipient never sees a
+    // phantom conversation. Fall back to URL nav for callers that don't
+    // wire `onStartDm` (none today, but keeps the component decoupled).
     setActionError(null);
-    try {
-      const dm = await api.openDm(userId);
-      onClose();
-      navigate(`/dm/${dm.id}`);
-    } catch (e) {
-      setActionError((e as Error).message || 'Failed to open DM');
+    onClose();
+    if (onStartDm) {
+      onStartDm(userId);
+      return;
     }
+    navigate(`/dm`);
   };
 
   const handleSendFriendRequest = async () => {

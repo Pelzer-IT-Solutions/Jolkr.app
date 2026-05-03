@@ -497,6 +497,9 @@ export const uploadAttachment = async (channelId: string, messageId: string, fil
 
 // DMs
 export const getDms = () => request<DmChannel[]>('/dms', {}, 'channels');
+/** Every attachment shared in this DM, newest first. Powers the "Shared Files" panel. */
+export const getDmAttachments = (dmId: string) =>
+  request<Attachment[]>(`/dms/${dmId}/attachments`, {}, 'attachments');
 export const openDm = (userId: string) =>
   request<DmChannel>('/dms', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'channel');
 export const getDmMessages = (dmId: string, limit = 50, before?: string) => {
@@ -520,6 +523,8 @@ export const editDmMessage = (messageId: string, content: string, nonce?: string
   }, 'message');
 export const deleteDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}`, { method: 'DELETE' });
+export const hideDmMessage = (messageId: string) =>
+  request<void>(`/dms/messages/${messageId}/hide`, { method: 'POST' });
 
 // DM Pins
 export const pinDmMessage = (dmId: string, messageId: string) =>

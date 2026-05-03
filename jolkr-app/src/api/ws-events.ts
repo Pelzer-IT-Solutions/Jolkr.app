@@ -65,6 +65,7 @@ export type WsEvent =
   // ── DM ────────────────────────────────────────────────────────────
   | { op: 'DmCreate' | 'DmUpdate'; d: { channel: DmChannel } }
   | { op: 'DmClose'; d: { dm_id: string } }
+  | { op: 'DmMessageHide'; d: { dm_id: string; message_id: string } }
   | { op: 'DmCallRing'; d: { dm_id: string; caller_id: string; caller_username: string; is_video: boolean } }
   | { op: 'DmCallAccept' | 'DmCallReject' | 'DmCallEnd'; d: { dm_id: string; user_id: string } }
   | { op: 'DmMessagesRead'; d: { dm_id: string; user_id: string; message_id: string } }

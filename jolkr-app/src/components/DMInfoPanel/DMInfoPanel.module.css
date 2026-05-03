@@ -107,7 +107,20 @@
   position: relative;
 }
 .pinnedAuthor { color: var(--text-strong); display: block; font-size: 0.6875rem; font-weight: 600; }
-.pinnedContent { color: var(--text-faint); display: block; font-size: 0.75rem; white-space: normal; overflow: hidden; text-overflow: ellipsis; }
+.pinnedContent {
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  white-space: normal;
+  /* `anywhere` lets long URLs break inside the box so the preview
+     stays inside the panel; clamping to 2 lines keeps the list dense. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
 .unpinBtn {
   position: absolute;
   top: 0.375rem;
@@ -142,11 +155,17 @@
   text-align: left;
   cursor: pointer;
   background: transparent;
+  text-decoration: none;
+  color: inherit;
   transition: background-color var(--transition);
 }
 .fileItem:hover { background: var(--bg-dark-muted); }
 
-.fileIcon { font-size: 1rem; flex-shrink: 0; }
+.fileIcon {
+  flex-shrink: 0;
+  color: var(--icon-muted);
+}
+.fileItem:hover .fileIcon { color: var(--icon-default); }
 
 .fileMeta {
   flex: 1;
@@ -156,7 +175,59 @@
   gap: 0.0625rem;
 }
 .fileName { color: var(--text-default); display: block; }
-.fileSize  { color: var(--text-faint); }
+.fileSize { color: var(--text-faint); }
+
+.fileDownload {
+  flex-shrink: 0;
+  color: var(--icon-muted);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.fileItem:hover .fileDownload { opacity: 1; }
+
+.emptyHint {
+  padding: 0.5rem 0.625rem;
+  color: var(--text-faint);
+}
+
+/* ── Skeleton loading states (pinned & shared files) ── */
+.pinnedSkeleton,
+.fileSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+}
+.fileSkeleton {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fileSkeleton .skeletonBar      { flex: 1; }
+.fileSkeleton .skeletonBarShort { flex: 0 0 1rem; height: 1rem; border-radius: 0.25rem; }
+
+.skeletonBar {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(
+    90deg,
+    var(--bg-dark-default) 0%,
+    var(--bg-dark-muted) 50%,
+    var(--bg-dark-default) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skeletonBarShort { width: 40%; }
+
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeletonBar { animation: none; }
+}
 
 /* ── Links ── */
 .linkItem {

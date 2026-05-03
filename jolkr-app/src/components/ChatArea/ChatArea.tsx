@@ -34,6 +34,8 @@ interface Props {
   onSend:             (text: string, replyTo?: ReplyRef, files?: File[]) => void
   onToggleReaction:   (msgId: string, emoji: string) => void
   onDeleteMessage:    (msgId: string) => void
+  /** Soft-hide a DM message for the caller only — DM context only. */
+  onHideMessage?:     (msgId: string) => void
   onEditMessage:      (msgId: string, newText: string) => void
   isDm?:              boolean
   dmConversation?:    DMConversation
@@ -61,7 +63,7 @@ interface Props {
   onStartThread?:     (messageId: string) => void
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
   const listRef    = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<RichInputHandle>(null)
   const contentRef = useRef('')
@@ -319,8 +321,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     return `${y}-${m}-${day}`
   }
 
-  const dmName        = dmConversation?.name ?? (dmConversation ? `@${dmConversation.participants[0].name}` : '')
+  // `participants[0]` can be undefined for one-sided DMs — e.g. when the other
+  // member just closed it and a DmUpdate with only the current user as
+  // remaining member arrived. Use the optional chain so the chat doesn't crash.
   const dmFirstP      = dmConversation?.participants[0]
+  const dmName        = dmConversation?.name ?? (dmFirstP ? `@${dmFirstP.name}` : '')
   const inputPlaceholder = isDm
     ? `Message ${dmName}`
     : `Message #${channel.name}`
@@ -509,6 +514,21 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
       <div className={s.chatBody}>
         <div className={`${s.messageList} scrollbar-thin scroll-view-y-chat`} ref={listRef} onScroll={handleScroll}>
+          {messages.length === 0 ? (
+            <div className={s.chatEmpty}>
+              <div className={s.chatEmptyIcon}>{isDm ? '💬' : '👋'}</div>
+              <h2 className={`${s.chatEmptyTitle} txt-body txt-semibold`}>
+                {isDm
+                  ? `No messages yet with ${dmConversation?.name ?? dmConversation?.participants[0]?.name ?? 'this user'}`
+                  : `Welcome to #${channel.name}`}
+              </h2>
+              <p className={`${s.chatEmptyText} txt-small`}>
+                {isDm
+                  ? 'Send a message below to start the conversation.'
+                  : 'Be the first to say something — type a message below to get the channel going.'}
+              </p>
+            </div>
+          ) : null}
           <div className={`${s.messageInner} ${isDm ? s.messageInnerDm : ''}`}>
             {messages.map((msg, i) => {
               const fromBottom   = messages.length - 1 - i
@@ -540,11 +560,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       message={msg}
                       onToggleReaction={readOnly || channel.is_system || !canAddReactions ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
                       onDelete={() => onDeleteMessage(msg.id)}
+                      onHideForMe={isDm && onHideMessage ? () => onHideMessage(msg.id) : undefined}
                       onEdit={readOnly || channel.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
                       onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
                       onPin={() => onPinMessage?.(msg.id)}
                       onOpenAuthorProfile={onOpenAuthorProfile}
                       isDm={isDm}
+                      isGroupDm={isDm && (dmConversation?.participants.length ?? 0) > 2}
                       serverId={isDm ? undefined : serverId}
                       userMap={userMap}
                       dmParticipantNames={isDm && dmConversation

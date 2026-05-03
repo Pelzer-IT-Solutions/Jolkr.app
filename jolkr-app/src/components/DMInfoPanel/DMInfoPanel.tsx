@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { X, ArrowLeft } from 'lucide-react'
+import { X, ArrowLeft, FileText, Download } from 'lucide-react'
 import * as api from '../../api/client'
-import type { Message, User } from '../../api/types'
+import type { Message, User, Attachment } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { rewriteStorageUrl } from '../../platform/config'
 import s from './DMInfoPanel.module.css'
 
 interface Props {
@@ -26,7 +27,7 @@ function PinnedItem({ msg, dmId, onUnpin, users }: {
     <div className={s.pinnedItem}>
       <div className={s.pinnedAuthor}>{authorName}</div>
       <div className={s.pinnedContent}>
-        {decrypting ? 'Decrypting...' : (displayContent || '').slice(0, 200)}
+        {decrypting ? 'Decrypting…' : (displayContent || '').slice(0, 200)}
       </div>
       {onUnpin && (
         <button className={s.unpinBtn} title="Unpin" onClick={() => onUnpin(msg.id)}>
@@ -37,14 +38,57 @@ function PinnedItem({ msg, dmId, onUnpin, users }: {
   )
 }
 
+/** Format byte size for the shared-files row. */
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+function SharedFileRow({ att }: { att: Attachment }) {
+  const href = rewriteStorageUrl(att.url) ?? att.url
+  return (
+    <a className={s.fileItem} href={href} target="_blank" rel="noopener noreferrer" download={att.filename}>
+      <FileText size={16} strokeWidth={1.5} className={s.fileIcon} />
+      <div className={s.fileMeta}>
+        <span className={`${s.fileName} txt-tiny txt-medium txt-truncate`}>{att.filename}</span>
+        <span className={`${s.fileSize} txt-tiny`}>{formatSize(att.size_bytes)}</span>
+      </div>
+      <Download size={12} strokeWidth={1.5} className={s.fileDownload} />
+    </a>
+  )
+}
+
+/** Animated skeleton row used while pinned messages or shared files load. */
+function SkeletonLines({ count, variant = 'pinned' }: { count: number; variant?: 'pinned' | 'file' }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className={variant === 'file' ? s.fileSkeleton : s.pinnedSkeleton}
+          aria-hidden="true"
+        >
+          <div className={`${s.skeletonBar} ${s.skeletonBarShort}`} />
+          <div className={s.skeletonBar} />
+        </div>
+      ))}
+    </>
+  )
+}
+
 export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
   const isRevealing = useRevealAnimation(0, [open], open, 300)
   const [pinned, setPinned] = useState<Message[]>([])
   const [loadingPins, setLoadingPins] = useState(false)
+  const [files, setFiles] = useState<Attachment[]>([])
+  const [loadingFiles, setLoadingFiles] = useState(false)
 
-  // Fetch pinned messages when panel becomes open or dmId changes
+  // Fetch pinned messages when panel becomes open or dmId changes. Drafts
+  // (`draft:…` ids) only exist locally — skip the fetch.
   useEffect(() => {
-    if (!open || !dmId) return
+    if (!open || !dmId || dmId.startsWith('draft:')) return
     setLoadingPins(true)
     api.getDmPinnedMessages(dmId).then(msgs => {
       const normalized = msgs.map(m => ({
@@ -53,6 +97,20 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
       }))
       setPinned(normalized)
     }).catch(() => setPinned([])).finally(() => setLoadingPins(false))
+  }, [open, dmId, pinnedVersion])
+
+  // Fetch shared files. Re-runs alongside pinnedVersion bumps so newly-uploaded
+  // attachments show up without requiring a panel reopen.
+  useEffect(() => {
+    if (!open || !dmId || dmId.startsWith('draft:')) {
+      setFiles([])
+      return
+    }
+    setLoadingFiles(true)
+    api.getDmAttachments(dmId)
+      .then(setFiles)
+      .catch(() => setFiles([]))
+      .finally(() => setLoadingFiles(false))
   }, [open, dmId, pinnedVersion])
 
   function handleUnpin(msgId: string) {
@@ -75,24 +133,26 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
         <div className={`${s.sectionTitle} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}>
           Pinned Messages
         </div>
-        {loadingPins && (
-          <div className={`txt-tiny`} style={{ padding: '0.5rem 1rem', color: 'var(--text-default)' }}>Loading...</div>
+        {loadingPins ? (
+          <SkeletonLines count={2} />
+        ) : pinned.length === 0 ? (
+          <div className={`txt-tiny ${s.emptyHint}`}>No pinned messages yet</div>
+        ) : (
+          pinned.map(msg => (
+            <PinnedItem key={msg.id} msg={msg} dmId={dmId} onUnpin={onUnpin ? handleUnpin : undefined} users={users} />
+          ))
         )}
-        {!loadingPins && pinned.length === 0 && (
-          <div className={`txt-tiny ${s.emptyHint}`} style={{ padding: '0.5rem 1rem', color: 'var(--text-default)' }}>
-            No pinned messages yet
-          </div>
-        )}
-        {pinned.map(msg => (
-          <PinnedItem key={msg.id} msg={msg} dmId={dmId} onUnpin={onUnpin ? handleUnpin : undefined} users={users} />
-        ))}
 
         <div className={`${s.sectionTitle} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}>
           Shared Files
         </div>
-        <div className={`txt-tiny`} style={{ padding: '0.5rem 1rem', color: 'var(--text-default)' }}>
-          No shared files yet
-        </div>
+        {loadingFiles ? (
+          <SkeletonLines count={2} variant="file" />
+        ) : files.length === 0 ? (
+          <div className={`txt-tiny ${s.emptyHint}`}>No shared files yet</div>
+        ) : (
+          files.map(att => <SharedFileRow key={att.id} att={att} />)
+        )}
       </div>
     </aside>
   )

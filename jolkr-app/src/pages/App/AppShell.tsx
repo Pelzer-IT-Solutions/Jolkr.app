@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react'
+import { PanelLeftOpen } from 'lucide-react'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
 import type { MemberStatus } from '../../types'
 import { useUnreadStore } from '../../stores/unread'
@@ -29,6 +30,7 @@ import { ReportModal } from '../../components/ReportModal/ReportModal'
 import { UserContextMenu } from '../../components/UserContextMenu'
 import { ProfileCard } from '../../components/ProfileCard/ProfileCard'
 import { invalidateFriendsCache } from '../../services/friendshipCache'
+import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
 
 import { useAppInit } from './useAppInit'
 import { useAppMemos } from './useAppMemos'
@@ -138,6 +140,29 @@ export default function AppShell() {
     if (isMobile) setActiveMobilePane('chat')
   }, [setActiveDmId, isMobile, setActiveMobilePane])
 
+  // Open a 1-on-1 conversation with `otherUserId`: reuse an existing real DM
+  // if we already have one, otherwise drop a session-only draft into the
+  // sidebar. Used by FriendsPanel and ProfileCard so the recipient never
+  // sees a phantom DM before a message has actually been sent.
+  const openDmDraft = useCallback((otherUserId: string) => {
+    if (!user) return
+    const existing = dmList.find(d =>
+      !d.is_group
+      && !isDraftDmId(d.id)
+      && d.members.length === 2
+      && d.members.includes(otherUserId),
+    )
+    if (existing) {
+      setActiveDmId(existing.id)
+    } else {
+      const draft = buildDraftDm([user.id, otherUserId])
+      setDmList(prev => (prev.some(d => d.id === draft.id) ? prev : [draft, ...prev]))
+      setActiveDmId(draft.id)
+    }
+    setDmActive(true)
+    if (isMobile) setActiveMobilePane('chat')
+  }, [user, dmList, setDmList, setActiveDmId, setDmActive, isMobile, setActiveMobilePane])
+
   const sidebarCollapsedForChannelSidebar = isMobile ? false : effectiveLeftCollapsed
   const sidebarCollapsedForChatHeader     = isMobile ? true  : effectiveLeftCollapsed
   const rightPanelHidden                   = isMobile ? false : effectiveRightCollapsed
@@ -148,7 +173,7 @@ export default function AppShell() {
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer,
-    handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
+    handleSend, handleToggleReaction, handleDeleteMessage, handleHideDmMessage, handleEditMessage,
     handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleRenameChannel, handleRenameCategory, handleArchiveChannel,
@@ -338,6 +363,7 @@ export default function AppShell() {
                       onSend={handleSend}
                       onToggleReaction={handleToggleReaction}
                       onDeleteMessage={handleDeleteMessage}
+                      onHideMessage={handleHideDmMessage}
                       onEditMessage={handleEditMessage}
                       isDm={dmActive}
                       dmConversation={dmActive ? activeDmConv : undefined}
@@ -380,6 +406,16 @@ export default function AppShell() {
                     />
                   ) : (
                     <div className={s.emptyState}>
+                      {effectiveLeftCollapsed && (
+                        <button
+                          type="button"
+                          className={s.emptyExpandBtn}
+                          title="Expand sidebar"
+                          onClick={handleExpandSidebar}
+                        >
+                          <PanelLeftOpen size={14} strokeWidth={1.5} />
+                        </button>
+                      )}
                       <div style={{ fontSize: '3rem' }}>👋</div>
                       <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
                       <p className="txt-small">Join or create a server to get started, or send a direct message.</p>
@@ -488,17 +524,9 @@ export default function AppShell() {
       <FriendsPanel
         open={friendsPanelOpen}
         onClose={() => setFriendsPanelOpen(false)}
-        onStartDM={async (userId) => {
-          try {
-            const dm = await api.openDm(userId)
-            const dms = await api.getDms()
-            setDmList(dms)
-            setActiveDmId(dm.id)
-            setDmActive(true)
-            setFriendsPanelOpen(false)
-          } catch (e) {
-            useToast.getState().show((e as Error).message || 'Failed to open DM', 'error')
-          }
+        onStartDM={(otherUserId) => {
+          openDmDraft(otherUserId)
+          setFriendsPanelOpen(false)
         }}
         onAcceptRequest={async (id) => { await api.acceptFriend(id) }}
         onRejectRequest={async (id) => { await api.declineFriend(id) }}
@@ -596,12 +624,18 @@ export default function AppShell() {
         }}
         onCloseDm={userContextMenu?.dmId ? async () => {
           const dmId = userContextMenu.dmId!
+          // Drafts are session-only, so closing just drops the local entry —
+          // the server never knew about them in the first place.
+          if (isDraftDmId(dmId)) {
+            setDmList(prev => prev.filter(d => d.id !== dmId))
+            if (activeDmId === dmId) setActiveDmId('')
+            return
+          }
           try {
             await api.closeDm(dmId)
             setDmList(prev => prev.filter(d => d.id !== dmId))
             if (activeDmId === dmId) {
               setActiveDmId('')
-              setDmActive(false)
             }
           } catch (e) {
             console.warn('Failed to close DM:', e)
@@ -667,6 +701,7 @@ export default function AppShell() {
         <ProfileCard
           state={profileCard}
           onClose={() => setProfileCard(null)}
+          onStartDm={openDmDraft}
         />
       )}
     </>
