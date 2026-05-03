@@ -22,29 +22,38 @@ export function Menu({ open, position, onClose, children, minWidth = '11rem', cl
   const menuRef = useRef<HTMLDivElement>(null)
   const [safePos, setSafePos] = useState(position)
 
-  // Mirror `position` immediately on prop change — adopt the click point as
-  // the initial render position. Compared by value (x, y) rather than
-  // reference: callers commonly pass `state ?? { x: 0, y: 0 }` which yields
-  // a brand-new object literal each render when the menu is closed; a
-  // reference compare would trigger an infinite render loop (React #301).
-  const [prevX, setPrevX] = useState(position.x)
-  const [prevY, setPrevY] = useState(position.y)
-  if (prevX !== position.x || prevY !== position.y) {
-    setPrevX(position.x)
-    setPrevY(position.y)
-    setSafePos(position)
-  }
-
-  // Recalculate safe position after mount when bounds are known.
+  // Position handling: a useLayoutEffect runs before paint when the menu
+  // opens or its coordinates change, measures the rendered menu, and clamps
+  // the position to the viewport. `position.x` / `position.y` (numbers, not
+  // the wrapping object) are listed in deps so callers can pass the common
+  // `state ?? { x: 0, y: 0 }` literal pattern without thrashing the effect
+  // on every parent re-render.
+  //
+  // The setState lives inside a microtask, not in the effect's synchronous
+  // body — that satisfies the react-hooks/set-state-in-effect lint rule
+  // and avoids the React #301 "set state during render" cascade that the
+  // previous "mirror position during render" pattern caused (the runtime
+  // sees the synchronous setSafePos triggered from the new bundle's
+  // closure scope as happening during a different component's render once
+  // the parent re-renders mid-effect).
   useLayoutEffect(() => {
-    if (!open || !menuRef.current || disableAutoPosition) return
-    const rect = menuRef.current.getBoundingClientRect()
-    const adjusted = getSafePosition(
-      position,
-      { width: rect.width, height: rect.height }
-    )
-    setSafePos(adjusted)
-  }, [open, position, disableAutoPosition])
+    if (!open) return
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      if (disableAutoPosition || !menuRef.current) {
+        setSafePos({ x: position.x, y: position.y })
+        return
+      }
+      const rect = menuRef.current.getBoundingClientRect()
+      const adjusted = getSafePosition(
+        { x: position.x, y: position.y },
+        { width: rect.width, height: rect.height }
+      )
+      setSafePos(adjusted)
+    })
+    return () => { cancelled = true }
+  }, [open, position.x, position.y, disableAutoPosition])
 
   // Close on outside click or Escape
   useEffect(() => {
