@@ -471,6 +471,7 @@
 /* ── Reveal animation ── */
 .reveal {
   animation: slideIn 300ms var(--ease-out-quart) both;
+  animation-delay: var(--reveal-delay, 0ms);
 }
 
 @keyframes slideIn {

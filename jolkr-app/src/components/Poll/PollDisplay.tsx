@@ -65,7 +65,7 @@ export function PollDisplay({ poll }: Props) {
               onClick={() => onVote(opt.id)}
               disabled={expired}
             >
-              <div className={s.bar} style={{ width: `${pct}%` }} aria-hidden />
+              <div className={s.bar} style={{ '--vote-pct': `${pct}%` } as React.CSSProperties} aria-hidden />
               <span className={`${s.optionText} txt-small`}>{opt.text}</span>
               <span className={`${s.optionCount} txt-tiny txt-medium`}>{count}</span>
             </button>

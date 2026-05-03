@@ -85,6 +85,7 @@
   border-radius: inherit;
   transition: width var(--transition);
   z-index: 0;
+  width: var(--vote-pct, 0%);
 }
 
 .optionText {
