@@ -242,7 +242,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                     <button
                       key={c.value}
                       className={`${s.colorPickerSwatch} ${editedProfile.banner_color === c.value ? s.colorPickerSwatchActive : ''}`}
-                      style={{ background: c.value }}
+                      style={{ '--swatch-color': c.value } as React.CSSProperties}
                       onClick={() => handleBannerColorChange(c.value)}
                       title={c.name}
                     />
@@ -266,20 +266,20 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
         </div>
 
         {/* Banner */}
-        <div className={s.previewBanner} style={{ background: editedProfile.banner_color }} />
+        <div className={s.previewBanner} style={{ '--banner-color': editedProfile.banner_color } as React.CSSProperties} />
 
         {/* Profile Content */}
         <div className={s.previewContent}>
           {/* Avatar - Click to change only when editing */}
-          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined} style={isEditing ? { cursor: 'pointer' } : undefined}>
+          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined}>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              style={{ display: 'none' }}
+              className={s.fileInputHidden}
               onChange={handleAvatarChange}
             />
-            <div className={s.previewAvatar} style={{ background: editedProfile.banner_color }}>
+            <div className={s.previewAvatar} style={{ '--banner-color': editedProfile.banner_color } as React.CSSProperties}>
               {editedProfile.avatar_url ? (
                 <img src={editedProfile.avatar_url} alt="Profile" className={s.previewAvatarImg} />
               ) : (
