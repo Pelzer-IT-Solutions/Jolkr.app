@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   CornerUpLeft, X,
   Smile, Paperclip, ImagePlay, SendHorizontal,
@@ -6,10 +6,7 @@ import {
 } from 'lucide-react'
 import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
-import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { MAX_ATTACHMENT_BYTES } from '../../utils/constants'
-import { formatDayLabel, dayKey } from '../../utils/dateFormat'
-import { Message } from '../Message/Message'
 import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
 import GifPickerPopup from '../GifPickerPopup'
 import { emojiToImgUrl } from '../../utils/emoji'
@@ -17,6 +14,7 @@ import { RichInput, type RichInputHandle } from './RichInput'
 import { useAutocomplete } from './useAutocomplete'
 import { PollCreator } from '../Poll/PollCreator'
 import { ChatHeader } from './ChatHeader'
+import { MessageList } from './MessageList'
 import s from './ChatArea.module.css'
 
 export interface MentionableUser {
@@ -64,7 +62,6 @@ interface Props {
 }
 
 export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
-  const listRef    = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<RichInputHandle>(null)
   const contentRef = useRef('')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -73,7 +70,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const isReadOnly = readOnly || channel.is_system || !canSendMessages
 
   const [replyingTo,  setReplyingTo]  = useState<MessageVM | null>(null)
-  const [isRevealing, setIsRevealing] = useState(false)
 
   // File attachment state
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -95,55 +91,10 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     if (valid.length) setPendingFiles((prev) => [...prev, ...valid])
   }, [])
 
-  // Tracks previous values to distinguish navigation from message sends
-  const prevMsgCountRef   = useRef(0)
-  const scrollBehaviorRef = useRef<ScrollBehavior>('auto')
-
-  // Flip the reveal animation on synchronously when navigating to a new
-  // channel/DM. Detecting the change in render keeps a single coherent
-  // render cycle instead of an effect-driven double-render flicker.
-  const [prevAnimKey, setPrevAnimKey] = useState(animationKey)
-  if (prevAnimKey !== animationKey) {
-    setPrevAnimKey(animationKey)
-    setIsRevealing(true)
-  }
-
-  // Clear the reveal flag after the animation window expires. Re-runs only
-  // when isRevealing flips to true; the cleanup cancels the timer if a
-  // second navigation lands before the first finishes.
-  useEffect(() => {
-    if (!isRevealing) return
-    const animCount = Math.min(messages.length, CHAT_REVEAL_LIMIT)
-    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(animCount))
-    return () => clearTimeout(timer)
-  }, [isRevealing, messages.length, setIsRevealing])
-
-  // Scroll to top on channel/DM navigation.
-  useLayoutEffect(() => {
-    if (listRef.current) listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [animationKey])
-
-  // Track message count to flag a smooth-scroll on the next paint when new
-  // messages arrive (vs. initial load).
-  useLayoutEffect(() => {
-    const prevMsgCount = prevMsgCountRef.current
-    prevMsgCountRef.current = messages.length
-    if (messages.length > prevMsgCount) {
-      scrollBehaviorRef.current = 'smooth'
-    }
-  }, [messages])
-
-  useEffect(() => {
-    if (!listRef.current || scrollBehaviorRef.current !== 'smooth') return
-    listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
-    scrollBehaviorRef.current = 'auto'
-  }, [messages])
-
-  function handleScroll() {
-    if (!listRef.current || !hasMore || !onLoadOlder) return
-    const el = listRef.current
-    if (el.scrollHeight + el.scrollTop - el.clientHeight < 100) onLoadOlder()
-  }
+  const handleReply = useCallback((msg: MessageVM) => {
+    setReplyingTo(msg)
+    inputRef.current?.focus()
+  }, [])
 
   const [fmtBar, setFmtBar] = useState<{ top: number; left: number } | null>(null)
   const [showComposerEmoji, setShowComposerEmoji] = useState(false)
@@ -311,77 +262,29 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
       />
 
       <div className={s.chatBody}>
-        <div className={`${s.messageList} scrollbar-thin scroll-view-y-chat`} ref={listRef} onScroll={handleScroll}>
-          {messages.length === 0 ? (
-            <div className={s.chatEmpty}>
-              <div className={s.chatEmptyIcon}>{isDm ? '💬' : '👋'}</div>
-              <h2 className={`${s.chatEmptyTitle} txt-body txt-semibold`}>
-                {isDm
-                  ? `No messages yet with ${dmConversation?.name ?? dmConversation?.participants[0]?.name ?? 'this user'}`
-                  : `Welcome to #${channel.name}`}
-              </h2>
-              <p className={`${s.chatEmptyText} txt-small`}>
-                {isDm
-                  ? 'Send a message below to start the conversation.'
-                  : 'Be the first to say something — type a message below to get the channel going.'}
-              </p>
-            </div>
-          ) : null}
-          <div className={`${s.messageInner} ${isDm ? s.messageInnerDm : ''}`}>
-            {messages.map((msg, i) => {
-              const fromBottom   = messages.length - 1 - i
-              const shouldReveal = isRevealing && fromBottom < CHAT_REVEAL_LIMIT
-              const prevDay = i > 0 ? dayKey(messages[i - 1].created_at) : ''
-              const thisDay = dayKey(msg.created_at)
-              // Insert a separator at the very first message and whenever the
-              // day changes between consecutive messages.
-              const showSeparator = thisDay !== '' && thisDay !== prevDay
-              return (
-                <div key={msg.id}>
-                  {showSeparator && (
-                    <div className={s.dateSeparator}>
-                      <div className={s.sepLine} />
-                      <span className={`${s.sepLabel} txt-tiny txt-semibold`}>
-                        {formatDayLabel(msg.created_at)}
-                      </span>
-                      <div className={s.sepLine} />
-                    </div>
-                  )}
-                  <div
-                    className={shouldReveal ? 'revealing' : undefined}
-                    style={shouldReveal
-                      ? { '--reveal-delay': `${revealDelay(fromBottom)}ms` } as React.CSSProperties
-                      : undefined
-                    }
-                  >
-                    <Message
-                      message={msg}
-                      onToggleReaction={readOnly || channel.is_system || !canAddReactions ? undefined : (emoji) => onToggleReaction(msg.id, emoji)}
-                      onDelete={() => onDeleteMessage(msg.id)}
-                      onHideForMe={isDm && onHideMessage ? () => onHideMessage(msg.id) : undefined}
-                      onEdit={readOnly || channel.is_system ? undefined : (newText) => onEditMessage(msg.id, newText)}
-                      onReply={isReadOnly ? undefined : () => { setReplyingTo(msg); inputRef.current?.focus() }}
-                      onPin={() => onPinMessage?.(msg.id)}
-                      onOpenAuthorProfile={onOpenAuthorProfile}
-                      isDm={isDm}
-                      isGroupDm={isDm && (dmConversation?.participants.length ?? 0) > 2}
-                      serverId={isDm ? undefined : serverId}
-                      userMap={userMap}
-                      dmParticipantNames={isDm && dmConversation
-                        ? Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
-                        : undefined}
-                      canManageMessages={canManageMessages}
-                      canAddReactions={canAddReactions}
-                      onOpenThread={!isDm && onOpenThread ? onOpenThread : undefined}
-                      onStartThread={!isDm && onStartThread ? onStartThread : undefined}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          <div className={s.spacer} />
-        </div>
+        <MessageList
+          channel={channel}
+          messages={messages}
+          animationKey={animationKey}
+          isDm={isDm}
+          dmConversation={dmConversation}
+          serverId={serverId}
+          userMap={userMap}
+          isReadOnly={isReadOnly}
+          canManageMessages={canManageMessages}
+          canAddReactions={canAddReactions}
+          hasMore={hasMore}
+          onLoadOlder={onLoadOlder}
+          onToggleReaction={onToggleReaction}
+          onDeleteMessage={onDeleteMessage}
+          onHideMessage={onHideMessage}
+          onEditMessage={onEditMessage}
+          onReply={handleReply}
+          onPinMessage={onPinMessage}
+          onOpenAuthorProfile={onOpenAuthorProfile}
+          onOpenThread={onOpenThread}
+          onStartThread={onStartThread}
+        />
 
         {typingUsers && typingUsers.length > 0 && (
           <div className={s.typingIndicator}>
