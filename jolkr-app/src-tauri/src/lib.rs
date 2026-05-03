@@ -14,6 +14,20 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! Welcome to Jolkr.", name)
 }
 
+/// Delete the legacy stronghold vault snapshot so a fresh one can be
+/// created under the per-install password (SEC-011 vault rotation).
+/// Idempotent: missing file is treated as success. Storage.ts gates this
+/// behind a localStorage migration marker, so it runs at most once per
+/// install.
+#[tauri::command]
+fn delete_vault_file(path: String) -> Result<(), String> {
+    match std::fs::remove_file(&path) {
+        Ok(_) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(format!("delete_vault_file({path}): {e}")),
+    }
+}
+
 /// Check if the app was launched with --minimized (auto-start scenario).
 #[cfg(desktop)]
 fn should_start_minimized() -> bool {
@@ -157,7 +171,7 @@ pub fn run() {
     });
 
     builder
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![greet, delete_vault_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
