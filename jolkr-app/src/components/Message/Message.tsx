@@ -7,8 +7,8 @@ import {
 import type { MessageVM } from '../../types'
 import type { User, MessageEmbed } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
-import { useShiftKey } from '../../hooks/useShiftKey'
 import { useAuthStore } from '../../stores/auth'
+import { useMessageActions } from './useMessageActions'
 import { useMenuPosition } from '../../utils/position'
 import { emojiToImgUrl } from '../../utils/emoji'
 import { parseVideoUrl, getYouTubeThumbnail, getPlatformName, getPlatformColor } from '../../utils/videoUrl'
@@ -51,21 +51,15 @@ interface Props {
 
 export function Message({ message, onToggleReaction, onDelete, onHideForMe, onReply, onEdit, onPin, onOpenAuthorProfile, isDm = false, isGroupDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false, onOpenThread, onStartThread }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
-  const isOwn = message.author_id === currentUserId || message.author === 'You'
-  const shiftHeld = useShiftKey()
-  // Hard-delete (server-side) is restricted to the author in DMs and to
-  // moderators or the author in server channels. `canManageMessages` is
-  // server-only and doesn't carry into the DM context.
-  const canHardDelete = !!onDelete && (isDm ? isOwn : (isOwn || canManageMessages))
-  // Soft-hide ("Only for me") is available to anyone in a DM — that's how
-  // non-authors remove a message from their own view without affecting the
-  // other side.
-  const canHideForMe = isDm && !!onHideForMe
-  // Shift+click acts as an instant-remove. For own DM messages and server
-  // mod actions it still hard-deletes; for non-own DM messages it falls back
-  // to a soft-hide so the user can clean up their own view at a glance.
-  const canShiftRemove = canHardDelete || canHideForMe
-  const shiftDeleteArmed = shiftHeld && canShiftRemove
+  const { isOwn, canHideForMe, canShiftRemove, shiftDeleteArmed } = useMessageActions({
+    authorId: message.author_id,
+    authorLabel: message.author,
+    currentUserId,
+    isDm,
+    canManageMessages,
+    onDelete,
+    onHideForMe,
+  })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Decrypt E2EE content
