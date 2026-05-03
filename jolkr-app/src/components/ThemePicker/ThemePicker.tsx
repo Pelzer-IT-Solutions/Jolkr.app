@@ -4,6 +4,7 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 import type { ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { buildBackground, orbsForHue } from '../../utils/theme'
+import { useMenuPosition } from '../../utils/position'
 import s from './ThemePicker.module.css'
 
 const BASE_ORB_SIZE = 32 // px diameter for all orbs (before scale)
@@ -36,7 +37,10 @@ interface Props {
 
 export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref }: Props) {
   const [open, setOpen] = useState(false)
-  const [pos,  setPos]  = useState({ top: 0, left: 0 })
+  // Raw trigger position from the click; clamped to the viewport via
+  // useMenuPosition so the picker can't open partially off-screen on small
+  // viewports or when the trigger sits near a screen edge.
+  const [triggerPos, setTriggerPos] = useState<{ x: number; y: number } | null>(null)
   const [selectedOrbId, setSelectedOrbId] = useState<string | null>(null)
   const [isDraggingHue, setIsDraggingHue] = useState(false)
 
@@ -44,6 +48,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
   const pickerRef  = useRef<HTMLDivElement>(null)
   const canvasRef  = useRef<HTMLDivElement>(null)
   const hueWheelRef = useRef<HTMLDivElement>(null)
+  const pos = useMenuPosition(triggerPos, pickerRef, open)
 
   // Close on outside click
   useEffect(() => {
@@ -84,9 +89,9 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
   }, [isDraggingHue, selectedOrbId])
 
   function openPicker() {
-    if (!open && triggerRef.current) {
+    if (triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 8, left: r.left })
+      setTriggerPos({ x: r.left, y: r.bottom + 8 })
     }
     setOpen(v => !v)
   }
@@ -213,7 +218,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
       </button>
 
       {open && createPortal(
-        <div ref={pickerRef} className={s.picker} style={{ top: pos.top, left: pos.left }}>
+        <div ref={pickerRef} className={s.picker} style={{ top: pos.y, left: pos.x }}>
 
           {/* ── Color canvas ── */}
           <div
