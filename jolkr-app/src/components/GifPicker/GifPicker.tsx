@@ -303,7 +303,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
               autoFocus
             />
             {query && (
-              <button className={s.clearBtn} onClick={() => setQuery('')} title="Clear" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+              <button className={s.clearBtn} onClick={() => setQuery('')} title="Clear">
                 <X size={16} />
               </button>
             )}
@@ -314,7 +314,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
   }
 
   return (
-    <div className={s.picker} data-theme={theme} style={{ width, height }}>
+    <div className={s.picker} data-theme={theme} style={{ '--gpr-width': `${width}px`, '--gpr-height': `${height}px` } as React.CSSProperties}>
       {/* Header */}
       <div className={s.header}>
         {renderHeader()}
@@ -334,7 +334,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
                   loading="lazy"
                 />
               ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2b2b2b' }}>
+                <div className={s.favoritesPlaceholder}>
                   <Heart size={28} color="#ff4757" fill="#ff4757" />
                 </div>
               )}
