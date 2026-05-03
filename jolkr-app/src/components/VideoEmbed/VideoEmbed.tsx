@@ -46,7 +46,7 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
     <div className={s.card} style={{ '--embed-color': borderColor } as React.CSSProperties}>
       <div className={s.header}>
         <div className={s.siteName}>
-          <span className={s.dot} style={{ backgroundColor: borderColor }} />
+          <span className={s.dot} />
           {platformName}
         </div>
         {resolvedTitle && (
@@ -84,7 +84,7 @@ function Thumbnail({ url, platform, onClick }: { url: string | null; platform: s
       )}
       <div className={s.thumbOverlay}>
         <div className={s.playCircle}>
-          <Play size={28} color="black" fill="black" style={{ marginLeft: '0.125rem' }} />
+          <Play size={28} color="black" fill="black" className={s.playIcon} />
         </div>
       </div>
     </button>
@@ -205,7 +205,7 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
       <div className={s.controls} data-hidden={!showControls}>
         {!isLive && (
           <div className={s.progressBar} onClick={handleSeek}>
-            <div className={s.progressFill} style={{ width: `${progressPct}%` }} />
+            <div className={s.progressFill} style={{ '--progress-pct': `${progressPct}%` } as React.CSSProperties} />
           </div>
         )}
         <div className={s.controlsRow}>
