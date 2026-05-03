@@ -1,8 +1,9 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronRight, X } from 'lucide-react'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 import s from './SettingsShell.module.css'
 
 /** A single nav item rendered in the shell's left rail. */
@@ -76,12 +77,18 @@ export function SettingsShell<TSection extends string>({
     return () => document.removeEventListener('keydown', handleKey)
   }, [onClose])
 
+  const modalRef = useRef<HTMLDivElement | null>(null)
+  // Trap Tab inside the modal so keyboard users can't tab into the obscured
+  // app content behind the overlay. Restores focus to the previous element on
+  // unmount via `useFocusTrap`.
+  useFocusTrap(modalRef)
+
   let navIdx = 0
   const headerStaggerIdx = navHeader ? navIdx++ : -1
 
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={s.modal}>
+      <div className={s.modal} ref={modalRef}>
         <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
           <X size={18} strokeWidth={1.5} />
         </button>

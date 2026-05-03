@@ -310,9 +310,10 @@
   margin: 0.25rem 0;
 }
 
-.danger       { color: oklch(55% 0.22 25); }
-.danger:hover { background: oklch(55% 0.22 25 / 0.08) !important; }
-.danger svg   { color: oklch(55% 0.22 25); }
+.danger             { color: oklch(55% 0.22 25); }
+/* Compound selector beats `.menuItem:hover` specificity without !important. */
+.menuItem.danger:hover { background: oklch(55% 0.22 25 / 0.08); }
+.danger svg         { color: oklch(55% 0.22 25); }
 
 /* ─── Animations ─── */
 @keyframes pickerIn {

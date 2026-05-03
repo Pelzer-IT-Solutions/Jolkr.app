@@ -267,7 +267,7 @@
   padding: 0.5rem 0.875rem;
   border-radius: 0.5rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 0.8125rem;
   font-weight: 600;
   transition: opacity var(--transition);

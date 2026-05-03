@@ -32,14 +32,20 @@ import type {
 
 // ─── Helpers ───────────────────────────────────────────────
 
-/** Deterministic OKLCH color from a string (user ID or name). */
+/** Deterministic OKLCH color from a string (user ID or name).
+ *  Lightness clamped to a band that stays WCAG-AA compliant against white
+ *  letter text. Yellows / yellow-greens (~60–110°) inherently look brighter
+ *  in OKLCH, so they get a small extra dim to keep white initials legible.
+ */
 export function hashColor(input: string): string {
   let hash = 0
   for (let i = 0; i < input.length; i++) {
     hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0
   }
   const hue = ((hash % 360) + 360) % 360
-  return `oklch(55% 0.18 ${hue})`
+  // Default 48% L gives ~4.5:1 against #fff for most hues; yellows need ~42%.
+  const lightness = (hue >= 60 && hue <= 110) ? 42 : 48
+  return `oklch(${lightness}% 0.16 ${hue})`
 }
 
 /** First letter of display name or username, uppercased. */

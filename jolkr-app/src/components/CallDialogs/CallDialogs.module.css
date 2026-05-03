@@ -71,7 +71,7 @@
 .avatarLetter {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 /* ── Text ── */
@@ -129,7 +129,7 @@
   border-radius: 999px;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #fff;
+  color: var(--text-on-accent);
   cursor: pointer;
   transition: filter var(--transition), transform var(--transition);
   flex: 1;

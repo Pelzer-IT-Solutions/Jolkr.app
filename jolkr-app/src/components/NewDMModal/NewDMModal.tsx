@@ -200,6 +200,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
               onKeyDown={handleInputKeyDown}
+              aria-label="Search friends or type a username"
             />
           </div>
         </div>

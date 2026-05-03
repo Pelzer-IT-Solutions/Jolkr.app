@@ -159,7 +159,10 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
     }
   }, [user, isEditing])
 
+  const [saving, setSaving] = useState(false)
   const handleSave = async () => {
+    if (saving) return
+    setSaving(true)
     try {
       await onUpdateProfile?.({
         display_name: editedProfile.display_name,
@@ -172,6 +175,10 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       setShowColorPicker(false)
     } catch (e) {
       console.error('Failed to update profile:', e)
+      const msg = e instanceof Error ? e.message : 'Could not save profile changes.'
+      useToast.getState().show(msg, 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -248,8 +255,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
           {/* Edit Button */}
           {isEditing ? (
             <div className={s.editActions}>
-              <button className={s.cancelEditBtn} onClick={handleCancel}>Cancel</button>
-              <button className={s.saveEditBtn} onClick={handleSave}>Save</button>
+              <button className={s.cancelEditBtn} onClick={handleCancel} disabled={saving}>Cancel</button>
+              <button className={s.saveEditBtn} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
             </div>
           ) : (
             <button className={s.editProfileBtn} onClick={() => setIsEditing(true)}>
@@ -291,8 +298,9 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
             {isEditing ? (
               <>
                 <div className={s.editFieldGroup}>
-                  <label className={s.editLabel}>Display Name</label>
+                  <label className={s.editLabel} htmlFor="settings-displayname">Display Name</label>
                   <input
+                    id="settings-displayname"
                     type="text"
                     className={s.editInput}
                     value={editedProfile.display_name}
@@ -301,7 +309,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                   />
                 </div>
                 <div className={s.editFieldGroup}>
-                  <label className={s.editLabel}>Username</label>
+                  <span className={s.editLabel}>Username</span>
                   <span className={s.editReadonly}>{user?.username}</span>
                 </div>
               </>
@@ -316,8 +324,9 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
 
             {isEditing ? (
               <div className={s.editFieldGroup}>
-                <label className={s.editLabel}>Bio</label>
+                <label className={s.editLabel} htmlFor="settings-bio">Bio</label>
                 <textarea
+                  id="settings-bio"
                   className={s.editTextarea}
                   value={editedProfile.bio}
                   onChange={(e) => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
