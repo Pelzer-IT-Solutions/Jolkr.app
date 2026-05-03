@@ -84,7 +84,7 @@ export function ChatHeader({ channel, dmConversation, sidebarCollapsed, rightPan
                   style={p.avatarUrl ? undefined : { background: p.color }}
                 >
                   {p.avatarUrl
-                    ? <img src={p.avatarUrl} alt={`${p.name} avatar`} width={20} height={20} style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
+                    ? <img src={p.avatarUrl} alt={`${p.name} avatar`} width={20} height={20} className={s.groupAvatarImg} />
                     : p.letter}
                 </div>
               ))}
@@ -92,7 +92,7 @@ export function ChatHeader({ channel, dmConversation, sidebarCollapsed, rightPan
           ) : (
             <div className={s.dmAvatar} style={dmFirstP?.avatarUrl ? undefined : { background: dmFirstP?.color }}>
               {dmFirstP?.avatarUrl
-                ? <img src={dmFirstP.avatarUrl} alt={dmFirstP.name ? `${dmFirstP.name} avatar` : ''} width={28} height={28} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                ? <img src={dmFirstP.avatarUrl} alt={dmFirstP.name ? `${dmFirstP.name} avatar` : ''} width={28} height={28} className={s.dmAvatarImg} />
                 : dmFirstP?.letter}
               <span className={`${s.dmStatusDot} ${s[dmFirstP?.status ?? 'offline']}`} />
             </div>

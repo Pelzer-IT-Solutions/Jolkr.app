@@ -142,8 +142,8 @@ export function Composer({
   if (isReadOnly) {
     return (
       <div className={s.composerWrap}>
-        <div className={`${s.composer} ${s.readOnly}`} style={{ padding: '.725rem .625rem' }}>
-          <span className="txt-small" style={{ opacity: 0.4, textAlign: 'center', width: '100%' }}>
+        <div className={`${s.composer} ${s.readOnly}`}>
+          <span className={`${s.readOnlyText} txt-small`}>
             {channel.is_system
               ? 'This is a system channel'
               : !canSendMessages
@@ -253,7 +253,7 @@ export function Composer({
                 </button>
               </div>
             )}
-            <div style={{ position: 'relative' }}>
+            <div className={s.emojiAnchor}>
               <button
                 ref={composerEmojiBtnRef}
                 className={s.emojiBtn}
@@ -296,7 +296,7 @@ export function Composer({
                     type="file"
                     accept="image/*,video/*,.pdf,.txt,.zip,.doc,.docx"
                     multiple
-                    style={{ display: 'none' }}
+                    className={s.fileInputHidden}
                     onChange={(e) => {
                       if (e.target.files) acceptValidFiles(e.target.files)
                       e.target.value = ''
