@@ -146,6 +146,31 @@ impl KeyRepo {
         })
     }
 
+    /// Fetch just the identity (ed25519 verifying) public key for a
+    /// (user, device). Used by the WS handshake (SEC-013) to verify the
+    /// challenge signature. Returns `None` if the device has never
+    /// uploaded a prekey bundle. The base row (one_time_prekey IS NULL)
+    /// is the canonical place; one-time-prekey rows duplicate it but
+    /// querying the base avoids accidental races with claiming.
+    pub async fn get_identity_key(
+        pool: &PgPool,
+        user_id: Uuid,
+        device_id: Uuid,
+    ) -> Result<Option<Vec<u8>>, JolkrError> {
+        let row: Option<(Vec<u8>,)> = sqlx::query_as(
+            "
+            SELECT identity_key FROM user_keys
+            WHERE user_id = $1 AND device_id = $2 AND one_time_prekey IS NULL
+            LIMIT 1
+            ",
+        )
+        .bind(user_id)
+        .bind(device_id)
+        .fetch_optional(pool)
+        .await?;
+        Ok(row.map(|r| r.0))
+    }
+
     /// Fetch prekey bundle for a user's most recent device (any device).
     /// Useful when the caller doesn't know the recipient's `device_id`.
     pub async fn get_prekey_bundle_for_user(

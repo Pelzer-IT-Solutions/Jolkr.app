@@ -16,16 +16,35 @@ use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+use base64::Engine;
+use rand::RngCore;
 use redis::AsyncCommands;
 use jolkr_common::Permissions;
 use jolkr_core::AuthService;
-use jolkr_db::repo::{ChannelRepo, DmRepo, MemberRepo, RoleRepo, ServerRepo};
+use jolkr_core::crypto::keys::verify_signed_prekey;
+use jolkr_db::repo::{ChannelRepo, DmRepo, KeyRepo, MemberRepo, RoleRepo, ServerRepo};
 
 use super::events::{ClientEvent, GatewayEvent};
 use crate::routes::AppState;
 
 /// Maximum WebSocket connections allowed per IP address.
 const MAX_WS_PER_IP: u32 = 10;
+
+/// SEC-013 strict mode: when true, `Identify` must include `device_id`,
+/// `nonce`, and `signature`, and the signature is ed25519-verified
+/// against `user_keys.identity_key`. When false, the legacy
+/// bearer-only `Identify` path is still honoured for backwards-compat
+/// during rollout. Set the `JOLKR_WS_REQUIRE_SIG` env var to enable.
+static REQUIRE_WS_SIG: LazyLock<bool> = LazyLock::new(|| {
+    std::env::var("JOLKR_WS_REQUIRE_SIG")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false)
+});
+
+/// SEC-013 nonce window. The base64-encoded random nonce is sent in
+/// `Hello` immediately after upgrade and must round-trip in `Identify`
+/// before this Duration elapses; otherwise the handshake is rejected.
+const HELLO_NONCE_TTL: tokio::time::Duration = tokio::time::Duration::from_secs(30);
 
 /// Global per-IP WebSocket connection counter.
 static WS_CONNECTIONS: LazyLock<DashMap<IpAddr, AtomicU32>> = LazyLock::new(DashMap::new);
@@ -140,6 +159,27 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     let mut rate_tokens: f64 = 30.0;
     let mut last_refill = tokio::time::Instant::now();
 
+    // SEC-013 challenge nonce (per-socket, single-use). 32 random bytes
+    // base64-encoded; client signs the raw bytes and echoes both back in
+    // `Identify`. The Hello event is emitted unconditionally so the client
+    // can opt in to challenge-response without a separate negotiation; if
+    // the client doesn't sign and `JOLKR_WS_REQUIRE_SIG=false`, we still
+    // accept the bearer-only Identify.
+    let hello_deadline = tokio::time::Instant::now() + HELLO_NONCE_TTL;
+    let (mut hello_nonce_b64, mut hello_nonce_bytes): (Option<String>, Option<[u8; 32]>) = {
+        let mut buf = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut buf);
+        let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(buf);
+        let expires_at = (chrono::Utc::now()
+            + chrono::Duration::seconds(HELLO_NONCE_TTL.as_secs() as i64))
+            .to_rfc3339();
+        drop(tx.try_send(GatewayEvent::Hello {
+            nonce: b64.clone(),
+            expires_at,
+        }));
+        (Some(b64), Some(buf))
+    };
+
     // Spawn a task that forwards gateway events to the WebSocket sender
     let send_task = tokio::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -202,7 +242,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         };
 
         match client_event {
-            ClientEvent::Identify { token } => {
+            ClientEvent::Identify { token, device_id, nonce, signature } => {
                 // Reject re-identify on already authenticated connection
                 if session_id.is_some() {
                     drop(tx.try_send(GatewayEvent::Error {
@@ -210,6 +250,64 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     }));
                     continue;
                 }
+
+                // SEC-013 challenge-response: when strict mode is on, the
+                // signature is required. Generic "Authentication failed"
+                // for every failure mode so an attacker can't distinguish
+                // unknown-device from bad-signature from expired-window.
+                let strict = *REQUIRE_WS_SIG;
+                let sig_check_passed = match (&device_id, &nonce, &signature) {
+                    (Some(dev_id), Some(client_nonce), Some(client_sig)) => {
+                        // Nonce must match this socket's challenge and arrive
+                        // within the TTL window. After verify, the nonce slot
+                        // is consumed (set to None) so a replay on the same
+                        // connection fails the second-Identify guard above.
+                        let server_nonce = hello_nonce_b64.as_deref();
+                        let nonce_ok = server_nonce == Some(client_nonce.as_str())
+                            && tokio::time::Instant::now() <= hello_deadline;
+                        let raw_nonce = hello_nonce_bytes;
+                        let signature_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+                            .decode(client_sig.as_bytes())
+                            .ok();
+
+                        if !nonce_ok || signature_bytes.is_none() {
+                            false
+                        } else if let (Some(raw), Some(sig)) = (raw_nonce, signature_bytes) {
+                            // Look up the identity_key for (sub_from_jwt, device_id).
+                            // The JWT claims subject is needed first, so do a
+                            // best-effort decode here; the full validate_token
+                            // happens below regardless.
+                            let pre_claims = AuthService::validate_token(&state.jwt_secret, &token);
+                            match pre_claims {
+                                Ok(c) => {
+                                    match KeyRepo::get_identity_key(&state.pool, c.sub, *dev_id).await {
+                                        Ok(Some(pubkey)) => verify_signed_prekey(&pubkey, &raw, &sig),
+                                        _ => false,
+                                    }
+                                }
+                                Err(_) => false,
+                            }
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false,
+                };
+
+                if strict && !sig_check_passed {
+                    warn!("WebSocket sig check failed (strict mode)");
+                    drop(tx.try_send(GatewayEvent::Error {
+                        message: "Authentication failed".to_string(),
+                    }));
+                    continue;
+                }
+
+                // Single-use nonce: consume it regardless of whether sig
+                // was checked. Subsequent Identify on this socket will hit
+                // the `session_id.is_some()` re-identify guard.
+                hello_nonce_b64 = None;
+                hello_nonce_bytes = None;
+
                 // Validate the JWT and check blacklist (mirrors HTTP auth middleware)
                 match AuthService::validate_token(&state.jwt_secret, &token) {
                     Ok(claims) => {
