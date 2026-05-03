@@ -229,7 +229,10 @@ export function useAppInit() {
 
     init().catch(console.error)
     return () => { cancelled = true }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    // Mount-only init. The fetch* + navigate values are stable (zustand
+    // actions / react-router NavigateFunction), so listing them is a no-op
+    // at runtime but keeps exhaustive-deps satisfied.
+  }, [fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions, navigate, location.pathname])
 
   // ── Sync state → URL (only AFTER init is done) ──
   // Uses push (not replace) so each user-driven server/channel/DM switch
@@ -255,7 +258,7 @@ export function useAppInit() {
     if (location.pathname !== target) {
       navigate(target)
     }
-  }, [ready, dmActive, activeDmId, activeServerId, activeChannelId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, dmActive, activeDmId, activeServerId, activeChannelId, navigate, location.pathname])
 
   // ── Sync URL → state (popstate / programmatic history.back) ──
   // When the user presses the Android back button or otherwise pops history,
@@ -284,9 +287,21 @@ export function useAppInit() {
       if (sid !== activeServerId) setActiveServerId(sid)
       if (cid !== activeChannelId) setActiveChannelId(cid)
     }
-  }, [ready, location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+    // The state vars below are read only for "is the current state already
+    // in sync with the URL" no-op guards — adding them costs an extra
+    // re-run per state change but never sets state when it's already right.
+  }, [ready, location.pathname, dmActive, activeDmId, activeServerId, activeChannelId])
 
   // ── Fetch channel data when switching servers (after init) ──
+  // activeChannelId is read inside the .then to validate selection but we
+  // don't want it in deps — a channel-switch within the same server should
+  // not trigger a refetch. Mirror it through a ref kept current via the
+  // effect below.
+  const activeChannelIdRef = useRef(activeChannelId)
+  useEffect(() => {
+    activeChannelIdRef.current = activeChannelId
+  }, [activeChannelId])
+
   useEffect(() => {
     if (!ready || !activeServerId || dmActive) return
     Promise.all([
@@ -298,7 +313,8 @@ export function useAppInit() {
       // Ensure a valid channel is selected after fresh channel data arrives
       const chs = useServersStore.getState().channels[activeServerId]
       if (!chs?.length) return
-      const currentValid = activeChannelId && chs.some(c => c.id === activeChannelId)
+      const currChan = activeChannelIdRef.current
+      const currentValid = currChan && chs.some(c => c.id === currChan)
       if (!currentValid) {
         setActiveChannelId(chs.find(c => c.kind === 'text')?.id ?? chs[0].id)
       }
@@ -307,7 +323,7 @@ export function useAppInit() {
         syncPresence(mems.map(m => m.user_id))
       }
     })
-  }, [activeServerId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeServerId, ready, dmActive, fetchChannels, fetchMembers, fetchCategories, fetchPermissions])
 
   // ── Safety: if active server disappears (deleted/left), fall back ──
   useEffect(() => {
@@ -327,7 +343,7 @@ export function useAppInit() {
         if (dmList.length > 0) setActiveDmId(dmList[0].id)
       }
     }
-  }, [ready, servers, dmActive, activeServerId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, servers, dmActive, activeServerId, channelsByServer, dmList, tabbedIds])
 
   // ── Fetch messages when channel changes ──
   useEffect(() => {
@@ -388,7 +404,7 @@ export function useAppInit() {
       useUnreadStore.getState().setActiveChannel(null)
     }
     // threadListVersion is included so the count refreshes when ThreadCreate/Update fires.
-  }, [currentChannelId, dmActive, threadListVersion])
+  }, [currentChannelId, dmActive, threadListVersion, fetchMessages, fetchChannelPermissions])
 
   // ── Reset open thread when channel/DM changes ──
   // Otherwise the thread panel would try to render messages from a thread
@@ -650,7 +666,10 @@ export function useAppInit() {
         return prevUsers
       })
     })
-  }, [])
+    // Mount-only WS subscription. The fetch* references are zustand actions
+    // (stable), so adding them keeps the rule satisfied without changing
+    // behavior — the cleanup runs once on unmount.
+  }, [fetchPermissions, fetchChannelPermissions])
 
   // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
   useEffect(() => {

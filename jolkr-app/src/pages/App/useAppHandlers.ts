@@ -322,7 +322,7 @@ export function useAppHandlers(
       const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
       if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned, reactions: undefined } as typeof revertMsg)
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
@@ -346,7 +346,7 @@ export function useAppHandlers(
       const m = err instanceof Error ? err.message : 'Unpin failed'
       useToast.getState().show(m, 'error')
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
 
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
@@ -361,13 +361,13 @@ export function useAppHandlers(
   const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice', categoryId?: string) => {
     await api.createChannel(activeServerId, { name, kind, ...(categoryId ? { category_id: categoryId } : {}) })
     await fetchChannels(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchChannels])
 
   const handleCreateCategory = useCallback(async (name: string) => {
     await api.createCategory(activeServerId, { name })
     await fetchCategories(activeServerId)
     await fetchChannels(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchCategories, fetchChannels])
 
   const handleDeleteChannel = useCallback(async (channelId: string) => {
     try {
@@ -382,7 +382,7 @@ export function useAppHandlers(
       useToast.getState().show(m, 'error')
       throw err
     }
-  }, [activeServerId, activeChannelId])
+  }, [activeServerId, activeChannelId, fetchChannels, setActiveChannelId])
 
   const handleDeleteCategory = useCallback(async (categoryName: string) => {
     // Find the category by name to get its ID
@@ -393,22 +393,22 @@ export function useAppHandlers(
     await api.deleteCategory(category.id)
     await fetchCategories(activeServerId)
     await fetchChannels(activeServerId)
-  }, [activeServerId, categoriesByServer])
+  }, [activeServerId, categoriesByServer, fetchCategories, fetchChannels])
 
   const handleArchiveChannel = useCallback(async (channelId: string) => {
     await api.updateChannel(channelId, { is_system: true })
     await fetchChannels(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchChannels])
 
   const handleRenameChannel = useCallback(async (channelId: string, newName: string) => {
     await api.updateChannel(channelId, { name: newName })
     await fetchChannels(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchChannels])
 
   const handleRenameCategory = useCallback(async (categoryId: string, newName: string) => {
     await api.updateCategory(categoryId, { name: newName })
     await fetchCategories(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchCategories])
 
   // ── Channel reorder (drag & drop persist) ──
   // `positions` is the new global ordering across all categories + uncategorized.
