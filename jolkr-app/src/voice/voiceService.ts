@@ -1,4 +1,5 @@
 import { VoiceClient } from './voiceClient';
+import { voicePrefs, type VoicePrefs } from './voicePrefs';
 
 export interface VoiceParticipant {
   userId: string;
@@ -32,6 +33,17 @@ export class VoiceService {
   private audioElements: HTMLAudioElement[] = [];
   private disconnectTimer: ReturnType<typeof setTimeout> | undefined = undefined;
   private _leaving = false;
+
+  /** Web Audio chain that lets the user scale captured mic level. */
+  private inputAudioCtx: AudioContext | null = null;
+  private inputGainNode: GainNode | null = null;
+  /** Track sent to the peer connection — derived from `inputGainNode`. */
+  private processedAudioTrack: MediaStreamTrack | null = null;
+  /** Original (unscaled) capture track, kept so we can stop it on cleanup. */
+  private rawAudioTrack: MediaStreamTrack | null = null;
+
+  /** Unsubscribes from `voicePrefs` change notifications when leaving. */
+  private prefsUnsub: (() => void) | null = null;
 
   private _state: VoiceConnectionState = 'disconnected';
   private _channelId: string | null = null;
@@ -190,14 +202,10 @@ export class VoiceService {
     const opposite = this._cameraFacing === 'user' ? 'environment' : 'user';
 
     try {
+      const constraints = voicePrefs.buildConstraints(true, opposite);
       const newStream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: {
-          facingMode: opposite,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 },
-        },
+        video: constraints.video,
       });
       const newTrack = newStream.getVideoTracks()[0];
       if (!newTrack) return;
@@ -391,15 +399,9 @@ export class VoiceService {
     let camWorks = false;
     if (this._withVideo) {
       try {
-        this.localStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: {
-            facingMode: this._cameraFacing,
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30 },
-          },
-        });
+        this.localStream = await navigator.mediaDevices.getUserMedia(
+          voicePrefs.buildConstraints(true, this._cameraFacing),
+        );
         camWorks = true;
       } catch (camErr) {
         console.warn('[Voice] Camera unavailable, falling back to audio only:', (camErr as Error).message);
@@ -409,7 +411,9 @@ export class VoiceService {
     if (!this.localStream) {
       // Audio-only path (voice call OR video call with camera failure).
       try {
-        this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        this.localStream = await navigator.mediaDevices.getUserMedia(
+          voicePrefs.buildConstraints(false),
+        );
       } catch (micErr) {
         console.warn('[Voice] No microphone available, joining in listen-only mode:', (micErr as Error).message);
         this._isMuted = true;
@@ -417,7 +421,21 @@ export class VoiceService {
     }
 
     if (this.localStream) {
-      for (const track of this.localStream.getTracks()) {
+      // Route the audio track through a GainNode so the user-controlled
+      // input volume slider is applied live without renegotiating.
+      const audioTrack = this.localStream.getAudioTracks()[0];
+      const tracksToSend: MediaStreamTrack[] = [];
+      if (audioTrack) {
+        const processed = this.buildProcessedAudioTrack(audioTrack);
+        // Replace the raw audio track on the local stream so consumers
+        // (including muted-state toggles) operate on the processed one.
+        this.localStream.removeTrack(audioTrack);
+        this.localStream.addTrack(processed);
+        tracksToSend.push(processed);
+      }
+      for (const track of this.localStream.getVideoTracks()) tracksToSend.push(track);
+
+      for (const track of tracksToSend) {
         const sender = this.pc.addTrack(track, this.localStream);
         // Attach encryption transform for any outgoing media (audio + video).
         if (supportsVoiceE2EE && this.encryptionWorker) {
@@ -432,6 +450,12 @@ export class VoiceService {
         this.emitLocalVideo(this.localStream);
       }
     }
+
+    // Subscribe to live preference changes so volume / output sink /
+    // constraints take effect during an active call.
+    this.prefsUnsub?.();
+    this.prefsUnsub = voicePrefs.subscribe((next) => this.applyPrefs(next));
+    this.applyPrefs(voicePrefs.get());
 
     this.pc.onicecandidate = (ev) => {
       if (ev.candidate) {
@@ -456,6 +480,9 @@ export class VoiceService {
         const audio = new Audio();
         audio.srcObject = ev.streams[0] || new MediaStream([ev.track]);
         audio.autoplay = true;
+        const prefs = voicePrefs.get();
+        audio.volume = clampVolume(prefs.outputVolume);
+        applySinkId(audio, prefs.audioOutputDeviceId);
         audio.play().catch(() => {});
         this.audioElements.push(audio);
       } else if (ev.track.kind === 'video' && userId) {
@@ -501,6 +528,9 @@ export class VoiceService {
     this.cleanups.forEach((fn) => fn());
     this.cleanups = [];
 
+    this.prefsUnsub?.();
+    this.prefsUnsub = null;
+
     this.audioElements.forEach((a) => { a.pause(); a.srcObject = null; });
     this.audioElements = [];
 
@@ -509,6 +539,16 @@ export class VoiceService {
       this.emitLocalVideo(null);
     }
     this.localStream?.getTracks().forEach((t) => t.stop());
+    this.rawAudioTrack?.stop();
+    this.processedAudioTrack?.stop();
+    this.rawAudioTrack = null;
+    this.processedAudioTrack = null;
+    this.inputGainNode?.disconnect();
+    this.inputGainNode = null;
+    if (this.inputAudioCtx) {
+      this.inputAudioCtx.close().catch(() => {});
+      this.inputAudioCtx = null;
+    }
     this.localStream = null;
     this.midToUserId.clear();
     this._withVideo = false;
@@ -556,4 +596,60 @@ export class VoiceService {
     const snapshot = new Map(this._participants);
     this.participantsListeners.forEach((fn) => fn(snapshot));
   }
+
+  /**
+   * Wrap the raw capture track in a Web Audio chain so the user-controlled
+   * input volume slider can scale the signal live without renegotiating.
+   * The processed track is what we actually send to the peer.
+   */
+  private buildProcessedAudioTrack(rawTrack: MediaStreamTrack): MediaStreamTrack {
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(new MediaStream([rawTrack]));
+      const gain = ctx.createGain();
+      gain.gain.value = clampVolume(voicePrefs.get().inputVolume);
+      const dest = ctx.createMediaStreamDestination();
+      source.connect(gain).connect(dest);
+
+      const processed = dest.stream.getAudioTracks()[0];
+      // Mirror the raw track's enabled state so existing mute logic (which
+      // toggles `track.enabled` on local stream tracks) keeps working.
+      processed.enabled = rawTrack.enabled;
+      this.inputAudioCtx = ctx;
+      this.inputGainNode = gain;
+      this.rawAudioTrack = rawTrack;
+      this.processedAudioTrack = processed;
+      return processed;
+    } catch (e) {
+      console.warn('[Voice] Failed to build input gain chain — sending raw mic:', (e as Error).message);
+      return rawTrack;
+    }
+  }
+
+  /** Apply the latest preference snapshot to the active call. */
+  private applyPrefs(p: VoicePrefs): void {
+    if (this.inputGainNode) {
+      this.inputGainNode.gain.value = clampVolume(p.inputVolume);
+    }
+    const remoteVol = clampVolume(p.outputVolume);
+    for (const audio of this.audioElements) {
+      audio.volume = remoteVol;
+      applySinkId(audio, p.audioOutputDeviceId);
+    }
+  }
+}
+
+/** Clamp a 0–100 slider value to a [0, 1] linear gain factor. */
+function clampVolume(v: number): number {
+  if (!Number.isFinite(v)) return 1;
+  return Math.max(0, Math.min(100, v)) / 100;
+}
+
+/** Best-effort `setSinkId` — silently no-ops on unsupported browsers. */
+function applySinkId(audio: HTMLAudioElement, deviceId: string): void {
+  if (!('setSinkId' in audio)) return;
+  const sinkId = deviceId || 'default';
+  // Type assertion: setSinkId is on the prototype only in supporting browsers.
+  const setter = (audio as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId;
+  setter.call(audio, sinkId).catch(() => { /* permissions or invalid id */ });
 }
