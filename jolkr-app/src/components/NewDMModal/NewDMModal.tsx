@@ -212,7 +212,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
 
           {searching && search.trim().length >= 2 && (
             <div className={`${s.empty} txt-small`}>
-              <Search size={14} style={{ opacity: 0.5 }} /> Searching...
+              <Search size={14} className={s.searchIcon} /> Searching...
             </div>
           )}
 
@@ -264,14 +264,14 @@ function UserRow({ user, selected, onClick }: { user: DisplayUser; selected: boo
   return (
     <button className={`${s.userRow} ${selected ? s.selected : ''}`} onClick={onClick}>
       <Avatar url={user.avatarUrl} name={user.name} size="sm" status={user.status} color={user.color} userId={user.id} />
-      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className={s.userInfo}>
         <span className={`${s.userName} txt-small txt-medium txt-truncate`}>{user.name}</span>
         {user.name !== user.username && (
-          <span className="txt-tiny" style={{ opacity: 0.5 }}>{user.username}</span>
+          <span className={`${s.userHandle} txt-tiny`}>{user.username}</span>
         )}
       </div>
       {user.source === 'search' && (
-        <span className="txt-tiny" style={{ opacity: 0.4, marginLeft: 'auto', flexShrink: 0 }}>
+        <span className={`${s.userMeta} txt-tiny`}>
           <UserPlus size={12} />
         </span>
       )}
