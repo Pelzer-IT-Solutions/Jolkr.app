@@ -293,7 +293,17 @@ async function request<T>(
       // taking the UI down — early adoption phase. Tighten back to a thrown
       // ApiError once schemas have been verified against live backend
       // responses for a release cycle.
-      console.warn(`[api] schema validation failed for ${path}:`, result.error.issues);
+      const summary = result.error.issues.map((i): Record<string, unknown> => {
+        const r = i as unknown as Record<string, unknown>;
+        return {
+          path: i.path.join('.'),
+          code: i.code,
+          message: i.message,
+          expected: r.expected,
+          received: r.received,
+        };
+      });
+      console.warn(`[api] schema validation failed for ${path}:`, summary, 'payload sample:', payload);
       return payload as T;
     }
     return result.data;

@@ -244,9 +244,11 @@ export const MessageSchema: z.ZodType<Message> = z.object({
   thread_id: nullish(z.string()),
   thread_reply_count: nullish(z.number()),
   author: nullish(UserSchema),
-  attachments: z.array(AttachmentSchema),
-  reactions: z.array(ReactionSchema).optional(),
-  embeds: z.array(MessageEmbedSchema).optional(),
+  // Vec collections may be omitted, null or empty depending on path. Coerce
+  // to `[]` so consumers can iterate without null-guarding.
+  attachments: z.array(AttachmentSchema).nullish().transform(v => v ?? []),
+  reactions: z.array(ReactionSchema).nullish().transform(v => v ?? []),
+  embeds: z.array(MessageEmbedSchema).nullish().transform(v => v ?? []),
   poll: PollSchema.optional(),
   webhook_id: nullish(z.string()),
   webhook_name: nullish(z.string()),
