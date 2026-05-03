@@ -231,7 +231,10 @@ export const MessageSchema: z.ZodType<Message> = z.object({
   id: z.string(),
   channel_id: z.string(),
   author_id: z.string(),
-  content: z.string(),
+  // Backend serializes attachment-only / pre-content messages with
+  // `content: null` (Rust `Option<String>` without skip_serializing_if).
+  // Coerce to '' so the rest of the UI can treat it as a string.
+  content: z.string().nullish().transform(v => v ?? ''),
   nonce: nullish(z.string()),
   created_at: z.string(),
   updated_at: nullish(z.string()),
