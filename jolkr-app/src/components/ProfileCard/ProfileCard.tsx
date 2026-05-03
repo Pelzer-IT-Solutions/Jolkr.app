@@ -214,7 +214,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
     <>
       <div className={s.scrim} onClick={onClose} />
       <div ref={cardRef} className={s.card} role="dialog" aria-label={`${displayName} profile`}>
-        <div className={s.banner} style={{ background: bannerColor }} />
+        <div className={s.banner} style={{ '--banner-color': bannerColor } as React.CSSProperties} />
 
         <div className={s.avatarWrap}>
           <Avatar

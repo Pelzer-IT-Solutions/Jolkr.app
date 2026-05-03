@@ -92,6 +92,7 @@
   align-items: center;
   justify-content: center;
   transition: background-color 200ms ease;
+  background: var(--icon-bg);
 }
 .iconChar {
   font-size: 1.25rem;
@@ -106,6 +107,7 @@
   gap: 0.125rem;
 }
 .iconLabel { color: var(--text-strong); }
+.iconHint { color: var(--text-faint); }
 
 /* ── Fields ── */
 .fieldGroup {
