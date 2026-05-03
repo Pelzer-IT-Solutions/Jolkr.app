@@ -8,6 +8,7 @@ import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
 import { requestNotificationPermission } from './services/notifications';
+import { startUnreadBadge } from './services/unreadBadge';
 import { registerPush } from './services/pushRegistration';
 import { initE2EE } from './services/e2ee';
 import { checkForUpdate, type UpdateInfo } from './services/updater';
@@ -89,6 +90,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    startUnreadBadge();
     initTokens().then(() => loadUser()).then(() => {
       // Only register push if user is logged in (has access token)
       if (getAccessToken()) {
