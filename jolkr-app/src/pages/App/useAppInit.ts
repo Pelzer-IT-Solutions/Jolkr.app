@@ -11,7 +11,6 @@ import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
 import { ServerThemeSchema } from '../../api/schemas'
 
-import type { DmChannel, User } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
 import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
 import { lookupFriendship } from '../../services/friendshipCache'
@@ -19,6 +18,7 @@ import { syncPresence } from '../../services/presenceSync'
 import type { MemberDisplay } from '../../types/ui'
 import { useWsSubscriptions } from './useWsSubscriptions'
 import { useRouting } from './useRouting'
+import { useDmSync } from './useDmSync'
 
 export function useAppInit() {
   const navigate = useNavigate()
@@ -40,8 +40,7 @@ export function useAppInit() {
   const { fetchMessages, sendMessage, sendDmMessage, editMessage, deleteMessage } = useMessagesStore.getState()
 
   // ── DMs ──
-  const [dmList, setDmList] = useState<DmChannel[]>([])
-  const [dmUsers, setDmUsers] = useState<Map<string, User>>(new Map())
+  const { dmList, setDmList, dmUsers, setDmUsers } = useDmSync()
 
   // ── UI state ──
   const [tabbedIds, setTabbedIds] = useState<string[]>([])
