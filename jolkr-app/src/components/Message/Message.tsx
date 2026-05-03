@@ -325,14 +325,21 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
 
   const hasActions = !!(onToggleReaction || onDelete || onReply || onEdit)
 
+  // Toolbar styling diverges between standard channel and DM card layouts.
+  // The structure (reaction picker → reply → more menu) is identical; only
+  // the button/container classes and a couple of menu items differ.
+  const toolbarRowClass = isDm ? s.dmActions : s.actions
+  const toolbarVisibleClass = isDm ? s.dmActionsVisible : s.actionsVisible
+  const btnClass = isDm ? s.dmActionBtn : s.actionBtn
+
   const toolbar = !hasActions ? null : (
-    <div className={`${s.actions} ${anyOpen ? s.actionsVisible : ''} ${isDm ? s.actionsDm : ''}`}>
+    <div className={`${toolbarRowClass} ${anyOpen ? toolbarVisibleClass : ''} ${!isDm ? s.actionsDm : ''}`}>
       {/* ── Add reaction (requires ADD_REACTIONS permission) ── */}
       {canAddReactions && (
       <div className={s.actionWrap}>
         <button
           ref={emojiTriggerRef}
-          className={s.actionBtn}
+          className={btnClass}
           title="Add reaction"
           onClick={() => {
             if (!showEmoji && emojiTriggerRef.current) {
@@ -357,15 +364,15 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
       )}
 
       {/* ── Reply ── */}
-      {onReply && <button className={s.actionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>}
+      {onReply && <button className={btnClass} title="Reply" onClick={onReply}><ReplyIcon /></button>}
 
-      {/* ── Edit (own only) ── */}
-      {isOwn && <button className={s.actionBtn} title="Edit message" onClick={startEdit}><EditIcon /></button>}
+      {/* ── Edit (own only, server channels only — DM exposes Edit only via menu) ── */}
+      {!isDm && isOwn && <button className={btnClass} title="Edit message" onClick={startEdit}><EditIcon /></button>}
 
       {/* ── More options (Shift swaps to instant-delete when user can delete) ── */}
       <div ref={moreRef} className={s.actionWrap}>
         <button
-          className={`${s.actionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
+          className={`${btnClass} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
           title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
           onClick={(e) => {
             // Use the actual click event's shift state, not the hook — that
@@ -452,132 +459,20 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
       <>
       <article className={`${s.dmRow} ${isOwn ? s.dmRowOwn : ''}`}>
         <div className={`${s.dmCard} ${isOwn ? s.dmCardOwn : ''}`}>
-          {/* Header: sender on left, actions on right */}
+          {/* Header: sender on left, shared toolbar on right */}
           <div className={s.dmHeader}>
             <div className={s.dmHeaderSender}>
               <Avatar url={message.avatarUrl} name={message.author} size="xs" userId={message.author_id} className={s.dmAvatar} color={message.color} />
               <span className={`${s.dmAuthor} txt-body txt-semibold`}>{message.author}</span>
               <span className={`${s.dmTimeBadge} txt-tiny`}>{message.time}</span>
             </div>
-
-            <div className={`${s.dmActions} ${anyOpen ? s.dmActionsVisible : ''}`}>
-              {canAddReactions && (
-              <div className={s.actionWrap}>
-                <button
-                  ref={emojiTriggerRef}
-                  className={s.dmActionBtn}
-                  title="Add reaction"
-                  onClick={() => {
-                    if (!showEmoji && emojiTriggerRef.current) {
-                      const r = emojiTriggerRef.current.getBoundingClientRect()
-                      setPickerPos({ top: r.top, left: r.left + r.width / 2 })
-                    }
-                    setShowEmoji(v => !v)
-                    setShowMore(false)
-                  }}
-                >
-                  <EmojiAddIcon />
-                </button>
-              </div>
-              )}
-              {showEmoji && (
-                <EmojiPickerPopup
-                  position={{ top: pickerPos.top, left: pickerPos.left }}
-                  onSelect={(emoji) => handleReactionClick(emoji)}
-                  onClose={() => setShowEmoji(false)}
-                  anchor={emojiTriggerRef}
-                />
-              )}
-
-              {onReply && <button className={s.dmActionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>}
-
-              <div ref={moreRef} className={s.actionWrap}>
-                <button
-                  className={`${s.dmActionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
-                  title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
-                  onClick={(e) => {
-                    if (canShiftRemove && e.shiftKey) {
-                      e.stopPropagation()
-                      handleShiftRemove()
-                      return
-                    }
-                    const r = e.currentTarget.getBoundingClientRect()
-                    setMoreTriggerPos({ x: r.right, y: r.bottom + 4 })
-                    setShowMore(v => !v)
-                    setShowEmoji(false)
-                  }}
-                >
-                  {shiftDeleteArmed ? <TrashIcon /> : <MoreIcon />}
-                </button>
-                {showMore && createPortal(
-                  <div
-                    ref={moreMenuRef}
-                    className={s.moreMenu}
-                    style={{ position: 'fixed', top: morePos.y, left: morePos.x - 184 }}
-                  >
-                    <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
-                      <ReplyIcon /><span>Reply</span>
-                    </button>
-                    {isOwn && (
-                      <button role="menuitem" className={s.menuItem} onClick={startEdit}>
-                        <EditIcon /><span>Edit Message</span>
-                      </button>
-                    )}
-                    <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
-                      <CopyIcon /><span>Copy Text</span>
-                    </button>
-                    {canManageMessages && onPin && (
-                      <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
-                        <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
-                      </button>
-                    )}
-                    <div className={s.menuDivider} />
-                    {isOwn ? (
-                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleNormalDeleteClick}>
-                        <TrashIcon /><span>Delete Message</span>
-                      </button>
-                    ) : canHideForMe ? (
-                      <button
-                        role="menuitem"
-                        className={`${s.menuItem} ${s.danger}`}
-                        onClick={() => { setShowMore(false); onHideForMe?.() }}
-                      >
-                        <TrashIcon /><span>Delete for me</span>
-                      </button>
-                    ) : (
-                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
-                        <FlagIcon /><span>Report Message</span>
-                      </button>
-                    )}
-                  </div>,
-                  document.body,
-                )}
-              </div>
-            </div>
+            {toolbar}
           </div>
 
           {/* Body */}
           <div className={s.dmBody}>
             {replyBlock}
-            {isEditing ? (
-              <div className={s.editWrap}>
-                <div
-                  ref={editRef}
-                  className={`${s.editInput} txt-body`}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onKeyDown={handleEditKeyDown}
-                />
-                <span className={`${s.editHint} txt-tiny`}>
-                  escape to <button className={s.editHintBtn} onClick={cancelEdit}>cancel</button> · enter to <button className={s.editHintBtn} onClick={saveEdit}>save</button>
-                </span>
-              </div>
-            ) : (
-              <div className={`${s.text} txt-body`}>
-                <MessageContent content={decrypting ? '...' : messageContent} serverId={serverId} />
-                {editedTag}
-              </div>
-            )}
+            {textContent}
             {attachmentsBlock}
             {embedsBlock}
             {pollBlock}
