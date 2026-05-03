@@ -6,7 +6,7 @@ import type { User } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
 import { invalidateFriendsCache } from '../../services/friendshipCache'
-import { useToast } from '../Toast'
+import { useToast } from '../../stores/toast'
 import Avatar from '../Avatar/Avatar'
 import s from './QrCodeScanner.module.css'
 

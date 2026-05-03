@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { ChannelDisplay, DMConversation } from '../../types/ui'
+import type { ChannelDisplay, DMConversation, ThemeOrb } from '../../types/ui'
 import { useTypingUsers } from '../../stores/typing'
 import { getApiBaseUrl } from '../../platform/config'
 import {
@@ -160,8 +160,8 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   }).map(s => s.id), [servers, user, serverPermissions])
   const activeTheme = useMemo(() =>
     dmActive
-      ? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] }
-      : (serverThemes[activeServerId] ?? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] }),
+      ? { hue: null, orbs: [] as ThemeOrb[] }
+      : (serverThemes[activeServerId] ?? { hue: null, orbs: [] as ThemeOrb[] }),
     [dmActive, activeServerId, serverThemes]
   )
   const themeKey = dmActive ? '__dm__' : activeServerId

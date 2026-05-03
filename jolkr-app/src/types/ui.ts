@@ -1,3 +1,5 @@
+import type { MessageEmbed, Attachment, Poll } from '../api/types'
+
 export interface ChannelDisplay {
   id:        string
   name:      string
@@ -112,8 +114,8 @@ export interface MessageVM {
   isDm?:              boolean
   is_pinned?:         boolean
   is_system?:         boolean
-  embeds?:            import('../api/types').MessageEmbed[]
-  attachments?:       import('../api/types').Attachment[]
+  embeds?:            MessageEmbed[]
+  attachments?:       Attachment[]
   // Thread metadata. `thread_id` on a parent message is the id of the
   // thread that hangs off it (set by the backend when the thread is created
   // from this message). `thread_reply_count` is the number of replies the
@@ -123,7 +125,7 @@ export interface MessageVM {
   // Poll attached to this message (set by the backend when the message is a
   // poll-host message). Refreshed live via `PollUpdate` WS events handled by
   // the messages store.
-  poll?:              import('../api/types').Poll | null
+  poll?:              Poll | null
 }
 
 export type MessageStore = Record<string, Record<string, MessageVM[]>>

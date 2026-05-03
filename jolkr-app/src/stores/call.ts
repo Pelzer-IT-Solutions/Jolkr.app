@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import * as api from '../api/client';
 import { useVoiceStore } from './voice';
 import { stopRingSound } from '../hooks/useCallEvents';
-import { useToast } from '../components/Toast';
+import { useToast } from './toast';
 
 function toastErr(prefix: string, err: unknown) {
   const m = err instanceof Error ? err.message : prefix;

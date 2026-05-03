@@ -265,6 +265,9 @@ export function TabBar({
       el.removeEventListener('scroll', onScroll)
       ro.disconnect()
     }
+    // syncTabsScrollTargets is a render-scoped helper that touches only refs;
+    // adding it to deps would re-mount the ResizeObserver every render. Re-run
+    // on tabbedServers so a new tab-list triggers an initial sync.
   }, [tabbedServers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close server browser on outside click

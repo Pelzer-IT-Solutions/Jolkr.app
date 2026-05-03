@@ -1,5 +1,8 @@
 import { isTauri } from './detect';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import type { Stronghold } from '@tauri-apps/plugin-stronghold';
+
+type StrongholdStore = Awaited<ReturnType<Awaited<ReturnType<Stronghold['loadClient']>>['getStore']>>;
 
 export interface SecureStorage {
   get(key: string): Promise<string | null>;
@@ -25,8 +28,8 @@ class WebStorage implements SecureStorage {
 
 class TauriStorage implements SecureStorage {
   private initPromise: Promise<void> | null = null;
-  private store: Awaited<ReturnType<Awaited<ReturnType<import('@tauri-apps/plugin-stronghold').Stronghold['loadClient']>>['getStore']>> | null = null;
-  private stronghold: import('@tauri-apps/plugin-stronghold').Stronghold | null = null;
+  private store: StrongholdStore | null = null;
+  private stronghold: Stronghold | null = null;
   private fallbackToWeb = false;
 
   private async ensureInitialized(): Promise<void> {

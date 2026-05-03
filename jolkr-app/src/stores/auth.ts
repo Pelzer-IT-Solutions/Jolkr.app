@@ -5,7 +5,7 @@ import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
 import { useVoiceStore } from './voice';
 import { resetAllStores } from './reset';
-import { useToast } from '../components/Toast';
+import { useToast } from './toast';
 import { log } from '../utils/log';
 
 /**
