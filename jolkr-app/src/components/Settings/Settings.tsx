@@ -8,6 +8,10 @@ import type { DmFilter } from '../../api/types'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import { Select } from '../ui/Select'
 import { useAuthStore } from '../../stores/auth'
+import { useToast } from '../Toast'
+import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
+import { ensureNotificationPermission } from '../../services/notifications'
+import { STORAGE_KEYS } from '../../utils/storageKeys'
 import s from './Settings.module.css'
 
 type Section =
@@ -558,16 +562,28 @@ function VoiceSection() {
    SECTION: Notifications
 ───────────────────────────────────────── */
 function NotificationsSection() {
-  const [desktop,   setDesktop]   = useState(true)
-  const [sounds,    setSounds]    = useState(true)
-  const [mentions,  setMentions]  = useState(true)
-  const [dms,       setDms]       = useState(true)
-  const [badge,     setBadge]     = useState(true)
+  const showToast = useToast(s => s.show)
+  const [desktop,  setDesktop]  = useLocalStorageBoolean(STORAGE_KEYS.DESKTOP_NOTIF, true)
+  const [sounds,   setSounds]   = useLocalStorageBoolean(STORAGE_KEYS.SOUND_ENABLED, true)
+  const [mentions, setMentions] = useLocalStorageBoolean(STORAGE_KEYS.MENTION_NOTIF, true)
+  const [dms,      setDms]      = useLocalStorageBoolean(STORAGE_KEYS.DM_NOTIF, true)
+  const [badge,    setBadge]    = useLocalStorageBoolean(STORAGE_KEYS.UNREAD_BADGE, true)
+
+  const onDesktopChange = async (v: boolean) => {
+    setDesktop(v)
+    if (!v) return
+    const result = await ensureNotificationPermission()
+    if (result === 'denied') {
+      showToast('Notification permission denied — enable it in your browser/OS settings.', 'error', 6000)
+    } else if (result === 'unsupported') {
+      showToast('Desktop notifications are not supported in this environment.', 'info', 4000)
+    }
+  }
 
   return (
     <div className={s.section}>
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Notifications</h2>
-      <ToggleRow label="Enable desktop notifications" description="Show notifications when the app is in the background." value={desktop}  onChange={setDesktop} />
+      <ToggleRow label="Enable desktop notifications" description="Show notifications when the app is in the background." value={desktop}  onChange={onDesktopChange} />
       <ToggleRow label="Notification sounds"          description="Play a sound when you receive a notification." value={sounds}   onChange={setSounds} />
 
       <Divider />
