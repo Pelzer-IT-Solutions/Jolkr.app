@@ -7,6 +7,9 @@
   background: var(--bg-muted);
   flex-shrink: 0;
   overflow: hidden;
+  /* nowrap so labels don't reflow into multiple lines while the panel
+     animates to width:0 — children that need wrapping override locally. */
+  white-space: nowrap;
   transition: width var(--transition), min-width var(--transition), border-color var(--transition);
 }
 .sidebar.collapsed {

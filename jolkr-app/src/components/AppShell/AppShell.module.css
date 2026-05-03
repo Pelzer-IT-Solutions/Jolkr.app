@@ -57,6 +57,7 @@
 /* Full-width centered welcome shown when user has no servers and no active DM.
    Replaces the workspace split (sidebar + chat + right panel) entirely. */
 .emptyState {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -65,6 +66,30 @@
   gap: var(--gap);
   opacity: 0.6;
   min-height: 0;
+}
+
+/* Expand-sidebar affordance shown only when the sidebar is fully collapsed
+   AND no chat is open — the ChatArea owns its own expand button when chat
+   content is rendered, so this only fills the empty-state gap. */
+.emptyExpandBtn {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  width: 1.875rem;
+  height: 1.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.4375rem;
+  color: var(--icon-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+  opacity: 1; /* parent uses opacity 0.6, but the affordance must stay readable */
+}
+.emptyExpandBtn:hover {
+  background: var(--bg-dark-default);
+  color: var(--icon-strong);
 }
 
 /* ── Splash screen ── */

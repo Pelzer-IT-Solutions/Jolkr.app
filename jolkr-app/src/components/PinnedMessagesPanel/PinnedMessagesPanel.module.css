@@ -5,6 +5,10 @@
   background: var(--bg-default);
   border-left: 1px solid var(--border-muted);
   width: 300px;
+  /* nowrap so labels don't reflow into multiple lines while the panel
+     animates to width:0 — children that need wrapping override locally. */
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .header {
@@ -48,7 +52,14 @@
 .item:hover { background: var(--bg-strong); }
 
 .itemAuthor { margin-bottom: 0.25rem; }
-.itemContent { color: var(--text-default); }
+.itemContent {
+  color: var(--text-default);
+  /* Override the panel's `nowrap` so message text wraps inside the card
+     and long URLs break instead of overflowing. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 .unpinBtn {
   position: absolute;

@@ -207,6 +207,34 @@
   flex-direction: column;
 }
 
+/* ─── Empty-state placeholder — shown when the channel/DM has zero messages.
+   Mirrors AppShell's "Welcome to Jolkr" empty card; lives inside the message
+   list so the composer below stays visible. The list is `column-reverse`,
+   so the empty state pins to absolute centre to bypass that ordering. ─── */
+.chatEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 2rem 6rem; /* bottom pad keeps content above composer */
+  text-align: center;
+  color: var(--text-muted);
+  pointer-events: none; /* never blocks scroll/clicks on the message list */
+}
+.chatEmptyIcon {
+  font-size: 3rem;
+  line-height: 1;
+}
+.chatEmptyTitle {
+  color: var(--text-strong);
+}
+.chatEmptyText {
+  max-width: 28rem;
+}
+
 .messageInnerDm {
   max-width: 960px;
   padding: 0 1.5rem;

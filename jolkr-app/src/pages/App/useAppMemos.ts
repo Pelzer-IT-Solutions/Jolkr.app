@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import appIconUrl from '/icon.png?url'
 import type { ChannelDisplay, DMConversation } from '../../types/ui'
 import { useTypingUsers } from '../../stores/typing'
 import { getApiBaseUrl } from '../../platform/config'
@@ -190,25 +189,10 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
       : { id: '', name: 'Direct Messages', icon: '@', desc: '', unread: 0 })
     : (activeServer?.channels.find(c => c.id === activeChannelId) ?? activeServer?.channels[0] ?? { id: '', name: 'No channel', icon: '#', desc: '', unread: 0 })
 
-  const fallbackMessages = useMemo(() => [{
-    id: 'welcome',
-    continued: false,
-    author: 'Jolkr',
-    color: 'var(--accent)',
-    letter: 'J',
-    avatarUrl: appIconUrl,
-    time: 'Today',
-    // Synthetic system welcome — empty timestamp so it doesn't trigger a date separator
-    created_at: '',
-    content: dmActive
-      ? `Start a conversation with ${activeDmConv?.name ?? activeDmConv?.participants[0]?.name ?? 'someone'}!`
-      : `Welcome to #${activeChannel.name}! Be the first to say something.`,
-    reactions: [],
-    edited: false,
-    is_system: true,
-  }], [dmActive, activeDmConv, activeChannel.name])
-
-  const displayMessages = uiMessages.length > 0 ? uiMessages : fallbackMessages
+  // Empty channels/DMs show a true empty-state placeholder rendered by ChatArea
+  // itself — keeping the message list genuinely empty avoids a synthetic
+  // "system" message that picks up hover affordances (reply / more / delete).
+  const displayMessages = uiMessages
 
   // ── Mentionable users for current channel ──
   const mentionableUsers = useMemo(() => {
@@ -228,7 +212,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
     inviteableServerIds, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
-    isDmWithSystemUser, activeChannel, fallbackMessages, displayMessages,
+    isDmWithSystemUser, activeChannel, displayMessages,
     mentionableUsers,
     viewport, effectiveLeftCollapsed, effectiveRightCollapsed, effectiveRightMode,
   }
