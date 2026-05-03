@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Paperclip } from 'lucide-react'
 import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
@@ -7,6 +7,10 @@ import { type RichInputHandle } from './RichInput'
 import { ChatHeader } from './ChatHeader'
 import { MessageList } from './MessageList'
 import { Composer } from './Composer'
+import {
+  ChatActionsProvider, ChatPermissionsProvider,
+  type ChatActions, type ChatPermissions,
+} from './chatContexts'
 import s from './ChatArea.module.css'
 
 export interface MentionableUser {
@@ -53,7 +57,7 @@ interface Props {
   onStartThread?:     (messageId: string) => void
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
+export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore = false, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
   const inputRef = useRef<RichInputHandle>(null)
 
   // System channels are read-only; also hide composer if user lacks SEND_MESSAGES
@@ -92,7 +96,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     setReplyingTo(null)
   }
 
-  // Sync handle clear on channel switch — Composer focuses + clears internally.
   useEffect(() => {
     inputRef.current?.focus()
   }, [channel.id])
@@ -143,96 +146,99 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     }
   }
 
+  // ── Contexts: drop the prop-drilling between ChatArea and its children ──
+  // The values are recomputed only when their constituent inputs change so
+  // sub-components don't re-render on unrelated parent state updates.
+  const actions = useMemo<ChatActions>(() => ({
+    onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction,
+    onDeleteMessage, onHideMessage, onEditMessage, onReply: handleReply,
+    onTyping, onLoadOlder, onPinMessage, onOpenAuthorProfile,
+    onOpenThread, onStartThread,
+  }), [
+    onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction,
+    onDeleteMessage, onHideMessage, onEditMessage, handleReply,
+    onTyping, onLoadOlder, onPinMessage, onOpenAuthorProfile,
+    onOpenThread, onStartThread,
+  ])
+
+  const permissions = useMemo<ChatPermissions>(() => ({
+    isDm, readOnly, isReadOnly,
+    canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
+    hasMore, hasPinnedMessages, hasThreads,
+  }), [
+    isDm, readOnly, isReadOnly,
+    canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
+    hasMore, hasPinnedMessages, hasThreads,
+  ])
+
   return (
-    <main
-      className={`${s.area} ${isDraggingFiles && canAttachFiles ? s.areaDragging : ''}`}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {isDraggingFiles && canAttachFiles && (
-        <div className={s.dropOverlay} aria-hidden>
-          <div className={s.dropBox}>
-            <Paperclip size={28} strokeWidth={1.5} />
-            <span className="txt-body txt-semibold">Drop to attach</span>
-            <span className={`${s.dropHint} txt-small`}>Up to 25 MB per file</span>
+    <ChatPermissionsProvider value={permissions}>
+      <ChatActionsProvider value={actions}>
+        <main
+          className={`${s.area} ${isDraggingFiles && canAttachFiles ? s.areaDragging : ''}`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDraggingFiles && canAttachFiles && (
+            <div className={s.dropOverlay} aria-hidden>
+              <div className={s.dropBox}>
+                <Paperclip size={28} strokeWidth={1.5} />
+                <span className="txt-body txt-semibold">Drop to attach</span>
+                <span className={`${s.dropHint} txt-small`}>Up to 25 MB per file</span>
+              </div>
+            </div>
+          )}
+          <ChatHeader
+            channel={channel}
+            dmConversation={dmConversation}
+            sidebarCollapsed={sidebarCollapsed}
+            rightPanelMode={rightPanelMode}
+          />
+
+          <div className={s.chatBody}>
+            <MessageList
+              channel={channel}
+              messages={messages}
+              animationKey={animationKey}
+              dmConversation={dmConversation}
+              serverId={serverId}
+              userMap={userMap}
+            />
+
+            {typingUsers && typingUsers.length > 0 && (
+              <div className={s.typingIndicator}>
+                <span className={s.typingDots}>
+                  <span className={s.dot} />
+                  <span className={s.dot} />
+                  <span className={s.dot} />
+                </span>
+                <span className={`${s.typingText} txt-tiny`}>
+                  {typingUsers.length === 1
+                    ? <><strong>{typingUsers[0]}</strong> is typing...</>
+                    : typingUsers.length === 2
+                    ? <><strong>{typingUsers[0]}</strong> and <strong>{typingUsers[1]}</strong> are typing...</>
+                    : <>Several people are typing...</>
+                  }
+                </span>
+              </div>
+            )}
+
+            <Composer
+              channel={channel}
+              inputPlaceholder={inputPlaceholder}
+              mentionableUsers={mentionableUsers}
+              inputRef={inputRef}
+              replyingTo={replyingTo}
+              setReplyingTo={setReplyingTo}
+              pendingFiles={pendingFiles}
+              setPendingFiles={setPendingFiles}
+              acceptValidFiles={acceptValidFiles}
+            />
           </div>
-        </div>
-      )}
-      <ChatHeader
-        channel={channel}
-        isDm={isDm}
-        dmConversation={dmConversation}
-        sidebarCollapsed={sidebarCollapsed}
-        rightPanelMode={rightPanelMode}
-        onExpandSidebar={onExpandSidebar}
-        onSetRightPanelMode={onSetRightPanelMode}
-        hasPinnedMessages={hasPinnedMessages}
-        hasThreads={hasThreads}
-      />
-
-      <div className={s.chatBody}>
-        <MessageList
-          channel={channel}
-          messages={messages}
-          animationKey={animationKey}
-          isDm={isDm}
-          dmConversation={dmConversation}
-          serverId={serverId}
-          userMap={userMap}
-          isReadOnly={isReadOnly}
-          canManageMessages={canManageMessages}
-          canAddReactions={canAddReactions}
-          hasMore={hasMore}
-          onLoadOlder={onLoadOlder}
-          onToggleReaction={onToggleReaction}
-          onDeleteMessage={onDeleteMessage}
-          onHideMessage={onHideMessage}
-          onEditMessage={onEditMessage}
-          onReply={handleReply}
-          onPinMessage={onPinMessage}
-          onOpenAuthorProfile={onOpenAuthorProfile}
-          onOpenThread={onOpenThread}
-          onStartThread={onStartThread}
-        />
-
-        {typingUsers && typingUsers.length > 0 && (
-          <div className={s.typingIndicator}>
-            <span className={s.typingDots}>
-              <span className={s.dot} />
-              <span className={s.dot} />
-              <span className={s.dot} />
-            </span>
-            <span className={`${s.typingText} txt-tiny`}>
-              {typingUsers.length === 1
-                ? <><strong>{typingUsers[0]}</strong> is typing...</>
-                : typingUsers.length === 2
-                ? <><strong>{typingUsers[0]}</strong> and <strong>{typingUsers[1]}</strong> are typing...</>
-                : <>Several people are typing...</>
-              }
-            </span>
-          </div>
-        )}
-
-        <Composer
-          channel={channel}
-          isDm={isDm}
-          isReadOnly={isReadOnly}
-          canSendMessages={canSendMessages}
-          canAttachFiles={canAttachFiles}
-          inputPlaceholder={inputPlaceholder}
-          mentionableUsers={mentionableUsers}
-          onTyping={onTyping}
-          onSend={onSend}
-          inputRef={inputRef}
-          replyingTo={replyingTo}
-          setReplyingTo={setReplyingTo}
-          pendingFiles={pendingFiles}
-          setPendingFiles={setPendingFiles}
-          acceptValidFiles={acceptValidFiles}
-        />
-      </div>
-    </main>
+        </main>
+      </ChatActionsProvider>
+    </ChatPermissionsProvider>
   )
 }

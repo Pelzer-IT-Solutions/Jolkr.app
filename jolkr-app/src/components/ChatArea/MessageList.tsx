@@ -5,11 +5,12 @@
  * Owns:
  *   - the scroll container ref + smooth-scroll-on-new-message tracking;
  *   - the reveal animation flag (driven by `animationKey` from the parent);
- *   - infinite-load wiring (calls `onLoadOlder` near scroll bottom).
+ *   - infinite-load wiring (calls `onLoadOlder` from context near scroll
+ *     bottom).
  *
  * All message action handlers (toggle reaction, delete, edit, reply, pin,
- * thread open/start, hide-for-me, profile open) come in via props and are
- * forwarded to `<Message>` per-row.
+ * thread open/start, hide-for-me, profile open) come from
+ * ChatActionsContext and are forwarded to `<Message>` per-row.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ChannelDisplay, DMConversation, MessageVM } from '../../types'
@@ -17,39 +18,28 @@ import type { User } from '../../api/types'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { formatDayLabel, dayKey } from '../../utils/dateFormat'
 import { Message } from '../Message/Message'
+import { useChatActions, useChatPermissions } from './chatContexts'
 import s from './ChatArea.module.css'
 
 interface Props {
-  channel:           ChannelDisplay
-  messages:          MessageVM[]
-  animationKey:      string
-  isDm:              boolean
-  dmConversation?:   DMConversation
-  serverId?:         string
-  userMap?:          Map<string, User>
-  isReadOnly:        boolean
-  canManageMessages: boolean
-  canAddReactions:   boolean
-  hasMore?:          boolean
-  onLoadOlder?:      () => void
-  onToggleReaction:  (msgId: string, emoji: string) => void
-  onDeleteMessage:   (msgId: string) => void
-  onHideMessage?:    (msgId: string) => void
-  onEditMessage:     (msgId: string, newText: string) => void
-  onReply:           (msg: MessageVM) => void
-  onPinMessage?:     (msgId: string) => void
-  onOpenAuthorProfile?: (authorId: string, e: React.MouseEvent) => void
-  onOpenThread?:     (threadId: string) => void
-  onStartThread?:    (messageId: string) => void
+  channel:         ChannelDisplay
+  messages:        MessageVM[]
+  animationKey:    string
+  dmConversation?: DMConversation
+  serverId?:       string
+  userMap?:        Map<string, User>
 }
 
 export function MessageList({
-  channel, messages, animationKey, isDm, dmConversation,
-  serverId, userMap, isReadOnly, canManageMessages, canAddReactions,
-  hasMore, onLoadOlder,
-  onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage,
-  onReply, onPinMessage, onOpenAuthorProfile, onOpenThread, onStartThread,
+  channel, messages, animationKey, dmConversation, serverId, userMap,
 }: Props) {
+  const { isDm, isReadOnly, canManageMessages, canAddReactions, hasMore } = useChatPermissions()
+  const {
+    onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage,
+    onReply, onPinMessage, onOpenAuthorProfile, onOpenThread, onStartThread,
+    onLoadOlder,
+  } = useChatActions()
+
   const listRef = useRef<HTMLDivElement>(null)
   const prevMsgCountRef = useRef(0)
   const scrollBehaviorRef = useRef<ScrollBehavior>('auto')

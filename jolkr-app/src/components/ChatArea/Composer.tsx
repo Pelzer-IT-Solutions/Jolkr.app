@@ -21,26 +21,21 @@ import {
   CornerUpLeft, X, Smile, Paperclip, ImagePlay, SendHorizontal,
   Bold, Italic, Strikethrough, Code, BarChart3,
 } from 'lucide-react'
-import type { ChannelDisplay, MessageVM, ReplyRef } from '../../types'
+import type { ChannelDisplay, MessageVM } from '../../types'
 import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
 import GifPickerPopup from '../GifPickerPopup'
 import { emojiToImgUrl } from '../../utils/emoji'
 import { RichInput, type RichInputHandle } from './RichInput'
 import { useAutocomplete } from './useAutocomplete'
 import { PollCreator } from '../Poll/PollCreator'
+import { useChatActions, useChatPermissions } from './chatContexts'
 import type { MentionableUser } from './ChatArea'
 import s from './ChatArea.module.css'
 
 interface Props {
   channel:        ChannelDisplay
-  isDm:           boolean
-  isReadOnly:     boolean
-  canSendMessages: boolean
-  canAttachFiles: boolean
   inputPlaceholder: string
   mentionableUsers: MentionableUser[]
-  onTyping?:      () => void
-  onSend:         (text: string, replyTo?: ReplyRef, files?: File[]) => void
   // Owned by parent ChatArea (drag-drop overlay also writes pendingFiles;
   // MessageList row-click writes replyingTo via handleReply).
   inputRef:       React.RefObject<RichInputHandle | null>
@@ -52,10 +47,11 @@ interface Props {
 }
 
 export function Composer({
-  channel, isDm, isReadOnly, canSendMessages, canAttachFiles,
-  inputPlaceholder, mentionableUsers, onTyping, onSend,
+  channel, inputPlaceholder, mentionableUsers,
   inputRef, replyingTo, setReplyingTo, pendingFiles, setPendingFiles, acceptValidFiles,
 }: Props) {
+  const { isDm, isReadOnly, canSendMessages, canAttachFiles } = useChatPermissions()
+  const { onSend, onTyping } = useChatActions()
   const contentRef = useRef('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 

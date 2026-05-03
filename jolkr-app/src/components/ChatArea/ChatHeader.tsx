@@ -7,7 +7,8 @@
  * for DM). Sidebar-collapse expand button shows when the left sidebar is
  * collapsed.
  *
- * Stateless — every dynamic bit comes in via props.
+ * Stateless — pulls actions + flags from context, takes per-render values
+ * from props.
  */
 import { useCallback } from 'react'
 import {
@@ -16,24 +17,20 @@ import {
 import type { ChannelDisplay, DMConversation } from '../../types'
 import { useCallStore } from '../../stores/call'
 import { useVoiceStore } from '../../stores/voice'
+import { useChatActions, useChatPermissions } from './chatContexts'
 import s from './ChatArea.module.css'
 
 interface Props {
-  channel:            ChannelDisplay
-  isDm:               boolean
-  dmConversation?:    DMConversation
-  sidebarCollapsed:   boolean
-  rightPanelMode:     'members' | 'pinned' | 'threads' | null
-  onExpandSidebar:    () => void
-  onSetRightPanelMode: (mode: 'members' | 'pinned' | 'threads' | null) => void
-  hasPinnedMessages?: boolean
-  hasThreads?:        boolean
+  channel:          ChannelDisplay
+  dmConversation?:  DMConversation
+  sidebarCollapsed: boolean
+  rightPanelMode:   'members' | 'pinned' | 'threads' | null
 }
 
-export function ChatHeader({
-  channel, isDm, dmConversation, sidebarCollapsed, rightPanelMode,
-  onExpandSidebar, onSetRightPanelMode, hasPinnedMessages = false, hasThreads = false,
-}: Props) {
+export function ChatHeader({ channel, dmConversation, sidebarCollapsed, rightPanelMode }: Props) {
+  const { isDm, hasPinnedMessages, hasThreads } = useChatPermissions()
+  const { onExpandSidebar, onSetRightPanelMode } = useChatActions()
+
   // ── Voice call wiring (DM only) ──────────────────────────────────
   // Works for both 1-on-1 and group DMs. Video calls are 1-on-1 only.
   // E2EE keys are derived only for 1-on-1; group calls fall back to
