@@ -240,7 +240,7 @@ export function useAppHandlers(
         }
       }
     }
-  }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer, materialiseDraftDm]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer, materialiseDraftDm, sendMessage, sendDmMessage])
 
   const handleToggleReaction = useCallback((msgId: string, emoji: string) => {
     // Check if user already reacted
@@ -261,7 +261,7 @@ export function useAppHandlers(
 
   const handleDeleteMessage = useCallback((msgId: string) => {
     deleteMessage(msgId, effectiveChannelId, dmActive)
-  }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveChannelId, dmActive, deleteMessage])
 
   // Soft-hide a DM message for the calling user only. The server emits a
   // DmMessageHide event back to this user's other sessions; the central WS
@@ -296,7 +296,7 @@ export function useAppHandlers(
     if (!encrypted) return
 
     editMessage(msgId, effectiveChannelId, encrypted.encryptedContent, isDm, encrypted.nonce)
-  }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer, editMessage])
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId

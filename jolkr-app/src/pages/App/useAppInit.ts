@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { ServerTheme } from '../../types/ui'
 import { useViewport } from '../../hooks/useViewport'
@@ -80,6 +80,15 @@ export function useAppInit() {
   }, [viewport.isMobile])
   const [dmActive, setDmActive] = useState(false)
   const [activeDmId, setActiveDmId] = useState('')
+
+  // The "currently visible" container id — the channel id when on a server,
+  // the DM id when in a DM. Memoised so effects can list it as a single
+  // dep instead of `dmActive ? activeDmId : activeChannelId` (which the
+  // exhaustive-deps lint rule cannot collapse).
+  const currentChannelId = useMemo(
+    () => dmActive ? activeDmId : activeChannelId,
+    [dmActive, activeDmId, activeChannelId],
+  )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [newDmOpen, setNewDmOpen] = useState(false)
   const [joinServerOpen, setJoinServerOpen] = useState(false)
@@ -322,7 +331,7 @@ export function useAppInit() {
 
   // ── Fetch messages when channel changes ──
   useEffect(() => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    const channelId = currentChannelId
     if (!channelId) return
     // Draft DMs only exist locally — skip every server-side load (messages,
     // pinned, presence-marker) so we don't 404 on an id the server doesn't
@@ -379,7 +388,7 @@ export function useAppInit() {
       useUnreadStore.getState().setActiveChannel(null)
     }
     // threadListVersion is included so the count refreshes when ThreadCreate/Update fires.
-  }, [dmActive ? activeDmId : activeChannelId, dmActive, threadListVersion]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentChannelId, dmActive, threadListVersion])
 
   // ── Reset open thread when channel/DM changes ──
   // Otherwise the thread panel would try to render messages from a thread
@@ -390,13 +399,13 @@ export function useAppInit() {
 
   // ── WS channel subscribe/unsubscribe ──
   useEffect(() => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    const channelId = currentChannelId
     if (!channelId) return
     // Draft DMs aren't subscribable — the server has no channel for them.
     if (dmActive && channelId.startsWith('draft:')) return
     wsClient.subscribe(channelId)
     return () => { wsClient.unsubscribe(channelId) }
-  }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentChannelId, dmActive])
 
   // ── Resolve friendship state for the open user-context-menu ──
   // Drives the "Add Friend" ↔ "Remove Friend" toggle in the menu.
