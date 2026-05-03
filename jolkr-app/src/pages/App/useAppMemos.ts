@@ -108,7 +108,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const currentApiMessages = storeMessages[effectiveChannelId] ?? []
   const uiMessages = useMemo(() => {
     return transformMessages(currentApiMessages, userMap, dmActive)
-  }, [currentApiMessages, userMap])
+  }, [currentApiMessages, userMap, dmActive])
 
   // ── Transform: DMs → UI ──
   const uiDmList = useMemo<DMConversation[]>(() => {
