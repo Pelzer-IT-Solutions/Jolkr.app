@@ -552,12 +552,12 @@ export function TabBar({
             : 'Profile'}
         >
           <div className={s.avatarWrap}>
-            <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ background: avatarBg }}>
+            <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ '--avatar-bg': avatarBg } as React.CSSProperties}>
               {avatarUrl
-                ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                ? <img src={avatarUrl} alt="" className={s.avatarImg} />
                 : avatarInitial}
             </div>
-            <span className={s.statusDot} style={{ background: currentStatus.color }} />
+            <span className={s.statusDot} style={{ '--status-color': currentStatus.color } as React.CSSProperties} />
           </div>
           <span className={`${s.userName} txt-small txt-medium`}>{displayName}</span>
           {showRemoteCallPill && (
@@ -579,16 +579,16 @@ export function TabBar({
           {/* User info */}
           <div className={s.profileHead}>
             <div className={s.profileAvatarWrap}>
-              <div className={s.profileAvatarFace} style={{ background: avatarBg }}>
+              <div className={s.profileAvatarFace} style={{ '--avatar-bg': avatarBg } as React.CSSProperties}>
                 {avatarUrl
-                  ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                  ? <img src={avatarUrl} alt="" className={s.avatarImg} />
                   : avatarInitial}
               </div>
-              <span className={s.profileStatusDot} style={{ background: currentStatus.color }} />
+              <span className={s.profileStatusDot} style={{ '--status-color': currentStatus.color } as React.CSSProperties} />
             </div>
             <div className={s.profileInfo}>
               <span className={`${s.profileName} txt-small txt-semibold`}>{displayName}</span>
-              <span className={`${s.profileStatus} txt-tiny`} style={{ color: currentStatus.color }}>
+              <span className={`${s.profileStatus} txt-tiny`} style={{ '--status-color': currentStatus.color } as React.CSSProperties}>
                 {currentStatus.label}
               </span>
             </div>
@@ -605,7 +605,7 @@ export function TabBar({
                 className={`${s.statusItem} ${status === key ? s.statusItemActive : ''}`}
                 onClick={() => { setMenuOpen(false); onStatusChange?.(key) }}
               >
-                <span className={s.statusBullet} style={{ background: meta.color }} />
+                <span className={s.statusBullet} style={{ '--status-color': meta.color } as React.CSSProperties} />
                 <span className={`${s.statusLabel} txt-small`}>{meta.label}</span>
                 {status === key && <span className={s.statusCheck}>✓</span>}
               </button>
@@ -705,7 +705,7 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
 
 /* ── Icons ── */
 function PlusIcon({ open }: { open: boolean }) {
-  return <Plus size={18} strokeWidth={1.5} style={{ transition: 'transform 200ms ease', transform: open ? 'rotate(45deg)' : 'none' }} />
+  return <Plus size={18} strokeWidth={1.5} className={`${s.plusIcon} ${open ? s.plusIconOpen : ''}`} />
 }
 function SmallPlusIcon() { return <Plus          size={10} strokeWidth={1.75} /> }
 function DmIcon()        { return <MessagesSquare size={18} strokeWidth={1.5} /> }
