@@ -161,6 +161,7 @@ class WsClient {
       return;
     }
     const delay = Math.min(
+      // eslint-disable-next-line no-restricted-syntax -- jitter only, not crypto
       RECONNECT_BASE * Math.pow(2, this.reconnectAttempts) + Math.random() * 1000,
       RECONNECT_MAX,
     );
