@@ -482,3 +482,10 @@
   background: var(--surface-raised);
   border-color: var(--border-default);
 }
+
+.embedList {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

@@ -261,7 +261,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
 
   // Link/video embeds (server-side or client-side generated)
   const embedsBlock = clientEmbeds.length > 0 ? (
-    <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+    <div className={s.embedList}>
       {clientEmbeds.map((embed, i) => {
         const videoInfo = parseVideoUrl(embed.url)
         return videoInfo ? (
