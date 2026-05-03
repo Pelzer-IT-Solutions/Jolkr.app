@@ -42,10 +42,10 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
 
       <div className={`${s.scroll} scrollbar-thin scroll-view-y`}>
         {conversations.length === 0 && (
-          <div style={{ padding: '2rem 1rem', textAlign: 'center', opacity: 0.4 }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💬</div>
+          <div className={s.empty}>
+            <div className={s.emptyIcon}>💬</div>
             <p className="txt-small">No conversations yet</p>
-            <p className="txt-tiny" style={{ marginTop: '0.25rem' }}>Start a new message to begin chatting</p>
+            <p className={`${s.emptyHint} txt-tiny`}>Start a new message to begin chatting</p>
           </div>
         )}
         {conversations.map(conv => {
