@@ -1,3 +1,4 @@
+import { ed25519 } from '@noble/curves/ed25519.js';
 import type { LocalKeySet, PreKeyBundle, EncryptedPayload } from '../crypto';
 import {
   generateKeySetFromSeed,
@@ -148,6 +149,18 @@ export function isE2EEReady(): boolean {
  */
 export function getLocalKeys(): LocalKeySet | null {
   return localKeys;
+}
+
+/**
+ * Sign a byte buffer with the local identity ed25519 private key. Used by
+ * the WS handshake (SEC-013) to prove possession of the device identity
+ * key when answering the server-issued Hello challenge. Returns `null`
+ * when E2EE isn't initialised yet — callers must fall back to legacy
+ * bearer-only Identify (until JOLKR_WS_REQUIRE_SIG flips to true).
+ */
+export function signWithIdentity(message: Uint8Array): Uint8Array | null {
+  if (!localKeys) return null;
+  return ed25519.sign(message, localKeys.identity.privateKey);
 }
 
 

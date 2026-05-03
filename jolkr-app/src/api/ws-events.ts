@@ -24,6 +24,9 @@ interface ReactionPayload {
 
 export type WsEvent =
   // ── Connection lifecycle ──────────────────────────────────────────
+  /** SEC-013 challenge handshake — server-issued nonce that the client
+   *  signs with its identity ed25519 private key in the next `Identify`. */
+  | { op: 'Hello'; d: { nonce: string; expires_at: string } }
   | { op: 'Ready'; d: { user_id?: string } }
   | { op: 'HeartbeatAck'; d: Record<string, unknown> }
   /** Synthetic event emitted by the client after MAX_ATTEMPTS failed reconnects. */
