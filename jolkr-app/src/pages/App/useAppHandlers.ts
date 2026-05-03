@@ -424,12 +424,30 @@ export function useAppHandlers(
         await api.updateChannel(m.id, { category_id: m.categoryId })
       }
       if (positions.length > 0) {
-        await api.reorderChannels(activeServerId, positions)
+        // Use the response — backend returns the full updated channel list with
+        // fresh positions, so we update the store directly instead of waiting
+        // for the per-channel WS ChannelUpdate broadcast (which may race the
+        // optimistic local state) or relying on fetchChannels (which short-
+        // circuits when the server is already cached).
+        const updated = await api.reorderChannels(activeServerId, positions)
+        useServersStore.setState({
+          channels: { ...useServersStore.getState().channels, [activeServerId]: updated },
+        })
+      } else {
+        // Category-only move with no global reorder: drop the cache so the
+        // next fetch pulls truth from the backend.
+        const all = useServersStore.getState().channels
+        const { [activeServerId]: _drop, ...rest } = all
+        useServersStore.setState({ channels: rest })
+        await fetchChannels(activeServerId)
       }
-      await fetchChannels(activeServerId)
     } catch (e) {
-      console.warn('Channel reorder failed, refetching to recover:', e)
-      // On error, force a refetch so the UI snaps back to the server's truth
+      const msg = e instanceof Error ? e.message : 'Channel reorder failed'
+      useToast.getState().show(msg, 'error')
+      // Force refetch so the UI snaps back to the server's truth.
+      const all = useServersStore.getState().channels
+      const { [activeServerId]: _drop, ...rest } = all
+      useServersStore.setState({ channels: rest })
       await fetchChannels(activeServerId).catch(() => {})
     }
   }, [activeServerId, fetchChannels])

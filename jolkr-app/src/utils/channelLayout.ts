@@ -1,5 +1,15 @@
 import type { CategoryDisplay } from '../types'
 
+/** Sentinel id used by `transformServer` for the synthetic "uncategorized"
+ *  pseudo-category that holds channels without a real `category_id`. The
+ *  backend never sees this value — when a channel is dragged INTO that
+ *  pseudo-cat, we translate the categoryId back to `null` before persisting. */
+const UNCATEGORIZED_ID = '__uncategorized__'
+
+function normalizeCategoryId(id: string | null): string | null {
+  return id === UNCATEGORIZED_ID ? null : id
+}
+
 /**
  * Diff a category layout before vs. after a drag and produce the API payloads:
  *
@@ -19,7 +29,10 @@ export async function persistLayout(
   ) => Promise<void>,
 ) {
   const prevCatById = new Map<string, string | null>()
-  for (const c of prevCats) for (const id of c.channels) prevCatById.set(id, c.id)
+  for (const c of prevCats) {
+    const cid = normalizeCategoryId(c.id)
+    for (const id of c.channels) prevCatById.set(id, cid)
+  }
 
   const positions: Array<{ id: string; position: number }> = []
   const moves: Array<{ id: string; categoryId: string | null }> = []
@@ -27,11 +40,12 @@ export async function persistLayout(
   const seen = new Set<string>()
 
   for (const c of nextCats) {
+    const nextCatId = normalizeCategoryId(c.id)
     for (const chId of c.channels) {
       positions.push({ id: chId, position: pos++ })
       seen.add(chId)
       const prevCatId = prevCatById.get(chId) ?? null
-      if (prevCatId !== c.id) moves.push({ id: chId, categoryId: c.id })
+      if (prevCatId !== nextCatId) moves.push({ id: chId, categoryId: nextCatId })
     }
   }
   // Anything not in any category is uncategorized (category_id = null)

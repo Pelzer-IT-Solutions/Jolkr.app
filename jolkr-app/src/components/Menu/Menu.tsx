@@ -23,11 +23,15 @@ export function Menu({ open, position, onClose, children, minWidth = '11rem', cl
   const [safePos, setSafePos] = useState(position)
 
   // Mirror `position` immediately on prop change — adopt the click point as
-  // the initial render position. The useLayoutEffect below measures the menu
-  // and adjusts before paint when auto-position is enabled.
-  const [prevPosition, setPrevPosition] = useState(position)
-  if (prevPosition !== position) {
-    setPrevPosition(position)
+  // the initial render position. Compared by value (x, y) rather than
+  // reference: callers commonly pass `state ?? { x: 0, y: 0 }` which yields
+  // a brand-new object literal each render when the menu is closed; a
+  // reference compare would trigger an infinite render loop (React #301).
+  const [prevX, setPrevX] = useState(position.x)
+  const [prevY, setPrevY] = useState(position.y)
+  if (prevX !== position.x || prevY !== position.y) {
+    setPrevX(position.x)
+    setPrevY(position.y)
     setSafePos(position)
   }
 
