@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { useCallback, useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon, MoreHorizontal, VolumeX, CheckCheck, X } from 'lucide-react'
 import {
@@ -197,7 +197,9 @@ export function TabBar({
   const displayFadeRef = useRef({ left: 0, right: 0 })
   const fadeRafRef     = useRef(0)
 
-  function updateTabsScrollTargets() {
+  // Mask helpers — stable identities (touch only refs) so the effects below
+  // can list them as deps without re-mounting the listeners every render.
+  const updateTabsScrollTargets = useCallback(() => {
     const el = tabsRef.current
     if (!el) return
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth)
@@ -210,9 +212,9 @@ export function TabBar({
         right: Math.min(1, (maxScroll - el.scrollLeft) / ramp),
       }
     }
-  }
+  }, [])
 
-  function scheduleTabsMaskAnimation() {
+  const scheduleTabsMaskAnimation = useCallback(() => {
     if (fadeRafRef.current !== 0) return
     fadeRafRef.current = requestAnimationFrame(function tick() {
       const el = tabsRef.current
@@ -233,12 +235,12 @@ export function TabBar({
         fadeRafRef.current = requestAnimationFrame(tick)
       }
     })
-  }
+  }, [])
 
-  function syncTabsScrollTargets() {
+  const syncTabsScrollTargets = useCallback(() => {
     updateTabsScrollTargets()
     scheduleTabsMaskAnimation()
-  }
+  }, [updateTabsScrollTargets, scheduleTabsMaskAnimation])
 
   useLayoutEffect(() => {
     updateTabsScrollTargets()
@@ -251,7 +253,7 @@ export function TabBar({
       if (fadeRafRef.current) cancelAnimationFrame(fadeRafRef.current)
       fadeRafRef.current = 0
     }
-  }, [tabbedServers])
+  }, [tabbedServers, updateTabsScrollTargets])
 
   useEffect(() => {
     const el = tabsRef.current
@@ -265,10 +267,7 @@ export function TabBar({
       el.removeEventListener('scroll', onScroll)
       ro.disconnect()
     }
-    // syncTabsScrollTargets is a render-scoped helper that touches only refs;
-    // adding it to deps would re-mount the ResizeObserver every render. Re-run
-    // on tabbedServers so a new tab-list triggers an initial sync.
-  }, [tabbedServers]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tabbedServers, syncTabsScrollTargets])
 
   // Close server browser on outside click
   useEffect(() => {
