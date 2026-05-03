@@ -250,6 +250,13 @@ pub(crate) async fn ban_member(
 }
 
 /// DELETE /api/servers/:id/bans/:user_id — unban a user
+///
+/// Intentionally emits NO WS event. The unbanned user is still not a server
+/// member at this point — they have to rejoin via invite. From every existing
+/// member's perspective nothing visible has changed, and from the unbanned
+/// user's perspective they're still locked out until they redeem an invite.
+/// The only consumer that needs to know is the bans-list view in
+/// ServerSettings, which refetches on open.
 pub(crate) async fn unban_member(
     State(state): State<AppState>,
     auth: AuthUser,
