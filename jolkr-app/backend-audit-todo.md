@@ -32,17 +32,20 @@ chip.
 - Verwijder dan de `transformReactions` helper en zet
   `me: z.boolean()` terug vereist.
 
-## C-001 · `MessageInfo.content` is `null` voor attachment-only of
-encrypted-zonder-tekst messages
-**Endpoint:** alle `*messages*` paths.
-**Probleem:** Rust struct heeft `pub content: Option<String>` zonder
-`#[serde(skip_serializing_if = "Option::is_none")]`, dus `null` komt
-over de wire. Frontend `Message.content: string` (vereist) en eerder
-ook `MessageSchema.content: z.string()`.
+## C-001 · `MessageInfo.content` / `DmMessageInfo.content` is `null`
+voor attachment-only of encrypted-zonder-tekst messages
+**Endpoint:** alle `*messages*` paths (server-channels én DMs).
+**Probleem:** Beide Rust-structs declareren `pub content: Option<String>`
+zonder `#[serde(skip_serializing_if = "Option::is_none")]`
+([`message.rs:73`](../jolkr-server/crates/jolkr-core/src/services/message.rs)
+en [`dm.rs:57`](../jolkr-server/crates/jolkr-core/src/services/dm.rs)),
+dus `null` komt over de wire. Frontend `Message.content: string`
+(vereist) en eerder ook `MessageSchema.content: z.string()`.
 **Workaround (FE):**
 - `MessageSchema.content: z.string().nullish().transform(v => v ?? '')`
-  zodat consumers altijd een string krijgen.
-**Backend fix (toekomst):** kies één:
+  zodat consumers altijd een string krijgen. Zelfde transform in
+  `DmMessageSchema`.
+**Backend fix (toekomst):** kies één en voer hem op beide DTO's door:
 - (a) Verander `content` naar `String` met `""` als default voor
   no-text rows, of
 - (b) Voeg `#[serde(skip_serializing_if = "Option::is_none")]` toe en
@@ -50,15 +53,19 @@ ook `MessageSchema.content: z.string()`.
   consumers makkelijker.
 
 ## V-001 · Vec collections kunnen `null` zijn ipv `[]` op edge paths
-**Endpoint:** alle `*messages*` paths.
-**Probleem:** Vrij van wire — backend serialiseert `Vec::new()` als
-`[]`. Maar bij oudere code-paden / migrations kan `attachments`,
-`reactions`, of `embeds` als `null` arriveren (DTO inconsistentie).
+**Status (2026-05-03 herverificatie):** **risico is theoretisch**.
+Beide DTO's serialiseren `Vec::new()` als `[]` — `serde_json` doet
+nooit zelf `null` van een `Vec<T>`. `MessageInfo` heeft `#[serde(default)]`
+op `attachments`/`reactions`/`embeds` (dat is voor de inkomende
+deserialize-pad: niet relevant voor de wire die we als FE consumeren).
+`DmMessageInfo.attachments` mist `#[serde(default)]`; dat is cosmetisch
+en alleen relevant voor backend-interne deserialize, niet voor de
+client. De FE-workaround is puur defensief en kan blijven staan tot
+de schemas één release cycle stabiel zijn (zie hoofd-todo "request<T>
+tightening"). Geen backend-fix nodig tenzij we hier een echte `null`
+op de wire zien.
 **Workaround (FE):** schema doet
-`z.array(...).nullish().transform(v => v ?? [])` zodat nulls of
-ontbrekende velden gracefully `[]` worden.
-**Backend fix (toekomst):** garandeer dat alle Vec velden altijd een
-JSON-array zijn (gebruik `#[serde(default)]` op alle Vec-velden).
+`z.array(...).nullish().transform(v => v ?? [])`.
 
 ## D-001 · `DmMessageInfo` mist serverside fields die in
 `MessageInfo` wel zitten
@@ -86,3 +93,14 @@ Notatie:
 - **C-** = Content-gerelateerd
 - **V-** = Vec/array gerelateerd
 - **D-** = DM-specifiek
+
+Laatste herverificatie tegen backend-bron: **2026-05-03**.
+- R-001 nog actueel (geen `me` veld in `ReactionInfo`).
+- C-001 nog actueel (geldt zowel voor `MessageInfo` als `DmMessageInfo`).
+- V-001 gedowngraded naar "theoretisch / defensief"; geen backend-fix
+  nodig zolang `serde_json` `Vec::new()` als `[]` blijft serialiseren
+  (dat is altijd zo — hier is geen wire-`null` risico).
+- D-001 blijft `dm_channel_id` ipv `channel_id` met missende
+  `thread_id`/`thread_reply_count`/`poll`/`webhook_*` fields.
+  `DmMessageSchema` met expliciete `.transform()` is nu in productie
+  (zie commit `b14f59f`).
