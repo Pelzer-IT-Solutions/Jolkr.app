@@ -106,7 +106,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 // Sync profile updates from other sessions
 wsClient.on((event) => {
   if (event.op === 'UserUpdate') {
-    useAuthStore.getState().applyUserUpdate(event.d);
+    // Only apply when the update is for the currently logged-in user — the
+    // event is also fanned out to mutual server/DM members for THEIR caches,
+    // and we must NOT overwrite the local user with a different user's data.
+    const me = useAuthStore.getState().user;
+    if (me && event.d.user_id === me.id) {
+      useAuthStore.getState().applyUserUpdate(event.d as Record<string, unknown>);
+    }
   } else if (event.op === 'EmailVerified') {
     // Backend confirmed verification — refresh the user object so
     // /verify-email's email_verified guard navigates to the app.

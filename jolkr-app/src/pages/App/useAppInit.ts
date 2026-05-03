@@ -12,7 +12,7 @@ import * as api from '../../api/client'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useCallStore } from '../../stores/call'
 
-import type { DmChannel, User } from '../../api/types'
+import type { DmChannel, User, Role } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
 import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
 import { lookupFriendship } from '../../services/friendshipCache'
@@ -435,6 +435,130 @@ export function useAppInit() {
       if (event.op === 'UserCallPresence') {
         useCallStore.getState().applyServerEvent(event.d)
         return
+      }
+
+      // UserUpdate: profile change in some other session (own user OR a mutual
+      // server/DM member). Patch every cache that holds a User snapshot so
+      // avatars/names refresh live without a refetch. Auth store handles the
+      // self case separately (see stores/auth.ts wsClient.on subscriber).
+      if (event.op === 'UserUpdate') {
+        const { user_id } = event.d
+        if (!user_id) return
+
+        // 1) DM users map — keyed by user.id.
+        setDmUsers(prev => {
+          const existing = prev.get(user_id)
+          if (!existing) return prev
+          const next = new Map(prev)
+          next.set(user_id, {
+            ...existing,
+            ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
+            ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
+            ...(event.d.bio !== undefined && { bio: event.d.bio }),
+            ...(event.d.status !== undefined && { status: event.d.status }),
+          })
+          return next
+        })
+
+        // 2) Server members store — patch the embedded `user` blob on every
+        // server where this user is a member so MemberPanel re-renders with
+        // the new name/avatar.
+        const serversState = useServersStore.getState()
+        const newMembers: Record<string, typeof serversState.members[string]> = {}
+        let changed = false
+        for (const [sid, list] of Object.entries(serversState.members)) {
+          const idx = list.findIndex(m => m.user_id === user_id)
+          if (idx === -1) continue
+          const updatedList = list.slice()
+          const m = updatedList[idx]
+          updatedList[idx] = {
+            ...m,
+            user: m.user
+              ? {
+                  ...m.user,
+                  ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
+                  ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
+                  ...(event.d.bio !== undefined && { bio: event.d.bio }),
+                  ...(event.d.status !== undefined && { status: event.d.status }),
+                }
+              : m.user,
+          }
+          newMembers[sid] = updatedList
+          changed = true
+        }
+        if (changed) {
+          useServersStore.setState({ members: { ...serversState.members, ...newMembers } })
+        }
+        return
+      }
+
+      // RoleCreate / RoleUpdate / RoleDelete: server-wide role CRUD. Patch
+      // the roles cache for this server, then invalidate the permissions
+      // caches because effective permissions may have changed for the local
+      // user (if they hold the affected role). Channel-level perms also
+      // need to drop because role overwrites may apply.
+      if (event.op === 'RoleCreate' || event.op === 'RoleUpdate' || event.op === 'RoleDelete') {
+        const serverId = event.d.server_id
+        if (!serverId) return
+        const s = useServersStore.getState()
+        const current: Role[] = s.roles[serverId] ?? []
+        let nextRoles: Role[] = current
+        switch (event.op) {
+          case 'RoleCreate': {
+            const r = event.d.role
+            if (!current.some(c => c.id === r.id)) nextRoles = [...current, r]
+            break
+          }
+          case 'RoleUpdate': {
+            const r = event.d.role
+            nextRoles = current.map(c => c.id === r.id ? r : c)
+            break
+          }
+          case 'RoleDelete': {
+            const rid = event.d.role_id
+            nextRoles = current.filter(c => c.id !== rid)
+            break
+          }
+        }
+        // Drop server + per-channel permission caches so the next read
+        // refetches with the new role data baked in.
+        const { [serverId]: _serverPerm, ...restServerPerms } = s.permissions
+        const channelIds = (s.channels[serverId] ?? []).map(c => c.id)
+        const restChanPerms = { ...s.channelPermissions }
+        for (const cid of channelIds) delete restChanPerms[cid]
+        useServersStore.setState({
+          roles: { ...s.roles, [serverId]: nextRoles },
+          permissions: restServerPerms,
+          channelPermissions: restChanPerms,
+        })
+        // Refetch immediately so the gated UI updates without a user action.
+        fetchPermissions(serverId).catch(console.warn)
+        return
+      }
+
+      // ChannelPermissionUpdate: an overwrite was upserted/deleted. Drop the
+      // cached permissions for this channel and refetch so gated UI (composer,
+      // pin button, etc.) reflects the new effective perms.
+      if (event.op === 'ChannelPermissionUpdate') {
+        const { channel_id } = event.d
+        if (!channel_id) return
+        const s = useServersStore.getState()
+        const { [channel_id]: _drop, ...restChanPerms } = s.channelPermissions
+        useServersStore.setState({ channelPermissions: restChanPerms })
+        fetchChannelPermissions(channel_id).catch(console.warn)
+        return
+      }
+
+      // MemberUpdate: when role_ids change for the SELF user, refetch server
+      // permissions so gated UI updates immediately. The servers store also
+      // patches the member's role_ids (see stores/servers.ts subscriber).
+      if (event.op === 'MemberUpdate') {
+        const { server_id, user_id, role_ids } = event.d
+        const me = useAuthStore.getState().user
+        if (server_id && me && user_id === me.id && role_ids !== undefined) {
+          fetchPermissions(server_id).catch(console.warn)
+        }
+        // Don't return — fall through in case future handlers need this event.
       }
 
       if (event.op !== 'DmUpdate' && event.op !== 'DmCreate') return
