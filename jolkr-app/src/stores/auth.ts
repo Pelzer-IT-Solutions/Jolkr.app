@@ -86,6 +86,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           ...(data.display_name !== undefined && { display_name: data.display_name as string | undefined }),
           ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url as string | undefined }),
           ...(data.bio !== undefined && { bio: data.bio as string | undefined }),
+          ...(data.banner_color !== undefined && { banner_color: data.banner_color as string | undefined }),
+          ...(data.show_read_receipts !== undefined && { show_read_receipts: data.show_read_receipts as boolean | undefined }),
         },
       };
     });

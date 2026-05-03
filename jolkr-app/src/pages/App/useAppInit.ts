@@ -456,6 +456,7 @@ export function useAppInit() {
             ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
             ...(event.d.bio !== undefined && { bio: event.d.bio }),
             ...(event.d.status !== undefined && { status: event.d.status }),
+            ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
           })
           return next
         })
@@ -480,6 +481,7 @@ export function useAppInit() {
                   ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
                   ...(event.d.bio !== undefined && { bio: event.d.bio }),
                   ...(event.d.status !== undefined && { status: event.d.status }),
+                  ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
                 }
               : m.user,
           }

@@ -112,6 +112,8 @@ pub(crate) async fn update_me(
         display_name: profile.display_name.clone(),
         avatar_url: profile.avatar_url.clone(),
         bio: profile.bio.clone(),
+        banner_color: profile.banner_color.clone(),
+        show_read_receipts: Some(profile.show_read_receipts),
     };
     state.nats.publish_to_user(auth.user_id, &event).await;
 

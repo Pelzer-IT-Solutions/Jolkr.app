@@ -320,6 +320,14 @@ pub enum GatewayEvent {
         display_name: Option<String>,
         avatar_url: Option<String>,
         bio: Option<String>,
+        /// Profile banner / accent color. Visible to peers in profile cards
+        /// and member rows, so it must be broadcast on change too.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        banner_color: Option<String>,
+        /// Self-only privacy preference — included so the user's other tabs
+        /// reflect a settings toggle without a refresh. Other users ignore it.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        show_read_receipts: Option<bool>,
     },
 
     /// A user's email has been verified. Fired to all sessions of the user
