@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronRight, X } from 'lucide-react'
+import { ArrowLeft, ChevronRight, X } from 'lucide-react'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useViewport } from '../../hooks/useViewport'
 import s from './SettingsShell.module.css'
 
 /** A single nav item rendered in the shell's left rail. */
@@ -64,6 +65,24 @@ export function SettingsShell<TSection extends string>({
   scrollNoPadding,
   children,
 }: SettingsShellProps<TSection>) {
+  const { isMobile } = useViewport()
+  // On mobile the nav and content occupy the full screen and only one is
+  // visible at a time. Default to the nav so users land on the section list.
+  const [mobileView, setMobileView] = useState<'nav' | 'content'>('nav')
+  // When leaving the mobile breakpoint, snap back to nav so re-entering mobile
+  // does not strand the user on a content pane they did not just open.
+  useEffect(() => {
+    if (!isMobile) setMobileView('nav')
+  }, [isMobile])
+
+  const activeItem = useMemo(() => {
+    for (const g of navGroups) {
+      const found = g.items.find(it => it.id === section)
+      if (found) return found
+    }
+    return undefined
+  }, [navGroups, section])
+
   // One animation tick per group + per item, plus 1 for the optional header.
   const navTotal = useMemo(
     () => navGroups.reduce((sum, g) => sum + 1 + g.items.length, 0) + (navHeader ? 1 : 0),
@@ -72,10 +91,16 @@ export function SettingsShell<TSection extends string>({
   const isRevealing = useRevealAnimation(navTotal, [navTotal])
 
   useEffect(() => {
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      // On mobile in content view, Escape steps back to nav first; a second
+      // Escape (now in nav view) closes the dialog.
+      if (isMobile && mobileView === 'content') setMobileView('nav')
+      else onClose()
+    }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
+  }, [onClose, isMobile, mobileView])
 
   const modalRef = useRef<HTMLDivElement | null>(null)
   // Trap Tab inside the modal so keyboard users can't tab into the obscured
@@ -86,9 +111,20 @@ export function SettingsShell<TSection extends string>({
   let navIdx = 0
   const headerStaggerIdx = navHeader ? navIdx++ : -1
 
+  const handleNavClick = (id: TSection) => {
+    onSection(id)
+    if (isMobile) setMobileView('content')
+  }
+
+  const modalCls = [
+    s.modal,
+    isMobile && mobileView === 'nav' ? s.modalShowNav : '',
+    isMobile && mobileView === 'content' ? s.modalShowContent : '',
+  ].filter(Boolean).join(' ')
+
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={s.modal} ref={modalRef}>
+      <div className={modalCls} ref={modalRef}>
         <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
           <X size={18} strokeWidth={1.5} />
         </button>
@@ -130,7 +166,7 @@ export function SettingsShell<TSection extends string>({
                           isRevealing ? 'revealing' : '',
                         ].filter(Boolean).join(' ')}
                         style={isRevealing ? { '--reveal-delay': `${revealDelay(itemIdx)}ms` } as React.CSSProperties : undefined}
-                        onClick={() => onSection(item.id)}
+                        onClick={() => handleNavClick(item.id)}
                       >
                         <span className={s.navIcon}>{item.icon}</span>
                         <span className={`${s.navLabel} txt-small txt-medium`}>{item.label}</span>
@@ -153,6 +189,17 @@ export function SettingsShell<TSection extends string>({
         </aside>
 
         <main className={s.content}>
+          <div className={s.mobileBackRow}>
+            <button
+              className={s.mobileBackBtn}
+              onClick={() => setMobileView('nav')}
+              aria-label="Back to settings menu"
+              type="button"
+            >
+              <ArrowLeft size={18} strokeWidth={1.5} />
+              <span className="txt-small txt-medium">{activeItem?.label ?? 'Settings'}</span>
+            </button>
+          </div>
           <div className={`${scrollNoPadding ? `${s.scroll} ${s.scrollNoPadding}` : s.scroll} scrollbar-thin`}>
             {children}
           </div>
