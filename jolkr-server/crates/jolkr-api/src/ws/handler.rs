@@ -412,6 +412,23 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     }
                 }
             }
+
+            ClientEvent::RequestKeyRedistribute { channel_id } => {
+                if let Some(uid) = user_id {
+                    if !DmRepo::is_member(&state.pool, channel_id, uid).await.unwrap_or(false) {
+                        continue;
+                    }
+                    let members = DmRepo::get_dm_members(&state.pool, channel_id).await.unwrap_or_default();
+                    let event = GatewayEvent::KeyRedistributeRequest {
+                        channel_id,
+                        requester_id: uid,
+                    };
+                    for m in members {
+                        if m.user_id == uid { continue; }
+                        state.nats.publish_to_user(m.user_id, &event).await;
+                    }
+                }
+            }
         }
     }
     // Heartbeat timeout — log if applicable

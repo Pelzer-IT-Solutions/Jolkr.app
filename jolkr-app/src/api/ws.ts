@@ -123,6 +123,10 @@ class WsClient {
     this.send('PresenceUpdate', { status });
   }
 
+  requestKeyRedistribute(channelId: string) {
+    this.send('RequestKeyRedistribute', { channel_id: channelId });
+  }
+
   on(listener: WsListener) {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };

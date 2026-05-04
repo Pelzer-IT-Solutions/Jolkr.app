@@ -29,6 +29,10 @@ export type WsEvent =
   | { op: 'Hello'; d: { nonce: string; expires_at: string } }
   | { op: 'Ready'; d: { user_id?: string } }
   | { op: 'HeartbeatAck'; d: Record<string, unknown> }
+  /** A peer asks the receiver to re-distribute the existing channel key
+   *  for `channel_id`. Receiver re-wraps cached symmetric key for all
+   *  members; raw key is unchanged so prior messages stay decryptable. */
+  | { op: 'KeyRedistributeRequest'; d: { channel_id: string; requester_id: string } }
   /** Synthetic event emitted by the client after MAX_ATTEMPTS failed reconnects. */
   | { op: 'Disconnected'; d: { reason: string } }
 

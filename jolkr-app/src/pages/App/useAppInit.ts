@@ -285,9 +285,17 @@ export function useAppInit() {
     ;(async () => {
       try {
         const channelKey = await getChannelKey(activeDmId, localKeys, true)
-        if (cancelled || !channelKey) return
-        await redistributeChannelKey(activeDmId, dm.members, channelKey.rawKey, channelKey.keyGeneration, true)
-      } catch { /* best-effort heal */ }
+        if (cancelled) return
+        if (channelKey) {
+          await redistributeChannelKey(activeDmId, dm.members, channelKey.rawKey, channelKey.keyGeneration, true)
+        } else {
+          wsClient.requestKeyRedistribute(activeDmId)
+        }
+      } catch (e) {
+        if (e instanceof Error && e.name === 'ChannelKeyDecryptError') {
+          wsClient.requestKeyRedistribute(activeDmId)
+        }
+      }
     })()
     return () => { cancelled = true }
   }, [dmActive, activeDmId, dmList])

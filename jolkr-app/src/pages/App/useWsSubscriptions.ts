@@ -19,6 +19,8 @@ import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useCallStore } from '../../stores/call'
 import { syncPresence } from '../../services/presenceSync'
 import { makeDraftDmId } from '../../utils/draftDm'
+import { getLocalKeys } from '../../services/e2ee'
+import { getChannelKey, redistributeChannelKey } from '../../crypto/channelKeys'
 import type { DmChannel, User, Role } from '../../api/types'
 
 interface UseWsSubscriptionsArgs {
@@ -76,6 +78,24 @@ export function useWsSubscriptions({
       // without polling. Idempotent — see store.applyServerEvent.
       if (event.op === 'GifFavoriteUpdate') {
         useGifFavoritesStore.getState().applyServerEvent(event.d)
+        return
+      }
+
+      if (event.op === 'KeyRedistributeRequest') {
+        const { channel_id } = event.d
+        if (!channel_id) return
+        const localKeys = getLocalKeys()
+        if (!localKeys) return
+        ;(async () => {
+          try {
+            const channelKey = await getChannelKey(channel_id, localKeys, true)
+            if (!channelKey) return
+            const dms = await api.getDms().catch(() => [])
+            const memberIds = dms.find(d => d.id === channel_id)?.members ?? []
+            if (memberIds.length === 0) return
+            await redistributeChannelKey(channel_id, memberIds, channelKey.rawKey, channelKey.keyGeneration, true)
+          } catch { /* best-effort */ }
+        })()
         return
       }
 

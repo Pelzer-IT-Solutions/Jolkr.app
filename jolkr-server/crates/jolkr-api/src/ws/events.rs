@@ -71,6 +71,14 @@ pub(crate) enum ClientEvent {
     PresenceUpdate {
         status: String, // "online", "idle", "dnd", "offline"
     },
+
+    /// Ask other DM members to re-distribute the existing channel key —
+    /// used by clients whose wrap row is missing (e.g. lost it during a
+    /// fresh device migration). Counterparty re-wraps from cache; raw key
+    /// is unchanged so prior messages stay decryptable.
+    RequestKeyRedistribute {
+        channel_id: Uuid,
+    },
 }
 
 /// Events sent FROM the server TO the client over the WebSocket.
@@ -422,6 +430,14 @@ pub enum GatewayEvent {
     /// Generic error event.
     Error {
         message: String,
+    },
+
+    /// A peer is asking the receiver to re-distribute the existing channel
+    /// key for `channel_id`. Receiver should re-wrap their cached symmetric
+    /// key for all members and POST the wraps back. Raw key is unchanged.
+    KeyRedistributeRequest {
+        channel_id: Uuid,
+        requester_id: Uuid,
     },
 }
 
