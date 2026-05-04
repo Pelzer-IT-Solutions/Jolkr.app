@@ -1,4 +1,4 @@
-import { getAccessToken, refreshAccessTokenIfNeeded } from './client';
+import { getAccessToken, refreshAccessTokenIfNeeded, forceLogout } from './client';
 import { getWsUrl } from '../platform/config';
 import { signWithIdentity } from '../services/e2ee';
 import { STORAGE_KEYS } from '../utils/storageKeys';
@@ -178,6 +178,20 @@ class WsClient {
         break;
       case 'HeartbeatAck':
         break;
+      case 'Error': {
+        // Auth-related rejections (operator JWT-baseline bump, blacklisted
+        // token, sig check failure for clients without E2EE keys) bounce the
+        // user to /login so the app doesn't sit silently broken until the
+        // next API call. Non-auth errors (e.g. "Cannot subscribe: no access
+        // to channel") fall through to the listener dispatch below.
+        const msg = typeof d.message === 'string' ? d.message : '';
+        if (msg === 'Authentication failed' || msg === 'Token has been revoked') {
+          this.disconnect();
+          forceLogout();
+          return;
+        }
+        break;
+      }
       default:
         break;
     }

@@ -112,7 +112,11 @@ function scheduleProactiveRefresh(expiresInSecs: number) {
   const refreshInMs = Math.max(60_000, (expiresInSecs - 1800) * 1000);
   proactiveRefreshTimer = setTimeout(async () => {
     if (loggedOut || !refreshToken) return;
-    await refreshAccessToken();
+    const ok = await refreshAccessToken();
+    // Server-side rejection (operator JWT-baseline bump, expired refresh,
+    // blacklisted) means the session is dead — bounce the idle app to
+    // /login instead of leaving stale tokens around for the next 401.
+    if (!ok) await forceLogout();
   }, refreshInMs);
 }
 
@@ -122,7 +126,8 @@ function startPeriodicRefresh() {
   periodicRefreshInterval = setInterval(async () => {
     if (loggedOut || !refreshToken) return;
     if (isAccessTokenExpiredOrNearExpiry()) {
-      await refreshAccessToken();
+      const ok = await refreshAccessToken();
+      if (!ok) await forceLogout();
     }
   }, 30 * 60 * 1000);
 }
@@ -132,7 +137,8 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible' && refreshToken && !loggedOut) {
       if (isAccessTokenExpiredOrNearExpiry()) {
-        await refreshAccessToken();
+        const ok = await refreshAccessToken();
+        if (!ok) await forceLogout();
       }
     }
   });
@@ -150,6 +156,20 @@ export async function clearTokens() {
   // Wipe Stronghold vault password from sessionStorage so a fresh login on the
   // same browser process can't reach the previous user's vault material.
   try { sessionStorage.removeItem(STORAGE_KEYS.VAULT_PASSWORD); } catch { /* ignore */ }
+}
+
+// Guard against multiple concurrent forced-logout triggers (HTTP 401 +
+// WS Error landing in the same tick).
+let forceLogoutInFlight = false;
+/** Wipe tokens and redirect to /login. Idempotent — multiple callers in the
+ *  same tick collapse to a single redirect. Used by the HTTP 401 path and
+ *  the WS auth-failure path so an operator JWT-baseline bump never leaves
+ *  an open app stranded with 401 errors instead of bouncing to login. */
+export async function forceLogout(): Promise<void> {
+  if (forceLogoutInFlight) return;
+  forceLogoutInFlight = true;
+  await clearTokens();
+  window.location.href = `${import.meta.env.BASE_URL}login`;
 }
 
 export function getAccessToken() {
@@ -243,8 +263,7 @@ async function request<T>(
       // H23: Drain refresh queue before redirect
       refreshQueue.forEach((cb) => cb());
       refreshQueue = [];
-      await clearTokens();
-      window.location.href = `${import.meta.env.BASE_URL}login`;
+      await forceLogout();
       throw new ApiError(401, 'Session expired');
     }
 
