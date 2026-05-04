@@ -183,17 +183,18 @@ export async function encryptChannelMessage(
   }
 
   if (!channelKey) {
-    // No key exists yet — we generate and distribute
-    // Query the server's current key generation to avoid creating orphaned keys
+    // DMs: missing-wrap-for-me means I was skipped on the original distribute.
+    // Re-keying at gen=0 would clobber the existing wrap and orphan every
+    // prior message — refuse and let the counterparty re-distribute.
+    if (isDm) {
+      log.error('channel-e2ee', 'cannot send DM — no wrap row for me; counterparty must re-distribute');
+      return null;
+    }
     let generation = 0;
     try {
-      if (!isDm) {
-        const genResp = await api.getChannelKeyGeneration(channelId);
-        generation = genResp.key_generation;
-      }
-    } catch {
-      // Fallback to 0 if endpoint fails
-    }
+      const genResp = await api.getChannelKeyGeneration(channelId);
+      generation = genResp.key_generation;
+    } catch { /* Fallback to 0 */ }
     const memberIds = await getMemberIds();
     channelKey = await generateAndDistributeChannelKey(channelId, memberIds, generation, isDm);
     if (!channelKey) return null;
