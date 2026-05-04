@@ -92,24 +92,29 @@ function AppInit({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     startUnreadBadge();
-    initTokens().then(() => loadUser()).then(() => {
-      // Only register push if user is logged in (has access token)
+    (async () => {
+      await initTokens();
+      // Load E2EE keys BEFORE loadUser triggers wsClient.connect(). On a
+      // page reload the SEC-013 server Hello arrives within ~100ms of the
+      // socket opening; if `localKeys` isn't populated yet `signWithIdentity`
+      // returns null, the FE never sends Identify, the server drops the
+      // connection, and the user stays invisible / receives no presence
+      // updates until the next reconnect happens to win the race.
+      const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
+      if (deviceId && getAccessToken()) {
+        await initE2EE(deviceId).catch(console.warn);
+      }
+      await loadUser();
       if (getAccessToken()) {
         requestNotificationPermission().then(() => registerPush()).catch(console.warn);
-        // Load E2EE keys from storage (no seed — keys were set during login)
-        const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
-        if (deviceId) {
-          initE2EE(deviceId).catch(console.warn);
-        }
       }
-
       // Check for updates after 5s delay (Tauri only)
       if (isTauri) {
         setTimeout(() => {
           checkForUpdate().then(setUpdateInfo).catch(console.warn);
         }, 5000);
       }
-    }).finally(() => {
+    })().finally(() => {
       setReady(true);
     });
   }, [loadUser]);
