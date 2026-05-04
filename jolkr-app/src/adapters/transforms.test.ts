@@ -120,6 +120,19 @@ describe('userToAvatar', () => {
     const out = userToAvatar(userFactory({ id: 'u-42', avatar_url: 'whatever.jpg' }))
     expect(out.avatarUrl).toMatch(/\/api\/avatars\/u-42$/)
   })
+
+  it('prefers user.banner_color over the hashColor fallback', () => {
+    // The user's chosen banner color is the source of truth so other
+    // clients see the same color the user picked in profile settings.
+    const picked = 'oklch(75% 0.16 95)'
+    const out = userToAvatar(userFactory({ banner_color: picked }))
+    expect(out.color).toBe(picked)
+  })
+
+  it('falls back to hashColor when banner_color is null', () => {
+    const out = userToAvatar(userFactory({ id: 'u-99', banner_color: null }))
+    expect(out.color).toBe(hashColor('u-99'))
+  })
 })
 
 describe('formatTimestamp', () => {

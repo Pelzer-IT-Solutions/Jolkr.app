@@ -63,10 +63,12 @@ function iconEndpoint(serverId: string): string {
   return `${getApiBaseUrl()}/icons/${serverId}`
 }
 
-/** Avatar props from a User object. */
+/** Avatar props from a User object. The user's chosen `banner_color`
+ *  (set in profile settings) wins over the deterministic `hashColor`
+ *  fallback so other clients see the same color the user picked. */
 export function userToAvatar(user: User): { color: string; letter: string; avatarUrl?: string | null } {
   return {
-    color: hashColor(user.id),
+    color: user.banner_color ?? hashColor(user.id),
     letter: avatarLetter(user),
     // Use the dedicated avatar endpoint — cached by nginx, no presigned URLs
     avatarUrl: user.avatar_url ? avatarEndpoint(user.id) : null,
