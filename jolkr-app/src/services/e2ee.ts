@@ -105,14 +105,14 @@ function cleanupLegacyKeys(): void {
   sessionStorage.removeItem('jolkr_storage_enc_key');
 }
 
-/** Upload prekeys to server if not yet confirmed uploaded. */
+/** Upload prekeys to server. Backend is idempotent (ON CONFLICT DO UPDATE),
+ *  so we run on every init — that way a stale `e2ee_keys_uploaded` flag
+ *  pointing at a server row that was wiped (account migration, manual DB
+ *  cleanup) self-heals on the next app start instead of leaving the user
+ *  silently locked out of SEC-013 sig-check. */
 async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<void> {
   const uploadedKey = 'e2ee_keys_uploaded';
-  const alreadyUploaded = await storage.get(uploadedKey);
-  if (alreadyUploaded === 'true') return;
-
   try {
-    // Ensure device exists in DB before uploading keys (FK constraint on user_keys.device_id)
     await api.registerDevice({
       device_id: deviceId,
       device_name: 'E2EE Keys',
@@ -125,15 +125,11 @@ async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<
       signed_prekey: toBase64(keys.signedPreKey.keyPair.publicKey),
       signed_prekey_signature: toBase64(keys.signedPreKey.signature),
       one_time_prekeys: [],
-      // Post-quantum keys
       pq_signed_prekey: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.keyPair.encapsulationKey) : undefined,
       pq_signed_prekey_signature: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.signature) : undefined,
     });
     await storage.set(uploadedKey, 'true');
   } catch {
-    // Body intentionally redacted — the upstream error sometimes echoes the
-    // request payload (which contains base64 public key material). Retry
-    // happens on next init() automatically.
     log.warn('e2ee', 'prekey upload deferred to next init');
   }
 }
