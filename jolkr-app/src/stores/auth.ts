@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.login(email, password);
       const user = await api.getMe();
       set({ user, loading: false });
-      wsClient.connect();
+      // WS connect is the caller's responsibility — runs after initE2EE.
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
       throw e;
@@ -53,9 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.register(email, username, password);
       const user = await api.getMe();
       set({ user, loading: false });
-      if (user.email_verified) {
-        wsClient.connect();
-      }
+      // WS connect is the caller's responsibility — runs after initE2EE.
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
       throw e;

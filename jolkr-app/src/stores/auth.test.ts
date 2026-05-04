@@ -89,7 +89,10 @@ beforeEach(() => {
 })
 
 describe('useAuthStore.login', () => {
-  it('on success: stores user, clears loading, connects WS', async () => {
+  // login() intentionally does NOT connect the WebSocket — the caller
+  // (Login.tsx) must run `initE2EE` first so the SEC-013 Hello signing path
+  // has a valid identity key when the server's nonce arrives.
+  it('on success: stores user, clears loading (does NOT connect WS)', async () => {
     mockApi.login.mockResolvedValue(undefined)
     mockApi.getMe.mockResolvedValue(SAMPLE_USER)
     await useAuthStore.getState().login('a@b.c', 'pw')
@@ -97,7 +100,7 @@ describe('useAuthStore.login', () => {
     expect(useAuthStore.getState().user).toBe(SAMPLE_USER)
     expect(useAuthStore.getState().loading).toBe(false)
     expect(useAuthStore.getState().error).toBeNull()
-    expect(mockWsConnect).toHaveBeenCalledTimes(1)
+    expect(mockWsConnect).not.toHaveBeenCalled()
   })
 
   it('on failure: stores error, clears loading, rethrows', async () => {

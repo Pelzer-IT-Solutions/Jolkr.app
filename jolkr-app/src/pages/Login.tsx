@@ -5,6 +5,7 @@ import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
+import { wsClient } from '../api/ws';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
@@ -34,6 +35,7 @@ export default function Login() {
         }
         await initE2EE(deviceId, seed).catch(console.warn);
       }
+      wsClient.connect();
 
       // Handle pending deep-link invite
       const pendingInvite = sessionStorage.getItem(STORAGE_KEYS.PENDING_INVITE);
