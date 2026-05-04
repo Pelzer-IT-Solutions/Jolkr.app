@@ -120,11 +120,28 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-// Show window after first paint to avoid white flash
+// Tauri window starts hidden (visible:false in tauri.conf.json) to avoid
+// the white pre-theme flash. Show it after the theme is reconciled and
+// the first paint has happened. Fallback timeout ensures the window
+// always becomes visible even if the theme query fails or hangs.
 if ('__TAURI_INTERNALS__' in window) {
-  import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-    requestAnimationFrame(() => {
-      getCurrentWindow().show();
-    });
-  });
+  let shown = false
+  const showOnce = async () => {
+    if (shown) return
+    shown = true
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window')
+      getCurrentWindow().show()
+    } catch {
+      /* should never happen — window-show is core */
+    }
+  }
+  // Best-effort: show after the theme listener above had a chance to run.
+  // The theme listener resolves synchronously enough that one rAF after
+  // it imported the modules is plenty in practice. Hard 250ms ceiling
+  // so a slow OS theme call can't keep the window invisible.
+  setTimeout(() => {
+    requestAnimationFrame(() => { void showOnce() })
+  }, 50)
+  setTimeout(() => { void showOnce() }, 250)
 }
