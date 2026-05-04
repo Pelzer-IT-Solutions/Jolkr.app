@@ -27,6 +27,7 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
 interface CachedChannelKey {
   key: CryptoKey;
   keyGeneration: number;
+  rawKey: Uint8Array;
 }
 
 const channelKeyCache = new Map<string, CachedChannelKey>();
@@ -75,12 +76,50 @@ export async function getChannelKey(
       ['encrypt', 'decrypt'],
     );
 
-    const entry: CachedChannelKey = { key, keyGeneration: serverKey.key_generation };
+    const entry: CachedChannelKey = { key, keyGeneration: serverKey.key_generation, rawKey: rawKeyBytes };
     channelKeyCache.set(channelId, entry);
     return entry;
   } catch (e) {
     log.warn('channel-e2ee', 'key exists but decrypt failed for channel', channelId, e);
     throw new ChannelKeyDecryptError(channelId, e);
+  }
+}
+
+export async function redistributeChannelKey(
+  channelId: string,
+  memberUserIds: string[],
+  rawKeyBytes: Uint8Array,
+  keyGeneration: number,
+  isDm?: boolean,
+): Promise<void> {
+  if (!isE2EEReady()) return;
+  if (memberUserIds.length === 0) return;
+
+  const recipients: Array<{ user_id: string; encrypted_key: string; nonce: string }> = [];
+  const rawKeyB64 = toBase64(rawKeyBytes);
+
+  for (const userId of memberUserIds) {
+    try {
+      const bundle = await getRecipientBundle(userId);
+      if (!bundle) continue;
+      const encrypted = await encryptForRecipient(bundle, rawKeyB64);
+      if (!encrypted) continue;
+      recipients.push({
+        user_id: userId,
+        encrypted_key: encrypted.encryptedContent,
+        nonce: encrypted.nonce,
+      });
+    } catch {
+      log.warn('channel-e2ee', 'failed to re-wrap key for member', userId);
+    }
+  }
+
+  if (recipients.length === 0) return;
+
+  try {
+    await api.distributeChannelKeys(channelId, { key_generation: keyGeneration, recipients }, isDm);
+  } catch (e) {
+    log.warn('channel-e2ee', 'failed to re-distribute channel keys:', e);
   }
 }
 
@@ -149,7 +188,7 @@ export async function generateAndDistributeChannelKey(
     ['encrypt', 'decrypt'],
   );
 
-  const entry: CachedChannelKey = { key, keyGeneration };
+  const entry: CachedChannelKey = { key, keyGeneration, rawKey: rawKeyBytes };
   channelKeyCache.set(channelId, entry);
   return entry;
 }
@@ -201,6 +240,12 @@ export async function encryptChannelMessage(
   }
 
   const { ciphertext, nonce } = await encryptMessage(channelKey.key, plaintext);
+
+  if (isDm) {
+    const memberIds = await getMemberIds();
+    redistributeChannelKey(channelId, memberIds, channelKey.rawKey, channelKey.keyGeneration, isDm)
+      .catch(() => { /* best-effort heal of missing wraps */ });
+  }
 
   return {
     encryptedContent: toBase64(ciphertext),
