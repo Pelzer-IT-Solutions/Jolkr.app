@@ -110,17 +110,31 @@ function cleanupLegacyKeys(): void {
  *  pointing at a server row that was wiped (account migration, manual DB
  *  cleanup) self-heals on the next app start instead of leaving the user
  *  silently locked out of SEC-013 sig-check. */
-async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<void> {
+async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<string> {
   const uploadedKey = 'e2ee_keys_uploaded';
-  try {
-    await api.registerDevice({
-      device_id: deviceId,
-      device_name: 'E2EE Keys',
-      device_type: 'e2ee',
-    });
+  let activeDeviceId = deviceId;
 
+  const tryRegister = async (id: string) => {
+    await api.registerDevice({ device_id: id, device_name: 'E2EE Keys', device_type: 'e2ee' });
+  };
+
+  try {
+    await tryRegister(activeDeviceId);
+  } catch (e) {
+    log.warn('e2ee', 'registerDevice failed (likely device_id owned by previous user); retrying with fresh id', e);
+    activeDeviceId = crypto.randomUUID();
+    localStorage.setItem(STORAGE_KEYS.E2EE_DEVICE_ID, activeDeviceId);
+    try {
+      await tryRegister(activeDeviceId);
+    } catch (e2) {
+      log.warn('e2ee', 'registerDevice retry failed; prekey upload deferred', e2);
+      return activeDeviceId;
+    }
+  }
+
+  try {
     await api.uploadPrekeys({
-      device_id: deviceId,
+      device_id: activeDeviceId,
       identity_key: toBase64(keys.identity.publicKey),
       signed_prekey: toBase64(keys.signedPreKey.keyPair.publicKey),
       signed_prekey_signature: toBase64(keys.signedPreKey.signature),
@@ -129,9 +143,10 @@ async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<
       pq_signed_prekey_signature: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.signature) : undefined,
     });
     await storage.set(uploadedKey, 'true');
-  } catch {
-    log.warn('e2ee', 'prekey upload deferred to next init');
+  } catch (e) {
+    log.warn('e2ee', 'prekey upload deferred to next init', e);
   }
+  return activeDeviceId;
 }
 
 /**
