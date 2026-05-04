@@ -5,10 +5,49 @@ import './styles/globals.css'
 import './styles/scroll-fade.css'
 import App from './App'
 import { isTauri, isMobile } from './platform/detect'
-import { migrateLegacyStorageKeys } from './utils/storageKeys'
+import { migrateLegacyStorageKeys, STORAGE_KEYS } from './utils/storageKeys'
 
 // Apply one-time storage-key migrations before any other code reads localStorage.
 migrateLegacyStorageKeys()
+
+// Tauri WebView2 on Windows doesn't reliably reflect the OS dark-mode
+// preference via `prefers-color-scheme` — the inline theme-init script in
+// index.html therefore can't tell, and apps booted in 'system' mode flash
+// white before AppShell mounts. Query Tauri's window-theme API at startup,
+// push the value into the colorMode module so useColorMode picks it up,
+// and reconcile the .dark class so first paint matches the OS. Subscribe
+// to theme-change events too so the app follows the OS at runtime.
+if ('__TAURI_INTERNALS__' in window) {
+  Promise.all([
+    import('@tauri-apps/api/window'),
+    import('./utils/colorMode'),
+  ]).then(async ([{ getCurrentWindow }, { setTauriSystemDark }]) => {
+    const win = getCurrentWindow()
+    const apply = (dark: boolean): void => {
+      setTauriSystemDark(dark)
+      // Only override the .dark class when the user is in system mode —
+      // explicit light/dark prefs are honoured by useColorMode.
+      const stored = localStorage.getItem(STORAGE_KEYS.COLOR_MODE)
+      if (stored === null || stored === 'system') {
+        const hasDark = document.documentElement.classList.contains('dark')
+        if (hasDark !== dark) {
+          document.documentElement.classList.toggle('dark', dark)
+        }
+      }
+    }
+    try {
+      const theme = await win.theme()
+      apply(theme === 'dark')
+    } catch {
+      /* fall back to whatever theme-init.js inferred */
+    }
+    try {
+      await win.onThemeChanged(({ payload }) => apply(payload === 'dark'))
+    } catch {
+      /* runtime subscription unavailable — startup value still applied */
+    }
+  })
+}
 
 declare global {
   interface Window {
