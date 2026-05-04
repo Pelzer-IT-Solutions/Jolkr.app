@@ -11,6 +11,7 @@ import { clearKeySet } from '../crypto/keyStore';
 import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
+import { log } from '../utils/log';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import { createTtlCache } from '../utils/cache';
 
@@ -133,7 +134,7 @@ async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<
     // Body intentionally redacted — the upstream error sometimes echoes the
     // request payload (which contains base64 public key material). Retry
     // happens on next init() automatically.
-    console.warn('[e2ee] prekey upload deferred to next init');
+    log.warn('e2ee', 'prekey upload deferred to next init');
   }
 }
 

@@ -15,6 +15,7 @@ import { encryptForRecipient, decryptFromSender } from './e2ee';
 import { encryptMessage, decryptMessage, toBase64, fromBase64 } from './keys';
 import type { LocalKeySet } from './keys';
 import { getRecipientBundle, isE2EEReady } from '../services/e2ee';
+import { log } from '../utils/log';
 
 /** Create a clean ArrayBuffer copy (TS strict ArrayBufferLike compat). */
 function toArrayBuffer(data: Uint8Array): ArrayBuffer {
@@ -78,7 +79,7 @@ export async function getChannelKey(
     channelKeyCache.set(channelId, entry);
     return entry;
   } catch (e) {
-    console.warn('Channel E2EE: Key exists but decrypt failed for channel', channelId, e);
+    log.warn('channel-e2ee', 'key exists but decrypt failed for channel', channelId, e);
     throw new ChannelKeyDecryptError(channelId, e);
   }
 }
@@ -119,12 +120,12 @@ export async function generateAndDistributeChannelKey(
         nonce: encrypted.nonce,
       });
     } catch {
-      console.warn(`Channel E2EE: Failed to encrypt key for member ${userId}`);
+      log.warn('channel-e2ee', 'failed to encrypt key for member', userId);
     }
   }
 
   if (recipients.length === 0) {
-    console.warn('Channel E2EE: No recipients could receive the key');
+    log.warn('channel-e2ee', 'no recipients could receive the key');
     return null;
   }
 
@@ -135,7 +136,7 @@ export async function generateAndDistributeChannelKey(
       recipients,
     }, isDm);
   } catch (e) {
-    console.warn('Channel E2EE: Failed to upload channel keys:', e);
+    log.warn('channel-e2ee', 'failed to upload channel keys:', e);
     return null;
   }
 
@@ -175,7 +176,7 @@ export async function encryptChannelMessage(
       // A key exists on the server but we can't decrypt it.
       // Don't generate a new key — that would overwrite the existing one
       // and make old messages permanently undecryptable.
-      console.error('Channel E2EE: Cannot send — existing key undecryptable. Re-login may fix this.');
+      log.error('channel-e2ee', 'cannot send — existing key undecryptable; re-login may fix this');
       return null;
     }
     throw e;

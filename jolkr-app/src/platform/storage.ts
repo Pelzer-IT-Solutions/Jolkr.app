@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from './detect';
+import { log } from '../utils/log';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import type { Stronghold } from '@tauri-apps/plugin-stronghold';
 
@@ -37,7 +38,7 @@ class TauriStorage implements SecureStorage {
     if (this.fallbackToWeb || this.store) return;
     if (this.initPromise) return this.initPromise;
     this.initPromise = this._init().catch((e) => {
-      console.warn('[TauriStorage] Stronghold failed, falling back to localStorage:', e);
+      log.warn('TauriStorage', 'Stronghold init failed, falling back to localStorage:', e);
       this.fallbackToWeb = true;
       this.initPromise = null;
     });
@@ -99,7 +100,7 @@ class TauriStorage implements SecureStorage {
         // it. Init then continues; if the file is genuinely there with
         // the legacy password, `Stronghold.load(...)` below will throw
         // and we fall back to WebStorage (existing behaviour).
-        console.warn('[TauriStorage] vault delete failed during migration:', e);
+        log.warn('TauriStorage', 'vault delete failed during migration:', e);
       }
       localStorage.setItem(STORAGE_KEYS.VAULT_MIGRATION_V2, '1');
     }
