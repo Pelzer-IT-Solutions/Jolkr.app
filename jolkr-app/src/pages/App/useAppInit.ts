@@ -15,6 +15,8 @@ import type { UserContextMenuState } from '../../components/UserContextMenu/User
 import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
 import { lookupFriendship } from '../../services/friendshipCache'
 import { syncPresence } from '../../services/presenceSync'
+import { getLocalKeys } from '../../services/e2ee'
+import { getChannelKey, redistributeChannelKey } from '../../crypto/channelKeys'
 import type { MemberDisplay } from '../../types/ui'
 import { useWsSubscriptions } from './useWsSubscriptions'
 import { useRouting } from './useRouting'
@@ -272,6 +274,23 @@ export function useAppInit() {
     wsClient.subscribe(channelId)
     return () => { wsClient.unsubscribe(channelId) }
   }, [currentChannelId, dmActive])
+
+  useEffect(() => {
+    if (!dmActive || !activeDmId || activeDmId.startsWith('draft:')) return
+    const dm = dmList.find(d => d.id === activeDmId)
+    if (!dm || dm.members.length === 0) return
+    const localKeys = getLocalKeys()
+    if (!localKeys) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const channelKey = await getChannelKey(activeDmId, localKeys, true)
+        if (cancelled || !channelKey) return
+        await redistributeChannelKey(activeDmId, dm.members, channelKey.rawKey, channelKey.keyGeneration, true)
+      } catch { /* best-effort heal */ }
+    })()
+    return () => { cancelled = true }
+  }, [dmActive, activeDmId, dmList])
 
   // ── Resolve friendship state for the open user-context-menu ──
   // Drives the "Add Friend" ↔ "Remove Friend" toggle in the menu.
