@@ -56,10 +56,8 @@ class WsClient {
       // SEC-013: don't send Identify yet — wait for the server `Hello`
       // challenge. The handler in `handleEvent` signs the nonce with
       // the local ed25519 identity key and sends the signed Identify.
-      // Backwards-compat: while the server tolerates a bearer-only
-      // Identify (JOLKR_WS_REQUIRE_SIG=false), missing crypto state
-      // (E2EE not yet ready) falls back to the bearer-only path so
-      // first-launch / pre-E2EE-init users can still connect.
+      // Bearer-only Identify is rejected server-side; clients without
+      // E2EE keys must re-login to materialise their identity key.
     };
 
     this.ws.onmessage = (ev) => {
@@ -141,22 +139,22 @@ class WsClient {
       case 'Hello': {
         // SEC-013 challenge-response. Sign the raw nonce bytes with the
         // local identity ed25519 private key and reply with Identify.
+        // Bearer-only Identify is rejected server-side, so a missing
+        // device_id, nonce, or identity key means the user must re-login
+        // to materialise their E2EE state.
         const token = getAccessToken();
         if (!token) break;
         const nonceB64 = typeof d.nonce === 'string' ? d.nonce : null;
         const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
         if (!nonceB64 || !deviceId) {
-          // Fallback to bearer-only Identify for installs without
-          // E2EE keys / device_id. Server tolerates this when
-          // JOLKR_WS_REQUIRE_SIG=false.
-          this.send('Identify', { token });
+          console.warn('[ws] Hello received but no nonce/deviceId — re-login required');
           break;
         }
         try {
           const nonceBytes = fromBase64Url(nonceB64);
           const sig = signWithIdentity(nonceBytes);
           if (!sig) {
-            this.send('Identify', { token });
+            console.warn('[ws] signWithIdentity returned null — re-login required');
             break;
           }
           this.send('Identify', {
@@ -165,8 +163,8 @@ class WsClient {
             nonce: nonceB64,
             signature: toBase64Url(sig),
           });
-        } catch {
-          this.send('Identify', { token });
+        } catch (e) {
+          console.warn('[ws] Identify signing failed:', e);
         }
         break;
       }

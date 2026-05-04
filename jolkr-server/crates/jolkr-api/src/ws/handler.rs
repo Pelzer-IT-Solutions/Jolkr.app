@@ -30,17 +30,6 @@ use crate::routes::AppState;
 /// Maximum WebSocket connections allowed per IP address.
 const MAX_WS_PER_IP: u32 = 10;
 
-/// SEC-013 strict mode: when true, `Identify` must include `device_id`,
-/// `nonce`, and `signature`, and the signature is ed25519-verified
-/// against `user_keys.identity_key`. When false, the legacy
-/// bearer-only `Identify` path is still honoured for backwards-compat
-/// during rollout. Set the `JOLKR_WS_REQUIRE_SIG` env var to enable.
-static REQUIRE_WS_SIG: LazyLock<bool> = LazyLock::new(|| {
-    std::env::var("JOLKR_WS_REQUIRE_SIG")
-        .map(|v| v == "true" || v == "1")
-        .unwrap_or(false)
-});
-
 /// SEC-013 nonce window. The base64-encoded random nonce is sent in
 /// `Hello` immediately after upgrade and must round-trip in `Identify`
 /// before this Duration elapses; otherwise the handshake is rejected.
@@ -161,10 +150,8 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     // SEC-013 challenge nonce (per-socket, single-use). 32 random bytes
     // base64-encoded; client signs the raw bytes and echoes both back in
-    // `Identify`. The Hello event is emitted unconditionally so the client
-    // can opt in to challenge-response without a separate negotiation; if
-    // the client doesn't sign and `JOLKR_WS_REQUIRE_SIG=false`, we still
-    // accept the bearer-only Identify.
+    // `Identify`. Sig verification is unconditional — Identify without a
+    // valid ed25519 signature over the raw nonce is rejected.
     let hello_deadline = tokio::time::Instant::now() + HELLO_NONCE_TTL;
     let (mut hello_nonce_b64, mut hello_nonce_bytes): (Option<String>, Option<[u8; 32]>) = {
         let mut buf = [0u8; 32];
@@ -251,11 +238,10 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     continue;
                 }
 
-                // SEC-013 challenge-response: when strict mode is on, the
-                // signature is required. Generic "Authentication failed"
-                // for every failure mode so an attacker can't distinguish
-                // unknown-device from bad-signature from expired-window.
-                let strict = *REQUIRE_WS_SIG;
+                // SEC-013 challenge-response: signature is required.
+                // Generic "Authentication failed" for every failure mode so
+                // an attacker can't distinguish unknown-device from
+                // bad-signature from expired-window.
                 let sig_check_passed = match (&device_id, &nonce, &signature) {
                     (Some(dev_id), Some(client_nonce), Some(client_sig)) => {
                         // Nonce must match this socket's challenge and arrive
@@ -294,8 +280,8 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     _ => false,
                 };
 
-                if strict && !sig_check_passed {
-                    warn!("WebSocket sig check failed (strict mode)");
+                if !sig_check_passed {
+                    warn!("WebSocket sig check failed");
                     drop(tx.try_send(GatewayEvent::Error {
                         message: "Authentication failed".to_string(),
                     }));
