@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { useShallow } from 'zustand/shallow'
 import { wsClient } from '../api/ws'
+import { useServersStore } from './servers'
+import { displayName } from '../utils/format'
 
 interface TypingEntry {
   username: string
@@ -75,13 +77,21 @@ export function useTypingUsers(channelId: string, ownUserId: string | undefined)
   }))
 }
 
+function lookupUserName(userId: string): string {
+  const members = useServersStore.getState().members
+  for (const list of Object.values(members)) {
+    const m = list.find(x => x.user_id === userId)
+    if (m?.user) return displayName(m.user)
+  }
+  return 'Someone'
+}
+
 // Wire WS listener — receive typing events from other users
 wsClient.on((event) => {
   if (event.op === 'TypingStart') {
-    const { channel_id, user_id, username, display_name } = event.d
-    const name = username ?? display_name ?? 'Someone'
+    const { channel_id, user_id } = event.d
     if (channel_id && user_id) {
-      useTypingStore.getState().setTyping(channel_id, user_id, name)
+      useTypingStore.getState().setTyping(channel_id, user_id, lookupUserName(user_id))
     }
   }
 })
