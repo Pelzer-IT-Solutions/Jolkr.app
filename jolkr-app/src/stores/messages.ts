@@ -366,7 +366,7 @@ wsClient.on((event) => {
       break;
     }
     case 'MessageDelete': {
-      const channelId = event.d.channel_id ?? event.d.dm_channel_id;
+      const channelId = event.d.channel_id;
       const messageId = event.d.message_id;
       if (!channelId || !messageId) break;
       // Remove from channel messages
