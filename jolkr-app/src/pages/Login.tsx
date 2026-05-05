@@ -79,8 +79,6 @@ export default function Login() {
             <span style={styles.labelText}>Email <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
             <input
               type="email"
-              name="email"
-              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -93,8 +91,6 @@ export default function Login() {
             <span style={styles.labelText}>Password <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
             <input
               type="password"
-              name="password"
-              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

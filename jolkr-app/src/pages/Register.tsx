@@ -55,8 +55,6 @@ export default function Register() {
             <span style={styles.labelText}>Email <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="email"
-              name="email"
-              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -69,8 +67,6 @@ export default function Register() {
             <span style={styles.labelText}>Username <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="text"
-              name="username"
-              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -81,8 +77,6 @@ export default function Register() {
             <span style={styles.labelText}>Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="password"
-              name="password"
-              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

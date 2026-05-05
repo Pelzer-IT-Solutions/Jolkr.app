@@ -34,7 +34,6 @@ tauri-plugin-stronghold = "2"
 # Windows-only: WebView2 COM bindings (to enable browser context menu)
 [target.'cfg(target_os = "windows")'.dependencies]
 webview2-com = "0.38"
-windows-core = "0.61"
 
 [profile.dev.package.scrypt]
 opt-level = 3
