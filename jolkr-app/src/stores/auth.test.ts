@@ -116,11 +116,11 @@ describe('useAuthStore.login', () => {
 })
 
 describe('useAuthStore.register', () => {
-  it('connects WS only when the registered user is email-verified', async () => {
+  it('does NOT connect WS itself — the caller (Register.tsx) connects after initE2EE', async () => {
     mockApi.register.mockResolvedValue(undefined)
     mockApi.getMe.mockResolvedValue({ ...SAMPLE_USER, email_verified: true })
     await useAuthStore.getState().register('a@b.c', 'alice', 'pw')
-    expect(mockWsConnect).toHaveBeenCalledTimes(1)
+    expect(mockWsConnect).not.toHaveBeenCalled()
   })
 
   it('does NOT connect WS for unverified registrations', async () => {
