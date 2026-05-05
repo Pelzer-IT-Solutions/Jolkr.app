@@ -71,12 +71,7 @@ export interface Channel {
 export interface Reaction {
   emoji: string;
   count: number;
-  // Backend `ReactionInfo` does not include `me`; the frontend derives it
-  // from `user_ids` via `stores/messages.ts::transformReactions` right
-  // after a fetch, so by the time anything reads a `Reaction` from the
-  // store this is always populated. Only the wire-DTO is allowed to be
-  // missing it. (Backend audit item — see backend-audit-todo.md.)
-  me?: boolean;
+  me: boolean;
   user_ids?: string[]; // Backend sends user IDs who reacted (for tooltip)
 }
 

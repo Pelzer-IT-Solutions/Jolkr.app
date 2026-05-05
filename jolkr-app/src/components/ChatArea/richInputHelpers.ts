@@ -194,11 +194,8 @@ export function setCursorToOffset(root: HTMLElement, targetOffset: number): void
       if (tag === 'IMG') {
         const altLen = ((el as HTMLImageElement).alt ?? '').length;
         if (remaining < altLen) {
-          // Place cursor before the image. parentNode is guaranteed because the
-          // tree walker only visits attached nodes — but guard anyway so a
-          // future refactor can't dereference null.
-          const parent = el.parentNode;
-          if (!parent) return false;
+          // Place cursor before the image.
+          const parent = el.parentNode!;
           const idx = Array.prototype.indexOf.call(parent.childNodes, el);
           const range = document.createRange();
           range.setStart(parent, idx);
@@ -213,8 +210,7 @@ export function setCursorToOffset(root: HTMLElement, targetOffset: number): void
 
       if (tag === 'BR') {
         if (remaining === 0) {
-          const parent = el.parentNode;
-          if (!parent) return false;
+          const parent = el.parentNode!;
           const idx = Array.prototype.indexOf.call(parent.childNodes, el);
           const range = document.createRange();
           range.setStart(parent, idx);

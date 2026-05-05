@@ -79,21 +79,6 @@ pub(crate) async fn decline_or_remove(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub(crate) async fn decline_or_remove_by_user(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(user_id): Path<Uuid>,
-) -> Result<StatusCode, AppError> {
-    let friendship = FriendshipService::decline_or_remove_by_user_pair(&state.pool, auth.user_id, user_id).await?;
-    let event = GatewayEvent::FriendshipUpdate {
-        friendship: friendship.clone(),
-        kind: FriendshipUpdateKind::Declined,
-    };
-    state.nats.publish_to_user(friendship.requester_id, &event).await;
-    state.nats.publish_to_user(friendship.addressee_id, &event).await;
-    Ok(StatusCode::NO_CONTENT)
-}
-
 pub(crate) async fn block_user(
     State(state): State<AppState>,
     auth: AuthUser,

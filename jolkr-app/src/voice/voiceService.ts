@@ -1,6 +1,5 @@
 import { VoiceClient } from './voiceClient';
 import { voicePrefs, type VoicePrefs } from './voicePrefs';
-import { VOICE_CONNECT_TIMEOUT_MS } from '../utils/constants';
 
 export interface VoiceParticipant {
   userId: string;
@@ -121,7 +120,7 @@ export class VoiceService {
     if (this.connectingTimer) clearTimeout(this.connectingTimer);
     this.connectingTimer = setTimeout(() => {
       if (this._state === 'connecting') {
-        console.warn(`Voice connection timed out after ${VOICE_CONNECT_TIMEOUT_MS}ms`);
+        console.warn('Voice connection timed out after 15s');
         this.emitError('Voice connection timed out');
         this.cleanup().then(() => {
           this.setState('disconnected');
@@ -130,7 +129,7 @@ export class VoiceService {
           this.notifyParticipants();
         });
       }
-    }, VOICE_CONNECT_TIMEOUT_MS);
+    }, 15_000);
 
     try {
       await this.client.connect(token);

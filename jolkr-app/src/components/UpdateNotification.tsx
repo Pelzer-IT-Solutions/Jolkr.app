@@ -40,7 +40,7 @@ export default function UpdateNotification({ update }: UpdateNotificationProps) 
             <div className={s.progressBar}>
               <div
                 className={s.progressFill}
-                style={{ '--progress-pct': `${progress}%` } as React.CSSProperties}
+                style={{ width: `${progress}%` }}
               />
             </div>
             <span className={s.progressText}>{progress}%</span>

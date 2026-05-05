@@ -1,4 +1,6 @@
-import Modal from '../ui/Modal'
+import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
+
 import s from './DeleteMessageDialog.module.css'
 
 interface Props {
@@ -14,30 +16,45 @@ interface Props {
 }
 
 export function DeleteMessageDialog({ isOwn, isGroup = false, onClose, onDeleteForEveryone, onDeleteForMe }: Props) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  function handleOverlayClick(e: React.MouseEvent) {
+    if (e.target === e.currentTarget) onClose()
+  }
+
   const everyoneLabel = isGroup ? 'Delete for everyone' : 'Delete for both of us'
 
-  return (
-    <Modal open onClose={onClose} overlayClassName={s.overlay} className={s.modal}>
-      <span className={s.title}>Delete message?</span>
-      <p className={`${s.body} txt-small`}>
-        {isOwn
-          ? 'This message will be removed. Choose whether to remove it just for you, or for everyone.'
-          : 'This will only hide the message on your side. Other members will still see it.'}
-      </p>
+  return createPortal(
+    <div className={s.overlay} onClick={handleOverlayClick} role="dialog" aria-modal="true">
+      <div className={s.modal}>
+        <span className={s.title}>Delete message?</span>
+        <p className={`${s.body} txt-small`}>
+          {isOwn
+            ? 'This message will be removed. Choose whether to remove it just for you, or for everyone.'
+            : 'This will only hide the message on your side. Other members will still see it.'}
+        </p>
 
-      <div className={s.actions}>
-        {isOwn && onDeleteForEveryone && (
-          <button type="button" className={`${s.btn} ${s.btnDanger}`} onClick={() => { onDeleteForEveryone(); onClose() }}>
-            {everyoneLabel}
+        <div className={s.actions}>
+          {isOwn && onDeleteForEveryone && (
+            <button type="button" className={`${s.btn} ${s.btnDanger}`} onClick={() => { onDeleteForEveryone(); onClose() }}>
+              {everyoneLabel}
+            </button>
+          )}
+          <button type="button" className={`${s.btn} ${isOwn ? '' : s.btnDanger}`} onClick={() => { onDeleteForMe(); onClose() }}>
+            Delete for me
           </button>
-        )}
-        <button type="button" className={`${s.btn} ${isOwn ? '' : s.btnDanger}`} onClick={() => { onDeleteForMe(); onClose() }}>
-          Delete for me
-        </button>
-        <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={onClose}>
-          Cancel
-        </button>
+          <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={onClose}>
+            Cancel
+          </button>
+        </div>
       </div>
-    </Modal>
+    </div>,
+    document.body,
   )
 }

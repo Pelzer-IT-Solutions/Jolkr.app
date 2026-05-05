@@ -54,24 +54,21 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
 
 export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, users, pinnedVersion }: Props) {
   const key = cacheKey(channelId, isDm, pinnedVersion ?? 0)
-  const [messages, setMessages] = useState<Message[]>(() => cache.get(key) ?? [])
+  const cached = cache.get(key)
+  const [messages, setMessages] = useState<Message[]>(cached ?? [])
   // No "Loading..." if we already have data for this key — show stale data
   // immediately and revalidate in the background.
-  const [loading, setLoading] = useState(() => !cache.has(key))
-
-  // Sync messages + loading immediately when the cache key changes (channel
-  // switch or pinnedVersion bump). Reads `cache` synchronously so a cached
-  // entry shows without a Loading flash.
-  const [prevKey, setPrevKey] = useState(key)
-  if (prevKey !== key) {
-    setPrevKey(key)
-    const cached = cache.get(key)
-    setMessages(cached ?? [])
-    setLoading(cached === undefined)
-  }
+  const [loading, setLoading] = useState(cached === undefined)
 
   useEffect(() => {
-    if (cache.has(key)) return
+    const k = cacheKey(channelId, isDm, pinnedVersion ?? 0)
+    const cachedNow = cache.get(k)
+    if (cachedNow !== undefined) {
+      setMessages(cachedNow)
+      setLoading(false)
+      return
+    }
+    setLoading(true)
     const fetchPromise = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
     fetchPromise.then(msgs => {
       // Normalize DM messages: dm_channel_id → channel_id
@@ -79,11 +76,11 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
         ...m,
         channel_id: m.channel_id ?? (m as unknown as { dm_channel_id?: string }).dm_channel_id ?? channelId,
       }))
-      cache.set(key, normalized)
+      cache.set(k, normalized)
       setMessages(normalized)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [key, channelId, isDm])
+  }, [channelId, isDm, pinnedVersion])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)

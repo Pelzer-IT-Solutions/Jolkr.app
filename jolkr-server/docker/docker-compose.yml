@@ -30,7 +30,6 @@ services:
       NATS_PASSWORD: "${NATS_PASSWORD:?NATS_PASSWORD must be set in .env}"
       NATS_HMAC_SECRET: "${NATS_HMAC_SECRET:?NATS_HMAC_SECRET must be set in .env}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
-      JWT_MIN_ISSUED_AT: "${JWT_MIN_ISSUED_AT:-0}"
       ADMIN_SECRET: "${ADMIN_SECRET:?ADMIN_SECRET must be set in .env}"
       VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
       VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"

@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
-import { wsClient } from '../api/ws';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
@@ -23,7 +22,6 @@ export default function Register() {
       await register(email, username, password);
 
       const userId = useAuthStore.getState().user?.id;
-      const user = useAuthStore.getState().user;
       if (userId) {
         const seed = await deriveE2EESeed(password, userId);
         let deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
@@ -31,9 +29,8 @@ export default function Register() {
           deviceId = crypto.randomUUID();
           localStorage.setItem(STORAGE_KEYS.E2EE_DEVICE_ID, deviceId);
         }
-        await initE2EE(deviceId, seed).catch(console.warn);
+        initE2EE(deviceId, seed).catch(console.warn);
       }
-      if (user?.email_verified) wsClient.connect();
 
       navigate('/verify-email');
     } catch { /* error is in store */ }

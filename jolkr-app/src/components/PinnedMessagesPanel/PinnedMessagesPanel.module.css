@@ -4,7 +4,7 @@
   height: 100%;
   background: var(--bg-default);
   border-left: 1px solid var(--border-muted);
-  /* width: 300px; */
+  width: 300px;
   /* nowrap so labels don't reflow into multiple lines while the panel
      animates to width:0 — children that need wrapping override locally. */
   white-space: nowrap;

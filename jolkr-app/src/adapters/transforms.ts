@@ -32,20 +32,14 @@ import type {
 
 // ─── Helpers ───────────────────────────────────────────────
 
-/** Deterministic OKLCH color from a string (user ID or name).
- *  Lightness clamped to a band that stays WCAG-AA compliant against white
- *  letter text. Yellows / yellow-greens (~60–110°) inherently look brighter
- *  in OKLCH, so they get a small extra dim to keep white initials legible.
- */
+/** Deterministic OKLCH color from a string (user ID or name). */
 export function hashColor(input: string): string {
   let hash = 0
   for (let i = 0; i < input.length; i++) {
     hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0
   }
   const hue = ((hash % 360) + 360) % 360
-  // Default 48% L gives ~4.5:1 against #fff for most hues; yellows need ~42%.
-  const lightness = (hue >= 60 && hue <= 110) ? 42 : 48
-  return `oklch(${lightness}% 0.16 ${hue})`
+  return `oklch(55% 0.18 ${hue})`
 }
 
 /** First letter of display name or username, uppercased. */
@@ -63,12 +57,10 @@ function iconEndpoint(serverId: string): string {
   return `${getApiBaseUrl()}/icons/${serverId}`
 }
 
-/** Avatar props from a User object. The user's chosen `banner_color`
- *  (set in profile settings) wins over the deterministic `hashColor`
- *  fallback so other clients see the same color the user picked. */
+/** Avatar props from a User object. */
 export function userToAvatar(user: User): { color: string; letter: string; avatarUrl?: string | null } {
   return {
-    color: user.banner_color ?? hashColor(user.id),
+    color: hashColor(user.id),
     letter: avatarLetter(user),
     // Use the dedicated avatar endpoint — cached by nginx, no presigned URLs
     avatarUrl: user.avatar_url ? avatarEndpoint(user.id) : null,
@@ -133,23 +125,18 @@ export function transformMessage(
     if (replyMsg) {
       const replyAuthor = replyMsg.author ?? users.get(replyMsg.author_id)
       replyTo = {
-        id: replyMsg.id,
         author: displayName(replyAuthor),
-        text: replyMsg.content?.slice(0, 200) ?? '',
-        nonce: replyMsg.nonce ?? null,
-        channelId: replyMsg.channel_id,
+        // If the reply has a nonce, it's encrypted — show placeholder (content is raw ciphertext)
+        text: replyMsg.nonce ? 'Encrypted message' : (replyMsg.content?.slice(0, 100) || 'Encrypted message'),
       }
     }
   }
 
-  // Reactions — map to UI format with userIds for tooltip.
-  // `r.me` is populated by `stores/messages.ts::transformReactions` before
-  // a Message reaches the store; the `?? false` is a type-narrowing safety
-  // net for the (theoretical) wire-DTO path that does not include `me`.
+  // Reactions — map to UI format with userIds for tooltip
   const reactions: ReactionDisplay[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
-    me: r.me ?? false,
+    me: r.me,
     userIds: r.user_ids ?? [],
   }))
 

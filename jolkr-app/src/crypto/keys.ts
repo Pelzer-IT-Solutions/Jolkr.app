@@ -257,10 +257,6 @@ export async function generateSafetyNumber(
   return groups.join(' ');
 }
 
-// Used only to lexicographically order two PUBLIC identity keys so both
-// participants derive the same shared key. Operands are not secret, so a
-// non-constant-time comparison is fine here. Do NOT reuse this helper for
-// secret material — use a constant-time XOR-fold instead.
 function compareBytes(a: Uint8Array, b: Uint8Array): number {
   const len = Math.min(a.length, b.length);
   for (let i = 0; i < len; i++) {

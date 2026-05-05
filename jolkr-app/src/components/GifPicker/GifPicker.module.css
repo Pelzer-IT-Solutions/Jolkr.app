@@ -23,8 +23,6 @@
   position: relative;
   overflow: hidden;
   font-family: inherit;
-  width: var(--gpr-width, 450px);
-  height: var(--gpr-height, 450px);
 }
 
 .picker[data-theme='light'] {
@@ -146,19 +144,6 @@
   height: 20px;
   border-radius: 50%;
   color: var(--gpr-text-color);
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.favoritesPlaceholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #2b2b2b;
 }
 
 .clearBtn:hover {
