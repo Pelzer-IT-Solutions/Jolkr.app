@@ -69,7 +69,8 @@ export function useAppHandlers(
   // ── Status change handler ──
   const handleStatusChange = useCallback((status: string) => {
     if (user?.id) usePresenceStore.getState().setStatus(user.id, status)
-    wsClient.updatePresence(status)
+    const wireStatus = status === 'offline' ? 'invisible' : status
+    wsClient.updatePresence(wireStatus)
   }, [user?.id])
 
   // ── Profile update handler ──
