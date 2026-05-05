@@ -7,6 +7,8 @@ const LS_KEY   = STORAGE_KEYS.COLOR_MODE
 const TRANS_MS = 300
 
 function getSystemDark() {
+  const tauri = (window as unknown as { __TAURI_OS_DARK?: boolean }).__TAURI_OS_DARK
+  if (typeof tauri === 'boolean') return tauri
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
@@ -35,9 +37,14 @@ export function useColorMode() {
   // Follow OS preference when pref === 'system'
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
+    const mqHandler = (e: MediaQueryListEvent) => setSystemDark(e.matches)
+    const tauriHandler = () => setSystemDark(getSystemDark())
+    mq.addEventListener('change', mqHandler)
+    window.addEventListener('jolkr-tauri-theme-change', tauriHandler)
+    return () => {
+      mq.removeEventListener('change', mqHandler)
+      window.removeEventListener('jolkr-tauri-theme-change', tauriHandler)
+    }
   }, [])
 
   function setPreference(next: ColorPreference) {

@@ -66,6 +66,27 @@ if (isTauri) {
   })
 }
 
+async function applyTauriOsTheme(): Promise<void> {
+  if (!('__TAURI_INTERNALS__' in window)) return
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const w = getCurrentWindow()
+    const apply = (t: 'light' | 'dark' | null) => {
+      ;(window as unknown as { __TAURI_OS_DARK?: boolean }).__TAURI_OS_DARK = t === 'dark'
+      window.dispatchEvent(new Event('jolkr-tauri-theme-change'))
+      const pref = localStorage.getItem('jolkr-color-mode')
+      if (pref === 'light' || pref === 'dark') return
+      const root = document.documentElement
+      if (t === 'dark') root.classList.add('dark')
+      else if (t === 'light') root.classList.remove('dark')
+    }
+    apply(await w.theme())
+    w.onThemeChanged(({ payload }) => apply(payload))
+  } catch { /* not Tauri or API failed */ }
+}
+
+await applyTauriOsTheme()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
