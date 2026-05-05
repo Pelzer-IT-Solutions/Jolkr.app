@@ -748,7 +748,7 @@ export const declineFriend = (id: string) =>
 export const blockUser = (userId: string) =>
   request<Friendship>('/friends/block', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'friendship');
 export const removeFriendByUserId = (userId: string) =>
-  request<void>(`/friends/user/${userId}`, { method: 'DELETE' });
+  request<void>(`/friends/by-user/${userId}`, { method: 'DELETE' });
 
 // General file upload (avatars, server icons, etc.)
 // When purpose is 'avatar' or 'icon', the backend converts to WebP and resizes.
