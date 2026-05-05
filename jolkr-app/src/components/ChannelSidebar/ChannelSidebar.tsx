@@ -179,18 +179,18 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   // ── Category rename handlers ──
   function startCategoryRename(category: CategoryDisplay) {
     if (!canManageChannels) return
-    // Find the actual category ID from server data
     const serverCat = server.categories.find(c => c.name === category.name)
     if (!serverCat) return
-    setEditingCategoryId(serverCat.name) // Using name as ID for now since UI Category doesn't have ID
+    setEditingCategoryId(serverCat.id)
     setEditingCatName(category.name)
   }
 
   function saveCategoryRename(categoryId: string) {
     const name = editingCatName.trim()
-    if (name && name !== categoryId) {
+    const currentName = server.categories.find(c => c.id === categoryId)?.name
+    if (name && name !== currentName) {
       setLocalCats(prev => prev.map(cat =>
-        cat.name === categoryId ? { ...cat, name } : cat
+        cat.name === currentName ? { ...cat, name } : cat
       ))
       onRenameCategory?.(categoryId, name)
     }
@@ -376,11 +376,17 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                   chanStaggerStart={catMeta[i].chanStaggerStart}
                   onChannelContextMenu={canManageChannels ? handleChannelContextMenu : undefined}
                   onFolderContextMenu={canManageChannels ? handleFolderContextMenu : undefined}
-                  isCatEditing={editingCategoryId === cat.name}
+                  isCatEditing={editingCategoryId === server.categories.find(c => c.name === cat.name)?.id}
                   editingCatName={editingCatName}
                   onStartCatRename={() => startCategoryRename(cat)}
-                  onSaveCatRename={() => saveCategoryRename(cat.name)}
-                  onCatRenameKeyDown={(e) => handleCatRenameKeyDown(e, cat.name)}
+                  onSaveCatRename={() => {
+                    const id = server.categories.find(c => c.name === cat.name)?.id
+                    if (id) saveCategoryRename(id)
+                  }}
+                  onCatRenameKeyDown={(e) => {
+                    const id = server.categories.find(c => c.name === cat.name)?.id
+                    if (id) handleCatRenameKeyDown(e, id)
+                  }}
                   onCatRenameChange={setEditingCatName}
                   catRenameInputRef={catRenameInputRef}
                   editingChannelId={editingChannelId}
