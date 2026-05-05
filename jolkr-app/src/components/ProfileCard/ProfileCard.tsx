@@ -223,6 +223,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
             size="2xl"
             status={status}
             userId={user.id}
+            color={bannerColor}
           />
         </div>
 

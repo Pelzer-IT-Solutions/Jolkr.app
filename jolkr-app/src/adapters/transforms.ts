@@ -60,7 +60,7 @@ function iconEndpoint(serverId: string): string {
 /** Avatar props from a User object. */
 export function userToAvatar(user: User): { color: string; letter: string; avatarUrl?: string | null } {
   return {
-    color: hashColor(user.id),
+    color: user.banner_color ?? hashColor(user.id),
     letter: avatarLetter(user),
     // Use the dedicated avatar endpoint — cached by nginx, no presigned URLs
     avatarUrl: user.avatar_url ? avatarEndpoint(user.id) : null,
