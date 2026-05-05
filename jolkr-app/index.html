@@ -9,11 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>Jolkr</title>
     <script>
-      // Apply theme BEFORE any rendering to prevent white flash
+      // Apply theme BEFORE any rendering to prevent flash. Default to dark
+      // unless an explicit 'light' preference is saved or the OS reports a
+      // light preference. WebView2 on Tauri Windows may report the wrong
+      // matchMedia value; main.tsx queries the OS theme via the Tauri API
+      // and corrects the class if needed before the first paint settles.
       (function(){
-        var p = localStorage.getItem('jolkr-color-mode') || 'system';
-        var dark = p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme:dark)').matches);
-        if (dark) document.documentElement.classList.add('dark');
+        var p = localStorage.getItem('jolkr-color-mode');
+        var explicitLight = p === 'light' || (p !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches);
+        if (!explicitLight) document.documentElement.classList.add('dark');
       })();
     </script>
     <style>

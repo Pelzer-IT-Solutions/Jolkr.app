@@ -93,11 +93,15 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-// Show window after first paint to avoid white flash
+// Show window after first paint to avoid white flash. Two RAFs so the
+// browser has had a frame to commit the rendered DOM + theme class before
+// the OS-level window becomes visible.
 if ('__TAURI_INTERNALS__' in window) {
   import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
     requestAnimationFrame(() => {
-      getCurrentWindow().show();
+      requestAnimationFrame(() => {
+        getCurrentWindow().show();
+      });
     });
   });
 }
