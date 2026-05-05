@@ -37,6 +37,10 @@ pub struct UserRow {
     pub email_verified: bool,
     /// Banner color.
     pub banner_color: Option<String>,
+    /// Privacy: who can start a new DM with this user (`all` | `friends` | `none`).
+    pub dm_filter: String,
+    /// Privacy: whether others can send friend requests to this user.
+    pub allow_friend_requests: bool,
     /// Creation timestamp.
     pub created_at: DateTime<Utc>,
     /// Last-update timestamp.

@@ -68,8 +68,12 @@
   --text-loud:    var(--jolkr-neutral-dark-90);
   --text-strong:  var(--jolkr-neutral-dark-80);
   --text-default: var(--jolkr-neutral-dark-70);
-  --text-muted:   var(--jolkr-neutral-dark-50);
   --text-faint:   var(--jolkr-neutral-dark-40);
+
+  /* Text intended to sit on top of a saturated accent / status color
+     (success/danger/accent buttons, colored avatars). Stays white in both
+     themes because the underlying chip is colored, not theme-neutral. */
+  --text-on-accent: #fff;
 
   /* Icons */
   --icon-loud:    var(--jolkr-neutral-dark-90);
@@ -192,7 +196,7 @@
   --status-dnd:    oklch(55% 0.2 25);
 
   /* Overlay backdrop */
-  --overlay-backdrop: oklch(25% 0 0 / 0.5);
+  --overlay-backdrop: oklch(20% 0 0 / 0.7);
 }
 
 /* ─── Dark mode overrides ────────────────────────────────────────────── */

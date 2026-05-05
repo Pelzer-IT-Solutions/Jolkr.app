@@ -7,6 +7,10 @@
   background: var(--bg-loud);
   box-shadow: var(--shadow-panel);
   overflow: hidden;
+  /* nowrap so notification labels don't reflow into multiple lines while
+     the panel animates to width:0 — children that need wrapping override
+     locally. */
+  white-space: nowrap;
 
   /* Smooth slide in/out */
   transition:
@@ -85,7 +89,7 @@
 }
 .markAllBtn:hover {
   background: var(--bg-dark-muted);
-  color: var(--text-muted);
+  color: var(--text-default);
 }
 
 /* ── List ── */
@@ -180,11 +184,17 @@
 }
 
 .text {
-  color: var(--text-muted);
+  color: var(--text-default);
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* Override the panel-level `nowrap` so the body text wraps inside the
+     row and long links break instead of overflowing. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .time {

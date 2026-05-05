@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Check, UserPlus, Search } from 'lucide-react'
 import type { DMConversation } from '../../types'
 import type { User, Friendship } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { hashColor, avatarLetter } from '../../adapters/transforms'
 import { displayName } from '../../utils/format'
 import { rewriteStorageUrl } from '../../platform/config'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import s from './NewDMModal.module.css'
 
 interface Props {
@@ -55,8 +56,8 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
   const [loading, setLoading]         = useState(true)
   const [searching, setSearching]     = useState(false)
   const inputRef  = useRef<HTMLInputElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const myId = useAuthStore(s => s.user?.id ?? '')
+  const debouncedSearch = useDebouncedValue(search, 300)
 
   // Load friends on mount
   useEffect(() => {
@@ -79,34 +80,32 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
     return () => { cancelled = true }
   }, [myId])
 
-  // Debounced user search
-  const doSearch = useCallback((query: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.length < 2) {
+  // Run the search whenever the debounced query settles. Short queries
+  // clear the result list without hitting the network.
+  useEffect(() => {
+    let cancelled = false
+    if (debouncedSearch.length < 2) {
       setSearchResults([])
       setSearching(false)
       return
     }
     setSearching(true)
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const users = await api.searchUsers(query)
-        // Exclude self and already-selected users
-        const filtered = users
-          .filter(u => u.id !== myId)
-          .map(u => toDisplayUser(u, 'search'))
-        setSearchResults(filtered)
-      } catch (e) {
-        console.error('User search failed:', e)
-      } finally {
-        setSearching(false)
-      }
-    }, 300)
-  }, [myId])
+    api.searchUsers(debouncedSearch).then(users => {
+      if (cancelled) return
+      const filtered = users
+        .filter(u => u.id !== myId)
+        .map(u => toDisplayUser(u, 'search'))
+      setSearchResults(filtered)
+    }).catch(e => {
+      if (!cancelled) console.error('User search failed:', e)
+    }).finally(() => {
+      if (!cancelled) setSearching(false)
+    })
+    return () => { cancelled = true }
+  }, [debouncedSearch, myId])
 
   function handleSearchChange(value: string) {
     setSearch(value)
-    doSearch(value)
   }
 
   // Merge friends + search results, dedup by id, exclude selected
@@ -177,11 +176,11 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
   return createPortal(
     <div className={s.overlay} onClick={handleOverlayClick}>
       <div className={s.modal}>
+        <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
+          <X size={18} strokeWidth={1.5} />
+        </button>
         <div className={s.header}>
           <span className={s.title}>New Message</span>
-          <button className={s.closeBtn} onClick={onClose}>
-            <X size={14} strokeWidth={1.5} />
-          </button>
         </div>
 
         <div className={s.searchArea}>
@@ -201,6 +200,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
               onKeyDown={handleInputKeyDown}
+              aria-label="Search friends or type a username"
             />
           </div>
         </div>
@@ -212,7 +212,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
 
           {searching && search.trim().length >= 2 && (
             <div className={`${s.empty} txt-small`}>
-              <Search size={14} style={{ opacity: 0.5 }} /> Searching...
+              <Search size={14} className={s.searchIcon} /> Searching...
             </div>
           )}
 
@@ -263,15 +263,15 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
 function UserRow({ user, selected, onClick }: { user: DisplayUser; selected: boolean; onClick: () => void }) {
   return (
     <button className={`${s.userRow} ${selected ? s.selected : ''}`} onClick={onClick}>
-      <Avatar url={user.avatarUrl} name={user.name} size="sm" status={user.status} color={user.color} />
-      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <Avatar url={user.avatarUrl} name={user.name} size="sm" status={user.status} color={user.color} userId={user.id} />
+      <div className={s.userInfo}>
         <span className={`${s.userName} txt-small txt-medium txt-truncate`}>{user.name}</span>
         {user.name !== user.username && (
-          <span className="txt-tiny" style={{ opacity: 0.5 }}>{user.username}</span>
+          <span className={`${s.userHandle} txt-tiny`}>{user.username}</span>
         )}
       </div>
       {user.source === 'search' && (
-        <span className="txt-tiny" style={{ opacity: 0.4, marginLeft: 'auto', flexShrink: 0 }}>
+        <span className={`${s.userMeta} txt-tiny`}>
           <UserPlus size={12} />
         </span>
       )}

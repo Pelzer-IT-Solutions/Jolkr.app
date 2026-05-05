@@ -17,14 +17,14 @@ import type {
 import { getApiBaseUrl } from '../platform/config'
 
 import type {
-  Server as UiServer,
-  Channel as UiChannel,
-  Category as UiCategory,
-  Member as UiMember,
+  ServerDisplay,
+  ChannelDisplay,
+  CategoryDisplay,
+  MemberSummary,
   MemberGroup,
   MemberStatus,
-  Message as UiMessage,
-  Reaction,
+  MessageVM,
+  ReactionDisplay,
   ReplyRef,
   DMConversation,
   DMParticipant,
@@ -32,14 +32,20 @@ import type {
 
 // ─── Helpers ───────────────────────────────────────────────
 
-/** Deterministic OKLCH color from a string (user ID or name). */
+/** Deterministic OKLCH color from a string (user ID or name).
+ *  Lightness clamped to a band that stays WCAG-AA compliant against white
+ *  letter text. Yellows / yellow-greens (~60–110°) inherently look brighter
+ *  in OKLCH, so they get a small extra dim to keep white initials legible.
+ */
 export function hashColor(input: string): string {
   let hash = 0
   for (let i = 0; i < input.length; i++) {
     hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0
   }
   const hue = ((hash % 360) + 360) % 360
-  return `oklch(55% 0.18 ${hue})`
+  // Default 48% L gives ~4.5:1 against #fff for most hues; yellows need ~42%.
+  const lightness = (hue >= 60 && hue <= 110) ? 42 : 48
+  return `oklch(${lightness}% 0.16 ${hue})`
 }
 
 /** First letter of display name or username, uppercased. */
@@ -57,10 +63,12 @@ function iconEndpoint(serverId: string): string {
   return `${getApiBaseUrl()}/icons/${serverId}`
 }
 
-/** Avatar props from a User object. */
+/** Avatar props from a User object. The user's chosen `banner_color`
+ *  (set in profile settings) wins over the deterministic `hashColor`
+ *  fallback so other clients see the same color the user picked. */
 export function userToAvatar(user: User): { color: string; letter: string; avatarUrl?: string | null } {
   return {
-    color: hashColor(user.id),
+    color: user.banner_color ?? hashColor(user.id),
     letter: avatarLetter(user),
     // Use the dedicated avatar endpoint — cached by nginx, no presigned URLs
     avatarUrl: user.avatar_url ? avatarEndpoint(user.id) : null,
@@ -110,7 +118,7 @@ export function transformMessage(
   users: Map<string, User>,
   allMessages: Map<string, ApiMessage>,
   prevMsg?: ApiMessage | null,
-): UiMessage {
+): MessageVM {
   const author = users.get(msg.author_id) ?? msg.author
   const { color, letter, avatarUrl } = author ? userToAvatar(author) : { color: 'oklch(50% 0 0)', letter: '?', avatarUrl: null }
   const authorName = displayName(author)
@@ -125,18 +133,23 @@ export function transformMessage(
     if (replyMsg) {
       const replyAuthor = replyMsg.author ?? users.get(replyMsg.author_id)
       replyTo = {
+        id: replyMsg.id,
         author: displayName(replyAuthor),
-        // If the reply has a nonce, it's encrypted — show placeholder (content is raw ciphertext)
-        text: replyMsg.nonce ? 'Encrypted message' : (replyMsg.content?.slice(0, 100) || 'Encrypted message'),
+        text: replyMsg.content?.slice(0, 200) ?? '',
+        nonce: replyMsg.nonce ?? null,
+        channelId: replyMsg.channel_id,
       }
     }
   }
 
-  // Reactions — map to UI format with userIds for tooltip
-  const reactions: Reaction[] = (msg.reactions ?? []).map(r => ({
+  // Reactions — map to UI format with userIds for tooltip.
+  // `r.me` is populated by `stores/messages.ts::transformReactions` before
+  // a Message reaches the store; the `?? false` is a type-narrowing safety
+  // net for the (theoretical) wire-DTO path that does not include `me`.
+  const reactions: ReactionDisplay[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
-    me: r.me,
+    me: r.me ?? false,
     userIds: r.user_ids ?? [],
   }))
 
@@ -160,6 +173,9 @@ export function transformMessage(
     is_pinned: msg.is_pinned,
     embeds: msg.embeds,
     attachments: msg.attachments,
+    thread_id: msg.thread_id ?? null,
+    thread_reply_count: msg.thread_reply_count ?? null,
+    poll: msg.poll ?? null,
   }
 }
 
@@ -168,7 +184,7 @@ export function transformMessages(
   msgs: ApiMessage[],
   users: Map<string, User>,
   isDm?: boolean,
-): UiMessage[] {
+): MessageVM[] {
   const msgMap = new Map(msgs.map(m => [m.id, m]))
   return msgs.map((msg, i) => {
     const ui = transformMessage(msg, users, msgMap, i > 0 ? msgs[i - 1] : null)
@@ -186,12 +202,12 @@ export function transformServer(
   memberGroup: MemberGroup,
   unreadCount: number,
   channelUnreads?: Record<string, number>,
-): UiServer {
+): ServerDisplay {
   // Sort categories by position
   const sortedCats = [...categories].sort((a, b) => a.position - b.position)
 
   // Build UI categories (name + channel ID list)
-  const uiCategories: UiCategory[] = sortedCats.map(cat => ({
+  const uiCategories: CategoryDisplay[] = sortedCats.map(cat => ({
     id: cat.id,
     name: cat.name,
     channels: channels
@@ -212,7 +228,7 @@ export function transformServer(
   }
 
   // Build UI channels
-  const uiChannels: UiChannel[] = channels
+  const uiChannels: ChannelDisplay[] = channels
     .sort((a, b) => a.position - b.position)
     .map(ch => ({
       id: ch.id,
@@ -244,8 +260,8 @@ export function transformMemberGroup(
   users: Map<string, User>,
   presences: Map<string, string>,
 ): MemberGroup {
-  const online: UiMember[] = []
-  const offline: UiMember[] = []
+  const online: MemberSummary[] = []
+  const offline: MemberSummary[] = []
 
   for (const member of members) {
     const user = member.user ?? users.get(member.user_id)
@@ -253,7 +269,7 @@ export function transformMemberGroup(
 
     const status = toMemberStatus(presences.get(user.id) ?? user.status)
     const { color, letter, avatarUrl } = userToAvatar(user)
-    const uiMember: UiMember = {
+    const uiMember: MemberSummary = {
       name: member.nickname || displayName(user),
       status,
       color,

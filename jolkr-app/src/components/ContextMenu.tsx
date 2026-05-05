@@ -2,14 +2,14 @@ import { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useContextMenuStore, type ContextMenuEntry } from '../stores/context-menu';
 import * as Icons from 'lucide-react';
+import s from './ContextMenu.module.css';
 
 const MENU_PADDING = 8;
 
-/** Variant → Tailwind classes */
-const VARIANT_CLASSES: Record<string, string> = {
-  default: 'text-text-secondary hover:bg-hover hover:text-text-primary',
-  danger: 'text-danger hover:bg-danger/10',
-  warning: 'text-warning hover:bg-warning/10',
+const variantClass: Record<string, string> = {
+  default: '',
+  danger: s.danger,
+  warning: s.warning,
 };
 
 function isDivider(entry: ContextMenuEntry): entry is { divider: true } {
@@ -115,18 +115,18 @@ export default function ContextMenu() {
     <div
       ref={menuRef}
       role="menu"
-      className="fixed z-101 bg-surface border border-divider rounded-xl shadow-float py-1 min-w-42 animate-dropdown-enter"
+      className={s.menu}
       style={{ left: x, top: y }}
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
     >
       {items.map((entry, i) => {
         if (isDivider(entry)) {
-          return <div key={i} className="my-1 border-t border-divider" />;
+          return <div key={i} className={s.divider} />;
         }
 
         const variant = entry.variant ?? 'default';
-        const variantClasses = VARIANT_CLASSES[variant] ?? VARIANT_CLASSES.default;
+        const itemClass = `${s.item} ${variantClass[variant] ?? ''} ${entry.className ?? ''}`.trim();
         const IconComponent = entry.icon ? getIcon(entry.icon) : null;
 
         return (
@@ -135,9 +135,9 @@ export default function ContextMenu() {
             role="menuitem"
             disabled={entry.disabled}
             onClick={() => { entry.onClick(); close(); }}
-            className={`w-full px-3 py-2 text-left text-sm outline-none flex items-center gap-2 disabled:opacity-30 disabled:cursor-default ${entry.className ?? variantClasses}`}
+            className={itemClass}
           >
-            {IconComponent && <IconComponent className="size-4" />}
+            {IconComponent && <IconComponent className={s.icon} />}
             {entry.label}
           </button>
         );

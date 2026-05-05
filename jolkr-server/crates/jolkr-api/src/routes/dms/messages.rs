@@ -5,7 +5,9 @@ use axum::{
 use uuid::Uuid;
 
 use jolkr_core::DmService;
-use jolkr_core::services::dm::{DmMessageInfo, DmMessageQuery, EditDmRequest, SendDmRequest};
+use jolkr_core::services::dm::{
+    DmChannelInfo, DmLastMessage, DmMessageInfo, DmMessageQuery, EditDmRequest, SendDmRequest,
+};
 use jolkr_core::services::message::EmbedInfo;
 use jolkr_db::repo::{DmRepo, EmbedRepo, UserRepo};
 
@@ -21,6 +23,14 @@ pub(crate) async fn send_dm_message(
     Path(dm_id): Path<Uuid>,
     Json(body): Json<SendDmRequest>,
 ) -> Result<Json<DmMessageResponse>, AppError> {
+    // Fetch channel metadata up-front so the DmCreate fan-out below has it
+    // without an extra roundtrip. This is a pure read; if it fails we still
+    // proceed with the send and just skip the optional DmCreate fan-out.
+    let channel_row_result = DmRepo::get_channel(&state.pool, dm_id).await;
+    if let Err(ref e) = channel_row_result {
+        tracing::warn!("DmCreate fan-out skipped for channel {dm_id}: {e}");
+    }
+
     let message = DmService::send_message(&state.pool, dm_id, auth.user_id, body).await?;
 
     // Broadcast via WebSocket so both participants see the message in real-time
@@ -31,10 +41,51 @@ pub(crate) async fn send_dm_message(
 
     // Also broadcast to each DM participant by user_id, so their DM list
     // updates even if they haven't subscribed to this channel yet.
-    if let Ok(members) = DmRepo::get_dm_members(&state.pool, dm_id).await {
-        for member in &members {
+    let members_opt = DmRepo::get_dm_members(&state.pool, dm_id).await.ok();
+    if let Some(members) = &members_opt {
+        for member in members {
             state.nats.publish_to_user(member.user_id, &event).await;
         }
+    }
+
+    // Emit DmCreate to every member so their DM list shows the conversation,
+    // even if the recipient has never seen this DM before (or previously closed
+    // it). Frontend dedupe is idempotent: existing entries are replaced, missing
+    // ones are prepended. The event also surfaces last_message so the sidebar
+    // preview is correct without a separate fetch.
+    //
+    // members_opt = None is rare but possible if get_dm_members hit a transient
+    // DB error above; log it so this regression class is observable.
+    match (members_opt.as_ref(), channel_row_result) {
+        (Some(members), Ok(channel_row)) => {
+            let dm_info = DmChannelInfo {
+                id: channel_row.id,
+                is_group: channel_row.is_group,
+                name: channel_row.name,
+                members: members.iter().map(|m| m.user_id).collect(),
+                created_at: channel_row.created_at,
+                last_message: Some(DmLastMessage {
+                    id: message.id,
+                    author_id: message.author_id,
+                    content: message.content.clone(),
+                    nonce: message.nonce.clone(),
+                    created_at: message.created_at,
+                }),
+            };
+            let dm_event = crate::ws::events::GatewayEvent::DmCreate {
+                channel: dm_info,
+            };
+            for member in members {
+                state.nats.publish_to_user(member.user_id, &dm_event).await;
+            }
+        }
+        (None, _) => {
+            tracing::warn!(
+                "DmCreate fan-out skipped for channel {dm_id}: get_dm_members returned None"
+            );
+        }
+        // get_channel error path already logged above where it occurred.
+        (Some(_), Err(_)) => {}
     }
 
     // Link embed processing (fire-and-forget) for DM messages
@@ -175,6 +226,26 @@ pub(crate) async fn delete_dm_message(
         channel_id: dm_channel_id,
     };
     state.nats.publish_to_channel(dm_channel_id, &event).await;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// POST /api/dms/messages/:id/hide — soft-hide a DM message for the caller
+/// only. Used for "Only for me" deletes and for shift-deleting messages from
+/// other users. Authors hiding their own message keeps the message visible
+/// for the other side (use the hard DELETE route for "delete for everyone").
+pub(crate) async fn hide_dm_message(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(message_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    let dm_id = DmService::hide_message_for_me(&state.pool, message_id, auth.user_id).await?;
+
+    // Only the hider's other sessions need to know — nobody else can see this
+    // change. publish_to_user fans out across the same user's connected
+    // gateways without leaking the event to other DM members.
+    let event = crate::ws::events::GatewayEvent::DmMessageHide { dm_id, message_id };
+    state.nats.publish_to_user(auth.user_id, &event).await;
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

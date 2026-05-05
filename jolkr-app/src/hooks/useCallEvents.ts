@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { wsClient } from '../api/ws';
 import { useCallStore } from '../stores/call';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 let ringAudio: HTMLAudioElement | null = null;
 let audioCtx: AudioContext | null = null;
@@ -11,7 +12,7 @@ let secondOsc: OscillatorNode | null = null;
 let ringing = false;
 
 export function getRingtoneType(): string {
-  return localStorage.getItem('jolkr_ringtone') ?? 'classic';
+  return localStorage.getItem(STORAGE_KEYS.RINGTONE) ?? 'classic';
 }
 
 function startRingSound() {
@@ -125,25 +126,21 @@ export function useCallEvents() {
 
   // Listen for WS call events
   useEffect(() => {
-    const unsub = wsClient.on((op, d) => {
+    const unsub = wsClient.on((event) => {
       const store = useCallStore.getState();
 
-      switch (op) {
+      switch (event.op) {
         case 'DmCallRing':
-          store.handleRing(
-            d.dm_id as string,
-            d.caller_id as string,
-            d.caller_username as string,
-          );
+          store.handleRing(event.d.dm_id, event.d.caller_id, event.d.caller_username, event.d.is_video);
           break;
         case 'DmCallAccept':
-          store.handleAccepted(d.dm_id as string);
+          store.handleAccepted(event.d.dm_id);
           break;
         case 'DmCallReject':
-          store.handleRejected(d.dm_id as string);
+          store.handleRejected(event.d.dm_id);
           break;
         case 'DmCallEnd':
-          store.handleEnded(d.dm_id as string);
+          store.handleEnded(event.d.dm_id);
           break;
       }
     });

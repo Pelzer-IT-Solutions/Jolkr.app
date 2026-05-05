@@ -4,7 +4,22 @@ use uuid::Uuid;
 
 use jolkr_common::JolkrError;
 use jolkr_db::models::FriendshipRow;
+use jolkr_db::repo::friendships::FriendshipWithUsersRow;
 use jolkr_db::repo::FriendshipRepo;
+
+/// Minimal public profile fields embedded inside a `FriendshipInfo` so the
+/// frontend can render names + avatars in one round-trip.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FriendshipUser {
+    /// User identifier.
+    pub id: Uuid,
+    /// Login username.
+    pub username: String,
+    /// Optional display name.
+    pub display_name: Option<String>,
+    /// Avatar image URL.
+    pub avatar_url: Option<String>,
+}
 
 /// Public information about `friendship`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,6 +32,13 @@ pub struct FriendshipInfo {
     pub addressee_id: Uuid,
     /// Current status.
     pub status: String,
+    /// Requester public profile (populated on list endpoints; `None` for
+    /// row-only conversions such as the response of `send_request`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester: Option<FriendshipUser>,
+    /// Addressee public profile (populated on list endpoints).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub addressee: Option<FriendshipUser>,
 }
 
 impl From<FriendshipRow> for FriendshipInfo {
@@ -26,6 +48,33 @@ impl From<FriendshipRow> for FriendshipInfo {
             requester_id: row.requester_id,
             addressee_id: row.addressee_id,
             status: row.status,
+            requester: None,
+            addressee: None,
+        }
+    }
+}
+
+impl From<FriendshipWithUsersRow> for FriendshipInfo {
+    fn from(row: FriendshipWithUsersRow) -> Self {
+        let requester = row.req_username.map(|username| FriendshipUser {
+            id: row.requester_id,
+            username,
+            display_name: row.req_display_name,
+            avatar_url: row.req_avatar_url,
+        });
+        let addressee = row.addr_username.map(|username| FriendshipUser {
+            id: row.addressee_id,
+            username,
+            display_name: row.addr_display_name,
+            avatar_url: row.addr_avatar_url,
+        });
+        Self {
+            id: row.id,
+            requester_id: row.requester_id,
+            addressee_id: row.addressee_id,
+            status: row.status,
+            requester,
+            addressee,
         }
     }
 }
@@ -46,8 +95,15 @@ impl FriendshipService {
             ));
         }
 
-        // Verify addressee exists
-        jolkr_db::repo::UserRepo::get_by_id(pool, addressee_id).await?;
+        // Verify addressee exists + enforce their friend-request privacy gate.
+        // BadRequest is used (instead of unit-only Forbidden) so the message
+        // reaches the user-facing toast.
+        let addressee = jolkr_db::repo::UserRepo::get_by_id(pool, addressee_id).await?;
+        if !addressee.allow_friend_requests {
+            return Err(JolkrError::BadRequest(
+                "This user is not accepting friend requests".into(),
+            ));
+        }
 
         let row = FriendshipRepo::send_request(pool, requester_id, addressee_id).await?;
         Ok(FriendshipInfo::from(row))
@@ -63,13 +119,15 @@ impl FriendshipService {
         Ok(FriendshipInfo::from(row))
     }
 
-    /// Decline or remove.
+    /// Decline or remove. Returns the deleted friendship so the caller can
+    /// publish a WS event to both participants before forgetting about it.
     pub async fn decline_or_remove(
         pool: &PgPool,
         friendship_id: Uuid,
         caller_id: Uuid,
-    ) -> Result<(), JolkrError> {
-        FriendshipRepo::decline_or_remove(pool, friendship_id, caller_id).await
+    ) -> Result<FriendshipInfo, JolkrError> {
+        let row = FriendshipRepo::decline_or_remove(pool, friendship_id, caller_id).await?;
+        Ok(FriendshipInfo::from(row))
     }
 
     /// Block user.
@@ -101,5 +159,101 @@ impl FriendshipService {
     ) -> Result<Vec<FriendshipInfo>, JolkrError> {
         let rows = FriendshipRepo::list_pending(pool, user_id).await?;
         Ok(rows.into_iter().map(FriendshipInfo::from).collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_with_users_row_populates_both_participants() {
+        let req_id = Uuid::new_v4();
+        let addr_id = Uuid::new_v4();
+        let row = FriendshipWithUsersRow {
+            id: Uuid::new_v4(),
+            requester_id: req_id,
+            addressee_id: addr_id,
+            status: "accepted".into(),
+            req_username: Some("alice".into()),
+            req_display_name: Some("Alice".into()),
+            req_avatar_url: Some("https://cdn/a.png".into()),
+            addr_username: Some("bob".into()),
+            addr_display_name: None,
+            addr_avatar_url: None,
+        };
+        let info = FriendshipInfo::from(row);
+        let req = info.requester.expect("requester populated");
+        assert_eq!(req.id, req_id);
+        assert_eq!(req.username, "alice");
+        assert_eq!(req.display_name.as_deref(), Some("Alice"));
+        assert_eq!(req.avatar_url.as_deref(), Some("https://cdn/a.png"));
+        let addr = info.addressee.expect("addressee populated");
+        assert_eq!(addr.id, addr_id);
+        assert_eq!(addr.username, "bob");
+        assert!(addr.display_name.is_none());
+        assert!(addr.avatar_url.is_none());
+    }
+
+    #[test]
+    fn from_with_users_row_handles_deleted_user() {
+        let row = FriendshipWithUsersRow {
+            id: Uuid::new_v4(),
+            requester_id: Uuid::new_v4(),
+            addressee_id: Uuid::new_v4(),
+            status: "pending".into(),
+            req_username: Some("alice".into()),
+            req_display_name: None,
+            req_avatar_url: None,
+            // addressee user was deleted -> all join columns NULL
+            addr_username: None,
+            addr_display_name: None,
+            addr_avatar_url: None,
+        };
+        let info = FriendshipInfo::from(row);
+        assert!(info.requester.is_some());
+        assert!(info.addressee.is_none(), "deleted user yields None");
+    }
+
+    #[test]
+    fn from_friendship_row_leaves_users_none() {
+        let row = FriendshipRow {
+            id: Uuid::new_v4(),
+            requester_id: Uuid::new_v4(),
+            addressee_id: Uuid::new_v4(),
+            status: "pending".into(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        let info = FriendshipInfo::from(row);
+        assert!(info.requester.is_none());
+        assert!(info.addressee.is_none());
+    }
+
+    #[test]
+    fn serializes_with_nested_user_objects() {
+        let info = FriendshipInfo {
+            id: Uuid::nil(),
+            requester_id: Uuid::nil(),
+            addressee_id: Uuid::nil(),
+            status: "accepted".into(),
+            requester: Some(FriendshipUser {
+                id: Uuid::nil(),
+                username: "alice".into(),
+                display_name: Some("Alice".into()),
+                avatar_url: None,
+            }),
+            addressee: Some(FriendshipUser {
+                id: Uuid::nil(),
+                username: "bob".into(),
+                display_name: None,
+                avatar_url: None,
+            }),
+        };
+        let json = serde_json::to_value(&info).expect("serialize");
+        assert_eq!(json["requester"]["username"], "alice");
+        assert_eq!(json["requester"]["display_name"], "Alice");
+        assert_eq!(json["addressee"]["username"], "bob");
+        assert!(json["addressee"]["display_name"].is_null());
     }
 }

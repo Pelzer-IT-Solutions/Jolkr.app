@@ -30,13 +30,14 @@ pub(crate) async fn create_dm(
         }
     };
 
-    // Notify all DM members about the new/reopened channel
+    // Only notify the *caller's* other sessions about the new DM. Other
+    // members must not see a phantom conversation in their DM list before any
+    // message has been sent — the recipient gets a `DmCreate` once the first
+    // `send_dm_message` lands (see routes/dms/messages.rs).
     let event = crate::ws::events::GatewayEvent::DmUpdate {
         channel: channel.clone(),
     };
-    for &member_id in &channel.members {
-        state.nats.publish_to_user(member_id, &event).await;
-    }
+    state.nats.publish_to_user(auth.user_id, &event).await;
 
     Ok(Json(DmChannelResponse { channel }))
 }
@@ -107,12 +108,26 @@ pub(crate) async fn leave_dm(
 }
 
 /// POST /api/dms/:dm_id/close — close (hide) a DM from the user's list.
+///
+/// `close_dm` is a per-user soft-close: only the caller's row in `dm_members`
+/// gets `closed_at` set, and only the caller's sessions need to react. Other
+/// members keep seeing the conversation exactly as it was — the same name,
+/// the same membership, the same history — so we deliberately do NOT
+/// broadcast a `DmUpdate` to them. (A previous version did, with the closer
+/// stripped from the member list, which made the other side's sidebar render
+/// as "Unknown" because there was no remaining participant to display.)
 pub(crate) async fn close_dm(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
 ) -> Result<axum::http::StatusCode, AppError> {
     DmService::close_dm(&state.pool, dm_id, auth.user_id).await?;
+
+    // Tell the closer's other sessions to hide this DM. Nobody else gets
+    // notified — the conversation still exists for them unchanged.
+    let close_event = crate::ws::events::GatewayEvent::DmClose { dm_id };
+    state.nats.publish_to_user(auth.user_id, &close_event).await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 

@@ -1,6 +1,7 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
 };
+use serde::Deserialize;
 use uuid::Uuid;
 
 use jolkr_db::repo::{DmRepo, UserRepo};
@@ -8,6 +9,14 @@ use jolkr_db::repo::{DmRepo, UserRepo};
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
+
+/// Query params for `POST /api/dms/:dm_id/call`.
+#[derive(Debug, Deserialize)]
+pub(crate) struct InitiateCallQuery {
+    /// `true` to initiate a video call (rejected for group DMs in v1), defaults to `false`.
+    #[serde(default)]
+    is_video: bool,
+}
 
 /// Helper: validate DM membership and return the list of OTHER member ids
 /// (i.e. everyone in the conversation except the caller). Works for both
@@ -34,17 +43,30 @@ async fn validate_dm_call(
 }
 
 /// POST /api/dms/:dm_id/call — initiate a call (ring all other members).
+///
+/// Accepts `?is_video=true` to start a video call. Video calls are rejected for
+/// group DMs (>1 other member) in v1.
 pub(crate) async fn initiate_call(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
+    Query(params): Query<InitiateCallQuery>,
 ) -> Result<axum::http::StatusCode, AppError> {
     let others = validate_dm_call(&state.pool, dm_id, auth.user_id).await?;
+
+    // v1: video calls are 1-on-1 only.
+    if params.is_video && others.len() > 1 {
+        return Err(AppError(jolkr_common::JolkrError::BadRequest(
+            "Video calls are 1-on-1 only in v1".into(),
+        )));
+    }
+
     let caller = UserRepo::get_by_id(&state.pool, auth.user_id).await?;
     let event = crate::ws::events::GatewayEvent::DmCallRing {
         dm_id,
         caller_id: auth.user_id,
         caller_username: caller.username,
+        is_video: params.is_video,
     };
     for uid in others {
         state.nats.publish_to_user(uid, &event).await;
@@ -68,6 +90,23 @@ pub(crate) async fn accept_call(
         state.nats.publish_to_user(uid, &event).await;
     }
     state.nats.publish_to_user(auth.user_id, &event).await;
+
+    // Notify the accepting user's other sessions that they are now in a call,
+    // so cross-session UI (e.g. "On a call" pill in the user chip) can sync.
+    // We don't track call state server-side, so `is_video` is unknown here —
+    // FE defaults to voice for the indicator.
+    state
+        .nats
+        .publish_to_user(
+            auth.user_id,
+            &crate::ws::events::GatewayEvent::UserCallPresence {
+                dm_id: Some(dm_id),
+                channel_id: None,
+                is_video: None,
+            },
+        )
+        .await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
@@ -86,6 +125,13 @@ pub(crate) async fn reject_call(
         state.nats.publish_to_user(uid, &event).await;
     }
     state.nats.publish_to_user(auth.user_id, &event).await;
+
+    // NOTE: reject does not affect call presence — siblings learn ring is
+    // over via the DmCallReject event above. Emitting UserCallPresence
+    // { dm_id: None } here would race with an Accept on a sibling device:
+    // if device A accepts and device B then rejects the same ring, the
+    // None emit would clear A's "On a call" pill while A is still in the
+    // call.
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
@@ -105,5 +151,20 @@ pub(crate) async fn end_call(
         state.nats.publish_to_user(uid, &event).await;
     }
     state.nats.publish_to_user(auth.user_id, &event).await;
+
+    // Sync the ending user's other sessions: the user is no longer in a call,
+    // so any "On a call" indicator should clear.
+    state
+        .nats
+        .publish_to_user(
+            auth.user_id,
+            &crate::ws::events::GatewayEvent::UserCallPresence {
+                dm_id: None,
+                channel_id: None,
+                is_video: None,
+            },
+        )
+        .await;
+
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

@@ -4,6 +4,8 @@ import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
 import Button from '../components/ui/Button';
+import s from './InviteAccept.module.css';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 export default function InviteAccept() {
   const { code } = useParams<{ code: string }>();
@@ -18,7 +20,7 @@ export default function InviteAccept() {
 
     if (!user) {
       // Save invite code and redirect to login
-      sessionStorage.setItem('jolkr_pending_invite', code);
+      sessionStorage.setItem(STORAGE_KEYS.PENDING_INVITE, code);
       navigate('/login', { replace: true });
       return;
     }
@@ -38,16 +40,16 @@ export default function InviteAccept() {
 
   if (loading || joining) {
     return (
-      <div className="h-full flex items-center justify-center bg-bg">
-        <div className="text-text-tertiary">Joining server...</div>
+      <div className={s.page}>
+        <div className={s.message}>Joining server...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-bg gap-4">
-        <div className="text-danger text-lg">{error}</div>
+      <div className={s.errorPage}>
+        <div className={s.errorMessage}>{error}</div>
         <Button onClick={() => navigate('/', { replace: true })}>
           Go Home
         </Button>

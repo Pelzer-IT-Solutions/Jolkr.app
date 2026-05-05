@@ -150,7 +150,7 @@
   height: 2rem;
   padding: 0 0.875rem;
   border-radius: 0.5rem;
-  color: var(--text-muted);
+  color: var(--text-default);
   transition: background-color var(--transition), color var(--transition);
 }
 .cancelBtn:hover { background: var(--bg-dark-default); color: var(--text-strong); }

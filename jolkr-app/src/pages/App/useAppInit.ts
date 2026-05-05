@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { ServerTheme } from '../../types/ui'
 import { useViewport } from '../../hooks/useViewport'
@@ -9,11 +9,19 @@ import { usePresenceStore } from '../../stores/presence'
 import { useUnreadStore } from '../../stores/unread'
 import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
-import { useGifFavoritesStore } from '../../stores/gif-favorites'
+import { ServerThemeSchema } from '../../api/schemas'
 
-import type { DmChannel, User } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
+import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
+import { lookupFriendship } from '../../services/friendshipCache'
+import { syncPresence } from '../../services/presenceSync'
+import { getLocalKeys } from '../../services/e2ee'
+import { getChannelKey, redistributeChannelKey } from '../../crypto/channelKeys'
 import type { MemberDisplay } from '../../types/ui'
+import { useWsSubscriptions } from './useWsSubscriptions'
+import { useRouting } from './useRouting'
+import { useDmSync } from './useDmSync'
+import { useAuthInit } from './useAuthInit'
 
 export function useAppInit() {
   const navigate = useNavigate()
@@ -26,6 +34,7 @@ export function useAppInit() {
   const membersByServer = useServersStore(s => s.members)
   const categoriesByServer = useServersStore(s => s.categories)
   const storeMessages = useMessagesStore(s => s.messages)
+  const threadListVersion = useMessagesStore(s => s.threadListVersion)
   const presences = usePresenceStore(s => s.statuses)
   const unreadCounts = useUnreadStore(s => s.counts)
   const serverPermissions = useServersStore(s => s.permissions)
@@ -34,8 +43,7 @@ export function useAppInit() {
   const { fetchMessages, sendMessage, sendDmMessage, editMessage, deleteMessage } = useMessagesStore.getState()
 
   // ── DMs ──
-  const [dmList, setDmList] = useState<DmChannel[]>([])
-  const [dmUsers, setDmUsers] = useState<Map<string, User>>(new Map())
+  const { dmList, setDmList, dmUsers, setDmUsers } = useDmSync()
 
   // ── UI state ──
   const [tabbedIds, setTabbedIds] = useState<string[]>([])
@@ -74,6 +82,15 @@ export function useAppInit() {
   }, [viewport.isMobile])
   const [dmActive, setDmActive] = useState(false)
   const [activeDmId, setActiveDmId] = useState('')
+
+  // The "currently visible" container id — the channel id when on a server,
+  // the DM id when in a DM. Memoised so effects can list it as a single
+  // dep instead of `dmActive ? activeDmId : activeChannelId` (which the
+  // exhaustive-deps lint rule cannot collapse).
+  const currentChannelId = useMemo(
+    () => dmActive ? activeDmId : activeChannelId,
+    [dmActive, activeDmId, activeChannelId],
+  )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [newDmOpen, setNewDmOpen] = useState(false)
   const [joinServerOpen, setJoinServerOpen] = useState(false)
@@ -85,178 +102,58 @@ export function useAppInit() {
   const [channelSettingsOpen, setChannelSettingsOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<MemberDisplay | null>(null)
   const [userContextMenu, setUserContextMenu] = useState<UserContextMenuState | null>(null)
+  /** Whether the user the context menu targets is already an accepted friend.
+   *  Resolved asynchronously from the friendship cache when the menu opens —
+   *  drives the "Add Friend" ↔ "Remove Friend" toggle. */
+  const [contextMenuIsFriend, setContextMenuIsFriend] = useState(false)
+  const [profileCard, setProfileCard] = useState<ProfileCardState | null>(null)
 
   // ── Content availability for conditional icon display ──
   const [pinnedCount, setPinnedCount] = useState(0)
   const [pinnedVersion, setPinnedVersion] = useState(0)
   const [threadsCount, setThreadsCount] = useState(0)
 
+  // Currently-open thread inside the right panel. null = show the list view.
+  // Lives here (not in messages store) so it follows the existing pattern of
+  // ephemeral UI state living next to the panel mode.
+  const [openThreadId, setOpenThreadId] = useState<string | null>(null)
+
   const lastChannelPerServer = useRef<Record<string, string>>({})
   const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [ready, setReady] = useState(false)
 
   // ── Per-server themes ──
   const [serverThemes, setServerThemes] = useState<Record<string, ServerTheme>>({})
 
-  // ── Init: fetch servers + DMs, then navigate to correct place ──
-  useEffect(() => {
-    let cancelled = false
+  // ── Bootstrap: mount-only fetch flow + initial routing decision ──
+  // useAuthInit owns the `ready` flag and the parallel servers + DMs + GIF
+  // favorites fetch; only after that completes does it flip ready=true and
+  // every other effect (URL sync, channel data fetch, WS subscribe) gates on
+  // ready before doing anything.
+  const { ready } = useAuthInit({
+    setDmList, setDmUsers, setServerThemes, setTabbedIds,
+    setActiveServerId, setActiveDmId, setActiveChannelId, setDmActive,
+    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions,
+  })
 
-    async function init() {
-      // ── Parse URL FIRST — we need to know where to go ──
-      const path = location.pathname
-      const urlDmId = path.match(/\/dm\/([^/]+)/)?.[1]
-      const urlServerId = path.match(/\/servers\/([^/]+)/)?.[1]
-      const urlChannelId = path.match(/\/servers\/[^/]+\/channels\/([^/]+)/)?.[1]
-
-      // Fetch servers, DMs, and GIF favorites in parallel
-      const [, dms] = await Promise.all([
-        fetchServers(),
-        api.getDms(),
-        useGifFavoritesStore.getState().load(),
-      ])
-      if (cancelled) return
-
-      setDmList(dms)
-
-      // DM user details — fire & forget, don't block init
-      const userIds = new Set<string>()
-      dms.forEach(dm => dm.members.forEach(id => userIds.add(id)))
-      if (userIds.size > 0) {
-        const idArr = Array.from(userIds)
-        Promise.all(
-          idArr.map(id => api.getUser(id).catch(() => null))
-        ).then(users => {
-          if (cancelled) return
-          const map = new Map<string, User>()
-          users.forEach(u => { if (u) map.set(u.id, u) })
-          setDmUsers(map)
-        })
-        // Fetch presence for DM participants
-        api.queryPresence(idArr).then(p => {
-          if (!cancelled) usePresenceStore.getState().setBulk(p)
-        }).catch(console.warn)
-      }
-
-      const srvs = useServersStore.getState().servers
-      const themes: Record<string, ServerTheme> = {}
-      srvs.forEach(srv => {
-        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
-          themes[srv.id] = srv.theme as unknown as ServerTheme
-        } else {
-          themes[srv.id] = { hue: null, orbs: [] }
-        }
-      })
-      setServerThemes(themes)
-
-      const ids = srvs.slice(0, 5).map(s => s.id)
-
-      if (urlDmId) {
-        setDmActive(true)
-        setActiveDmId(urlDmId)
-        setTabbedIds(ids)
-        // Load first server data in background — don't block
-        if (ids[0]) {
-          setActiveServerId(ids[0])
-          loadServerData(ids[0], null) // no await
-        }
-      } else if (urlServerId && srvs.some(s => s.id === urlServerId)) {
-        if (!ids.includes(urlServerId)) ids.unshift(urlServerId)
-        setTabbedIds(ids)
-        setDmActive(false)
-        setActiveServerId(urlServerId)
-        await loadServerData(urlServerId, urlChannelId ?? null)
-      } else if (srvs.length > 0) {
-        setTabbedIds(ids)
-        setDmActive(false)
-        setActiveServerId(ids[0])
-        await loadServerData(ids[0], null)
-        if (!cancelled) navigate(`/servers/${ids[0]}`, { replace: true })
-      } else if (dms.length > 0) {
-        setTabbedIds([])
-        setDmActive(true)
-        setActiveDmId(dms[0].id)
-        if (!cancelled) navigate(`/dm/${dms[0].id}`, { replace: true })
-      }
-
-      if (!cancelled) setReady(true)
-    }
-
-    async function loadServerData(serverId: string, wantedChannelId: string | null) {
-      await Promise.all([
-        fetchChannels(serverId),
-        fetchMembers(serverId),
-        fetchCategories(serverId),
-        fetchPermissions(serverId),
-      ])
-      if (cancelled) return
-      const chs = useServersStore.getState().channels[serverId]
-      if (chs?.length > 0) {
-        const channelId = wantedChannelId && chs.some(c => c.id === wantedChannelId)
-          ? wantedChannelId
-          : chs.find(c => c.kind === 'text')?.id ?? chs[0].id
-        setActiveChannelId(channelId)
-      }
-      // Fetch presence for all server members
-      const mems = useServersStore.getState().members[serverId]
-      if (mems?.length) {
-        const userIds = mems.map(m => m.user_id)
-        api.queryPresence(userIds).then(p => {
-          if (!cancelled) usePresenceStore.getState().setBulk(p)
-        }).catch(console.warn)
-      }
-    }
-
-    init().catch(console.error)
-    return () => { cancelled = true }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Sync state → URL (only AFTER init is done) ──
-  // Uses push (not replace) so each user-driven server/channel/DM switch
-  // adds a webview history entry. The Android hardware back button then
-  // navigates to the previous channel instead of closing the app.
-  useEffect(() => {
-    if (!ready) return
-    let target: string
-    if (dmActive && activeDmId) {
-      target = `/dm/${activeDmId}`
-    } else if (dmActive) {
-      target = `/dm`
-    } else if (activeServerId && activeChannelId) {
-      target = `/servers/${activeServerId}/channels/${activeChannelId}`
-    } else if (activeServerId) {
-      target = `/servers/${activeServerId}`
-    } else {
-      target = '/'
-    }
-    if (location.pathname !== target) {
-      navigate(target)
-    }
-  }, [ready, dmActive, activeDmId, activeServerId, activeChannelId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Sync URL → state (popstate / programmatic history.back) ──
-  // When the user presses the Android back button or otherwise pops history,
-  // the URL changes but state doesn't. Re-derive activeServerId / activeChannelId
-  // / activeDmId / dmActive from the current path so the UI follows the URL.
-  useEffect(() => {
-    if (!ready) return
-    const path = location.pathname
-    const dmMatch = path.match(/^\/dm(?:\/([^/]+))?/)
-    const serverMatch = path.match(/^\/servers\/([^/]+)(?:\/channels\/([^/]+))?/)
-    if (dmMatch) {
-      const dmId = dmMatch[1] ?? ''
-      if (!dmActive) setDmActive(true)
-      if (dmId !== activeDmId) setActiveDmId(dmId)
-    } else if (serverMatch) {
-      const sid = serverMatch[1]
-      const cid = serverMatch[2] ?? ''
-      if (dmActive) setDmActive(false)
-      if (sid !== activeServerId) setActiveServerId(sid)
-      if (cid !== activeChannelId) setActiveChannelId(cid)
-    }
-  }, [ready, location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+  // ── URL ↔ state sync (only after ready) ──
+  // useRouting owns the two effects that keep activeServerId/Channel/Dm in
+  // sync with the browser URL. See useRouting for the rationale on why both
+  // effects keep an exhaustive-deps disable.
+  useRouting({
+    ready, dmActive, activeDmId, activeServerId, activeChannelId,
+    setActiveServerId, setActiveDmId, setActiveChannelId, setDmActive,
+  })
 
   // ── Fetch channel data when switching servers (after init) ──
+  // activeChannelId is read inside the .then to validate selection but we
+  // don't want it in deps — a channel-switch within the same server should
+  // not trigger a refetch. Mirror it through a ref kept current via the
+  // effect below.
+  const activeChannelIdRef = useRef(activeChannelId)
+  useEffect(() => {
+    activeChannelIdRef.current = activeChannelId
+  }, [activeChannelId])
+
   useEffect(() => {
     if (!ready || !activeServerId || dmActive) return
     Promise.all([
@@ -268,18 +165,17 @@ export function useAppInit() {
       // Ensure a valid channel is selected after fresh channel data arrives
       const chs = useServersStore.getState().channels[activeServerId]
       if (!chs?.length) return
-      const currentValid = activeChannelId && chs.some(c => c.id === activeChannelId)
+      const currChan = activeChannelIdRef.current
+      const currentValid = currChan && chs.some(c => c.id === currChan)
       if (!currentValid) {
         setActiveChannelId(chs.find(c => c.kind === 'text')?.id ?? chs[0].id)
       }
       const mems = useServersStore.getState().members[activeServerId]
       if (mems?.length) {
-        api.queryPresence(mems.map(m => m.user_id)).then(p => {
-          usePresenceStore.getState().setBulk(p)
-        }).catch(console.warn)
+        syncPresence(mems.map(m => m.user_id))
       }
     })
-  }, [activeServerId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeServerId, ready, dmActive, fetchChannels, fetchMembers, fetchCategories, fetchPermissions])
 
   // ── Safety: if active server disappears (deleted/left), fall back ──
   useEffect(() => {
@@ -299,12 +195,21 @@ export function useAppInit() {
         if (dmList.length > 0) setActiveDmId(dmList[0].id)
       }
     }
-  }, [ready, servers, dmActive, activeServerId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, servers, dmActive, activeServerId, channelsByServer, dmList, tabbedIds])
 
   // ── Fetch messages when channel changes ──
   useEffect(() => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    const channelId = currentChannelId
     if (!channelId) return
+    // Draft DMs only exist locally — skip every server-side load (messages,
+    // pinned, presence-marker) so we don't 404 on an id the server doesn't
+    // know about. The draft is promoted on first send (handleSend).
+    const isDraft = dmActive && channelId.startsWith('draft:')
+    if (isDraft) {
+      setPinnedCount(0)
+      setThreadsCount(0)
+      return
+    }
     fetchMessages(channelId, dmActive)
 
     // Fetch channel-level permissions (accounts for channel overwrites)
@@ -333,23 +238,94 @@ export function useAppInit() {
       } catch {
         setPinnedCount(0)
       }
-      // TODO: Fetch threads count when API is available
-      setThreadsCount(0)
+      // Threads only exist in server text channels — DMs have none.
+      if (dmActive) {
+        setThreadsCount(0)
+        return
+      }
+      try {
+        const threads = await api.getThreads(channelId, false)
+        setThreadsCount(threads.filter(t => !t.is_archived).length)
+      } catch {
+        setThreadsCount(0)
+      }
     }
     fetchCounts()
 
     return () => {
       useUnreadStore.getState().setActiveChannel(null)
     }
-  }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+    // threadListVersion is included so the count refreshes when ThreadCreate/Update fires.
+  }, [currentChannelId, dmActive, threadListVersion, fetchMessages, fetchChannelPermissions])
+
+  // ── Reset open thread when channel/DM changes ──
+  // Otherwise the thread panel would try to render messages from a thread
+  // that doesn't belong to the new channel.
+  useEffect(() => {
+    setOpenThreadId(null)
+  }, [activeChannelId, activeDmId, dmActive])
 
   // ── WS channel subscribe/unsubscribe ──
   useEffect(() => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    const channelId = currentChannelId
     if (!channelId) return
+    // Draft DMs aren't subscribable — the server has no channel for them.
+    if (dmActive && channelId.startsWith('draft:')) return
     wsClient.subscribe(channelId)
     return () => { wsClient.unsubscribe(channelId) }
-  }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentChannelId, dmActive])
+
+  useEffect(() => {
+    if (!dmActive || !activeDmId || activeDmId.startsWith('draft:')) return
+    const dm = dmList.find(d => d.id === activeDmId)
+    if (!dm || dm.members.length === 0) return
+    const localKeys = getLocalKeys()
+    if (!localKeys) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const channelKey = await getChannelKey(activeDmId, localKeys, true)
+        if (cancelled) return
+        if (channelKey) {
+          await redistributeChannelKey(activeDmId, dm.members, channelKey.rawKey, channelKey.keyGeneration, true)
+        } else {
+          wsClient.requestKeyRedistribute(activeDmId)
+        }
+      } catch (e) {
+        if (e instanceof Error && e.name === 'ChannelKeyDecryptError') {
+          wsClient.requestKeyRedistribute(activeDmId)
+        }
+      }
+    })()
+    return () => { cancelled = true }
+  }, [dmActive, activeDmId, dmList])
+
+  // ── Resolve friendship state for the open user-context-menu ──
+  // Drives the "Add Friend" ↔ "Remove Friend" toggle in the menu.
+  useEffect(() => {
+    if (!userContextMenu?.user.user_id) {
+      setContextMenuIsFriend(false)
+      return
+    }
+    let cancelled = false
+    lookupFriendship(userContextMenu.user.user_id)
+      .then((lookup) => { if (!cancelled) setContextMenuIsFriend(lookup.state === 'accepted') })
+      .catch(() => { if (!cancelled) setContextMenuIsFriend(false) })
+    return () => { cancelled = true }
+  }, [userContextMenu?.user.user_id])
+
+  // ── Real-time WebSocket subscriptions ──
+  // DM channel sync (DmCreate/Update/Close), DM message hides, role +
+  // permission updates, GIF favorites, and cross-session call presence are
+  // all dispatched centrally inside useWsSubscriptions.
+  useWsSubscriptions({
+    activeDmId,
+    setDmList,
+    setActiveDmId,
+    setDmUsers,
+    fetchPermissions,
+    fetchChannelPermissions,
+  })
 
   // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
   useEffect(() => {
@@ -357,12 +333,12 @@ export function useAppInit() {
       const next = { ...prev }
       let changed = false
       for (const srv of servers) {
-        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
-          const t = srv.theme as unknown as ServerTheme
-          if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
-            next[srv.id] = t
-            changed = true
-          }
+        const parsed = ServerThemeSchema.safeParse(srv.theme)
+        if (!parsed.success) continue
+        const t = parsed.data
+        if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
+          next[srv.id] = t
+          changed = true
         }
       }
       return changed ? next : prev
@@ -392,7 +368,10 @@ export function useAppInit() {
     channelSettingsOpen, setChannelSettingsOpen,
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
+    contextMenuIsFriend, setContextMenuIsFriend,
+    profileCard, setProfileCard,
     pinnedCount, setPinnedCount, pinnedVersion, setPinnedVersion, threadsCount, setThreadsCount,
+    openThreadId, setOpenThreadId,
     lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
   }
 }

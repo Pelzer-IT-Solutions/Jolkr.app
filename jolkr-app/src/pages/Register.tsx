@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
+import { wsClient } from '../api/ws';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 export default function Register() {
   useEffect(resetAuthTheme, []);
@@ -21,15 +23,17 @@ export default function Register() {
       await register(email, username, password);
 
       const userId = useAuthStore.getState().user?.id;
+      const user = useAuthStore.getState().user;
       if (userId) {
         const seed = await deriveE2EESeed(password, userId);
-        let deviceId = localStorage.getItem('jolkr_e2ee_device_id');
+        let deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
         if (!deviceId) {
           deviceId = crypto.randomUUID();
-          localStorage.setItem('jolkr_e2ee_device_id', deviceId);
+          localStorage.setItem(STORAGE_KEYS.E2EE_DEVICE_ID, deviceId);
         }
-        initE2EE(deviceId, seed).catch(console.warn);
+        await initE2EE(deviceId, seed).catch(console.warn);
       }
+      if (user?.email_verified) wsClient.connect();
 
       navigate('/verify-email');
     } catch { /* error is in store */ }
@@ -124,7 +128,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '0.375rem',
   },
   subtitle: {
-    color: 'var(--text-muted)',
+    color: 'var(--text-default)',
     textAlign: 'center',
     marginBottom: '1.5rem',
     fontSize: '0.875rem',
@@ -180,7 +184,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   footer: {
     fontSize: '0.875rem',
-    color: 'var(--text-muted)',
+    color: 'var(--text-default)',
     marginTop: '1rem',
   },
 };

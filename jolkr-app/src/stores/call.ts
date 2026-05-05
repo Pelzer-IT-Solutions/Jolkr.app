@@ -2,35 +2,58 @@ import { create } from 'zustand';
 import * as api from '../api/client';
 import { useVoiceStore } from './voice';
 import { stopRingSound } from '../hooks/useCallEvents';
+import { useToast } from './toast';
+
+function toastErr(prefix: string, err: unknown) {
+  const m = err instanceof Error ? err.message : prefix;
+  useToast.getState().show(m, 'error');
+  console.warn(prefix + ':', err);
+}
 
 interface IncomingCall {
   dmId: string;
   callerId: string;
   callerUsername: string;
+  isVideo: boolean;
 }
 
 interface OutgoingCall {
   dmId: string;
   recipientName: string;
   recipientUserId?: string;
+  isVideo: boolean;
 }
 
 interface CallState {
   incomingCall: IncomingCall | null;
   outgoingCall: OutgoingCall | null;
   activeCallDmId: string | null;
+  /** `'video'` for active video calls, `'voice'` otherwise. `null` when no active call. */
+  activeCallType: 'voice' | 'video' | null;
 
-  startCall: (dmId: string, recipientName: string, recipientUserId?: string) => Promise<void>;
+  /** Set by the `UserCallPresence` WS event when ANOTHER session of this user
+   *  is in a DM call OR a server voice channel. The local session uses
+   *  `activeCallDmId` instead — this field reflects sibling sessions only,
+   *  so the user chip can show an "On a call" pill when the call is
+   *  happening on a different device/tab. `dmId` and `channelId` are
+   *  mutually exclusive — at most one is set. */
+  remoteSessionCall: { dmId?: string; channelId?: string; isVideo: boolean } | null;
+
+  startCall: (dmId: string, recipientName: string, recipientUserId?: string, opts?: { video?: boolean }) => Promise<void>;
   acceptIncoming: () => Promise<void>;
   rejectIncoming: () => Promise<void>;
   cancelOutgoing: () => Promise<void>;
   endActiveCall: () => Promise<void>;
 
   // WS event handlers
-  handleRing: (dmId: string, callerId: string, callerUsername: string) => void;
+  handleRing: (dmId: string, callerId: string, callerUsername: string, isVideo: boolean) => void;
   handleAccepted: (dmId: string) => void;
   handleRejected: (dmId: string) => void;
   handleEnded: (dmId: string) => void;
+  /** Apply a `UserCallPresence` payload from the server. When both `dm_id`
+   *  and `channel_id` are null/undefined, clears `remoteSessionCall`;
+   *  otherwise it sets it (with whichever id is populated). */
+  applyServerEvent: (payload: { dm_id?: string | null; channel_id?: string | null; is_video?: boolean | null }) => void;
 
   reset: () => void;
 }
@@ -49,14 +72,18 @@ export const useCallStore = create<CallState>((set, get) => ({
   incomingCall: null,
   outgoingCall: null,
   activeCallDmId: null,
+  activeCallType: null,
+  remoteSessionCall: null,
 
-  startCall: async (dmId, recipientName, recipientUserId) => {
+  startCall: async (dmId, recipientName, recipientUserId, opts) => {
     const { activeCallDmId, outgoingCall, incomingCall } = get();
     if (activeCallDmId || outgoingCall || incomingCall) return;
 
+    const isVideo = opts?.video ?? false;
+
     try {
-      await api.initiateCall(dmId);
-      set({ outgoingCall: { dmId, recipientName, recipientUserId } });
+      await api.initiateCall(dmId, { isVideo });
+      set({ outgoingCall: { dmId, recipientName, recipientUserId, isVideo } });
 
       // Auto-cancel after 60s if no answer
       clearRingTimer();
@@ -68,7 +95,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         }
       }, RING_TIMEOUT_MS);
     } catch (e) {
-      console.warn('Failed to initiate call:', e);
+      toastErr('Failed to initiate call', e);
     }
   },
 
@@ -78,18 +105,18 @@ export const useCallStore = create<CallState>((set, get) => ({
 
     clearRingTimer();
     stopRingSound();
-    const { dmId, callerUsername } = incomingCall;
+    const { dmId, callerUsername, isVideo } = incomingCall;
     set({ incomingCall: null });
 
     try {
       await api.acceptCall(dmId);
-      set({ activeCallDmId: dmId });
+      set({ activeCallDmId: dmId, activeCallType: isVideo ? 'video' : 'voice' });
 
       // Join voice channel (dmId as channelId, serverId=null for DM calls)
-      await useVoiceStore.getState().joinChannel(dmId, null, callerUsername, incomingCall.callerId);
+      await useVoiceStore.getState().joinChannel(dmId, null, callerUsername, incomingCall.callerId, { withVideo: isVideo });
     } catch (e) {
-      console.warn('Failed to accept call:', e);
-      set({ incomingCall: null, activeCallDmId: null });
+      toastErr('Failed to accept call', e);
+      set({ incomingCall: null, activeCallDmId: null, activeCallType: null });
     }
   },
 
@@ -102,7 +129,8 @@ export const useCallStore = create<CallState>((set, get) => ({
     try {
       await api.rejectCall(incomingCall.dmId);
     } catch (e) {
-      console.warn('Failed to reject call:', e);
+      // Reject is best-effort — local state cleared regardless. Log only, no toast.
+      console.warn('Failed to reject call (server-side):', e);
     }
     set({ incomingCall: null });
   },
@@ -115,7 +143,8 @@ export const useCallStore = create<CallState>((set, get) => ({
     try {
       await api.endCall(outgoingCall.dmId);
     } catch (e) {
-      console.warn('Failed to cancel call:', e);
+      // Cancel is best-effort — local state cleared regardless. Log only, no toast.
+      console.warn('Failed to cancel call (server-side):', e);
     }
     set({ outgoingCall: null });
   },
@@ -127,20 +156,21 @@ export const useCallStore = create<CallState>((set, get) => ({
     try {
       await api.endCall(activeCallDmId);
     } catch (e) {
-      console.warn('Failed to end call:', e);
+      // End-call is best-effort — local state cleared regardless. Log only, no toast.
+      console.warn('Failed to end call (server-side):', e);
     }
     await useVoiceStore.getState().leaveChannel();
-    set({ activeCallDmId: null });
+    set({ activeCallDmId: null, activeCallType: null });
   },
 
   // ── WS event handlers ──────────────────────────────────────────────
 
-  handleRing: (dmId, callerId, callerUsername) => {
+  handleRing: (dmId, callerId, callerUsername, isVideo) => {
     const { activeCallDmId, incomingCall, outgoingCall } = get();
     // Ignore if already in a call or already ringing
     if (activeCallDmId || incomingCall || outgoingCall) return;
 
-    set({ incomingCall: { dmId, callerId, callerUsername } });
+    set({ incomingCall: { dmId, callerId, callerUsername, isVideo } });
 
     // Auto-reject after 60s
     clearRingTimer();
@@ -168,13 +198,13 @@ export const useCallStore = create<CallState>((set, get) => ({
     if (!outgoingCall || outgoingCall.dmId !== dmId) return;
 
     clearRingTimer();
-    const { recipientName, recipientUserId } = outgoingCall;
-    set({ outgoingCall: null, activeCallDmId: dmId });
+    const { recipientName, recipientUserId, isVideo } = outgoingCall;
+    set({ outgoingCall: null, activeCallDmId: dmId, activeCallType: isVideo ? 'video' : 'voice' });
 
     // Join voice channel
-    useVoiceStore.getState().joinChannel(dmId, null, recipientName, recipientUserId).catch((e) => {
+    useVoiceStore.getState().joinChannel(dmId, null, recipientName, recipientUserId, { withVideo: isVideo }).catch((e) => {
       console.warn('Failed to join voice after call accepted:', e);
-      set({ activeCallDmId: null });
+      set({ activeCallDmId: null, activeCallType: null });
     });
   },
 
@@ -200,7 +230,7 @@ export const useCallStore = create<CallState>((set, get) => ({
 
     if (activeCallDmId === dmId) {
       useVoiceStore.getState().leaveChannel();
-      set({ activeCallDmId: null });
+      set({ activeCallDmId: null, activeCallType: null });
       return;
     }
     if (incomingCall?.dmId === dmId) {
@@ -215,10 +245,20 @@ export const useCallStore = create<CallState>((set, get) => ({
     }
   },
 
+  applyServerEvent: (payload) => {
+    const dmId = payload.dm_id ?? undefined;
+    const channelId = payload.channel_id ?? undefined;
+    if (!dmId && !channelId) {
+      set({ remoteSessionCall: null });
+    } else {
+      set({ remoteSessionCall: { dmId, channelId, isVideo: !!payload.is_video } });
+    }
+  },
+
   reset: () => {
     clearRingTimer();
     stopRingSound();
-    set({ incomingCall: null, outgoingCall: null, activeCallDmId: null });
+    set({ incomingCall: null, outgoingCall: null, activeCallDmId: null, activeCallType: null, remoteSessionCall: null });
   },
 }));
 
@@ -228,7 +268,7 @@ useVoiceStore.subscribe((state, prev) => {
     const { activeCallDmId } = useCallStore.getState();
     if (activeCallDmId) {
       api.endCall(activeCallDmId).catch(e => console.warn('Failed to end call:', e));
-      useCallStore.setState({ activeCallDmId: null });
+      useCallStore.setState({ activeCallDmId: null, activeCallType: null });
     }
   }
 });

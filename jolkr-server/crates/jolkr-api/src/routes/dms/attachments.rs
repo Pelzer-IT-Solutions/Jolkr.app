@@ -5,6 +5,7 @@ use axum::{
 use serde::Serialize;
 use uuid::Uuid;
 
+use jolkr_core::DmService;
 use jolkr_core::services::dm::DmMessageInfo;
 use jolkr_core::services::message::AttachmentInfo;
 use jolkr_db::repo::DmRepo;
@@ -19,6 +20,23 @@ use super::types::dm_to_message_info;
 #[derive(Serialize)]
 pub(crate) struct DmAttachmentResponse {
     pub attachment: AttachmentInfo,
+}
+
+#[derive(Serialize)]
+pub(crate) struct DmAttachmentsResponse {
+    pub attachments: Vec<AttachmentInfo>,
+}
+
+/// GET /api/dms/:dm_id/attachments — list every attachment shared in this
+/// DM newest-first, capped at 100 by default. Powers the "Shared Files"
+/// side panel.
+pub(crate) async fn list_dm_attachments(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(dm_id): Path<Uuid>,
+) -> Result<Json<DmAttachmentsResponse>, AppError> {
+    let attachments = DmService::list_attachments(&state.pool, dm_id, auth.user_id, None).await?;
+    Ok(Json(DmAttachmentsResponse { attachments }))
 }
 
 /// POST /api/dms/:dm_id/messages/:message_id/attachments

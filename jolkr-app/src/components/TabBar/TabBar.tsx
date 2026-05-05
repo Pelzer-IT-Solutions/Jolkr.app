@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { useCallback, useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon, MoreHorizontal, VolumeX, CheckCheck, X } from 'lucide-react'
 import {
@@ -18,9 +18,10 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Server } from '../../types'
+import type { ServerDisplay, MemberStatus } from '../../types'
 import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
 import { isTauri, isMobile } from '../../platform/detect'
+import { useCallStore } from '../../stores/call'
 import s from './TabBar.module.css'
 
 // Tauri Android/iOS: disable drag-to-reorder so finger scrolling along the
@@ -91,9 +92,9 @@ function applyTabsMask(el: HTMLDivElement | null, left: number, right: number) {
   el.style.webkitMaskImage = img
 }
 
-type UserStatus = 'online' | 'idle' | 'dnd' | 'offline'
 
-const STATUS_META: Record<UserStatus, { label: string; color: string }> = {
+
+const STATUS_META: Record<MemberStatus, { label: string; color: string }> = {
   online:  { label: 'Online',          color: 'oklch(65% 0.18 143)' },
   idle:    { label: 'Idle',            color: 'oklch(75% 0.18 65)'  },
   dnd:     { label: 'Do Not Disturb',  color: 'oklch(55% 0.2 25)'   },
@@ -109,8 +110,8 @@ interface UserInfo {
 }
 
 interface Props {
-  allServers:           Server[]
-  tabbedServers:        Server[]
+  allServers:           ServerDisplay[]
+  tabbedServers:        ServerDisplay[]
   activeServerId:       string
   dmActive:             boolean
   searchActive:         boolean
@@ -118,7 +119,7 @@ interface Props {
   user?:                UserInfo
   // New optional props — all backward-compatible
   mutedServerIds?:      string[]
-  currentStatus?:       UserStatus
+  currentStatus?:       MemberStatus
   ownerServerIds?:      string[]
   settingsServerIds?:   string[]
   userProfile?: {
@@ -138,7 +139,7 @@ interface Props {
   onJoinServer:         () => void
   onCreateServer:       () => void
   onLogout?:            () => void
-  onStatusChange?:      (status: UserStatus) => void
+  onStatusChange?:      (status: MemberStatus) => void
   onOpenServerSettings?:(serverId: string) => void
   onToggleMuteServer?:  (serverId: string) => void
   onMarkAllRead?:       (serverId: string) => void
@@ -155,8 +156,26 @@ export function TabBar({
   const [browserOpen,  setBrowserOpen]  = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [menuOpen,     setMenuOpen]     = useState(false)
-  const status: UserStatus = statusProp ?? 'online'
+  const status: MemberStatus = statusProp ?? 'online'
   const [menuPos,      setMenuPos]      = useState({ top: 0, right: 0 })
+
+  // Cross-session call presence: set when ANOTHER session of this user is on a
+  // DM call OR in a server voice channel. The local session uses its own
+  // activeCallDmId / VoiceConnectionBar for in-call UI, so we deliberately
+  // only show the pill for SIBLING sessions.
+  //
+  // DM-call suppression: if the remote presence event is for the SAME DM the
+  // local session is currently in, hide the pill (we're already showing the
+  // in-call bar).
+  //
+  // TODO: voice-channel suppression follow-up — the call store doesn't yet
+  // track the local voice channel id, so when a sibling joins the SAME voice
+  // channel we're already in we'll briefly show the pill. Wire local
+  // channelId through the call store to suppress that case.
+  const remoteSessionCall = useCallStore(st => st.remoteSessionCall)
+  const localActiveCallDmId = useCallStore(st => st.activeCallDmId)
+  const showRemoteCallPill = !!remoteSessionCall
+    && (remoteSessionCall.dmId == null || remoteSessionCall.dmId !== localActiveCallDmId)
 
   // Server tab context menu
   const [serverTabMenuOpen, setServerTabMenuOpen] = useState<string | null>(null)
@@ -178,7 +197,9 @@ export function TabBar({
   const displayFadeRef = useRef({ left: 0, right: 0 })
   const fadeRafRef     = useRef(0)
 
-  function updateTabsScrollTargets() {
+  // Mask helpers — stable identities (touch only refs) so the effects below
+  // can list them as deps without re-mounting the listeners every render.
+  const updateTabsScrollTargets = useCallback(() => {
     const el = tabsRef.current
     if (!el) return
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth)
@@ -191,9 +212,9 @@ export function TabBar({
         right: Math.min(1, (maxScroll - el.scrollLeft) / ramp),
       }
     }
-  }
+  }, [])
 
-  function scheduleTabsMaskAnimation() {
+  const scheduleTabsMaskAnimation = useCallback(() => {
     if (fadeRafRef.current !== 0) return
     fadeRafRef.current = requestAnimationFrame(function tick() {
       const el = tabsRef.current
@@ -214,12 +235,12 @@ export function TabBar({
         fadeRafRef.current = requestAnimationFrame(tick)
       }
     })
-  }
+  }, [])
 
-  function syncTabsScrollTargets() {
+  const syncTabsScrollTargets = useCallback(() => {
     updateTabsScrollTargets()
     scheduleTabsMaskAnimation()
-  }
+  }, [updateTabsScrollTargets, scheduleTabsMaskAnimation])
 
   useLayoutEffect(() => {
     updateTabsScrollTargets()
@@ -232,7 +253,7 @@ export function TabBar({
       if (fadeRafRef.current) cancelAnimationFrame(fadeRafRef.current)
       fadeRafRef.current = 0
     }
-  }, [tabbedServers])
+  }, [tabbedServers, updateTabsScrollTargets])
 
   useEffect(() => {
     const el = tabsRef.current
@@ -246,7 +267,7 @@ export function TabBar({
       el.removeEventListener('scroll', onScroll)
       ro.disconnect()
     }
-  }, [tabbedServers]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tabbedServers, syncTabsScrollTargets])
 
   // Close server browser on outside click
   useEffect(() => {
@@ -446,7 +467,7 @@ export function TabBar({
 
       {/* ── Server tab context menu ── */}
       <Menu
-        isOpen={!!serverTabMenuOpen}
+        open={!!serverTabMenuOpen}
         position={serverTabMenuPos}
         onClose={() => setServerTabMenuOpen(null)}
         minWidth="10rem"
@@ -526,17 +547,25 @@ export function TabBar({
           ref={chipRef}
           className={`${s.userChip} ${menuOpen ? s.userChipActive : ''}`}
           onClick={openMenu}
-          title="Profile"
+          title={showRemoteCallPill
+            ? (remoteSessionCall!.isVideo ? 'On a video call (other device)' : 'On a call (other device)')
+            : 'Profile'}
         >
           <div className={s.avatarWrap}>
-            <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ background: avatarBg }}>
+            <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ '--avatar-bg': avatarBg } as React.CSSProperties}>
               {avatarUrl
-                ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                ? <img src={avatarUrl} alt="" className={s.avatarImg} />
                 : avatarInitial}
             </div>
-            <span className={s.statusDot} style={{ background: currentStatus.color }} />
+            <span className={s.statusDot} style={{ '--status-color': currentStatus.color } as React.CSSProperties} />
           </div>
           <span className={`${s.userName} txt-small txt-medium`}>{displayName}</span>
+          {showRemoteCallPill && (
+            // TODO: server-side call-kind tracking required for "On video call" to render — currently always shows "On a call"
+            <span className={s.callPill} aria-label={remoteSessionCall!.isVideo ? 'On a video call' : 'On a call'}>
+              {remoteSessionCall!.isVideo ? 'On video call' : 'On a call'}
+            </span>
+          )}
         </button>
       </div>
 
@@ -550,16 +579,16 @@ export function TabBar({
           {/* User info */}
           <div className={s.profileHead}>
             <div className={s.profileAvatarWrap}>
-              <div className={s.profileAvatarFace} style={{ background: avatarBg }}>
+              <div className={s.profileAvatarFace} style={{ '--avatar-bg': avatarBg } as React.CSSProperties}>
                 {avatarUrl
-                  ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                  ? <img src={avatarUrl} alt="" className={s.avatarImg} />
                   : avatarInitial}
               </div>
-              <span className={s.profileStatusDot} style={{ background: currentStatus.color }} />
+              <span className={s.profileStatusDot} style={{ '--status-color': currentStatus.color } as React.CSSProperties} />
             </div>
             <div className={s.profileInfo}>
               <span className={`${s.profileName} txt-small txt-semibold`}>{displayName}</span>
-              <span className={`${s.profileStatus} txt-tiny`} style={{ color: currentStatus.color }}>
+              <span className={`${s.profileStatus} txt-tiny`} style={{ '--status-color': currentStatus.color } as React.CSSProperties}>
                 {currentStatus.label}
               </span>
             </div>
@@ -570,13 +599,13 @@ export function TabBar({
           {/* Status selector */}
           <div className={s.menuSection}>
             <span className={`${s.menuSectionLabel} txt-tiny txt-semibold`}>Set status</span>
-            {(Object.entries(STATUS_META) as [UserStatus, typeof STATUS_META[UserStatus]][]).map(([key, meta]) => (
+            {(Object.entries(STATUS_META) as [MemberStatus, typeof STATUS_META[MemberStatus]][]).map(([key, meta]) => (
               <button
                 key={key}
                 className={`${s.statusItem} ${status === key ? s.statusItemActive : ''}`}
                 onClick={() => { setMenuOpen(false); onStatusChange?.(key) }}
               >
-                <span className={s.statusBullet} style={{ background: meta.color }} />
+                <span className={s.statusBullet} style={{ '--status-color': meta.color } as React.CSSProperties} />
                 <span className={`${s.statusLabel} txt-small`}>{meta.label}</span>
                 {status === key && <span className={s.statusCheck}>✓</span>}
               </button>
@@ -611,7 +640,7 @@ export function TabBar({
 
 /* ── Sortable tab wrapper ── */
 function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwitch, onClose, onOpenMenu, menuBtnRefSetter }: {
-  server:           Server
+  server:           ServerDisplay
   isActive:         boolean
   isDragging:       boolean
   isMuted:          boolean
@@ -676,9 +705,9 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
 
 /* ── Icons ── */
 function PlusIcon({ open }: { open: boolean }) {
-  return <Plus size={14} strokeWidth={1.5} style={{ transition: 'transform 200ms ease', transform: open ? 'rotate(45deg)' : 'none' }} />
+  return <Plus size={18} strokeWidth={1.5} className={`${s.plusIcon} ${open ? s.plusIconOpen : ''}`} />
 }
 function SmallPlusIcon() { return <Plus          size={10} strokeWidth={1.75} /> }
-function DmIcon()        { return <MessagesSquare size={14} strokeWidth={1.5} /> }
-function SearchIcon()    { return <Search        size={14} strokeWidth={1.5} /> }
-function BellIcon()      { return <Bell          size={14} strokeWidth={1.5} /> }
+function DmIcon()        { return <MessagesSquare size={18} strokeWidth={1.5} /> }
+function SearchIcon()    { return <Search        size={18} strokeWidth={1.5} /> }
+function BellIcon()      { return <Bell          size={18} strokeWidth={1.5} /> }

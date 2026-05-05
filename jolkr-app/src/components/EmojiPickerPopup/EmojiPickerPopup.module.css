@@ -1,0 +1,38 @@
+.popup {
+  position: fixed;
+  transform: translateX(-50%) translateY(calc(-100% - 0.5rem));
+  z-index: 9999;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 8px 24px oklch(0% 0 0 / 0.18), 0 2px 8px oklch(0% 0 0 / 0.1);
+}
+
+.fallback {
+  width: 300px;
+  height: 350px;
+  background: var(--bg-loud);
+  border-radius: 0.75rem;
+}
+
+/* Mobile: turn the anchored popup into a bottom sheet so it never clips
+   off-screen. The inline `top` / `left` from JS would normally position
+   it relative to the trigger button, so we override with !important. */
+@media (max-width: 600px) {
+  .popup {
+    top: auto !important;
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+    bottom: calc(max(env(safe-area-inset-bottom), 0px) + 4rem) !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 70vh;
+  }
+  /* Force the inner picker (GifPicker / emoji-picker-react) to fit the
+     sheet's width regardless of the width prop their JS sets inline. */
+  .popup > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 70vh !important;
+  }
+}

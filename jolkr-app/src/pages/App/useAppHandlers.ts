@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { ReplyRef, ServerTheme } from '../../types/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useServersStore } from '../../stores/servers'
@@ -10,6 +10,11 @@ import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { orbsForHue } from '../../utils/theme'
 import { useMessagesStore } from '../../stores/messages'
 import { useVoiceStore } from '../../stores/voice'
+import { useToast } from '../../stores/toast'
+import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
+import { TYPING_THROTTLE_MS } from '../../utils/constants'
+import { log } from '../../utils/log'
+import { chatApi } from '../../api/chatApi'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -40,6 +45,21 @@ export function useAppHandlers(
     )
   }, [])
 
+  useEffect(() => {
+    return wsClient.on(event => {
+      if (event.op !== 'NotificationSettingUpdate') return
+      const { target_type, target_id, setting } = event.d
+      if (target_type !== 'server') return
+      const muted = setting?.muted ?? false
+      setMutedServerIds(prev => {
+        const has = prev.includes(target_id)
+        if (muted && !has) return [...prev, target_id]
+        if (!muted && has) return prev.filter(id => id !== target_id)
+        return prev
+      })
+    })
+  }, [])
+
   // ── Logout handler ──
   const handleLogout = useCallback(async () => {
     await useAuthStore.getState().logout()
@@ -49,7 +69,8 @@ export function useAppHandlers(
   // ── Status change handler ──
   const handleStatusChange = useCallback((status: string) => {
     if (user?.id) usePresenceStore.getState().setStatus(user.id, status)
-    wsClient.updatePresence(status)
+    const wireStatus = status === 'offline' ? 'invisible' : status
+    wsClient.updatePresence(wireStatus)
   }, [user?.id])
 
   // ── Profile update handler ──
@@ -74,7 +95,7 @@ export function useAppHandlers(
   const lastTypingRef = useRef(0)
   const handleTyping = useCallback(() => {
     const now = Date.now()
-    if (now - lastTypingRef.current < 3000) return // throttle 3s
+    if (now - lastTypingRef.current < TYPING_THROTTLE_MS) return
     lastTypingRef.current = now
     const channelId = dmActive ? activeDmId : activeChannelId
     if (channelId) wsClient.sendTyping(channelId)
@@ -125,10 +146,16 @@ export function useAppHandlers(
       const { connectionState, channelId: currentVoiceId, joinChannel, leaveChannel } = useVoiceStore.getState()
       if (currentVoiceId === id && connectionState !== 'disconnected') {
         // Clicking the channel you're already in — disconnect.
-        void leaveChannel()
+        leaveChannel().catch(e => {
+          log.warn('voice.leaveChannel', e)
+          useToast.getState().show('Could not leave the voice channel cleanly.', 'error')
+        })
         return
       }
-      void joinChannel(id, activeServerId, target.name)
+      joinChannel(id, activeServerId, target.name).catch(e => {
+        log.warn('voice.joinChannel', e)
+        useToast.getState().show('Could not join the voice channel.', 'error')
+      })
       return
     }
     if (id === activeChannelId) return
@@ -136,8 +163,34 @@ export function useAppHandlers(
   }
 
   // ── Message handlers ──
+  // Materialise a session-only draft DM by creating it on the server right
+  // before the first message goes out. Returns the real DM channel; throws
+  // if the create fails so the caller can abort the send.
+  const materialiseDraftDm = useCallback(async (draftId: string) => {
+    const draft = dmList.find(d => d.id === draftId)
+    if (!draft) throw new Error('Draft DM not found')
+    if (!user) throw new Error('No authenticated user')
+
+    const otherIds = draft.members.filter(id => id !== user.id)
+    const real = draft.is_group
+      ? await api.createGroupDm(otherIds, draft.name ?? undefined)
+      : await api.openDm(otherIds[0])
+
+    // Swap the draft for the real entry; keep its position in the list so
+    // the sidebar doesn't visibly re-order on send.
+    setDmList(prev => {
+      const idx = prev.findIndex(d => d.id === draftId)
+      if (idx === -1) return prev.some(d => d.id === real.id) ? prev : [real, ...prev]
+      const next = prev.slice()
+      next[idx] = real
+      return next
+    })
+    setActiveDmId(real.id)
+    return real
+  }, [dmList, user, setDmList, setActiveDmId])
+
   const handleSend = useCallback(async (text: string, replyTo?: ReplyRef, files?: File[]) => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    let channelId = dmActive ? activeDmId : activeChannelId
     const isDm = dmActive
     const localKeys = getLocalKeys()
 
@@ -146,9 +199,28 @@ export function useAppHandlers(
       return
     }
 
+    // First-send promotion: turn the local draft into a real DM on the server
+    // so the recipient gets a `DmCreate` together with this message. Failing
+    // here aborts the send; we deliberately don't fall back to a fake send.
+    // We also capture the resolved members directly because the closure's
+    // `dmList` is stale relative to the setDmList that just ran.
+    let materialisedMembers: string[] | null = null
+    if (isDm && isDraftDmId(channelId)) {
+      try {
+        const real = await materialiseDraftDm(channelId)
+        channelId = real.id
+        materialisedMembers = real.members
+      } catch (e) {
+        console.error('Failed to create DM on first send:', e)
+        useToast.getState().show((e as Error).message || 'Failed to start conversation', 'error')
+        return
+      }
+    }
+
     // Get member IDs for key distribution (first message in channel creates the key)
     const getMemberIds = async () => {
       if (isDm) {
+        if (materialisedMembers) return materialisedMembers
         const dm = dmList.find(d => d.id === channelId)
         return dm?.members ?? []
       }
@@ -184,22 +256,42 @@ export function useAppHandlers(
         }
       }
     }
-  }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer, materialiseDraftDm, sendMessage, sendDmMessage])
 
   const handleToggleReaction = useCallback((msgId: string, emoji: string) => {
     // Check if user already reacted
     const msg = currentApiMessages.find(m => m.id === msgId)
     const existing = msg?.reactions?.find(r => r.emoji === emoji)
+    const onErr = (err: unknown) => {
+      const m = err instanceof Error ? err.message : 'Reaction failed'
+      useToast.getState().show(m, 'error')
+      console.error('Reaction toggle failed:', err)
+    }
+    const ops = chatApi(dmActive)
     if (existing?.me) {
-      (dmActive ? api.removeDmReaction : api.removeReaction)(msgId, emoji).catch(console.error)
+      ops.removeReaction(msgId, emoji).catch(onErr)
     } else {
-      (dmActive ? api.addDmReaction : api.addReaction)(msgId, emoji).catch(console.error)
+      ops.addReaction(msgId, emoji).catch(onErr)
     }
   }, [currentApiMessages, dmActive])
 
   const handleDeleteMessage = useCallback((msgId: string) => {
     deleteMessage(msgId, effectiveChannelId, dmActive)
-  }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveChannelId, dmActive, deleteMessage])
+
+  // Soft-hide a DM message for the calling user only. The server emits a
+  // DmMessageHide event back to this user's other sessions; the central WS
+  // dispatcher in useAppInit handles those. We still optimistically remove
+  // the message locally so the active session updates immediately.
+  const handleHideDmMessage = useCallback((msgId: string) => {
+    if (!dmActive) return
+    useMessagesStore.getState().removeMessage(effectiveChannelId, msgId)
+    api.hideDmMessage(msgId).catch((err) => {
+      // Re-fetch is the safest recovery — keep silent on the optimistic removal
+      // since the user's intent was clear; reload only on hard failure.
+      console.warn('hideDmMessage failed', err)
+    })
+  }, [effectiveChannelId, dmActive])
 
   const handleEditMessage = useCallback(async (msgId: string, newText: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
@@ -220,10 +312,11 @@ export function useAppHandlers(
     if (!encrypted) return
 
     editMessage(msgId, effectiveChannelId, encrypted.encryptedContent, isDm, encrypted.nonce)
-  }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer, editMessage])
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
+    const ops = chatApi(dmActive)
     const store = useMessagesStore.getState()
     const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
     if (!msg) return
@@ -231,36 +324,29 @@ export function useAppHandlers(
     // Optimistic update — only change is_pinned, preserve reactions and other fields
     store.updateMessage(channelId, { ...msg, is_pinned: newPinned, reactions: undefined } as typeof msg)
     try {
-      if (newPinned) {
-        if (dmActive) await api.pinDmMessage(channelId, msgId)
-        else await api.pinMessage(channelId, msgId)
-      } else {
-        if (dmActive) await api.unpinDmMessage(channelId, msgId)
-        else await api.unpinMessage(channelId, msgId)
-      }
-      const pinned = dmActive
-        ? await api.getDmPinnedMessages(channelId)
-        : await api.getPinnedMessages(channelId)
+      if (newPinned) await ops.pinMessage(channelId, msgId)
+      else await ops.unpinMessage(channelId, msgId)
+      const pinned = await ops.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       setPinnedVersion(v => v + 1)
     } catch (err) {
       console.error('Pin toggle failed:', err)
+      const m = err instanceof Error ? err.message : 'Pin/unpin failed'
+      useToast.getState().show(m, 'error')
       // Revert on failure
       const revertStore = useMessagesStore.getState()
       const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
       if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned, reactions: undefined } as typeof revertMsg)
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
+    const ops = chatApi(dmActive)
     try {
-      if (dmActive) await api.unpinDmMessage(channelId, msgId)
-      else await api.unpinMessage(channelId, msgId)
+      await ops.unpinMessage(channelId, msgId)
       // Refresh pinned count
-      const pinned = dmActive
-        ? await api.getDmPinnedMessages(channelId)
-        : await api.getPinnedMessages(channelId)
+      const pinned = await ops.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       setPinnedVersion(v => v + 1)
       // Find and update the message's is_pinned status in the store
@@ -273,8 +359,10 @@ export function useAppHandlers(
       }
     } catch (err) {
       console.error('Unpin failed:', err)
+      const m = err instanceof Error ? err.message : 'Unpin failed'
+      useToast.getState().show(m, 'error')
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
 
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
@@ -289,22 +377,28 @@ export function useAppHandlers(
   const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice', categoryId?: string) => {
     await api.createChannel(activeServerId, { name, kind, ...(categoryId ? { category_id: categoryId } : {}) })
     await fetchChannels(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchChannels])
 
   const handleCreateCategory = useCallback(async (name: string) => {
     await api.createCategory(activeServerId, { name })
     await fetchCategories(activeServerId)
     await fetchChannels(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchCategories, fetchChannels])
 
   const handleDeleteChannel = useCallback(async (channelId: string) => {
-    await api.deleteChannel(channelId)
-    await fetchChannels(activeServerId)
-    if (channelId === activeChannelId) {
-      const chs = useServersStore.getState().channels[activeServerId]
-      setActiveChannelId(chs?.find(c => c.kind === 'text')?.id ?? chs?.[0]?.id ?? '')
+    try {
+      await api.deleteChannel(channelId)
+      await fetchChannels(activeServerId)
+      if (channelId === activeChannelId) {
+        const chs = useServersStore.getState().channels[activeServerId]
+        setActiveChannelId(chs?.find(c => c.kind === 'text')?.id ?? chs?.[0]?.id ?? '')
+      }
+    } catch (err) {
+      const m = err instanceof Error ? err.message : 'Delete channel failed'
+      useToast.getState().show(m, 'error')
+      throw err
     }
-  }, [activeServerId, activeChannelId])
+  }, [activeServerId, activeChannelId, fetchChannels, setActiveChannelId])
 
   const handleDeleteCategory = useCallback(async (categoryName: string) => {
     // Find the category by name to get its ID
@@ -315,22 +409,22 @@ export function useAppHandlers(
     await api.deleteCategory(category.id)
     await fetchCategories(activeServerId)
     await fetchChannels(activeServerId)
-  }, [activeServerId, categoriesByServer])
+  }, [activeServerId, categoriesByServer, fetchCategories, fetchChannels])
 
   const handleArchiveChannel = useCallback(async (channelId: string) => {
     await api.updateChannel(channelId, { is_system: true })
     await fetchChannels(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchChannels])
 
   const handleRenameChannel = useCallback(async (channelId: string, newName: string) => {
     await api.updateChannel(channelId, { name: newName })
     await fetchChannels(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchChannels])
 
   const handleRenameCategory = useCallback(async (categoryId: string, newName: string) => {
     await api.updateCategory(categoryId, { name: newName })
     await fetchCategories(activeServerId)
-  }, [activeServerId])
+  }, [activeServerId, fetchCategories])
 
   // ── Channel reorder (drag & drop persist) ──
   // `positions` is the new global ordering across all categories + uncategorized.
@@ -346,12 +440,30 @@ export function useAppHandlers(
         await api.updateChannel(m.id, { category_id: m.categoryId })
       }
       if (positions.length > 0) {
-        await api.reorderChannels(activeServerId, positions)
+        // Use the response — backend returns the full updated channel list with
+        // fresh positions, so we update the store directly instead of waiting
+        // for the per-channel WS ChannelUpdate broadcast (which may race the
+        // optimistic local state) or relying on fetchChannels (which short-
+        // circuits when the server is already cached).
+        const updated = await api.reorderChannels(activeServerId, positions)
+        useServersStore.setState({
+          channels: { ...useServersStore.getState().channels, [activeServerId]: updated },
+        })
+      } else {
+        // Category-only move with no global reorder: drop the cache so the
+        // next fetch pulls truth from the backend.
+        const all = useServersStore.getState().channels
+        const { [activeServerId]: _drop, ...rest } = all
+        useServersStore.setState({ channels: rest })
+        await fetchChannels(activeServerId)
       }
-      await fetchChannels(activeServerId)
     } catch (e) {
-      console.warn('Channel reorder failed, refetching to recover:', e)
-      // On error, force a refetch so the UI snaps back to the server's truth
+      const msg = e instanceof Error ? e.message : 'Channel reorder failed'
+      useToast.getState().show(msg, 'error')
+      // Force refetch so the UI snaps back to the server's truth.
+      const all = useServersStore.getState().channels
+      const { [activeServerId]: _drop, ...rest } = all
+      useServersStore.setState({ channels: rest })
       await fetchChannels(activeServerId).catch(() => {})
     }
   }, [activeServerId, fetchChannels])
@@ -397,35 +509,61 @@ export function useAppHandlers(
   }
 
   // ── DM creation ──
+  // Picks up a list of usernames (one for 1-on-1, multiple for group) from
+  // NewDMModal and either opens an existing conversation or sets up a
+  // session-only draft. The DM is materialised on the server lazily on the
+  // first message — see `materialiseDraftDm` inside `handleSend`.
   async function handleCreateDm(names: string[]) {
+    if (!user) return
     try {
-      for (const name of names) {
-        const found = await api.searchUsers(name)
-        const foundUser = found.find(u => u.username === name || u.display_name === name)
-        if (foundUser) {
-          const dm = await api.openDm(foundUser.id)
-          const dms = await api.getDms()
-          setDmList(dms)
-          // Add all DM members to user map so names resolve immediately
-          setDmUsers(prev => {
-            const next = new Map(prev)
-            next.set(foundUser.id, foundUser)
-            // Also fetch any other members we don't have yet
-            for (const memberId of dm.members) {
-              if (!next.has(memberId)) {
-                api.getUser(memberId).then(u => {
-                  if (u) setDmUsers(p => new Map(p).set(u.id, u))
-                }).catch(() => {})
-              }
-            }
-            return next
-          })
-          setActiveDmId(dm.id)
+      // Resolve every selected name to a User in parallel; ignore unknowns.
+      const resolved = (await Promise.all(
+        names.map(async (name) => {
+          const found = await api.searchUsers(name)
+          return found.find(u => u.username === name || u.display_name === name) ?? null
+        }),
+      )).filter((u): u is NonNullable<typeof u> => u !== null)
+
+      if (resolved.length === 0) return
+
+      // Cache user objects so the sidebar can resolve names + avatars.
+      setDmUsers(prev => {
+        const next = new Map(prev)
+        for (const u of resolved) next.set(u.id, u)
+        return next
+      })
+
+      const memberIds = [user.id, ...resolved.map(u => u.id)]
+
+      // 1-on-1: reuse an existing real DM with the same partner if we already
+      // have one — no point in spawning a new draft when the conversation
+      // already exists on the server.
+      if (resolved.length === 1) {
+        const otherId = resolved[0].id
+        const existing = dmList.find(d =>
+          !d.is_group
+          && !isDraftDmId(d.id)
+          && d.members.includes(otherId)
+          && d.members.length === 2,
+        )
+        if (existing) {
+          setActiveDmId(existing.id)
           setDmActive(true)
+          setNewDmOpen(false)
+          return
         }
       }
+
+      // No existing conversation — drop a draft into the sidebar. It lives
+      // only in this session until the user sends a message; closing it
+      // simply removes the local entry.
+      const draft = buildDraftDm(memberIds)
+      setDmList(prev => (prev.some(d => d.id === draft.id) ? prev : [draft, ...prev]))
+      setActiveDmId(draft.id)
+      setDmActive(true)
     } catch (e) {
       console.error('Failed to create DM:', e)
+      useToast.getState().show((e as Error).message || 'Failed to create DM', 'error')
     }
     setNewDmOpen(false)
   }
@@ -435,7 +573,7 @@ export function useAppHandlers(
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleChangePassword, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,
-    handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
+    handleSend, handleToggleReaction, handleDeleteMessage, handleHideDmMessage, handleEditMessage,
     handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleArchiveChannel,

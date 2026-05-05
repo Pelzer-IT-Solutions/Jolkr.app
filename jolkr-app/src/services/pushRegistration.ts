@@ -1,5 +1,6 @@
 import { isTauri } from '../platform/detect';
 import * as api from '../api/client';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 /**
  * Register for Web Push notifications.
@@ -25,7 +26,7 @@ export async function registerPush(): Promise<void> {
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey.buffer.slice(applicationServerKey.byteOffset, applicationServerKey.byteOffset + applicationServerKey.byteLength) as ArrayBuffer,
       });
-    } catch (e) {
+    } catch {
       // Push service unreachable (firewall, OS settings, or stale subscription)
       console.warn('Push: registration failed — push service may be blocked by firewall or OS settings. Skipping.');
       return;
@@ -35,7 +36,7 @@ export async function registerPush(): Promise<void> {
   const subscriptionJson = JSON.stringify(subscription.toJSON());
 
   // Reuse stored device_id to avoid creating duplicate device rows on each load
-  const storedDeviceId = localStorage.getItem('jolkr_push_device_id');
+  const storedDeviceId = localStorage.getItem(STORAGE_KEYS.PUSH_DEVICE_ID);
   const result = await api.registerDevice({
     device_id: storedDeviceId || undefined,
     device_name: getBrowserName(),
@@ -43,7 +44,7 @@ export async function registerPush(): Promise<void> {
     push_token: subscriptionJson,
   });
   if (result?.device?.id) {
-    localStorage.setItem('jolkr_push_device_id', result.device.id);
+    localStorage.setItem(STORAGE_KEYS.PUSH_DEVICE_ID, result.device.id);
   }
 }
 
@@ -62,14 +63,14 @@ export async function unregisterPush(): Promise<void> {
   }
 
   // Remove stored device from backend
-  const storedDeviceId = localStorage.getItem('jolkr_push_device_id');
+  const storedDeviceId = localStorage.getItem(STORAGE_KEYS.PUSH_DEVICE_ID);
   if (storedDeviceId) {
     try {
       await api.deleteDevice(storedDeviceId);
     } catch {
       // Best effort cleanup
     }
-    localStorage.removeItem('jolkr_push_device_id');
+    localStorage.removeItem(STORAGE_KEYS.PUSH_DEVICE_ID);
   }
 }
 

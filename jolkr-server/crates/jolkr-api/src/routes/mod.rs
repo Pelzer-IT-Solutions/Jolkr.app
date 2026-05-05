@@ -164,6 +164,7 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
             "/api/dms/messages/:id",
             patch(dms::edit_dm_message).delete(dms::delete_dm_message),
         )
+        .route("/api/dms/messages/:id/hide", post(dms::hide_dm_message))
         .route(
             "/api/dms/messages/:id/reactions",
             get(dms::list_dm_reactions).post(dms::add_dm_reaction),
@@ -176,6 +177,7 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
             "/api/dms/:dm_id/messages/:message_id/attachments",
             post(dms::upload_dm_attachment),
         )
+        .route("/api/dms/:dm_id/attachments", get(dms::list_dm_attachments))
         .route("/api/dms/:dm_id/read", post(dms::mark_as_read))
         .route(
             "/api/dms/:dm_id/pins/:message_id",

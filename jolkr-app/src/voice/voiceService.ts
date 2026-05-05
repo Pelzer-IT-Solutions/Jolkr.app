@@ -1,11 +1,17 @@
 import { VoiceClient } from './voiceClient';
+import { voicePrefs, type VoicePrefs } from './voicePrefs';
+import { VOICE_CONNECT_TIMEOUT_MS } from '../utils/constants';
 
 export interface VoiceParticipant {
   userId: string;
   isMuted: boolean;
   isDeafened: boolean;
   isSpeaking: boolean;
+  hasVideo: boolean;
 }
+
+/** Callback fired when a remote video stream becomes available (or ends). */
+export type RemoteVideoListener = (userId: string, stream: MediaStream | null) => void;
 
 export type VoiceConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -29,15 +35,34 @@ export class VoiceService {
   private disconnectTimer: ReturnType<typeof setTimeout> | undefined = undefined;
   private _leaving = false;
 
+  /** Web Audio chain that lets the user scale captured mic level. */
+  private inputAudioCtx: AudioContext | null = null;
+  private inputGainNode: GainNode | null = null;
+  /** Track sent to the peer connection — derived from `inputGainNode`. */
+  private processedAudioTrack: MediaStreamTrack | null = null;
+  /** Original (unscaled) capture track, kept so we can stop it on cleanup. */
+  private rawAudioTrack: MediaStreamTrack | null = null;
+
+  /** Unsubscribes from `voicePrefs` change notifications when leaving. */
+  private prefsUnsub: (() => void) | null = null;
+
   private _state: VoiceConnectionState = 'disconnected';
   private _channelId: string | null = null;
   private _isMuted = false;
   private _isDeafened = false;
+  private _withVideo = false;
+  private _isCameraOn = false;
+  private _isCameraUnavailable = false;
+  private _cameraFacing: 'user' | 'environment' = 'user';
   private _participants = new Map<string, VoiceParticipant>();
+  /** Maps a server-assigned Mid (string) to the userId whose track arrives on it. */
+  private midToUserId = new Map<string, string>();
 
   private stateListeners = new Set<StateListener>();
   private participantsListeners = new Set<ParticipantsListener>();
   private errorListeners = new Set<ErrorListener>();
+  private remoteVideoListeners = new Set<RemoteVideoListener>();
+  private localVideoListeners = new Set<(stream: MediaStream | null) => void>();
 
   /** Web Worker for voice frame encryption/decryption (voice E2EE). */
   private encryptionWorker: Worker | null = null;
@@ -50,6 +75,10 @@ export class VoiceService {
   get channelId() { return this._channelId; }
   get isMuted() { return this._isMuted; }
   get isDeafened() { return this._isDeafened; }
+  get isCameraOn() { return this._isCameraOn; }
+  get isCameraUnavailable() { return this._isCameraUnavailable; }
+  get cameraFacing() { return this._cameraFacing; }
+  get withVideo() { return this._withVideo; }
   get participants() { return new Map(this._participants); }
 
   onStateChange(fn: StateListener): () => void {
@@ -67,21 +96,32 @@ export class VoiceService {
     return () => { this.errorListeners.delete(fn); };
   }
 
+  onRemoteVideo(fn: RemoteVideoListener): () => void {
+    this.remoteVideoListeners.add(fn);
+    return () => { this.remoteVideoListeners.delete(fn); };
+  }
+
+  onLocalVideo(fn: (stream: MediaStream | null) => void): () => void {
+    this.localVideoListeners.add(fn);
+    return () => { this.localVideoListeners.delete(fn); };
+  }
+
   private connectingTimer: ReturnType<typeof setTimeout> | null = null;
 
-  async joinChannel(channelId: string, token: string) {
+  async joinChannel(channelId: string, token: string, opts?: { withVideo?: boolean }) {
     if (this._state !== 'disconnected') {
       await this.leaveChannel();
     }
 
     this.setState('connecting');
     this._channelId = channelId;
+    this._withVideo = opts?.withVideo ?? false;
 
     // Timeout: if not connected within 15s, clean up
     if (this.connectingTimer) clearTimeout(this.connectingTimer);
     this.connectingTimer = setTimeout(() => {
       if (this._state === 'connecting') {
-        console.warn('Voice connection timed out after 15s');
+        console.warn(`Voice connection timed out after ${VOICE_CONNECT_TIMEOUT_MS}ms`);
         this.emitError('Voice connection timed out');
         this.cleanup().then(() => {
           this.setState('disconnected');
@@ -90,16 +130,17 @@ export class VoiceService {
           this.notifyParticipants();
         });
       }
-    }, 15_000);
+    }, VOICE_CONNECT_TIMEOUT_MS);
 
     try {
       await this.client.connect(token);
       this.setupListeners();
-      this.client.join(channelId);
+      this.client.join(channelId, { withVideo: this._withVideo });
     } catch (e) {
       if (this.connectingTimer) { clearTimeout(this.connectingTimer); this.connectingTimer = null; }
       this.setState('disconnected');
       this._channelId = null;
+      this._withVideo = false;
       throw e;
     }
   }
@@ -137,6 +178,56 @@ export class VoiceService {
       this._isMuted = false;
       this.client.setMuted(false);
       this.localStream?.getAudioTracks().forEach((t) => { t.enabled = true; });
+    }
+  }
+
+  /**
+   * Toggle the local camera on/off without renegotiating. Stays in the call;
+   * the remote side sees the avatar fallback (track stays in PC, just disabled).
+   */
+  toggleCamera() {
+    if (!this._withVideo) return;
+    const tracks = this.localStream?.getVideoTracks() ?? [];
+    if (tracks.length === 0) return;
+    this._isCameraOn = !this._isCameraOn;
+    for (const t of tracks) t.enabled = this._isCameraOn;
+  }
+
+  /**
+   * Switch front/back camera on mobile. Acquires a new track with opposite
+   * `facingMode` and replaces the existing video sender's track without
+   * renegotiating. Falls back silently on failure (e.g., desktop with one cam).
+   */
+  async switchCamera() {
+    if (!this._withVideo || !this.pc || !this.localStream) return;
+    const opposite = this._cameraFacing === 'user' ? 'environment' : 'user';
+
+    try {
+      const constraints = voicePrefs.buildConstraints(true, opposite);
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: constraints.video,
+      });
+      const newTrack = newStream.getVideoTracks()[0];
+      if (!newTrack) return;
+
+      const videoSender = this.pc.getSenders().find((s) => s.track?.kind === 'video');
+      if (!videoSender) {
+        newTrack.stop();
+        return;
+      }
+
+      const oldTrack = videoSender.track;
+      await videoSender.replaceTrack(newTrack);
+      oldTrack?.stop();
+
+      // Swap the track on the local stream so the local preview sees the new feed.
+      if (oldTrack) this.localStream.removeTrack(oldTrack);
+      this.localStream.addTrack(newTrack);
+      this._cameraFacing = opposite;
+      this.emitLocalVideo(this.localStream);
+    } catch (e) {
+      console.warn('[Voice] switchCamera failed:', (e as Error).message);
     }
   }
 
@@ -181,7 +272,13 @@ export class VoiceService {
           isMuted: (p.is_muted as boolean) ?? false,
           isDeafened: (p.is_deafened as boolean) ?? false,
           isSpeaking: false,
+          hasVideo: (p.has_video as boolean) ?? false,
         });
+        // Map server-assigned Mids back to userId so ontrack can route streams.
+        const audioMid = p.audio_mid as string | undefined;
+        const videoMid = p.video_mid as string | undefined;
+        if (audioMid) this.midToUserId.set(audioMid, userId);
+        if (videoMid) this.midToUserId.set(videoMid, userId);
       }
       this.notifyParticipants();
     }));
@@ -218,12 +315,29 @@ export class VoiceService {
 
     this.cleanups.push(this.client.on('participantJoined', (d) => {
       const userId = d.user_id as string;
-      this._participants.set(userId, { userId, isMuted: false, isDeafened: false, isSpeaking: false });
+      this._participants.set(userId, {
+        userId,
+        isMuted: false,
+        isDeafened: false,
+        isSpeaking: false,
+        hasVideo: (d.has_video as boolean) ?? false,
+      });
+      const audioMid = d.audio_mid as string | undefined;
+      const videoMid = d.video_mid as string | undefined;
+      if (audioMid) this.midToUserId.set(audioMid, userId);
+      if (videoMid) this.midToUserId.set(videoMid, userId);
       this.notifyParticipants();
     }));
 
     this.cleanups.push(this.client.on('participantLeft', (d) => {
-      this._participants.delete(d.user_id as string);
+      const userId = d.user_id as string;
+      this._participants.delete(userId);
+      // Drop all mid mappings that pointed at this user.
+      for (const [mid, uid] of this.midToUserId) {
+        if (uid === userId) this.midToUserId.delete(mid);
+      }
+      // Tell consumers their video stream is gone.
+      this.emitRemoteVideo(userId, null);
       this.notifyParticipants();
     }));
 
@@ -281,12 +395,50 @@ export class VoiceService {
 
     this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
-    // Try to get microphone — if unavailable, join in listen-only mode
-    try {
-      this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      for (const track of this.localStream.getAudioTracks()) {
+    // Acquire local media: always audio, video only when this is a video call.
+    // Camera failure does NOT abort — we still try audio so voice keeps working.
+    let camWorks = false;
+    if (this._withVideo) {
+      try {
+        this.localStream = await navigator.mediaDevices.getUserMedia(
+          voicePrefs.buildConstraints(true, this._cameraFacing),
+        );
+        camWorks = true;
+      } catch (camErr) {
+        console.warn('[Voice] Camera unavailable, falling back to audio only:', (camErr as Error).message);
+        this._isCameraUnavailable = true;
+      }
+    }
+    if (!this.localStream) {
+      // Audio-only path (voice call OR video call with camera failure).
+      try {
+        this.localStream = await navigator.mediaDevices.getUserMedia(
+          voicePrefs.buildConstraints(false),
+        );
+      } catch (micErr) {
+        console.warn('[Voice] No microphone available, joining in listen-only mode:', (micErr as Error).message);
+        this._isMuted = true;
+      }
+    }
+
+    if (this.localStream) {
+      // Route the audio track through a GainNode so the user-controlled
+      // input volume slider is applied live without renegotiating.
+      const audioTrack = this.localStream.getAudioTracks()[0];
+      const tracksToSend: MediaStreamTrack[] = [];
+      if (audioTrack) {
+        const processed = this.buildProcessedAudioTrack(audioTrack);
+        // Replace the raw audio track on the local stream so consumers
+        // (including muted-state toggles) operate on the processed one.
+        this.localStream.removeTrack(audioTrack);
+        this.localStream.addTrack(processed);
+        tracksToSend.push(processed);
+      }
+      for (const track of this.localStream.getVideoTracks()) tracksToSend.push(track);
+
+      for (const track of tracksToSend) {
         const sender = this.pc.addTrack(track, this.localStream);
-        // Attach encryption transform for outgoing audio
+        // Attach encryption transform for any outgoing media (audio + video).
         if (supportsVoiceE2EE && this.encryptionWorker) {
           sender.transform = new RTCRtpScriptTransform(
             this.encryptionWorker,
@@ -294,10 +446,17 @@ export class VoiceService {
           );
         }
       }
-    } catch (micErr) {
-      console.warn('[Voice] No microphone available, joining in listen-only mode:', (micErr as Error).message);
-      this._isMuted = true;
+      this._isCameraOn = camWorks;
+      if (camWorks) {
+        this.emitLocalVideo(this.localStream);
+      }
     }
+
+    // Subscribe to live preference changes so volume / output sink /
+    // constraints take effect during an active call.
+    this.prefsUnsub?.();
+    this.prefsUnsub = voicePrefs.subscribe((next) => this.applyPrefs(next));
+    this.applyPrefs(voicePrefs.get());
 
     this.pc.onicecandidate = (ev) => {
       if (ev.candidate) {
@@ -306,7 +465,7 @@ export class VoiceService {
     };
 
     this.pc.ontrack = (ev) => {
-      // Attach decryption transform for incoming audio
+      // Attach decryption transform for incoming media (audio + video).
       if (supportsVoiceE2EE && this.encryptionWorker) {
         ev.receiver.transform = new RTCRtpScriptTransform(
           this.encryptionWorker,
@@ -314,11 +473,25 @@ export class VoiceService {
         );
       }
 
-      const audio = new Audio();
-      audio.srcObject = ev.streams[0] || new MediaStream([ev.track]);
-      audio.autoplay = true;
-      audio.play().catch(() => {});
-      this.audioElements.push(audio);
+      const mid = ev.transceiver.mid;
+      const userId = mid ? this.midToUserId.get(mid) : undefined;
+
+      if (ev.track.kind === 'audio') {
+        // Headless <audio> — auto-played, never mounted in the DOM.
+        const audio = new Audio();
+        audio.srcObject = ev.streams[0] || new MediaStream([ev.track]);
+        audio.autoplay = true;
+        const prefs = voicePrefs.get();
+        audio.volume = clampVolume(prefs.outputVolume);
+        applySinkId(audio, prefs.audioOutputDeviceId);
+        audio.play().catch(() => {});
+        this.audioElements.push(audio);
+      } else if (ev.track.kind === 'video' && userId) {
+        // Push the stream up to the React layer keyed by the originating user.
+        const stream = ev.streams[0] ?? new MediaStream([ev.track]);
+        this.emitRemoteVideo(userId, stream);
+        ev.track.onended = () => { this.emitRemoteVideo(userId, null); };
+      }
     };
 
     this.pc.onconnectionstatechange = () => {
@@ -356,11 +529,33 @@ export class VoiceService {
     this.cleanups.forEach((fn) => fn());
     this.cleanups = [];
 
+    this.prefsUnsub?.();
+    this.prefsUnsub = null;
+
     this.audioElements.forEach((a) => { a.pause(); a.srcObject = null; });
     this.audioElements = [];
 
+    // Notify subscribers that local video is gone before stopping tracks.
+    if (this.localStream?.getVideoTracks().length) {
+      this.emitLocalVideo(null);
+    }
     this.localStream?.getTracks().forEach((t) => t.stop());
+    this.rawAudioTrack?.stop();
+    this.processedAudioTrack?.stop();
+    this.rawAudioTrack = null;
+    this.processedAudioTrack = null;
+    this.inputGainNode?.disconnect();
+    this.inputGainNode = null;
+    if (this.inputAudioCtx) {
+      this.inputAudioCtx.close().catch(() => {});
+      this.inputAudioCtx = null;
+    }
     this.localStream = null;
+    this.midToUserId.clear();
+    this._withVideo = false;
+    this._isCameraOn = false;
+    this._isCameraUnavailable = false;
+    this._cameraFacing = 'user';
 
     if (this.pc) {
       this.pc.onconnectionstatechange = null;
@@ -390,8 +585,72 @@ export class VoiceService {
     this.errorListeners.forEach((fn) => fn(message));
   }
 
+  private emitRemoteVideo(userId: string, stream: MediaStream | null) {
+    this.remoteVideoListeners.forEach((fn) => fn(userId, stream));
+  }
+
+  private emitLocalVideo(stream: MediaStream | null) {
+    this.localVideoListeners.forEach((fn) => fn(stream));
+  }
+
   private notifyParticipants() {
     const snapshot = new Map(this._participants);
     this.participantsListeners.forEach((fn) => fn(snapshot));
   }
+
+  /**
+   * Wrap the raw capture track in a Web Audio chain so the user-controlled
+   * input volume slider can scale the signal live without renegotiating.
+   * The processed track is what we actually send to the peer.
+   */
+  private buildProcessedAudioTrack(rawTrack: MediaStreamTrack): MediaStreamTrack {
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(new MediaStream([rawTrack]));
+      const gain = ctx.createGain();
+      gain.gain.value = clampVolume(voicePrefs.get().inputVolume);
+      const dest = ctx.createMediaStreamDestination();
+      source.connect(gain).connect(dest);
+
+      const processed = dest.stream.getAudioTracks()[0];
+      // Mirror the raw track's enabled state so existing mute logic (which
+      // toggles `track.enabled` on local stream tracks) keeps working.
+      processed.enabled = rawTrack.enabled;
+      this.inputAudioCtx = ctx;
+      this.inputGainNode = gain;
+      this.rawAudioTrack = rawTrack;
+      this.processedAudioTrack = processed;
+      return processed;
+    } catch (e) {
+      console.warn('[Voice] Failed to build input gain chain — sending raw mic:', (e as Error).message);
+      return rawTrack;
+    }
+  }
+
+  /** Apply the latest preference snapshot to the active call. */
+  private applyPrefs(p: VoicePrefs): void {
+    if (this.inputGainNode) {
+      this.inputGainNode.gain.value = clampVolume(p.inputVolume);
+    }
+    const remoteVol = clampVolume(p.outputVolume);
+    for (const audio of this.audioElements) {
+      audio.volume = remoteVol;
+      applySinkId(audio, p.audioOutputDeviceId);
+    }
+  }
+}
+
+/** Clamp a 0–100 slider value to a [0, 1] linear gain factor. */
+function clampVolume(v: number): number {
+  if (!Number.isFinite(v)) return 1;
+  return Math.max(0, Math.min(100, v)) / 100;
+}
+
+/** Best-effort `setSinkId` — silently no-ops on unsupported browsers. */
+function applySinkId(audio: HTMLAudioElement, deviceId: string): void {
+  if (!('setSinkId' in audio)) return;
+  const sinkId = deviceId || 'default';
+  // Type assertion: setSinkId is on the prototype only in supporting browsers.
+  const setter = (audio as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> }).setSinkId;
+  setter.call(audio, sinkId).catch(() => { /* permissions or invalid id */ });
 }

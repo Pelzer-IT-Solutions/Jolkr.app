@@ -1,11 +1,21 @@
 import { create } from 'zustand';
-import type { User } from '../api/types';
+import type { User, UpdateMeBody } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
-import { stopNotifications } from '../services/notifications';
 import { useVoiceStore } from './voice';
 import { resetAllStores } from './reset';
+import { useToast } from './toast';
+import { log } from '../utils/log';
+
+/**
+ * Subset of `User` carried by `UserUpdate` WS events. Each field is optional;
+ * the backend omits fields it didn't touch via `skip_serializing_if`.
+ */
+type UserPatch = Partial<Pick<User,
+  'status' | 'display_name' | 'avatar_url' | 'bio' | 'banner_color'
+  | 'show_read_receipts' | 'dm_filter' | 'allow_friend_requests'
+>>;
 
 interface AuthState {
   user: User | null;
@@ -14,8 +24,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
   loadUser: () => Promise<void>;
-  updateProfile: (body: { username?: string; display_name?: string; bio?: string; avatar_url?: string; status?: string | null; show_read_receipts?: boolean; banner_color?: string }) => Promise<void>;
-  applyUserUpdate: (data: Record<string, unknown>) => void;
+  updateProfile: (body: UpdateMeBody) => Promise<void>;
+  applyUserUpdate: (data: UserPatch) => void;
   logout: () => Promise<void>;
 }
 
@@ -30,7 +40,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.login(email, password);
       const user = await api.getMe();
       set({ user, loading: false });
-      wsClient.connect();
+      // WS connect is the caller's responsibility — runs after initE2EE.
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
       throw e;
@@ -43,9 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.register(email, username, password);
       const user = await api.getMe();
       set({ user, loading: false });
-      if (user.email_verified) {
-        wsClient.connect();
-      }
+      // WS connect is the caller's responsibility — runs after initE2EE.
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
       throw e;
@@ -77,16 +85,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
 
-  applyUserUpdate: (data: Record<string, unknown>) => {
+  applyUserUpdate: (data) => {
     set((state) => {
       if (!state.user) return state;
+      // Each field is spread only when present so we don't overwrite existing
+      // values with `undefined` for fields the server omitted from this patch.
       return {
         user: {
           ...state.user,
-          ...(data.status !== undefined && { status: data.status as string | undefined }),
-          ...(data.display_name !== undefined && { display_name: data.display_name as string | undefined }),
-          ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url as string | undefined }),
-          ...(data.bio !== undefined && { bio: data.bio as string | undefined }),
+          ...(data.status !== undefined && { status: data.status }),
+          ...(data.display_name !== undefined && { display_name: data.display_name }),
+          ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url }),
+          ...(data.bio !== undefined && { bio: data.bio }),
+          ...(data.banner_color !== undefined && { banner_color: data.banner_color }),
+          ...(data.show_read_receipts !== undefined && { show_read_receipts: data.show_read_receipts }),
+          ...(data.dm_filter !== undefined && { dm_filter: data.dm_filter }),
+          ...(data.allow_friend_requests !== undefined && { allow_friend_requests: data.allow_friend_requests }),
         },
       };
     });
@@ -96,9 +110,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Leave voice channel before disconnecting
     try { await useVoiceStore.getState().leaveChannel(); } catch { /* ignore */ }
     wsClient.disconnect();
-    stopNotifications();
-    try { await api.clearTokens(); } catch (e) { console.warn('clearTokens failed:', e); }
-    resetE2EE().catch(console.warn);
+    try { await api.clearTokens(); } catch (e) { log.warn('auth.clearTokens', e); }
+    // E2EE key wipe is security-critical: if it fails the next user on this
+    // browser could in principle access prior keys still in IndexedDB. Surface
+    // the failure so the user knows to fully close the browser.
+    try {
+      await resetE2EE();
+    } catch (e) {
+      log.error('auth.resetE2EE', e);
+      try {
+        useToast.getState().show('Could not clear encryption keys — please close and reopen the browser before signing in again.', 'error');
+      } catch { /* toast unavailable, already logged */ }
+    }
     // Reset all stores to prevent stale data on re-login
     resetAllStores();
     set({ user: null, loading: false, error: null });
@@ -106,8 +129,20 @@ export const useAuthStore = create<AuthState>((set) => ({
 }));
 
 // Sync profile updates from other sessions
-wsClient.on((op, d) => {
-  if (op === 'UserUpdate') {
-    useAuthStore.getState().applyUserUpdate(d as Record<string, unknown>);
+wsClient.on((event) => {
+  if (event.op === 'UserUpdate') {
+    // Only apply when the update is for the currently logged-in user — the
+    // event is also fanned out to mutual server/DM members for THEIR caches,
+    // and we must NOT overwrite the local user with a different user's data.
+    const me = useAuthStore.getState().user;
+    if (me && event.d.user_id === me.id) {
+      useAuthStore.getState().applyUserUpdate(event.d);
+    }
+  } else if (event.op === 'EmailVerified') {
+    // Backend confirmed verification — refresh the user object so
+    // /verify-email's email_verified guard navigates to the app.
+    useAuthStore.getState().loadUser().catch((e) => {
+      console.warn('loadUser after EmailVerified failed:', e);
+    });
   }
 });

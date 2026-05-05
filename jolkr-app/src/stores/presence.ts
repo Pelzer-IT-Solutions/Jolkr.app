@@ -32,8 +32,9 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
 }));
 
 // Wire up WebSocket events — only presence, typing is handled by useTypingStore
-wsClient.on((op, d) => {
-  if (op === 'PresenceUpdate' && d.user_id && d.status) {
-    usePresenceStore.getState().setStatus(d.user_id as string, d.status as string);
+wsClient.on((event) => {
+  if (event.op === 'PresenceUpdate' && event.d.user_id && event.d.status) {
+    const status = event.d.status === 'invisible' ? 'offline' : event.d.status;
+    usePresenceStore.getState().setStatus(event.d.user_id, status);
   }
 });

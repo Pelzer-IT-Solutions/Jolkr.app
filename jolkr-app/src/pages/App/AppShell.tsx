@@ -1,9 +1,11 @@
 import { useCallback, useEffect } from 'react'
+import { PanelLeftOpen } from 'lucide-react'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
+import type { MemberStatus } from '../../types'
 import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
-import { useServersStore } from '../../stores/servers'
-import { useToast } from '../../components/Toast'
+import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
+import { useToast } from '../../stores/toast'
 import { buildInviteUrl } from '../../platform/config'
 import { orbsForHue } from '../../utils/theme'
 import * as api from '../../api/client'
@@ -11,6 +13,7 @@ import * as api from '../../api/client'
 import { TabBar } from '../../components/TabBar/TabBar'
 import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
 import { VoiceConnectionBar } from '../../components/VoiceConnectionBar/VoiceConnectionBar'
+import { CallWindow } from '../../components/CallWindow/CallWindow'
 import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
 import { ChatArea } from '../../components/ChatArea/ChatArea'
 import { MemberPanel } from '../../components/MemberPanel/MemberPanel'
@@ -23,8 +26,11 @@ import { NotificationsPanel } from '../../components/NotificationsPanel/Notifica
 import { FriendsPanel } from '../../components/FriendsPanel'
 import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
 import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
-import { ReportModal } from '../../components/ReportModal'
+import { ReportModal } from '../../components/ReportModal/ReportModal'
 import { UserContextMenu } from '../../components/UserContextMenu'
+import { ProfileCard } from '../../components/ProfileCard/ProfileCard'
+import { invalidateFriendsCache } from '../../services/friendshipCache'
+import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
 
 import { useAppInit } from './useAppInit'
 import { useAppMemos } from './useAppMemos'
@@ -36,6 +42,7 @@ export default function AppShell() {
   const init = useAppInit()
   const memos = useAppMemos(init)
   const handlers = useAppHandlers(init, memos)
+  const hasMoreMap = useMessagesStore(s => s.hasMore)
 
   // ── Destructure init ──
   const {
@@ -57,7 +64,10 @@ export default function AppShell() {
     channelSettingsOpen, setChannelSettingsOpen,
     reportTarget, setReportTarget,
     userContextMenu, setUserContextMenu,
+    contextMenuIsFriend,
+    profileCard, setProfileCard,
     pinnedCount, pinnedVersion, threadsCount,
+    openThreadId, setOpenThreadId,
     ready, serverThemes, setServerThemes,
     fetchServers,
   } = init
@@ -66,7 +76,7 @@ export default function AppShell() {
   const {
     isDark, colorPref, setColorPref,
     userInfo, userProfile, userMap,
-    uiServers, uiDmList,
+    uiServers, activeServerMembers, uiDmList,
     tabbedServers, activeServer, isServerOwner, myPerms,
     canAccessSettings, canManageChannels, canEditTheme,
     canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
@@ -82,6 +92,13 @@ export default function AppShell() {
   const showLeft  = !isMobile || activeMobilePane === 'left'
   const showChat  = !isMobile || activeMobilePane === 'chat'
   const showRight = !isMobile || activeMobilePane === 'right'
+  // Whether the chat area has actual content to render (a DM with an active id,
+  // or a server with an active channel). When false, the center slot shows the
+  // welcome panel instead of ChatArea — sidebars still render normally so the
+  // user can navigate (e.g. clicking DMs shows the DM list even with no DMs).
+  const hasChatContent = (dmActive && !!activeDmId) || (!!activeServer && !!activeChannelId)
+
+  const hasMoreCurrent = hasMoreMap[dmActive ? activeDmId : activeChannelId] ?? true
 
   const handleExpandSidebar = useCallback(() => {
     if (isMobile) setActiveMobilePane('left')
@@ -103,6 +120,15 @@ export default function AppShell() {
     }
   }, [isMobile, setActiveMobilePane, setRightPanelMode, setUserOverrideRight])
 
+  // Open a specific thread in the right panel — used by Message.tsx's
+  // "{n} replies in thread" badge and by ThreadListPanel item clicks.
+  const handleOpenThreadById = useCallback((threadId: string) => {
+    setOpenThreadId(threadId)
+    setRightPanelMode('threads')
+    if (isMobile) setActiveMobilePane('right')
+    else setUserOverrideRight('open')
+  }, [setOpenThreadId, setRightPanelMode, isMobile, setActiveMobilePane, setUserOverrideRight])
+
   const mobileBackToChat = useCallback(() => setActiveMobilePane('chat'), [setActiveMobilePane])
 
   // Mobile: clicking a channel or DM should auto-close the side panel and
@@ -117,6 +143,29 @@ export default function AppShell() {
     if (isMobile) setActiveMobilePane('chat')
   }, [setActiveDmId, isMobile, setActiveMobilePane])
 
+  // Open a 1-on-1 conversation with `otherUserId`: reuse an existing real DM
+  // if we already have one, otherwise drop a session-only draft into the
+  // sidebar. Used by FriendsPanel and ProfileCard so the recipient never
+  // sees a phantom DM before a message has actually been sent.
+  const openDmDraft = useCallback((otherUserId: string) => {
+    if (!user) return
+    const existing = dmList.find(d =>
+      !d.is_group
+      && !isDraftDmId(d.id)
+      && d.members.length === 2
+      && d.members.includes(otherUserId),
+    )
+    if (existing) {
+      setActiveDmId(existing.id)
+    } else {
+      const draft = buildDraftDm([user.id, otherUserId])
+      setDmList(prev => (prev.some(d => d.id === draft.id) ? prev : [draft, ...prev]))
+      setActiveDmId(draft.id)
+    }
+    setDmActive(true)
+    if (isMobile) setActiveMobilePane('chat')
+  }, [user, dmList, setDmList, setActiveDmId, setDmActive, isMobile, setActiveMobilePane])
+
   const sidebarCollapsedForChannelSidebar = isMobile ? false : effectiveLeftCollapsed
   const sidebarCollapsedForChatHeader     = isMobile ? true  : effectiveLeftCollapsed
   const rightPanelHidden                   = isMobile ? false : effectiveRightCollapsed
@@ -127,7 +176,7 @@ export default function AppShell() {
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer,
-    handleSend, handleToggleReaction, handleDeleteMessage, handleEditMessage,
+    handleSend, handleToggleReaction, handleDeleteMessage, handleHideDmMessage, handleEditMessage,
     handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleRenameChannel, handleRenameCategory, handleArchiveChannel,
@@ -136,8 +185,10 @@ export default function AppShell() {
   } = handlers
 
   // ── Role assignment for context menu ──
-  const serverRoles = useServersStore(s => s.roles[activeServerId]) ?? []
-  const serverMembers = useServersStore(s => s.members[activeServerId]) ?? []
+  // Use stable sentinel selectors so empty arrays share identity across renders
+  // (prevents infinite-render loops via Zustand selector returning new array per render)
+  const serverRoles = useServersStore(selectServerRoles(activeServerId))
+  const serverMembers = useServersStore(selectServerMembers(activeServerId))
   const fetchRoles = useServersStore(s => s.fetchRoles)
   const canManageRoles = !dmActive && (isServerOwner || hasPermission(myPerms, MANAGE_ROLES))
 
@@ -193,7 +244,7 @@ export default function AppShell() {
           user={userInfo}
           userProfile={userProfile}
           mutedServerIds={mutedServerIds}
-          currentStatus={(user?.id ? presences[user.id] : undefined) as 'online' | 'idle' | 'dnd' | 'offline' | undefined}
+          currentStatus={(user?.id ? presences[user.id] : undefined) as MemberStatus | undefined}
           ownerServerIds={ownerServerIds}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
           onClose={handleCloseTab}
@@ -234,6 +285,8 @@ export default function AppShell() {
               await api.leaveServer(serverId)
               await fetchServers()
             } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              useToast.getState().show(msg, 'error')
               console.error('Leave server failed:', err)
             }
           }}
@@ -242,130 +295,187 @@ export default function AppShell() {
         <div className={s.contentRow}>
           <div className={s.shell}>
             <div className={s.workspace}>
-              {showLeft && (!dmActive && !activeServer ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', opacity: 0.5 }}>
-                  <div style={{ fontSize: '3rem' }}>👋</div>
-                  <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
-                  <p className="txt-small">Join or create a server to get started, or send a direct message.</p>
-                </div>
-              ) : dmActive ? (
-                <DMSidebar
-                  conversations={uiDmList}
-                  activeId={activeDmId}
-                  onSelect={handleSelectDmMobile}
-                  onNewMessage={() => setNewDmOpen(true)}
-                  onOpenFriends={() => setFriendsPanelOpen(true)}
-                  collapsed={sidebarCollapsedForChannelSidebar}
-                  onCollapse={handleCollapseSidebar}
-                  isMobile={isMobile}
-                />
-              ) : activeServer ? (
-                <ChannelSidebar
-                  server={activeServer}
-                  activeChannelId={activeChannelId}
-                  onSwitch={handleSwitchChannelMobile}
-                  onCollapse={handleCollapseSidebar}
-                  collapsed={sidebarCollapsedForChannelSidebar}
-                  isMobile={isMobile}
-                  theme={activeTheme}
-                  onThemeChange={handleThemeChange}
-                  isDark={isDark}
-                  colorPref={colorPref}
-                  onSetColorPref={setColorPref}
-                  onOpenSettings={canAccessSettings ? () => setServerSettingsOpen(true) : undefined}
-                  canManageChannels={canManageChannels}
-                  canEditTheme={canEditTheme}
-                  onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
-                  onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
-                  onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
-                  onDeleteCategory={canManageChannels ? handleDeleteCategory : undefined}
-                  onRenameChannel={canManageChannels ? handleRenameChannel : undefined}
-                  onRenameCategory={canManageChannels ? handleRenameCategory : undefined}
-                  onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
-                  onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
-                  onReorderChannels={canManageChannels ? handleReorderChannels : undefined}
-                />
-              ) : null)}
+              {showLeft && (dmActive ? (
+                    <DMSidebar
+                      conversations={uiDmList}
+                      activeId={activeDmId}
+                      onSelect={handleSelectDmMobile}
+                      onNewMessage={() => setNewDmOpen(true)}
+                      onOpenFriends={() => setFriendsPanelOpen(true)}
+                      onConversationContextMenu={(conv, e) => {
+                        // Group DMs don't have a single "other user" to target — skip.
+                        if (conv.type !== 'direct') return
+                        const p = conv.participants[0]
+                        if (!p?.userId) return
+                        setUserContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          user: {
+                            user_id: p.userId,
+                            username: p.name,
+                            display_name: p.name,
+                            status: p.status,
+                            color: p.color,
+                            letter: p.letter,
+                            avatar_url: p.avatarUrl,
+                          },
+                          // Carry the DM id so the "Close DM" handler knows what to close.
+                          dmId: conv.id,
+                        })
+                      }}
+                      collapsed={sidebarCollapsedForChannelSidebar}
+                      onCollapse={handleCollapseSidebar}
+                      isMobile={isMobile}
+                    />
+                  ) : activeServer ? (
+                    <ChannelSidebar
+                      server={activeServer}
+                      activeChannelId={activeChannelId}
+                      onSwitch={handleSwitchChannelMobile}
+                      onCollapse={handleCollapseSidebar}
+                      collapsed={sidebarCollapsedForChannelSidebar}
+                      isMobile={isMobile}
+                      theme={activeTheme}
+                      onThemeChange={handleThemeChange}
+                      isDark={isDark}
+                      colorPref={colorPref}
+                      onSetColorPref={setColorPref}
+                      onOpenSettings={canAccessSettings ? () => setServerSettingsOpen(true) : undefined}
+                      canManageChannels={canManageChannels}
+                      canEditTheme={canEditTheme}
+                      onCreateChannel={canManageChannels ? handleCreateChannel : undefined}
+                      onCreateCategory={canManageChannels ? handleCreateCategory : undefined}
+                      onDeleteChannel={canManageChannels ? handleDeleteChannel : undefined}
+                      onDeleteCategory={canManageChannels ? handleDeleteCategory : undefined}
+                      onRenameChannel={canManageChannels ? handleRenameChannel : undefined}
+                      onRenameCategory={canManageChannels ? handleRenameCategory : undefined}
+                      onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
+                      onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
+                      onReorderChannels={canManageChannels ? handleReorderChannels : undefined}
+                    />
+                  ) : null)}
 
-              {showChat && <ChatArea
-                channel={activeChannel}
-                messages={displayMessages}
-                sidebarCollapsed={sidebarCollapsedForChatHeader}
-                rightPanelMode={effectiveRightMode}
-                onExpandSidebar={handleExpandSidebar}
-                onSetRightPanelMode={handleSetRightPanelMode}
-                onSend={handleSend}
-                onToggleReaction={handleToggleReaction}
-                onDeleteMessage={handleDeleteMessage}
-                onEditMessage={handleEditMessage}
-                isDm={dmActive}
-                dmConversation={dmActive ? activeDmConv : undefined}
-                animationKey={chatAnimKey}
-                onTyping={handleTyping}
-                typingUsers={typingUsers}
-                hasPinnedMessages={pinnedCount > 0}
-                hasThreads={threadsCount > 0}
-                serverId={dmActive ? undefined : activeServerId}
-                userMap={userMap}
-                onLoadOlder={() => {
-                  const { fetchOlder, loadingOlder } = useMessagesStore.getState()
-                  const channelId = dmActive ? activeDmId : activeChannelId
-                  if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
-                }}
-                hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
-                readOnly={isDmWithSystemUser}
-                onPinMessage={handlePinMessage}
-                mentionableUsers={mentionableUsers}
-                canManageMessages={canManageMessages}
-                canAddReactions={canAddReactions}
-                canSendMessages={canSendMessages}
-                canAttachFiles={canAttachFiles}
-              />}
+                  {showChat && (hasChatContent ? (
+                    <ChatArea
+                      channel={activeChannel}
+                      messages={displayMessages}
+                      sidebarCollapsed={sidebarCollapsedForChatHeader}
+                      rightPanelMode={effectiveRightMode}
+                      onExpandSidebar={handleExpandSidebar}
+                      onSetRightPanelMode={handleSetRightPanelMode}
+                      onSend={handleSend}
+                      onToggleReaction={handleToggleReaction}
+                      onDeleteMessage={handleDeleteMessage}
+                      onHideMessage={handleHideDmMessage}
+                      onEditMessage={handleEditMessage}
+                      isDm={dmActive}
+                      dmConversation={dmActive ? activeDmConv : undefined}
+                      animationKey={chatAnimKey}
+                      onTyping={handleTyping}
+                      typingUsers={typingUsers}
+                      hasPinnedMessages={pinnedCount > 0}
+                      hasThreads={threadsCount > 0}
+                      serverId={dmActive ? undefined : activeServerId}
+                      userMap={userMap}
+                      onLoadOlder={() => {
+                        const { fetchOlder, loadingOlder } = useMessagesStore.getState()
+                        const channelId = dmActive ? activeDmId : activeChannelId
+                        if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
+                      }}
+                      hasMore={hasMoreCurrent}
+                      readOnly={isDmWithSystemUser}
+                      onPinMessage={handlePinMessage}
+                      onOpenAuthorProfile={(authorId, e) => {
+                        setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
+                      }}
+                      mentionableUsers={mentionableUsers}
+                      canManageMessages={canManageMessages}
+                      canAddReactions={canAddReactions}
+                      canSendMessages={canSendMessages}
+                      canAttachFiles={canAttachFiles}
+                      onOpenThread={handleOpenThreadById}
+                      onStartThread={async (messageId) => {
+                        if (dmActive || !activeChannelId) return
+                        const name = window.prompt('Thread name (optional)')?.trim()
+                        try {
+                          await api.createThread(activeChannelId, messageId, name || undefined)
+                          // Backend will emit ThreadCreate WS event → store bumps
+                          // threadListVersion → ThreadListPanel + threadsCount refresh.
+                        } catch (err) {
+                          const msg = err instanceof Error ? err.message : 'Failed to create thread'
+                          useToast.getState().show(msg, 'error')
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className={s.emptyState}>
+                      {effectiveLeftCollapsed && (
+                        <button
+                          type="button"
+                          className={s.emptyExpandBtn}
+                          title="Expand sidebar"
+                          onClick={handleExpandSidebar}
+                        >
+                          <PanelLeftOpen size={14} strokeWidth={1.5} />
+                        </button>
+                      )}
+                      <div style={{ fontSize: '3rem' }}>👋</div>
+                      <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
+                      <p className="txt-small">Join or create a server to get started, or send a direct message.</p>
+                    </div>
+                  ))}
 
-              {showRight && (dmActive ? (
-                <DMInfoPanel
-                  visible={!rightPanelHidden}
-                  dmId={activeDmId}
-                  onUnpin={handleUnpinMessage}
-                  users={userMap}
-                  pinnedVersion={pinnedVersion}
-                  onMobileClose={isMobile ? mobileBackToChat : undefined}
-                />
-              ) : activeServer ? (
-                <MemberPanel
-                  members={activeServer.members}
-                  mode={effectiveRightMode}
-                  serverId={activeServerId}
-                  channelId={activeChannelId}
-                  isDm={false}
-                  onMemberClick={(member, e) => {
-                    if (!member.userId) return
-                    const u = userMap.get(member.userId)
-                    setUserContextMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      user: {
-                        user_id: member.userId,
-                        username: u?.username ?? member.name,
-                        display_name: u?.display_name ?? member.name,
-                        status: member.status,
-                        color: member.color,
-                        letter: member.letter,
-                        avatar_url: member.avatarUrl,
-                      },
-                    })
-                  }}
-                  onUnpin={handleUnpinMessage}
-                  users={userMap}
-                  pinnedVersion={pinnedVersion}
-                  onMobileClose={isMobile ? mobileBackToChat : undefined}
-                />
-              ) : null)}
+                  {showRight && hasChatContent && (dmActive ? (
+                    <DMInfoPanel
+                      open={!rightPanelHidden}
+                      dmId={activeDmId}
+                      onUnpin={handleUnpinMessage}
+                      users={userMap}
+                      pinnedVersion={pinnedVersion}
+                      onMobileClose={isMobile ? mobileBackToChat : undefined}
+                    />
+                  ) : activeServer ? (
+                    <MemberPanel
+                      members={activeServerMembers}
+                      mode={effectiveRightMode}
+                      serverId={activeServerId}
+                      channelId={activeChannelId}
+                      isDm={false}
+                      onMemberClick={(member, e) => {
+                        if (!member.userId) return
+                        const u = userMap.get(member.userId)
+                        setUserContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          user: {
+                            user_id: member.userId,
+                            username: u?.username ?? member.name,
+                            display_name: u?.display_name ?? member.name,
+                            status: member.status,
+                            color: member.color,
+                            letter: member.letter,
+                            avatar_url: member.avatarUrl,
+                          },
+                        })
+                      }}
+                      onMemberOpenProfile={(member, e) => {
+                        if (!member.userId) return
+                        setProfileCard({ userId: member.userId, x: e.clientX, y: e.clientY })
+                      }}
+                      onUnpin={handleUnpinMessage}
+                      users={userMap}
+                      pinnedVersion={pinnedVersion}
+                      onMobileClose={isMobile ? mobileBackToChat : undefined}
+                      openThreadId={openThreadId}
+                      onOpenThread={(t) => setOpenThreadId(t.id)}
+                      onCloseThread={() => setOpenThreadId(null)}
+                    />
+                  ) : null)}
             </div>
           </div>
 
           <NotificationsPanel
-            visible={notificationsActive}
+            open={notificationsActive}
             onNavigate={(serverId, channelId) => {
               setDmActive(false)
               if (!tabbedIds.includes(serverId)) {
@@ -415,14 +525,10 @@ export default function AppShell() {
       )}
 
       <FriendsPanel
-        isOpen={friendsPanelOpen}
+        open={friendsPanelOpen}
         onClose={() => setFriendsPanelOpen(false)}
-        onStartDM={async (userId) => {
-          const dm = await api.openDm(userId)
-          const dms = await api.getDms()
-          setDmList(dms)
-          setActiveDmId(dm.id)
-          setDmActive(true)
+        onStartDM={(otherUserId) => {
+          openDmDraft(otherUserId)
           setFriendsPanelOpen(false)
         }}
         onAcceptRequest={async (id) => { await api.acceptFriend(id) }}
@@ -461,14 +567,26 @@ export default function AppShell() {
             fetchServers()
           }}
           onDelete={async (serverId) => {
-            await api.deleteServer(serverId)
-            setServerSettingsOpen(false)
-            await fetchServers() // safety effect handles fallback
+            try {
+              await api.deleteServer(serverId)
+              setServerSettingsOpen(false)
+              await fetchServers() // safety effect handles fallback
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Delete server failed'
+              useToast.getState().show(msg, 'error')
+              throw err
+            }
           }}
           onLeave={async (serverId) => {
-            await api.leaveServer(serverId)
-            setServerSettingsOpen(false)
-            await fetchServers() // safety effect handles fallback
+            try {
+              await api.leaveServer(serverId)
+              setServerSettingsOpen(false)
+              await fetchServers() // safety effect handles fallback
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              useToast.getState().show(msg, 'error')
+              throw err
+            }
           }}
         />
         )
@@ -493,26 +611,60 @@ export default function AppShell() {
       })()}
 
       <ReportModal
-        isOpen={reportTarget !== null}
+        open={reportTarget !== null}
         onClose={() => setReportTarget(null)}
         user={reportTarget}
       />
 
       <VoiceConnectionBar />
+      <CallWindow />
 
       <UserContextMenu
         menu={userContextMenu}
         onClose={() => setUserContextMenu(null)}
+        onViewProfile={(userId, anchor) => {
+          setProfileCard({ userId, x: anchor.x, y: anchor.y })
+        }}
+        onCloseDm={userContextMenu?.dmId ? async () => {
+          const dmId = userContextMenu.dmId!
+          // Drafts are session-only, so closing just drops the local entry —
+          // the server never knew about them in the first place.
+          if (isDraftDmId(dmId)) {
+            setDmList(prev => prev.filter(d => d.id !== dmId))
+            if (activeDmId === dmId) setActiveDmId('')
+            return
+          }
+          try {
+            await api.closeDm(dmId)
+            setDmList(prev => prev.filter(d => d.id !== dmId))
+            if (activeDmId === dmId) {
+              setActiveDmId('')
+            }
+          } catch (e) {
+            console.warn('Failed to close DM:', e)
+          }
+        } : undefined}
         onReport={() => {
           if (userContextMenu) setReportTarget(userContextMenu.user)
           setUserContextMenu(null)
         }}
         onAddFriend={async (userId: string) => {
-          await api.sendFriendRequest(userId).catch(console.warn)
+          try {
+            await api.sendFriendRequest(userId)
+            invalidateFriendsCache()
+          } catch (e) {
+            useToast.getState().show((e as Error).message || 'Failed to send friend request', 'error')
+          }
+          setUserContextMenu(null)
+        }}
+        onRemoveFriend={async (userId: string) => {
+          await api.removeFriendByUserId(userId).catch(console.warn)
+          invalidateFriendsCache()
           setUserContextMenu(null)
         }}
         onBlock={async (userId: string) => {
           await api.blockUser(userId).catch(console.warn)
+          invalidateFriendsCache()
           setUserContextMenu(null)
         }}
         onInviteToServer={async (_userId: string, serverId: string) => {
@@ -544,8 +696,17 @@ export default function AppShell() {
         roles={serverRoles}
         userRoleIds={contextMenuUserRoleIds}
         canManageRoles={canManageRoles}
+        isFriend={contextMenuIsFriend}
         onToggleRole={handleToggleRole}
       />
+
+      {profileCard && (
+        <ProfileCard
+          state={profileCard}
+          onClose={() => setProfileCard(null)}
+          onStartDm={openDmDraft}
+        />
+      )}
     </>
   )
 }

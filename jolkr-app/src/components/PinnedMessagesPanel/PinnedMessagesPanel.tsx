@@ -6,6 +6,14 @@ import type { User } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import s from './PinnedMessagesPanel.module.css'
 
+// Module-level cache so toggling the panel off and back on doesn't trigger a
+// "Loading..." flash. Keyed by `${isDm ? 'dm' : 'ch'}:${channelId}:${pinnedVersion}`
+// so a `pinnedVersion` bump (pin/unpin event) invalidates the cached entry.
+const cache = new Map<string, Message[]>()
+function cacheKey(channelId: string, isDm: boolean, version: number): string {
+  return `${isDm ? 'dm' : 'ch'}:${channelId}:${version}`
+}
+
 interface Props {
   channelId: string
   isDm?: boolean
@@ -45,26 +53,45 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
 }
 
 export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, users, pinnedVersion }: Props) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [loading, setLoading] = useState(true)
+  const key = cacheKey(channelId, isDm, pinnedVersion ?? 0)
+  const [messages, setMessages] = useState<Message[]>(() => cache.get(key) ?? [])
+  // No "Loading..." if we already have data for this key — show stale data
+  // immediately and revalidate in the background.
+  const [loading, setLoading] = useState(() => !cache.has(key))
+
+  // Sync messages + loading immediately when the cache key changes (channel
+  // switch or pinnedVersion bump). Reads `cache` synchronously so a cached
+  // entry shows without a Loading flash.
+  const [prevKey, setPrevKey] = useState(key)
+  if (prevKey !== key) {
+    setPrevKey(key)
+    const cached = cache.get(key)
+    setMessages(cached ?? [])
+    setLoading(cached === undefined)
+  }
 
   useEffect(() => {
-    setLoading(true)
-    const fetch = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
-    fetch.then(msgs => {
+    if (cache.has(key)) return
+    const fetchPromise = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
+    fetchPromise.then(msgs => {
       // Normalize DM messages: dm_channel_id → channel_id
       const normalized = msgs.map((m) => ({
         ...m,
         channel_id: m.channel_id ?? (m as unknown as { dm_channel_id?: string }).dm_channel_id ?? channelId,
       }))
+      cache.set(key, normalized)
       setMessages(normalized)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [channelId, isDm, pinnedVersion])
+  }, [key, channelId, isDm])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)
-    setMessages(prev => prev.filter(m => m.id !== msgId))
+    setMessages(prev => {
+      const next = prev.filter(m => m.id !== msgId)
+      cache.set(cacheKey(channelId, isDm, pinnedVersion ?? 0), next)
+      return next
+    })
   }
 
   return (

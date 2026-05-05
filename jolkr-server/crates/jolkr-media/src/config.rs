@@ -12,6 +12,16 @@ pub(crate) struct Config {
     pub local_ip: Option<String>,
     /// JWT secret for token validation (must match the API server).
     pub jwt_secret: String,
+    /// NATS connection URL (e.g. `nats://nats:4222`).
+    pub nats_url: String,
+    /// NATS username for authentication.
+    pub nats_user: String,
+    /// NATS password for authentication.
+    pub nats_password: String,
+    /// HMAC secret for signing inter-service NATS events.
+    /// MUST match the value used by jolkr-api so its subscriber will accept
+    /// our published events.
+    pub nats_hmac_secret: String,
 }
 
 impl Config {
@@ -30,6 +40,14 @@ impl Config {
             local_ip: std::env::var("LOCAL_IP").ok(),
             jwt_secret: std::env::var("JWT_SECRET")
                 .expect("JWT_SECRET environment variable must be set"),
+            nats_url: std::env::var("NATS_URL")
+                .expect("NATS_URL environment variable must be set"),
+            nats_user: std::env::var("NATS_USER")
+                .expect("NATS_USER environment variable must be set"),
+            nats_password: std::env::var("NATS_PASSWORD")
+                .expect("NATS_PASSWORD environment variable must be set"),
+            nats_hmac_secret: std::env::var("NATS_HMAC_SECRET")
+                .expect("NATS_HMAC_SECRET environment variable must be set"),
         }
     }
 }

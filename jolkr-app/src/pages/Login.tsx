@@ -5,7 +5,9 @@ import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
+import { wsClient } from '../api/ws';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 export default function Login() {
   useEffect(resetAuthTheme, []);
@@ -26,24 +28,35 @@ export default function Login() {
       const userId = useAuthStore.getState().user?.id;
       if (userId) {
         const seed = await deriveE2EESeed(password, userId);
-        let deviceId = localStorage.getItem('jolkr_e2ee_device_id');
+        let deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
         if (!deviceId) {
           deviceId = crypto.randomUUID();
-          localStorage.setItem('jolkr_e2ee_device_id', deviceId);
+          localStorage.setItem(STORAGE_KEYS.E2EE_DEVICE_ID, deviceId);
         }
         await initE2EE(deviceId, seed).catch(console.warn);
       }
+      wsClient.connect();
 
       // Handle pending deep-link invite
-      const pendingInvite = sessionStorage.getItem('jolkr_pending_invite');
+      const pendingInvite = sessionStorage.getItem(STORAGE_KEYS.PENDING_INVITE);
       if (pendingInvite) {
-        sessionStorage.removeItem('jolkr_pending_invite');
+        sessionStorage.removeItem(STORAGE_KEYS.PENDING_INVITE);
         try {
           const invite = await api.useInvite(pendingInvite);
           await fetchServers();
           navigate(`/servers/${invite.server_id}`);
           return;
         } catch { /* invite expired or invalid, proceed normally */ }
+      }
+
+      // Handle pending deep-link friend add (jolkr://add/<userId> when not logged in)
+      const pendingAdd = sessionStorage.getItem(STORAGE_KEYS.PENDING_ADD_FRIEND);
+      if (pendingAdd) {
+        sessionStorage.removeItem(STORAGE_KEYS.PENDING_ADD_FRIEND);
+        // Best-effort — failures (already friends, blocked, expired user) are
+        // surfaced by the deep-link handler the next time the user opens the
+        // friends panel; we don't want to block login on it.
+        api.sendFriendRequest(pendingAdd).catch(() => {});
       }
 
       navigate('/');
@@ -129,7 +142,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '0.375rem',
   },
   subtitle: {
-    color: 'var(--text-muted)',
+    color: 'var(--text-default)',
     textAlign: 'center',
     marginBottom: '1.5rem',
     fontSize: '0.875rem',
@@ -186,7 +199,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   footer: {
     fontSize: '0.875rem',
-    color: 'var(--text-muted)',
+    color: 'var(--text-default)',
     marginTop: '1rem',
   },
 };

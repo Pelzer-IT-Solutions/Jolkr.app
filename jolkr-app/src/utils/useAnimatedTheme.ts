@@ -163,16 +163,25 @@ export function useAnimatedTheme(
   isDark: boolean,
 ): React.CSSProperties {
   const isDarkRef    = useRef(isDark)
-  isDarkRef.current  = isDark
+  const themeRef     = useRef(theme)
+  // Mirror props into refs so the animation effect can read the latest values
+  // without listing them in deps — the effect intentionally only re-runs when
+  // serverId or themeKey changes (themeKey is a derived signature of theme).
+  useEffect(() => { isDarkRef.current = isDark }, [isDark])
+  useEffect(() => { themeRef.current = theme }, [theme])
 
   const current      = useRef<ThemeSnap>(snap(theme))
   const raf          = useRef(0)
   const prevServerId = useRef(serverId)
 
   const [style, setStyle] = useState<React.CSSProperties>(() => {
-    const tokens = computeTokens(current.current, isDark)
+    // Re-snap from props instead of reading current.current — refs may not
+    // be accessed during render (the lint rule treats useState initializers
+    // as render-time). The result is identical to current.current on mount.
+    const initialSnap = snap(theme)
+    const tokens = computeTokens(initialSnap, isDark)
     syncToRoot(tokens)
-    return makeStyle(tokens, buildBg(current.current, isDark))
+    return makeStyle(tokens, buildBg(initialSnap, isDark))
   })
 
   // Stable content key — prevents infinite re-render when theme is a new
@@ -183,18 +192,20 @@ export function useAnimatedTheme(
     const prev = prevServerId.current
     const switched = prev !== serverId
     prevServerId.current = serverId
+    const themeNow = themeRef.current
+    const isDarkNow = isDarkRef.current
 
     // Same server — instant update (theme picker, etc.)
     if (!switched) {
       cancelAnimationFrame(raf.current)
-      current.current = snap(theme)
-      const tokens = computeTokens(current.current, isDarkRef.current)
+      current.current = snap(themeNow)
+      const tokens = computeTokens(current.current, isDarkNow)
       syncToRoot(tokens)
-      setStyle(makeStyle(tokens, buildBg(current.current, isDarkRef.current)))
+      setStyle(makeStyle(tokens, buildBg(current.current, isDarkNow)))
       return
     }
 
-    const to = snap(theme, current.current.orbs)
+    const to = snap(themeNow, current.current.orbs)
 
     // Animate everything (accent + background) from current state to target
     const from = { ...current.current, orbs: current.current.orbs.map(o => ({ ...o })) }
@@ -222,7 +233,6 @@ export function useAnimatedTheme(
 
     raf.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf.current)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverId, themeKey])
 
   // Rebuild when dark-mode toggles

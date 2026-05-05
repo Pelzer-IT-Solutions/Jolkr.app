@@ -1,0 +1,28 @@
+.spinner {
+  border-radius: 50%;
+  animation: spinnerRotate 800ms linear infinite;
+  border: 2px solid var(--text-faint);
+  border-top-color: var(--text-default);
+}
+
+.sm {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-width: 2px;
+}
+
+.md {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-width: 2px;
+}
+
+.lg {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-width: 3px;
+}
+
+@keyframes spinnerRotate {
+  to { transform: rotate(360deg); }
+}

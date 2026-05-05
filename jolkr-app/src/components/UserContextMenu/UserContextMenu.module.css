@@ -102,7 +102,7 @@
   border-radius: 0.5rem;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-default);
   cursor: pointer;
   text-align: left;
   transition: background-color var(--transition), color var(--transition);
@@ -151,7 +151,7 @@
   border-radius: 0.5rem;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-default);
   cursor: pointer;
   text-align: left;
   transition: background-color var(--transition), color var(--transition);
@@ -199,7 +199,7 @@
   border-radius: 0.5rem;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-default);
   cursor: pointer;
   text-align: left;
   transition: background-color var(--transition), color var(--transition);
@@ -216,6 +216,7 @@
   height: 0.625rem;
   border-radius: 50%;
   flex-shrink: 0;
+  background: var(--role-color, var(--text-faint));
 }
 .roleCheck {
   margin-left: auto;

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Server, Channel, Member, Role, Category, ServerEmoji } from '../api/types';
+import type { Server, Channel, ChannelKind, Member, Role, Category, ServerEmoji } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
@@ -23,7 +23,7 @@ interface ServersState {
   fetchChannelPermissions: (channelId: string) => Promise<void>;
   fetchMembersWithRoles: (serverId: string) => Promise<void>;
   createServer: (name: string, description?: string) => Promise<Server>;
-  createChannel: (serverId: string, name: string, kind: string, topic?: string, categoryId?: string) => Promise<Channel>;
+  createChannel: (serverId: string, name: string, kind: ChannelKind, topic?: string, categoryId?: string) => Promise<Channel>;
   updateServer: (id: string, body: { name?: string; description?: string; icon_url?: string }) => Promise<Server>;
   updateChannel: (id: string, serverId: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) => Promise<Channel>;
   deleteServer: (id: string) => Promise<void>;
@@ -89,8 +89,6 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   fetchChannels: async (serverId) => {
-    // Skip if already cached — WS events keep this updated
-    if (get().channels[serverId]?.length) return;
     try {
       const channels = await api.getChannels(serverId);
       set({ channels: { ...get().channels, [serverId]: channels } });
@@ -100,10 +98,7 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   fetchMembers: async (serverId) => {
-    // Skip if already cached — WS events keep this updated
-    if (get().members[serverId]?.length) return;
     try {
-      // Use enriched endpoint — includes full User objects with avatar_url
       const members = await api.getMembersWithRoles(serverId);
       set({ members: { ...get().members, [serverId]: members } });
     } catch (e) {
@@ -290,6 +285,8 @@ export const useServersStore = create<ServersState>((set, get) => ({
 
 const EMPTY_CHANNELS: Channel[] = [];
 const EMPTY_MEMBERS: Member[] = [];
+const EMPTY_ROLES: Role[] = [];
+const EMPTY_CATEGORIES: Category[] = [];
 
 /** Selector: channels for a specific server */
 export const selectServerChannels = (serverId: string) =>
@@ -299,16 +296,24 @@ export const selectServerChannels = (serverId: string) =>
 export const selectServerMembers = (serverId: string) =>
   (s: { members: Record<string, Member[]> }) => s.members[serverId] ?? EMPTY_MEMBERS;
 
+/** Selector: roles for a specific server */
+export const selectServerRoles = (serverId: string) =>
+  (s: { roles: Record<string, Role[]> }) => s.roles[serverId] ?? EMPTY_ROLES;
+
+/** Selector: categories for a specific server */
+export const selectServerCategories = (serverId: string) =>
+  (s: { categories: Record<string, Category[]> }) => s.categories[serverId] ?? EMPTY_CATEGORIES;
+
 /** Selector: current user's permissions for a server */
 export const selectMyPermissions = (serverId: string) =>
   (s: { permissions: Record<string, number> }) => s.permissions[serverId] ?? 0;
 
 // Wire up WebSocket events for server-level changes
-wsClient.on((op, d) => {
+wsClient.on((event) => {
   const store = useServersStore.getState();
-  switch (op) {
+  switch (event.op) {
     case 'ChannelCreate': {
-      const channel = d.channel as Channel;
+      const { channel } = event.d;
       if (!channel?.id || !channel?.server_id) break;
       if (!store.servers.some((s) => s.id === channel.server_id)) break;
       const current = store.channels[channel.server_id] ?? [];
@@ -320,7 +325,7 @@ wsClient.on((op, d) => {
       break;
     }
     case 'ChannelUpdate': {
-      const channel = d.channel as Channel;
+      const { channel } = event.d;
       if (!channel?.id || !channel?.server_id) break;
       if (!store.servers.some((s) => s.id === channel.server_id)) break;
       const current = store.channels[channel.server_id] ?? [];
@@ -333,67 +338,63 @@ wsClient.on((op, d) => {
       break;
     }
     case 'ChannelDelete': {
-      const channelId = d.channel_id as string;
-      const serverId = d.server_id as string;
-      if (!channelId || !serverId) break;
-      if (!store.servers.some((s) => s.id === serverId)) break;
-      const current = store.channels[serverId] ?? [];
+      const { channel_id, server_id } = event.d;
+      if (!channel_id || !server_id) break;
+      if (!store.servers.some((s) => s.id === server_id)) break;
+      const current = store.channels[server_id] ?? [];
       useServersStore.setState({
-        channels: { ...store.channels, [serverId]: current.filter((c) => c.id !== channelId) },
+        channels: { ...store.channels, [server_id]: current.filter((c) => c.id !== channel_id) },
       });
       break;
     }
     case 'MemberJoin': {
-      const serverId = d.server_id as string;
-      const userId = d.user_id as string;
-      if (!serverId) break;
-      if (!store.servers.some((s) => s.id === serverId)) {
+      const { server_id, user_id } = event.d;
+      if (!server_id) break;
+      if (!store.servers.some((s) => s.id === server_id)) {
         // Server not in store yet — if WE just joined, refresh the server list
         const currentUserId = useAuthStore.getState().user?.id;
-        if (userId === currentUserId) {
+        if (user_id === currentUserId) {
           useServersStore.getState().fetchServers();
         }
         break;
       }
-      store.fetchMembers(serverId).catch(e => console.warn('Failed to fetch members:', e));
+      store.fetchMembers(server_id).catch(e => console.warn('Failed to fetch members:', e));
       break;
     }
     case 'MemberLeave': {
-      const serverId = d.server_id as string;
-      const userId = d.user_id as string;
-      if (!serverId || !userId) break;
-      if (!store.servers.some((s) => s.id === serverId)) break;
-      const current = store.members[serverId] ?? [];
+      const { server_id, user_id } = event.d;
+      if (!server_id || !user_id) break;
+      if (!store.servers.some((s) => s.id === server_id)) break;
+      const current = store.members[server_id] ?? [];
       useServersStore.setState({
-        members: { ...store.members, [serverId]: current.filter((m) => m.user_id !== userId) },
+        members: { ...store.members, [server_id]: current.filter((m) => m.user_id !== user_id) },
       });
       break;
     }
     case 'MemberUpdate': {
-      const serverId = d.server_id as string;
-      const userId = d.user_id as string;
-      if (!serverId || !userId) break;
-      if (!store.servers.some((s) => s.id === serverId)) break;
-      const current = store.members[serverId] ?? [];
+      const { server_id, user_id, timeout_until, nickname, role_ids } = event.d;
+      if (!server_id || !user_id) break;
+      if (!store.servers.some((s) => s.id === server_id)) break;
+      const current = store.members[server_id] ?? [];
       // H22: Process all member update fields
       const updates: Record<string, unknown> = {};
-      if ('timeout_until' in d) updates.timeout_until = d.timeout_until as string | null;
-      if ('nickname' in d) updates.nickname = d.nickname as string | null;
-      if ('role_ids' in d) updates.role_ids = d.role_ids as string[];
+      if ('timeout_until' in event.d) updates.timeout_until = timeout_until;
+      if ('nickname' in event.d) updates.nickname = nickname;
+      if ('role_ids' in event.d) updates.role_ids = role_ids;
       const stateUpdate: Record<string, unknown> = {
         members: {
           ...store.members,
-          [serverId]: current.map((m) =>
-            m.user_id === userId ? { ...m, ...updates } : m
+          [server_id]: current.map((m) =>
+            m.user_id === user_id ? { ...m, ...updates } : m
           ),
         },
       };
       // Only invalidate permission caches when the CURRENT user's roles change
-      if ('role_ids' in d) {
+      if ('role_ids' in event.d) {
         const currentUserId = useAuthStore.getState().user?.id;
-        if (userId === currentUserId) {
-          const { [serverId]: _p, ...restPerms } = store.permissions;
-          const channelIds = (store.channels[serverId] ?? []).map((c) => c.id);
+        if (user_id === currentUserId) {
+          const { [server_id]: _p, ...restPerms } = store.permissions;
+          const channelIds = (store.channels[server_id] ?? []).map((c) => c.id);
           const restChanPerms = { ...store.channelPermissions };
           for (const cid of channelIds) delete restChanPerms[cid];
           stateUpdate.permissions = restPerms;
@@ -404,7 +405,7 @@ wsClient.on((op, d) => {
       break;
     }
     case 'ServerUpdate': {
-      const server = d.server as Server;
+      const { server } = event.d;
       if (!server?.id) break;
       useServersStore.setState({
         servers: store.servers.map((s) => (s.id === server.id ? server : s)),
@@ -412,13 +413,13 @@ wsClient.on((op, d) => {
       break;
     }
     case 'ServerDelete': {
-      const serverId = d.server_id as string;
-      if (!serverId) break;
-      useServersStore.setState(removeServerState(serverId, store));
+      const { server_id } = event.d;
+      if (!server_id) break;
+      useServersStore.setState(removeServerState(server_id, store));
       break;
     }
     case 'CategoryCreate': {
-      const category = d.category as Category;
+      const { category } = event.d;
       if (!category?.id || !category?.server_id) break;
       if (!store.servers.some((s) => s.id === category.server_id)) break;
       const current = store.categories[category.server_id] ?? [];
@@ -430,7 +431,7 @@ wsClient.on((op, d) => {
       break;
     }
     case 'CategoryUpdate': {
-      const category = d.category as Category;
+      const { category } = event.d;
       if (!category?.id || !category?.server_id) break;
       if (!store.servers.some((s) => s.id === category.server_id)) break;
       const current = store.categories[category.server_id] ?? [];
@@ -443,13 +444,12 @@ wsClient.on((op, d) => {
       break;
     }
     case 'CategoryDelete': {
-      const categoryId = d.category_id as string;
-      const serverId = d.server_id as string;
-      if (!categoryId || !serverId) break;
-      if (!store.servers.some((s) => s.id === serverId)) break;
-      const current = store.categories[serverId] ?? [];
+      const { category_id, server_id } = event.d;
+      if (!category_id || !server_id) break;
+      if (!store.servers.some((s) => s.id === server_id)) break;
+      const current = store.categories[server_id] ?? [];
       useServersStore.setState({
-        categories: { ...store.categories, [serverId]: current.filter((c) => c.id !== categoryId) },
+        categories: { ...store.categories, [server_id]: current.filter((c) => c.id !== category_id) },
       });
       break;
     }

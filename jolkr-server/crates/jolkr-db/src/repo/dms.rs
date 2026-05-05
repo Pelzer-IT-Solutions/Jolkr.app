@@ -73,23 +73,60 @@ impl DmRepo {
     }
 
     /// Get the last message for each of the given DM channels in a single query.
+    /// When `caller_id` is supplied, messages hidden by that user are skipped
+    /// so the sidebar preview never shows something the user has hidden.
     pub async fn get_last_messages(
         pool: &PgPool,
         channel_ids: &[Uuid],
+    ) -> Result<Vec<DmMessageRow>, JolkrError> {
+        Self::get_last_messages_for_user(pool, channel_ids, None).await
+    }
+
+    /// Variant of `get_last_messages` that filters out messages the caller has
+    /// hidden via `dm_message_hidden_for_user`. Pass `None` to skip the filter.
+    pub async fn get_last_messages_for_user(
+        pool: &PgPool,
+        channel_ids: &[Uuid],
+        caller_id: Option<Uuid>,
     ) -> Result<Vec<DmMessageRow>, JolkrError> {
         if channel_ids.is_empty() {
             return Ok(vec![]);
         }
         let rows = sqlx::query_as::<_, DmMessageRow>(
-            "SELECT DISTINCT ON (dm_channel_id) *
-               FROM dm_messages
-               WHERE dm_channel_id = ANY($1)
-               ORDER BY dm_channel_id, created_at DESC",
+            "SELECT DISTINCT ON (m.dm_channel_id) m.*
+               FROM dm_messages m
+               LEFT JOIN dm_message_hidden_for_user h
+                 ON h.message_id = m.id AND h.user_id = $2
+               WHERE m.dm_channel_id = ANY($1)
+                 AND ($2::uuid IS NULL OR h.user_id IS NULL)
+               ORDER BY m.dm_channel_id, m.created_at DESC",
         )
         .bind(channel_ids)
+        .bind(caller_id)
         .fetch_all(pool)
         .await?;
         Ok(rows)
+    }
+
+    /// Mark a DM message as hidden for the given user. Idempotent — repeated
+    /// calls are no-ops thanks to the composite primary key.
+    pub async fn hide_message_for_user(
+        pool: &PgPool,
+        message_id: Uuid,
+        user_id: Uuid,
+        dm_channel_id: Uuid,
+    ) -> Result<(), JolkrError> {
+        sqlx::query(
+            "INSERT INTO dm_message_hidden_for_user (user_id, message_id, dm_channel_id)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (user_id, message_id) DO NOTHING",
+        )
+        .bind(user_id)
+        .bind(message_id)
+        .bind(dm_channel_id)
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 
     /// Close (hide) a DM channel for a specific user.
@@ -358,10 +395,11 @@ impl DmRepo {
         Ok(row)
     }
 
-    /// Fetches messages.
+    /// Fetches messages, excluding any the caller has hidden for themselves.
     pub async fn get_messages(
         pool: &PgPool,
         dm_channel_id: Uuid,
+        caller_id: Uuid,
         before: Option<DateTime<Utc>>,
         limit: i64,
     ) -> Result<Vec<DmMessageRow>, JolkrError> {
@@ -369,14 +407,19 @@ impl DmRepo {
         let before = before.unwrap_or_else(Utc::now);
 
         let rows = sqlx::query_as::<_, DmMessageRow>(
-            "SELECT * FROM dm_messages
-               WHERE dm_channel_id = $1 AND created_at < $2
-               ORDER BY created_at DESC
+            "SELECT m.* FROM dm_messages m
+               LEFT JOIN dm_message_hidden_for_user h
+                 ON h.message_id = m.id AND h.user_id = $4
+               WHERE m.dm_channel_id = $1
+                 AND m.created_at < $2
+                 AND h.user_id IS NULL
+               ORDER BY m.created_at DESC
                LIMIT $3",
         )
         .bind(dm_channel_id)
         .bind(before)
         .bind(limit)
+        .bind(caller_id)
         .fetch_all(pool)
         .await?;
         Ok(rows)
@@ -473,6 +516,36 @@ impl DmRepo {
             "SELECT * FROM dm_attachments WHERE dm_message_id = ANY($1) ORDER BY created_at",
         )
         .bind(message_ids)
+        .fetch_all(pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// List every attachment shared in a DM channel, newest first. Skips
+    /// attachments that the caller has hidden via `dm_message_hidden_for_user`
+    /// so the "Shared Files" panel respects the same per-user view as the
+    /// message list.
+    pub async fn list_attachments_for_dm(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        caller_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<DmAttachmentRow>, JolkrError> {
+        let limit = limit.clamp(1, 200);
+        let rows = sqlx::query_as::<_, DmAttachmentRow>(
+            "SELECT a.*
+               FROM dm_attachments a
+               JOIN dm_messages m ON m.id = a.dm_message_id
+               LEFT JOIN dm_message_hidden_for_user h
+                 ON h.message_id = m.id AND h.user_id = $2
+               WHERE m.dm_channel_id = $1
+                 AND h.user_id IS NULL
+               ORDER BY a.created_at DESC
+               LIMIT $3",
+        )
+        .bind(dm_channel_id)
+        .bind(caller_id)
+        .bind(limit)
         .fetch_all(pool)
         .await?;
         Ok(rows)

@@ -4,7 +4,17 @@ import {
   Mic, Bell, Keyboard, Globe, Camera,
 } from 'lucide-react'
 import type { ColorPreference } from '../../utils/colorMode'
+import type { DmFilter } from '../../api/types'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
+import { Select } from '../ui/Select'
+import { useAuthStore } from '../../stores/auth'
+import { useToast } from '../../stores/toast'
+import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
+import { ensureNotificationPermission } from '../../services/notifications'
+import { STORAGE_KEYS } from '../../utils/storageKeys'
+import {
+  voicePrefs, useVoiceMediaDevices, useOutputSinkSupported,
+} from '../../voice/voicePrefs'
 import s from './Settings.module.css'
 
 type Section =
@@ -149,7 +159,10 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
     }
   }, [user, isEditing])
 
+  const [saving, setSaving] = useState(false)
   const handleSave = async () => {
+    if (saving) return
+    setSaving(true)
     try {
       await onUpdateProfile?.({
         display_name: editedProfile.display_name,
@@ -162,6 +175,10 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       setShowColorPicker(false)
     } catch (e) {
       console.error('Failed to update profile:', e)
+      const msg = e instanceof Error ? e.message : 'Could not save profile changes.'
+      useToast.getState().show(msg, 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -225,7 +242,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                     <button
                       key={c.value}
                       className={`${s.colorPickerSwatch} ${editedProfile.banner_color === c.value ? s.colorPickerSwatchActive : ''}`}
-                      style={{ background: c.value }}
+                      style={{ '--swatch-color': c.value } as React.CSSProperties}
                       onClick={() => handleBannerColorChange(c.value)}
                       title={c.name}
                     />
@@ -238,8 +255,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
           {/* Edit Button */}
           {isEditing ? (
             <div className={s.editActions}>
-              <button className={s.cancelEditBtn} onClick={handleCancel}>Cancel</button>
-              <button className={s.saveEditBtn} onClick={handleSave}>Save</button>
+              <button className={s.cancelEditBtn} onClick={handleCancel} disabled={saving}>Cancel</button>
+              <button className={s.saveEditBtn} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
             </div>
           ) : (
             <button className={s.editProfileBtn} onClick={() => setIsEditing(true)}>
@@ -249,20 +266,20 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
         </div>
 
         {/* Banner */}
-        <div className={s.previewBanner} style={{ background: editedProfile.banner_color }} />
+        <div className={s.previewBanner} style={{ '--banner-color': editedProfile.banner_color } as React.CSSProperties} />
 
         {/* Profile Content */}
         <div className={s.previewContent}>
           {/* Avatar - Click to change only when editing */}
-          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined} style={isEditing ? { cursor: 'pointer' } : undefined}>
+          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined}>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              style={{ display: 'none' }}
+              className={s.fileInputHidden}
               onChange={handleAvatarChange}
             />
-            <div className={s.previewAvatar} style={{ background: editedProfile.banner_color }}>
+            <div className={s.previewAvatar} style={{ '--banner-color': editedProfile.banner_color } as React.CSSProperties}>
               {editedProfile.avatar_url ? (
                 <img src={editedProfile.avatar_url} alt="Profile" className={s.previewAvatarImg} />
               ) : (
@@ -281,8 +298,9 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
             {isEditing ? (
               <>
                 <div className={s.editFieldGroup}>
-                  <label className={s.editLabel}>Display Name</label>
+                  <label className={s.editLabel} htmlFor="settings-displayname">Display Name</label>
                   <input
+                    id="settings-displayname"
                     type="text"
                     className={s.editInput}
                     value={editedProfile.display_name}
@@ -291,7 +309,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                   />
                 </div>
                 <div className={s.editFieldGroup}>
-                  <label className={s.editLabel}>Username</label>
+                  <span className={s.editLabel}>Username</span>
                   <span className={s.editReadonly}>{user?.username}</span>
                 </div>
               </>
@@ -306,8 +324,9 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
 
             {isEditing ? (
               <div className={s.editFieldGroup}>
-                <label className={s.editLabel}>Bio</label>
+                <label className={s.editLabel} htmlFor="settings-bio">Bio</label>
                 <textarea
+                  id="settings-bio"
                   className={s.editTextarea}
                   value={editedProfile.bio}
                   onChange={(e) => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
@@ -358,10 +377,24 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
    SECTION: Privacy & Safety
 ───────────────────────────────────────── */
 function PrivacySection() {
-  const [dmFilter,    setDmFilter]    = useState<'all' | 'friends' | 'none'>('friends')
-  const [friendReqs,  setFriendReqs]  = useState(true)
-  const [readReceipts,setReadReceipts]= useState(true)
-  const [analytics,   setAnalytics]   = useState(false)
+  const user = useAuthStore(s => s.user)
+  const updateProfile = useAuthStore(s => s.updateProfile)
+
+  // Defaults match the server's defaults (all / true / true). When the user
+  // object hasn't loaded yet we still render — values are corrected on the
+  // first render after `user` becomes available.
+  const dmFilter: DmFilter = user?.dm_filter ?? 'all'
+  const friendReqs = user?.allow_friend_requests ?? true
+  const readReceipts = user?.show_read_receipts ?? true
+  // TODO: wire up analytics opt-in (telemetry SDK + persistence)
+  const [analytics, setAnalytics] = useState(false)
+
+  const setDmFilter = (v: DmFilter) =>
+    updateProfile({ dm_filter: v }).catch(console.warn)
+  const setFriendReqs = (v: boolean) =>
+    updateProfile({ allow_friend_requests: v }).catch(console.warn)
+  const setReadReceipts = (v: boolean) =>
+    updateProfile({ show_read_receipts: v }).catch(console.warn)
 
   return (
     <div className={s.section}>
@@ -493,46 +526,143 @@ function AccessibilitySection() {
    SECTION: Voice & Video
 ───────────────────────────────────────── */
 function VoiceSection() {
-  const [inputVol,  setInputVol]  = useState(80)
-  const [outputVol, setOutputVol] = useState(100)
-  const [noiseSup,  setNoiseSup]  = useState(true)
-  const [echoCan,   setEchoCan]   = useState(true)
-  const [autoGain,  setAutoGain]  = useState(false)
+  const { audioInputs, audioOutputs, videoInputs } = useVoiceMediaDevices()
+  const sinkSupported = useOutputSinkSupported()
+
+  // Read once into local state and write back through the helper so changes
+  // are persisted AND broadcast to an active call via voicePrefs.
+  const [prefs, setPrefs] = useState(() => voicePrefs.get())
+  useEffect(() => voicePrefs.subscribe(setPrefs), [])
+
+  const set = <K extends keyof typeof prefs>(key: K, value: (typeof prefs)[K]) =>
+    voicePrefs.set(key, value)
 
   return (
     <div className={s.section}>
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Voice & Video</h2>
 
       <SettingBlock title="Input Device">
-        <select className={s.select}><option>Default — Microphone</option></select>
+        <Select
+          className={s.selectMaxWidth}
+          value={prefs.audioInputDeviceId}
+          onChange={(e) => set('audioInputDeviceId', e.target.value)}
+        >
+          <option value="">System default</option>
+          {audioInputs.map((d) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || `Microphone (${d.deviceId.slice(0, 6)}…)`}
+            </option>
+          ))}
+        </Select>
       </SettingBlock>
-      <SettingBlock title={`Input Volume — ${inputVol}%`}>
+      <SettingBlock title={`Input Volume — ${prefs.inputVolume}%`}>
         <div className={s.sliderRow}>
           <span className={s.sliderLabel}>0</span>
-          <input type="range" min={0} max={100} value={inputVol}
-            onChange={e => setInputVol(+e.target.value)} className={s.slider} />
+          <input type="range" min={0} max={100} value={prefs.inputVolume}
+            onChange={(e) => set('inputVolume', +e.target.value)} className={s.slider} />
           <span className={s.sliderLabel}>100</span>
         </div>
       </SettingBlock>
 
       <Divider />
-      <SettingBlock title="Output Device">
-        <select className={s.select}><option>Default — Speakers</option></select>
+      <SettingBlock
+        title="Output Device"
+        description={sinkSupported ? undefined : 'Output device selection is not supported in this browser.'}
+      >
+        <Select
+          className={s.selectMaxWidth}
+          value={prefs.audioOutputDeviceId}
+          onChange={(e) => set('audioOutputDeviceId', e.target.value)}
+          disabled={!sinkSupported}
+          title={sinkSupported ? undefined : 'Not supported in this browser'}
+        >
+          <option value="">System default</option>
+          {audioOutputs.map((d) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || `Speakers (${d.deviceId.slice(0, 6)}…)`}
+            </option>
+          ))}
+        </Select>
       </SettingBlock>
-      <SettingBlock title={`Output Volume — ${outputVol}%`}>
+      <SettingBlock title={`Output Volume — ${prefs.outputVolume}%`}>
         <div className={s.sliderRow}>
           <span className={s.sliderLabel}>0</span>
-          <input type="range" min={0} max={100} value={outputVol}
-            onChange={e => setOutputVol(+e.target.value)} className={s.slider} />
+          <input type="range" min={0} max={100} value={prefs.outputVolume}
+            onChange={(e) => set('outputVolume', +e.target.value)} className={s.slider} />
           <span className={s.sliderLabel}>100</span>
         </div>
+      </SettingBlock>
+
+      <Divider />
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Camera</h3>
+      <SettingBlock title="Camera Device">
+        <Select
+          className={s.selectMaxWidth}
+          value={prefs.videoInputDeviceId}
+          onChange={(e) => set('videoInputDeviceId', e.target.value)}
+        >
+          <option value="">System default</option>
+          {videoInputs.map((d) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || `Camera (${d.deviceId.slice(0, 6)}…)`}
+            </option>
+          ))}
+        </Select>
+        <CameraPreview deviceId={prefs.videoInputDeviceId} />
       </SettingBlock>
 
       <Divider />
       <h3 className={`${s.subTitle} txt-small txt-semibold`}>Advanced</h3>
-      <ToggleRow label="Noise suppression"    description="Filter out background noise during voice calls." value={noiseSup} onChange={setNoiseSup} />
-      <ToggleRow label="Echo cancellation"    description="Remove echo from microphone input." value={echoCan}  onChange={setEchoCan} />
-      <ToggleRow label="Automatic gain control" description="Automatically adjust microphone sensitivity." value={autoGain} onChange={setAutoGain} />
+      <ToggleRow label="Noise suppression"      description="Filter out background noise during voice calls." value={prefs.noiseSuppression} onChange={(v) => set('noiseSuppression', v)} />
+      <ToggleRow label="Echo cancellation"      description="Remove echo from microphone input."              value={prefs.echoCancellation} onChange={(v) => set('echoCancellation', v)} />
+      <ToggleRow label="Automatic gain control" description="Automatically adjust microphone sensitivity."     value={prefs.autoGainControl}  onChange={(v) => set('autoGainControl', v)} />
+    </div>
+  )
+}
+
+/**
+ * Live preview of the selected camera. Acquires its own MediaStream so it
+ * doesn't conflict with an active call, and stops the stream as soon as the
+ * Settings dialog closes (component unmount).
+ */
+function CameraPreview({ deviceId }: { deviceId: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    let stream: MediaStream | null = null
+
+    navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        deviceId: deviceId ? { exact: deviceId } : undefined,
+        width:  { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    }).then((s) => {
+      if (cancelled) { s.getTracks().forEach((t) => t.stop()); return }
+      stream = s
+      if (videoRef.current) videoRef.current.srcObject = s
+      setError(null)
+    }).catch((e: Error) => {
+      if (!cancelled) setError(e.message || 'Camera unavailable')
+    })
+
+    const videoEl = videoRef.current
+    return () => {
+      cancelled = true
+      stream?.getTracks().forEach((t) => t.stop())
+      if (videoEl) videoEl.srcObject = null
+    }
+  }, [deviceId])
+
+  return (
+    <div className={s.cameraPreview}>
+      {error
+        ? <div className={s.cameraPreviewError}>{error}</div>
+        : <video ref={videoRef} className={s.cameraPreviewVideo} autoPlay playsInline muted />
+      }
     </div>
   )
 }
@@ -541,16 +671,28 @@ function VoiceSection() {
    SECTION: Notifications
 ───────────────────────────────────────── */
 function NotificationsSection() {
-  const [desktop,   setDesktop]   = useState(true)
-  const [sounds,    setSounds]    = useState(true)
-  const [mentions,  setMentions]  = useState(true)
-  const [dms,       setDms]       = useState(true)
-  const [badge,     setBadge]     = useState(true)
+  const showToast = useToast(s => s.show)
+  const [desktop,  setDesktop]  = useLocalStorageBoolean(STORAGE_KEYS.DESKTOP_NOTIF, true)
+  const [sounds,   setSounds]   = useLocalStorageBoolean(STORAGE_KEYS.SOUND_ENABLED, true)
+  const [mentions, setMentions] = useLocalStorageBoolean(STORAGE_KEYS.MENTION_NOTIF, true)
+  const [dms,      setDms]      = useLocalStorageBoolean(STORAGE_KEYS.DM_NOTIF, true)
+  const [badge,    setBadge]    = useLocalStorageBoolean(STORAGE_KEYS.UNREAD_BADGE, true)
+
+  const onDesktopChange = async (v: boolean) => {
+    setDesktop(v)
+    if (!v) return
+    const result = await ensureNotificationPermission()
+    if (result === 'denied') {
+      showToast('Notification permission denied — enable it in your browser/OS settings.', 'error', 6000)
+    } else if (result === 'unsupported') {
+      showToast('Desktop notifications are not supported in this environment.', 'info', 4000)
+    }
+  }
 
   return (
     <div className={s.section}>
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Notifications</h2>
-      <ToggleRow label="Enable desktop notifications" description="Show notifications when the app is in the background." value={desktop}  onChange={setDesktop} />
+      <ToggleRow label="Enable desktop notifications" description="Show notifications when the app is in the background." value={desktop}  onChange={onDesktopChange} />
       <ToggleRow label="Notification sounds"          description="Play a sound when you receive a notification." value={sounds}   onChange={setSounds} />
 
       <Divider />
@@ -607,9 +749,9 @@ function LanguageSection() {
     <div className={s.section}>
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Language</h2>
       <SettingBlock title="Display Language" description="Choose the language used throughout the app.">
-        <select className={s.select} value={lang} onChange={e => setLang(e.target.value)}>
+        <Select className={s.selectMaxWidth} value={lang} onChange={e => setLang(e.target.value)}>
           {LANGUAGES.map(l => <option key={l}>{l}</option>)}
-        </select>
+        </Select>
       </SettingBlock>
     </div>
   )

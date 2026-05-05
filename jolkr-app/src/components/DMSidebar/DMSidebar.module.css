@@ -7,6 +7,9 @@
   background: var(--bg-muted);
   flex-shrink: 0;
   overflow: hidden;
+  /* nowrap so labels don't reflow into multiple lines while the panel
+     animates to width:0 — children that need wrapping override locally. */
+  white-space: nowrap;
   transition: width var(--transition), min-width var(--transition), border-color var(--transition);
 }
 .sidebar.collapsed {
@@ -100,6 +103,19 @@
 .conv:hover  { background: var(--bg-dark-muted); }
 .conv.active { background: var(--bg-dark-strong); }
 
+.empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  opacity: 0.4;
+}
+.emptyIcon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+.emptyHint {
+  margin-top: 0.25rem;
+}
+
 /* ── Direct message avatar ── */
 .avatarWrap {
   position: relative;
@@ -173,7 +189,7 @@
   gap: 0.0625rem;
 }
 
-.convName { color: var(--text-muted); display: block; }
+.convName { color: var(--text-default); display: block; }
 .conv:hover .convName,
 .conv.active .convName { color: var(--text-strong); }
 

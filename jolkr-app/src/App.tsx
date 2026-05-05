@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { STORAGE_KEYS } from './utils/storageKeys';
 import { useAuthStore } from './stores/auth';
 import { useServersStore } from './stores/servers';
 import { getBasename } from './platform/config';
 import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
-import { initNotifications, requestNotificationPermission } from './services/notifications';
+import { useToast } from './stores/toast';
+import { requestNotificationPermission } from './services/notifications';
+import { startUnreadBadge } from './services/unreadBadge';
 import { registerPush } from './services/pushRegistration';
 import { initE2EE } from './services/e2ee';
 import { checkForUpdate, type UpdateInfo } from './services/updater';
@@ -15,8 +18,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import TextContextMenu from './components/TextContextMenu';
 import ContextMenu from './components/ContextMenu';
 import UpdateNotification from './components/UpdateNotification';
-import IncomingCallDialog from './components/IncomingCallDialog';
-import OutgoingCallDialog from './components/OutgoingCallDialog';
+import IncomingCallDialog from './components/CallDialogs/IncomingCallDialog';
+import OutgoingCallDialog from './components/CallDialogs/OutgoingCallDialog';
 import { useCallEvents } from './hooks/useCallEvents';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -88,26 +91,31 @@ function AppInit({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    initTokens().then(() => loadUser()).then(() => {
-      // Only register push if user is logged in (has access token)
+    startUnreadBadge();
+    (async () => {
+      await initTokens();
+      // Load E2EE keys BEFORE loadUser triggers wsClient.connect(). On a
+      // page reload the SEC-013 server Hello arrives within ~100ms of the
+      // socket opening; if `localKeys` isn't populated yet `signWithIdentity`
+      // returns null, the FE never sends Identify, the server drops the
+      // connection, and the user stays invisible / receives no presence
+      // updates until the next reconnect happens to win the race.
+      const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
+      if (deviceId && getAccessToken()) {
+        await initE2EE(deviceId).catch(console.warn);
+      }
+      await loadUser();
       if (getAccessToken()) {
         requestNotificationPermission().then(() => registerPush()).catch(console.warn);
-        // Load E2EE keys from storage (no seed — keys were set during login)
-        const deviceId = localStorage.getItem('jolkr_e2ee_device_id');
-        if (deviceId) {
-          initE2EE(deviceId).catch(console.warn);
-        }
       }
-
       // Check for updates after 5s delay (Tauri only)
       if (isTauri) {
         setTimeout(() => {
           checkForUpdate().then(setUpdateInfo).catch(console.warn);
         }, 5000);
       }
-    }).finally(() => {
+    })().finally(() => {
       setReady(true);
-      initNotifications();
     });
   }, [loadUser]);
 
@@ -136,6 +144,11 @@ function CallOverlays() {
   );
 }
 
+// Per-user-id cooldown so a malicious QR scanned twice in a row can't spam the
+// friend-request endpoint. Backend rate-limits anyway; this is just UX polish.
+const FRIEND_REQUEST_COOLDOWN_MS = 5_000;
+const lastFriendRequestAt = new Map<string, number>();
+
 function DeepLinkHandler() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -146,7 +159,7 @@ function DeepLinkHandler() {
     onDeepLink(async (path, params) => {
       if (path === 'invite' && params.code) {
         if (!userRef.current) {
-          sessionStorage.setItem('jolkr_pending_invite', params.code);
+          sessionStorage.setItem(STORAGE_KEYS.PENDING_INVITE, params.code);
           navigate('/login');
           return;
         }
@@ -161,15 +174,19 @@ function DeepLinkHandler() {
 
       if (path === 'add' && params.userId) {
         if (!userRef.current) {
-          sessionStorage.setItem('jolkr_pending_add_friend', params.userId);
+          sessionStorage.setItem(STORAGE_KEYS.PENDING_ADD_FRIEND, params.userId);
           navigate('/login');
           return;
         }
+        const last = lastFriendRequestAt.get(params.userId) ?? 0;
+        if (Date.now() - last < FRIEND_REQUEST_COOLDOWN_MS) return;
+        lastFriendRequestAt.set(params.userId, Date.now());
         try {
           await api.sendFriendRequest(params.userId);
-          navigate('/friends');
+          useToast.getState().show('Friend request sent', 'success');
         } catch (e) {
-          console.error('Failed to send friend request:', e);
+          const msg = e instanceof Error ? e.message : 'Failed to send friend request';
+          useToast.getState().show(msg, 'error');
         }
       }
     });

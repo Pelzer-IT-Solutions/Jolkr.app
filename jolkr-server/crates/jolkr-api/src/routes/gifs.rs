@@ -12,6 +12,7 @@ use std::sync::{LazyLock, RwLock};
 
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
+use crate::ws::events::GatewayEvent;
 use jolkr_db::repo::gif_favorites::GifFavoritesRepo;
 
 use super::AppState;
@@ -456,7 +457,11 @@ pub(crate) struct FavoritesResponse {
     pub favorites: Vec<FavoriteItem>,
 }
 
-#[derive(Serialize)]
+/// A favorite GIF as exposed over HTTP and the WebSocket. URLs are clean
+/// `/api/gifs/i/{id}/...` proxy paths (the GIPHY CDN is never seen by the
+/// frontend). `Deserialize` is required because `GatewayEvent` derives it
+/// (the WS bus only serializes, but the derive bound is unconditional).
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct FavoriteItem {
     pub gif_id: String,
     pub gif_url: String,
@@ -506,7 +511,24 @@ pub(crate) async fn add_favorite(
         }
     };
 
-    GifFavoritesRepo::add(&state.pool, auth.user_id, &body.gif_id, &gif_url, &preview_url, &title).await?;
+    let row = GifFavoritesRepo::add(&state.pool, auth.user_id, &body.gif_id, &gif_url, &preview_url, &title).await?;
+
+    // Sync the user's other sessions. Mirrors the HTTP shape from list_favorites:
+    // proxy URLs (never raw GIPHY URLs) so the frontend can drop it straight
+    // into its store without re-mapping.
+    let item = FavoriteItem {
+        gif_url: proxy_url(&row.gif_id, "original"),
+        preview_url: proxy_url(&row.gif_id, "small"),
+        gif_id: row.gif_id,
+        title: row.title,
+        added_at: row.added_at.to_rfc3339(),
+    };
+    let event = GatewayEvent::GifFavoriteUpdate {
+        added: Some(item),
+        removed_gif_id: None,
+    };
+    state.nats.publish_to_user(auth.user_id, &event).await;
+
     Ok(StatusCode::CREATED)
 }
 
@@ -517,6 +539,13 @@ pub(crate) async fn remove_favorite(
     Path(gif_id): Path<String>,
 ) -> Result<StatusCode, AppError> {
     GifFavoritesRepo::remove(&state.pool, auth.user_id, &gif_id).await?;
+
+    let event = GatewayEvent::GifFavoriteUpdate {
+        added: None,
+        removed_gif_id: Some(gif_id.clone()),
+    };
+    state.nats.publish_to_user(auth.user_id, &event).await;
+
     Ok(StatusCode::NO_CONTENT)
 }
 

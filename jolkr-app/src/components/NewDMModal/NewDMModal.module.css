@@ -1,63 +1,77 @@
-/* ── Overlay ── */
+/* Match SettingsShell chrome — same overlay, card, popIn animation, and
+   floating close button — but without the left navigation rail. */
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 800;
-  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 120ms ease both;
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  background: var(--overlay-backdrop, rgba(0, 0, 0, 0.6));
+  backdrop-filter: blur(2px);
 }
 
-/* ── Modal card ── */
 .modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   width: 28rem;
   max-width: calc(100vw - 2rem);
   max-height: min(32rem, calc(100vh - 4rem));
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-loud);
-  border: 1px solid var(--border-muted);
-  border-radius: 1rem;
-  box-shadow: 0 24px 48px oklch(0% 0 0 / 0.22), 0 4px 12px oklch(0% 0 0 / 0.12);
-  animation: slideUp 180ms var(--ease-out-quart) both;
-  overflow: hidden;
+  flex-shrink: 0;
+  border-radius: 0.75rem;
+  background: var(--bg-shout);
+  /* `visible` so the floating close button (top:-0.75rem, right:-0.75rem)
+     isn't clipped — matches SettingsShell. Inner regions clip their own
+     overflow via the scroll containers below. */
+  overflow: visible;
+  box-shadow:
+    0 0 0 1px var(--jolkr-neutral-dark-8),
+    0 24px 48px rgba(0, 0, 0, 0.24);
+  animation: popIn 200ms var(--ease-out-quart) both;
 }
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
 }
 
-/* ── Header ── */
+/* Floating close — half-in, half-out — mirrors SettingsShell */
+.closeBtnOverlay {
+  position: absolute;
+  top: -0.75rem;
+  right: -0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  color: var(--icon-muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  z-index: 10;
+  transition: background-color var(--transition), color var(--transition), transform var(--transition);
+}
+.closeBtnOverlay:hover {
+  background: var(--bg-dark-default);
+  color: var(--icon-default);
+  transform: scale(1.05);
+}
+
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem 0.75rem;
+  padding: 1.25rem 1.25rem 0.75rem;
   flex-shrink: 0;
 }
 .title {
   color: var(--text-strong);
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.closeBtn {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--icon-muted);
-  transition: background-color var(--transition), color var(--transition);
-}
-.closeBtn:hover { background: var(--bg-dark-default); color: var(--icon-strong); }
 
 /* ── Search area ── */
 .searchArea {
@@ -186,10 +200,26 @@
 .dnd     { background: oklch(55% 0.2 25); }
 .offline { background: var(--jolkr-neutral-dark-20); }
 
-.userName {
+.userInfo {
+  display: flex;
+  flex-direction: column;
   flex: 1;
-  color: var(--text-muted);
   min-width: 0;
+}
+.userName {
+  color: var(--text-default);
+  min-width: 0;
+}
+.userHandle {
+  opacity: 0.5;
+}
+.userMeta {
+  opacity: 0.4;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.searchIcon {
+  opacity: 0.5;
 }
 .userRow:hover .userName,
 .userRow.selected .userName { color: var(--text-strong); }

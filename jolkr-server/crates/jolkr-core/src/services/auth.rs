@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -8,6 +10,25 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::{info, warn};
 use uuid::Uuid;
+
+/// Operator-controlled forced-logout baseline. Tokens with `iat` strictly
+/// less than this value are rejected by `validate_token`. Set the
+/// `JWT_MIN_ISSUED_AT` env var (Unix seconds) to bump it; default `0`
+/// disables the check.
+///
+/// Used 2026-05-04 to roll out SEC-011 (vault-password rotation): the FE
+/// release deletes the legacy stronghold snapshot on first init and opens
+/// a fresh one under a per-install password, but only triggers when a
+/// `storage.set/get` runs. Bumping the baseline forces every still-valid
+/// access token to be rejected on its next request, so the FE's
+/// "logged-out → re-login → fresh vault" path runs immediately rather
+/// than at access-token expiry (24h).
+static MIN_TOKEN_IAT: LazyLock<i64> = LazyLock::new(|| {
+    std::env::var("JWT_MIN_ISSUED_AT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0)
+});
 
 use jolkr_common::JolkrError;
 use jolkr_db::models::UserRow;
@@ -315,7 +336,7 @@ impl AuthService {
     pub async fn confirm_email_verification(
         pool: &PgPool,
         token: &str,
-    ) -> Result<(), JolkrError> {
+    ) -> Result<Uuid, JolkrError> {
         let token_hash = Self::hash_reset_token(token);
         let row = EmailVerificationRepo::get_by_token_hash(pool, &token_hash).await.map_err(|_| {
             warn!("Invalid or expired email verification token used");
@@ -332,7 +353,7 @@ impl AuthService {
         EmailVerificationRepo::delete_for_user(pool, row.user_id).await?;
 
         info!(user_id = %row.user_id, "Email verified successfully");
-        Ok(())
+        Ok(row.user_id)
     }
 
     // ── Token validation ───────────────────────────────────────────────
@@ -345,6 +366,14 @@ impl AuthService {
 
         let token_data = decode::<Claims>(token, &decoding_key, &validation)
             .map_err(|e| JolkrError::Jwt(e.to_string()))?;
+
+        // Operator forced-logout baseline. Tokens minted before the configured
+        // cutoff are rejected so a `JWT_MIN_ISSUED_AT` bump invalidates every
+        // currently-active access token in one shot.
+        let min_iat = *MIN_TOKEN_IAT;
+        if min_iat > 0 && token_data.claims.iat < min_iat {
+            return Err(JolkrError::Jwt("token issued before forced-logout baseline".into()));
+        }
 
         Ok(token_data.claims)
     }

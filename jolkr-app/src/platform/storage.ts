@@ -1,4 +1,10 @@
+import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from './detect';
+import { log } from '../utils/log';
+import { STORAGE_KEYS } from '../utils/storageKeys';
+import type { Stronghold } from '@tauri-apps/plugin-stronghold';
+
+type StrongholdStore = Awaited<ReturnType<Awaited<ReturnType<Stronghold['loadClient']>>['getStore']>>;
 
 export interface SecureStorage {
   get(key: string): Promise<string | null>;
@@ -24,15 +30,15 @@ class WebStorage implements SecureStorage {
 
 class TauriStorage implements SecureStorage {
   private initPromise: Promise<void> | null = null;
-  private store: Awaited<ReturnType<Awaited<ReturnType<import('@tauri-apps/plugin-stronghold').Stronghold['loadClient']>>['getStore']>> | null = null;
-  private stronghold: import('@tauri-apps/plugin-stronghold').Stronghold | null = null;
+  private store: StrongholdStore | null = null;
+  private stronghold: Stronghold | null = null;
   private fallbackToWeb = false;
 
   private async ensureInitialized(): Promise<void> {
     if (this.fallbackToWeb || this.store) return;
     if (this.initPromise) return this.initPromise;
     this.initPromise = this._init().catch((e) => {
-      console.warn('[TauriStorage] Stronghold failed, falling back to localStorage:', e);
+      log.warn('TauriStorage', 'Stronghold init failed, falling back to localStorage:', e);
       this.fallbackToWeb = true;
       this.initPromise = null;
     });
@@ -46,7 +52,7 @@ class TauriStorage implements SecureStorage {
    * launch. A new random password is generated per install.
    */
   private getVaultPassword(): string {
-    const VAULT_KEY = 'jolkr_vault_key';
+    const VAULT_KEY = STORAGE_KEYS.VAULT_PASSWORD;
     // Check sessionStorage first (session-scoped), then localStorage (migration)
     let pw = sessionStorage.getItem(VAULT_KEY);
     if (!pw) {
@@ -73,14 +79,36 @@ class TauriStorage implements SecureStorage {
     const vaultPath = `${dataDir}vault.hold`;
     const vaultPassword = this.getVaultPassword();
 
-    try {
-      // Try with per-installation password (new installs or already migrated)
-      this.stronghold = await Stronghold.load(vaultPath, vaultPassword);
-    } catch {
-      // Existing vault with legacy hardcoded password — use it for compatibility
-      console.warn('[TauriStorage] Using legacy vault password — will migrate on next fresh install');
-      this.stronghold = await Stronghold.load(vaultPath, 'io.jolkr.app');
+    // SEC-011 vault rotation (2026-05-04): legacy installs opened the
+    // snapshot under a hardcoded constant `'io.jolkr.app'` password.
+    // The first init after the migration release deletes that snapshot
+    // and opens a fresh one under the per-install random password.
+    // Idempotent via the V2 marker; runs once per install.
+    //
+    // No data preservation: the companion backend release truncates the
+    // sessions table and bumps `JWT_MIN_ISSUED_AT`, so any tokens that
+    // would have been in the legacy vault are server-side invalid
+    // anyway. Frontend just needs a clean slate, which the login flow
+    // then populates.
+    const migrated = localStorage.getItem(STORAGE_KEYS.VAULT_MIGRATION_V2) === '1';
+    if (!migrated) {
+      try {
+        await invoke('delete_vault_file', { path: vaultPath });
+      } catch (e) {
+        // Tolerate failure: a stale vault file blocks the new password
+        // from opening cleanly, so we surface this so support can spot
+        // it. Init then continues; if the file is genuinely there with
+        // the legacy password, `Stronghold.load(...)` below will throw
+        // and we fall back to WebStorage (existing behaviour).
+        log.warn('TauriStorage', 'vault delete failed during migration:', e);
+      }
+      localStorage.setItem(STORAGE_KEYS.VAULT_MIGRATION_V2, '1');
     }
+
+    // Open under the per-install password. No legacy fallback: with the
+    // V2 marker logic above, the snapshot is either fresh (just deleted)
+    // or already on the new password from a previous successful boot.
+    this.stronghold = await Stronghold.load(vaultPath, vaultPassword);
 
     let client;
     try {

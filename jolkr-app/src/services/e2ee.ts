@@ -1,3 +1,4 @@
+import { ed25519 } from '@noble/curves/ed25519.js';
 import type { LocalKeySet, PreKeyBundle, EncryptedPayload } from '../crypto';
 import {
   generateKeySetFromSeed,
@@ -10,33 +11,53 @@ import { clearKeySet } from '../crypto/keyStore';
 import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
+import { log } from '../utils/log';
+import { STORAGE_KEYS } from '../utils/storageKeys';
+import { createTtlCache } from '../utils/cache';
 
 // ── Seed storage ─────────────────────────────────────────────────
+// Goes through `storage` so on Tauri desktop the seed lives in the
+// Stronghold encrypted vault, not plain localStorage.
 
-const SEED_KEY = 'jolkr_e2ee_seed';
+const SEED_KEY = STORAGE_KEYS.E2EE_SEED;
+/** Legacy plain-localStorage key used before this seed moved to Stronghold. */
+const LEGACY_SEED_KEY = STORAGE_KEYS.E2EE_SEED_LEGACY;
 
-/** Persist the raw seed so keys can be re-derived after page reload.
- *  Same lifecycle as auth tokens — cleared on logout via resetE2EE(). */
-function storeSeed(seed: Uint8Array): void {
-  localStorage.setItem(SEED_KEY, toBase64(seed));
+async function storeSeed(seed: Uint8Array): Promise<void> {
+  await storage.set(SEED_KEY, toBase64(seed));
 }
 
-function loadSeed(): Uint8Array | null {
-  const b64 = localStorage.getItem(SEED_KEY);
-  if (!b64) return null;
-  try { return fromBase64(b64); } catch { return null; }
+async function loadSeed(): Promise<Uint8Array | null> {
+  const b64 = await storage.get(SEED_KEY);
+  if (b64) {
+    try { return fromBase64(b64); } catch { return null; }
+  }
+  // One-time migration from old plain-localStorage location.
+  const legacy = localStorage.getItem(LEGACY_SEED_KEY);
+  if (legacy) {
+    try {
+      const seed = fromBase64(legacy);
+      await storage.set(SEED_KEY, legacy);
+      localStorage.removeItem(LEGACY_SEED_KEY);
+      return seed;
+    } catch {
+      localStorage.removeItem(LEGACY_SEED_KEY);
+      return null;
+    }
+  }
+  return null;
 }
 
 // ── State ──────────────────────────────────────────────────────────
 
 let localKeys: LocalKeySet | null = null;
 
-/** Cache TTL for successful bundles: 5 minutes. */
-const BUNDLE_CACHE_TTL = 5 * 60 * 1000;
-/** Cache TTL for failed/null bundles: 10 seconds (recipient may log in soon). */
-const BUNDLE_NULL_CACHE_TTL = 10 * 1000;
-interface CachedBundle { bundle: PreKeyBundle | null; fetchedAt: number; }
-const bundleCache = new Map<string, CachedBundle>();
+/** Cache TTL for successful bundles: 5 minutes. Failed/null bundles use 10s
+ *  so recipients who log in shortly after a failure are picked up quickly. */
+const bundleCache = createTtlCache<string, PreKeyBundle | null>({
+  ttl: 5 * 60 * 1000,
+  nullTtl: 10 * 1000,
+});
 
 // ── Public API ─────────────────────────────────────────────────────
 
@@ -49,13 +70,13 @@ const bundleCache = new Map<string, CachedBundle>();
  * Private keys never touch disk — only the 32-byte seed is persisted.
  */
 export async function initE2EE(deviceId: string, seed?: Uint8Array): Promise<void> {
-  // Use provided seed (login) or load from localStorage (page reload)
-  const activeSeed = seed ?? loadSeed();
+  // Use provided seed (login) or load from secure storage (page reload)
+  const activeSeed = seed ?? await loadSeed();
   if (!activeSeed) return; // No seed available — E2EE unavailable until next login
 
   if (seed) {
     // Fresh login — persist seed and force re-upload of public keys
-    storeSeed(seed);
+    await storeSeed(seed);
     await storage.remove('e2ee_keys_uploaded');
   }
 
@@ -84,34 +105,48 @@ function cleanupLegacyKeys(): void {
   sessionStorage.removeItem('jolkr_storage_enc_key');
 }
 
-/** Upload prekeys to server if not yet confirmed uploaded. */
-async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<void> {
+/** Upload prekeys to server. Backend is idempotent (ON CONFLICT DO UPDATE),
+ *  so we run on every init — that way a stale `e2ee_keys_uploaded` flag
+ *  pointing at a server row that was wiped (account migration, manual DB
+ *  cleanup) self-heals on the next app start instead of leaving the user
+ *  silently locked out of SEC-013 sig-check. */
+async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<string> {
   const uploadedKey = 'e2ee_keys_uploaded';
-  const alreadyUploaded = await storage.get(uploadedKey);
-  if (alreadyUploaded === 'true') return;
+  let activeDeviceId = deviceId;
+
+  const tryRegister = async (id: string) => {
+    await api.registerDevice({ device_id: id, device_name: 'E2EE Keys', device_type: 'e2ee' });
+  };
 
   try {
-    // Ensure device exists in DB before uploading keys (FK constraint on user_keys.device_id)
-    await api.registerDevice({
-      device_id: deviceId,
-      device_name: 'E2EE Keys',
-      device_type: 'e2ee',
-    });
+    await tryRegister(activeDeviceId);
+  } catch (e) {
+    log.warn('e2ee', 'registerDevice failed (likely device_id owned by previous user); retrying with fresh id', e);
+    activeDeviceId = crypto.randomUUID();
+    localStorage.setItem(STORAGE_KEYS.E2EE_DEVICE_ID, activeDeviceId);
+    try {
+      await tryRegister(activeDeviceId);
+    } catch (e2) {
+      log.warn('e2ee', 'registerDevice retry failed; prekey upload deferred', e2);
+      return activeDeviceId;
+    }
+  }
 
+  try {
     await api.uploadPrekeys({
-      device_id: deviceId,
+      device_id: activeDeviceId,
       identity_key: toBase64(keys.identity.publicKey),
       signed_prekey: toBase64(keys.signedPreKey.keyPair.publicKey),
       signed_prekey_signature: toBase64(keys.signedPreKey.signature),
       one_time_prekeys: [],
-      // Post-quantum keys
       pq_signed_prekey: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.keyPair.encapsulationKey) : undefined,
       pq_signed_prekey_signature: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.signature) : undefined,
     });
     await storage.set(uploadedKey, 'true');
   } catch (e) {
-    console.warn('E2EE: Failed to upload prekeys (will retry next init):', e);
+    log.warn('e2ee', 'prekey upload deferred to next init', e);
   }
+  return activeDeviceId;
 }
 
 /**
@@ -128,18 +163,28 @@ export function getLocalKeys(): LocalKeySet | null {
   return localKeys;
 }
 
+/**
+ * Sign a byte buffer with the local identity ed25519 private key. Used by
+ * the WS handshake (SEC-013) to prove possession of the device identity
+ * key when answering the server-issued Hello challenge. Returns `null`
+ * when E2EE isn't initialised yet — callers must fall back to legacy
+ * bearer-only Identify (until JOLKR_WS_REQUIRE_SIG flips to true).
+ */
+export function signWithIdentity(message: Uint8Array): Uint8Array | null {
+  if (!localKeys) return null;
+  return ed25519.sign(message, localKeys.identity.privateKey);
+}
+
 
 /**
  * Fetch and cache a recipient's prekey bundle. Returns null if no keys available.
  */
 export async function getRecipientBundle(userId: string): Promise<PreKeyBundle | null> {
-  // Check cache with TTL (shorter TTL for null results so we retry quickly)
-  const cached = bundleCache.get(userId);
-  if (cached) {
-    const ttl = cached.bundle ? BUNDLE_CACHE_TTL : BUNDLE_NULL_CACHE_TTL;
-    if (Date.now() - cached.fetchedAt < ttl) {
-      return cached.bundle;
-    }
+  // TTL handled by the cache (shorter for null results so we retry quickly).
+  // `has()` distinguishes "fresh null cached" from "miss".
+  if (bundleCache.has(userId)) {
+    const cached = bundleCache.get(userId);
+    return cached === undefined ? null : cached;
   }
 
   try {
@@ -154,11 +199,11 @@ export async function getRecipientBundle(userId: string): Promise<PreKeyBundle |
       pqSignedPrekey: resp.pq_signed_prekey ? fromBase64(resp.pq_signed_prekey) : undefined,
       pqSignedPrekeySignature: resp.pq_signed_prekey_signature ? fromBase64(resp.pq_signed_prekey_signature) : undefined,
     };
-    bundleCache.set(userId, { bundle, fetchedAt: Date.now() });
+    bundleCache.set(userId, bundle);
     return bundle;
   } catch {
     // Cache null result to prevent repeated 404 requests (browser still shows red 404 once)
-    bundleCache.set(userId, { bundle: null, fetchedAt: Date.now() });
+    bundleCache.set(userId, null);
     return null;
   }
 }
@@ -202,9 +247,11 @@ export function invalidateBundle(userId: string): void {
 export async function resetE2EE(): Promise<void> {
   localKeys = null;
   bundleCache.clear();
-  // Remove seed — keys can no longer be derived
-  localStorage.removeItem(SEED_KEY);
-  // Clean up any legacy key entries
+  // Remove seed from secure storage — keys can no longer be derived
+  await storage.remove(SEED_KEY);
+  // Belt-and-braces: also clear any legacy plain-localStorage seed
+  localStorage.removeItem(LEGACY_SEED_KEY);
+  // Clean up any other legacy key entries
   cleanupLegacyKeys();
   // Legacy: clear old keyStore entries via storage abstraction (Stronghold on desktop)
   await clearKeySet();

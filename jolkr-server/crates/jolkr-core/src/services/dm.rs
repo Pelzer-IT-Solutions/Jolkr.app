@@ -7,7 +7,7 @@ use tracing::warn;
 
 use jolkr_common::JolkrError;
 use jolkr_db::models::DmMessageRow;
-use jolkr_db::repo::{DmRepo, UserRepo};
+use jolkr_db::repo::{DmRepo, FriendshipRepo, UserRepo};
 
 use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, attachment_proxy_url};
 
@@ -174,7 +174,35 @@ impl DmService {
             return Err(JolkrError::BadRequest("Cannot DM yourself".into()));
         }
 
+        // Enforce target user's DM privacy filter. `Forbidden` is the
+        // semantically correct status, but `JolkrError::Forbidden` is unit-
+        // only and would lose the user-facing message. `BadRequest` is the
+        // closest variant that carries a string and surfaces it via the
+        // existing toast plumbing.
+        let target = UserRepo::get_by_id(pool, target_user_id).await?;
+        match target.dm_filter.as_str() {
+            "none" => {
+                return Err(JolkrError::BadRequest(
+                    "This user is not accepting DMs".into(),
+                ));
+            }
+            "friends" => {
+                let are_friends = FriendshipRepo::are_friends(pool, caller_id, target_user_id).await?;
+                if !are_friends {
+                    return Err(JolkrError::BadRequest(
+                        "This user only accepts DMs from friends".into(),
+                    ));
+                }
+            }
+            _ => {} // "all" — no gate
+        }
+
         let channel = DmRepo::get_or_create_dm(pool, caller_id, target_user_id).await?;
+        // Clear `closed_at` for any soft-closed members so a reopened DM
+        // reappears in their list immediately. Without this, `list_dms`
+        // filters the channel out for the caller and the new conversation
+        // never shows up on the initiator's side.
+        DmRepo::reopen_dm(pool, channel.id).await.ok();
         let members = DmRepo::get_dm_members(pool, channel.id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
@@ -195,11 +223,13 @@ impl DmService {
     ) -> Result<Vec<DmChannelInfo>, JolkrError> {
         let channels = DmRepo::list_dm_channels(pool, user_id).await?;
 
-        // Batch load members + last messages in parallel
+        // Batch load members + last messages in parallel. The caller's hidden
+        // messages are filtered out so the sidebar preview never shows
+        // something they removed from their own view.
         let channel_ids: Vec<Uuid> = channels.iter().map(|ch| ch.id).collect();
         let (all_members, last_messages) = tokio::try_join!(
             DmRepo::get_members_for_channels(pool, &channel_ids),
-            DmRepo::get_last_messages(pool, &channel_ids),
+            DmRepo::get_last_messages_for_user(pool, &channel_ids, Some(user_id)),
         )?;
 
         let result = channels
@@ -268,9 +298,30 @@ impl DmService {
             }
         }
 
-        // Verify all users exist
+        // Verify all users exist + enforce per-member DM privacy filter so
+        // group creation is consistent with 1:1 `open_dm`. If ANY non-caller
+        // member rejects DMs from the caller, the whole group fails.
         for &uid in &member_ids {
-            UserRepo::get_by_id(pool, uid).await?;
+            let row = UserRepo::get_by_id(pool, uid).await?;
+            if uid == caller_id { continue; }
+            match row.dm_filter.as_str() {
+                "none" => {
+                    return Err(JolkrError::BadRequest(format!(
+                        "{} is not accepting DMs",
+                        row.display_name.clone().unwrap_or(row.username),
+                    )));
+                }
+                "friends" => {
+                    let are_friends = FriendshipRepo::are_friends(pool, caller_id, uid).await?;
+                    if !are_friends {
+                        return Err(JolkrError::BadRequest(format!(
+                            "{} only accepts DMs from friends",
+                            row.display_name.clone().unwrap_or(row.username),
+                        )));
+                    }
+                }
+                _ => {}
+            }
         }
 
         let channel = DmRepo::create_group_dm(pool, name.as_deref(), &member_ids).await?;
@@ -563,6 +614,56 @@ impl DmService {
         Ok(dm_channel_id)
     }
 
+    /// Soft-hide a DM message for the calling user only. Anyone who is a
+    /// member of the channel may hide any message — used for the "Only for
+    /// me" delete option and for shift-deleting messages from other users.
+    /// Returns the DM channel id so the route can broadcast to the user's
+    /// other sessions.
+    pub async fn hide_message_for_me(
+        pool: &PgPool,
+        message_id: Uuid,
+        caller_id: Uuid,
+    ) -> Result<Uuid, JolkrError> {
+        let msg = DmRepo::get_message(pool, message_id).await?;
+        if !DmRepo::is_member(pool, msg.dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+        DmRepo::hide_message_for_user(pool, message_id, caller_id, msg.dm_channel_id).await?;
+        Ok(msg.dm_channel_id)
+    }
+
+    /// List every attachment shared in a DM channel for the "Shared Files"
+    /// side panel. Membership is enforced and per-user hidden messages are
+    /// excluded so the caller never sees an attachment from a message they
+    /// removed from their view.
+    pub async fn list_attachments(
+        pool: &PgPool,
+        dm_channel_id: Uuid,
+        caller_id: Uuid,
+        limit: Option<i64>,
+    ) -> Result<Vec<AttachmentInfo>, JolkrError> {
+        if !DmRepo::is_member(pool, dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+        let rows = DmRepo::list_attachments_for_dm(
+            pool,
+            dm_channel_id,
+            caller_id,
+            limit.unwrap_or(100),
+        )
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|a| AttachmentInfo {
+                id: a.id,
+                filename: a.filename,
+                content_type: a.content_type,
+                size_bytes: a.size_bytes,
+                url: attachment_proxy_url(a.id),
+            })
+            .collect())
+    }
+
     /// Get messages in a DM channel with cursor pagination (batch loads attachments).
     pub async fn get_messages(
         pool: &PgPool,
@@ -575,7 +676,7 @@ impl DmService {
         }
 
         let limit = query.limit.unwrap_or(50).min(100).max(1);
-        let rows = DmRepo::get_messages(pool, dm_channel_id, query.before, limit).await?;
+        let rows = DmRepo::get_messages(pool, dm_channel_id, caller_id, query.before, limit).await?;
         let mut messages: Vec<DmMessageInfo> = rows.into_iter().map(DmMessageInfo::from).collect();
 
         // Batch load all attachments in one query

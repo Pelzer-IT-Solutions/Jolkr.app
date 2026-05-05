@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Heart, Search, X, ArrowLeft } from 'lucide-react'
 import { getApiBaseUrl } from '../../platform/config'
-import { getGifFavorites } from '../../api/client'
+import { getGifFavorites, getGifCategories, searchGifs, getFeaturedGifs } from '../../api/client'
+import type { TenorResult, TenorCategory } from '../../api/client'
 // addGifFavorite/removeGifFavorite are called by the shared store
 import type { GifFavorite } from '../../api/types'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useColorMode } from '../../utils/colorMode'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import s from './GifPicker.module.css'
 
 const apiBase = getApiBaseUrl().replace(/\/api$/, '')
@@ -20,12 +22,6 @@ interface GifItem {
   height: number
 }
 
-interface Category {
-  name: string
-  searchterm: string
-  image: string
-}
-
 type View = 'home' | 'browse' | 'favorites'
 
 interface Props {
@@ -37,8 +33,9 @@ interface Props {
 export default function GifPicker({ onSelect, width = 450, height = 450 }: Props) {
   const [view, setView] = useState<View>('home')
   const [query, setQuery] = useState('')
+  const debouncedQuery = useDebouncedValue(query, 300)
   const [browseTitle, setBrowseTitle] = useState('')
-  const [categories, setCategories] = useState<Category[]>([])
+  const [categories, setCategories] = useState<TenorCategory[]>([])
   const [gifs, setGifs] = useState<GifItem[]>([])
   const [loading, setLoading] = useState(false)
   const favIds = useGifFavoritesStore((s) => s.ids)
@@ -47,17 +44,19 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
   const [offset, setOffset] = useState('0')
   const [hasMore, setHasMore] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  // Monotonic request id — ensures only the latest fetch result wins.
+  // Without this, a fast typer can produce out-of-order resolves
+  // ("dog" → "cat" → "cat" returns first then "dog" overwrites with stale).
+  const fetchSeqRef = useRef(0)
 
   const { isDark } = useColorMode()
   const theme = isDark ? 'dark' : 'light'
 
   // Load categories on mount
   useEffect(() => {
-    fetch(`${apiBase}/api/gifs/categories`)
-      .then((r) => r.json())
+    getGifCategories()
       .then((data) => setCategories(data.tags ?? []))
-      .catch(() => {})
+      .catch((e) => console.warn('[GifPicker] getGifCategories:', e))
   }, [])
 
   // Load favorites on mount
@@ -68,11 +67,11 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
         // Also populate the shared store
         useGifFavoritesStore.setState({ ids: new Set(favs.map((f) => f.gif_id)), loaded: true })
       })
-      .catch(() => {})
+      .catch((e) => console.warn('[GifPicker] getGifFavorites:', e))
   }, [])
 
-  const parseTenorResults = (results: any[]): GifItem[] =>
-    results.map((r: any) => ({
+  const parseTenorResults = (results: TenorResult[]): GifItem[] =>
+    results.map((r) => ({
       id: r.id,
       title: r.title ?? r.content_description ?? '',
       gifUrl: r.url,
@@ -84,37 +83,36 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
 
   const fetchGifs = useCallback(
     async (q: string, pos: string = '0', append = false) => {
+      const seq = ++fetchSeqRef.current
       setLoading(true)
       try {
-        const endpoint = q
-          ? `${apiBase}/api/gifs/search?q=${encodeURIComponent(q)}&limit=30&pos=${pos}`
-          : `${apiBase}/api/gifs/featured?limit=30&pos=${pos}`
-        const res = await fetch(endpoint)
-        const data = await res.json()
+        const data = q
+          ? await searchGifs(q, 30, pos)
+          : await getFeaturedGifs(30, pos);
+        // Drop result if a newer fetch was issued meanwhile.
+        if (seq !== fetchSeqRef.current) return
         const items = parseTenorResults(data.results ?? [])
         setGifs((prev) => (append ? [...prev, ...items] : items))
         setOffset(data.next ?? '0')
         setHasMore(items.length >= 30)
-      } catch {
+      } catch (e) {
+        if (seq !== fetchSeqRef.current) return
+        console.warn('[GifPicker] fetchGifs:', e)
         if (!append) setGifs([])
       } finally {
-        setLoading(false)
+        if (seq === fetchSeqRef.current) setLoading(false)
       }
     },
     [],
   )
 
-  // Debounced search
+  // Debounced search — refetch when the debounced query settles.
   useEffect(() => {
     if (view !== 'browse') return
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      setOffset('0')
-      setHasMore(true)
-      fetchGifs(query)
-    }, 300)
-    return () => clearTimeout(debounceRef.current)
-  }, [query, view, fetchGifs])
+    setOffset('0')
+    setHasMore(true)
+    fetchGifs(debouncedQuery)
+  }, [debouncedQuery, view, fetchGifs])
 
   // Infinite scroll
   const handleScroll = useCallback(() => {
@@ -305,7 +303,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
               autoFocus
             />
             {query && (
-              <button className={s.clearBtn} onClick={() => setQuery('')} title="Clear" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+              <button className={s.clearBtn} onClick={() => setQuery('')} title="Clear">
                 <X size={16} />
               </button>
             )}
@@ -316,7 +314,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
   }
 
   return (
-    <div className={s.picker} data-theme={theme} style={{ width, height }}>
+    <div className={s.picker} data-theme={theme} style={{ '--gpr-width': `${width}px`, '--gpr-height': `${height}px` } as React.CSSProperties}>
       {/* Header */}
       <div className={s.header}>
         {renderHeader()}
@@ -336,7 +334,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
                   loading="lazy"
                 />
               ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2b2b2b' }}>
+                <div className={s.favoritesPlaceholder}>
                   <Heart size={28} color="#ff4757" fill="#ff4757" />
                 </div>
               )}

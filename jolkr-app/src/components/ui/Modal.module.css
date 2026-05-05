@@ -1,0 +1,32 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-backdrop);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: fadeIn 150ms var(--ease-out-quart);
+}
+
+.content {
+  background: var(--surface-content);
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-muted);
+  box-shadow: var(--shadow-elevation-large);
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: modalScale 200ms var(--ease-out-quart);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}

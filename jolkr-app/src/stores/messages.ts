@@ -58,26 +58,6 @@ interface MessagesState {
   reset: () => void;
 }
 
-// Map DM message response to Message interface
-function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
-  return (msgs as Array<Record<string, unknown>>).map((m) => ({
-    id: m.id as string,
-    channel_id: (m.dm_channel_id as string) ?? dmId,
-    author_id: m.author_id as string,
-    content: (m.content as string) ?? '',
-    nonce: (m.nonce as string) ?? null,
-    created_at: m.created_at as string,
-    updated_at: (m.updated_at as string) ?? null,
-    is_edited: (m.is_edited as boolean) ?? false,
-    is_pinned: (m.is_pinned as boolean) ?? false,
-    reply_to_id: (m.reply_to_id as string) ?? null,
-    author: (m.author as Message['author']) ?? (m.sender as Message['author']) ?? null,
-    attachments: (m.attachments as Message['attachments']) ?? [],
-    reactions: (m.reactions as Reaction[]) ?? [],
-    embeds: (m.embeds as Message['embeds']) ?? [],
-  }));
-}
-
 const MAX_CACHED_CHANNELS = 30;
 
 /** Evict oldest channel message caches when exceeding limit */
@@ -109,13 +89,9 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       set({ loading: { ...get().loading, [channelId]: true } });
     }
     try {
-      let msgs: Message[];
-      if (isDm) {
-        const raw = await api.getDmMessages(channelId);
-        msgs = normalizeDmMessages(raw, channelId);
-      } else {
-        msgs = await api.getMessages(channelId);
-      }
+      const msgs = isDm
+        ? await api.getDmMessages(channelId)
+        : await api.getMessages(channelId);
       const reversed = transformReactions([...msgs].reverse());
       const evicted = evictOldChannels({ ...get().messages, [channelId]: reversed }, channelId);
       set({
@@ -136,13 +112,9 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     set({ loadingOlder: { ...get().loadingOlder, [channelId]: true } });
     try {
       const oldest = current[0];
-      let msgs: Message[];
-      if (isDm) {
-        const raw = await api.getDmMessages(channelId, 50, oldest.created_at);
-        msgs = normalizeDmMessages(raw, channelId);
-      } else {
-        msgs = await api.getMessages(channelId, 50, oldest.created_at);
-      }
+      const msgs = isDm
+        ? await api.getDmMessages(channelId, 50, oldest.created_at)
+        : await api.getMessages(channelId, 50, oldest.created_at);
       const reversed = transformReactions([...msgs].reverse());
       const fresh = get().messages[channelId] ?? [];
       set({
@@ -164,14 +136,10 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   },
 
   editMessage: async (messageId, channelId, content, isDm, nonce) => {
-    if (isDm) {
-      const raw = await api.editDmMessage(messageId, content, nonce);
-      const normalized = normalizeDmMessages([raw], channelId)[0];
-      get().updateMessage(channelId, normalized);
-    } else {
-      const updated = await api.editMessage(messageId, content, nonce);
-      get().updateMessage(channelId, updated);
-    }
+    const updated = isDm
+      ? await api.editDmMessage(messageId, content, nonce)
+      : await api.editMessage(messageId, content, nonce);
+    get().updateMessage(channelId, updated);
   },
 
   deleteMessage: async (messageId, channelId, isDm) => {
@@ -363,12 +331,11 @@ function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
 // GatewayEvent uses serde(tag="op", content="d"), so:
 //   MessageCreate/Update → d = { message: { id, channel_id, ... } }
 //   MessageDelete        → d = { message_id, channel_id }
-wsClient.on((op, d) => {
+wsClient.on((event) => {
   const store = useMessagesStore.getState();
-  switch (op) {
+  switch (event.op) {
     case 'MessageCreate': {
-      const raw = d.message as Record<string, unknown>;
-      const msg = normalizeWsMessage(raw);
+      const msg = normalizeWsMessage(event.d.message as unknown as Record<string, unknown>);
       if (!msg) break;
       if (msg.thread_id) {
         // Thread message → add to thread store + increment parent's thread_reply_count
@@ -388,8 +355,7 @@ wsClient.on((op, d) => {
       break;
     }
     case 'MessageUpdate': {
-      const raw = d.message as Record<string, unknown>;
-      const msg = normalizeWsMessage(raw);
+      const msg = normalizeWsMessage(event.d.message as unknown as Record<string, unknown>);
       if (!msg) break;
       if (msg.thread_id) {
         // Update in thread store
@@ -400,8 +366,8 @@ wsClient.on((op, d) => {
       break;
     }
     case 'MessageDelete': {
-      const channelId = (d.channel_id ?? d.dm_channel_id) as string | undefined;
-      const messageId = d.message_id as string | undefined;
+      const channelId = event.d.channel_id ?? event.d.dm_channel_id;
+      const messageId = event.d.message_id;
       if (!channelId || !messageId) break;
       // Remove from channel messages
       store.removeMessage(channelId, messageId);
@@ -431,33 +397,29 @@ wsClient.on((op, d) => {
       break;
     }
     case 'ReactionUpdate': {
-      const channelId = d.channel_id as string;
-      const messageId = d.message_id as string;
-      const rawReactions = d.reactions as Array<{ emoji: string; count: number; user_ids?: string[] }>;
-      if (!channelId || !messageId || !rawReactions) break;
+      const { channel_id, message_id, reactions: raw } = event.d;
+      if (!channel_id || !message_id || !raw) break;
       const currentUserId = useAuthStore.getState().user?.id;
-      const reactions = rawReactions.map((r) => ({
+      const reactions = raw.map((r) => ({
         emoji: r.emoji,
         count: r.count,
         me: currentUserId ? (r.user_ids?.includes(currentUserId) ?? false) : false,
         user_ids: r.user_ids ?? [],
       }));
-      store.updateReactions(channelId, messageId, reactions);
+      store.updateReactions(channel_id, message_id, reactions);
       break;
     }
     case 'PollUpdate': {
-      const poll = d.poll as unknown as Message['poll'];
-      const messageId = d.message_id as string;
-      const channelId = d.channel_id as string;
-      if (!poll || !messageId || !channelId) break;
+      const { poll, message_id, channel_id } = event.d;
+      if (!poll || !message_id || !channel_id) break;
       // Update the message's poll data in the store
-      const msgs = store.messages[channelId];
+      const msgs = store.messages[channel_id];
       if (msgs) {
         useMessagesStore.setState({
           messages: {
             ...store.messages,
-            [channelId]: msgs.map((m) =>
-              m.id === messageId ? { ...m, poll } : m
+            [channel_id]: msgs.map((m) =>
+              m.id === message_id ? { ...m, poll } : m
             ),
           },
         });

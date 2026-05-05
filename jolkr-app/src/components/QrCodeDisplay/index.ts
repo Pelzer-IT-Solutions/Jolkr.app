@@ -1,0 +1,1 @@
+export { QrCodeDisplay } from './QrCodeDisplay'

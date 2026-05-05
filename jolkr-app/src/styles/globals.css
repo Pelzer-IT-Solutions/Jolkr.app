@@ -112,6 +112,31 @@ svg { display: block; flex-shrink: 0; }
   text-decoration: underline;
 }
 
+.md-codelang {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  margin-bottom: 0.25rem;
+}
+
+.md-blockquote {
+  border-left: 4px solid color-mix(in oklch, var(--text-default) 30%, transparent);
+  padding-left: 0.75rem;
+  margin: 0.25rem 0;
+  color: var(--text-default);
+}
+
+.md-mention {
+  padding: 0 0.125rem;
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, var(--accent) 20%, transparent);
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+}
+.md-mention:hover {
+  text-decoration: underline;
+}
+
 /* ─── Staggered reveal animation ─── */
 /* Applied to individual list items on panel open / server switch.
    CSS custom property --reveal-delay sets the per-item stagger offset. */

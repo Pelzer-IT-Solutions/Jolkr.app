@@ -1,7 +1,7 @@
 import { SquarePen, Users, PanelLeftClose, ArrowLeft } from 'lucide-react'
 import type { DMConversation } from '../../types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
-import Avatar from '../Avatar'
+import Avatar from '../Avatar/Avatar'
 import s from './DMSidebar.module.css'
 
 interface Props {
@@ -10,12 +10,14 @@ interface Props {
   onSelect:      (id: string) => void
   onNewMessage:  () => void
   onOpenFriends?: () => void
+  /** Right-click on a DM row → open the user-context menu. Group DMs are skipped. */
+  onConversationContextMenu?: (conv: DMConversation, e: React.MouseEvent) => void
   collapsed?:     boolean
   onCollapse?:    () => void
   isMobile?:      boolean
 }
 
-export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onOpenFriends, collapsed = false, onCollapse, isMobile = false }: Props) {
+export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onOpenFriends, onConversationContextMenu, collapsed = false, onCollapse, isMobile = false }: Props) {
   return (
     <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
       <div className={s.header}>
@@ -40,10 +42,10 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
 
       <div className={`${s.scroll} scrollbar-thin scroll-view-y`}>
         {conversations.length === 0 && (
-          <div style={{ padding: '2rem 1rem', textAlign: 'center', opacity: 0.4 }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💬</div>
+          <div className={s.empty}>
+            <div className={s.emptyIcon}>💬</div>
             <p className="txt-small">No conversations yet</p>
-            <p className="txt-tiny" style={{ marginTop: '0.25rem' }}>Start a new message to begin chatting</p>
+            <p className={`${s.emptyHint} txt-tiny`}>Start a new message to begin chatting</p>
           </div>
         )}
         {conversations.map(conv => {
@@ -54,6 +56,11 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
               key={conv.id}
               className={`${s.conv} ${isActive ? s.active : ''}`}
               onClick={() => onSelect(conv.id)}
+              onContextMenu={(e) => {
+                if (!onConversationContextMenu) return
+                e.preventDefault()
+                onConversationContextMenu(conv, e)
+              }}
             >
               <ConvAvatar conv={conv} />
               <div className={s.meta}>

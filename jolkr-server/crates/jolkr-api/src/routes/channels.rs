@@ -230,6 +230,7 @@ pub(crate) async fn upsert_overwrite(
     Json(body): Json<UpsertOverwriteRequest>,
 ) -> Result<Json<OverwriteResponse>, AppError> {
     let overwrite = ChannelService::upsert_overwrite(&state.pool, id, auth.user_id, body).await?;
+    broadcast_channel_overwrites(&state, id).await;
     Ok(Json(OverwriteResponse { overwrite }))
 }
 
@@ -253,7 +254,47 @@ pub(crate) async fn delete_overwrite(
         &params.target_type,
         params.target_id,
     ).await?;
+    broadcast_channel_overwrites(&state, params.id).await;
     Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// Read the current overwrite list for a channel and broadcast it as a
+/// `ChannelPermissionUpdate` event. Members whose effective channel-level
+/// permissions are derived from these overwrites need to re-evaluate gated
+/// UI (composer, manage-message buttons, etc.).
+async fn broadcast_channel_overwrites(state: &AppState, channel_id: Uuid) {
+    use jolkr_db::repo::ChannelOverwriteRepo;
+    use jolkr_core::services::channel::ChannelOverwriteInfo;
+
+    let channel = match ChannelRepo::get_by_id(&state.pool, channel_id).await {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("ChannelPermissionUpdate broadcast skipped — channel lookup failed: {e}");
+            return;
+        }
+    };
+    let rows = match ChannelOverwriteRepo::list_for_channel(&state.pool, channel_id).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!("ChannelPermissionUpdate broadcast skipped — overwrite list failed: {e}");
+            return;
+        }
+    };
+    let overwrites = rows.into_iter().map(|r| ChannelOverwriteInfo {
+        id: r.id,
+        channel_id: r.channel_id,
+        target_type: r.target_type,
+        target_id: r.target_id,
+        allow: r.allow,
+        deny: r.deny,
+    }).collect();
+
+    let event = crate::ws::events::GatewayEvent::ChannelPermissionUpdate {
+        channel_id,
+        server_id: channel.server_id,
+        overwrites,
+    };
+    state.nats.publish_to_server(channel.server_id, &event).await;
 }
 
 // ── Mark channel as read ────────────────────────────────────────────

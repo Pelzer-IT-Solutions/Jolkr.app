@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import s from './EmptyState.module.css';
 
 interface EmptyStateProps {
   icon?: ReactNode;
@@ -9,17 +10,13 @@ interface EmptyStateProps {
 
 export default function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
-      {icon && (
-        <div className="text-text-tertiary">{icon}</div>
-      )}
-      <div className="flex flex-col gap-1">
-        <h3 className="text-base font-semibold text-text-primary">{title}</h3>
-        {description && (
-          <p className="text-sm text-text-secondary">{description}</p>
-        )}
+    <div className={s.empty}>
+      {icon && <div className={s.icon}>{icon}</div>}
+      <div className={s.text}>
+        <h3 className={s.title}>{title}</h3>
+        {description && <p className={s.description}>{description}</p>}
       </div>
-      {action && <div className="mt-2">{action}</div>}
+      {action && <div className={s.action}>{action}</div>}
     </div>
   );
 }

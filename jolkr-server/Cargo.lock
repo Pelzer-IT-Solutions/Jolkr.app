@@ -2478,7 +2478,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-api"
-version = "0.10.0"
+version = "0.10.4"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -2519,7 +2519,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-common"
-version = "0.10.0"
+version = "0.10.4"
 dependencies = [
  "chrono",
  "serde",
@@ -2530,7 +2530,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-core"
-version = "0.10.0"
+version = "0.10.4"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2556,7 +2556,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-db"
-version = "0.10.0"
+version = "0.10.4"
 dependencies = [
  "chrono",
  "jolkr-common",
@@ -2570,13 +2570,16 @@ dependencies = [
 
 [[package]]
 name = "jolkr-media"
-version = "0.10.0"
+version = "0.10.4"
 dependencies = [
+ "async-nats",
  "axum",
  "futures-util",
+ "hmac",
  "jsonwebtoken",
  "serde",
  "serde_json",
+ "sha2",
  "str0m",
  "tokio",
  "tracing",
