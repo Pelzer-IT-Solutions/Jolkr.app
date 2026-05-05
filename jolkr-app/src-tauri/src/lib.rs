@@ -144,15 +144,21 @@ pub fn run() {
                 }
             }
 
-            // --- Enable browser context menu on Windows (cut/copy/paste) ---
+            // --- Enable browser context menu + credential autofill on Windows ---
             #[cfg(target_os = "windows")]
             {
+                use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings4;
+                use windows_core::Interface;
                 if let Some(webview_window) = app.get_webview_window("main") {
                     let _ = webview_window.with_webview(|webview| unsafe {
                         let controller = webview.controller();
                         let core = controller.CoreWebView2().unwrap();
                         let settings = core.Settings().unwrap();
                         settings.SetAreDefaultContextMenusEnabled(true.into()).unwrap();
+                        if let Ok(settings4) = settings.cast::<ICoreWebView2Settings4>() {
+                            let _ = settings4.SetIsPasswordAutosaveEnabled(true.into());
+                            let _ = settings4.SetIsGeneralAutofillEnabled(true.into());
+                        }
                     });
                 }
             }
