@@ -224,27 +224,26 @@ export async function encryptChannelMessage(
   }
 
   if (!channelKey) {
-    if (isDm) {
-      const dmMsgs = useMessagesStore.getState().messages[channelId] ?? [];
-      const hasHistory = dmMsgs.some(m => !!m.nonce);
-      if (hasHistory) {
-        wsClient.requestKeyRedistribute(channelId);
-        log.error('channel-e2ee', 'cannot send DM — wrap missing; requested redistribute from counterparty');
-        return null;
-      }
-      const memberIds = await getMemberIds();
-      channelKey = await generateAndDistributeChannelKey(channelId, memberIds, 0, isDm);
-      if (!channelKey) return null;
-    } else {
-      let generation = 0;
+    const msgs = useMessagesStore.getState().messages[channelId] ?? [];
+    const hasHistory = msgs.some(m => !!m.nonce);
+    if (hasHistory) {
+      if (isDm) wsClient.requestKeyRedistribute(channelId);
+      log.error('channel-e2ee', 'cannot send — wrap missing on a channel with encrypted history; refusing to clobber');
+      return null;
+    }
+    let generation = 0;
+    if (!isDm) {
       try {
         const genResp = await api.getChannelKeyGeneration(channelId);
         generation = genResp.key_generation;
-      } catch { /* Fallback to 0 */ }
-      const memberIds = await getMemberIds();
-      channelKey = await generateAndDistributeChannelKey(channelId, memberIds, generation, isDm);
-      if (!channelKey) return null;
+      } catch {
+        log.error('channel-e2ee', 'cannot send — getChannelKeyGeneration failed; refusing to generate at speculative gen=0');
+        return null;
+      }
     }
+    const memberIds = await getMemberIds();
+    channelKey = await generateAndDistributeChannelKey(channelId, memberIds, generation, isDm);
+    if (!channelKey) return null;
   }
 
   const { ciphertext, nonce } = await encryptMessage(channelKey.key, plaintext);
