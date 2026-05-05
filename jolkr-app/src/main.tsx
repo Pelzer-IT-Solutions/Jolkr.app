@@ -93,15 +93,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-// Show window after first paint to avoid white flash. Two RAFs so the
-// browser has had a frame to commit the rendered DOM + theme class before
-// the OS-level window becomes visible.
-if ('__TAURI_INTERNALS__' in window) {
-  import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        getCurrentWindow().show();
-      });
-    });
-  });
-}
+// Window is created visible. The OS-level backgroundColor (dark) plus
+// the inline theme-init script in index.html keep the first paint dark
+// so there's no white flash even before main.tsx finishes its async
+// theme query against the Tauri API.
