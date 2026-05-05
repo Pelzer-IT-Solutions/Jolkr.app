@@ -82,10 +82,12 @@ describe('useServersStore.fetchServers', () => {
 })
 
 describe('useServersStore.fetchChannels', () => {
-  it('skips when channels are already cached for that server', async () => {
+  it('always refetches even when cached so server-switch sees fresh data', async () => {
     useServersStore.setState({ channels: { 'srv-a': [CH_1] } })
+    mockApi.getChannels.mockResolvedValue([CH_1, CH_2])
     await useServersStore.getState().fetchChannels('srv-a')
-    expect(mockApi.getChannels).not.toHaveBeenCalled()
+    expect(mockApi.getChannels).toHaveBeenCalledTimes(1)
+    expect(useServersStore.getState().channels['srv-a']).toEqual([CH_1, CH_2])
   })
 
   it('fetches and caches when no entry exists', async () => {
