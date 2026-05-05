@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { ReplyRef, ServerTheme } from '../../types/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useServersStore } from '../../stores/servers'
@@ -43,6 +43,21 @@ export function useAppHandlers(
     setMutedServerIds(prev =>
       prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
     )
+  }, [])
+
+  useEffect(() => {
+    return wsClient.on(event => {
+      if (event.op !== 'NotificationSettingUpdate') return
+      const { target_type, target_id, setting } = event.d
+      if (target_type !== 'server') return
+      const muted = setting?.muted ?? false
+      setMutedServerIds(prev => {
+        const has = prev.includes(target_id)
+        if (muted && !has) return [...prev, target_id]
+        if (!muted && has) return prev.filter(id => id !== target_id)
+        return prev
+      })
+    })
   }, [])
 
   // ── Logout handler ──
