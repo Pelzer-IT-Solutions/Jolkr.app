@@ -4,6 +4,8 @@ import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
 
+const inflightFetches = new Map<string, Promise<void>>();
+
 interface ServersState {
   servers: Server[];
   channels: Record<string, Channel[]>;
@@ -89,26 +91,55 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   fetchChannels: async (serverId) => {
-    try {
-      const channels = await api.getChannels(serverId);
-      set({ channels: { ...get().channels, [serverId]: channels } });
-    } catch (e) {
-      console.warn('Failed to fetch channels:', e);
-    }
+    const k = `channels:${serverId}`;
+    const inflight = inflightFetches.get(k);
+    if (inflight) return inflight;
+    const p = (async () => {
+      try {
+        const channels = await api.getChannels(serverId);
+        set({ channels: { ...get().channels, [serverId]: channels } });
+      } catch (e) {
+        console.warn('Failed to fetch channels:', e);
+      } finally {
+        inflightFetches.delete(k);
+      }
+    })();
+    inflightFetches.set(k, p);
+    return p;
   },
 
   fetchMembers: async (serverId) => {
-    try {
-      const members = await api.getMembersWithRoles(serverId);
-      set({ members: { ...get().members, [serverId]: members } });
-    } catch (e) {
-      console.warn('Failed to fetch members:', e);
-    }
+    const k = `members:${serverId}`;
+    const inflight = inflightFetches.get(k);
+    if (inflight) return inflight;
+    const p = (async () => {
+      try {
+        const members = await api.getMembersWithRoles(serverId);
+        set({ members: { ...get().members, [serverId]: members } });
+      } catch (e) {
+        console.warn('Failed to fetch members:', e);
+      } finally {
+        inflightFetches.delete(k);
+      }
+    })();
+    inflightFetches.set(k, p);
+    return p;
   },
 
   fetchCategories: async (serverId) => {
-    const categories = await api.getCategories(serverId);
-    set({ categories: { ...get().categories, [serverId]: categories } });
+    const k = `categories:${serverId}`;
+    const inflight = inflightFetches.get(k);
+    if (inflight) return inflight;
+    const p = (async () => {
+      try {
+        const categories = await api.getCategories(serverId);
+        set({ categories: { ...get().categories, [serverId]: categories } });
+      } finally {
+        inflightFetches.delete(k);
+      }
+    })();
+    inflightFetches.set(k, p);
+    return p;
   },
 
   fetchRoles: async (serverId) => {
@@ -117,17 +148,35 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   fetchPermissions: async (serverId) => {
-    const result = await api.getMyPermissions(serverId);
-    set({ permissions: { ...get().permissions, [serverId]: result.permissions } });
+    const k = `permissions:${serverId}`;
+    const inflight = inflightFetches.get(k);
+    if (inflight) return inflight;
+    const p = (async () => {
+      try {
+        const result = await api.getMyPermissions(serverId);
+        set({ permissions: { ...get().permissions, [serverId]: result.permissions } });
+      } finally {
+        inflightFetches.delete(k);
+      }
+    })();
+    inflightFetches.set(k, p);
+    return p;
   },
 
   fetchChannelPermissions: async (channelId) => {
-    // Skip if already cached
     if (get().channelPermissions[channelId] !== undefined) return;
-    try {
-      const result = await api.getMyChannelPermissions(channelId);
-      set({ channelPermissions: { ...get().channelPermissions, [channelId]: result.permissions } });
-    } catch { /* ignore — will use server-level perms as fallback */ }
+    const k = `channelPerms:${channelId}`;
+    const inflight = inflightFetches.get(k);
+    if (inflight) return inflight;
+    const p = (async () => {
+      try {
+        const result = await api.getMyChannelPermissions(channelId);
+        set({ channelPermissions: { ...get().channelPermissions, [channelId]: result.permissions } });
+      } catch { /* ignore — will use server-level perms as fallback */ }
+      finally { inflightFetches.delete(k); }
+    })();
+    inflightFetches.set(k, p);
+    return p;
   },
 
   fetchMembersWithRoles: async (serverId) => {
