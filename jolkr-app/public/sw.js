@@ -1,18 +1,5 @@
 // Jolkr Service Worker — handles Web Push notifications
 
-// We don't intercept fetches, so opt out of navigationPreload — otherwise
-// the browser auto-enables it and complains every navigation that
-// `preloadResponse` was never awaited.
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    (async () => {
-      if (self.registration.navigationPreload) {
-        try { await self.registration.navigationPreload.disable(); } catch { /* ignore */ }
-      }
-    })(),
-  );
-});
-
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(

@@ -200,26 +200,10 @@
 .dnd     { background: oklch(55% 0.2 25); }
 .offline { background: var(--jolkr-neutral-dark-20); }
 
-.userInfo {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
 .userName {
+  flex: 1;
   color: var(--text-default);
   min-width: 0;
-}
-.userHandle {
-  opacity: 0.5;
-}
-.userMeta {
-  opacity: 0.4;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-.searchIcon {
-  opacity: 0.5;
 }
 .userRow:hover .userName,
 .userRow.selected .userName { color: var(--text-strong); }

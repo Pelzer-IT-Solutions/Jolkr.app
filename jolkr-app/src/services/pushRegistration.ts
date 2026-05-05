@@ -26,7 +26,7 @@ export async function registerPush(): Promise<void> {
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey.buffer.slice(applicationServerKey.byteOffset, applicationServerKey.byteOffset + applicationServerKey.byteLength) as ArrayBuffer,
       });
-    } catch {
+    } catch (e) {
       // Push service unreachable (firewall, OS settings, or stale subscription)
       console.warn('Push: registration failed — push service may be blocked by firewall or OS settings. Skipping.');
       return;

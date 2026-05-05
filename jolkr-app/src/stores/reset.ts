@@ -8,7 +8,7 @@ import { useTypingStore } from './typing';
 import { useGifFavoritesStore } from './gif-favorites';
 import { useVoiceStore } from './voice';
 import { useContextMenuStore } from './context-menu';
-import { useToast } from './toast';
+import { useToast } from '../components/Toast';
 import { invalidateFriendsCache } from '../services/friendshipCache';
 
 /** Reset all stores to initial state — call on logout to prevent stale data on re-login */

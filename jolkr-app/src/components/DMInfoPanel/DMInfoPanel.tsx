@@ -80,33 +80,16 @@ function SkeletonLines({ count, variant = 'pinned' }: { count: number; variant?:
 
 export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
   const isRevealing = useRevealAnimation(0, [open], open, 300)
-  const fetchKey = `${open ? '1' : '0'}:${dmId ?? ''}:${pinnedVersion ?? 0}`
-  const shouldFetch = open && !!dmId && !dmId.startsWith('draft:')
-
   const [pinned, setPinned] = useState<Message[]>([])
-  const [loadingPins, setLoadingPins] = useState(shouldFetch)
+  const [loadingPins, setLoadingPins] = useState(false)
   const [files, setFiles] = useState<Attachment[]>([])
-  const [loadingFiles, setLoadingFiles] = useState(shouldFetch)
-
-  // Reset loading + clear stale data synchronously when the fetch key changes
-  // (panel toggled, DM switched, or a pin/upload bumped pinnedVersion).
-  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
-  if (prevFetchKey !== fetchKey) {
-    setPrevFetchKey(fetchKey)
-    if (shouldFetch) {
-      setLoadingPins(true)
-      setLoadingFiles(true)
-    } else {
-      setFiles([])
-      setLoadingPins(false)
-      setLoadingFiles(false)
-    }
-  }
+  const [loadingFiles, setLoadingFiles] = useState(false)
 
   // Fetch pinned messages when panel becomes open or dmId changes. Drafts
   // (`draft:…` ids) only exist locally — skip the fetch.
   useEffect(() => {
-    if (!shouldFetch || !dmId) return
+    if (!open || !dmId || dmId.startsWith('draft:')) return
+    setLoadingPins(true)
     api.getDmPinnedMessages(dmId).then(msgs => {
       const normalized = msgs.map(m => ({
         ...m,
@@ -114,17 +97,21 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
       }))
       setPinned(normalized)
     }).catch(() => setPinned([])).finally(() => setLoadingPins(false))
-  }, [shouldFetch, dmId, pinnedVersion])
+  }, [open, dmId, pinnedVersion])
 
   // Fetch shared files. Re-runs alongside pinnedVersion bumps so newly-uploaded
   // attachments show up without requiring a panel reopen.
   useEffect(() => {
-    if (!shouldFetch || !dmId) return
+    if (!open || !dmId || dmId.startsWith('draft:')) {
+      setFiles([])
+      return
+    }
+    setLoadingFiles(true)
     api.getDmAttachments(dmId)
       .then(setFiles)
       .catch(() => setFiles([]))
       .finally(() => setLoadingFiles(false))
-  }, [shouldFetch, dmId, pinnedVersion])
+  }, [open, dmId, pinnedVersion])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)

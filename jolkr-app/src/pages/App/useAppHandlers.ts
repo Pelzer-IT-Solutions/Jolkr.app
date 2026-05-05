@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import type { ReplyRef, ServerTheme } from '../../types/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useServersStore } from '../../stores/servers'
@@ -10,11 +10,8 @@ import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { orbsForHue } from '../../utils/theme'
 import { useMessagesStore } from '../../stores/messages'
 import { useVoiceStore } from '../../stores/voice'
-import { useToast } from '../../stores/toast'
+import { useToast } from '../../components/Toast'
 import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
-import { TYPING_THROTTLE_MS } from '../../utils/constants'
-import { log } from '../../utils/log'
-import { chatApi } from '../../api/chatApi'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -43,21 +40,6 @@ export function useAppHandlers(
     setMutedServerIds(prev =>
       prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
     )
-  }, [])
-
-  useEffect(() => {
-    return wsClient.on(event => {
-      if (event.op !== 'NotificationSettingUpdate') return
-      const { target_type, target_id, setting } = event.d
-      if (target_type !== 'server') return
-      const muted = setting?.muted ?? false
-      setMutedServerIds(prev => {
-        const has = prev.includes(target_id)
-        if (muted && !has) return [...prev, target_id]
-        if (!muted && has) return prev.filter(id => id !== target_id)
-        return prev
-      })
-    })
   }, [])
 
   // ── Logout handler ──
@@ -95,7 +77,7 @@ export function useAppHandlers(
   const lastTypingRef = useRef(0)
   const handleTyping = useCallback(() => {
     const now = Date.now()
-    if (now - lastTypingRef.current < TYPING_THROTTLE_MS) return
+    if (now - lastTypingRef.current < 3000) return // throttle 3s
     lastTypingRef.current = now
     const channelId = dmActive ? activeDmId : activeChannelId
     if (channelId) wsClient.sendTyping(channelId)
@@ -146,16 +128,10 @@ export function useAppHandlers(
       const { connectionState, channelId: currentVoiceId, joinChannel, leaveChannel } = useVoiceStore.getState()
       if (currentVoiceId === id && connectionState !== 'disconnected') {
         // Clicking the channel you're already in — disconnect.
-        leaveChannel().catch(e => {
-          log.warn('voice.leaveChannel', e)
-          useToast.getState().show('Could not leave the voice channel cleanly.', 'error')
-        })
+        void leaveChannel()
         return
       }
-      joinChannel(id, activeServerId, target.name).catch(e => {
-        log.warn('voice.joinChannel', e)
-        useToast.getState().show('Could not join the voice channel.', 'error')
-      })
+      void joinChannel(id, activeServerId, target.name)
       return
     }
     if (id === activeChannelId) return
@@ -256,7 +232,7 @@ export function useAppHandlers(
         }
       }
     }
-  }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer, materialiseDraftDm, sendMessage, sendDmMessage])
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, dmList, membersByServer, materialiseDraftDm]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleReaction = useCallback((msgId: string, emoji: string) => {
     // Check if user already reacted
@@ -267,17 +243,16 @@ export function useAppHandlers(
       useToast.getState().show(m, 'error')
       console.error('Reaction toggle failed:', err)
     }
-    const ops = chatApi(dmActive)
     if (existing?.me) {
-      ops.removeReaction(msgId, emoji).catch(onErr)
+      (dmActive ? api.removeDmReaction : api.removeReaction)(msgId, emoji).catch(onErr)
     } else {
-      ops.addReaction(msgId, emoji).catch(onErr)
+      (dmActive ? api.addDmReaction : api.addReaction)(msgId, emoji).catch(onErr)
     }
   }, [currentApiMessages, dmActive])
 
   const handleDeleteMessage = useCallback((msgId: string) => {
     deleteMessage(msgId, effectiveChannelId, dmActive)
-  }, [effectiveChannelId, dmActive, deleteMessage])
+  }, [effectiveChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Soft-hide a DM message for the calling user only. The server emits a
   // DmMessageHide event back to this user's other sessions; the central WS
@@ -312,11 +287,10 @@ export function useAppHandlers(
     if (!encrypted) return
 
     editMessage(msgId, effectiveChannelId, encrypted.encryptedContent, isDm, encrypted.nonce)
-  }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer, editMessage])
+  }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    const ops = chatApi(dmActive)
     const store = useMessagesStore.getState()
     const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
     if (!msg) return
@@ -324,9 +298,16 @@ export function useAppHandlers(
     // Optimistic update — only change is_pinned, preserve reactions and other fields
     store.updateMessage(channelId, { ...msg, is_pinned: newPinned, reactions: undefined } as typeof msg)
     try {
-      if (newPinned) await ops.pinMessage(channelId, msgId)
-      else await ops.unpinMessage(channelId, msgId)
-      const pinned = await ops.getPinnedMessages(channelId)
+      if (newPinned) {
+        if (dmActive) await api.pinDmMessage(channelId, msgId)
+        else await api.pinMessage(channelId, msgId)
+      } else {
+        if (dmActive) await api.unpinDmMessage(channelId, msgId)
+        else await api.unpinMessage(channelId, msgId)
+      }
+      const pinned = dmActive
+        ? await api.getDmPinnedMessages(channelId)
+        : await api.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       setPinnedVersion(v => v + 1)
     } catch (err) {
@@ -338,15 +319,17 @@ export function useAppHandlers(
       const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
       if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned, reactions: undefined } as typeof revertMsg)
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    const ops = chatApi(dmActive)
     try {
-      await ops.unpinMessage(channelId, msgId)
+      if (dmActive) await api.unpinDmMessage(channelId, msgId)
+      else await api.unpinMessage(channelId, msgId)
       // Refresh pinned count
-      const pinned = await ops.getPinnedMessages(channelId)
+      const pinned = dmActive
+        ? await api.getDmPinnedMessages(channelId)
+        : await api.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       setPinnedVersion(v => v + 1)
       // Find and update the message's is_pinned status in the store
@@ -362,7 +345,7 @@ export function useAppHandlers(
       const m = err instanceof Error ? err.message : 'Unpin failed'
       useToast.getState().show(m, 'error')
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
+  }, [dmActive, activeDmId, activeChannelId, setPinnedCount])
 
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
@@ -377,13 +360,13 @@ export function useAppHandlers(
   const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice', categoryId?: string) => {
     await api.createChannel(activeServerId, { name, kind, ...(categoryId ? { category_id: categoryId } : {}) })
     await fetchChannels(activeServerId)
-  }, [activeServerId, fetchChannels])
+  }, [activeServerId])
 
   const handleCreateCategory = useCallback(async (name: string) => {
     await api.createCategory(activeServerId, { name })
     await fetchCategories(activeServerId)
     await fetchChannels(activeServerId)
-  }, [activeServerId, fetchCategories, fetchChannels])
+  }, [activeServerId])
 
   const handleDeleteChannel = useCallback(async (channelId: string) => {
     try {
@@ -398,7 +381,7 @@ export function useAppHandlers(
       useToast.getState().show(m, 'error')
       throw err
     }
-  }, [activeServerId, activeChannelId, fetchChannels, setActiveChannelId])
+  }, [activeServerId, activeChannelId])
 
   const handleDeleteCategory = useCallback(async (categoryName: string) => {
     // Find the category by name to get its ID
@@ -409,22 +392,22 @@ export function useAppHandlers(
     await api.deleteCategory(category.id)
     await fetchCategories(activeServerId)
     await fetchChannels(activeServerId)
-  }, [activeServerId, categoriesByServer, fetchCategories, fetchChannels])
+  }, [activeServerId, categoriesByServer])
 
   const handleArchiveChannel = useCallback(async (channelId: string) => {
     await api.updateChannel(channelId, { is_system: true })
     await fetchChannels(activeServerId)
-  }, [activeServerId, fetchChannels])
+  }, [activeServerId])
 
   const handleRenameChannel = useCallback(async (channelId: string, newName: string) => {
     await api.updateChannel(channelId, { name: newName })
     await fetchChannels(activeServerId)
-  }, [activeServerId, fetchChannels])
+  }, [activeServerId])
 
   const handleRenameCategory = useCallback(async (categoryId: string, newName: string) => {
     await api.updateCategory(categoryId, { name: newName })
     await fetchCategories(activeServerId)
-  }, [activeServerId, fetchCategories])
+  }, [activeServerId])
 
   // ── Channel reorder (drag & drop persist) ──
   // `positions` is the new global ordering across all categories + uncategorized.
@@ -440,30 +423,12 @@ export function useAppHandlers(
         await api.updateChannel(m.id, { category_id: m.categoryId })
       }
       if (positions.length > 0) {
-        // Use the response — backend returns the full updated channel list with
-        // fresh positions, so we update the store directly instead of waiting
-        // for the per-channel WS ChannelUpdate broadcast (which may race the
-        // optimistic local state) or relying on fetchChannels (which short-
-        // circuits when the server is already cached).
-        const updated = await api.reorderChannels(activeServerId, positions)
-        useServersStore.setState({
-          channels: { ...useServersStore.getState().channels, [activeServerId]: updated },
-        })
-      } else {
-        // Category-only move with no global reorder: drop the cache so the
-        // next fetch pulls truth from the backend.
-        const all = useServersStore.getState().channels
-        const { [activeServerId]: _drop, ...rest } = all
-        useServersStore.setState({ channels: rest })
-        await fetchChannels(activeServerId)
+        await api.reorderChannels(activeServerId, positions)
       }
+      await fetchChannels(activeServerId)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Channel reorder failed'
-      useToast.getState().show(msg, 'error')
-      // Force refetch so the UI snaps back to the server's truth.
-      const all = useServersStore.getState().channels
-      const { [activeServerId]: _drop, ...rest } = all
-      useServersStore.setState({ channels: rest })
+      console.warn('Channel reorder failed, refetching to recover:', e)
+      // On error, force a refetch so the UI snaps back to the server's truth
       await fetchChannels(activeServerId).catch(() => {})
     }
   }, [activeServerId, fetchChannels])

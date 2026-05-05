@@ -26,51 +26,39 @@ export function useDecryptedContent(
       // No nonce = plain text (shouldn't happen, but handle gracefully)
       return { displayContent: content, isEncrypted: false, decrypting: false };
     }
-    if (!channelId) {
-      return { displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false };
-    }
     return { displayContent: '', isEncrypted: true, decrypting: true };
   });
   const retryRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync the visible state with the inputs synchronously: a content/nonce/key
-  // swap should reset to the right placeholder immediately rather than
-  // flashing the previous decryption.
-  const inputKey = `${content}|${nonce ?? ''}|${channelId ?? ''}|${isDm ? '1' : '0'}`;
-  const [prevInputKey, setPrevInputKey] = useState(inputKey);
-  if (prevInputKey !== inputKey) {
-    setPrevInputKey(inputKey);
+  useEffect(() => {
     if (!nonce) {
       setState({ displayContent: content, isEncrypted: false, decrypting: false });
-    } else if (!channelId) {
-      setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
-    } else {
-      setState({ displayContent: '', isEncrypted: true, decrypting: true });
+      return;
     }
-  }
 
-  useEffect(() => {
-    if (!nonce || !channelId) return;
+    if (!channelId) {
+      setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+      return;
+    }
 
     let cancelled = false;
 
     const attempt = () => {
-      if (cancelled) return;
       if (!isE2EEReady()) {
         if (retryRef.current < 5) {
           retryRef.current++;
           retryTimerRef.current = setTimeout(attempt, 1000);
           return;
         }
-        if (!cancelled) setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
         return;
       }
 
       retryRef.current = 0;
       const localKeys = getLocalKeys();
       if (!localKeys) {
-        if (!cancelled) setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
         return;
       }
 
@@ -92,10 +80,7 @@ export function useDecryptedContent(
 
     return () => {
       cancelled = true;
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
   }, [content, nonce, isDm, channelId]);
 

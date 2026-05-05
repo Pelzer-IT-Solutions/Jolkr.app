@@ -8,7 +8,7 @@ import type { DmFilter } from '../../api/types'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import { Select } from '../ui/Select'
 import { useAuthStore } from '../../stores/auth'
-import { useToast } from '../../stores/toast'
+import { useToast } from '../Toast'
 import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
 import { ensureNotificationPermission } from '../../services/notifications'
 import { STORAGE_KEYS } from '../../utils/storageKeys'
@@ -159,10 +159,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
     }
   }, [user, isEditing])
 
-  const [saving, setSaving] = useState(false)
   const handleSave = async () => {
-    if (saving) return
-    setSaving(true)
     try {
       await onUpdateProfile?.({
         display_name: editedProfile.display_name,
@@ -175,10 +172,6 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       setShowColorPicker(false)
     } catch (e) {
       console.error('Failed to update profile:', e)
-      const msg = e instanceof Error ? e.message : 'Could not save profile changes.'
-      useToast.getState().show(msg, 'error')
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -242,7 +235,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                     <button
                       key={c.value}
                       className={`${s.colorPickerSwatch} ${editedProfile.banner_color === c.value ? s.colorPickerSwatchActive : ''}`}
-                      style={{ '--swatch-color': c.value } as React.CSSProperties}
+                      style={{ background: c.value }}
                       onClick={() => handleBannerColorChange(c.value)}
                       title={c.name}
                     />
@@ -255,8 +248,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
           {/* Edit Button */}
           {isEditing ? (
             <div className={s.editActions}>
-              <button className={s.cancelEditBtn} onClick={handleCancel} disabled={saving}>Cancel</button>
-              <button className={s.saveEditBtn} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+              <button className={s.cancelEditBtn} onClick={handleCancel}>Cancel</button>
+              <button className={s.saveEditBtn} onClick={handleSave}>Save</button>
             </div>
           ) : (
             <button className={s.editProfileBtn} onClick={() => setIsEditing(true)}>
@@ -266,20 +259,20 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
         </div>
 
         {/* Banner */}
-        <div className={s.previewBanner} style={{ '--banner-color': editedProfile.banner_color } as React.CSSProperties} />
+        <div className={s.previewBanner} style={{ background: editedProfile.banner_color }} />
 
         {/* Profile Content */}
         <div className={s.previewContent}>
           {/* Avatar - Click to change only when editing */}
-          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined}>
+          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined} style={isEditing ? { cursor: 'pointer' } : undefined}>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              className={s.fileInputHidden}
+              style={{ display: 'none' }}
               onChange={handleAvatarChange}
             />
-            <div className={s.previewAvatar} style={{ '--banner-color': editedProfile.banner_color } as React.CSSProperties}>
+            <div className={s.previewAvatar} style={{ background: editedProfile.banner_color }}>
               {editedProfile.avatar_url ? (
                 <img src={editedProfile.avatar_url} alt="Profile" className={s.previewAvatarImg} />
               ) : (
@@ -298,9 +291,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
             {isEditing ? (
               <>
                 <div className={s.editFieldGroup}>
-                  <label className={s.editLabel} htmlFor="settings-displayname">Display Name</label>
+                  <label className={s.editLabel}>Display Name</label>
                   <input
-                    id="settings-displayname"
                     type="text"
                     className={s.editInput}
                     value={editedProfile.display_name}
@@ -309,7 +301,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                   />
                 </div>
                 <div className={s.editFieldGroup}>
-                  <span className={s.editLabel}>Username</span>
+                  <label className={s.editLabel}>Username</label>
                   <span className={s.editReadonly}>{user?.username}</span>
                 </div>
               </>
@@ -324,9 +316,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
 
             {isEditing ? (
               <div className={s.editFieldGroup}>
-                <label className={s.editLabel} htmlFor="settings-bio">Bio</label>
+                <label className={s.editLabel}>Bio</label>
                 <textarea
-                  id="settings-bio"
                   className={s.editTextarea}
                   value={editedProfile.bio}
                   onChange={(e) => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
@@ -649,11 +640,10 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
       if (!cancelled) setError(e.message || 'Camera unavailable')
     })
 
-    const videoEl = videoRef.current
     return () => {
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
-      if (videoEl) videoEl.srcObject = null
+      if (videoRef.current) videoRef.current.srcObject = null
     }
   }, [deviceId])
 

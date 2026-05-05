@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { default as NMPlayerCtor, TimeData, VolumeState } from '@nomercy-entertainment/nomercy-video-player';
-
-type NMPlayerInstance = ReturnType<typeof NMPlayerCtor>;
+import type { TimeData, VolumeState } from '@nomercy-entertainment/nomercy-video-player';
 
 interface NMPlayerState {
   isPlaying: boolean;
@@ -37,7 +35,7 @@ interface UseNMPlayerConfig {
 
 export function useNMPlayer(config: UseNMPlayerConfig): NMPlayerResult {
   const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<NMPlayerInstance | null>(null);
+  const playerRef = useRef<ReturnType<typeof import('@nomercy-entertainment/nomercy-video-player').default> | null>(null);
   const idRef = useRef(`nmplayer-${Math.random().toString(36).slice(2, 9)}`);
 
   const [state, setState] = useState<NMPlayerState>({
@@ -197,12 +195,9 @@ export function useNMPlayer(config: UseNMPlayerConfig): NMPlayerResult {
       null;
     if (!target) return;
     if (document.fullscreenElement) {
-      // Fullscreen toggles are best-effort: the browser/WebView may refuse
-      // (e.g. user denied permission, no ancestor allows it). Log once so a
-      // failure is visible during dev without spamming the toast.
-      document.exitFullscreen().catch((e) => console.warn('[useNMPlayer] exitFullscreen:', e));
+      document.exitFullscreen().catch(() => { });
     } else {
-      target.requestFullscreen().catch((e) => console.warn('[useNMPlayer] requestFullscreen:', e));
+      target.requestFullscreen().catch(() => { });
     }
   }, []);
 

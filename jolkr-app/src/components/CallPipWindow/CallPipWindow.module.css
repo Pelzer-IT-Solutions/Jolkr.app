@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: center;
   background: oklch(0% 0 0 / 0.55);
-  color: var(--text-on-accent);
+  color: #fff;
   cursor: pointer;
   transition: background-color var(--transition);
 }
@@ -64,7 +64,7 @@
   align-items: center;
   justify-content: center;
   background: var(--danger-default);
-  color: var(--text-on-accent);
+  color: #fff;
   cursor: pointer;
   transition: filter var(--transition);
 }

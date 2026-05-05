@@ -216,11 +216,6 @@
   transition: transform 120ms, border-color var(--transition);
   cursor: pointer;
   flex-shrink: 0;
-  background: var(--swatch-color);
-}
-
-.fileInputHidden {
-  display: none;
 }
 
 .colorPickerSwatch:hover {
@@ -235,7 +230,6 @@
 .previewBanner {
   height: 5rem;
   transition: background-color var(--transition);
-  background: var(--banner-color);
 }
 
 .previewContent {
@@ -275,7 +269,7 @@
   font-size: 1.75rem;
   font-weight: 700;
   color: #fff;
-  background: var(--banner-color, oklch(60% 0.15 250));
+  background: oklch(60% 0.15 250);
   overflow: hidden;
 }
 

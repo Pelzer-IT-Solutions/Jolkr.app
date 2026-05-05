@@ -130,15 +130,6 @@ impl FriendshipService {
         Ok(FriendshipInfo::from(row))
     }
 
-    pub async fn decline_or_remove_by_user_pair(
-        pool: &PgPool,
-        caller_id: Uuid,
-        other_id: Uuid,
-    ) -> Result<FriendshipInfo, JolkrError> {
-        let row = FriendshipRepo::decline_or_remove_by_user_pair(pool, caller_id, other_id).await?;
-        Ok(FriendshipInfo::from(row))
-    }
-
     /// Block user.
     pub async fn block_user(
         pool: &PgPool,

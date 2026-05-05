@@ -28,7 +28,7 @@
 .banner {
   height: 3.75rem;
   flex-shrink: 0;
-  background: var(--banner-color);
+  /* `background` is supplied inline via banner_color from the user's profile theme */
 }
 
 .avatarWrap {

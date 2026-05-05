@@ -75,8 +75,4 @@
   height: 100%;
   object-fit: cover;
   transition: opacity 0.2s;
-  opacity: 0;
-}
-.imageLoaded {
-  opacity: 1;
 }

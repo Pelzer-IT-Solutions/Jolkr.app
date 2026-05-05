@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import type { MemberGroup, MemberSummary } from '../../types'
 import type { User, Thread } from '../../api/types'
@@ -43,20 +43,20 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
   // closing 'pinned' would immediately swap to the 'members' default branch
   // and you'd see a brief Members flash slide out instead of Pinned.
   const [displayMode, setDisplayMode] = useState<typeof mode>(mode)
-
-  // When mode flips to a non-null value, snap displayMode immediately so the
-  // panel becomes visible right away. When it flips back to null, the effect
-  // below schedules a delayed hide so the slide-out animation can play.
-  const [prevMode, setPrevMode] = useState(mode)
-  if (mode !== prevMode) {
-    setPrevMode(mode)
-    if (mode !== null) setDisplayMode(mode)
-  }
-
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (mode !== null) return
-    const timer = setTimeout(() => setDisplayMode(null), HIDE_TRANSITION_MS)
-    return () => clearTimeout(timer)
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+    if (mode !== null) {
+      setDisplayMode(mode)
+    } else {
+      hideTimerRef.current = setTimeout(() => setDisplayMode(null), HIDE_TRANSITION_MS)
+    }
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
   }, [mode])
 
   const total = members.online.length + members.offline.length

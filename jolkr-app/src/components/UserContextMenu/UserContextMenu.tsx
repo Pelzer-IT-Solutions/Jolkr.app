@@ -250,7 +250,7 @@ export function UserContextMenu({
                   >
                     <span
                       className={s.roleDot}
-                      style={role.color ? { '--role-color': `#${role.color.toString(16).padStart(6, '0')}` } as React.CSSProperties : undefined}
+                      style={{ background: role.color ? `#${role.color.toString(16).padStart(6, '0')}` : 'var(--text-faint)' }}
                     />
                     <span className={`${s.serverName} txt-small txt-truncate`}>{role.name}</span>
                     {hasRole && <span className={`${s.roleCheck} txt-tiny`}>✓</span>}

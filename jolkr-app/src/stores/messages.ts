@@ -58,6 +58,26 @@ interface MessagesState {
   reset: () => void;
 }
 
+// Map DM message response to Message interface
+function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
+  return (msgs as Array<Record<string, unknown>>).map((m) => ({
+    id: m.id as string,
+    channel_id: (m.dm_channel_id as string) ?? dmId,
+    author_id: m.author_id as string,
+    content: (m.content as string) ?? '',
+    nonce: (m.nonce as string) ?? null,
+    created_at: m.created_at as string,
+    updated_at: (m.updated_at as string) ?? null,
+    is_edited: (m.is_edited as boolean) ?? false,
+    is_pinned: (m.is_pinned as boolean) ?? false,
+    reply_to_id: (m.reply_to_id as string) ?? null,
+    author: (m.author as Message['author']) ?? (m.sender as Message['author']) ?? null,
+    attachments: (m.attachments as Message['attachments']) ?? [],
+    reactions: (m.reactions as Reaction[]) ?? [],
+    embeds: (m.embeds as Message['embeds']) ?? [],
+  }));
+}
+
 const MAX_CACHED_CHANNELS = 30;
 
 /** Evict oldest channel message caches when exceeding limit */
@@ -89,9 +109,13 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       set({ loading: { ...get().loading, [channelId]: true } });
     }
     try {
-      const msgs = isDm
-        ? await api.getDmMessages(channelId)
-        : await api.getMessages(channelId);
+      let msgs: Message[];
+      if (isDm) {
+        const raw = await api.getDmMessages(channelId);
+        msgs = normalizeDmMessages(raw, channelId);
+      } else {
+        msgs = await api.getMessages(channelId);
+      }
       const reversed = transformReactions([...msgs].reverse());
       const evicted = evictOldChannels({ ...get().messages, [channelId]: reversed }, channelId);
       set({
@@ -112,9 +136,13 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     set({ loadingOlder: { ...get().loadingOlder, [channelId]: true } });
     try {
       const oldest = current[0];
-      const msgs = isDm
-        ? await api.getDmMessages(channelId, 50, oldest.created_at)
-        : await api.getMessages(channelId, 50, oldest.created_at);
+      let msgs: Message[];
+      if (isDm) {
+        const raw = await api.getDmMessages(channelId, 50, oldest.created_at);
+        msgs = normalizeDmMessages(raw, channelId);
+      } else {
+        msgs = await api.getMessages(channelId, 50, oldest.created_at);
+      }
       const reversed = transformReactions([...msgs].reverse());
       const fresh = get().messages[channelId] ?? [];
       set({
@@ -136,10 +164,14 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   },
 
   editMessage: async (messageId, channelId, content, isDm, nonce) => {
-    const updated = isDm
-      ? await api.editDmMessage(messageId, content, nonce)
-      : await api.editMessage(messageId, content, nonce);
-    get().updateMessage(channelId, updated);
+    if (isDm) {
+      const raw = await api.editDmMessage(messageId, content, nonce);
+      const normalized = normalizeDmMessages([raw], channelId)[0];
+      get().updateMessage(channelId, normalized);
+    } else {
+      const updated = await api.editMessage(messageId, content, nonce);
+      get().updateMessage(channelId, updated);
+    }
   },
 
   deleteMessage: async (messageId, channelId, isDm) => {
@@ -366,7 +398,7 @@ wsClient.on((event) => {
       break;
     }
     case 'MessageDelete': {
-      const channelId = event.d.channel_id;
+      const channelId = event.d.channel_id ?? event.d.dm_channel_id;
       const messageId = event.d.message_id;
       if (!channelId || !messageId) break;
       // Remove from channel messages
