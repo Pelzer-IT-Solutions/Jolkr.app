@@ -248,11 +248,9 @@ export async function encryptChannelMessage(
 
   const { ciphertext, nonce } = await encryptMessage(channelKey.key, plaintext);
 
-  if (isDm) {
-    const memberIds = await getMemberIds();
-    redistributeChannelKey(channelId, memberIds, channelKey.rawKey, channelKey.keyGeneration, isDm)
-      .catch(() => { /* best-effort heal of missing wraps */ });
-  }
+  const heallMemberIds = await getMemberIds();
+  redistributeChannelKey(channelId, heallMemberIds, channelKey.rawKey, channelKey.keyGeneration, isDm)
+    .catch(() => { /* best-effort heal of missing wraps */ });
 
   return {
     encryptedContent: toBase64(ciphertext),
