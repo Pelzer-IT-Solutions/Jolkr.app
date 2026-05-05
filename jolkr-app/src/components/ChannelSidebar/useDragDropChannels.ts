@@ -151,10 +151,10 @@ export function useDragDropChannels({
           c.name === activeCat.name ? { ...c, channels: arrayMove(c.channels, from, to) } : c
         )
       }
-      // Persist whatever the new layout is. Compare against the pre-drag snapshot
-      // so we send both reorders and category moves in one shot.
       if (startCats && onReorderChannels) {
-        void persistLayout(startCats, next, uncategorizedIds, onReorderChannels)
+        const categorizedNow = new Set(next.flatMap(c => c.channels))
+        const uncategorizedNow = allChannelIds.filter(id => !categorizedNow.has(id))
+        void persistLayout(startCats, next, uncategorizedNow, onReorderChannels)
       }
       return next
     })
