@@ -15,6 +15,8 @@ import { encryptForRecipient, decryptFromSender } from './e2ee';
 import { encryptMessage, decryptMessage, toBase64, fromBase64 } from './keys';
 import type { LocalKeySet } from './keys';
 import { getRecipientBundle, isE2EEReady } from '../services/e2ee';
+import { useMessagesStore } from '../stores/messages';
+import { wsClient } from '../api/ws';
 import { log } from '../utils/log';
 
 /** Create a clean ArrayBuffer copy (TS strict ArrayBufferLike compat). */
@@ -222,21 +224,27 @@ export async function encryptChannelMessage(
   }
 
   if (!channelKey) {
-    // DMs: missing-wrap-for-me means I was skipped on the original distribute.
-    // Re-keying at gen=0 would clobber the existing wrap and orphan every
-    // prior message — refuse and let the counterparty re-distribute.
     if (isDm) {
-      log.error('channel-e2ee', 'cannot send DM — no wrap row for me; counterparty must re-distribute');
-      return null;
+      const dmMsgs = useMessagesStore.getState().messages[channelId] ?? [];
+      const hasHistory = dmMsgs.some(m => !!m.nonce);
+      if (hasHistory) {
+        wsClient.requestKeyRedistribute(channelId);
+        log.error('channel-e2ee', 'cannot send DM — wrap missing; requested redistribute from counterparty');
+        return null;
+      }
+      const memberIds = await getMemberIds();
+      channelKey = await generateAndDistributeChannelKey(channelId, memberIds, 0, isDm);
+      if (!channelKey) return null;
+    } else {
+      let generation = 0;
+      try {
+        const genResp = await api.getChannelKeyGeneration(channelId);
+        generation = genResp.key_generation;
+      } catch { /* Fallback to 0 */ }
+      const memberIds = await getMemberIds();
+      channelKey = await generateAndDistributeChannelKey(channelId, memberIds, generation, isDm);
+      if (!channelKey) return null;
     }
-    let generation = 0;
-    try {
-      const genResp = await api.getChannelKeyGeneration(channelId);
-      generation = genResp.key_generation;
-    } catch { /* Fallback to 0 */ }
-    const memberIds = await getMemberIds();
-    channelKey = await generateAndDistributeChannelKey(channelId, memberIds, generation, isDm);
-    if (!channelKey) return null;
   }
 
   const { ciphertext, nonce } = await encryptMessage(channelKey.key, plaintext);
