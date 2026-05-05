@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import * as api from '../../api/client'
 import { useServersStore } from '../../stores/servers'
+import { useAuthStore } from '../../stores/auth'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { ServerThemeSchema } from '../../api/schemas'
 import { syncPresence } from '../../services/presenceSync'
@@ -47,6 +48,7 @@ export function useAuthInit(args: UseAuthInitArgs) {
   const navigate = useNavigate()
   const location = useLocation()
   const [ready, setReady] = useState(false)
+  const currentUserId = useAuthStore(s => s.user?.id ?? null)
 
   useEffect(() => {
     let cancelled = false
@@ -148,6 +150,7 @@ export function useAuthInit(args: UseAuthInitArgs) {
       }
     }
 
+    setReady(false)
     init().catch(console.error)
     return () => { cancelled = true }
     // MOUNT-ONLY by design. `location.pathname` in deps would re-run the
@@ -157,7 +160,7 @@ export function useAuthInit(args: UseAuthInitArgs) {
     // they would technically be safe to list, but we keep [] for clarity
     // that this effect deliberately runs once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currentUserId])
 
   return { ready, setReady }
 }
