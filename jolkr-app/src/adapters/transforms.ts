@@ -133,9 +133,11 @@ export function transformMessage(
     if (replyMsg) {
       const replyAuthor = replyMsg.author ?? users.get(replyMsg.author_id)
       replyTo = {
+        id: replyMsg.id,
         author: displayName(replyAuthor),
-        // If the reply has a nonce, it's encrypted — show placeholder (content is raw ciphertext)
-        text: replyMsg.nonce ? 'Encrypted message' : (replyMsg.content?.slice(0, 100) || 'Encrypted message'),
+        text: replyMsg.content?.slice(0, 200) ?? '',
+        nonce: replyMsg.nonce ?? null,
+        channelId: replyMsg.channel_id,
       }
     }
   }

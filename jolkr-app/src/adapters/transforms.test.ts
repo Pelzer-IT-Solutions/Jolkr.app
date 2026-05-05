@@ -208,22 +208,24 @@ describe('transformMessage', () => {
     expect(transformMessage(curr, users, allMessages, prev).continued).toBe(false)
   })
 
-  it('builds a replyTo with truncated text for un-encrypted referenced messages', () => {
-    const long = 'x'.repeat(150)
+  it('builds a replyTo with truncated text for referenced messages', () => {
+    const long = 'x'.repeat(300)
     const target = messageFactory({ id: 'm0', content: long })
     const curr = messageFactory({ id: 'm1', reply_to_id: 'm0' })
     const allMessages = new Map([[target.id, target], [curr.id, curr]])
     const vm = transformMessage(curr, users, allMessages)
     expect(vm.replyTo).toBeDefined()
-    expect(vm.replyTo?.text.length).toBe(100)
+    expect(vm.replyTo?.text.length).toBe(200)
   })
 
-  it('replaces replyTo text with "Encrypted message" when the referenced message has a nonce', () => {
-    const target = messageFactory({ id: 'm0', content: 'ciphertext-base64', nonce: 'abc' })
+  it('passes the raw ciphertext + nonce + channelId through replyTo so the consumer can decrypt', () => {
+    const target = messageFactory({ id: 'm0', content: 'ciphertext-base64', nonce: 'abc', channel_id: 'c-7' })
     const curr = messageFactory({ id: 'm1', reply_to_id: 'm0' })
     const allMessages = new Map([[target.id, target], [curr.id, curr]])
     const vm = transformMessage(curr, users, allMessages)
-    expect(vm.replyTo?.text).toBe('Encrypted message')
+    expect(vm.replyTo?.text).toBe('ciphertext-base64')
+    expect(vm.replyTo?.nonce).toBe('abc')
+    expect(vm.replyTo?.channelId).toBe('c-7')
   })
 
   it('omits replyTo when reply_to_id points at a missing message', () => {

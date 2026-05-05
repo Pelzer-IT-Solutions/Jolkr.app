@@ -213,7 +213,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     <div className={s.replyContext}>
       <ReplyIcon />
       <span className={`${s.replyAuthor} txt-tiny txt-semibold`}>{message.replyTo.author}</span>
-      <span className={`${s.replyPreview} txt-tiny`}>{message.replyTo.text.length > 80 ? message.replyTo.text.slice(0, 80) + '…' : message.replyTo.text}</span>
+      <ReplyPreview replyTo={message.replyTo} isDm={message.isDm ?? isDm} />
     </div>
   ) : null
 
@@ -535,6 +535,18 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     {deleteDialog}
     </>
   )
+}
+
+function ReplyPreview({ replyTo, isDm }: { replyTo: NonNullable<MessageVM['replyTo']>; isDm: boolean }) {
+  const { displayContent, decrypting } = useDecryptedContent(
+    replyTo.text,
+    replyTo.nonce ?? null,
+    isDm,
+    replyTo.channelId ?? '',
+  )
+  const text = decrypting ? '…' : (displayContent || '')
+  const trimmed = text.length > 80 ? text.slice(0, 80) + '…' : text
+  return <span className={`${s.replyPreview} txt-tiny`}>{trimmed}</span>
 }
 
 /* ─── Icons ─── */

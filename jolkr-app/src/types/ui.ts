@@ -74,9 +74,11 @@ export interface ReactionDisplay {
 }
 
 export interface ReplyRef {
-  id?:    string
-  author: string
-  text:   string
+  id?:        string
+  author:     string
+  text:       string
+  nonce?:     string | null
+  channelId?: string
 }
 
 /**
