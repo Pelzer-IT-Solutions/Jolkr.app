@@ -74,7 +74,19 @@ export interface ReactionDisplay {
 export interface ReplyRef {
   id?:    string
   author: string
+  /** Plaintext fallback. For E2EE messages this is the raw ciphertext slice;
+   *  the renderer should prefer the decrypted output of `useDecryptedContent`
+   *  applied to {content, nonce, channelId, isDm} below when nonce is set. */
   text:   string
+  // ─── Decryption inputs (E2EE channels) ───
+  /** Original message content — ciphertext when nonce is set, plaintext otherwise. */
+  content?:   string | null
+  /** When set, content is ciphertext and the renderer must decrypt. */
+  nonce?:     string | null
+  /** Channel id used to look up the channel key during decryption. */
+  channelId?: string | null
+  /** True when the reply is to a DM message (controls the channel-key lookup branch). */
+  isDm?:      boolean
 }
 
 /**

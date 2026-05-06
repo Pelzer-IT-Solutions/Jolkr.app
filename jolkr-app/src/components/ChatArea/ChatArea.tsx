@@ -17,6 +17,7 @@ import { createEmojiImg } from './richInputHelpers'
 import { PollCreator } from '../Poll/PollCreator'
 import { useCallStore } from '../../stores/call'
 import { useVoiceStore } from '../../stores/voice'
+import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import s from './ChatArea.module.css'
 
 // Attachment size cap (mirrors backend MAX_ATTACHMENT_SIZE).
@@ -633,20 +634,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         <div className={s.composerWrap}>
           <div className={s.composerStack}>
             {replyingTo && (
-              <div className={s.replyCard}>
-                <div className={s.replyCardInner}>
-                  <ReplySmallIcon />
-                  <span className={`${s.replyCardLabel} txt-tiny`}>
-                    Replying to <strong>{replyingTo.author}</strong>
-                  </span>
-                  <span className={`${s.replyCardPreview} txt-tiny`}>
-                    {replyingTo.content.length > 72 ? replyingTo.content.slice(0, 72) + '…' : replyingTo.content}
-                  </span>
-                </div>
-                <button className={s.replyCardClose} title="Cancel reply" onClick={() => setReplyingTo(null)}>
-                  <CloseIcon />
-                </button>
-              </div>
+              <ReplyComposerCard
+                replyingTo={replyingTo}
+                isDm={isDm}
+                onCancel={() => setReplyingTo(null)}
+              />
             )}
 
             {mentionQuery !== null && mentionMatches.length > 0 && (
@@ -831,6 +823,50 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         />
       )}
     </main>
+  )
+}
+
+/**
+ * Composer reply card. Lifted into its own component so the
+ * `useDecryptedContent` hook can run unconditionally — adding it directly to
+ * ChatArea would mean the hook only runs while a reply is active, breaking
+ * the rules-of-hooks order across renders.
+ */
+function ReplyComposerCard({
+  replyingTo,
+  isDm,
+  onCancel,
+}: {
+  replyingTo: MessageVM
+  isDm: boolean
+  onCancel: () => void
+}) {
+  const { displayContent, decrypting } = useDecryptedContent(
+    replyingTo.content,
+    replyingTo.nonce,
+    replyingTo.isDm ?? isDm,
+    replyingTo.channel_id,
+  )
+  const previewSource = replyingTo.nonce
+    ? (decrypting ? 'Decrypting…' : (displayContent || 'Encrypted message'))
+    : (displayContent || replyingTo.content)
+  const preview = previewSource.length > 72 ? previewSource.slice(0, 72) + '…' : previewSource
+
+  return (
+    <div className={s.replyCard}>
+      <div className={s.replyCardInner}>
+        <ReplySmallIcon />
+        <span className={`${s.replyCardLabel} txt-tiny`}>
+          Replying to <strong>{replyingTo.author}</strong>
+        </span>
+        <span className={`${s.replyCardPreview} txt-tiny`}>
+          {preview}
+        </span>
+      </div>
+      <button className={s.replyCardClose} title="Cancel reply" onClick={onCancel}>
+        <CloseIcon />
+      </button>
+    </div>
   )
 }
 

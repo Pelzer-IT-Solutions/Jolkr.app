@@ -118,16 +118,24 @@ export function transformMessage(
   // Continued = same author as previous message
   const continued = !!prevMsg && prevMsg.author_id === msg.author_id
 
-  // Reply reference
+  // Reply reference. For E2EE messages we forward the encryption inputs so
+  // the renderer can decrypt — synchronously baking 'Encrypted message' here
+  // would lose the data forever.
   let replyTo: ReplyRef | undefined
   if (msg.reply_to_id) {
     const replyMsg = allMessages.get(msg.reply_to_id)
     if (replyMsg) {
       const replyAuthor = replyMsg.author ?? users.get(replyMsg.author_id)
+      const fallbackText = replyMsg.nonce
+        ? '' // ciphertext slice would be gibberish; renderer must decrypt
+        : (replyMsg.content?.slice(0, 100) ?? '')
       replyTo = {
+        id: replyMsg.id,
         author: displayName(replyAuthor),
-        // If the reply has a nonce, it's encrypted — show placeholder (content is raw ciphertext)
-        text: replyMsg.nonce ? 'Encrypted message' : (replyMsg.content?.slice(0, 100) || 'Encrypted message'),
+        text: fallbackText,
+        content: replyMsg.content,
+        nonce: replyMsg.nonce,
+        channelId: replyMsg.channel_id ?? replyMsg.dm_channel_id ?? null,
       }
     }
   }
@@ -178,7 +186,10 @@ export function transformMessages(
   const msgMap = new Map(msgs.map(m => [m.id, m]))
   return msgs.map((msg, i) => {
     const ui = transformMessage(msg, users, msgMap, i > 0 ? msgs[i - 1] : null)
-    if (isDm) ui.isDm = true
+    if (isDm) {
+      ui.isDm = true
+      if (ui.replyTo) ui.replyTo.isDm = true
+    }
     return ui
   })
 }

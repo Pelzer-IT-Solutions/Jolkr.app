@@ -80,6 +80,19 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   const messageContent = displayContent || message.content
   const showUnencryptedBadge = !isEncrypted && !!message.content
 
+  // Reply preview: decrypt the referenced message's content the same way the
+  // body is decrypted. Pass empty defaults when there's no reply so the hook
+  // call order stays stable across renders.
+  const replyDecrypt = useDecryptedContent(
+    message.replyTo?.content ?? '',
+    message.replyTo?.nonce,
+    message.replyTo?.isDm ?? isDm,
+    message.replyTo?.channelId ?? undefined,
+  )
+  const replyText = message.replyTo?.nonce
+    ? (replyDecrypt.decrypting ? 'Decrypting…' : (replyDecrypt.displayContent || 'Encrypted message'))
+    : (message.replyTo?.text ?? '')
+
   // Client-side embed generation: extract URLs from displayed content and create
   // video embeds for known platforms (essential for E2EE where server can't read content)
   const clientEmbeds = useMemo<MessageEmbed[]>(() => {
@@ -220,7 +233,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     <div className={s.replyContext}>
       <ReplyIcon />
       <span className={`${s.replyAuthor} txt-tiny txt-semibold`}>{message.replyTo.author}</span>
-      <span className={`${s.replyPreview} txt-tiny`}>{message.replyTo.text.length > 80 ? message.replyTo.text.slice(0, 80) + '…' : message.replyTo.text}</span>
+      <span className={`${s.replyPreview} txt-tiny`}>{replyText.length > 80 ? replyText.slice(0, 80) + '…' : replyText}</span>
     </div>
   ) : null
 
