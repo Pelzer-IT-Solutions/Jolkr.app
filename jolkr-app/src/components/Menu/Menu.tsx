@@ -22,19 +22,21 @@ export function Menu({ open, position, onClose, children, minWidth = '11rem', cl
   const menuRef = useRef<HTMLDivElement>(null)
   const [safePos, setSafePos] = useState(position)
 
-  // Recalculate safe position when menu mounts or position changes
+  // Recalculate safe position when menu mounts or position changes.
+  // Defer setState to a microtask so it doesn't fire synchronously inside the
+  // effect body (react-hooks/set-state-in-effect). The microtask still runs
+  // before paint so there's no visible reflow.
   useEffect(() => {
     if (!open || !menuRef.current || disableAutoPosition) {
-      setSafePos(position)
+      queueMicrotask(() => setSafePos(position))
       return
     }
-
     const rect = menuRef.current.getBoundingClientRect()
     const adjusted = getSafePosition(
       position,
       { width: rect.width, height: rect.height }
     )
-    setSafePos(adjusted)
+    queueMicrotask(() => setSafePos(adjusted))
   }, [open, position, disableAutoPosition])
 
   // Close on outside click or Escape

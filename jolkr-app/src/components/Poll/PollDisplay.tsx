@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import * as api from '../../api/client'
 import type { Poll } from '../../api/types'
 import s from './PollDisplay.module.css'
@@ -13,7 +14,17 @@ interface Props {
  * mutation.
  */
 export function PollDisplay({ poll }: Props) {
-  const expired = poll.expires_at ? new Date(poll.expires_at).getTime() < Date.now() : false
+  // `Date.now()` is impure — capture it in state and refresh once the
+  // expiry passes so the "Closed" badge appears without a manual reload.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!poll.expires_at) return
+    const remaining = new Date(poll.expires_at).getTime() - Date.now()
+    if (remaining <= 0) return
+    const t = setTimeout(() => setNow(Date.now()), remaining)
+    return () => clearTimeout(t)
+  }, [poll.expires_at])
+  const expired = poll.expires_at ? new Date(poll.expires_at).getTime() < now : false
   const myVotes = new Set(poll.my_votes ?? [])
   const totalVotes = poll.total_votes ?? 0
 

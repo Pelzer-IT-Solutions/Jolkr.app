@@ -6,7 +6,7 @@ import type { User } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
 import { invalidateFriendsCache } from '../../services/friendshipCache'
-import { useToast } from '../Toast'
+import { useToast } from '../../stores/toast'
 import Avatar from '../Avatar/Avatar'
 import s from './QrCodeScanner.module.css'
 
@@ -59,17 +59,24 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
     onClose()
   }, [stopScanner, onClose])
 
+  // Reset transient state when the modal opens — state-during-render for
+  // setState; ref reset stays in the effect (refs may not be touched in render).
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) {
+      setError('')
+      setScannedUser(null)
+      setSending(false)
+    }
+  }
+
   // Start the scanner whenever the modal opens. The viewfinder div is
   // rendered conditionally, so we defer one tick to let it mount before
   // html5-qrcode tries to attach to it.
   useEffect(() => {
     if (!open) return
-
-    setError('')
-    setScannedUser(null)
-    setSending(false)
     processingRef.current = false
-
     let cancelled = false
 
     async function start() {

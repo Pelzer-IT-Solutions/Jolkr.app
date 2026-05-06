@@ -22,10 +22,18 @@ export function ThreadListPanel({ channelId, onOpenThread }: Props) {
   const [loading, setLoading] = useState(true)
   const threadListVersion = useMessagesStore(s => s.threadListVersion)
 
+  // Flip to loading whenever the fetch key changes — state-during-render
+  // pattern avoids set-state-in-effect on the synchronous setLoading.
+  const fetchKey = `${channelId}|${threadListVersion}`
+  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey)
+    if (channelId) setLoading(true)
+  }
+
   useEffect(() => {
     if (!channelId) return
     let cancelled = false
-    setLoading(true)
     api.getThreads(channelId, false)
       .then(list => {
         if (cancelled) return

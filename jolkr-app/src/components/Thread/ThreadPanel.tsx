@@ -113,7 +113,7 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
   return (
     <div className={s.panel}>
       <div className={s.header}>
-        <button className={s.backBtn} title="Back to threads" onClick={onBack}>
+        <button className={s.backBtn} title="Back to threads" aria-label="Back to threads" onClick={onBack}>
           <ArrowLeft size={14} strokeWidth={1.5} />
         </button>
         <span className={`${s.title} txt-small txt-semibold txt-truncate`}>

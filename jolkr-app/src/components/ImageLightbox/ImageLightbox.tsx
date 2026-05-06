@@ -141,14 +141,18 @@ export default function ImageLightbox(props: Props) {
   const zoomIn  = useCallback(() => applyScale(scale + SCALE_STEP), [scale, applyScale])
   const zoomOut = useCallback(() => applyScale(scale - SCALE_STEP), [scale, applyScale])
 
-  // Reset per-image state when navigating
-  useEffect(() => {
+  // Reset per-image state when navigating — store-prev pattern (React 19
+  // state-during-render is the canonical way to react to prop changes
+  // without triggering react-hooks/set-state-in-effect on cascading renders).
+  const [prevIndex, setPrevIndex] = useState(index)
+  if (index !== prevIndex) {
+    setPrevIndex(index)
     setScale(1)
     setOffset({ x: 0, y: 0 })
     setShowMore(false)
     setShowDetails(false)
     setNaturalDims(null)
-  }, [index])
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

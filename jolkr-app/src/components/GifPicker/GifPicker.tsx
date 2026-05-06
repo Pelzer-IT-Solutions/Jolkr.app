@@ -213,6 +213,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
           data-fav={favIds.has(gif.id)}
           onClick={(e) => { e.stopPropagation(); toggleFavorite(gif) }}
           title={favIds.has(gif.id) ? 'Remove from favorites' : 'Add to favorites'}
+          aria-label={favIds.has(gif.id) ? 'Remove from favorites' : 'Add to favorites'}
         >
           <Heart size={14} fill={favIds.has(gif.id) ? 'currentColor' : 'none'} />
         </button>
@@ -259,12 +260,12 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
     if (view === 'browse' && browseTitle) {
       return (
         <>
-          <button className={s.backBtn} onClick={goHome} title="Back">
+          <button className={s.backBtn} onClick={goHome} title="Back" aria-label="Back">
             <ArrowLeft size={18} />
           </button>
           <div className={s.titleBar}>
             <span className={s.titleText}>{browseTitle}</span>
-            <button className={s.clearBtn} onClick={goHome} title="Close">
+            <button className={s.clearBtn} onClick={goHome} title="Close" aria-label="Close">
               <X size={16} />
             </button>
           </div>
@@ -275,7 +276,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
     // Browse with free search or favorites
     return (
       <>
-        <button className={s.backBtn} onClick={goHome} title="Back">
+        <button className={s.backBtn} onClick={goHome} title="Back" aria-label="Back">
           <ArrowLeft size={18} />
         </button>
         {view === 'favorites' ? (
@@ -294,7 +295,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
               autoFocus
             />
             {query && (
-              <button className={s.clearBtn} onClick={() => setQuery('')} title="Clear" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+              <button className={s.clearBtn} onClick={() => setQuery('')} title="Clear" aria-label="Clear search" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
                 <X size={16} />
               </button>
             )}

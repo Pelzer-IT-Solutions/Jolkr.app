@@ -438,7 +438,7 @@ export const upsertChannelOverwrite = (channelId: string, body: {
   method: 'PUT', body: JSON.stringify(body),
 }, 'overwrite');
 
-export const deleteChannelOverwrite = (channelId: string, targetType: string, targetId: string) =>
+export const deleteChannelOverwrite = (channelId: string, targetType: 'role' | 'member', targetId: string) =>
   request<void>(`/channels/${channelId}/overwrites/${targetType}/${targetId}`, { method: 'DELETE' });
 
 // Messages

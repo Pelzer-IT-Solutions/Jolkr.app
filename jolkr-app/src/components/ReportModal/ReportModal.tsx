@@ -53,14 +53,17 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
-  useEffect(() => {
+  // Reset modal state when it closes — store-prev pattern.
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
     if (!open) {
       setSelectedReason(null)
       setDetails('')
       setIsSubmitting(false)
       setIsSuccess(false)
     }
-  }, [open])
+  }
 
   useEffect(() => {
     if (!open) return

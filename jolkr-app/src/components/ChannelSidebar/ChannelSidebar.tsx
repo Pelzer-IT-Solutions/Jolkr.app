@@ -157,7 +157,9 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   useLayoutEffect(() => {
     setLocalCats(server.categories)
     setLocalExtraChannels([])
-    // Only reset collapsed + reveal animation when switching servers
+    // Only reset collapsed + reveal animation when switching servers — the
+    // categoriesKey-driven re-runs hit setLocalCats above, but the prevServerRef
+    // guard keeps the reveal animation tied strictly to server-switch events.
     if (prevServerRef.current !== server.id) {
       setCollapsedCats(new Set())
       setIsRevealing(true)
@@ -168,7 +170,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       prevServerRef.current = server.id
       return () => clearTimeout(timer)
     }
-  }, [server.id, categoriesKey])
+  }, [server.id, server.categories, categoriesKey])
 
   useEffect(() => {
     if (creating) setTimeout(() => inputRef.current?.focus(), 0)
@@ -205,7 +207,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   function toggleCat(name: string) {
     setCollapsedCats(prev => {
       const next = new Set(prev)
-      next.has(name) ? next.delete(name) : next.add(name)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
       return next
     })
   }
@@ -474,7 +477,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         <span className={`${s.title} txt-small txt-semibold`}>Channels</span>
         <div className={s.actions}>
           {canManageChannels && (
-            <button ref={addBtnRef} className={s.iconBtn} title="New channel" onClick={handleAddClick}><PlusIcon /></button>
+            <button ref={addBtnRef} className={s.iconBtn} title="New channel" aria-label="New channel" onClick={handleAddClick}><PlusIcon /></button>
           )}
           {canEditTheme && (
             <ThemePicker
@@ -488,6 +491,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
           <button
             className={s.iconBtn}
             title={isMobile ? 'Back to chat' : 'Collapse sidebar'}
+            aria-label={isMobile ? 'Back to chat' : 'Collapse sidebar'}
             onClick={onCollapse}
           >
             {isMobile ? <ArrowLeft size={14} strokeWidth={1.5} /> : <CollapseIcon />}
@@ -1085,6 +1089,7 @@ function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx, onConte
         <button
           className={s.channelMenuBtn}
           title="Channel options"
+          aria-label="Channel options"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()

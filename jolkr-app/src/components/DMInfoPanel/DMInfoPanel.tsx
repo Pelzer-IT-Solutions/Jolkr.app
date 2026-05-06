@@ -30,7 +30,7 @@ function PinnedItem({ msg, dmId, onUnpin, users }: {
         {decrypting ? 'Decrypting…' : (displayContent || '').slice(0, 200)}
       </div>
       {onUnpin && (
-        <button className={s.unpinBtn} title="Unpin" onClick={() => onUnpin(msg.id)}>
+        <button className={s.unpinBtn} title="Unpin" aria-label="Unpin" onClick={() => onUnpin(msg.id)}>
           <X size={12} strokeWidth={1.5} />
         </button>
       )}
@@ -85,11 +85,24 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
   const [files, setFiles] = useState<Attachment[]>([])
   const [loadingFiles, setLoadingFiles] = useState(false)
 
+  // Reset transient state when the panel's identity changes — state-during-render
+  // avoids set-state-in-effect on the synchronous setLoading/setFiles calls.
+  const fetchKey = `${open}|${dmId}|${pinnedVersion ?? 0}`
+  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey)
+    if (!open || !dmId || dmId.startsWith('draft:')) {
+      setFiles([])
+    } else {
+      setLoadingPins(true)
+      setLoadingFiles(true)
+    }
+  }
+
   // Fetch pinned messages when panel becomes open or dmId changes. Drafts
   // (`draft:…` ids) only exist locally — skip the fetch.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
-    setLoadingPins(true)
     api.getDmPinnedMessages(dmId).then(msgs => {
       const normalized = msgs.map(m => ({
         ...m,
@@ -102,11 +115,7 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
   // Fetch shared files. Re-runs alongside pinnedVersion bumps so newly-uploaded
   // attachments show up without requiring a panel reopen.
   useEffect(() => {
-    if (!open || !dmId || dmId.startsWith('draft:')) {
-      setFiles([])
-      return
-    }
-    setLoadingFiles(true)
+    if (!open || !dmId || dmId.startsWith('draft:')) return
     api.getDmAttachments(dmId)
       .then(setFiles)
       .catch(() => setFiles([]))
@@ -122,7 +131,7 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
     <aside className={`${s.panel} ${!open ? s.hidden : ''}`}>
       <div className={s.header}>
         {onMobileClose && (
-          <button className={s.backBtn} title="Back to chat" onClick={onMobileClose}>
+          <button className={s.backBtn} title="Back to chat" aria-label="Back to chat" onClick={onMobileClose}>
             <ArrowLeft size={14} strokeWidth={1.5} />
           </button>
         )}

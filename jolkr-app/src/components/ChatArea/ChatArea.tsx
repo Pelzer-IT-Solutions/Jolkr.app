@@ -19,6 +19,12 @@ import { useCallStore } from '../../stores/call'
 import { useVoiceStore } from '../../stores/voice'
 import s from './ChatArea.module.css'
 
+// Attachment size cap (mirrors backend MAX_ATTACHMENT_SIZE).
+// MB literal drives both the byte cap and the human-readable label so they can't drift.
+const MAX_FILE_SIZE_MB = 25
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
+const MAX_FILE_SIZE_LABEL = `${MAX_FILE_SIZE_MB} MB`
+
 export interface MentionableUser {
   id: string
   username: string
@@ -93,12 +99,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const dragDepthRef = useRef(0)
 
   // Limit + filter helper shared by the file picker and drop handler.
-  const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB — matches server cap
   const acceptValidFiles = useCallback((incoming: FileList | File[]) => {
     const list = Array.from(incoming)
     const oversized = list.filter((f) => f.size > MAX_FILE_SIZE)
     if (oversized.length) {
-      alert(`File too large (max 25 MB): ${oversized.map((f) => f.name).join(', ')}`)
+      alert(`File too large (max ${MAX_FILE_SIZE_LABEL}): ${oversized.map((f) => f.name).join(', ')}`)
     }
     const valid = list.filter((f) => f.size <= MAX_FILE_SIZE)
     if (valid.length) setPendingFiles((prev) => [...prev, ...valid])
@@ -120,7 +125,9 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     if (animationKey !== prevAnimKey) {
       if (navTimerRef.current) clearTimeout(navTimerRef.current)
       if (listRef.current) listRef.current.scrollTo({ top: 0, behavior: 'smooth' })
-      setIsRevealing(true)
+      // Defer setState past the layout-effect body — microtask still runs
+      // before paint so the reveal animation starts on the correct frame.
+      queueMicrotask(() => setIsRevealing(true))
       const animCount = Math.min(messages.length, CHAT_REVEAL_LIMIT)
       navTimerRef.current = setTimeout(() => {
         setIsRevealing(false)
@@ -161,9 +168,15 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   // Poll creator modal — server channels only (gated on !isDm).
   const [pollCreatorOpen, setPollCreatorOpen] = useState(false)
 
-  // Clear reply context + content when channel changes
-  useEffect(() => {
+  // Clear reply context when channel changes — state-during-render avoids
+  // set-state-in-effect, while ref + imperative-clear operations stay in an
+  // effect (refs may not be touched during render either).
+  const [prevChannelId, setPrevChannelId] = useState(channel.id)
+  if (channel.id !== prevChannelId) {
+    setPrevChannelId(channel.id)
     setReplyingTo(null)
+  }
+  useEffect(() => {
     contentRef.current = ''
     inputRef.current?.clear()
   }, [channel.id])
@@ -413,13 +426,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           <div className={s.dropBox}>
             <Paperclip size={28} strokeWidth={1.5} />
             <span className="txt-body txt-semibold">Drop to attach</span>
-            <span className={`${s.dropHint} txt-small`}>Up to 25 MB per file</span>
+            <span className={`${s.dropHint} txt-small`}>Up to {MAX_FILE_SIZE_LABEL} per file</span>
           </div>
         </div>
       )}
       <header className={s.header}>
         {sidebarCollapsed && (
-          <button className={s.iconBtn} title="Expand channels" onClick={onExpandSidebar}>
+          <button className={s.iconBtn} title="Expand channels" aria-label="Expand channels" onClick={onExpandSidebar}>
             <SidebarIcon />
           </button>
         )}
@@ -465,6 +478,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               <button
                 className={`${s.iconBtn} ${callDisabled ? s.iconBtnDisabled : ''}`}
                 title={callTitle}
+                aria-label={callTitle}
                 disabled={callDisabled}
                 onClick={handleStartCall}
               >
@@ -473,6 +487,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               <button
                 className={`${s.iconBtn} ${videoCallDisabled ? s.iconBtnDisabled : ''}`}
                 title={videoCallTitle}
+                aria-label={videoCallTitle}
                 disabled={videoCallDisabled}
                 onClick={handleStartVideoCall}
               >
@@ -486,6 +501,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <button
                   className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
                   title="Threads"
+                  aria-label="Threads"
                   onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
                 >
                   <ThreadsIcon />
@@ -495,6 +511,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <button
                   className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
                   title="Pinned messages"
+                  aria-label="Pinned messages"
                   onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
                 >
                   <Pin size={14} strokeWidth={1.5} />
@@ -505,6 +522,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           <button
             className={`${s.iconBtn} ${rightPanelMode === 'members' ? s.active : ''}`}
             title={isDm ? 'Files & pins' : 'Members'}
+            aria-label={isDm ? 'Files & pins' : 'Members'}
             onClick={() => onSetRightPanelMode(rightPanelMode === 'members' ? null : 'members')}
           >
             {isDm ? <FilesIcon /> : <MembersIcon />}

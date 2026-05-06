@@ -335,6 +335,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
           ref={emojiTriggerRef}
           className={s.actionBtn}
           title="Add reaction"
+          aria-label="Add reaction"
           onClick={() => {
             if (!showEmoji && emojiTriggerRef.current) {
               const r = emojiTriggerRef.current.getBoundingClientRect()
@@ -358,16 +359,17 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
       )}
 
       {/* ── Reply ── */}
-      {onReply && <button className={s.actionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>}
+      {onReply && <button className={s.actionBtn} title="Reply" aria-label="Reply" onClick={onReply}><ReplyIcon /></button>}
 
       {/* ── Edit (own only) ── */}
-      {isOwn && <button className={s.actionBtn} title="Edit message" onClick={startEdit}><EditIcon /></button>}
+      {isOwn && <button className={s.actionBtn} title="Edit message" aria-label="Edit message" onClick={startEdit}><EditIcon /></button>}
 
       {/* ── More options (Shift swaps to instant-delete when user can delete) ── */}
       <div ref={moreRef} className={s.actionWrap}>
         <button
           className={`${s.actionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
           title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
+          aria-label={shiftDeleteArmed ? 'Delete message' : 'More options'}
           onClick={(e) => {
             // Use the actual click event's shift state, not the hook — that
             // way a click never desyncs from what the user thinks they did
@@ -468,6 +470,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                   ref={emojiTriggerRef}
                   className={s.dmActionBtn}
                   title="Add reaction"
+                  aria-label="Add reaction"
                   onClick={() => {
                     if (!showEmoji && emojiTriggerRef.current) {
                       const r = emojiTriggerRef.current.getBoundingClientRect()
@@ -490,12 +493,13 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                 />
               )}
 
-              {onReply && <button className={s.dmActionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>}
+              {onReply && <button className={s.dmActionBtn} title="Reply" aria-label="Reply" onClick={onReply}><ReplyIcon /></button>}
 
               <div ref={moreRef} className={s.actionWrap}>
                 <button
                   className={`${s.dmActionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
                   title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
+                  aria-label={shiftDeleteArmed ? 'Delete message' : 'More options'}
                   onClick={(e) => {
                     if (canShiftRemove && e.shiftKey) {
                       e.stopPropagation()

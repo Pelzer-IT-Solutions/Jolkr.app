@@ -106,7 +106,7 @@ export function PollCreator({ open, channelId, onClose }: Props) {
       <div className={s.modal} role="dialog" aria-modal="true" aria-label="Create poll">
         <div className={s.header}>
           <span className={s.title}>Create a Poll</span>
-          <button type="button" className={s.closeBtn} onClick={onClose} title="Close">
+          <button type="button" className={s.closeBtn} onClick={onClose} title="Close" aria-label="Close">
             <X size={14} strokeWidth={1.5} />
           </button>
         </div>
@@ -152,6 +152,7 @@ export function PollCreator({ open, channelId, onClose }: Props) {
                       className={s.optionRemove}
                       onClick={() => removeOption(i)}
                       title="Remove option"
+                      aria-label="Remove option"
                     >
                       <Trash2 size={14} strokeWidth={1.5} />
                     </button>

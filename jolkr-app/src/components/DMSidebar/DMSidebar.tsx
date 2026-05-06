@@ -22,18 +22,18 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
     <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
       <div className={s.header}>
         {isMobile && onCollapse && (
-          <button className={s.iconBtn} title="Back to chat" onClick={onCollapse}>
+          <button className={s.iconBtn} title="Back to chat" aria-label="Back to chat" onClick={onCollapse}>
             <ArrowLeft size={14} strokeWidth={1.5} />
           </button>
         )}
         <span className={`${s.title} txt-small txt-semibold`}>Direct Messages</span>
         <div className={s.actions}>
           {onOpenFriends && (
-            <button className={s.iconBtn} title="Friends" onClick={onOpenFriends}><Users size={14} strokeWidth={1.5} /></button>
+            <button className={s.iconBtn} title="Friends" aria-label="Friends" onClick={onOpenFriends}><Users size={14} strokeWidth={1.5} /></button>
           )}
-          <button className={s.iconBtn} title="New message" onClick={onNewMessage}><ComposeIcon /></button>
+          <button className={s.iconBtn} title="New message" aria-label="New message" onClick={onNewMessage}><ComposeIcon /></button>
           {!isMobile && onCollapse && (
-            <button className={s.iconBtn} title="Collapse sidebar" onClick={onCollapse}>
+            <button className={s.iconBtn} title="Collapse sidebar" aria-label="Collapse sidebar" onClick={onCollapse}>
               <PanelLeftClose size={14} strokeWidth={1.5} />
             </button>
           )}
