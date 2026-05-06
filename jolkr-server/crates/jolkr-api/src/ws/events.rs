@@ -30,8 +30,21 @@ pub enum FriendshipUpdateKind {
 #[serde(tag = "op", content = "d")]
 pub(crate) enum ClientEvent {
     /// First message after connecting; includes the access token.
+    ///
+    /// SEC-013 challenge-response (additive): when the client supports
+    /// it, `device_id` + `nonce` + `signature` are echoed back, where
+    /// `signature = ed25519_sign(raw_nonce_bytes, identity_priv_key)`.
+    /// When `JOLKR_WS_REQUIRE_SIG=true` the handler rejects identifies
+    /// without those fields; otherwise the legacy bearer-only path is
+    /// honoured for backwards-compat during rollout.
     Identify {
         token: String,
+        #[serde(default)]
+        device_id: Option<Uuid>,
+        #[serde(default)]
+        nonce: Option<String>,
+        #[serde(default)]
+        signature: Option<String>,
     },
 
     /// Periodic heartbeat to keep the connection alive.
@@ -58,12 +71,32 @@ pub(crate) enum ClientEvent {
     PresenceUpdate {
         status: String, // "online", "idle", "dnd", "offline"
     },
+
+    /// Ask other DM members to re-distribute the existing channel key —
+    /// used by clients whose wrap row is missing (e.g. lost it during a
+    /// fresh device migration). Counterparty re-wraps from cache; raw key
+    /// is unchanged so prior messages stay decryptable.
+    RequestKeyRedistribute {
+        channel_id: Uuid,
+    },
 }
 
 /// Events sent FROM the server TO the client over the WebSocket.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "op", content = "d")]
 pub enum GatewayEvent {
+    /// SEC-013 challenge handshake. Sent immediately after upgrade,
+    /// before any client message is read. The client signs the raw
+    /// nonce bytes (NOT the base64 string) with their identity ed25519
+    /// private key and echoes the nonce + signature back in `Identify`.
+    /// `expires_at` is the RFC3339 deadline by which the signed
+    /// `Identify` must arrive; client-side it's purely informational —
+    /// the server enforces freshness via the per-socket nonce buffer.
+    Hello {
+        nonce: String,
+        expires_at: String,
+    },
+
     /// Sent after a successful Identify; confirms the session is ready.
     Ready {
         user_id: Uuid,
@@ -397,6 +430,14 @@ pub enum GatewayEvent {
     /// Generic error event.
     Error {
         message: String,
+    },
+
+    /// A peer is asking the receiver to re-distribute the existing channel
+    /// key for `channel_id`. Receiver should re-wrap their cached symmetric
+    /// key for all members and POST the wraps back. Raw key is unchanged.
+    KeyRedistributeRequest {
+        channel_id: Uuid,
+        requester_id: Uuid,
     },
 }
 

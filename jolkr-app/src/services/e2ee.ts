@@ -1,3 +1,4 @@
+import { ed25519 } from '@noble/curves/ed25519.js';
 import type { LocalKeySet, PreKeyBundle, EncryptedPayload } from '../crypto';
 import {
   generateKeySetFromSeed,
@@ -10,6 +11,7 @@ import { clearKeySet } from '../crypto/keyStore';
 import { storage } from '../platform/storage';
 import * as api from '../api/client';
 import type { PreKeyBundleResponse } from '../api/types';
+import { log } from '../utils/log';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import { createTtlCache } from '../utils/cache';
 
@@ -103,34 +105,48 @@ function cleanupLegacyKeys(): void {
   sessionStorage.removeItem('jolkr_storage_enc_key');
 }
 
-/** Upload prekeys to server if not yet confirmed uploaded. */
-async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<void> {
+/** Upload prekeys to server. Backend is idempotent (ON CONFLICT DO UPDATE),
+ *  so we run on every init — that way a stale `e2ee_keys_uploaded` flag
+ *  pointing at a server row that was wiped (account migration, manual DB
+ *  cleanup) self-heals on the next app start instead of leaving the user
+ *  silently locked out of SEC-013 sig-check. */
+async function ensureKeysUploaded(deviceId: string, keys: LocalKeySet): Promise<string> {
   const uploadedKey = 'e2ee_keys_uploaded';
-  const alreadyUploaded = await storage.get(uploadedKey);
-  if (alreadyUploaded === 'true') return;
+  let activeDeviceId = deviceId;
+
+  const tryRegister = async (id: string) => {
+    await api.registerDevice({ device_id: id, device_name: 'E2EE Keys', device_type: 'e2ee' });
+  };
 
   try {
-    // Ensure device exists in DB before uploading keys (FK constraint on user_keys.device_id)
-    await api.registerDevice({
-      device_id: deviceId,
-      device_name: 'E2EE Keys',
-      device_type: 'e2ee',
-    });
+    await tryRegister(activeDeviceId);
+  } catch (e) {
+    log.warn('e2ee', 'registerDevice failed (likely device_id owned by previous user); retrying with fresh id', e);
+    activeDeviceId = crypto.randomUUID();
+    localStorage.setItem(STORAGE_KEYS.E2EE_DEVICE_ID, activeDeviceId);
+    try {
+      await tryRegister(activeDeviceId);
+    } catch (e2) {
+      log.warn('e2ee', 'registerDevice retry failed; prekey upload deferred', e2);
+      return activeDeviceId;
+    }
+  }
 
+  try {
     await api.uploadPrekeys({
-      device_id: deviceId,
+      device_id: activeDeviceId,
       identity_key: toBase64(keys.identity.publicKey),
       signed_prekey: toBase64(keys.signedPreKey.keyPair.publicKey),
       signed_prekey_signature: toBase64(keys.signedPreKey.signature),
       one_time_prekeys: [],
-      // Post-quantum keys
       pq_signed_prekey: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.keyPair.encapsulationKey) : undefined,
       pq_signed_prekey_signature: keys.pqSignedPreKey ? toBase64(keys.pqSignedPreKey.signature) : undefined,
     });
     await storage.set(uploadedKey, 'true');
   } catch (e) {
-    console.warn('E2EE: Failed to upload prekeys (will retry next init):', e);
+    log.warn('e2ee', 'prekey upload deferred to next init', e);
   }
+  return activeDeviceId;
 }
 
 /**
@@ -145,6 +161,18 @@ export function isE2EEReady(): boolean {
  */
 export function getLocalKeys(): LocalKeySet | null {
   return localKeys;
+}
+
+/**
+ * Sign a byte buffer with the local identity ed25519 private key. Used by
+ * the WS handshake (SEC-013) to prove possession of the device identity
+ * key when answering the server-issued Hello challenge. Returns `null`
+ * when E2EE isn't initialised yet — callers must fall back to legacy
+ * bearer-only Identify (until JOLKR_WS_REQUIRE_SIG flips to true).
+ */
+export function signWithIdentity(message: Uint8Array): Uint8Array | null {
+  if (!localKeys) return null;
+  return ed25519.sign(message, localKeys.identity.privateKey);
 }
 
 

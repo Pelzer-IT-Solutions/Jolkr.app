@@ -7,7 +7,7 @@ import { getBasename } from './platform/config';
 import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
-import { useToast } from './components/Toast';
+import { useToast } from './stores/toast';
 import { requestNotificationPermission } from './services/notifications';
 import { startUnreadBadge } from './services/unreadBadge';
 import { registerPush } from './services/pushRegistration';
@@ -92,24 +92,29 @@ function AppInit({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     startUnreadBadge();
-    initTokens().then(() => loadUser()).then(() => {
-      // Only register push if user is logged in (has access token)
+    (async () => {
+      await initTokens();
+      // Load E2EE keys BEFORE loadUser triggers wsClient.connect(). On a
+      // page reload the SEC-013 server Hello arrives within ~100ms of the
+      // socket opening; if `localKeys` isn't populated yet `signWithIdentity`
+      // returns null, the FE never sends Identify, the server drops the
+      // connection, and the user stays invisible / receives no presence
+      // updates until the next reconnect happens to win the race.
+      const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
+      if (deviceId && getAccessToken()) {
+        await initE2EE(deviceId).catch(console.warn);
+      }
+      await loadUser();
       if (getAccessToken()) {
         requestNotificationPermission().then(() => registerPush()).catch(console.warn);
-        // Load E2EE keys from storage (no seed — keys were set during login)
-        const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
-        if (deviceId) {
-          initE2EE(deviceId).catch(console.warn);
-        }
       }
-
       // Check for updates after 5s delay (Tauri only)
       if (isTauri) {
         setTimeout(() => {
           checkForUpdate().then(setUpdateInfo).catch(console.warn);
         }, 5000);
       }
-    }).finally(() => {
+    })().finally(() => {
       setReady(true);
     });
   }, [loadUser]);
@@ -138,6 +143,11 @@ function CallOverlays() {
     </>
   );
 }
+
+// Per-user-id cooldown so a malicious QR scanned twice in a row can't spam the
+// friend-request endpoint. Backend rate-limits anyway; this is just UX polish.
+const FRIEND_REQUEST_COOLDOWN_MS = 5_000;
+const lastFriendRequestAt = new Map<string, number>();
 
 function DeepLinkHandler() {
   const navigate = useNavigate();
@@ -168,6 +178,9 @@ function DeepLinkHandler() {
           navigate('/login');
           return;
         }
+        const last = lastFriendRequestAt.get(params.userId) ?? 0;
+        if (Date.now() - last < FRIEND_REQUEST_COOLDOWN_MS) return;
+        lastFriendRequestAt.set(params.userId, Date.now());
         try {
           await api.sendFriendRequest(params.userId);
           useToast.getState().show('Friend request sent', 'success');

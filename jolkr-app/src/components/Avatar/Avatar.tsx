@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { getApiBaseUrl } from '../../platform/config'
 import { useAuthStore } from '../../stores/auth'
 import s from './Avatar.module.css'
@@ -60,11 +60,11 @@ export default function Avatar({ url, name, size = 'lg', status, userId, classNa
     : url
   const imgSrc = userId && (url || versionHint) ? avatarEndpoint(userId, versionHint) : (url ?? undefined)
   const [imgError, setImgError] = useState(false)
-  const prevKeyRef = useRef(userId ?? url)
-
   const currentKey = userId ?? url
-  if (currentKey !== prevKeyRef.current) {
-    prevKeyRef.current = currentKey
+  const [prevKey, setPrevKey] = useState(currentKey)
+
+  if (currentKey !== prevKey) {
+    setPrevKey(currentKey)
     setImgError(false)
   }
 

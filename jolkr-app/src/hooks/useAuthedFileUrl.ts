@@ -20,11 +20,16 @@ export function useAuthedFileUrl(src: string | null | undefined): string | null 
   // re-render races a stale fetch.
   const currentRef = useRef<string | null>(null)
 
+  // Reset blobUrl synchronously when src clears or changes — avoids a stale
+  // blob: URL flash before the new fetch resolves.
+  const [prevSrc, setPrevSrc] = useState(src)
+  if (prevSrc !== src) {
+    setPrevSrc(src)
+    if (!src) setBlobUrl(null)
+  }
+
   useEffect(() => {
-    if (!src) {
-      setBlobUrl(null)
-      return
-    }
+    if (!src) return
     let cancelled = false
 
     authedFetch(src)

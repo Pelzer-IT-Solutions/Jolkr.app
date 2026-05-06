@@ -79,11 +79,13 @@ marked.use({
       const isGif = GIF_PROXY_RE.test(href ?? '') || /\.gif(\?[^\s]*)?$/i.test(href ?? '');
       const maxW = isGif ? '250px' : '450px';
       const imgTag = `<img src="${safeHref}" alt="GIF"${safeTitle} style="max-width:${maxW};max-height:300px;border-radius:0.5rem" loading="lazy" referrerpolicy="no-referrer" />`;
-      // Wrap GIF proxy images with a heart overlay for favorites
+      // GIF proxy images get wrapped in a `.gif-embed` span; the heart button
+      // is injected by the React effect below using DOM APIs (no `<button>`
+      // is allowed through DOMPurify, so we cannot template it inline).
       if (GIF_PROXY_RE.test(href ?? '')) {
         const gifId = extractGiphyId(href ?? '');
         if (gifId) {
-          return `<span class="gif-embed" data-gif-id="${escapeAttr(gifId)}" style="position:relative;display:inline-block;margin:0.25rem 0">${imgTag}<button class="gif-embed-heart" data-gif-id="${escapeAttr(gifId)}" type="button">${HEART_SVG}</button></span>`;
+          return `<span class="gif-embed" data-gif-id="${escapeAttr(gifId)}" style="position:relative;display:inline-block;margin:0.25rem 0">${imgTag}</span>`;
         }
       }
       return `<span style="display:inline-block;margin:0.25rem 0">${imgTag}</span>`;
@@ -107,8 +109,39 @@ marked.use({
 const IMAGE_URL_RE = /\.(gif|png|jpe?g|webp)(\?[^\s]*)?$/i;
 const GIF_PROXY_RE = /\/api\/gifs\/(media\?url=|i\/)/;
 
-// Heart SVG for GIF favorite overlay (inline since we can't use React components in raw HTML)
-const HEART_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+// Heart SVG path used by the favorite-overlay button. The button itself is
+// injected via DOM APIs in the post-render effect because <button>/<svg>/<path>
+// are deliberately NOT in the DOMPurify allowlist (those tags are otherwise
+// pure attack surface for crafted message content).
+const HEART_SVG_PATH = 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z';
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** Build the heart-overlay button as a real DOM node. */
+function buildHeartButton(gifId: string, isFav: boolean): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'gif-embed-heart';
+  btn.dataset.gifId = gifId;
+  btn.dataset.fav = String(isFav);
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('width', '14');
+  svg.setAttribute('height', '14');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', HEART_SVG_PATH);
+  svg.appendChild(path);
+  btn.appendChild(svg);
+
+  return btn;
+}
 
 // Auto-detect URLs in plain text that aren't already links
 function autoLinkUrls(text: string): string {
@@ -171,8 +204,12 @@ export interface MessageContentProps {
   serverId?: string;
 }
 
-const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div', 'button', 'svg', 'path'];
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin', 'data-gif-id', 'type', 'width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd'];
+// Tighter allowlist: <button>, <svg>, <path> were removed because the heart
+// overlay is now injected via DOM APIs (see buildHeartButton). Keeping those
+// tags in the markup pipeline made it too easy for crafted message content
+// to render submit-buttons or hidden SVG vectors.
+const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div'];
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin', 'data-gif-id'];
 
 export default memo(function MessageContent({ content, className, emojiMap, serverId }: MessageContentProps) {
   // Build emoji map from store if serverId is provided and no explicit emojiMap
@@ -192,14 +229,21 @@ export default memo(function MessageContent({ content, className, emojiMap, serv
   const html = useMemo(() => {
     if (!content) return '';
     const withLinks = autoLinkUrls(content);
+    // marked.parse returns escaped HTML; DOMPurify is still mandatory because
+    // the custom renderers above embed attribute strings derived from `href`,
+    // `lang`, `title`, and emoji map entries — any one of those is reachable
+    // user-influenced input. Removing either DOMPurify pass below silently
+    // re-introduces XSS.
     const raw = marked.parse(withLinks, { async: false }) as string;
-    // Sanitize to prevent XSS
     const sanitized = DOMPurify.sanitize(raw, { ALLOWED_TAGS, ALLOWED_ATTR });
-    // Highlight @mentions, then render custom emojis, then unicode emojis as images
+    // Mention/emoji passes do regex-based string replacement, which can in
+    // principle be bypassed if a user crafts input that looks like sanitized
+    // HTML (e.g. `@<span class="md-mention">x</span>`). The second DOMPurify
+    // call below is the fallback guarantee that whatever HTML we hand to React
+    // matches our allowlist. Do NOT remove it.
     const withMentions = highlightMentions(sanitized);
     const withCustomEmojis = renderCustomEmojis(withMentions, resolvedEmojiMap);
     const withUnicodeEmojis = renderUnicodeEmojis(withCustomEmojis, emojiOnly ? 48 : 20);
-    // Re-sanitize to ensure all injected HTML is safe
     return DOMPurify.sanitize(withUnicodeEmojis, { ALLOWED_TAGS, ALLOWED_ATTR });
   }, [content, resolvedEmojiMap, emojiOnly]);
 
@@ -208,19 +252,28 @@ export default memo(function MessageContent({ content, className, emojiMap, serv
   const favIds = useGifFavoritesStore((s) => s.ids);
   const toggleFav = useGifFavoritesStore((s) => s.toggle);
 
-  // Update heart button fill state whenever favIds changes
+  // Inject the heart-overlay button into each .gif-embed wrapper after every
+  // re-render of `html`. The button is built with DOM APIs (not user content)
+  // so it bypasses DOMPurify cleanly. Re-runs also resync the favorite state
+  // on heart presses elsewhere in the app.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const hearts = el.querySelectorAll<HTMLButtonElement>('.gif-embed-heart');
-    hearts.forEach((btn) => {
-      const gifId = btn.getAttribute('data-gif-id');
+    const wrappers = el.querySelectorAll<HTMLSpanElement>('.gif-embed');
+    wrappers.forEach((wrap) => {
+      const gifId = wrap.dataset.gifId;
       if (!gifId) return;
       const isFav = favIds.has(gifId);
-      btn.setAttribute('data-fav', String(isFav));
-      // Update SVG fill
-      const svg = btn.querySelector('svg');
-      if (svg) svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
+      let btn = wrap.querySelector<HTMLButtonElement>('.gif-embed-heart');
+      if (!btn) {
+        btn = buildHeartButton(gifId, isFav);
+        wrap.appendChild(btn);
+      } else {
+        // Update fav state on existing button.
+        btn.dataset.fav = String(isFav);
+        const svg = btn.querySelector('svg');
+        if (svg) svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
+      }
     });
   }, [favIds, html]);
 

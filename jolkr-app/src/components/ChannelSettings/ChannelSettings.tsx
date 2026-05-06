@@ -240,7 +240,7 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
                 <div
                   key={overwrite.id}
                   className={`${s.overwriteItem} ${isSelected ? s.selected : ''} ${isRevealing ? s.reveal : ''}`}
-                  style={{ animationDelay: `${revealDelay(idx)}ms` }}
+                  style={{ '--reveal-delay': `${revealDelay(idx)}ms` } as React.CSSProperties}
                   onClick={() => setSelectedOverwriteId(overwrite.id)}
                 >
                   <Shield size={14} strokeWidth={1.5} />

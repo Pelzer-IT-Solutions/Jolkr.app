@@ -87,12 +87,12 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
         <form className={s.body} onSubmit={handleSubmit}>
           {/* Icon preview */}
           <div className={s.iconPreviewRow}>
-            <div className={s.iconPreview} style={{ background: iconBg }}>
+            <div className={s.iconPreview} style={{ '--icon-bg': iconBg } as React.CSSProperties}>
               <span className={s.iconChar}>{iconChar}</span>
             </div>
             <div className={s.iconMeta}>
               <span className={`${s.iconLabel} txt-tiny txt-semibold`}>Server icon</span>
-              <span className="txt-tiny" style={{ color: 'var(--text-faint)' }}>Shown in tabs and the server browser</span>
+              <span className={`${s.iconHint} txt-tiny`}>Shown in tabs and the server browser</span>
             </div>
           </div>
 

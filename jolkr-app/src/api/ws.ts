@@ -1,6 +1,25 @@
 import { getAccessToken, refreshAccessTokenIfNeeded } from './client';
 import { getWsUrl } from '../platform/config';
+import { signWithIdentity } from '../services/e2ee';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 import type { WsListenerEvent } from './ws-events';
+
+/** Decode a URL-safe-no-pad base64 string into bytes. */
+function fromBase64Url(s: string): Uint8Array {
+  const pad = s.length % 4 === 0 ? '' : '='.repeat(4 - (s.length % 4));
+  const std = s.replace(/-/g, '+').replace(/_/g, '/') + pad;
+  const bin = atob(std);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Encode bytes as URL-safe-no-pad base64. */
+function toBase64Url(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
 type WsListener = (event: WsListenerEvent) => void;
 
@@ -34,7 +53,11 @@ class WsClient {
 
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
-      this.send('Identify', { token });
+      // SEC-013: don't send Identify yet — wait for the server `Hello`
+      // challenge. The handler in `handleEvent` signs the nonce with
+      // the local ed25519 identity key and sends the signed Identify.
+      // Bearer-only Identify is rejected server-side; clients without
+      // E2EE keys must re-login to materialise their identity key.
     };
 
     this.ws.onmessage = (ev) => {
@@ -100,6 +123,10 @@ class WsClient {
     this.send('PresenceUpdate', { status });
   }
 
+  requestKeyRedistribute(channelId: string) {
+    this.send('RequestKeyRedistribute', { channel_id: channelId });
+  }
+
   on(listener: WsListener) {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
@@ -113,6 +140,38 @@ class WsClient {
 
   private handleEvent(op: string, d: Record<string, unknown>) {
     switch (op) {
+      case 'Hello': {
+        // SEC-013 challenge-response. Sign the raw nonce bytes with the
+        // local identity ed25519 private key and reply with Identify.
+        // Bearer-only Identify is rejected server-side, so a missing
+        // device_id, nonce, or identity key means the user must re-login
+        // to materialise their E2EE state.
+        const token = getAccessToken();
+        if (!token) break;
+        const nonceB64 = typeof d.nonce === 'string' ? d.nonce : null;
+        const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
+        if (!nonceB64 || !deviceId) {
+          console.warn('[ws] Hello received but no nonce/deviceId — re-login required');
+          break;
+        }
+        try {
+          const nonceBytes = fromBase64Url(nonceB64);
+          const sig = signWithIdentity(nonceBytes);
+          if (!sig) {
+            console.warn('[ws] signWithIdentity returned null — re-login required');
+            break;
+          }
+          this.send('Identify', {
+            token,
+            device_id: deviceId,
+            nonce: nonceB64,
+            signature: toBase64Url(sig),
+          });
+        } catch (e) {
+          console.warn('[ws] Identify signing failed:', e);
+        }
+        break;
+      }
       case 'Ready':
         this.connected = true;
         this.startHeartbeat();
@@ -161,6 +220,7 @@ class WsClient {
       return;
     }
     const delay = Math.min(
+      // eslint-disable-next-line no-restricted-syntax -- jitter only, not crypto
       RECONNECT_BASE * Math.pow(2, this.reconnectAttempts) + Math.random() * 1000,
       RECONNECT_MAX,
     );

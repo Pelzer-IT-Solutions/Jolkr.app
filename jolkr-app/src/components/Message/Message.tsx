@@ -7,8 +7,8 @@ import {
 import type { MessageVM } from '../../types'
 import type { User, MessageEmbed } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
-import { useShiftKey } from '../../hooks/useShiftKey'
 import { useAuthStore } from '../../stores/auth'
+import { useMessageActions } from './useMessageActions'
 import { useMenuPosition } from '../../utils/position'
 import { emojiToImgUrl } from '../../utils/emoji'
 import { parseVideoUrl, getYouTubeThumbnail, getPlatformName, getPlatformColor } from '../../utils/videoUrl'
@@ -51,21 +51,15 @@ interface Props {
 
 export function Message({ message, onToggleReaction, onDelete, onHideForMe, onReply, onEdit, onPin, onOpenAuthorProfile, isDm = false, isGroupDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false, onOpenThread, onStartThread }: Props) {
   const currentUserId = useAuthStore(s => s.user?.id)
-  const isOwn = message.author_id === currentUserId || message.author === 'You'
-  const shiftHeld = useShiftKey()
-  // Hard-delete (server-side) is restricted to the author in DMs and to
-  // moderators or the author in server channels. `canManageMessages` is
-  // server-only and doesn't carry into the DM context.
-  const canHardDelete = !!onDelete && (isDm ? isOwn : (isOwn || canManageMessages))
-  // Soft-hide ("Only for me") is available to anyone in a DM — that's how
-  // non-authors remove a message from their own view without affecting the
-  // other side.
-  const canHideForMe = isDm && !!onHideForMe
-  // Shift+click acts as an instant-remove. For own DM messages and server
-  // mod actions it still hard-deletes; for non-own DM messages it falls back
-  // to a soft-hide so the user can clean up their own view at a glance.
-  const canShiftRemove = canHardDelete || canHideForMe
-  const shiftDeleteArmed = shiftHeld && canShiftRemove
+  const { isOwn, canHideForMe, canShiftRemove, shiftDeleteArmed } = useMessageActions({
+    authorId: message.author_id,
+    authorLabel: message.author,
+    currentUserId,
+    isDm,
+    canManageMessages,
+    onDelete,
+    onHideForMe,
+  })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Decrypt E2EE content
@@ -81,7 +75,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   // Client-side embed generation: extract URLs from displayed content and create
   // video embeds for known platforms (essential for E2EE where server can't read content)
   const clientEmbeds = useMemo<MessageEmbed[]>(() => {
-    if ((message.embeds ?? []).length > 0) return message.embeds!
+    if (message.embeds && message.embeds.length > 0) return message.embeds
     if (!messageContent) return []
     const urls = messageContent.match(/https?:\/\/[^\s<>)"]+/gi)
     if (!urls) return []
@@ -135,7 +129,11 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   }
 
   function handleCopyText() {
-    navigator.clipboard.writeText(messageContent).catch(() => {})
+    // Best-effort copy — fall back silently if the OS denies clipboard access
+    // (e.g. focus lost, permission revoked). Logged so we can spot a pattern.
+    navigator.clipboard.writeText(messageContent).catch((e) => {
+      console.warn('[Message.copy] clipboard.writeText failed:', e)
+    })
     setShowMore(false)
   }
 
@@ -215,15 +213,15 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     <div className={s.replyContext}>
       <ReplyIcon />
       <span className={`${s.replyAuthor} txt-tiny txt-semibold`}>{message.replyTo.author}</span>
-      <span className={`${s.replyPreview} txt-tiny`}>{message.replyTo.text.length > 80 ? message.replyTo.text.slice(0, 80) + '…' : message.replyTo.text}</span>
+      <ReplyPreview replyTo={message.replyTo} isDm={message.isDm ?? isDm} />
     </div>
   ) : null
 
   const reactionsBlock = message.reactions.length > 0 ? (
     <div className={s.reactions}>
-      {message.reactions.map((r, i) => (
+      {message.reactions.map((r) => (
         <ReactionTooltip
-          key={i}
+          key={r.emoji}
           reaction={r}
           serverId={serverId}
           userMap={userMap}
@@ -263,7 +261,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
 
   // Link/video embeds (server-side or client-side generated)
   const embedsBlock = clientEmbeds.length > 0 ? (
-    <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+    <div className={s.embedList}>
       {clientEmbeds.map((embed, i) => {
         const videoInfo = parseVideoUrl(embed.url)
         return videoInfo ? (
@@ -275,8 +273,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     </div>
   ) : null
 
-  const attachmentsBlock = (message.attachments?.length ?? 0) > 0 ? (
-    <MessageAttachments attachments={message.attachments!} />
+  const attachmentsBlock = message.attachments && message.attachments.length > 0 ? (
+    <MessageAttachments attachments={message.attachments} />
   ) : null
 
   // Inline poll renderer. The store updates `message.poll` live via PollUpdate
@@ -287,11 +285,12 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   // thread_id) and at least one reply exists. Clicking opens the right-panel
   // thread view. Threads are server-only — never shown in DMs.
   const threadReplyCount = message.thread_reply_count ?? 0
-  const threadBadge = !isDm && message.thread_id && threadReplyCount > 0 && onOpenThread ? (
+  const threadId = message.thread_id
+  const threadBadge = !isDm && threadId && threadReplyCount > 0 && onOpenThread ? (
     <button
       type="button"
       className={s.threadReplyLink}
-      onClick={() => onOpenThread(message.thread_id!)}
+      onClick={() => onOpenThread(threadId)}
     >
       <MessageSquare size={11} strokeWidth={1.6} />
       <span className="txt-tiny txt-semibold">
@@ -326,14 +325,21 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
 
   const hasActions = !!(onToggleReaction || onDelete || onReply || onEdit)
 
+  // Toolbar styling diverges between standard channel and DM card layouts.
+  // The structure (reaction picker → reply → more menu) is identical; only
+  // the button/container classes and a couple of menu items differ.
+  const toolbarRowClass = isDm ? s.dmActions : s.actions
+  const toolbarVisibleClass = isDm ? s.dmActionsVisible : s.actionsVisible
+  const btnClass = isDm ? s.dmActionBtn : s.actionBtn
+
   const toolbar = !hasActions ? null : (
-    <div className={`${s.actions} ${anyOpen ? s.actionsVisible : ''} ${isDm ? s.actionsDm : ''}`}>
+    <div className={`${toolbarRowClass} ${anyOpen ? toolbarVisibleClass : ''} ${!isDm ? s.actionsDm : ''}`}>
       {/* ── Add reaction (requires ADD_REACTIONS permission) ── */}
       {canAddReactions && (
       <div className={s.actionWrap}>
         <button
           ref={emojiTriggerRef}
-          className={s.actionBtn}
+          className={btnClass}
           title="Add reaction"
           onClick={() => {
             if (!showEmoji && emojiTriggerRef.current) {
@@ -358,15 +364,15 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
       )}
 
       {/* ── Reply ── */}
-      {onReply && <button className={s.actionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>}
+      {onReply && <button className={btnClass} title="Reply" onClick={onReply}><ReplyIcon /></button>}
 
-      {/* ── Edit (own only) ── */}
-      {isOwn && <button className={s.actionBtn} title="Edit message" onClick={startEdit}><EditIcon /></button>}
+      {/* ── Edit (own only, server channels only — DM exposes Edit only via menu) ── */}
+      {!isDm && isOwn && <button className={btnClass} title="Edit message" onClick={startEdit}><EditIcon /></button>}
 
       {/* ── More options (Shift swaps to instant-delete when user can delete) ── */}
       <div ref={moreRef} className={s.actionWrap}>
         <button
-          className={`${s.actionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
+          className={`${btnClass} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
           title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
           onClick={(e) => {
             // Use the actual click event's shift state, not the hook — that
@@ -413,8 +419,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                 <ThreadIcon /><span>Start Thread</span>
               </button>
             )}
-            {!isDm && message.thread_id && onOpenThread && (
-              <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onOpenThread(message.thread_id!) }}>
+            {!isDm && threadId && onOpenThread && (
+              <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onOpenThread(threadId) }}>
                 <ThreadIcon /><span>Open Thread</span>
               </button>
             )}
@@ -453,132 +459,20 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
       <>
       <article className={`${s.dmRow} ${isOwn ? s.dmRowOwn : ''}`}>
         <div className={`${s.dmCard} ${isOwn ? s.dmCardOwn : ''}`}>
-          {/* Header: sender on left, actions on right */}
+          {/* Header: sender on left, shared toolbar on right */}
           <div className={s.dmHeader}>
             <div className={s.dmHeaderSender}>
               <Avatar url={message.avatarUrl} name={message.author} size="xs" userId={message.author_id} className={s.dmAvatar} color={message.color} />
               <span className={`${s.dmAuthor} txt-body txt-semibold`}>{message.author}</span>
               <span className={`${s.dmTimeBadge} txt-tiny`}>{message.time}</span>
             </div>
-
-            <div className={`${s.dmActions} ${anyOpen ? s.dmActionsVisible : ''}`}>
-              {canAddReactions && (
-              <div className={s.actionWrap}>
-                <button
-                  ref={emojiTriggerRef}
-                  className={s.dmActionBtn}
-                  title="Add reaction"
-                  onClick={() => {
-                    if (!showEmoji && emojiTriggerRef.current) {
-                      const r = emojiTriggerRef.current.getBoundingClientRect()
-                      setPickerPos({ top: r.top, left: r.left + r.width / 2 })
-                    }
-                    setShowEmoji(v => !v)
-                    setShowMore(false)
-                  }}
-                >
-                  <EmojiAddIcon />
-                </button>
-              </div>
-              )}
-              {showEmoji && (
-                <EmojiPickerPopup
-                  position={{ top: pickerPos.top, left: pickerPos.left }}
-                  onSelect={(emoji) => handleReactionClick(emoji)}
-                  onClose={() => setShowEmoji(false)}
-                  anchor={emojiTriggerRef}
-                />
-              )}
-
-              {onReply && <button className={s.dmActionBtn} title="Reply" onClick={onReply}><ReplyIcon /></button>}
-
-              <div ref={moreRef} className={s.actionWrap}>
-                <button
-                  className={`${s.dmActionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
-                  title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
-                  onClick={(e) => {
-                    if (canShiftRemove && e.shiftKey) {
-                      e.stopPropagation()
-                      handleShiftRemove()
-                      return
-                    }
-                    const r = e.currentTarget.getBoundingClientRect()
-                    setMoreTriggerPos({ x: r.right, y: r.bottom + 4 })
-                    setShowMore(v => !v)
-                    setShowEmoji(false)
-                  }}
-                >
-                  {shiftDeleteArmed ? <TrashIcon /> : <MoreIcon />}
-                </button>
-                {showMore && createPortal(
-                  <div
-                    ref={moreMenuRef}
-                    className={s.moreMenu}
-                    style={{ position: 'fixed', top: morePos.y, left: morePos.x - 184 }}
-                  >
-                    <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
-                      <ReplyIcon /><span>Reply</span>
-                    </button>
-                    {isOwn && (
-                      <button role="menuitem" className={s.menuItem} onClick={startEdit}>
-                        <EditIcon /><span>Edit Message</span>
-                      </button>
-                    )}
-                    <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
-                      <CopyIcon /><span>Copy Text</span>
-                    </button>
-                    {canManageMessages && onPin && (
-                      <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
-                        <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
-                      </button>
-                    )}
-                    <div className={s.menuDivider} />
-                    {isOwn ? (
-                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleNormalDeleteClick}>
-                        <TrashIcon /><span>Delete Message</span>
-                      </button>
-                    ) : canHideForMe ? (
-                      <button
-                        role="menuitem"
-                        className={`${s.menuItem} ${s.danger}`}
-                        onClick={() => { setShowMore(false); onHideForMe?.() }}
-                      >
-                        <TrashIcon /><span>Delete for me</span>
-                      </button>
-                    ) : (
-                      <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
-                        <FlagIcon /><span>Report Message</span>
-                      </button>
-                    )}
-                  </div>,
-                  document.body,
-                )}
-              </div>
-            </div>
+            {toolbar}
           </div>
 
           {/* Body */}
           <div className={s.dmBody}>
             {replyBlock}
-            {isEditing ? (
-              <div className={s.editWrap}>
-                <div
-                  ref={editRef}
-                  className={`${s.editInput} txt-body`}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onKeyDown={handleEditKeyDown}
-                />
-                <span className={`${s.editHint} txt-tiny`}>
-                  escape to <button className={s.editHintBtn} onClick={cancelEdit}>cancel</button> · enter to <button className={s.editHintBtn} onClick={saveEdit}>save</button>
-                </span>
-              </div>
-            ) : (
-              <div className={`${s.text} txt-body`}>
-                <MessageContent content={decrypting ? '...' : messageContent} serverId={serverId} />
-                {editedTag}
-              </div>
-            )}
+            {textContent}
             {attachmentsBlock}
             {embedsBlock}
             {pollBlock}
@@ -610,8 +504,9 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     )
   }
 
-  const handleAuthorClick = onOpenAuthorProfile && message.author_id
-    ? (e: React.MouseEvent) => onOpenAuthorProfile(message.author_id!, e)
+  const authorId = message.author_id
+  const handleAuthorClick = onOpenAuthorProfile && authorId
+    ? (e: React.MouseEvent) => onOpenAuthorProfile(authorId, e)
     : undefined
 
   return (
@@ -640,6 +535,18 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     {deleteDialog}
     </>
   )
+}
+
+function ReplyPreview({ replyTo, isDm }: { replyTo: NonNullable<MessageVM['replyTo']>; isDm: boolean }) {
+  const { displayContent, decrypting } = useDecryptedContent(
+    replyTo.text,
+    replyTo.nonce ?? null,
+    isDm,
+    replyTo.channelId ?? '',
+  )
+  const text = decrypting ? '…' : (displayContent || '')
+  const trimmed = text.length > 80 ? text.slice(0, 80) + '…' : text
+  return <span className={`${s.replyPreview} txt-tiny`}>{trimmed}</span>
 }
 
 /* ─── Icons ─── */

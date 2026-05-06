@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, ChevronDown, MessageCircle, UserPlus, UserMinus, Ban, Pencil } from 'lucide-react';
@@ -42,7 +42,7 @@ export interface ProfileCardProps {
 
 export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
   const { userId, user: preloaded, x, y } = state;
-  const anchor = { x, y };
+  const anchor = useMemo(() => ({ x, y }), [x, y]);
   const navigate = useNavigate();
   const currentUser = useAuthStore((st) => st.user);
   const presenceStatus = usePresenceStore((st) => st.statuses[userId]);
@@ -214,7 +214,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
     <>
       <div className={s.scrim} onClick={onClose} />
       <div ref={cardRef} className={s.card} role="dialog" aria-label={`${displayName} profile`}>
-        <div className={s.banner} style={{ background: bannerColor }} />
+        <div className={s.banner} style={{ '--banner-color': bannerColor } as React.CSSProperties} />
 
         <div className={s.avatarWrap}>
           <Avatar
@@ -223,7 +223,6 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
             size="2xl"
             status={status}
             userId={user.id}
-            color={bannerColor}
           />
         </div>
 

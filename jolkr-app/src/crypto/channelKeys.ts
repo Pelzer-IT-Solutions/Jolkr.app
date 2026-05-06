@@ -15,6 +15,9 @@ import { encryptForRecipient, decryptFromSender } from './e2ee';
 import { encryptMessage, decryptMessage, toBase64, fromBase64 } from './keys';
 import type { LocalKeySet } from './keys';
 import { getRecipientBundle, isE2EEReady } from '../services/e2ee';
+import { useMessagesStore } from '../stores/messages';
+import { wsClient } from '../api/ws';
+import { log } from '../utils/log';
 
 /** Create a clean ArrayBuffer copy (TS strict ArrayBufferLike compat). */
 function toArrayBuffer(data: Uint8Array): ArrayBuffer {
@@ -26,6 +29,7 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
 interface CachedChannelKey {
   key: CryptoKey;
   keyGeneration: number;
+  rawKey: Uint8Array;
 }
 
 const channelKeyCache = new Map<string, CachedChannelKey>();
@@ -74,12 +78,50 @@ export async function getChannelKey(
       ['encrypt', 'decrypt'],
     );
 
-    const entry: CachedChannelKey = { key, keyGeneration: serverKey.key_generation };
+    const entry: CachedChannelKey = { key, keyGeneration: serverKey.key_generation, rawKey: rawKeyBytes };
     channelKeyCache.set(channelId, entry);
     return entry;
   } catch (e) {
-    console.warn('Channel E2EE: Key exists but decrypt failed for channel', channelId, e);
+    log.warn('channel-e2ee', 'key exists but decrypt failed for channel', channelId, e);
     throw new ChannelKeyDecryptError(channelId, e);
+  }
+}
+
+export async function redistributeChannelKey(
+  channelId: string,
+  memberUserIds: string[],
+  rawKeyBytes: Uint8Array,
+  keyGeneration: number,
+  isDm?: boolean,
+): Promise<void> {
+  if (!isE2EEReady()) return;
+  if (memberUserIds.length === 0) return;
+
+  const recipients: Array<{ user_id: string; encrypted_key: string; nonce: string }> = [];
+  const rawKeyB64 = toBase64(rawKeyBytes);
+
+  for (const userId of memberUserIds) {
+    try {
+      const bundle = await getRecipientBundle(userId);
+      if (!bundle) continue;
+      const encrypted = await encryptForRecipient(bundle, rawKeyB64);
+      if (!encrypted) continue;
+      recipients.push({
+        user_id: userId,
+        encrypted_key: encrypted.encryptedContent,
+        nonce: encrypted.nonce,
+      });
+    } catch {
+      log.warn('channel-e2ee', 'failed to re-wrap key for member', userId);
+    }
+  }
+
+  if (recipients.length === 0) return;
+
+  try {
+    await api.distributeChannelKeys(channelId, { key_generation: keyGeneration, recipients }, isDm);
+  } catch (e) {
+    log.warn('channel-e2ee', 'failed to re-distribute channel keys:', e);
   }
 }
 
@@ -119,12 +161,12 @@ export async function generateAndDistributeChannelKey(
         nonce: encrypted.nonce,
       });
     } catch {
-      console.warn(`Channel E2EE: Failed to encrypt key for member ${userId}`);
+      log.warn('channel-e2ee', 'failed to encrypt key for member', userId);
     }
   }
 
   if (recipients.length === 0) {
-    console.warn('Channel E2EE: No recipients could receive the key');
+    log.warn('channel-e2ee', 'no recipients could receive the key');
     return null;
   }
 
@@ -135,7 +177,7 @@ export async function generateAndDistributeChannelKey(
       recipients,
     }, isDm);
   } catch (e) {
-    console.warn('Channel E2EE: Failed to upload channel keys:', e);
+    log.warn('channel-e2ee', 'failed to upload channel keys:', e);
     return null;
   }
 
@@ -148,7 +190,7 @@ export async function generateAndDistributeChannelKey(
     ['encrypt', 'decrypt'],
   );
 
-  const entry: CachedChannelKey = { key, keyGeneration };
+  const entry: CachedChannelKey = { key, keyGeneration, rawKey: rawKeyBytes };
   channelKeyCache.set(channelId, entry);
   return entry;
 }
@@ -175,30 +217,43 @@ export async function encryptChannelMessage(
       // A key exists on the server but we can't decrypt it.
       // Don't generate a new key — that would overwrite the existing one
       // and make old messages permanently undecryptable.
-      console.error('Channel E2EE: Cannot send — existing key undecryptable. Re-login may fix this.');
+      log.error('channel-e2ee', 'cannot send — existing key undecryptable; re-login may fix this');
       return null;
     }
     throw e;
   }
 
   if (!channelKey) {
-    // No key exists yet — we generate and distribute
-    // Query the server's current key generation to avoid creating orphaned keys
-    let generation = 0;
-    try {
-      if (!isDm) {
+    if (isDm) {
+      const dmMsgs = useMessagesStore.getState().messages[channelId] ?? [];
+      const hasHistory = dmMsgs.some(m => !!m.nonce);
+      if (hasHistory) {
+        wsClient.requestKeyRedistribute(channelId);
+        log.error('channel-e2ee', 'cannot send DM — wrap missing; requested redistribute from counterparty');
+        return null;
+      }
+      const memberIds = await getMemberIds();
+      channelKey = await generateAndDistributeChannelKey(channelId, memberIds, 0, isDm);
+      if (!channelKey) return null;
+    } else {
+      let generation = 0;
+      try {
         const genResp = await api.getChannelKeyGeneration(channelId);
         generation = genResp.key_generation;
-      }
-    } catch {
-      // Fallback to 0 if endpoint fails
+      } catch { /* Fallback to 0 */ }
+      const memberIds = await getMemberIds();
+      channelKey = await generateAndDistributeChannelKey(channelId, memberIds, generation, isDm);
+      if (!channelKey) return null;
     }
-    const memberIds = await getMemberIds();
-    channelKey = await generateAndDistributeChannelKey(channelId, memberIds, generation, isDm);
-    if (!channelKey) return null;
   }
 
   const { ciphertext, nonce } = await encryptMessage(channelKey.key, plaintext);
+
+  if (isDm) {
+    const memberIds = await getMemberIds();
+    redistributeChannelKey(channelId, memberIds, channelKey.rawKey, channelKey.keyGeneration, isDm)
+      .catch(() => { /* best-effort heal of missing wraps */ });
+  }
 
   return {
     encryptedContent: toBase64(ciphertext),

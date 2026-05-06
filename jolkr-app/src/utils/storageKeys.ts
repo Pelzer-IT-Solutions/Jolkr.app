@@ -50,6 +50,13 @@ export const STORAGE_KEYS = {
 
   // ── Internal — Stronghold vault password (sessionStorage on web) ─
   VAULT_PASSWORD: 'jolkr_vault_key',
+
+  // ── Internal — vault rotation marker (SEC-011, 2026-05-04) ───────
+  // Presence of this key signals the legacy `'io.jolkr.app'` snapshot
+  // has been deleted and a fresh per-install vault has been opened.
+  // Set once after a successful first-init; checked in `_init()` to
+  // gate the one-shot delete.
+  VAULT_MIGRATION_V2: 'jolkr_vault_migration_v2',
 } as const;
 
 /** Legacy storage-key migrations applied once at app boot. */

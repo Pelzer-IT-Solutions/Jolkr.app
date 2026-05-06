@@ -29,10 +29,9 @@ export default function LinkEmbed({ embed }: LinkEmbedProps) {
         <div className={s.imageWrap}>
           {!imgLoaded && <div className={s.imagePlaceholder} />}
           <img
-            className={s.image}
+            className={`${s.image} ${imgLoaded ? s.imageLoaded : ''}`}
             src={embed.image_url}
             alt=""
-            style={{ opacity: imgLoaded ? 1 : 0 }}
             loading="lazy"
             onLoad={() => setImgLoaded(true)}
             onError={() => setImgErrored(true)}
