@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import type React from 'react'
 import type { ServerTheme } from '../types'
+import { buildOrbBackground } from './theme'
 
 const DURATION = 1200
 
@@ -94,19 +95,7 @@ function tween(from: ThemeSnap, to: ThemeSnap, t: number): ThemeSnap {
 }
 
 function buildBg(st: ThemeSnap, dark: boolean): string {
-  const baseL = dark ? '11%' : '91.5%'
-  if (st.intensity < 0.001) return `oklch(${baseL} 0 0)`
-
-  const orbL  = dark ? '36%' : '83%'
-  const orbC  = (dark ? 0.10 : 0.11) * st.intensity
-  const blendOrbA = (dark ? 0.95 : 0.92) * st.intensity
-  const baseC = (dark ? 0.018 : 0.021) * st.intensity
-
-  const grads = st.orbs.map(o => {
-    const spread = 72 * o.scale
-    return `radial-gradient(circle farthest-corner at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / ${blendOrbA.toFixed(4)}) 0%, oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / 0) ${spread.toFixed(1)}%)`
-  })
-  return [...grads, `oklch(${baseL} ${baseC.toFixed(4)} ${st.baseHue.toFixed(1)})`].join(', ')
+  return buildOrbBackground(st.orbs, { baseHue: st.baseHue, intensity: st.intensity, isDark: dark })
 }
 
 /* ── Token computation + :root sync ── */

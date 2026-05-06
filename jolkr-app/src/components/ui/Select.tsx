@@ -1,4 +1,4 @@
-import { forwardRef, type SelectHTMLAttributes } from 'react'
+import { type SelectHTMLAttributes, type Ref } from 'react'
 import s from './Select.module.css'
 
 /**
@@ -10,12 +10,11 @@ import s from './Select.module.css'
  * Use this anywhere a dropdown is needed — don't reach for a raw `<select>`
  * in feature code.
  */
-type SelectProps = SelectHTMLAttributes<HTMLSelectElement>
+type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  ref?: Ref<HTMLSelectElement>
+}
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { className, ...rest },
-  ref,
-) {
+export function Select({ className, ref, ...rest }: SelectProps) {
   return (
     <select
       ref={ref}
@@ -23,6 +22,6 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       {...rest}
     />
   )
-})
+}
 
 export default Select
