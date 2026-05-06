@@ -51,9 +51,10 @@ export async function initTokens() {
   if (checkLogoutFlag()) {
     accessToken = null;
     refreshToken = null;
-    // Keep retrying cleanup in case Stronghold save didn't finish
-    await storage.remove('access_token').catch(() => {});
-    await storage.remove('refresh_token').catch(() => {});
+    // Best-effort cleanup — Stronghold may still be opening on cold start;
+    // log so a stuck logout-flag is diagnosable from the console.
+    await storage.remove('access_token').catch((e) => console.debug('[auth] token cleanup (access)', e));
+    await storage.remove('refresh_token').catch((e) => console.debug('[auth] token cleanup (refresh)', e));
     return;
   }
   accessToken = await storage.get('access_token');

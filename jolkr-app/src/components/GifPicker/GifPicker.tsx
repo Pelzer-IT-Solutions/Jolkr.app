@@ -8,6 +8,7 @@ import type { GifFavorite } from '../../api/types'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useColorMode } from '../../utils/colorMode'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { logErr } from '../../utils/logErr'
 import s from './GifPicker.module.css'
 
 const apiBase = getApiBaseUrl().replace(/\/api$/, '')
@@ -52,7 +53,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
   useEffect(() => {
     getGifCategories()
       .then((data) => setCategories(data.tags ?? []))
-      .catch(() => {})
+      .catch((e) => logErr('GifPicker.loadCategories', e))
   }, [])
 
   // Load favorites on mount
@@ -63,7 +64,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
         // Also populate the shared store
         useGifFavoritesStore.setState({ ids: new Set(favs.map((f) => f.gif_id)), loaded: true })
       })
-      .catch(() => {})
+      .catch((e) => logErr('GifPicker.loadFavorites', e))
   }, [])
 
   const parseTenorResults = (results: TenorResult[]): GifItem[] =>

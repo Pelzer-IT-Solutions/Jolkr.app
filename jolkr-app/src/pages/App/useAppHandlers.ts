@@ -12,6 +12,7 @@ import { useMessagesStore } from '../../stores/messages'
 import { useVoiceStore } from '../../stores/voice'
 import { useToast } from '../../stores/toast'
 import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
+import { logErr } from '../../utils/logErr'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -429,7 +430,7 @@ export function useAppHandlers(
     } catch (e) {
       console.warn('Channel reorder failed, refetching to recover:', e)
       // On error, force a refetch so the UI snaps back to the server's truth
-      await fetchChannels(activeServerId).catch(() => {})
+      await fetchChannels(activeServerId).catch((e2) => logErr('useAppHandlers.reorderChannels.recover', e2))
     }
   }, [activeServerId, fetchChannels])
 

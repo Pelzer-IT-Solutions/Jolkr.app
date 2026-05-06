@@ -9,6 +9,8 @@ import type { User, MessageEmbed } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useShiftKey } from '../../hooks/useShiftKey'
 import { useAuthStore } from '../../stores/auth'
+import { useToast } from '../../stores/toast'
+import { logErr } from '../../utils/logErr'
 import { useMenuPosition } from '../../utils/position'
 import { emojiToImgUrl } from '../../utils/emoji'
 import { parseVideoUrl, getYouTubeThumbnail, getPlatformName, getPlatformColor } from '../../utils/videoUrl'
@@ -135,7 +137,10 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   }
 
   function handleCopyText() {
-    navigator.clipboard.writeText(messageContent).catch(() => {})
+    navigator.clipboard.writeText(messageContent).catch((e) => {
+      logErr('Message.copyText', e)
+      useToast.getState().show('Copy failed', 'error')
+    })
     setShowMore(false)
   }
 

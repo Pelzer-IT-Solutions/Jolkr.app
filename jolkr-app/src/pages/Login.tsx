@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
+import { useToast } from '../stores/toast';
 import * as api from '../api/client';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
@@ -51,10 +52,12 @@ export default function Login() {
       const pendingAdd = sessionStorage.getItem(STORAGE_KEYS.PENDING_ADD_FRIEND);
       if (pendingAdd) {
         sessionStorage.removeItem(STORAGE_KEYS.PENDING_ADD_FRIEND);
-        // Best-effort — failures (already friends, blocked, expired user) are
-        // surfaced by the deep-link handler the next time the user opens the
-        // friends panel; we don't want to block login on it.
-        api.sendFriendRequest(pendingAdd).catch(() => {});
+        // Best-effort — but surface failures as a toast so the user knows the
+        // friend-add (already friends, blocked, expired user) didn't land.
+        api.sendFriendRequest(pendingAdd).catch((e) => {
+          const msg = e instanceof Error ? e.message : 'Friend request could not be sent';
+          useToast.getState().show(msg, 'error');
+        });
       }
 
       navigate('/');

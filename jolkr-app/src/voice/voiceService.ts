@@ -483,6 +483,9 @@ export class VoiceService {
         const prefs = voicePrefs.get();
         audio.volume = clampVolume(prefs.outputVolume);
         applySinkId(audio, prefs.audioOutputDeviceId);
+        // Autoplay can be blocked by browser policy when no user gesture has
+        // happened yet — that's recoverable (user clicks anything → unblock)
+        // and not worth a console line. Intentional silent catch.
         audio.play().catch(() => {});
         this.audioElements.push(audio);
       } else if (ev.track.kind === 'video' && userId) {
@@ -546,6 +549,8 @@ export class VoiceService {
     this.inputGainNode?.disconnect();
     this.inputGainNode = null;
     if (this.inputAudioCtx) {
+      // Closing an already-closed AudioContext throws InvalidStateError; this
+      // path is reached on cleanup-after-cleanup. Intentional silent catch.
       this.inputAudioCtx.close().catch(() => {});
       this.inputAudioCtx = null;
     }

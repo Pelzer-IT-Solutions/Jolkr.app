@@ -8,6 +8,7 @@ import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { getLocalKeys } from '../../services/e2ee'
 import { displayName } from '../../utils/format'
+import { logErr } from '../../utils/logErr'
 import s from './ThreadPanel.module.css'
 
 interface Props {
@@ -64,8 +65,10 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
   useEffect(() => {
     if (!threadId) return
     let cancelled = false
-    api.getThread(threadId).then(t => { if (!cancelled) setThread(t) }).catch(() => {})
-    fetchThreadMessages(threadId).catch(() => {})
+    api.getThread(threadId)
+      .then(t => { if (!cancelled) setThread(t) })
+      .catch((e) => logErr('ThreadPanel.getThread', e))
+    fetchThreadMessages(threadId).catch((e) => logErr('ThreadPanel.fetchMessages', e))
     return () => { cancelled = true }
   }, [threadId, fetchThreadMessages])
 

@@ -146,6 +146,8 @@ function DeepLinkHandler() {
   userRef.current = user;
 
   useEffect(() => {
+    // Register the handler FIRST so any URL emitted during init() — including
+    // the cold-start URL drained by getCurrent() — is captured.
     onDeepLink(async (path, params) => {
       if (path === 'invite' && params.code) {
         if (!userRef.current) {
@@ -178,7 +180,10 @@ function DeepLinkHandler() {
       }
     });
 
-    initDeepLinks();
+    // THEN init: drains the cold-start queue + starts the live listener.
+    // Capture the rejection so a Tauri-plugin failure doesn't become an
+    // unhandled-promise warning during startup.
+    initDeepLinks().catch((e) => console.warn('[deeplink] init failed', e));
   }, [navigate]); // stable deps only — user read from ref, fetchServers from getState()
 
   return null;
