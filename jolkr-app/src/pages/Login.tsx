@@ -190,7 +190,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   button: {
     background: 'var(--accent)',
-    color: '#fff',
+    color: 'var(--text-on-accent)',
     border: 'none',
     borderRadius: '0.5rem',
     padding: '0.625rem',

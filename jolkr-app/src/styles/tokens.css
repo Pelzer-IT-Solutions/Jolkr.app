@@ -229,6 +229,12 @@
 
   /* Warning accent (amber) — theme-independent */
   --accent-warning: oklch(72% 0.15 75);
+
+  /* Text/icons drawn on top of a colored fill (--accent, --danger-default,
+     status badges, primary buttons, modal headers with accent backgrounds).
+     Always near-white regardless of light/dark mode because the underlying
+     fill is itself theme-independent. */
+  --text-on-accent: #fff;
 }
 
 /* ─── Dark mode overrides ────────────────────────────────────────────── */

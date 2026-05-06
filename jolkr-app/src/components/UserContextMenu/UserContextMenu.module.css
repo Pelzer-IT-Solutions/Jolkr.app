@@ -45,7 +45,7 @@
   justify-content: center;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-on-accent);
   overflow: hidden;
 }
 
@@ -171,7 +171,7 @@
   justify-content: center;
   font-size: 0.5rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-on-accent);
   flex-shrink: 0;
   overflow: hidden;
 }

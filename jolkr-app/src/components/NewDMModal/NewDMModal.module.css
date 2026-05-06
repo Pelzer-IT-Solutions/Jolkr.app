@@ -182,7 +182,7 @@
   justify-content: center;
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-on-accent);
   flex-shrink: 0;
   position: relative;
 }
@@ -249,7 +249,7 @@
   padding: 0 1rem;
   border-radius: 0.5rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;

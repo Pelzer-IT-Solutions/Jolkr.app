@@ -57,7 +57,7 @@
 }
 .toolBtn:hover:not(:disabled) {
   background: oklch(0% 0 0 / 0.75);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 .toolBtn:disabled {
   opacity: 0.3;
@@ -65,7 +65,7 @@
 }
 .toolBtnActive {
   background: oklch(100% 0 0 / 0.18);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 /* ── More-options dropdown ── */
@@ -139,7 +139,7 @@
 }
 .navBtn:hover {
   background: oklch(0% 0 0 / 0.75);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 .navBtnLeft  { left: 1rem; }
 .navBtnRight { right: 1rem; }

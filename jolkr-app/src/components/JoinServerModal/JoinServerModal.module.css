@@ -160,7 +160,7 @@
   padding: 0 1rem;
   border-radius: 0.5rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-weight: 500;
   transition: opacity var(--transition);
 }

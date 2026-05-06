@@ -117,7 +117,7 @@
   border-radius: 0.5rem;
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   cursor: pointer;
   transition: opacity var(--transition);
 }

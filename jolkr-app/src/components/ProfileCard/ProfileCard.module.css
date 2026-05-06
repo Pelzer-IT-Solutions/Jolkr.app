@@ -189,7 +189,7 @@
 
 .btnPrimary {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 .btnPrimary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
 
