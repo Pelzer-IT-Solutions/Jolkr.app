@@ -7,7 +7,7 @@ import { getBasename } from './platform/config';
 import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
-import { useToast } from './components/Toast';
+import { useToast } from './stores/toast';
 import { requestNotificationPermission } from './services/notifications';
 import { startUnreadBadge } from './services/unreadBadge';
 import { registerPush } from './services/pushRegistration';

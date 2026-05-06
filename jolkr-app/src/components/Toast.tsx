@@ -1,24 +1,7 @@
 import { useEffect, useState } from 'react';
-import { create } from 'zustand';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { useToast } from '../stores/toast';
 import s from './Toast.module.css';
-
-interface ToastState {
-  message: string | null;
-  kind: 'info' | 'success' | 'error';
-  duration: number;
-  show: (message: string, kind?: 'info' | 'success' | 'error', duration?: number) => void;
-  clear: () => void;
-}
-
-export const useToast = create<ToastState>((set) => ({
-  message: null,
-  kind: 'info',
-  duration: 3000,
-  show: (message, kind = 'info', duration?: number) =>
-    set({ message, kind, duration: duration ?? (kind === 'error' ? 5000 : 3000) }),
-  clear: () => set({ message: null }),
-}));
 
 export default function Toast() {
   const message = useToast((s) => s.message);
@@ -26,10 +9,16 @@ export default function Toast() {
   const duration = useToast((s) => s.duration);
   const clear = useToast((s) => s.clear);
   const [closing, setClosing] = useState(false);
+  // Reset `closing` when a new message arrives — React 19 store-prev pattern
+  // avoids the set-state-in-effect rule's cascading-render concern.
+  const [prevMessage, setPrevMessage] = useState(message);
+  if (message !== prevMessage) {
+    setPrevMessage(message);
+    setClosing(false);
+  }
 
   useEffect(() => {
     if (!message) return;
-    setClosing(false);
     const timer = setTimeout(() => setClosing(true), duration);
     return () => clearTimeout(timer);
   }, [message, duration]);
