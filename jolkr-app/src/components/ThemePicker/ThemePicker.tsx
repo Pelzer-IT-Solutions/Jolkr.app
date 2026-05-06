@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import type { ServerTheme } from '../../types'
@@ -63,10 +63,12 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
     return () => document.removeEventListener('mousedown', handle)
   }, [open])
 
-  // Clear selection when closing
-  useEffect(() => {
+  // Clear selection when closing — store-prev pattern.
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
     if (!open) setSelectedOrbId(null)
-  }, [open])
+  }
 
   // Global mouse up handler for hue dragging
   useEffect(() => {
@@ -78,6 +80,32 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
     return () => document.removeEventListener('mouseup', handleMouseUp)
   }, [isDraggingHue])
 
+  // Calculate hue from wheel position
+  const hueFromWheelPoint = useCallback((centerX: number, centerY: number, clientX: number, clientY: number): number => {
+    const dx = clientX - centerX
+    const dy = clientY - centerY
+    const angle = Math.atan2(dy, dx)
+    let hue = (angle * 180 / Math.PI + 90) % 360
+    if (hue < 0) hue += 360
+    return Math.round(hue)
+  }, [])
+
+  const handleHueWheelMove = useCallback((e: MouseEvent) => {
+    if (!selectedOrbId || !hueWheelRef.current) return
+
+    const rect = hueWheelRef.current.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+
+    const newHue = hueFromWheelPoint(centerX, centerY, e.clientX, e.clientY)
+
+    onChange({
+      ...theme,
+      hue: null,
+      orbs: theme.orbs.map(o => o.id === selectedOrbId ? { ...o, hue: newHue } : o),
+    })
+  }, [selectedOrbId, theme, onChange, hueFromWheelPoint])
+
   // Global mouse move handler for hue dragging
   useEffect(() => {
     if (!isDraggingHue || !selectedOrbId || !hueWheelRef.current) return
@@ -86,7 +114,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
     }
     document.addEventListener('mousemove', handleMouseMove)
     return () => document.removeEventListener('mousemove', handleMouseMove)
-  }, [isDraggingHue, selectedOrbId])
+  }, [isDraggingHue, selectedOrbId, handleHueWheelMove])
 
   function openPicker() {
     if (triggerRef.current) {
@@ -130,16 +158,6 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
     document.addEventListener('mouseup',   onUp)
   }
 
-  // Calculate hue from wheel position
-  function hueFromWheelPoint(centerX: number, centerY: number, clientX: number, clientY: number): number {
-    const dx = clientX - centerX
-    const dy = clientY - centerY
-    const angle = Math.atan2(dy, dx)
-    let hue = (angle * 180 / Math.PI + 90) % 360
-    if (hue < 0) hue += 360
-    return Math.round(hue)
-  }
-
   // Handle hue wheel click/drag
   function handleHueWheelDown(e: React.MouseEvent) {
     e.preventDefault()
@@ -148,22 +166,6 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
 
     setIsDraggingHue(true)
     handleHueWheelMove(e.nativeEvent)
-  }
-
-  function handleHueWheelMove(e: MouseEvent) {
-    if (!selectedOrbId || !hueWheelRef.current) return
-
-    const rect = hueWheelRef.current.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
-
-    const newHue = hueFromWheelPoint(centerX, centerY, e.clientX, e.clientY)
-
-    onChange({
-      ...theme,
-      hue: null,
-      orbs: theme.orbs.map(o => o.id === selectedOrbId ? { ...o, hue: newHue } : o),
-    })
   }
 
   // Handle scroll for orb sizing

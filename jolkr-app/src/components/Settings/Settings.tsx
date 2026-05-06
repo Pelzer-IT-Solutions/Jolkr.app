@@ -8,7 +8,7 @@ import type { DmFilter } from '../../api/types'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import { Select } from '../ui/Select'
 import { useAuthStore } from '../../stores/auth'
-import { useToast } from '../Toast'
+import { useToast } from '../../stores/toast'
 import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
 import { ensureNotificationPermission } from '../../services/notifications'
 import { STORAGE_KEYS } from '../../utils/storageKeys'
@@ -146,8 +146,14 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   const [pendingAvatarKey, setPendingAvatarKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Sync editedProfile when user prop changes (e.g., after save)
-  useEffect(() => {
+  // Sync editedProfile when user prop changes (e.g., after save) — store-prev
+  // pattern keeps the reset behavior without triggering set-state-in-effect.
+  // Track the user-version + isEditing combo so we resync only when the user
+  // actually changed AND we're not in the middle of editing.
+  const userKey = `${user?.displayName ?? ''}|${user?.bio ?? ''}|${user?.bannerColor ?? user?.avatarColor ?? ''}|${user?.avatarUrl ?? ''}|${isEditing}`
+  const [prevUserKey, setPrevUserKey] = useState(userKey)
+  if (userKey !== prevUserKey) {
+    setPrevUserKey(userKey)
     if (!isEditing) {
       setEditedProfile({
         display_name: user?.displayName ?? '',
@@ -157,7 +163,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       })
       setPendingAvatarKey(null)
     }
-  }, [user, isEditing])
+  }
 
   const handleSave = async () => {
     try {
@@ -623,6 +629,9 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
   useEffect(() => {
     let cancelled = false
     let stream: MediaStream | null = null
+    // Capture the videoRef DOM node at effect-setup time so the cleanup uses
+    // the same node it attached to, even if the ref points elsewhere later.
+    const node = videoRef.current
 
     navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -634,7 +643,7 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
     }).then((s) => {
       if (cancelled) { s.getTracks().forEach((t) => t.stop()); return }
       stream = s
-      if (videoRef.current) videoRef.current.srcObject = s
+      if (node) node.srcObject = s
       setError(null)
     }).catch((e: Error) => {
       if (!cancelled) setError(e.message || 'Camera unavailable')
@@ -643,7 +652,7 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
     return () => {
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
-      if (videoRef.current) videoRef.current.srcObject = null
+      if (node) node.srcObject = null
     }
   }, [deviceId])
 

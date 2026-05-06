@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { DependencyList } from 'react'
 import { revealWindowMs } from '../utils/animations'
 
@@ -19,16 +19,24 @@ export function useRevealAnimation(
   durationMs?: number,
 ): boolean {
   const [isRevealing, setIsRevealing] = useState(active)
+  // Store the previous deps as a stringified key so we can react to changes
+  // during render (the canonical "reset state when X changes" pattern in
+  // React 19; an effect-body setState would trigger react-hooks/set-state-in-effect).
+  const depsKey = JSON.stringify(deps)
+  const [prevDepsKey, setPrevDepsKey] = useState(depsKey)
+  if (depsKey !== prevDepsKey) {
+    setPrevDepsKey(depsKey)
+    if (active) setIsRevealing(true)
+  }
 
-  useLayoutEffect(() => {
-    if (!active) return
-    setIsRevealing(true)
+  useEffect(() => {
+    if (!active || !isRevealing) return
     const timer = setTimeout(
       () => setIsRevealing(false),
       durationMs ?? revealWindowMs(totalItems),
     )
     return () => clearTimeout(timer)
-  }, deps) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active, isRevealing, durationMs, totalItems])
 
   return isRevealing
 }

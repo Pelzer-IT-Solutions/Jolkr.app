@@ -38,7 +38,7 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [embed.title, videoInfo.platform, videoInfo.id, videoInfo.kind]);
+  }, [embed.title, embed.url, videoInfo.platform, videoInfo.id, videoInfo.kind]);
 
   const thumbnailUrl = embed.image_url || (videoInfo.platform === 'youtube' && videoInfo.id ? getYouTubeThumbnail(videoInfo.id) : null);
 
@@ -165,7 +165,12 @@ function IframePlayer({ src, title }: { src: string; title: string }) {
 
 function NMVideoPlayer({ src, title, image }: { src: string; title: string; image: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const player = useNMPlayer({ src, title, image, autoPlay: true });
+  // Destructure the player so we don't read `.field` on an object whose shape
+  // includes a ref (which the react-hooks/refs rule flags as a ref read).
+  const {
+    containerRef, isPlaying, currentTime, duration, volume, isMuted, isReady, isBuffering, error,
+    togglePlay, toggleMute, seek, requestFullscreen,
+  } = useNMPlayer({ src, title, image, autoPlay: true });
   const [showControls, setShowControls] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -174,39 +179,39 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
   const scheduleHide = useCallback(() => {
     clearTimeout(hideTimerRef.current);
     setShowControls(true);
-    if (player.isPlaying) hideTimerRef.current = setTimeout(() => setShowControls(false), 3000);
-  }, [player.isPlaying]);
+    if (isPlaying) hideTimerRef.current = setTimeout(() => setShowControls(false), 3000);
+  }, [isPlaying]);
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!player.duration) return;
+    if (!duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    player.seek(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * player.duration);
+    seek(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * duration);
   };
 
   const toggleFullscreen = () => {
-    player.requestFullscreen(wrapperRef.current);
+    requestFullscreen(wrapperRef.current);
   };
 
-  if (player.error) return <div className={s.errorMsg}>{player.error}</div>;
+  if (error) return <div className={s.errorMsg}>{error}</div>;
 
-  const isLive = player.duration > 0 ? false : player.isReady;
+  const isLive = duration > 0 ? false : isReady;
 
   return (
-    <div ref={wrapperRef} className={s.nmWrap} onMouseMove={scheduleHide} onMouseLeave={() => { if (player.isPlaying) setShowControls(false); }}>
-      <div ref={player.containerRef} className={s.nmContainer} onClick={player.togglePlay} />
-      {player.isBuffering && <div className={s.bufferOverlay}><Spinner size="lg" /></div>}
+    <div ref={wrapperRef} className={s.nmWrap} onMouseMove={scheduleHide} onMouseLeave={() => { if (isPlaying) setShowControls(false); }}>
+      <div ref={containerRef} className={s.nmContainer} onClick={togglePlay} />
+      {isBuffering && <div className={s.bufferOverlay}><Spinner size="lg" /></div>}
       {isLive && <div className={s.liveBadge}><span className={s.liveDot} />LIVE</div>}
       <div className={s.controls} data-hidden={!showControls}>
         {!isLive && (
           <div className={s.progressBar} onClick={handleSeek}>
-            <div className={s.progressFill} style={{ width: `${player.duration > 0 ? (player.currentTime / player.duration) * 100 : 0}%` }} />
+            <div className={s.progressFill} style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} />
           </div>
         )}
         <div className={s.controlsRow}>
-          <button className={s.controlBtn} onClick={player.togglePlay}>{player.isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}</button>
-          <span className={s.timeLabel}>{isLive ? 'LIVE' : `${fmt(player.currentTime)} / ${fmt(player.duration)}`}</span>
+          <button className={s.controlBtn} onClick={togglePlay}>{isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}</button>
+          <span className={s.timeLabel}>{isLive ? 'LIVE' : `${fmt(currentTime)} / ${fmt(duration)}`}</span>
           <div className={s.spacer} />
-          <button className={s.controlBtn} onClick={player.toggleMute}>{player.isMuted || player.volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
+          <button className={s.controlBtn} onClick={toggleMute}>{isMuted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}</button>
           <button className={s.controlBtn} onClick={toggleFullscreen}><Maximize size={16} /></button>
         </div>
       </div>

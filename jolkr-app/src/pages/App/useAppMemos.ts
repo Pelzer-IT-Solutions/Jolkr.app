@@ -105,10 +105,16 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
 
   // ── Transform: messages → UI ──
   const effectiveChannelId = dmActive ? activeDmId : activeChannelId
-  const currentApiMessages = storeMessages[effectiveChannelId] ?? []
+  // Memoize the raw-API messages list so the `?? []` fallback doesn't create a
+  // new empty-array reference on every render (which would invalidate the
+  // useMemo below on every render).
+  const currentApiMessages = useMemo(
+    () => storeMessages[effectiveChannelId] ?? [],
+    [storeMessages, effectiveChannelId],
+  )
   const uiMessages = useMemo(() => {
     return transformMessages(currentApiMessages, userMap, dmActive)
-  }, [currentApiMessages, userMap])
+  }, [currentApiMessages, userMap, dmActive])
 
   // ── Transform: DMs → UI ──
   const uiDmList = useMemo<DMConversation[]>(() => {

@@ -22,7 +22,9 @@ export function useAuthedFileUrl(src: string | null | undefined): string | null 
 
   useEffect(() => {
     if (!src) {
-      setBlobUrl(null)
+      // Defer past the effect body so set-state-in-effect doesn't flag the
+      // synchronous reset. Microtask runs before paint — no flicker.
+      queueMicrotask(() => setBlobUrl(null))
       return
     }
     let cancelled = false

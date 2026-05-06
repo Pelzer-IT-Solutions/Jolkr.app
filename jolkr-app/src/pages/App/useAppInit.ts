@@ -649,7 +649,10 @@ export function useAppInit() {
         return prevUsers
       })
     })
-  }, [])
+    // fetchPermissions / fetchChannelPermissions are module-scoped store actions
+    // (destructured from useServersStore.getState() at module load) so they're
+    // stable references — listing them here is purely for the rule.
+  }, [fetchChannelPermissions, fetchPermissions])
 
   // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
   useEffect(() => {

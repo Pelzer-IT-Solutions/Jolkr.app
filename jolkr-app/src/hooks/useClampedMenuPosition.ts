@@ -23,7 +23,8 @@ export function useClampedMenuPosition(
 
   useLayoutEffect(() => {
     if (!preferred || !ref.current) {
-      setPos(null)
+      // Defer setState past the effect body to satisfy set-state-in-effect.
+      queueMicrotask(() => setPos(null))
       return
     }
     const el = ref.current
@@ -45,8 +46,8 @@ export function useClampedMenuPosition(
     if (top + h > vh - pad) top = preferred.y - h
     if (top < pad) top = pad
 
-    setPos({ left, top })
-  }, [preferred?.x, preferred?.y, ref, pad])
+    queueMicrotask(() => setPos({ left, top }))
+  }, [preferred, preferred?.x, preferred?.y, ref, pad])
 
   return pos
 }

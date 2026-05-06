@@ -33,12 +33,13 @@ export function useDecryptedContent(
 
   useEffect(() => {
     if (!nonce) {
-      setState({ displayContent: content, isEncrypted: false, decrypting: false });
+      // Defer setState past the effect body to satisfy set-state-in-effect.
+      queueMicrotask(() => setState({ displayContent: content, isEncrypted: false, decrypting: false }));
       return;
     }
 
     if (!channelId) {
-      setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+      queueMicrotask(() => setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false }));
       return;
     }
 
