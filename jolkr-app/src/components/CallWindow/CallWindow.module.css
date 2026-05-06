@@ -1,8 +1,8 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 800;
-  background: var(--bg-deep, #0a0a0a);
+  z-index: var(--z-dialog);
+  background: var(--bg-deep);
   display: flex;
   flex-direction: column;
   animation: overlayIn 220ms var(--ease-out-quart) both;

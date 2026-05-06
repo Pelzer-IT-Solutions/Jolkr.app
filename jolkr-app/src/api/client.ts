@@ -1,19 +1,10 @@
-import type { ZodType } from 'zod';
 import type {
-  User, Channel, Message, Ban,
+  User, Server, Channel, Message, Member, Ban,
   DmChannel, Friendship, Invite, TokenPair, Attachment,
   PreKeyBundleResponse, Role, Category, ChannelOverwrite, Thread,
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
   GifFavorite, ChannelKind, UpdateMeBody,
 } from './types';
-import {
-  UserSchema, UserArraySchema, ServerSchema, ServerArraySchema,
-  ChannelSchema, ChannelArraySchema, CategoryArraySchema,
-  MemberArraySchema, RoleArraySchema, MessageArraySchema, MessageSchema,
-  DmMessageSchema, DmMessageArraySchema,
-  AttachmentArraySchema, DmChannelSchema, DmChannelArraySchema,
-  ChannelOverwriteArraySchema, BanArraySchema, ThreadArraySchema,
-} from './schemas';
 import { getApiBaseUrl } from '../platform/config';
 import { storage } from '../platform/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
@@ -60,9 +51,10 @@ export async function initTokens() {
   if (checkLogoutFlag()) {
     accessToken = null;
     refreshToken = null;
-    // Keep retrying cleanup in case Stronghold save didn't finish
-    await storage.remove('access_token').catch(() => {});
-    await storage.remove('refresh_token').catch(() => {});
+    // Best-effort cleanup — Stronghold may still be opening on cold start;
+    // log so a stuck logout-flag is diagnosable from the console.
+    await storage.remove('access_token').catch((e) => console.debug('[auth] token cleanup (access)', e));
+    await storage.remove('refresh_token').catch((e) => console.debug('[auth] token cleanup (refresh)', e));
     return;
   }
   accessToken = await storage.get('access_token');
@@ -112,11 +104,7 @@ function scheduleProactiveRefresh(expiresInSecs: number) {
   const refreshInMs = Math.max(60_000, (expiresInSecs - 1800) * 1000);
   proactiveRefreshTimer = setTimeout(async () => {
     if (loggedOut || !refreshToken) return;
-    const ok = await refreshAccessToken();
-    // Server-side rejection (operator JWT-baseline bump, expired refresh,
-    // blacklisted) means the session is dead — bounce the idle app to
-    // /login instead of leaving stale tokens around for the next 401.
-    if (!ok) await forceLogout();
+    await refreshAccessToken();
   }, refreshInMs);
 }
 
@@ -126,8 +114,7 @@ function startPeriodicRefresh() {
   periodicRefreshInterval = setInterval(async () => {
     if (loggedOut || !refreshToken) return;
     if (isAccessTokenExpiredOrNearExpiry()) {
-      const ok = await refreshAccessToken();
-      if (!ok) await forceLogout();
+      await refreshAccessToken();
     }
   }, 30 * 60 * 1000);
 }
@@ -137,8 +124,7 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible' && refreshToken && !loggedOut) {
       if (isAccessTokenExpiredOrNearExpiry()) {
-        const ok = await refreshAccessToken();
-        if (!ok) await forceLogout();
+        await refreshAccessToken();
       }
     }
   });
@@ -153,23 +139,6 @@ export async function clearTokens() {
   // Clear from secure storage (Stronghold on Tauri, localStorage on web)
   await storage.remove('access_token');
   await storage.remove('refresh_token');
-  // Wipe Stronghold vault password from sessionStorage so a fresh login on the
-  // same browser process can't reach the previous user's vault material.
-  try { sessionStorage.removeItem(STORAGE_KEYS.VAULT_PASSWORD); } catch { /* ignore */ }
-}
-
-// Guard against multiple concurrent forced-logout triggers (HTTP 401 +
-// WS Error landing in the same tick).
-let forceLogoutInFlight = false;
-/** Wipe tokens and redirect to /login. Idempotent — multiple callers in the
- *  same tick collapse to a single redirect. Used by the HTTP 401 path and
- *  the WS auth-failure path so an operator JWT-baseline bump never leaves
- *  an open app stranded with 401 errors instead of bouncing to login. */
-export async function forceLogout(): Promise<void> {
-  if (forceLogoutInFlight) return;
-  forceLogoutInFlight = true;
-  await clearTokens();
-  window.location.href = `${import.meta.env.BASE_URL}login`;
 }
 
 export function getAccessToken() {
@@ -221,29 +190,11 @@ async function refreshAccessToken(): Promise<boolean> {
   return false;
 }
 
-/**
- * Optional runtime validation. When `schema` is provided, the parsed JSON
- * (after optional unwrap) is run through `schema.parse()` so a backend that
- * silently changes shape fails fast rather than corrupting the UI.
- *
- * Migration is incremental — endpoints can opt in by passing a schema; the
- * rest keep their previous (no-validation) behavior. See `src/api/schemas.ts`
- * for available schemas.
- */
-interface RequestOpts<T> {
-  unwrapKey?: string
-  schema?: ZodType<T>
-}
-
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  unwrapOrOpts?: string | RequestOpts<T>,
+  unwrapKey?: string,
 ): Promise<T> {
-  const opts: RequestOpts<T> = typeof unwrapOrOpts === 'string'
-    ? { unwrapKey: unwrapOrOpts }
-    : (unwrapOrOpts ?? {})
-  const { unwrapKey, schema } = opts
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> || {}),
   };
@@ -263,7 +214,8 @@ async function request<T>(
       // H23: Drain refresh queue before redirect
       refreshQueue.forEach((cb) => cb());
       refreshQueue = [];
-      await forceLogout();
+      await clearTokens();
+      window.location.href = `${import.meta.env.BASE_URL}login`;
       throw new ApiError(401, 'Session expired');
     }
 
@@ -305,43 +257,20 @@ async function request<T>(
   if (!text) return undefined as T;
 
   const json = JSON.parse(text);
-  const payload = (unwrapKey && json[unwrapKey] !== undefined) ? json[unwrapKey] : json;
-  if (schema) {
-    const result = schema.safeParse(payload);
-    // Soft-fail: when a schema is too strict for the live backend, fall back
-    // to the raw payload so the UI never breaks on a contract mismatch. Real
-    // mismatches are tracked in `jolkr-app/backend-audit-todo.md` for the
-    // next backend audit; once the schemas are stable for a release cycle
-    // this branch will switch to throwing an `ApiError`.
-    return result.success ? result.data : (payload as T);
+  if (unwrapKey && json[unwrapKey] !== undefined) {
+    return json[unwrapKey] as T;
   }
-  return payload as T;
+  return json as T;
 }
 
 // Auth
-// Older backend versions returned the TokenPair directly; current versions
-// wrap it in `{ tokens: TokenPair }`. This helper accepts both shapes without
-// using an `as unknown as TokenPair` escape hatch.
-function extractTokens(data: unknown): TokenPair {
-  if (data && typeof data === 'object') {
-    const wrapper = data as { tokens?: unknown; access_token?: unknown; refresh_token?: unknown };
-    if (wrapper.tokens && typeof wrapper.tokens === 'object') {
-      return wrapper.tokens as TokenPair;
-    }
-    if (typeof wrapper.access_token === 'string' && typeof wrapper.refresh_token === 'string') {
-      return data as TokenPair;
-    }
-  }
-  throw new ApiError(500, 'Malformed auth response');
-}
-
 export async function register(email: string, username: string, password: string): Promise<TokenPair> {
   clearLogoutFlag(); // Allow token writes for explicit register
   const data = await request<{ tokens: TokenPair }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, username, password }),
   });
-  const tokens = extractTokens(data);
+  const tokens = data.tokens ?? (data as unknown as TokenPair);
   await setTokens(tokens);
   return tokens;
 }
@@ -352,7 +281,7 @@ export async function login(email: string, password: string): Promise<TokenPair>
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  const tokens = extractTokens(data);
+  const tokens = data.tokens ?? (data as unknown as TokenPair);
   await setTokens(tokens);
   return tokens;
 }
@@ -400,27 +329,27 @@ export async function changePassword(currentPassword: string, newPassword: strin
 }
 
 // Users
-export const getMe = () => request('/users/@me', {}, { unwrapKey: 'user', schema: UserSchema });
+export const getMe = () => request<User>('/users/@me', {}, 'user');
 export const updateMe = (body: UpdateMeBody) =>
-  request('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, { unwrapKey: 'user', schema: UserSchema });
-export const getUser = (id: string) => request(`/users/${id}`, {}, { unwrapKey: 'user', schema: UserSchema });
+  request<User>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
+export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
 export const getUsersBatch = async (ids: string[]): Promise<User[]> => {
   const results = await Promise.all(ids.map((id) => getUser(id).catch(() => null)));
   return results.filter((u): u is User => u !== null);
 };
-export const searchUsers = (q: string) => request(`/users/search?q=${encodeURIComponent(q)}`, {}, { unwrapKey: 'users', schema: UserArraySchema });
+export const searchUsers = (q: string) => request<User[]>(`/users/search?q=${encodeURIComponent(q)}`, {}, 'users');
 
 // Servers
-export const getServers = () => request('/servers', {}, { unwrapKey: 'servers', schema: ServerArraySchema });
+export const getServers = () => request<Server[]>('/servers', {}, 'servers');
 export const createServer = (body: { name: string; description?: string }) =>
-  request('/servers', { method: 'POST', body: JSON.stringify(body) }, { unwrapKey: 'server', schema: ServerSchema });
-export const getServer = (id: string) => request(`/servers/${id}`, {}, { unwrapKey: 'server', schema: ServerSchema });
+  request<Server>('/servers', { method: 'POST', body: JSON.stringify(body) }, 'server');
+export const getServer = (id: string) => request<Server>(`/servers/${id}`, {}, 'server');
 export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean; theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null }) =>
-  request(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, { unwrapKey: 'server', schema: ServerSchema });
+  request<Server>(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'server');
 export const deleteServer = (id: string) =>
   request<void>(`/servers/${id}`, { method: 'DELETE' });
 export const getServerMembers = (serverId: string) =>
-  request(`/servers/${serverId}/members`, {}, { unwrapKey: 'members', schema: MemberArraySchema });
+  request<Member[]>(`/servers/${serverId}/members`, {}, 'members');
 export const leaveServer = (serverId: string) =>
   request<void>(`/servers/${serverId}/members/@me`, { method: 'DELETE' });
 
@@ -430,7 +359,7 @@ export const reorderServers = (serverIds: string[]) =>
     body: JSON.stringify({ server_ids: serverIds }),
   });
 export const discoverServers = (limit = 20, offset = 0) =>
-  request(`/servers/discover?limit=${limit}&offset=${offset}`, {}, { unwrapKey: 'servers', schema: ServerArraySchema });
+  request<Server[]>(`/servers/discover?limit=${limit}&offset=${offset}`, {}, 'servers');
 
 export const joinPublicServer = (serverId: string) =>
   request<void>(`/servers/${serverId}/join`, { method: 'POST' });
@@ -446,7 +375,7 @@ export const banMember = (serverId: string, userId: string, reason?: string) =>
 export const unbanMember = (serverId: string, userId: string) =>
   request<void>(`/servers/${serverId}/bans/${userId}`, { method: 'DELETE' });
 export const getBans = (serverId: string) =>
-  request(`/servers/${serverId}/bans`, {}, { unwrapKey: 'bans', schema: BanArraySchema });
+  request<Ban[]>(`/servers/${serverId}/bans`, {}, 'bans');
 export const setNickname = (serverId: string, userId: string, nickname?: string) =>
   request<void>(`/servers/${serverId}/members/${userId}/nickname`, {
     method: 'PATCH',
@@ -455,7 +384,7 @@ export const setNickname = (serverId: string, userId: string, nickname?: string)
 
 // Categories
 export const getCategories = (serverId: string) =>
-  request(`/servers/${serverId}/categories`, {}, { unwrapKey: 'categories', schema: CategoryArraySchema });
+  request<Category[]>(`/servers/${serverId}/categories`, {}, 'categories');
 export const createCategory = (serverId: string, body: { name: string }) =>
   request<Category>(`/servers/${serverId}/categories`, { method: 'POST', body: JSON.stringify(body) }, 'category');
 export const updateCategory = (id: string, body: { name?: string; position?: number }) =>
@@ -465,7 +394,7 @@ export const deleteCategory = (id: string) =>
 
 // Roles
 export const getRoles = (serverId: string) =>
-  request(`/servers/${serverId}/roles`, {}, { unwrapKey: 'roles', schema: RoleArraySchema });
+  request<Role[]>(`/servers/${serverId}/roles`, {}, 'roles');
 export const createRole = (serverId: string, body: { name: string; color?: number; permissions?: number }) =>
   request<Role>(`/servers/${serverId}/roles`, { method: 'POST', body: JSON.stringify(body) }, 'role');
 export const updateRole = (id: string, body: { name?: string; color?: number; position?: number; permissions?: number }) =>
@@ -477,16 +406,16 @@ export const assignRole = (serverId: string, roleId: string, userId: string) =>
 export const removeRole = (serverId: string, roleId: string, userId: string) =>
   request<void>(`/servers/${serverId}/roles/${roleId}/members/${userId}`, { method: 'DELETE' });
 export const getMembersWithRoles = (serverId: string) =>
-  request(`/servers/${serverId}/members-with-roles`, {}, { unwrapKey: 'members', schema: MemberArraySchema });
+  request<Member[]>(`/servers/${serverId}/members-with-roles`, {}, 'members');
 export const getMyPermissions = (serverId: string) =>
   request<{ permissions: number }>(`/servers/${serverId}/permissions/@me`);
 
 // Channels
 export const getChannels = (serverId: string) =>
-  request(`/servers/${serverId}/channels/list`, {}, { unwrapKey: 'channels', schema: ChannelArraySchema });
+  request<Channel[]>(`/servers/${serverId}/channels/list`, {}, 'channels');
 export const createChannel = (serverId: string, body: { name: string; kind: ChannelKind; topic?: string; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
-export const getChannel = (id: string) => request(`/channels/${id}`, {}, { unwrapKey: 'channel', schema: ChannelSchema });
+export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
 export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
 export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>
@@ -502,7 +431,7 @@ export const getMyChannelPermissions = (channelId: string) =>
   request<{ permissions: number }>(`/channels/${channelId}/permissions/@me`);
 
 export const getChannelOverwrites = (channelId: string) =>
-  request(`/channels/${channelId}/overwrites`, {}, { unwrapKey: 'overwrites', schema: ChannelOverwriteArraySchema });
+  request<ChannelOverwrite[]>(`/channels/${channelId}/overwrites`, {}, 'overwrites');
 
 export const upsertChannelOverwrite = (channelId: string, body: {
   target_type: 'role' | 'member'; target_id: string; allow: number; deny: number;
@@ -510,39 +439,39 @@ export const upsertChannelOverwrite = (channelId: string, body: {
   method: 'PUT', body: JSON.stringify(body),
 }, 'overwrite');
 
-export const deleteChannelOverwrite = (channelId: string, targetType: string, targetId: string) =>
+export const deleteChannelOverwrite = (channelId: string, targetType: 'role' | 'member', targetId: string) =>
   request<void>(`/channels/${channelId}/overwrites/${targetType}/${targetId}`, { method: 'DELETE' });
 
 // Messages
 export const getMessages = (channelId: string, limit = 50, before?: string) => {
   let path = `/channels/${channelId}/messages?limit=${limit}`;
   if (before) path += `&before=${before}`;
-  return request(path, {}, { unwrapKey: 'messages', schema: MessageArraySchema });
+  return request<Message[]>(path, {}, 'messages');
 };
 export const sendMessage = (channelId: string, content: string, nonce?: string, reply_to_id?: string) =>
-  request(`/channels/${channelId}/messages`, {
+  request<Message>(`/channels/${channelId}/messages`, {
     method: 'POST',
     body: JSON.stringify({ content, nonce, reply_to_id }),
-  }, { unwrapKey: 'message', schema: MessageSchema });
+  }, 'message');
 export const editMessage = (messageId: string, content: string, nonce?: string) =>
-  request(`/messages/${messageId}`, {
+  request<Message>(`/messages/${messageId}`, {
     method: 'PATCH',
     body: JSON.stringify({ content, nonce }),
-  }, { unwrapKey: 'message', schema: MessageSchema });
+  }, 'message');
 export const deleteMessage = (messageId: string) =>
   request<void>(`/messages/${messageId}`, { method: 'DELETE' });
 
 // Search
 export const searchMessages = (channelId: string, q: string, limit = 50) =>
-  request(`/channels/${channelId}/messages/search?q=${encodeURIComponent(q)}&limit=${limit}`, {}, { unwrapKey: 'messages', schema: MessageArraySchema });
+  request<Message[]>(`/channels/${channelId}/messages/search?q=${encodeURIComponent(q)}&limit=${limit}`, {}, 'messages');
 
 // Pins
 export const pinMessage = (channelId: string, messageId: string) =>
-  request(`/channels/${channelId}/pins/${messageId}`, { method: 'POST' }, { unwrapKey: 'message', schema: MessageSchema });
+  request<Message>(`/channels/${channelId}/pins/${messageId}`, { method: 'POST' }, 'message');
 export const unpinMessage = (channelId: string, messageId: string) =>
-  request(`/channels/${channelId}/pins/${messageId}`, { method: 'DELETE' }, { unwrapKey: 'message', schema: MessageSchema });
+  request<Message>(`/channels/${channelId}/pins/${messageId}`, { method: 'DELETE' }, 'message');
 export const getPinnedMessages = (channelId: string) =>
-  request(`/channels/${channelId}/pins`, {}, { unwrapKey: 'messages', schema: MessageArraySchema });
+  request<Message[]>(`/channels/${channelId}/pins`, {}, 'messages');
 
 // Read state
 export const markChannelRead = (channelId: string, messageId: string) =>
@@ -556,7 +485,7 @@ export const markServerRead = (serverId: string) =>
 
 // Attachments
 export const getMessageAttachments = (messageId: string) =>
-  request(`/messages/${messageId}/attachments`, {}, { unwrapKey: 'attachments', schema: AttachmentArraySchema });
+  request<Attachment[]>(`/messages/${messageId}/attachments`, {}, 'attachments');
 export const uploadAttachment = async (channelId: string, messageId: string, file: File): Promise<Attachment> => {
   const form = new FormData();
   form.append('file', file);
@@ -568,47 +497,43 @@ export const uploadAttachment = async (channelId: string, messageId: string, fil
 };
 
 // DMs
-export const getDms = () => request('/dms', {}, { unwrapKey: 'channels', schema: DmChannelArraySchema });
+export const getDms = () => request<DmChannel[]>('/dms', {}, 'channels');
 /** Every attachment shared in this DM, newest first. Powers the "Shared Files" panel. */
 export const getDmAttachments = (dmId: string) =>
-  request(`/dms/${dmId}/attachments`, {}, { unwrapKey: 'attachments', schema: AttachmentArraySchema });
+  request<Attachment[]>(`/dms/${dmId}/attachments`, {}, 'attachments');
 export const openDm = (userId: string) =>
-  request('/dms', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, { unwrapKey: 'channel', schema: DmChannelSchema });
-// DM message endpoints validate via `DmMessageSchema` which translates
-// `dm_channel_id` → `channel_id` and fills empty defaults so the rest of
-// the app can treat the result as a regular `Message` (see backend audit
-// item D-001 for the long-term unification).
+  request<DmChannel>('/dms', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'channel');
 export const getDmMessages = (dmId: string, limit = 50, before?: string) => {
   let path = `/dms/${dmId}/messages?limit=${limit}`;
   if (before) path += `&before=${before}`;
-  return request(path, {}, { unwrapKey: 'messages', schema: DmMessageArraySchema });
+  return request<Message[]>(path, {}, 'messages');
 };
 export const sendDmMessage = (dmId: string, body: {
   content: string;
   nonce?: string;
   reply_to_id?: string;
 }) =>
-  request(`/dms/${dmId}/messages`, {
+  request<Message>(`/dms/${dmId}/messages`, {
     method: 'POST',
     body: JSON.stringify(body),
-  }, { unwrapKey: 'message', schema: DmMessageSchema });
+  }, 'message');
 export const editDmMessage = (messageId: string, content: string, nonce?: string) =>
-  request(`/dms/messages/${messageId}`, {
+  request<Message>(`/dms/messages/${messageId}`, {
     method: 'PATCH',
     body: JSON.stringify({ content, nonce }),
-  }, { unwrapKey: 'message', schema: DmMessageSchema });
+  }, 'message');
 export const deleteDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}`, { method: 'DELETE' });
 export const hideDmMessage = (messageId: string) =>
   request<void>(`/dms/messages/${messageId}/hide`, { method: 'POST' });
 
-// DM Pins — see comment above getDmMessages.
+// DM Pins
 export const pinDmMessage = (dmId: string, messageId: string) =>
-  request(`/dms/${dmId}/pins/${messageId}`, { method: 'POST' }, { unwrapKey: 'message', schema: DmMessageSchema });
+  request<Message>(`/dms/${dmId}/pins/${messageId}`, { method: 'POST' }, 'message');
 export const unpinDmMessage = (dmId: string, messageId: string) =>
-  request(`/dms/${dmId}/pins/${messageId}`, { method: 'DELETE' }, { unwrapKey: 'message', schema: DmMessageSchema });
+  request<Message>(`/dms/${dmId}/pins/${messageId}`, { method: 'DELETE' }, 'message');
 export const getDmPinnedMessages = (dmId: string) =>
-  request(`/dms/${dmId}/pins`, {}, { unwrapKey: 'messages', schema: DmMessageArraySchema });
+  request<Message[]>(`/dms/${dmId}/pins`, {}, 'messages');
 
 export const addDmReaction = (messageId: string, emoji: string) =>
   request<void>(`/dms/messages/${messageId}/reactions`, {
@@ -748,7 +673,7 @@ export const declineFriend = (id: string) =>
 export const blockUser = (userId: string) =>
   request<Friendship>('/friends/block', { method: 'POST', body: JSON.stringify({ user_id: userId }) }, 'friendship');
 export const removeFriendByUserId = (userId: string) =>
-  request<void>(`/friends/by-user/${userId}`, { method: 'DELETE' });
+  request<void>(`/friends/user/${userId}`, { method: 'DELETE' });
 
 // General file upload (avatars, server icons, etc.)
 // When purpose is 'avatar' or 'icon', the backend converts to WebP and resizes.
@@ -760,18 +685,22 @@ export const uploadFile = async (file: File, purpose?: 'avatar' | 'icon'): Promi
 };
 
 // Push / Devices
+// `/push/vapid-key` is the one endpoint in this file that returns a flat
+// `{public_key}` object, not an envelope — no unwrap needed.
 export const getVapidKey = () =>
   request<{ public_key: string }>('/push/vapid-key');
 
+// `/devices` POST + GET both wrap in envelopes (`{device: ...}` / `{devices: ...}`).
+// Unwrap to match the rest of the file's "declare the unwrapped type" convention.
 export const registerDevice = (body: {
   device_id?: string;
   device_name: string;
   device_type: string;
   push_token?: string;
-}) => request<{ device: { id: string } }>('/devices', { method: 'POST', body: JSON.stringify(body) });
+}) => request<{ id: string }>('/devices', { method: 'POST', body: JSON.stringify(body) }, 'device');
 
 export const getDevices = () =>
-  request<{ devices: Array<{ id: string; device_name: string; device_type: string; has_push_token: boolean; last_active_at: string | null; created_at: string }> }>('/devices');
+  request<Array<{ id: string; device_name: string; device_type: string; has_push_token: boolean; last_active_at: string | null; created_at: string }>>('/devices', {}, 'devices');
 
 export const deleteDevice = (deviceId: string) =>
   request<void>(`/devices/${deviceId}`, { method: 'DELETE' });
@@ -824,7 +753,7 @@ export const createThread = (channelId: string, messageId: string, name?: string
   });
 
 export const getThreads = (channelId: string, includeArchived = false) =>
-  request(`/channels/${channelId}/threads?include_archived=${includeArchived}`, {}, { unwrapKey: 'threads', schema: ThreadArraySchema });
+  request<Thread[]>(`/channels/${channelId}/threads?include_archived=${includeArchived}`, {}, 'threads');
 
 export const getThread = (threadId: string) =>
   request<Thread>(`/threads/${threadId}`, {}, 'thread');

@@ -72,6 +72,7 @@ export function FriendsPanel({
   onRemoveFriend,
 }: Props) {
   const myId = useAuthStore(st => st.user?.id)
+  const presence = usePresenceStore(st => st.statuses)
   const [activeTab, setActiveTab] = useState<FriendTab>('all')
   const [friends, setFriends] = useState<Friend[]>([])
   const [requests, setRequests] = useState<FriendRequest[]>([])
@@ -92,13 +93,12 @@ export function FriendsPanel({
       api.getFriends().catch(() => [] as Friendship[]),
       api.getPendingFriends().catch(() => [] as Friendship[]),
     ])
-    const livePresence = usePresenceStore.getState().statuses
     setFriends(accepted.map(f => {
         const other = f.requester_id === myId ? f.addressee : f.requester
         const otherId = f.requester_id === myId ? f.addressee_id : f.requester_id
         return {
           user: toDisplay(other, otherId),
-          status: liveStatus(livePresence[otherId]),
+          status: liveStatus(presence[otherId]),
         }
       }))
       setRequests(pending.map(f => {
@@ -112,7 +112,7 @@ export function FriendsPanel({
           created_at: '',
         }
       }))
-  }, [myId])
+  }, [myId, presence])
 
   // Refresh whenever the panel opens
   useEffect(() => {

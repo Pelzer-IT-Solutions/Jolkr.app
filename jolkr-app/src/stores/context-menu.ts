@@ -22,13 +22,20 @@ interface ContextMenuState {
   items: ContextMenuEntry[];
   open: (x: number, y: number, items: ContextMenuEntry[]) => void;
   close: () => void;
+  /** Wipe all state — called on logout to keep nothing stale for the next session. */
+  reset: () => void;
 }
 
-export const useContextMenuStore = create<ContextMenuState>((set) => ({
+const initialContextMenuState = {
   isOpen: false,
   x: 0,
   y: 0,
-  items: [],
+  items: [] as ContextMenuEntry[],
+};
+
+export const useContextMenuStore = create<ContextMenuState>((set) => ({
+  ...initialContextMenuState,
   open: (x, y, items) => set({ isOpen: true, x, y, items }),
   close: () => set({ isOpen: false, items: [] }),
+  reset: () => set(initialContextMenuState),
 }));

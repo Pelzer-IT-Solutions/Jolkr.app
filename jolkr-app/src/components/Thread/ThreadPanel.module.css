@@ -117,7 +117,7 @@
   transition: background-color var(--transition), color var(--transition);
 }
 .sendBtn:hover:not(:disabled) {
-  background: var(--surface-raised-strong, var(--bg-strong));
+  background: var(--surface-raised-strong);
   color: var(--text-strong);
 }
 .sendBtn:disabled {

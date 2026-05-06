@@ -1,17 +1,10 @@
 .popup {
   position: fixed;
   transform: translateX(-50%) translateY(calc(-100% - 0.5rem));
-  z-index: 9999;
+  z-index: var(--z-popover);
   border-radius: 0.75rem;
   overflow: hidden;
   box-shadow: 0 8px 24px oklch(0% 0 0 / 0.18), 0 2px 8px oklch(0% 0 0 / 0.1);
-}
-
-.fallback {
-  width: 300px;
-  height: 350px;
-  background: var(--bg-loud);
-  border-radius: 0.75rem;
 }
 
 /* Mobile: turn the anchored popup into a bottom sheet so it never clips

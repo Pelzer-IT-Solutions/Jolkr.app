@@ -14,7 +14,6 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export default function Button({
-  ref,
   variant = 'primary',
   size = 'md',
   fullWidth,
@@ -23,6 +22,7 @@ export default function Button({
   className,
   children,
   disabled,
+  ref,
   ...props
 }: ButtonProps) {
   const composed = [

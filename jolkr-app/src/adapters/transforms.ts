@@ -32,20 +32,14 @@ import type {
 
 // ─── Helpers ───────────────────────────────────────────────
 
-/** Deterministic OKLCH color from a string (user ID or name).
- *  Lightness clamped to a band that stays WCAG-AA compliant against white
- *  letter text. Yellows / yellow-greens (~60–110°) inherently look brighter
- *  in OKLCH, so they get a small extra dim to keep white initials legible.
- */
+/** Deterministic OKLCH color from a string (user ID or name). */
 export function hashColor(input: string): string {
   let hash = 0
   for (let i = 0; i < input.length; i++) {
     hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0
   }
   const hue = ((hash % 360) + 360) % 360
-  // Default 48% L gives ~4.5:1 against #fff for most hues; yellows need ~42%.
-  const lightness = (hue >= 60 && hue <= 110) ? 42 : 48
-  return `oklch(${lightness}% 0.16 ${hue})`
+  return `oklch(55% 0.18 ${hue})`
 }
 
 /** First letter of display name or username, uppercased. */
@@ -63,9 +57,7 @@ function iconEndpoint(serverId: string): string {
   return `${getApiBaseUrl()}/icons/${serverId}`
 }
 
-/** Avatar props from a User object. The user's chosen `banner_color`
- *  (set in profile settings) wins over the deterministic `hashColor`
- *  fallback so other clients see the same color the user picked. */
+/** Avatar props from a User object. */
 export function userToAvatar(user: User): { color: string; letter: string; avatarUrl?: string | null } {
   return {
     color: user.banner_color ?? hashColor(user.id),
@@ -126,30 +118,33 @@ export function transformMessage(
   // Continued = same author as previous message
   const continued = !!prevMsg && prevMsg.author_id === msg.author_id
 
-  // Reply reference
+  // Reply reference. For E2EE messages we forward the encryption inputs so
+  // the renderer can decrypt — synchronously baking 'Encrypted message' here
+  // would lose the data forever.
   let replyTo: ReplyRef | undefined
   if (msg.reply_to_id) {
     const replyMsg = allMessages.get(msg.reply_to_id)
     if (replyMsg) {
       const replyAuthor = replyMsg.author ?? users.get(replyMsg.author_id)
+      const fallbackText = replyMsg.nonce
+        ? '' // ciphertext slice would be gibberish; renderer must decrypt
+        : (replyMsg.content?.slice(0, 100) ?? '')
       replyTo = {
         id: replyMsg.id,
         author: displayName(replyAuthor),
-        text: replyMsg.content?.slice(0, 200) ?? '',
-        nonce: replyMsg.nonce ?? null,
-        channelId: replyMsg.channel_id,
+        text: fallbackText,
+        content: replyMsg.content,
+        nonce: replyMsg.nonce,
+        channelId: replyMsg.channel_id ?? replyMsg.dm_channel_id ?? null,
       }
     }
   }
 
-  // Reactions — map to UI format with userIds for tooltip.
-  // `r.me` is populated by `stores/messages.ts::transformReactions` before
-  // a Message reaches the store; the `?? false` is a type-narrowing safety
-  // net for the (theoretical) wire-DTO path that does not include `me`.
+  // Reactions — map to UI format with userIds for tooltip
   const reactions: ReactionDisplay[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
-    me: r.me ?? false,
+    me: r.me,
     userIds: r.user_ids ?? [],
   }))
 
@@ -176,6 +171,9 @@ export function transformMessage(
     thread_id: msg.thread_id ?? null,
     thread_reply_count: msg.thread_reply_count ?? null,
     poll: msg.poll ?? null,
+    webhook_id: msg.webhook_id ?? null,
+    webhook_name: msg.webhook_name ?? null,
+    webhook_avatar: msg.webhook_avatar ?? null,
   }
 }
 
@@ -188,7 +186,10 @@ export function transformMessages(
   const msgMap = new Map(msgs.map(m => [m.id, m]))
   return msgs.map((msg, i) => {
     const ui = transformMessage(msg, users, msgMap, i > 0 ? msgs[i - 1] : null)
-    if (isDm) ui.isDm = true
+    if (isDm) {
+      ui.isDm = true
+      if (ui.replyTo) ui.replyTo.isDm = true
+    }
     return ui
   })
 }

@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
+import { useToast } from '../stores/toast';
 import * as api from '../api/client';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
-import { wsClient } from '../api/ws';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
@@ -35,7 +35,6 @@ export default function Login() {
         }
         await initE2EE(deviceId, seed).catch(console.warn);
       }
-      wsClient.connect();
 
       // Handle pending deep-link invite
       const pendingInvite = sessionStorage.getItem(STORAGE_KEYS.PENDING_INVITE);
@@ -53,10 +52,12 @@ export default function Login() {
       const pendingAdd = sessionStorage.getItem(STORAGE_KEYS.PENDING_ADD_FRIEND);
       if (pendingAdd) {
         sessionStorage.removeItem(STORAGE_KEYS.PENDING_ADD_FRIEND);
-        // Best-effort — failures (already friends, blocked, expired user) are
-        // surfaced by the deep-link handler the next time the user opens the
-        // friends panel; we don't want to block login on it.
-        api.sendFriendRequest(pendingAdd).catch(() => {});
+        // Best-effort — but surface failures as a toast so the user knows the
+        // friend-add (already friends, blocked, expired user) didn't land.
+        api.sendFriendRequest(pendingAdd).catch((e) => {
+          const msg = e instanceof Error ? e.message : 'Friend request could not be sent';
+          useToast.getState().show(msg, 'error');
+        });
       }
 
       navigate('/');
@@ -72,18 +73,22 @@ export default function Login() {
         <h1 style={styles.title}>Welcome back!</h1>
         <p style={styles.subtitle}>We're so excited to see you again!</p>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && <div role="alert" id="auth-error" style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={styles.label}>
             <span style={styles.labelText}>Email <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
             <input
               type="email"
+              name="email"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
               inputMode="email"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
           </label>
@@ -91,9 +96,13 @@ export default function Login() {
             <span style={styles.labelText}>Password <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
             <input
               type="password"
+              name="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
             <Link to="/forgot-password" style={styles.link}>Forgot your password?</Link>
@@ -181,7 +190,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   button: {
     background: 'var(--accent)',
-    color: '#fff',
+    color: 'var(--text-on-accent)',
     border: 'none',
     borderRadius: '0.5rem',
     padding: '0.625rem',

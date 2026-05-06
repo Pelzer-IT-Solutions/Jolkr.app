@@ -22,13 +22,19 @@ const VIEWFINDER_ID = 'jolkr-qr-scanner-viewfinder'
 // QR payload formats accepted (both written by QrCodeDisplay):
 //   https://jolkr.app/app/add/<uuid>  (web share)
 //   jolkr://add/<uuid>                (Tauri deep-link)
-// UUID v4 shape enforced so 36-char garbage doesn't slip through to the
-// backend with a confusing 404.
-const UUID_RE = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+//
+// The id pattern requires the canonical 8-4-4-4-12 dash positions so a string
+// like "------------------------------------" (36 dashes) — which the previous
+// `[0-9a-f-]{36}` accepted — is rejected at parse time. Version digit is left
+// open since the backend mixes UUID v4 and v7 (and may add v5 later).
+const UUID_RE_SOURCE = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+const WEB_RE  = new RegExp(`jolkr\\.app/(?:app/)?add/(${UUID_RE_SOURCE})`, 'i')
+const DEEP_RE = new RegExp(`jolkr://add/(${UUID_RE_SOURCE})`, 'i')
+
 function parseJolkrUserId(text: string): string | null {
-  const web = text.match(new RegExp(`jolkr\\.app/(?:app/)?add/(${UUID_RE})`, 'i'))
+  const web = text.match(WEB_RE)
   if (web) return web[1]
-  const deep = text.match(new RegExp(`jolkr://add/(${UUID_RE})`, 'i'))
+  const deep = text.match(DEEP_RE)
   if (deep) return deep[1]
   return null
 }
@@ -62,12 +68,10 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
     onClose()
   }, [stopScanner, onClose])
 
-  // Reset transient state synchronously when the modal opens so a stale
-  // error or scanned-user from a previous open doesn't briefly flash. The
-  // processingRef reset lives in the start-scanner effect since refs may
-  // only be mutated outside of render.
+  // Reset transient state when the modal opens — state-during-render for
+  // setState; ref reset stays in the effect (refs may not be touched in render).
   const [prevOpen, setPrevOpen] = useState(open)
-  if (prevOpen !== open) {
+  if (open !== prevOpen) {
     setPrevOpen(open)
     if (open) {
       setError('')
@@ -81,7 +85,6 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
   // html5-qrcode tries to attach to it.
   useEffect(() => {
     if (!open) return
-
     processingRef.current = false
     let cancelled = false
 

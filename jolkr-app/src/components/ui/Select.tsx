@@ -14,7 +14,7 @@ type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   ref?: Ref<HTMLSelectElement>
 }
 
-export function Select({ ref, className, ...rest }: SelectProps) {
+export function Select({ className, ref, ...rest }: SelectProps) {
   return (
     <select
       ref={ref}

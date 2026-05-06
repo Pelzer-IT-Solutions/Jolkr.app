@@ -146,8 +146,14 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   const [pendingAvatarKey, setPendingAvatarKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Sync editedProfile when user prop changes (e.g., after save)
-  useEffect(() => {
+  // Sync editedProfile when user prop changes (e.g., after save) — store-prev
+  // pattern keeps the reset behavior without triggering set-state-in-effect.
+  // Track the user-version + isEditing combo so we resync only when the user
+  // actually changed AND we're not in the middle of editing.
+  const userKey = `${user?.displayName ?? ''}|${user?.bio ?? ''}|${user?.bannerColor ?? user?.avatarColor ?? ''}|${user?.avatarUrl ?? ''}|${isEditing}`
+  const [prevUserKey, setPrevUserKey] = useState(userKey)
+  if (userKey !== prevUserKey) {
+    setPrevUserKey(userKey)
     if (!isEditing) {
       setEditedProfile({
         display_name: user?.displayName ?? '',
@@ -157,12 +163,9 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       })
       setPendingAvatarKey(null)
     }
-  }, [user, isEditing])
+  }
 
-  const [saving, setSaving] = useState(false)
   const handleSave = async () => {
-    if (saving) return
-    setSaving(true)
     try {
       await onUpdateProfile?.({
         display_name: editedProfile.display_name,
@@ -175,10 +178,6 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       setShowColorPicker(false)
     } catch (e) {
       console.error('Failed to update profile:', e)
-      const msg = e instanceof Error ? e.message : 'Could not save profile changes.'
-      useToast.getState().show(msg, 'error')
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -242,7 +241,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                     <button
                       key={c.value}
                       className={`${s.colorPickerSwatch} ${editedProfile.banner_color === c.value ? s.colorPickerSwatchActive : ''}`}
-                      style={{ '--swatch-color': c.value } as React.CSSProperties}
+                      style={{ background: c.value }}
                       onClick={() => handleBannerColorChange(c.value)}
                       title={c.name}
                     />
@@ -255,8 +254,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
           {/* Edit Button */}
           {isEditing ? (
             <div className={s.editActions}>
-              <button className={s.cancelEditBtn} onClick={handleCancel} disabled={saving}>Cancel</button>
-              <button className={s.saveEditBtn} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+              <button className={s.cancelEditBtn} onClick={handleCancel}>Cancel</button>
+              <button className={s.saveEditBtn} onClick={handleSave}>Save</button>
             </div>
           ) : (
             <button className={s.editProfileBtn} onClick={() => setIsEditing(true)}>
@@ -266,20 +265,20 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
         </div>
 
         {/* Banner */}
-        <div className={s.previewBanner} style={{ '--banner-color': editedProfile.banner_color } as React.CSSProperties} />
+        <div className={s.previewBanner} style={{ background: editedProfile.banner_color }} />
 
         {/* Profile Content */}
         <div className={s.previewContent}>
           {/* Avatar - Click to change only when editing */}
-          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined}>
+          <div className={s.previewAvatarWrap} onClick={isEditing ? () => fileInputRef.current?.click() : undefined} style={isEditing ? { cursor: 'pointer' } : undefined}>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              className={s.fileInputHidden}
+              style={{ display: 'none' }}
               onChange={handleAvatarChange}
             />
-            <div className={s.previewAvatar} style={{ '--banner-color': editedProfile.banner_color } as React.CSSProperties}>
+            <div className={s.previewAvatar} style={{ background: editedProfile.banner_color }}>
               {editedProfile.avatar_url ? (
                 <img src={editedProfile.avatar_url} alt="Profile" className={s.previewAvatarImg} />
               ) : (
@@ -298,9 +297,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
             {isEditing ? (
               <>
                 <div className={s.editFieldGroup}>
-                  <label className={s.editLabel} htmlFor="settings-displayname">Display Name</label>
+                  <label className={s.editLabel}>Display Name</label>
                   <input
-                    id="settings-displayname"
                     type="text"
                     className={s.editInput}
                     value={editedProfile.display_name}
@@ -309,7 +307,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                   />
                 </div>
                 <div className={s.editFieldGroup}>
-                  <span className={s.editLabel}>Username</span>
+                  <label className={s.editLabel}>Username</label>
                   <span className={s.editReadonly}>{user?.username}</span>
                 </div>
               </>
@@ -324,9 +322,8 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
 
             {isEditing ? (
               <div className={s.editFieldGroup}>
-                <label className={s.editLabel} htmlFor="settings-bio">Bio</label>
+                <label className={s.editLabel}>Bio</label>
                 <textarea
-                  id="settings-bio"
                   className={s.editTextarea}
                   value={editedProfile.bio}
                   onChange={(e) => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
@@ -632,6 +629,9 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
   useEffect(() => {
     let cancelled = false
     let stream: MediaStream | null = null
+    // Capture the videoRef DOM node at effect-setup time so the cleanup uses
+    // the same node it attached to, even if the ref points elsewhere later.
+    const node = videoRef.current
 
     navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -643,17 +643,16 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
     }).then((s) => {
       if (cancelled) { s.getTracks().forEach((t) => t.stop()); return }
       stream = s
-      if (videoRef.current) videoRef.current.srcObject = s
+      if (node) node.srcObject = s
       setError(null)
     }).catch((e: Error) => {
       if (!cancelled) setError(e.message || 'Camera unavailable')
     })
 
-    const videoEl = videoRef.current
     return () => {
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
-      if (videoEl) videoEl.srcObject = null
+      if (node) node.srcObject = null
     }
   }, [deviceId])
 
@@ -730,6 +729,7 @@ function KeybindsSection() {
           <div key={kb.action} className={s.keybindRow}>
             <span className={`${s.keybindAction} txt-small`}>{kb.action}</span>
             <div className={s.keybindKeys}>
+              {/* index keys are safe — KEYBINDS is a compile-time constant. */}
               {kb.keys.map((k, i) => <kbd key={i} className={s.key}>{k}</kbd>)}
             </div>
           </div>

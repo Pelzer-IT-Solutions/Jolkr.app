@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon, MoreHorizontal, VolumeX, CheckCheck, X } from 'lucide-react'
 import {
@@ -197,9 +197,7 @@ export function TabBar({
   const displayFadeRef = useRef({ left: 0, right: 0 })
   const fadeRafRef     = useRef(0)
 
-  // Mask helpers — stable identities (touch only refs) so the effects below
-  // can list them as deps without re-mounting the listeners every render.
-  const updateTabsScrollTargets = useCallback(() => {
+  function updateTabsScrollTargets() {
     const el = tabsRef.current
     if (!el) return
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth)
@@ -212,9 +210,9 @@ export function TabBar({
         right: Math.min(1, (maxScroll - el.scrollLeft) / ramp),
       }
     }
-  }, [])
+  }
 
-  const scheduleTabsMaskAnimation = useCallback(() => {
+  function scheduleTabsMaskAnimation() {
     if (fadeRafRef.current !== 0) return
     fadeRafRef.current = requestAnimationFrame(function tick() {
       const el = tabsRef.current
@@ -235,12 +233,12 @@ export function TabBar({
         fadeRafRef.current = requestAnimationFrame(tick)
       }
     })
-  }, [])
+  }
 
-  const syncTabsScrollTargets = useCallback(() => {
+  function syncTabsScrollTargets() {
     updateTabsScrollTargets()
     scheduleTabsMaskAnimation()
-  }, [updateTabsScrollTargets, scheduleTabsMaskAnimation])
+  }
 
   useLayoutEffect(() => {
     updateTabsScrollTargets()
@@ -253,7 +251,7 @@ export function TabBar({
       if (fadeRafRef.current) cancelAnimationFrame(fadeRafRef.current)
       fadeRafRef.current = 0
     }
-  }, [tabbedServers, updateTabsScrollTargets])
+  }, [tabbedServers])
 
   useEffect(() => {
     const el = tabsRef.current
@@ -267,7 +265,7 @@ export function TabBar({
       el.removeEventListener('scroll', onScroll)
       ro.disconnect()
     }
-  }, [tabbedServers, syncTabsScrollTargets])
+  }, [tabbedServers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close server browser on outside click
   useEffect(() => {
@@ -552,12 +550,12 @@ export function TabBar({
             : 'Profile'}
         >
           <div className={s.avatarWrap}>
-            <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ '--avatar-bg': avatarBg } as React.CSSProperties}>
+            <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ background: avatarBg }}>
               {avatarUrl
-                ? <img src={avatarUrl} alt="" className={s.avatarImg} />
+                ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
                 : avatarInitial}
             </div>
-            <span className={s.statusDot} style={{ '--status-color': currentStatus.color } as React.CSSProperties} />
+            <span className={s.statusDot} style={{ background: currentStatus.color }} />
           </div>
           <span className={`${s.userName} txt-small txt-medium`}>{displayName}</span>
           {showRemoteCallPill && (
@@ -579,16 +577,16 @@ export function TabBar({
           {/* User info */}
           <div className={s.profileHead}>
             <div className={s.profileAvatarWrap}>
-              <div className={s.profileAvatarFace} style={{ '--avatar-bg': avatarBg } as React.CSSProperties}>
+              <div className={s.profileAvatarFace} style={{ background: avatarBg }}>
                 {avatarUrl
-                  ? <img src={avatarUrl} alt="" className={s.avatarImg} />
+                  ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
                   : avatarInitial}
               </div>
-              <span className={s.profileStatusDot} style={{ '--status-color': currentStatus.color } as React.CSSProperties} />
+              <span className={s.profileStatusDot} style={{ background: currentStatus.color }} />
             </div>
             <div className={s.profileInfo}>
               <span className={`${s.profileName} txt-small txt-semibold`}>{displayName}</span>
-              <span className={`${s.profileStatus} txt-tiny`} style={{ '--status-color': currentStatus.color } as React.CSSProperties}>
+              <span className={`${s.profileStatus} txt-tiny`} style={{ color: currentStatus.color }}>
                 {currentStatus.label}
               </span>
             </div>
@@ -605,7 +603,7 @@ export function TabBar({
                 className={`${s.statusItem} ${status === key ? s.statusItemActive : ''}`}
                 onClick={() => { setMenuOpen(false); onStatusChange?.(key) }}
               >
-                <span className={s.statusBullet} style={{ '--status-color': meta.color } as React.CSSProperties} />
+                <span className={s.statusBullet} style={{ background: meta.color }} />
                 <span className={`${s.statusLabel} txt-small`}>{meta.label}</span>
                 {status === key && <span className={s.statusCheck}>✓</span>}
               </button>
@@ -705,7 +703,7 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
 
 /* ── Icons ── */
 function PlusIcon({ open }: { open: boolean }) {
-  return <Plus size={18} strokeWidth={1.5} className={`${s.plusIcon} ${open ? s.plusIconOpen : ''}`} />
+  return <Plus size={18} strokeWidth={1.5} style={{ transition: 'transform 200ms ease', transform: open ? 'rotate(45deg)' : 'none' }} />
 }
 function SmallPlusIcon() { return <Plus          size={10} strokeWidth={1.75} /> }
 function DmIcon()        { return <MessagesSquare size={18} strokeWidth={1.5} /> }

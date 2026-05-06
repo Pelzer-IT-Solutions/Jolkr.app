@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag to build (e.g. v0.10.0). Skips desktop, Play Store upload, and version-bump.'
+        description: 'Version tag to build (e.g. v0.10.0). Skips desktop builds and Play Store upload (Android-only re-run).'
         required: true
         type: string
 

@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
-import { wsClient } from '../api/ws';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import { MIN_PASSWORD_LENGTH } from '../utils/constants';
 
 export default function Register() {
   useEffect(resetAuthTheme, []);
@@ -23,7 +23,6 @@ export default function Register() {
       await register(email, username, password);
 
       const userId = useAuthStore.getState().user?.id;
-      const user = useAuthStore.getState().user;
       if (userId) {
         const seed = await deriveE2EESeed(password, userId);
         let deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
@@ -31,9 +30,8 @@ export default function Register() {
           deviceId = crypto.randomUUID();
           localStorage.setItem(STORAGE_KEYS.E2EE_DEVICE_ID, deviceId);
         }
-        await initE2EE(deviceId, seed).catch(console.warn);
+        initE2EE(deviceId, seed).catch(console.warn);
       }
-      if (user?.email_verified) wsClient.connect();
 
       navigate('/verify-email');
     } catch { /* error is in store */ }
@@ -48,18 +46,22 @@ export default function Register() {
         <h1 style={styles.title}>Create an account</h1>
         <p style={styles.subtitle}>Join Jolkr today</p>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && <div role="alert" id="auth-error" style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={styles.label}>
             <span style={styles.labelText}>Email <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="email"
+              name="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
               inputMode="email"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
           </label>
@@ -67,9 +69,13 @@ export default function Register() {
             <span style={styles.labelText}>Username <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="text"
+              name="username"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
           </label>
@@ -77,10 +83,14 @@ export default function Register() {
             <span style={styles.labelText}>Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="password"
+              name="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
           </label>
@@ -167,7 +177,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   button: {
     background: 'var(--accent)',
-    color: '#fff',
+    color: 'var(--text-on-accent)',
     border: 'none',
     borderRadius: '0.5rem',
     padding: '0.625rem',

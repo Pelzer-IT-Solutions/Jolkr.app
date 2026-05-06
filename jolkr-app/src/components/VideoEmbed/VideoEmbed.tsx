@@ -46,7 +46,7 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
     <div className={s.card} style={{ '--embed-color': borderColor } as React.CSSProperties}>
       <div className={s.header}>
         <div className={s.siteName}>
-          <span className={s.dot} />
+          <span className={s.dot} style={{ backgroundColor: borderColor }} />
           {platformName}
         </div>
         {resolvedTitle && (
@@ -84,7 +84,7 @@ function Thumbnail({ url, platform, onClick }: { url: string | null; platform: s
       )}
       <div className={s.thumbOverlay}>
         <div className={s.playCircle}>
-          <Play size={28} color="black" fill="black" className={s.playIcon} />
+          <Play size={28} color="black" fill="black" style={{ marginLeft: '0.125rem' }} />
         </div>
       </div>
     </button>
@@ -165,11 +165,11 @@ function IframePlayer({ src, title }: { src: string; title: string }) {
 
 function NMVideoPlayer({ src, title, image }: { src: string; title: string; image: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  // Destructure the player so we don't read `.field` on an object whose shape
+  // includes a ref (which the react-hooks/refs rule flags as a ref read).
   const {
-    containerRef,
-    isPlaying, isBuffering, isMuted, isReady,
-    volume, duration, currentTime, error,
-    togglePlay, toggleMute, requestFullscreen, seek,
+    containerRef, isPlaying, currentTime, duration, volume, isMuted, isReady, isBuffering, error,
+    togglePlay, toggleMute, seek, requestFullscreen,
   } = useNMPlayer({ src, title, image, autoPlay: true });
   const [showControls, setShowControls] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -195,7 +195,6 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
   if (error) return <div className={s.errorMsg}>{error}</div>;
 
   const isLive = duration > 0 ? false : isReady;
-  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div ref={wrapperRef} className={s.nmWrap} onMouseMove={scheduleHide} onMouseLeave={() => { if (isPlaying) setShowControls(false); }}>
@@ -205,7 +204,7 @@ function NMVideoPlayer({ src, title, image }: { src: string; title: string; imag
       <div className={s.controls} data-hidden={!showControls}>
         {!isLive && (
           <div className={s.progressBar} onClick={handleSeek}>
-            <div className={s.progressFill} style={{ '--progress-pct': `${progressPct}%` } as React.CSSProperties} />
+            <div className={s.progressFill} style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} />
           </div>
         )}
         <div className={s.controlsRow}>

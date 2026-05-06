@@ -42,7 +42,6 @@ export default function AppShell() {
   const init = useAppInit()
   const memos = useAppMemos(init)
   const handlers = useAppHandlers(init, memos)
-  const hasMoreMap = useMessagesStore(s => s.hasMore)
 
   // ── Destructure init ──
   const {
@@ -76,7 +75,7 @@ export default function AppShell() {
   const {
     isDark, colorPref, setColorPref,
     userInfo, userProfile, userMap,
-    uiServers, activeServerMembers, uiDmList,
+    uiServers, uiDmList,
     tabbedServers, activeServer, isServerOwner, myPerms,
     canAccessSettings, canManageChannels, canEditTheme,
     canManageMessages, canAddReactions, canSendMessages, canAttachFiles,
@@ -97,8 +96,6 @@ export default function AppShell() {
   // welcome panel instead of ChatArea — sidebars still render normally so the
   // user can navigate (e.g. clicking DMs shows the DM list even with no DMs).
   const hasChatContent = (dmActive && !!activeDmId) || (!!activeServer && !!activeChannelId)
-
-  const hasMoreCurrent = hasMoreMap[dmActive ? activeDmId : activeChannelId] ?? true
 
   const handleExpandSidebar = useCallback(() => {
     if (isMobile) setActiveMobilePane('left')
@@ -382,7 +379,7 @@ export default function AppShell() {
                         const channelId = dmActive ? activeDmId : activeChannelId
                         if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
                       }}
-                      hasMore={hasMoreCurrent}
+                      hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
                       readOnly={isDmWithSystemUser}
                       onPinMessage={handlePinMessage}
                       onOpenAuthorProfile={(authorId, e) => {
@@ -436,7 +433,7 @@ export default function AppShell() {
                     />
                   ) : activeServer ? (
                     <MemberPanel
-                      members={activeServerMembers}
+                      members={activeServer.members}
                       mode={effectiveRightMode}
                       serverId={activeServerId}
                       channelId={activeChannelId}

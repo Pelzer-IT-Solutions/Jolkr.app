@@ -2,11 +2,39 @@ import { isTauri } from '../platform/detect';
 import * as api from '../api/client';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
+// Module-scoped guards make registerPush idempotent: even if it's called
+// twice in the same tick (StrictMode double-mount, future re-arming on
+// visibilitychange, etc.) we won't issue a second pushManager.subscribe()
+// or a second backend device-create.
+let registered = false;
+let inFlight: Promise<void> | null = null;
+
 /**
  * Register for Web Push notifications.
  * Skipped on Tauri (desktop uses WS notifications via system tray).
+ *
+ * Idempotent: subsequent calls return the in-flight promise, or no-op
+ * once registration has succeeded. Call resetPushRegistration() on
+ * logout if the next user should re-register.
  */
 export async function registerPush(): Promise<void> {
+  if (registered) return;
+  if (inFlight) return inFlight;
+  inFlight = doRegisterPush().then(
+    () => { registered = true; },
+  ).finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+/** Clear the idempotency guard so the next user's session can register. */
+export function resetPushRegistration(): void {
+  registered = false;
+  inFlight = null;
+}
+
+async function doRegisterPush(): Promise<void> {
   if (isTauri) return;
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
@@ -26,9 +54,13 @@ export async function registerPush(): Promise<void> {
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey.buffer.slice(applicationServerKey.byteOffset, applicationServerKey.byteOffset + applicationServerKey.byteLength) as ArrayBuffer,
       });
-    } catch {
-      // Push service unreachable (firewall, OS settings, or stale subscription)
-      console.warn('Push: registration failed — push service may be blocked by firewall or OS settings. Skipping.');
+    } catch (e) {
+      // Push service unreachable (firewall, OS settings, or stale subscription).
+      // Surface the underlying error code/message so a developer can tell
+      // "permission denied" from "service worker scope mismatch" etc.
+      const code = (e as { code?: string }).code;
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn('[push] subscribe failed — service may be blocked by firewall or OS settings.', { code, message });
       return;
     }
   }
@@ -37,14 +69,14 @@ export async function registerPush(): Promise<void> {
 
   // Reuse stored device_id to avoid creating duplicate device rows on each load
   const storedDeviceId = localStorage.getItem(STORAGE_KEYS.PUSH_DEVICE_ID);
-  const result = await api.registerDevice({
+  const device = await api.registerDevice({
     device_id: storedDeviceId || undefined,
     device_name: getBrowserName(),
     device_type: 'web',
     push_token: subscriptionJson,
   });
-  if (result?.device?.id) {
-    localStorage.setItem(STORAGE_KEYS.PUSH_DEVICE_ID, result.device.id);
+  if (device?.id) {
+    localStorage.setItem(STORAGE_KEYS.PUSH_DEVICE_ID, device.id);
   }
 }
 

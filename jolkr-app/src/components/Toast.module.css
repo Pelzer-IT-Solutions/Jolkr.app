@@ -2,7 +2,8 @@
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  z-index: 100;
+  /* Toast must be above modals — was 100 (below modal), now top of overlay scale. */
+  z-index: var(--z-toast);
   animation: toastEnter 200ms var(--ease-out-quart);
 }
 

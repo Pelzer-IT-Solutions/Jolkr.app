@@ -10,6 +10,7 @@ import { useVoiceStore } from './voice';
 import { useContextMenuStore } from './context-menu';
 import { useToast } from './toast';
 import { invalidateFriendsCache } from '../services/friendshipCache';
+import { resetPushRegistration } from '../services/pushRegistration';
 
 /** Reset all stores to initial state — call on logout to prevent stale data on re-login */
 export function resetAllStores() {
@@ -21,8 +22,9 @@ export function resetAllStores() {
   useDmReadsStore.getState().reset();
   useTypingStore.getState().reset();
   useVoiceStore.getState().reset();
-  useGifFavoritesStore.setState({ ids: new Set(), loaded: false });
-  useContextMenuStore.getState().close();
+  useGifFavoritesStore.getState().reset();
+  useContextMenuStore.getState().reset();
   useToast.getState().clear();
+  resetPushRegistration();
   invalidateFriendsCache();
 }

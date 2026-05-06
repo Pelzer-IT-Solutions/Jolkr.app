@@ -22,13 +22,13 @@ export function ThreadListPanel({ channelId, onOpenThread }: Props) {
   const [loading, setLoading] = useState(true)
   const threadListVersion = useMessagesStore(s => s.threadListVersion)
 
-  // Flip loading on synchronously when the channel or list version changes
-  // so the spinner shows immediately while the fetch is in flight.
-  const fetchKey = `${channelId}:${threadListVersion}`
-  const [prevKey, setPrevKey] = useState(fetchKey)
-  if (prevKey !== fetchKey) {
-    setPrevKey(fetchKey)
-    setLoading(true)
+  // Flip to loading whenever the fetch key changes — state-during-render
+  // pattern avoids set-state-in-effect on the synchronous setLoading.
+  const fetchKey = `${channelId}|${threadListVersion}`
+  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey)
+    if (channelId) setLoading(true)
   }
 
   useEffect(() => {

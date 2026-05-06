@@ -224,7 +224,9 @@
 
 .ctxMenu {
   position: fixed;
-  z-index: 901;
+  /* +1 above --z-call-dialog so the sidebar's right-click menu always covers
+     a concurrently-visible call leave dialog. */
+  z-index: calc(var(--z-call-dialog) + 1);
   background: var(--bg-loud);
   border: 1px solid var(--border-muted);
   border-radius: 0.75rem;

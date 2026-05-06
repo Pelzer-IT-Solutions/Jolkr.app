@@ -41,7 +41,15 @@ export function onDeepLink(fn: DeepLinkHandler) {
   handler = fn;
 }
 
-/** Initialize deep-link listening. Call once on app startup after onDeepLink(). */
+/**
+ * Initialize deep-link listening. Call this AFTER `onDeepLink(...)` so the
+ * handler is in place before:
+ *   - the cold-start URL is replayed (read once via `getCurrent()`), and
+ *   - the future-event listener (`onOpenUrl`) starts firing.
+ *
+ * Wiring `initDeepLinks()` first would cause cold-start / resume URLs that
+ * arrive between the listener registration and `onDeepLink()` to be dropped.
+ */
 export async function initDeepLinks() {
   if (!isTauri) return;
 

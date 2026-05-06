@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { ChannelDisplay, DMConversation, MemberGroup, ThemeOrb } from '../../types/ui'
+import type { ChannelDisplay, DMConversation } from '../../types/ui'
 import { useTypingUsers } from '../../stores/typing'
 import { getApiBaseUrl } from '../../platform/config'
 import {
@@ -20,13 +20,6 @@ import {
 
 import type { User, Message as ApiMessage } from '../../api/types'
 import type { useAppInit } from './useAppInit'
-
-// Stable empty member group passed to `transformServer` — server-tab order,
-// channel/category lists and unread counts do not depend on presence, so
-// member status is filled separately by `activeServerMembers` below. Keeping
-// the reference frozen prevents a fresh object on every render from
-// breaking downstream identity checks.
-const EMPTY_MEMBER_GROUP: MemberGroup = Object.freeze({ online: [], offline: [] }) as MemberGroup
 
 export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const { isDark, pref: colorPref, setPreference: setColorPref } = useColorMode()
@@ -99,32 +92,22 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   }, [membersByServer, dmUsers, user])
 
   // ── Transform: servers → UI ──
-  // Member presence is intentionally NOT a dependency here — it would force
-  // a full server-list rebuild on every WS presence event, which is by far
-  // the hottest update path. Members are populated for the *active* server
-  // only via `activeServerMembers` below, and MemberPanel consumes that
-  // separately instead of reading `activeServer.members`.
   const uiServers = useMemo(() => {
     return servers.map(srv => {
       const chs = channelsByServer[srv.id] ?? []
       const cats = categoriesByServer[srv.id] ?? []
+      const mems = membersByServer[srv.id] ?? []
+      const memberGroup = transformMemberGroup(mems, userMap, presenceMap)
       const totalUnread = chs.reduce((sum, ch) => sum + (unreadCounts[ch.id] ?? 0), 0)
-      return transformServer(srv, chs, cats, EMPTY_MEMBER_GROUP, totalUnread, unreadCounts)
+      return transformServer(srv, chs, cats, memberGroup, totalUnread, unreadCounts)
     })
-  }, [servers, channelsByServer, categoriesByServer, unreadCounts])
-
-  // ── Active server's members WITH presence — only this slice rebuilds on a
-  // presence event, instead of every server's member list. ──
-  const activeServerMembers = useMemo<MemberGroup>(() => {
-    if (dmActive || !activeServerId) return EMPTY_MEMBER_GROUP
-    const mems = membersByServer[activeServerId] ?? []
-    return transformMemberGroup(mems, userMap, presenceMap)
-  }, [dmActive, activeServerId, membersByServer, userMap, presenceMap])
+  }, [servers, channelsByServer, categoriesByServer, membersByServer, userMap, presenceMap, unreadCounts])
 
   // ── Transform: messages → UI ──
   const effectiveChannelId = dmActive ? activeDmId : activeChannelId
-  // Stabilize the empty-array fallback so the useMemo below does not re-run
-  // every render when a channel has no messages yet.
+  // Memoize the raw-API messages list so the `?? []` fallback doesn't create a
+  // new empty-array reference on every render (which would invalidate the
+  // useMemo below on every render).
   const currentApiMessages = useMemo(
     () => storeMessages[effectiveChannelId] ?? [],
     [storeMessages, effectiveChannelId],
@@ -183,8 +166,8 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   }).map(s => s.id), [servers, user, serverPermissions])
   const activeTheme = useMemo(() =>
     dmActive
-      ? { hue: null, orbs: [] as ThemeOrb[] }
-      : (serverThemes[activeServerId] ?? { hue: null, orbs: [] as ThemeOrb[] }),
+      ? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] }
+      : (serverThemes[activeServerId] ?? { hue: null, orbs: [] as import('../../types/ui').ThemeOrb[] }),
     [dmActive, activeServerId, serverThemes]
   )
   const themeKey = dmActive ? '__dm__' : activeServerId
@@ -221,15 +204,15 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const mentionableUsers = useMemo(() => {
     if (dmActive) return []
     const members = membersByServer[activeServerId] ?? []
-    return members.flatMap(m =>
-      m.user?.username ? [{ id: m.user_id, username: m.user.username }] : []
-    )
+    return members
+      .filter(m => m.user?.username)
+      .map(m => ({ id: m.user_id, username: m.user!.username }))
   }, [dmActive, activeServerId, membersByServer])
 
   return {
     isDark, colorPref, setColorPref,
     presenceMap, userInfo, userProfile, userMap,
-    uiServers, activeServerMembers, effectiveChannelId, currentApiMessages, uiMessages, uiDmList,
+    uiServers, effectiveChannelId, currentApiMessages, uiMessages, uiDmList,
     tabbedServers, activeServer, activeRawServer, isServerOwner, myPerms,
     canAccessSettings, canManageChannels, canEditTheme,
     canManageMessages, canAddReactions, canSendMessages, canAttachFiles,

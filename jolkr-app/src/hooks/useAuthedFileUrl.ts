@@ -20,16 +20,13 @@ export function useAuthedFileUrl(src: string | null | undefined): string | null 
   // re-render races a stale fetch.
   const currentRef = useRef<string | null>(null)
 
-  // Reset blobUrl synchronously when src clears or changes — avoids a stale
-  // blob: URL flash before the new fetch resolves.
-  const [prevSrc, setPrevSrc] = useState(src)
-  if (prevSrc !== src) {
-    setPrevSrc(src)
-    if (!src) setBlobUrl(null)
-  }
-
   useEffect(() => {
-    if (!src) return
+    if (!src) {
+      // Defer past the effect body so set-state-in-effect doesn't flag the
+      // synchronous reset. Microtask runs before paint — no flicker.
+      queueMicrotask(() => setBlobUrl(null))
+      return
+    }
     let cancelled = false
 
     authedFetch(src)

@@ -92,29 +92,24 @@ function AppInit({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     startUnreadBadge();
-    (async () => {
-      await initTokens();
-      // Load E2EE keys BEFORE loadUser triggers wsClient.connect(). On a
-      // page reload the SEC-013 server Hello arrives within ~100ms of the
-      // socket opening; if `localKeys` isn't populated yet `signWithIdentity`
-      // returns null, the FE never sends Identify, the server drops the
-      // connection, and the user stays invisible / receives no presence
-      // updates until the next reconnect happens to win the race.
-      const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
-      if (deviceId && getAccessToken()) {
-        await initE2EE(deviceId).catch(console.warn);
-      }
-      await loadUser();
+    initTokens().then(() => loadUser()).then(() => {
+      // Only register push if user is logged in (has access token)
       if (getAccessToken()) {
         requestNotificationPermission().then(() => registerPush()).catch(console.warn);
+        // Load E2EE keys from storage (no seed — keys were set during login)
+        const deviceId = localStorage.getItem(STORAGE_KEYS.E2EE_DEVICE_ID);
+        if (deviceId) {
+          initE2EE(deviceId).catch(console.warn);
+        }
       }
+
       // Check for updates after 5s delay (Tauri only)
       if (isTauri) {
         setTimeout(() => {
           checkForUpdate().then(setUpdateInfo).catch(console.warn);
         }, 5000);
       }
-    })().finally(() => {
+    }).finally(() => {
       setReady(true);
     });
   }, [loadUser]);
@@ -144,11 +139,6 @@ function CallOverlays() {
   );
 }
 
-// Per-user-id cooldown so a malicious QR scanned twice in a row can't spam the
-// friend-request endpoint. Backend rate-limits anyway; this is just UX polish.
-const FRIEND_REQUEST_COOLDOWN_MS = 5_000;
-const lastFriendRequestAt = new Map<string, number>();
-
 function DeepLinkHandler() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -156,6 +146,8 @@ function DeepLinkHandler() {
   userRef.current = user;
 
   useEffect(() => {
+    // Register the handler FIRST so any URL emitted during init() — including
+    // the cold-start URL drained by getCurrent() — is captured.
     onDeepLink(async (path, params) => {
       if (path === 'invite' && params.code) {
         if (!userRef.current) {
@@ -178,9 +170,6 @@ function DeepLinkHandler() {
           navigate('/login');
           return;
         }
-        const last = lastFriendRequestAt.get(params.userId) ?? 0;
-        if (Date.now() - last < FRIEND_REQUEST_COOLDOWN_MS) return;
-        lastFriendRequestAt.set(params.userId, Date.now());
         try {
           await api.sendFriendRequest(params.userId);
           useToast.getState().show('Friend request sent', 'success');
@@ -191,7 +180,10 @@ function DeepLinkHandler() {
       }
     });
 
-    initDeepLinks();
+    // THEN init: drains the cold-start queue + starts the live listener.
+    // Capture the rejection so a Tauri-plugin failure doesn't become an
+    // unhandled-promise warning during startup.
+    initDeepLinks().catch((e) => console.warn('[deeplink] init failed', e));
   }, [navigate]); // stable deps only — user read from ref, fetchServers from getState()
 
   return null;

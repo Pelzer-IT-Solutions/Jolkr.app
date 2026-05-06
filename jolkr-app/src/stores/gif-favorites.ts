@@ -10,11 +10,15 @@ interface GifFavoritesState {
    *  Idempotent: a no-op if the local set already reflects the change
    *  (the optimistic update from this session may have already won). */
   applyServerEvent: (payload: { added?: { gif_id: string } | null; removed_gif_id?: string | null }) => void
+  /** Wipe local state — called on logout to drop the previous session's favorites. */
+  reset: () => void
 }
 
 export const useGifFavoritesStore = create<GifFavoritesState>((set, get) => ({
   ids: new Set<string>(),
   loaded: false,
+
+  reset: () => set({ ids: new Set<string>(), loaded: false }),
 
   load: async () => {
     if (get().loaded) return

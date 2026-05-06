@@ -8,6 +8,7 @@ import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { getLocalKeys } from '../../services/e2ee'
 import { displayName } from '../../utils/format'
+import { logErr } from '../../utils/logErr'
 import s from './ThreadPanel.module.css'
 
 interface Props {
@@ -64,8 +65,10 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
   useEffect(() => {
     if (!threadId) return
     let cancelled = false
-    api.getThread(threadId).then(t => { if (!cancelled) setThread(t) }).catch(() => {})
-    fetchThreadMessages(threadId).catch(() => {})
+    api.getThread(threadId)
+      .then(t => { if (!cancelled) setThread(t) })
+      .catch((e) => logErr('ThreadPanel.getThread', e))
+    fetchThreadMessages(threadId).catch((e) => logErr('ThreadPanel.fetchMessages', e))
     return () => { cancelled = true }
   }, [threadId, fetchThreadMessages])
 
@@ -113,7 +116,7 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
   return (
     <div className={s.panel}>
       <div className={s.header}>
-        <button className={s.backBtn} title="Back to threads" onClick={onBack}>
+        <button className={s.backBtn} title="Back to threads" aria-label="Back to threads" onClick={onBack}>
           <ArrowLeft size={14} strokeWidth={1.5} />
         </button>
         <span className={`${s.title} txt-small txt-semibold txt-truncate`}>

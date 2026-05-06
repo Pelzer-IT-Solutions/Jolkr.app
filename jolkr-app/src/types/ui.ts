@@ -1,5 +1,3 @@
-import type { MessageEmbed, Attachment, Poll } from '../api/types'
-
 export interface ChannelDisplay {
   id:        string
   name:      string
@@ -74,11 +72,21 @@ export interface ReactionDisplay {
 }
 
 export interface ReplyRef {
-  id?:        string
-  author:     string
-  text:       string
+  id?:    string
+  author: string
+  /** Plaintext fallback. For E2EE messages this is the raw ciphertext slice;
+   *  the renderer should prefer the decrypted output of `useDecryptedContent`
+   *  applied to {content, nonce, channelId, isDm} below when nonce is set. */
+  text:   string
+  // ─── Decryption inputs (E2EE channels) ───
+  /** Original message content — ciphertext when nonce is set, plaintext otherwise. */
+  content?:   string | null
+  /** When set, content is ciphertext and the renderer must decrypt. */
   nonce?:     string | null
-  channelId?: string
+  /** Channel id used to look up the channel key during decryption. */
+  channelId?: string | null
+  /** True when the reply is to a DM message (controls the channel-key lookup branch). */
+  isDm?:      boolean
 }
 
 /**
@@ -116,8 +124,8 @@ export interface MessageVM {
   isDm?:              boolean
   is_pinned?:         boolean
   is_system?:         boolean
-  embeds?:            MessageEmbed[]
-  attachments?:       Attachment[]
+  embeds?:            import('../api/types').MessageEmbed[]
+  attachments?:       import('../api/types').Attachment[]
   // Thread metadata. `thread_id` on a parent message is the id of the
   // thread that hangs off it (set by the backend when the thread is created
   // from this message). `thread_reply_count` is the number of replies the
@@ -127,7 +135,13 @@ export interface MessageVM {
   // Poll attached to this message (set by the backend when the message is a
   // poll-host message). Refreshed live via `PollUpdate` WS events handled by
   // the messages store.
-  poll?:              Poll | null
+  poll?:              import('../api/types').Poll | null
+  // Webhook attribution — present when the message was posted via a server
+  // webhook rather than a real user. Carried verbatim from the wire so a
+  // future "🤖 by GitHub-Webhook" UI doesn't need a second round-trip.
+  webhook_id?:     string | null
+  webhook_name?:   string | null
+  webhook_avatar?: string | null
 }
 
 export type MessageStore = Record<string, Record<string, MessageVM[]>>

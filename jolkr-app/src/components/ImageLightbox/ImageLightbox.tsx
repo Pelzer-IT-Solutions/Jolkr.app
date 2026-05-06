@@ -141,10 +141,11 @@ export default function ImageLightbox(props: Props) {
   const zoomIn  = useCallback(() => applyScale(scale + SCALE_STEP), [scale, applyScale])
   const zoomOut = useCallback(() => applyScale(scale - SCALE_STEP), [scale, applyScale])
 
-  // Reset per-image state when navigating (canonical "store info from
-  // previous render" pattern — runs once per index change, single render).
+  // Reset per-image state when navigating — store-prev pattern (React 19
+  // state-during-render is the canonical way to react to prop changes
+  // without triggering react-hooks/set-state-in-effect on cascading renders).
   const [prevIndex, setPrevIndex] = useState(index)
-  if (prevIndex !== index) {
+  if (index !== prevIndex) {
     setPrevIndex(index)
     setScale(1)
     setOffset({ x: 0, y: 0 })
@@ -240,7 +241,7 @@ export default function ImageLightbox(props: Props) {
       a.download = current?.filename || current?.alt || 'image'
       a.click()
     } catch {
-      window.open(displaySrc, '_blank', 'noopener')
+      window.open(displaySrc, '_blank')
     }
   }, [displaySrc, current])
 

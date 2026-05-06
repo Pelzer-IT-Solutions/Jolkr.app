@@ -56,7 +56,6 @@
   background: var(--accent);
   border-radius: 9999px;
   transition: width 300ms ease;
-  width: var(--progress-pct, 0%);
 }
 
 .progressText {

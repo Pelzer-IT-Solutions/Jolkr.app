@@ -2,7 +2,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -413,7 +413,7 @@
 .addOverwriteModal {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  z-index: var(--z-modal-nested);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -471,7 +471,6 @@
 /* ── Reveal animation ── */
 .reveal {
   animation: slideIn 300ms var(--ease-out-quart) both;
-  animation-delay: var(--reveal-delay, 0ms);
 }
 
 @keyframes slideIn {

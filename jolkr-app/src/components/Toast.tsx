@@ -9,20 +9,19 @@ export default function Toast() {
   const duration = useToast((s) => s.duration);
   const clear = useToast((s) => s.clear);
   const [closing, setClosing] = useState(false);
-
-  // Reset closing state synchronously when a new message arrives so the
-  // transition restarts cleanly across consecutive toasts.
+  // Reset `closing` when a new message arrives — React 19 store-prev pattern
+  // avoids the set-state-in-effect rule's cascading-render concern.
   const [prevMessage, setPrevMessage] = useState(message);
-  if (prevMessage !== message) {
+  if (message !== prevMessage) {
     setPrevMessage(message);
     setClosing(false);
   }
 
   useEffect(() => {
-    if (!message || closing) return;
+    if (!message) return;
     const timer = setTimeout(() => setClosing(true), duration);
     return () => clearTimeout(timer);
-  }, [message, duration, closing]);
+  }, [message, duration]);
 
   useEffect(() => {
     if (!closing) return;

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Flag, AlertCircle } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
-import Modal from '../ui/Modal'
 import s from './ReportModal.module.css'
 
 type ReportReason = 'harassment' | 'spam' | 'nsfw' | 'violence' | 'other'
@@ -53,9 +53,9 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
-  // Reset form fields when modal closes (canonical store-info-from-prev-render).
+  // Reset modal state when it closes — store-prev pattern.
   const [prevOpen, setPrevOpen] = useState(open)
-  if (prevOpen !== open) {
+  if (open !== prevOpen) {
     setPrevOpen(open)
     if (!open) {
       setSelectedReason(null)
@@ -64,6 +64,15 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
       setIsSuccess(false)
     }
   }
+
+  useEffect(() => {
+    if (!open) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [open, onClose])
 
   const handleSubmit = async () => {
     if (!user || !selectedReason) return
@@ -78,10 +87,11 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
     setIsSuccess(true)
   }
 
-  if (!user) return null
+  if (!open || !user) return null
 
-  return (
-    <Modal open={open} onClose={onClose} overlayClassName={s.overlay} className={s.modal}>
+  return createPortal(
+    <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className={s.modal}>
         {isSuccess ? (
           <div className={s.successView}>
             <div className={s.successIcon}>
@@ -169,6 +179,8 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
             </div>
           </>
         )}
-    </Modal>
+      </div>
+    </div>,
+    document.body
   )
 }

@@ -3,7 +3,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,7 +182,7 @@
   justify-content: center;
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-on-accent);
   flex-shrink: 0;
   position: relative;
 }
@@ -200,26 +200,10 @@
 .dnd     { background: oklch(55% 0.2 25); }
 .offline { background: var(--jolkr-neutral-dark-20); }
 
-.userInfo {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
 .userName {
+  flex: 1;
   color: var(--text-default);
   min-width: 0;
-}
-.userHandle {
-  opacity: 0.5;
-}
-.userMeta {
-  opacity: 0.4;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-.searchIcon {
-  opacity: 0.5;
 }
 .userRow:hover .userName,
 .userRow.selected .userName { color: var(--text-strong); }
@@ -265,7 +249,7 @@
   padding: 0 1rem;
   border-radius: 0.5rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;

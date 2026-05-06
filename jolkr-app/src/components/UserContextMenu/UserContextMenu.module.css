@@ -18,7 +18,7 @@
     0 24px 40px -12px var(--jolkr-neutral-dark-12);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  z-index: 1001;
+  z-index: var(--z-context-menu);
   animation: popIn 120ms var(--ease-out-quart) both;
   overflow: hidden;
 }
@@ -45,7 +45,7 @@
   justify-content: center;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-on-accent);
   overflow: hidden;
 }
 
@@ -171,7 +171,7 @@
   justify-content: center;
   font-size: 0.5rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-on-accent);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -216,7 +216,6 @@
   height: 0.625rem;
   border-radius: 50%;
   flex-shrink: 0;
-  background: var(--role-color, var(--text-faint));
 }
 .roleCheck {
   margin-left: auto;

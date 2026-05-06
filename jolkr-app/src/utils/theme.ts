@@ -10,38 +10,67 @@ export function orbsForHue(hue: number): ThemeOrb[] {
   ]
 }
 
-/** Radially mix the orbs into a CSS background string */
-export function buildBackground(theme: ServerTheme, isDark = false): string {
-  // Light mode: bright pastel orbs on a soft light base
-  // Dark  mode: deep saturated orbs on a near-black base
-  const baseL = isDark ? '11%'   : '91.5%'
+/** Per-orb shape used by `buildOrbBackground` — strips the optional `id`
+ *  field so animated snapshots don't have to ferry it around. */
+export interface OrbInput {
+  x: number
+  y: number
+  hue: number
+  scale: number
+}
 
-  // No orbs at all: neutral grey background
-  if (theme.orbs.length === 0) {
+export interface OrbBackgroundOpts {
+  /** Hue of the base oklch fill below the orbs. */
+  baseHue: number
+  /** 0..1 — animation pulse. <0.001 collapses to a neutral-grey base. */
+  intensity: number
+  /** Selects the dark or light palette branch. */
+  isDark: boolean
+}
+
+/**
+ * Single source of truth for the radial-gradient background. Used by both
+ * the static `buildBackground()` (renders ServerTheme directly) and the
+ * RAF-animated `useAnimatedTheme()` (renders an interpolated snapshot).
+ */
+export function buildOrbBackground(orbs: OrbInput[], opts: OrbBackgroundOpts): string {
+  const { baseHue, intensity, isDark } = opts
+  // Light mode: bright pastel orbs on a soft light base.
+  // Dark  mode: deep saturated orbs on a near-black base.
+  const baseL = isDark ? '11%' : '91.5%'
+
+  // Neutral grey when there's nothing to render or intensity has faded out.
+  if (intensity < 0.001 || orbs.length === 0) {
     return `oklch(${baseL} 0 0)`
   }
 
-  const orbL  = isDark ? '36%'    : '83%'
-  const orbC  = isDark ? '0.10'   : '0.11'
-  const baseC = isDark ? '0.018'  : '0.021'
+  const orbL      = isDark ? '36%'  : '83%'
+  const orbC      = (isDark ? 0.10  : 0.11)  * intensity
+  const blendOrbA = (isDark ? 0.95  : 0.92)  * intensity
+  const baseC     = (isDark ? 0.018 : 0.021) * intensity
 
-  // Build orb gradients with scale support
-  // Use increased opacity for better color mixing with blend modes
-  const blendOrbA = isDark ? '0.95' : '0.92'
-  
-  const grads = theme.orbs.map(o => {
-    const scale = o.scale ?? 1
-    // Use farthest-corner with scale to create circular gradients
-    // Scale affects the gradient spread (larger scale = larger orb)
-    const spread = 72 * scale
-    // Fade from full opacity to 0% of the same color (not transparent black)
-    return `radial-gradient(circle farthest-corner at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC} ${o.hue.toFixed(1)} / ${blendOrbA}) 0%, oklch(${orbL} ${orbC} ${o.hue.toFixed(1)} / 0) ${spread.toFixed(1)}%)`
+  const grads = orbs.map(o => {
+    // farthest-corner + scale yields circular gradients whose radius scales
+    // with the orb size (scale=1 → 72%, scale=1.5 → 108%, …).
+    const spread = 72 * o.scale
+    // Fade from full opacity to 0% of the same color so adjacent orbs blend
+    // into each other instead of into transparent black.
+    return `radial-gradient(circle farthest-corner at ${(o.x * 100).toFixed(1)}% ${(o.y * 100).toFixed(1)}%, oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / ${blendOrbA.toFixed(4)}) 0%, oklch(${orbL} ${orbC.toFixed(4)} ${o.hue.toFixed(1)} / 0) ${spread.toFixed(1)}%)`
   })
+  return [...grads, `oklch(${baseL} ${baseC.toFixed(4)} ${baseHue.toFixed(1)})`].join(', ')
+}
 
-  // Base color: use theme hue if set, otherwise derive from first orb
+/** Radially mix the orbs into a CSS background string (static, intensity=1). */
+export function buildBackground(theme: ServerTheme, isDark = false): string {
+  // Base hue: explicit preset if set, otherwise the first orb's hue.
   const baseHue = theme.hue ?? (theme.orbs[0]?.hue ?? 0)
-  const base = `oklch(${baseL} ${baseC} ${baseHue.toFixed(1)})`
-  return [...grads, base].join(', ')
+  const orbs: OrbInput[] = theme.orbs.map(o => ({
+    x: o.x,
+    y: o.y,
+    hue: o.hue,
+    scale: o.scale ?? 1,
+  }))
+  return buildOrbBackground(orbs, { baseHue, intensity: 1, isDark })
 }
 
 /**

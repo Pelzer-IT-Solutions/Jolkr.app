@@ -14,20 +14,17 @@ interface Props {
  * mutation.
  */
 export function PollDisplay({ poll }: Props) {
-  // Expiry is captured once on mount and re-flipped by a timer when the poll
-  // crosses its expiry — Date.now() during render would be impure.
-  const [expired, setExpired] = useState(() =>
-    poll.expires_at ? new Date(poll.expires_at).getTime() < Date.now() : false,
-  )
+  // `Date.now()` is impure — capture it in state and refresh once the
+  // expiry passes so the "Closed" badge appears without a manual reload.
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    if (!poll.expires_at || expired) return
-    // Math.max keeps the timer non-negative — a setTimeout(0) fires async on
-    // the next macrotask, so setExpired stays out of the effect's body.
-    const ms = Math.max(0, new Date(poll.expires_at).getTime() - Date.now())
-    const timer = setTimeout(() => setExpired(true), ms)
-    return () => clearTimeout(timer)
-  }, [poll.expires_at, expired])
-
+    if (!poll.expires_at) return
+    const remaining = new Date(poll.expires_at).getTime() - Date.now()
+    if (remaining <= 0) return
+    const t = setTimeout(() => setNow(Date.now()), remaining)
+    return () => clearTimeout(t)
+  }, [poll.expires_at])
+  const expired = poll.expires_at ? new Date(poll.expires_at).getTime() < now : false
   const myVotes = new Set(poll.my_votes ?? [])
   const totalVotes = poll.total_votes ?? 0
 
@@ -65,7 +62,7 @@ export function PollDisplay({ poll }: Props) {
               onClick={() => onVote(opt.id)}
               disabled={expired}
             >
-              <div className={s.bar} style={{ '--vote-pct': `${pct}%` } as React.CSSProperties} aria-hidden />
+              <div className={s.bar} style={{ width: `${pct}%` }} aria-hidden />
               <span className={`${s.optionText} txt-small`}>{opt.text}</span>
               <span className={`${s.optionCount} txt-tiny txt-medium`}>{count}</span>
             </button>

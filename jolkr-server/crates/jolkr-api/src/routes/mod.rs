@@ -148,7 +148,6 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
         .route("/api/friends", get(friends::list_friends).post(friends::send_request))
         .route("/api/friends/pending", get(friends::list_pending))
         .route("/api/friends/:id/accept", post(friends::accept_request))
-        .route("/api/friends/by-user/:user_id", delete(friends::decline_or_remove_by_user))
         .route("/api/friends/:id", delete(friends::decline_or_remove))
         .route("/api/friends/block", post(friends::block_user))
         // ── DMs ─────────────────────────────────────────────────────

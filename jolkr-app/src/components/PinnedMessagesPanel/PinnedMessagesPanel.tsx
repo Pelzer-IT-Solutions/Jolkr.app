@@ -44,7 +44,7 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
         {decrypting ? 'Decrypting...' : (displayContent || '').slice(0, 200)}
       </div>
       {onUnpin && (
-        <button className={s.unpinBtn} title="Unpin" onClick={() => onUnpin(msg.id)}>
+        <button className={s.unpinBtn} title="Unpin" aria-label="Unpin" onClick={() => onUnpin(msg.id)}>
           <X size={12} strokeWidth={1.5} />
         </button>
       )}
@@ -54,24 +54,29 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
 
 export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, users, pinnedVersion }: Props) {
   const key = cacheKey(channelId, isDm, pinnedVersion ?? 0)
-  const [messages, setMessages] = useState<Message[]>(() => cache.get(key) ?? [])
+  const cached = cache.get(key)
+  const [messages, setMessages] = useState<Message[]>(cached ?? [])
   // No "Loading..." if we already have data for this key — show stale data
   // immediately and revalidate in the background.
-  const [loading, setLoading] = useState(() => !cache.has(key))
+  const [loading, setLoading] = useState(cached === undefined)
 
-  // Sync messages + loading immediately when the cache key changes (channel
-  // switch or pinnedVersion bump). Reads `cache` synchronously so a cached
-  // entry shows without a Loading flash.
+  // Sync messages/loading from the cache when the panel's identity changes —
+  // state-during-render avoids set-state-in-effect on the synchronous reset path.
   const [prevKey, setPrevKey] = useState(key)
-  if (prevKey !== key) {
+  if (key !== prevKey) {
     setPrevKey(key)
-    const cached = cache.get(key)
-    setMessages(cached ?? [])
-    setLoading(cached === undefined)
+    const cachedNow = cache.get(key)
+    if (cachedNow !== undefined) {
+      setMessages(cachedNow)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
   }
 
   useEffect(() => {
-    if (cache.has(key)) return
+    const k = cacheKey(channelId, isDm, pinnedVersion ?? 0)
+    if (cache.get(k) !== undefined) return // already populated synchronously above
     const fetchPromise = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
     fetchPromise.then(msgs => {
       // Normalize DM messages: dm_channel_id → channel_id
@@ -79,11 +84,11 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
         ...m,
         channel_id: m.channel_id ?? (m as unknown as { dm_channel_id?: string }).dm_channel_id ?? channelId,
       }))
-      cache.set(key, normalized)
+      cache.set(k, normalized)
       setMessages(normalized)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [key, channelId, isDm])
+  }, [channelId, isDm, pinnedVersion])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)

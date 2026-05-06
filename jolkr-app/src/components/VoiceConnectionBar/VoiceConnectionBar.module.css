@@ -2,7 +2,7 @@
   position: fixed;
   bottom: 1rem;
   right: 1rem;
-  z-index: 700;
+  z-index: var(--z-voice-bar);
   display: flex;
   align-items: center;
   gap: 0.625rem;
@@ -99,7 +99,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--text-on-accent);
   background: var(--danger-default);
   transition: filter var(--transition);
   cursor: pointer;
@@ -111,7 +111,7 @@
   position: fixed;
   bottom: 1rem;
   right: 1rem;
-  z-index: 700;
+  z-index: var(--z-voice-bar);
   padding: 0.625rem 0.875rem;
   background: var(--danger-muted);
   border: 1px solid var(--danger-default);

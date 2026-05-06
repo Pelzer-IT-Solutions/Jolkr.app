@@ -120,6 +120,8 @@ export default function ContextMenu() {
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
     >
+      {/* index keys are safe here — the items list is frozen for the lifetime
+          of this open instance (re-opens close+rebuild from scratch). */}
       {items.map((entry, i) => {
         if (isDivider(entry)) {
           return <div key={i} className={s.divider} />;

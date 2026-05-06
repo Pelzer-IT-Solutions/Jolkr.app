@@ -1,0 +1,5 @@
+/* Emoji-only messages render at a larger line-height so the glyphs aren't
+   cramped against neighbouring text in the same message group. */
+.emojiOnly {
+  line-height: 2.5rem;
+}

@@ -106,25 +106,6 @@ impl FriendshipRepo {
         Ok(row)
     }
 
-    pub async fn decline_or_remove_by_user_pair(
-        pool: &PgPool,
-        caller_id: Uuid,
-        other_id: Uuid,
-    ) -> Result<FriendshipRow, JolkrError> {
-        let row = sqlx::query_as::<_, FriendshipRow>(
-            "DELETE FROM friendships
-               WHERE (requester_id = $1 AND addressee_id = $2)
-                  OR (requester_id = $2 AND addressee_id = $1)
-               RETURNING *",
-        )
-        .bind(caller_id)
-        .bind(other_id)
-        .fetch_optional(pool)
-        .await?
-        .ok_or(JolkrError::NotFound)?;
-        Ok(row)
-    }
-
     /// Block user.
     pub async fn block_user(
         pool: &PgPool,

@@ -22,7 +22,7 @@
   box-shadow:
     0 12px 40px oklch(0% 0 0 / 0.16),
     0 4px 12px  oklch(0% 0 0 / 0.08);
-  z-index: 9999;
+  z-index: var(--z-popover);
   animation: popIn 160ms cubic-bezier(0.34, 1.25, 0.64, 1) both;
 }
 
@@ -38,7 +38,6 @@
   aspect-ratio: 4 / 3;
   overflow: hidden;
   cursor: crosshair;
-  background: var(--canvas-bg);
 }
 
 /* Subtle dot grid */
@@ -74,7 +73,7 @@
 .orbHandle {
   position: absolute;
   border-radius: 50%;
-  border: 2.5px solid #fff;
+  border: 3px solid var(--text-on-accent);
   box-shadow:
     0 2px 10px oklch(0% 0 0 / 0.24),
     0 0 0 0.5px oklch(0% 0 0 / 0.08);
@@ -88,8 +87,7 @@
 
 /* Selected orb state - white ring with outer glow */
 .orbHandleSelected {
-  border-color: #fff;
-  border-width: 3px;
+  border-color: var(--text-on-accent);
   box-shadow:
     0 4px 20px oklch(0% 0 0 / 0.35),
     0 0 0 0.5px oklch(0% 0 0 / 0.1),
@@ -150,7 +148,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--text-on-accent);
   border: 2px solid oklch(0% 0 0 / 0.3);
   box-shadow:
     0 2px 6px oklch(0% 0 0 / 0.3),
@@ -177,7 +175,6 @@
   border: 1.5px solid transparent;
   outline: none;
   transition: transform 100ms ease;
-  background: var(--preset-color);
 }
 .preset:hover    { transform: scale(1.18); }
 

@@ -22,18 +22,18 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
     <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
       <div className={s.header}>
         {isMobile && onCollapse && (
-          <button className={s.iconBtn} title="Back to chat" onClick={onCollapse}>
+          <button className={s.iconBtn} title="Back to chat" aria-label="Back to chat" onClick={onCollapse}>
             <ArrowLeft size={14} strokeWidth={1.5} />
           </button>
         )}
         <span className={`${s.title} txt-small txt-semibold`}>Direct Messages</span>
         <div className={s.actions}>
           {onOpenFriends && (
-            <button className={s.iconBtn} title="Friends" onClick={onOpenFriends}><Users size={14} strokeWidth={1.5} /></button>
+            <button className={s.iconBtn} title="Friends" aria-label="Friends" onClick={onOpenFriends}><Users size={14} strokeWidth={1.5} /></button>
           )}
-          <button className={s.iconBtn} title="New message" onClick={onNewMessage}><ComposeIcon /></button>
+          <button className={s.iconBtn} title="New message" aria-label="New message" onClick={onNewMessage}><ComposeIcon /></button>
           {!isMobile && onCollapse && (
-            <button className={s.iconBtn} title="Collapse sidebar" onClick={onCollapse}>
+            <button className={s.iconBtn} title="Collapse sidebar" aria-label="Collapse sidebar" onClick={onCollapse}>
               <PanelLeftClose size={14} strokeWidth={1.5} />
             </button>
           )}
@@ -42,10 +42,10 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
 
       <div className={`${s.scroll} scrollbar-thin scroll-view-y`}>
         {conversations.length === 0 && (
-          <div className={s.empty}>
-            <div className={s.emptyIcon}>💬</div>
+          <div style={{ padding: '2rem 1rem', textAlign: 'center', opacity: 0.4 }}>
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💬</div>
             <p className="txt-small">No conversations yet</p>
-            <p className={`${s.emptyHint} txt-tiny`}>Start a new message to begin chatting</p>
+            <p className="txt-tiny" style={{ marginTop: '0.25rem' }}>Start a new message to begin chatting</p>
           </div>
         )}
         {conversations.map(conv => {
@@ -94,7 +94,7 @@ function ConvAvatar({ conv }: { conv: DMConversation }) {
   return (
     <div className={s.groupAvatars}>
       {conv.participants.slice(0, 2).map((p, i) => (
-        <div key={i} className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}>
+        <div key={p.userId ?? `slot-${i}`} className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}>
           <Avatar url={p.avatarUrl} name={p.name} size="xs" userId={p.userId} color={p.color} />
         </div>
       ))}

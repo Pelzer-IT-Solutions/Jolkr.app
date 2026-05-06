@@ -60,9 +60,10 @@ export default function Avatar({ url, name, size = 'lg', status, userId, classNa
     : url
   const imgSrc = userId && (url || versionHint) ? avatarEndpoint(userId, versionHint) : (url ?? undefined)
   const [imgError, setImgError] = useState(false)
+  // Reset img-error when the underlying identity changes — store-prev-value
+  // pattern (https://react.dev/reference/react/useState#storing-information-from-previous-renders).
   const currentKey = userId ?? url
   const [prevKey, setPrevKey] = useState(currentKey)
-
   if (currentKey !== prevKey) {
     setPrevKey(currentKey)
     setImgError(false)

@@ -103,19 +103,6 @@
 .conv:hover  { background: var(--bg-dark-muted); }
 .conv.active { background: var(--bg-dark-strong); }
 
-.empty {
-  padding: 2rem 1rem;
-  text-align: center;
-  opacity: 0.4;
-}
-.emptyIcon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-.emptyHint {
-  margin-top: 0.25rem;
-}
-
 /* ── Direct message avatar ── */
 .avatarWrap {
   position: relative;

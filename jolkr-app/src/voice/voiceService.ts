@@ -1,6 +1,5 @@
 import { VoiceClient } from './voiceClient';
 import { voicePrefs, type VoicePrefs } from './voicePrefs';
-import { VOICE_CONNECT_TIMEOUT_MS } from '../utils/constants';
 
 export interface VoiceParticipant {
   userId: string;
@@ -121,7 +120,7 @@ export class VoiceService {
     if (this.connectingTimer) clearTimeout(this.connectingTimer);
     this.connectingTimer = setTimeout(() => {
       if (this._state === 'connecting') {
-        console.warn(`Voice connection timed out after ${VOICE_CONNECT_TIMEOUT_MS}ms`);
+        console.warn('Voice connection timed out after 15s');
         this.emitError('Voice connection timed out');
         this.cleanup().then(() => {
           this.setState('disconnected');
@@ -130,7 +129,7 @@ export class VoiceService {
           this.notifyParticipants();
         });
       }
-    }, VOICE_CONNECT_TIMEOUT_MS);
+    }, 15_000);
 
     try {
       await this.client.connect(token);
@@ -484,6 +483,9 @@ export class VoiceService {
         const prefs = voicePrefs.get();
         audio.volume = clampVolume(prefs.outputVolume);
         applySinkId(audio, prefs.audioOutputDeviceId);
+        // Autoplay can be blocked by browser policy when no user gesture has
+        // happened yet — that's recoverable (user clicks anything → unblock)
+        // and not worth a console line. Intentional silent catch.
         audio.play().catch(() => {});
         this.audioElements.push(audio);
       } else if (ev.track.kind === 'video' && userId) {
@@ -547,6 +549,8 @@ export class VoiceService {
     this.inputGainNode?.disconnect();
     this.inputGainNode = null;
     if (this.inputAudioCtx) {
+      // Closing an already-closed AudioContext throws InvalidStateError; this
+      // path is reached on cleanup-after-cleanup. Intentional silent catch.
       this.inputAudioCtx.close().catch(() => {});
       this.inputAudioCtx = null;
     }

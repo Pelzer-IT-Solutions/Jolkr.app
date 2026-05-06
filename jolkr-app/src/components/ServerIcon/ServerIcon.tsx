@@ -24,9 +24,9 @@ const fontClass: Record<string, string> = {
 export default function ServerIcon({ name, iconUrl, serverId, size = 'md', className }: ServerIconProps) {
   const imgSrc = serverId && iconUrl ? iconEndpoint(serverId) : (iconUrl ?? undefined);
   const [imgError, setImgError] = useState(false);
+  // Reset img-error when the underlying identity changes — store-prev-value pattern.
   const currentKey = serverId ?? iconUrl;
   const [prevKey, setPrevKey] = useState(currentKey);
-
   if (currentKey !== prevKey) {
     setPrevKey(currentKey);
     setImgError(false);

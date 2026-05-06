@@ -9,7 +9,16 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   ref?: Ref<HTMLInputElement>;
 }
 
-export default function Input({ ref, label, error, helper, icon, className, id, ...props }: InputProps) {
+export default function Input({
+  label,
+  error,
+  helper,
+  icon,
+  className,
+  id,
+  ref,
+  ...props
+}: InputProps) {
   const wrapClass = error ? `${s.wrap} ${s.invalid}` : s.wrap;
   const inputClass = [
     s.input,
