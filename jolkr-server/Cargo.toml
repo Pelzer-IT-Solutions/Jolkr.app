@@ -9,7 +9,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.10.4"
+version = "0.10.3"
 edition = "2021"
 authors = ["Jolkr Team"]
 license = "Proprietary"
