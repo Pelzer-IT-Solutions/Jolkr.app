@@ -26,9 +26,7 @@ export default function EmojiPickerPopup({ position, onSelect, onClose, anchor }
       className={s.popup}
       style={{ top: position.top, left: position.left }}
     >
-      <Suspense fallback={
-        <div style={{ width: 300, height: 350, background: 'var(--bg-loud)', borderRadius: '0.75rem' }} />
-      }>
+      <Suspense fallback={<div className={s.fallback} />}>
         <LazyEmojiPicker
           theme={theme}
           onEmojiClick={(emojiData) => { onSelect(emojiData.emoji); }}

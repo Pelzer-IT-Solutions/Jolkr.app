@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { DependencyList } from 'react'
 import { revealWindowMs } from '../utils/animations'
 
@@ -18,17 +18,31 @@ export function useRevealAnimation(
   active = true,
   durationMs?: number,
 ): boolean {
+  // Stringify the user-passed deps so we can detect changes during render
+  // without lying to the exhaustive-deps lint rule. Deps are typically a
+  // handful of primitives so the cost is negligible.
+  const depsKey = JSON.stringify(deps)
   const [isRevealing, setIsRevealing] = useState(active)
+  const [prevDepsKey, setPrevDepsKey] = useState(depsKey)
+  const [prevActive, setPrevActive] = useState(active)
 
-  useLayoutEffect(() => {
-    if (!active) return
+  if (active && (depsKey !== prevDepsKey || !prevActive)) {
+    setPrevDepsKey(depsKey)
+    setPrevActive(active)
     setIsRevealing(true)
+  } else if (!active && prevActive) {
+    setPrevActive(active)
+    setIsRevealing(false)
+  }
+
+  useEffect(() => {
+    if (!isRevealing) return
     const timer = setTimeout(
       () => setIsRevealing(false),
       durationMs ?? revealWindowMs(totalItems),
     )
     return () => clearTimeout(timer)
-  }, deps) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isRevealing, durationMs, totalItems])
 
   return isRevealing
 }

@@ -6,7 +6,7 @@ import type { User } from '../../api/types'
 import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
 import { invalidateFriendsCache } from '../../services/friendshipCache'
-import { useToast } from '../Toast'
+import { useToast } from '../../stores/toast'
 import Avatar from '../Avatar/Avatar'
 import s from './QrCodeScanner.module.css'
 
@@ -22,10 +22,13 @@ const VIEWFINDER_ID = 'jolkr-qr-scanner-viewfinder'
 // QR payload formats accepted (both written by QrCodeDisplay):
 //   https://jolkr.app/app/add/<uuid>  (web share)
 //   jolkr://add/<uuid>                (Tauri deep-link)
+// UUID v4 shape enforced so 36-char garbage doesn't slip through to the
+// backend with a confusing 404.
+const UUID_RE = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 function parseJolkrUserId(text: string): string | null {
-  const web = text.match(/jolkr\.app\/(?:app\/)?add\/([0-9a-f-]{36})/i)
+  const web = text.match(new RegExp(`jolkr\\.app/(?:app/)?add/(${UUID_RE})`, 'i'))
   if (web) return web[1]
-  const deep = text.match(/jolkr:\/\/add\/([0-9a-f-]{36})/i)
+  const deep = text.match(new RegExp(`jolkr://add/(${UUID_RE})`, 'i'))
   if (deep) return deep[1]
   return null
 }
@@ -59,17 +62,27 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
     onClose()
   }, [stopScanner, onClose])
 
+  // Reset transient state synchronously when the modal opens so a stale
+  // error or scanned-user from a previous open doesn't briefly flash. The
+  // processingRef reset lives in the start-scanner effect since refs may
+  // only be mutated outside of render.
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (prevOpen !== open) {
+    setPrevOpen(open)
+    if (open) {
+      setError('')
+      setScannedUser(null)
+      setSending(false)
+    }
+  }
+
   // Start the scanner whenever the modal opens. The viewfinder div is
   // rendered conditionally, so we defer one tick to let it mount before
   // html5-qrcode tries to attach to it.
   useEffect(() => {
     if (!open) return
 
-    setError('')
-    setScannedUser(null)
-    setSending(false)
     processingRef.current = false
-
     let cancelled = false
 
     async function start() {

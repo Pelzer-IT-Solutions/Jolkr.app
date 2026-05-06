@@ -216,6 +216,7 @@
   height: 0.625rem;
   border-radius: 50%;
   flex-shrink: 0;
+  background: var(--role-color, var(--text-faint));
 }
 .roleCheck {
   margin-left: auto;

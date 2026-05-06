@@ -5,6 +5,8 @@ import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
 import { useVoiceStore } from './voice';
 import { resetAllStores } from './reset';
+import { useToast } from './toast';
+import { log } from '../utils/log';
 
 /**
  * Subset of `User` carried by `UserUpdate` WS events. Each field is optional;
@@ -38,7 +40,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.login(email, password);
       const user = await api.getMe();
       set({ user, loading: false });
-      wsClient.connect();
+      // WS connect is the caller's responsibility — runs after initE2EE.
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
       throw e;
@@ -51,9 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.register(email, username, password);
       const user = await api.getMe();
       set({ user, loading: false });
-      if (user.email_verified) {
-        wsClient.connect();
-      }
+      // WS connect is the caller's responsibility — runs after initE2EE.
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
       throw e;
@@ -110,8 +110,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Leave voice channel before disconnecting
     try { await useVoiceStore.getState().leaveChannel(); } catch { /* ignore */ }
     wsClient.disconnect();
-    try { await api.clearTokens(); } catch (e) { console.warn('clearTokens failed:', e); }
-    resetE2EE().catch(console.warn);
+    try { await api.clearTokens(); } catch (e) { log.warn('auth.clearTokens', e); }
+    // E2EE key wipe is security-critical: if it fails the next user on this
+    // browser could in principle access prior keys still in IndexedDB. Surface
+    // the failure so the user knows to fully close the browser.
+    try {
+      await resetE2EE();
+    } catch (e) {
+      log.error('auth.resetE2EE', e);
+      try {
+        useToast.getState().show('Could not clear encryption keys — please close and reopen the browser before signing in again.', 'error');
+      } catch { /* toast unavailable, already logged */ }
+    }
     // Reset all stores to prevent stale data on re-login
     resetAllStores();
     set({ user: null, loading: false, error: null });

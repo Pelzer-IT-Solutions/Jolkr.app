@@ -444,8 +444,14 @@
   font-size: 0.625rem;
   font-weight: 700;
   color: #fff;
-  background: var(--accent);
+  background: var(--avatar-bg, var(--accent));
   overflow: hidden;
+}
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .statusDot {
@@ -456,6 +462,7 @@
   height: 0.5rem;
   border-radius: 50%;
   z-index: 2;
+  background: var(--status-color);
 }
 
 .userName { color: var(--jolkr-neutral-dark-70); }
@@ -503,7 +510,7 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: #fff;
-  background: var(--accent);
+  background: var(--avatar-bg, var(--accent));
   overflow: hidden;
 }
 
@@ -515,6 +522,7 @@
   height: 0.5rem;
   border-radius: 50%;
   z-index: 2;
+  background: var(--status-color);
 }
 
 .profileInfo {
@@ -525,7 +533,7 @@
 }
 
 .profileName  { color: var(--text-strong); }
-.profileStatus { font-weight: 500; }
+.profileStatus { font-weight: 500; color: var(--status-color); }
 
 .statusList {
   display: flex;
@@ -552,6 +560,15 @@
   height: 0.5rem;
   border-radius: 50%;
   flex-shrink: 0;
+  background: var(--status-color);
+}
+
+.plusIcon {
+  transition: transform 200ms ease;
+  transform: none;
+}
+.plusIcon.plusIconOpen {
+  transform: rotate(45deg);
 }
 
 .statusLabel { flex: 1; color: var(--text-default); }

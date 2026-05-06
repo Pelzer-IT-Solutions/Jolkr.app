@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import * as api from '../../api/client'
 import type { Poll } from '../../api/types'
 import s from './PollDisplay.module.css'
@@ -13,7 +14,20 @@ interface Props {
  * mutation.
  */
 export function PollDisplay({ poll }: Props) {
-  const expired = poll.expires_at ? new Date(poll.expires_at).getTime() < Date.now() : false
+  // Expiry is captured once on mount and re-flipped by a timer when the poll
+  // crosses its expiry — Date.now() during render would be impure.
+  const [expired, setExpired] = useState(() =>
+    poll.expires_at ? new Date(poll.expires_at).getTime() < Date.now() : false,
+  )
+  useEffect(() => {
+    if (!poll.expires_at || expired) return
+    // Math.max keeps the timer non-negative — a setTimeout(0) fires async on
+    // the next macrotask, so setExpired stays out of the effect's body.
+    const ms = Math.max(0, new Date(poll.expires_at).getTime() - Date.now())
+    const timer = setTimeout(() => setExpired(true), ms)
+    return () => clearTimeout(timer)
+  }, [poll.expires_at, expired])
+
   const myVotes = new Set(poll.my_votes ?? [])
   const totalVotes = poll.total_votes ?? 0
 
@@ -51,7 +65,7 @@ export function PollDisplay({ poll }: Props) {
               onClick={() => onVote(opt.id)}
               disabled={expired}
             >
-              <div className={s.bar} style={{ width: `${pct}%` }} aria-hidden />
+              <div className={s.bar} style={{ '--vote-pct': `${pct}%` } as React.CSSProperties} aria-hidden />
               <span className={`${s.optionText} txt-small`}>{opt.text}</span>
               <span className={`${s.optionCount} txt-tiny txt-medium`}>{count}</span>
             </button>

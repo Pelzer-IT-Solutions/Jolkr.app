@@ -38,6 +38,7 @@
   aspect-ratio: 4 / 3;
   overflow: hidden;
   cursor: crosshair;
+  background: var(--canvas-bg);
 }
 
 /* Subtle dot grid */
@@ -73,7 +74,7 @@
 .orbHandle {
   position: absolute;
   border-radius: 50%;
-  border: 3px solid #fff;
+  border: 2.5px solid #fff;
   box-shadow:
     0 2px 10px oklch(0% 0 0 / 0.24),
     0 0 0 0.5px oklch(0% 0 0 / 0.08);
@@ -88,6 +89,7 @@
 /* Selected orb state - white ring with outer glow */
 .orbHandleSelected {
   border-color: #fff;
+  border-width: 3px;
   box-shadow:
     0 4px 20px oklch(0% 0 0 / 0.35),
     0 0 0 0.5px oklch(0% 0 0 / 0.1),
@@ -175,6 +177,7 @@
   border: 1.5px solid transparent;
   outline: none;
   transition: transform 100ms ease;
+  background: var(--preset-color);
 }
 .preset:hover    { transform: scale(1.18); }
 

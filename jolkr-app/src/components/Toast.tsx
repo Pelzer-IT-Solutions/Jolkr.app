@@ -1,24 +1,7 @@
 import { useEffect, useState } from 'react';
-import { create } from 'zustand';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { useToast } from '../stores/toast';
 import s from './Toast.module.css';
-
-interface ToastState {
-  message: string | null;
-  kind: 'info' | 'success' | 'error';
-  duration: number;
-  show: (message: string, kind?: 'info' | 'success' | 'error', duration?: number) => void;
-  clear: () => void;
-}
-
-export const useToast = create<ToastState>((set) => ({
-  message: null,
-  kind: 'info',
-  duration: 3000,
-  show: (message, kind = 'info', duration?: number) =>
-    set({ message, kind, duration: duration ?? (kind === 'error' ? 5000 : 3000) }),
-  clear: () => set({ message: null }),
-}));
 
 export default function Toast() {
   const message = useToast((s) => s.message);
@@ -27,12 +10,19 @@ export default function Toast() {
   const clear = useToast((s) => s.clear);
   const [closing, setClosing] = useState(false);
 
-  useEffect(() => {
-    if (!message) return;
+  // Reset closing state synchronously when a new message arrives so the
+  // transition restarts cleanly across consecutive toasts.
+  const [prevMessage, setPrevMessage] = useState(message);
+  if (prevMessage !== message) {
+    setPrevMessage(message);
     setClosing(false);
+  }
+
+  useEffect(() => {
+    if (!message || closing) return;
     const timer = setTimeout(() => setClosing(true), duration);
     return () => clearTimeout(timer);
-  }, [message, duration]);
+  }, [message, duration, closing]);
 
   useEffect(() => {
     if (!closing) return;
