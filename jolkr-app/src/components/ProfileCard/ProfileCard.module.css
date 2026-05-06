@@ -1,13 +1,13 @@
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 950;
+  z-index: var(--z-profile-card);
   background: transparent;
 }
 
 .card {
   position: fixed;
-  z-index: 951;
+  z-index: calc(var(--z-profile-card) + 1);
   width: 19rem;
   max-width: calc(100vw - 2rem);
   max-height: calc(100vh - 2rem);
@@ -184,7 +184,7 @@
   cursor: pointer;
   transition: background-color var(--transition), filter var(--transition);
 }
-.btn:hover:not(:disabled) { background: var(--bg-dark-hover, oklch(28% 0 0)); }
+.btn:hover:not(:disabled) { background: var(--bg-dark-hover); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btnPrimary {

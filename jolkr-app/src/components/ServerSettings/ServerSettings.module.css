@@ -2,7 +2,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1352,7 +1352,7 @@
 
 .bannerPopover {
   position: fixed;
-  z-index: 10050;
+  z-index: var(--z-popover);
   width: min(20rem, calc(100vw - 1rem));
   max-height: min(70vh, 28rem);
   overflow-y: auto;

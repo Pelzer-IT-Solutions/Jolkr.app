@@ -1,6 +1,6 @@
 .menu {
   position: fixed;
-  z-index: 999;
+  z-index: var(--z-drawer);
   border-radius: 0.875rem;
   background-image: var(--surface-raised);
   background-color: var(--bg-shout);

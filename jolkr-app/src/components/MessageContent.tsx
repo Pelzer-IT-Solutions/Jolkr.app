@@ -8,6 +8,7 @@ import { useGifFavoritesStore, extractGiphyId } from '../stores/gif-favorites';
 import { renderUnicodeEmojis, isEmojiOnly } from '../utils/emoji';
 import { getApiBaseUrl } from '../platform/config';
 import { isTauri } from '../platform/detect';
+import s from './MessageContent.module.css';
 
 // Tauri's webview origin is `tauri.localhost`, so a relative `/api/...` URL
 // stored by a web client resolves to a non-existent path. Prepend the public
@@ -237,7 +238,7 @@ export default memo(function MessageContent({ content, className, emojiMap, serv
   return (
     <div
       ref={containerRef}
-      className={`max-w-none ${emojiOnly ? 'leading-10' : ''} ${className ?? ''}`}
+      className={`${emojiOnly ? s.emojiOnly : ''} ${className ?? ''}`.trim()}
       dangerouslySetInnerHTML={{ __html: html }}
       onClick={handleClick}
     />

@@ -1,7 +1,7 @@
 .pip {
   position: fixed;
-  z-index: 750;
-  background: var(--bg-deep, #0a0a0a);
+  z-index: var(--z-pip);
+  background: var(--bg-deep);
   border-radius: 0.625rem;
   overflow: hidden;
   box-shadow: var(--shadow-elevation-large);

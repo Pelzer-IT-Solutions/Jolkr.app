@@ -214,7 +214,7 @@
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   overflow: hidden;
-  z-index: 999;
+  z-index: var(--z-drawer);
   animation: popIn 120ms var(--ease-out-quart) both;
 }
 :global(:root.dark) .browser {
@@ -567,7 +567,7 @@
 /* ── Profile menu (fixed portal) ── */
 .profileMenu {
   position: fixed;
-  z-index: 999;
+  z-index: var(--z-drawer);
   width: 13rem;
   border-radius: 0.875rem;
   background-image: var(--surface-raised);

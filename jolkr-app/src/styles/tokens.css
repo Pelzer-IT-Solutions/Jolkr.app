@@ -192,6 +192,43 @@
 
   /* Overlay backdrop */
   --overlay-backdrop: oklch(20% 0 0 / 0.7);
+
+  /* ── Z-index scale — overlay layering tiers ──
+     Local stacking-context values (0..100) stay as raw integers; only
+     cross-component overlay tiers belong here so layering is grep-able and
+     "is X above or below Y?" is answered by token order. */
+  --z-voice-bar:    700;   /* persistent voice-connection bar */
+  --z-pip:          750;   /* picture-in-picture call window */
+  --z-dialog:       800;   /* modal dialogs (settings, polls, join/create server) */
+  --z-call-dialog:  900;   /* call leave / delete-message dialogs */
+  --z-profile-card: 950;   /* hover profile card */
+  --z-drawer:       999;   /* slide-out drawers (mobile menus) */
+  --z-modal:        1000;  /* settings / server-settings / lightbox modals */
+  --z-context-menu: 1001;  /* right-click menus on top of modal */
+  --z-modal-nested: 1100;  /* dialog spawned from inside a modal */
+  --z-toast:        1200;  /* status notifications — must always be visible */
+  --z-popover:      9999;  /* portal-rendered popovers (theme picker, emoji picker, banner picker) */
+  --z-tooltip:      10000; /* tooltips — top of stacking */
+
+  /* ── Aliases / fill-ins for tokens referenced in CSS modules ──
+     Resolved against the existing semantic scale so dark-mode overrides on
+     the source tokens propagate automatically. */
+  --bg-subtle:             var(--bg-muted);
+  --bg-panel:              var(--surface-nav);
+  --surface-raised-strong: var(--bg-strong);
+  --accent-default:        var(--accent);
+  --fg-muted:              var(--text-faint);
+  --text-muted:            var(--text-faint);
+  --text-secondary:        var(--text-default);
+  --text-tertiary:         var(--text-faint);
+  --icon-faint:            var(--icon-muted);
+
+  /* Always-dark surfaces (video / call regions stay dark even in light mode) */
+  --bg-deep:        oklch(12% 0 0);
+  --bg-dark-hover:  oklch(28% 0 0);
+
+  /* Warning accent (amber) — theme-independent */
+  --accent-warning: oklch(72% 0.15 75);
 }
 
 /* ─── Dark mode overrides ────────────────────────────────────────────── */

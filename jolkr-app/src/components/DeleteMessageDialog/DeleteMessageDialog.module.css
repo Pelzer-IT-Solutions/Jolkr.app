@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 900;
+  z-index: var(--z-call-dialog);
   background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
