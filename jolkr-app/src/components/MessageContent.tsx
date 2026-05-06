@@ -80,11 +80,15 @@ marked.use({
       const isGif = GIF_PROXY_RE.test(href ?? '') || /\.gif(\?[^\s]*)?$/i.test(href ?? '');
       const maxW = isGif ? '250px' : '450px';
       const imgTag = `<img src="${safeHref}" alt="GIF"${safeTitle} style="max-width:${maxW};max-height:300px;border-radius:0.5rem" loading="lazy" referrerpolicy="no-referrer" />`;
-      // Wrap GIF proxy images with a heart overlay for favorites
+      // Wrap GIF proxy images with a heart-slot placeholder. The actual button +
+      // SVG are injected by React AFTER DOMPurify runs (see injectHearts effect)
+      // so `button` / `svg` / `path` can be excluded from the allowlist — a
+      // future markdown-renderer bug then can't smuggle interactive controls
+      // into chat content.
       if (GIF_PROXY_RE.test(href ?? '')) {
         const gifId = extractGiphyId(href ?? '');
         if (gifId) {
-          return `<span class="gif-embed" data-gif-id="${escapeAttr(gifId)}" style="position:relative;display:inline-block;margin:0.25rem 0">${imgTag}<button class="gif-embed-heart" data-gif-id="${escapeAttr(gifId)}" type="button">${HEART_SVG}</button></span>`;
+          return `<span class="gif-embed" data-gif-id="${escapeAttr(gifId)}" style="position:relative;display:inline-block;margin:0.25rem 0">${imgTag}<span class="gif-heart-slot" data-gif-id="${escapeAttr(gifId)}"></span></span>`;
         }
       }
       return `<span style="display:inline-block;margin:0.25rem 0">${imgTag}</span>`;
@@ -108,7 +112,10 @@ marked.use({
 const IMAGE_URL_RE = /\.(gif|png|jpe?g|webp)(\?[^\s]*)?$/i;
 const GIF_PROXY_RE = /\/api\/gifs\/(media\?url=|i\/)/;
 
-// Heart SVG for GIF favorite overlay (inline since we can't use React components in raw HTML)
+// Heart SVG for GIF favorite overlay. Injected via DOM manipulation AFTER
+// DOMPurify runs (in the injectHearts effect) so this markup never passes
+// through the sanitizer — letting us keep `button` / `svg` / `path` out of
+// the allowlist. The string is a constant under our control, not user input.
 const HEART_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
 
 // Auto-detect URLs in plain text that aren't already links
@@ -172,8 +179,14 @@ export interface MessageContentProps {
   serverId?: string;
 }
 
-const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div', 'button', 'svg', 'path'];
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin', 'data-gif-id', 'type', 'width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd'];
+// `button` / `svg` / `path` deliberately NOT allowed — the GIF favorite heart
+// is injected by React after sanitization (see injectHearts effect) so the
+// markdown stream itself can't smuggle interactive controls into chat content.
+const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', 'del', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'span', 'img', 'div'];
+// SVG-specific attributes (viewBox, fill, stroke, stroke-*, d) and `type` are
+// dropped along with the SVG/button tags — none of the remaining allowed tags
+// use them.
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin', 'data-gif-id', 'width', 'height'];
 
 export default memo(function MessageContent({ content, className, emojiMap, serverId }: MessageContentProps) {
   // Build emoji map from store if serverId is provided and no explicit emojiMap
@@ -209,7 +222,32 @@ export default memo(function MessageContent({ content, className, emojiMap, serv
   const favIds = useGifFavoritesStore((s) => s.ids);
   const toggleFav = useGifFavoritesStore((s) => s.toggle);
 
-  // Update heart button fill state whenever favIds changes
+  // Inject the heart button + SVG into each `.gif-heart-slot` placeholder
+  // after the sanitized HTML lands in the DOM. This runs once per `html`
+  // change — the slots are placed by the markdown renderer, the buttons are
+  // ours and never pass through DOMPurify, so the sanitizer can keep its
+  // allowlist tight.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const slots = el.querySelectorAll<HTMLElement>('.gif-heart-slot');
+    slots.forEach((slot) => {
+      // Idempotent — re-inject only if the slot is empty (StrictMode double-mount).
+      if (slot.firstChild) return;
+      const gifId = slot.getAttribute('data-gif-id');
+      if (!gifId) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'gif-embed-heart';
+      button.setAttribute('data-gif-id', gifId);
+      button.innerHTML = HEART_SVG;
+      slot.appendChild(button);
+    });
+  }, [html]);
+
+  // Update heart button fill state whenever favIds changes (or hearts are
+  // freshly injected). Runs AFTER the inject effect because it's declared
+  // second — React fires effects in declaration order.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
