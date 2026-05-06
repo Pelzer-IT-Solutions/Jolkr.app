@@ -70,18 +70,22 @@ export default function Login() {
         <h1 style={styles.title}>Welcome back!</h1>
         <p style={styles.subtitle}>We're so excited to see you again!</p>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && <div role="alert" id="auth-error" style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={styles.label}>
             <span style={styles.labelText}>Email <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
             <input
               type="email"
+              name="email"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
               inputMode="email"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
           </label>
@@ -89,9 +93,13 @@ export default function Login() {
             <span style={styles.labelText}>Password <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
             <input
               type="password"
+              name="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
             <Link to="/forgot-password" style={styles.link}>Forgot your password?</Link>

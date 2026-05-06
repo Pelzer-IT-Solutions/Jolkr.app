@@ -5,6 +5,7 @@ import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import { MIN_PASSWORD_LENGTH } from '../utils/constants';
 
 export default function Register() {
   useEffect(resetAuthTheme, []);
@@ -45,18 +46,22 @@ export default function Register() {
         <h1 style={styles.title}>Create an account</h1>
         <p style={styles.subtitle}>Join Jolkr today</p>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && <div role="alert" id="auth-error" style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={styles.label}>
             <span style={styles.labelText}>Email <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="email"
+              name="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
               inputMode="email"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
           </label>
@@ -64,9 +69,13 @@ export default function Register() {
             <span style={styles.labelText}>Username <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="text"
+              name="username"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
           </label>
@@ -74,10 +83,14 @@ export default function Register() {
             <span style={styles.labelText}>Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
             <input
               type="password"
+              name="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
           </label>

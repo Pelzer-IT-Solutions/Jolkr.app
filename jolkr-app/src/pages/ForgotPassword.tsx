@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../api/client';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
+import { MIN_PASSWORD_LENGTH } from '../utils/constants';
 
 const s: Record<string, React.CSSProperties> = {
   page: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-default)' },
@@ -15,6 +16,8 @@ const s: Record<string, React.CSSProperties> = {
   button: { background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '0.5rem', padding: '0.625rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', width: '100%', marginTop: '0.5rem' },
   link: { color: 'var(--accent)', fontSize: '0.875rem', textDecoration: 'none' },
   footer: { fontSize: '0.875rem', color: 'var(--text-default)', marginTop: '1rem' },
+  hint: { fontSize: '0.75rem', color: 'var(--success-default, var(--text-faint))', marginTop: '0.25rem' },
+  hintError: { fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.25rem' },
 };
 
 export default function ForgotPassword() {
@@ -67,11 +70,24 @@ function RequestResetForm() {
       <div style={s.card}>
         <h1 style={s.title}>Forgot your password?</h1>
         <p style={s.subtitle}>Enter your email and we'll send you a reset link.</p>
-        {error && <div style={s.error}>{error}</div>}
+        {error && <div role="alert" id="auth-error" style={s.error}>{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={s.label}>
             <span style={s.labelText}>Email <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoFocus inputMode="email" placeholder="you@example.com" style={s.input} />
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              autoFocus
+              inputMode="email"
+              placeholder="you@example.com"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
+              style={s.input}
+            />
           </label>
           <button type="submit" disabled={loading} style={s.button}>{loading ? 'Sending...' : 'Send Reset Link'}</button>
         </form>
@@ -88,10 +104,12 @@ function ResetPasswordForm({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const passwordOk = newPassword.length >= MIN_PASSWORD_LENGTH;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) { setError('Passwords do not match'); return; }
-    if (newPassword.length < 8) { setError('Password must be at least 8 characters'); return; }
+    if (!passwordOk) { setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`); return; }
     setLoading(true);
     setError(null);
     try {
@@ -122,15 +140,45 @@ function ResetPasswordForm({ token }: { token: string }) {
       <div style={s.card}>
         <h1 style={s.title}>Set New Password</h1>
         <p style={s.subtitle}>Enter your new password below.</p>
-        {error && <div style={s.error}>{error}</div>}
+        {error && <div role="alert" id="auth-error" style={s.error}>{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={s.label}>
             <span style={s.labelText}>New Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} autoFocus placeholder="Min. 8 characters" style={s.input} />
+            <input
+              type="password"
+              name="new-password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              required
+              minLength={MIN_PASSWORD_LENGTH}
+              autoFocus
+              placeholder={`Min. ${MIN_PASSWORD_LENGTH} characters`}
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
+              style={s.input}
+            />
+            {newPassword.length > 0 && (
+              <span style={passwordOk ? s.hint : s.hintError}>
+                {passwordOk ? '✓ ' : ''}{MIN_PASSWORD_LENGTH}+ characters
+              </span>
+            )}
           </label>
           <label style={s.label}>
             <span style={s.labelText}>Confirm Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
-            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} placeholder="Repeat your new password" style={s.input} />
+            <input
+              type="password"
+              name="confirm-password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              required
+              minLength={MIN_PASSWORD_LENGTH}
+              placeholder="Repeat your new password"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'auth-error' : undefined}
+              style={s.input}
+            />
           </label>
           <button type="submit" disabled={loading} style={s.button}>{loading ? 'Resetting...' : 'Reset Password'}</button>
         </form>
