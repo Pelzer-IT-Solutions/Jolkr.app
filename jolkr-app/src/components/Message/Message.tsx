@@ -226,9 +226,9 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
 
   const reactionsBlock = message.reactions.length > 0 ? (
     <div className={s.reactions}>
-      {message.reactions.map((r, i) => (
+      {message.reactions.map((r) => (
         <ReactionTooltip
-          key={i}
+          key={r.emoji}
           reaction={r}
           serverId={serverId}
           userMap={userMap}

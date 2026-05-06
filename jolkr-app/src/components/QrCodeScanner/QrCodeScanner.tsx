@@ -22,10 +22,19 @@ const VIEWFINDER_ID = 'jolkr-qr-scanner-viewfinder'
 // QR payload formats accepted (both written by QrCodeDisplay):
 //   https://jolkr.app/app/add/<uuid>  (web share)
 //   jolkr://add/<uuid>                (Tauri deep-link)
+//
+// The id pattern requires the canonical 8-4-4-4-12 dash positions so a string
+// like "------------------------------------" (36 dashes) — which the previous
+// `[0-9a-f-]{36}` accepted — is rejected at parse time. Version digit is left
+// open since the backend mixes UUID v4 and v7 (and may add v5 later).
+const UUID_RE_SOURCE = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+const WEB_RE  = new RegExp(`jolkr\\.app/(?:app/)?add/(${UUID_RE_SOURCE})`, 'i')
+const DEEP_RE = new RegExp(`jolkr://add/(${UUID_RE_SOURCE})`, 'i')
+
 function parseJolkrUserId(text: string): string | null {
-  const web = text.match(/jolkr\.app\/(?:app\/)?add\/([0-9a-f-]{36})/i)
+  const web = text.match(WEB_RE)
   if (web) return web[1]
-  const deep = text.match(/jolkr:\/\/add\/([0-9a-f-]{36})/i)
+  const deep = text.match(DEEP_RE)
   if (deep) return deep[1]
   return null
 }

@@ -729,6 +729,7 @@ function KeybindsSection() {
           <div key={kb.action} className={s.keybindRow}>
             <span className={`${s.keybindAction} txt-small`}>{kb.action}</span>
             <div className={s.keybindKeys}>
+              {/* index keys are safe — KEYBINDS is a compile-time constant. */}
               {kb.keys.map((k, i) => <kbd key={i} className={s.key}>{k}</kbd>)}
             </div>
           </div>

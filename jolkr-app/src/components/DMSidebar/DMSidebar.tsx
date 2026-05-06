@@ -94,7 +94,7 @@ function ConvAvatar({ conv }: { conv: DMConversation }) {
   return (
     <div className={s.groupAvatars}>
       {conv.participants.slice(0, 2).map((p, i) => (
-        <div key={i} className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}>
+        <div key={p.userId ?? `slot-${i}`} className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}>
           <Avatar url={p.avatarUrl} name={p.name} size="xs" userId={p.userId} color={p.color} />
         </div>
       ))}

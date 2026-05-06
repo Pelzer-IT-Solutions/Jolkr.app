@@ -443,7 +443,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               <div className={s.groupAvatars}>
                 {dmConversation.participants.slice(0, 2).map((p, i) => (
                   <div
-                    key={i}
+                    key={p.userId ?? `slot-${i}`}
                     className={`${s.groupAvatar} ${i === 1 ? s.groupAvatarBack : ''}`}
                     style={p.avatarUrl ? undefined : { background: p.color }}
                   >

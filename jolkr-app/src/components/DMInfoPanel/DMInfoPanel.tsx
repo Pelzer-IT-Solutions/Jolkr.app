@@ -64,6 +64,8 @@ function SharedFileRow({ att }: { att: Attachment }) {
 function SkeletonLines({ count, variant = 'pinned' }: { count: number; variant?: 'pinned' | 'file' }) {
   return (
     <>
+      {/* index keys are safe — skeleton placeholders are identical and
+          replaced wholesale once the real data arrives. */}
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}

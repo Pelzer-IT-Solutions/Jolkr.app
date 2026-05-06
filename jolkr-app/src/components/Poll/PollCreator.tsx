@@ -137,6 +137,8 @@ export function PollCreator({ open, channelId, onClose }: Props) {
               Options <span className={s.required}>*</span>
             </label>
             <div className={s.optionRows}>
+              {/* index keys are safe — option order is fixed by the user typing
+                  values into the inputs; no inserts in the middle. */}
               {options.map((opt, i) => (
                 <div key={i} className={s.optionRow}>
                   <input
