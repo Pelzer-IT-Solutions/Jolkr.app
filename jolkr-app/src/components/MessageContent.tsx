@@ -222,43 +222,32 @@ export default memo(function MessageContent({ content, className, emojiMap, serv
   const favIds = useGifFavoritesStore((s) => s.ids);
   const toggleFav = useGifFavoritesStore((s) => s.toggle);
 
-  // Inject the heart button + SVG into each `.gif-heart-slot` placeholder
-  // after the sanitized HTML lands in the DOM. This runs once per `html`
-  // change — the slots are placed by the markdown renderer, the buttons are
-  // ours and never pass through DOMPurify, so the sanitizer can keep its
-  // allowlist tight.
+  // For each `.gif-heart-slot` placeholder produced by the markdown renderer:
+  //   - inject the button + SVG (idempotent — only when the button is missing)
+  //   - paint the button's fav state from favIds.
+  // Runs on html OR favIds changes so a freshly-rendered message lands with
+  // the correct fill on first paint, AND a live favorite-toggle re-paints
+  // existing buttons. Combining the two passes avoids any first-render race
+  // where the fill update fires before the button exists.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const slots = el.querySelectorAll<HTMLElement>('.gif-heart-slot');
     slots.forEach((slot) => {
-      // Idempotent — re-inject only if the slot is empty (StrictMode double-mount).
-      if (slot.firstChild) return;
       const gifId = slot.getAttribute('data-gif-id');
       if (!gifId) return;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'gif-embed-heart';
-      button.setAttribute('data-gif-id', gifId);
-      button.innerHTML = HEART_SVG;
-      slot.appendChild(button);
-    });
-  }, [html]);
-
-  // Update heart button fill state whenever favIds changes (or hearts are
-  // freshly injected). Runs AFTER the inject effect because it's declared
-  // second — React fires effects in declaration order.
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const hearts = el.querySelectorAll<HTMLButtonElement>('.gif-embed-heart');
-    hearts.forEach((btn) => {
-      const gifId = btn.getAttribute('data-gif-id');
-      if (!gifId) return;
+      let button = slot.querySelector<HTMLButtonElement>('.gif-embed-heart');
+      if (!button) {
+        button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'gif-embed-heart';
+        button.setAttribute('data-gif-id', gifId);
+        button.innerHTML = HEART_SVG;
+        slot.appendChild(button);
+      }
       const isFav = favIds.has(gifId);
-      btn.setAttribute('data-fav', String(isFav));
-      // Update SVG fill
-      const svg = btn.querySelector('svg');
+      button.setAttribute('data-fav', String(isFav));
+      const svg = button.querySelector('svg');
       if (svg) svg.setAttribute('fill', isFav ? 'currentColor' : 'none');
     });
   }, [favIds, html]);

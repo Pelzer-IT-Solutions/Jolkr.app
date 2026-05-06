@@ -138,9 +138,8 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
 
   const toggleFavorite = (gif: GifItem) => {
     const isFav = favIds.has(gif.id)
-    if (isFav) {
-      setFavGifs((prev) => prev.filter((f) => f.gif_id !== gif.id))
-    } else {
+    if (!isFav) {
+      // New favorite — show it in the favorites grid immediately.
       const newFav: GifFavorite = {
         gif_id: gif.id,
         gif_url: gif.fullUrl || gif.previewUrl,
@@ -148,9 +147,12 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
         title: gif.title,
         added_at: new Date().toISOString(),
       }
-      setFavGifs((prev) => [newFav, ...prev])
+      setFavGifs((prev) => prev.some((f) => f.gif_id === gif.id) ? prev : [newFav, ...prev])
     }
-    // Toggle in the shared store (handles API call + optimistic update)
+    // Un-favorite intentionally does NOT mutate favGifs — the row stays
+    // visible (with an empty heart, since heart fill reads from favIds) so
+    // the user can re-click to undo. The actual server-side removal happens
+    // via toggleFav below; favGifs reloads from /api on the next picker open.
     toggleFav(gif.id)
   }
 

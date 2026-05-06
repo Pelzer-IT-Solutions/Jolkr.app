@@ -49,7 +49,7 @@ export function ReactionTooltip({ reaction, children, serverId, userMap, dmParti
         return {
           id: userId,
           name: displayName(currentUser),
-          color: hashColor(userId),
+          color: currentUser.banner_color ?? hashColor(userId),
           avatarUrl: currentUser.avatar_url ?? null,
           isMe: true,
         };
@@ -62,7 +62,7 @@ export function ReactionTooltip({ reaction, children, serverId, userMap, dmParti
           return {
             id: userId,
             name: member.nickname || displayName(member.user),
-            color: hashColor(userId),
+            color: member.user.banner_color ?? hashColor(userId),
             avatarUrl: member.user.avatar_url ?? null,
             isMe,
           };
@@ -75,7 +75,7 @@ export function ReactionTooltip({ reaction, children, serverId, userMap, dmParti
         return {
           id: userId,
           name: displayName(mapUser),
-          color: hashColor(userId),
+          color: mapUser.banner_color ?? hashColor(userId),
           avatarUrl: mapUser.avatar_url ?? null,
           isMe,
         };
