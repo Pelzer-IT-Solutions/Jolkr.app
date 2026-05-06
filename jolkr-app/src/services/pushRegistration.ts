@@ -69,14 +69,14 @@ async function doRegisterPush(): Promise<void> {
 
   // Reuse stored device_id to avoid creating duplicate device rows on each load
   const storedDeviceId = localStorage.getItem(STORAGE_KEYS.PUSH_DEVICE_ID);
-  const result = await api.registerDevice({
+  const device = await api.registerDevice({
     device_id: storedDeviceId || undefined,
     device_name: getBrowserName(),
     device_type: 'web',
     push_token: subscriptionJson,
   });
-  if (result?.device?.id) {
-    localStorage.setItem(STORAGE_KEYS.PUSH_DEVICE_ID, result.device.id);
+  if (device?.id) {
+    localStorage.setItem(STORAGE_KEYS.PUSH_DEVICE_ID, device.id);
   }
 }
 

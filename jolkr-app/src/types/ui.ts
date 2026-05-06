@@ -124,6 +124,12 @@ export interface MessageVM {
   // poll-host message). Refreshed live via `PollUpdate` WS events handled by
   // the messages store.
   poll?:              import('../api/types').Poll | null
+  // Webhook attribution — present when the message was posted via a server
+  // webhook rather than a real user. Carried verbatim from the wire so a
+  // future "🤖 by GitHub-Webhook" UI doesn't need a second round-trip.
+  webhook_id?:     string | null
+  webhook_name?:   string | null
+  webhook_avatar?: string | null
 }
 
 export type MessageStore = Record<string, Record<string, MessageVM[]>>

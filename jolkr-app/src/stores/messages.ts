@@ -327,35 +327,44 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   },
 }));
 
-/** Safely normalize a raw WS message payload into a Message with safe defaults. */
-function normalizeWsMessage(raw: Record<string, unknown>): Message | null {
-  const channelId = (raw?.channel_id ?? raw?.dm_channel_id) as string | undefined;
-  if (!channelId || !raw?.id) return null;
+/**
+ * Coerce a raw WS message payload to the shape the UI assumes — every
+ * nullable field gets a defined default, every collection becomes a
+ * concrete array, and reactions get their `me` flag derived from the
+ * authenticated user's id.
+ *
+ * Trusts the WS-boundary type (api/ws-events.ts → `event.d.message: Message`).
+ * Runtime "is this actually a Message?" validation lives where the JSON
+ * is parsed (api/ws.ts) — that's the real trust boundary.
+ */
+function normalizeWsMessage(raw: Message): Message | null {
+  const channelId = raw.channel_id ?? raw.dm_channel_id;
+  if (!channelId || !raw.id) return null;
+  const currentUserId = useAuthStore.getState().user?.id;
   return {
-    id: raw.id as string,
+    ...raw,
     channel_id: channelId,
-    author_id: (raw.author_id as string) ?? '',
-    content: (raw.content as string) ?? '',
-    nonce: (raw.nonce as string) ?? null,
-    created_at: (raw.created_at as string) ?? new Date().toISOString(),
-    updated_at: (raw.updated_at as string) ?? null,
-    is_edited: (raw.is_edited as boolean) ?? false,
-    is_pinned: (raw.is_pinned as boolean) ?? false,
-    reply_to_id: (raw.reply_to_id as string) ?? null,
-    thread_id: (raw.thread_id as string) ?? null,
-    thread_reply_count: (raw.thread_reply_count as number) ?? null,
-    attachments: (raw.attachments as Message['attachments']) ?? [],
-    reactions: (() => {
-      const currentUserId = useAuthStore.getState().user?.id;
-      const rawReactions = (raw.reactions as Array<Record<string, unknown>>) ?? [];
-      return rawReactions.map((r) => ({
-        emoji: (r.emoji as string) ?? '',
-        count: (r.count as number) ?? 0,
-        me: currentUserId ? ((r.user_ids as string[]) ?? []).includes(currentUserId) : (r.me as boolean) ?? false,
-        user_ids: (r.user_ids as string[]) ?? [],
-      }));
-    })(),
-    embeds: (raw.embeds as Message['embeds']) ?? [],
+    content: raw.content ?? '',
+    nonce: raw.nonce ?? null,
+    created_at: raw.created_at ?? new Date().toISOString(),
+    updated_at: raw.updated_at ?? null,
+    is_edited: raw.is_edited ?? false,
+    is_pinned: raw.is_pinned ?? false,
+    reply_to_id: raw.reply_to_id ?? null,
+    thread_id: raw.thread_id ?? null,
+    thread_reply_count: raw.thread_reply_count ?? null,
+    attachments: raw.attachments ?? [],
+    embeds: raw.embeds ?? [],
+    webhook_id: raw.webhook_id ?? null,
+    webhook_name: raw.webhook_name ?? null,
+    webhook_avatar: raw.webhook_avatar ?? null,
+    reactions: (raw.reactions ?? []).map((r) => ({
+      ...r,
+      emoji: r.emoji ?? '',
+      count: r.count ?? 0,
+      user_ids: r.user_ids ?? [],
+      me: currentUserId ? (r.user_ids ?? []).includes(currentUserId) : (r.me ?? false),
+    })),
   };
 }
 
@@ -367,7 +376,7 @@ wsClient.on((event) => {
   const store = useMessagesStore.getState();
   switch (event.op) {
     case 'MessageCreate': {
-      const msg = normalizeWsMessage(event.d.message as unknown as Record<string, unknown>);
+      const msg = normalizeWsMessage(event.d.message);
       if (!msg) break;
       if (msg.thread_id) {
         // Thread message → add to thread store + increment parent's thread_reply_count
@@ -387,7 +396,7 @@ wsClient.on((event) => {
       break;
     }
     case 'MessageUpdate': {
-      const msg = normalizeWsMessage(event.d.message as unknown as Record<string, unknown>);
+      const msg = normalizeWsMessage(event.d.message);
       if (!msg) break;
       if (msg.thread_id) {
         // Update in thread store

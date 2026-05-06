@@ -685,18 +685,22 @@ export const uploadFile = async (file: File, purpose?: 'avatar' | 'icon'): Promi
 };
 
 // Push / Devices
+// `/push/vapid-key` is the one endpoint in this file that returns a flat
+// `{public_key}` object, not an envelope — no unwrap needed.
 export const getVapidKey = () =>
   request<{ public_key: string }>('/push/vapid-key');
 
+// `/devices` POST + GET both wrap in envelopes (`{device: ...}` / `{devices: ...}`).
+// Unwrap to match the rest of the file's "declare the unwrapped type" convention.
 export const registerDevice = (body: {
   device_id?: string;
   device_name: string;
   device_type: string;
   push_token?: string;
-}) => request<{ device: { id: string } }>('/devices', { method: 'POST', body: JSON.stringify(body) });
+}) => request<{ id: string }>('/devices', { method: 'POST', body: JSON.stringify(body) }, 'device');
 
 export const getDevices = () =>
-  request<{ devices: Array<{ id: string; device_name: string; device_type: string; has_push_token: boolean; last_active_at: string | null; created_at: string }> }>('/devices');
+  request<Array<{ id: string; device_name: string; device_type: string; has_push_token: boolean; last_active_at: string | null; created_at: string }>>('/devices', {}, 'devices');
 
 export const deleteDevice = (deviceId: string) =>
   request<void>(`/devices/${deviceId}`, { method: 'DELETE' });

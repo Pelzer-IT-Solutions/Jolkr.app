@@ -78,6 +78,9 @@ export interface Reaction {
 export interface Message {
   id: string;
   channel_id: string;
+  /** Backend variant for DM messages — when present, used in place of
+   *  `channel_id` so the message lands in the right DM bucket. */
+  dm_channel_id?: string | null;
   author_id: string;
   content: string;
   nonce?: string | null;

@@ -163,6 +163,9 @@ export function transformMessage(
     thread_id: msg.thread_id ?? null,
     thread_reply_count: msg.thread_reply_count ?? null,
     poll: msg.poll ?? null,
+    webhook_id: msg.webhook_id ?? null,
+    webhook_name: msg.webhook_name ?? null,
+    webhook_avatar: msg.webhook_avatar ?? null,
   }
 }
 
