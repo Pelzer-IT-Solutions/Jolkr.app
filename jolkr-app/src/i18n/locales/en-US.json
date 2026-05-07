@@ -9,7 +9,9 @@
     "loading": "Loading…",
     "someone": "Someone",
     "required": "*",
-    "goHome": "Go Home"
+    "goHome": "Go Home",
+    "add": "Add",
+    "saveChanges": "Save Changes"
   },
 
   "auth": {
@@ -99,5 +101,370 @@
   "inviteAccept": {
     "joining": "Joining server…",
     "errorGeneric": "Invalid or expired invite"
+  },
+
+  "settings": {
+    "nav": {
+      "userSettings": "User Settings",
+      "appSettings": "App Settings",
+      "account": "My Account",
+      "privacy": "Privacy & Safety",
+      "connections": "Connections",
+      "appearance": "Appearance",
+      "accessibility": "Accessibility",
+      "voice": "Voice & Video",
+      "notifications": "Notifications",
+      "keybinds": "Keybinds",
+      "language": "Language"
+    },
+
+    "account": {
+      "title": "My Account",
+      "changeBannerColor": "Change banner color",
+      "editProfile": "Edit Profile",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "How others see you",
+      "username": "Username",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell others about yourself…",
+      "noBio": "No bio set",
+      "profileAlt": "Profile",
+      "accountInfo": "Account Information",
+      "emailLabel": "Email",
+      "emailMasked": "••••••••••",
+      "passwordSection": "Password & Authentication",
+      "passwordHelp": "Keep your account secure with a strong password and two-factor authentication.",
+      "changePassword": "Change Password",
+      "enable2FA": "Enable Two-Factor Auth",
+      "logOut": "Log Out",
+      "dangerZone": "Danger Zone",
+      "deleteHelp": "Deleting your account is permanent and cannot be undone.",
+      "deleteAccount": "Delete Account"
+    },
+
+    "bannerColors": {
+      "sage": "Sage",
+      "gold": "Gold",
+      "ocean": "Ocean",
+      "royal": "Royal",
+      "berry": "Berry",
+      "coral": "Coral"
+    },
+
+    "privacy": {
+      "title": "Privacy & Safety",
+      "dmFilterTitle": "Safe Direct Messaging",
+      "dmFilterDesc": "Control who can send you direct messages.",
+      "dmAll": "Allow all DMs",
+      "dmFriends": "Friends only",
+      "dmNone": "No one",
+      "allowFriendReqsLabel": "Allow friend requests",
+      "allowFriendReqsDesc": "Let others send you friend requests.",
+      "readReceiptsLabel": "Read receipts",
+      "readReceiptsDesc": "Show when you've read messages in DMs.",
+      "dataPrivacy": "Data & Privacy",
+      "analyticsLabel": "Usage analytics",
+      "analyticsDesc": "Help improve Jolkr by sending anonymous usage data."
+    },
+
+    "connections": {
+      "title": "Connections",
+      "intro": "Connect your accounts to share your activity and unlock integrations.",
+      "music": "Music",
+      "gaming": "Gaming",
+      "development": "Development",
+      "streaming": "Streaming",
+      "video": "Video",
+      "social": "Social"
+    },
+
+    "appearance": {
+      "title": "Appearance",
+      "colorModeTitle": "Color Mode",
+      "colorModeDesc": "Choose your preferred theme.",
+      "colorModeLight": "Light",
+      "colorModeSystem": "System",
+      "colorModeDark": "Dark",
+      "messageDisplayTitle": "Message Display",
+      "messageDisplayDesc": "Compact mode shows more messages at once.",
+      "displayCozy": "Cozy — spacious, comfortable reading",
+      "displayCompact": "Compact — more messages visible at once",
+      "fontSizeTitle": "Chat Font Size — {size}px",
+      "fontSizeDesc": "Resize the text in chat messages."
+    },
+
+    "accessibility": {
+      "title": "Accessibility",
+      "reducedMotionLabel": "Reduce motion",
+      "reducedMotionDesc": "Minimise animations and transitions throughout the app.",
+      "highContrastLabel": "High contrast",
+      "highContrastDesc": "Increase contrast between text and background.",
+      "roleColorsLabel": "Show role colours",
+      "roleColorsDesc": "Display colour-coded role names in member lists."
+    },
+
+    "voice": {
+      "title": "Voice & Video",
+      "inputDevice": "Input Device",
+      "outputDevice": "Output Device",
+      "outputUnsupported": "Output device selection is not supported in this browser.",
+      "outputUnsupportedTitle": "Not supported in this browser",
+      "systemDefault": "System default",
+      "microphoneFallback": "Microphone ({id}…)",
+      "speakersFallback": "Speakers ({id}…)",
+      "cameraFallback": "Camera ({id}…)",
+      "inputVolume": "Input Volume — {volume}%",
+      "outputVolume": "Output Volume — {volume}%",
+      "cameraSection": "Camera",
+      "cameraDevice": "Camera Device",
+      "cameraUnavailable": "Camera unavailable",
+      "advancedSection": "Advanced",
+      "noiseSuppressionLabel": "Noise suppression",
+      "noiseSuppressionDesc": "Filter out background noise during voice calls.",
+      "echoCancellationLabel": "Echo cancellation",
+      "echoCancellationDesc": "Remove echo from microphone input.",
+      "autoGainLabel": "Automatic gain control",
+      "autoGainDesc": "Automatically adjust microphone sensitivity."
+    },
+
+    "notifications": {
+      "title": "Notifications",
+      "desktopLabel": "Enable desktop notifications",
+      "desktopDesc": "Show notifications when the app is in the background.",
+      "soundsLabel": "Notification sounds",
+      "soundsDesc": "Play a sound when you receive a notification.",
+      "permissionDeniedToast": "Notification permission denied — enable it in your browser/OS settings.",
+      "unsupportedToast": "Desktop notifications are not supported in this environment.",
+      "triggers": "Notification triggers",
+      "mentionsLabel": "@mentions",
+      "mentionsDesc": "Notify when someone mentions you in a channel.",
+      "dmsLabel": "Direct messages",
+      "dmsDesc": "Notify for all new direct messages.",
+      "badgeLabel": "Unread badge",
+      "badgeDesc": "Show unread count badge on the app icon."
+    },
+
+    "keybinds": {
+      "title": "Keybinds",
+      "intro": "Default keyboard shortcuts. Custom keybinds coming soon.",
+      "openSwitcher": "Open Quick Switcher",
+      "toggleMute": "Toggle Mute",
+      "toggleDeafen": "Toggle Deafen",
+      "markRead": "Mark Server as Read",
+      "jumpUnread": "Jump to Oldest Unread",
+      "uploadFile": "Upload a File",
+      "search": "Search",
+      "focusInput": "Focus Chat Input",
+      "editLast": "Edit Last Message",
+      "replyMessage": "Reply to Message",
+      "toggleSettings": "Toggle Settings"
+    },
+
+    "language": {
+      "title": "Language",
+      "displayTitle": "Display Language",
+      "displayDesc": "Choose the language used throughout the app.",
+      "saveError": "Failed to save language preference"
+    }
+  },
+
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "Server Settings",
+      "moderation": "Moderation",
+      "dangerZone": "Danger Zone",
+      "overview": "Overview",
+      "roles": "Roles",
+      "invites": "Invites",
+      "bans": "Bans",
+      "auditLog": "Audit Log",
+      "deleteServer": "Delete Server"
+    },
+    "leaveBtn": "Leave Server",
+
+    "overview": {
+      "bannerTitle": "Banner background",
+      "bannerSolid": "Solid colors",
+      "bannerGradients": "Gradients",
+      "bannerImage": "Image",
+      "bannerImageUrl": "Image URL (https://…)",
+      "bannerUploading": "Uploading…",
+      "bannerUpload": "Upload",
+      "bannerRemove": "Remove image banner",
+      "iconAlt": "Server Icon",
+      "namePlaceholder": "Server Name",
+      "descriptionPlaceholder": "What's your server about?",
+      "discoveryLabel": "Server Discovery",
+      "discoveryDesc": "Make server discoverable in server browser"
+    },
+
+    "gradients": {
+      "oceanBreeze": "Ocean Breeze",
+      "sunsetGlow": "Sunset Glow",
+      "forestMist": "Forest Mist",
+      "royalVelvet": "Royal Velvet",
+      "berryBurst": "Berry Burst",
+      "midnight": "Midnight"
+    },
+
+    "roles": {
+      "allRoles": "All Roles",
+      "createRole": "Create Role",
+      "permissionsTitle": "Permissions",
+      "clearPermissions": "Clear permissions",
+      "deleteRole": "Delete Role",
+      "createError": "Failed to create role"
+    },
+
+    "invites": {
+      "expireAfter": "Expire after",
+      "maxUses": "Max uses",
+      "expireNever": "Never",
+      "expire30m": "30 minutes",
+      "expire1h": "1 hour",
+      "expire6h": "6 hours",
+      "expire12h": "12 hours",
+      "expire1d": "1 day",
+      "expire7d": "7 days",
+      "usesUnlimited": "No limit",
+      "uses1": "1 use",
+      "uses5": "5 uses",
+      "uses10": "10 uses",
+      "uses25": "25 uses",
+      "uses50": "50 uses",
+      "uses100": "100 uses",
+      "creating": "Creating…",
+      "createBtn": "Create Invite",
+      "createError": "Failed to create invite",
+      "emptyTitle": "No Invites Yet",
+      "emptyDesc": "Create an invite above to start inviting people to your server.",
+      "allInvites": "All Invites",
+      "copyTitle": "Click to copy invite link",
+      "copiedToast": "Invite link copied!",
+      "copyFailedToast": "Copy failed — link: {url}",
+      "usesProgress": "{used} / {max} uses",
+      "expiresAt": "Expires {date}",
+      "revoke": "Revoke"
+    },
+
+    "bans": {
+      "emptyTitle": "No Banned Users",
+      "emptyDesc": "Your server is clean! Banned users will appear here.",
+      "reasonLabel": "Reason: {reason}",
+      "noReason": "No reason provided",
+      "bannedAt": "Banned {date}",
+      "unban": "Unban"
+    },
+
+    "audit": {
+      "emptyTitle": "No Activity Yet",
+      "emptyDesc": "Audit log entries will appear here when server actions are performed.",
+      "byUser": "by {name}",
+      "onTarget": " on {type}: {idShort}…",
+      "reasonLabel": "Reason: {reason}",
+      "actions": {
+        "MemberJoin": "Member Joined",
+        "MemberLeave": "Member Left",
+        "MemberUpdate": "Member Updated",
+        "ChannelCreate": "Channel Created",
+        "ChannelUpdate": "Channel Updated",
+        "ChannelDelete": "Channel Deleted",
+        "RoleCreate": "Role Created",
+        "RoleUpdate": "Role Updated",
+        "RoleDelete": "Role Deleted",
+        "ServerUpdate": "Server Updated",
+        "ServerDelete": "Server Deleted",
+        "BanCreate": "User Banned",
+        "BanDelete": "User Unbanned",
+        "Kick": "User Kicked"
+      }
+    },
+
+    "delete": {
+      "title": "Delete Server",
+      "warning": "This action cannot be undone. All channels, messages, and data will be permanently deleted.",
+      "btn": "Delete Server"
+    },
+
+    "leaveConfirm": {
+      "title": "Leave Server",
+      "body": "Are you sure you want to leave {serverName}? You won't be able to rejoin unless you have an invite.",
+      "confirm": "Leave Server"
+    },
+
+    "deleteConfirm": {
+      "title": "Delete Server",
+      "body": "Are you sure you want to permanently delete {serverName}? This action cannot be undone.",
+      "confirm": "Delete Server"
+    }
+  },
+
+  "channelSettings": {
+    "nav": {
+      "channelSettings": "Channel Settings",
+      "overview": "Overview",
+      "permissions": "Permissions"
+    },
+    "overview": {
+      "title": "Channel Overview",
+      "nameLabel": "CHANNEL NAME",
+      "topicLabel": "CHANNEL TOPIC",
+      "topicPlaceholder": "Let everyone know what this channel is about",
+      "systemNotice": "This is a system channel and cannot be modified.",
+      "nsfwLabel": "NSFW Channel",
+      "nsfwDesc": "Age-restricted content",
+      "slowmodeLabel": "SLOWMODE (SECONDS)",
+      "slowmodeHint": "Users can send one message per interval. 0 = disabled."
+    },
+    "permissions": {
+      "title": "Channel Permissions",
+      "addOverride": "Add Override",
+      "systemNotice": "System channel permissions cannot be modified.",
+      "rolesMembers": "ROLES / MEMBERS",
+      "removeOverride": "Remove override",
+      "addModalTitle": "Add Permission Override",
+      "typeLabel": "TYPE",
+      "typeRole": "Role",
+      "typeMember": "Member",
+      "selectRole": "Select a role…",
+      "memberIdLabel": "MEMBER ID",
+      "memberIdPlaceholder": "Enter member ID",
+      "roleLabel": "ROLE"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "General Server Permissions",
+    "groupMember": "Member Permissions",
+    "groupText": "Text Channel Permissions",
+    "groupVoice": "Voice Channel Permissions",
+    "ariaEnable": "Enable {label}",
+    "ariaDisable": "Disable {label}",
+
+    "view_channels":   { "label": "View Channels",   "desc": "Allows members to view channels by default (excluding private channels)." },
+    "manage_channels": { "label": "Manage Channels", "desc": "Allows members to create, edit, or delete channels." },
+    "manage_server":   { "label": "Manage Server",   "desc": "Allows members to change server name, icon, and other settings." },
+    "kick_members":    { "label": "Kick Members",    "desc": "Allows members to kick other members from the server." },
+    "ban_members":     { "label": "Ban Members",     "desc": "Allows members to ban other members from the server." },
+    "manage_roles":    { "label": "Manage Roles",    "desc": "Allows members to create new roles and edit or delete roles lower than their highest role." },
+    "create_invite":   { "label": "Create Invites",  "desc": "Allows members to create invite links to the server." },
+    "send_messages":   { "label": "Send Messages",   "desc": "Allows members to send messages in text channels." },
+    "manage_messages": { "label": "Manage Messages", "desc": "Allows members to delete and pin messages in text channels." },
+    "embed_links":     { "label": "Embed Links",     "desc": "Allows members to embed links in messages." },
+    "attach_files":    { "label": "Attach Files",    "desc": "Allows members to attach files to messages." },
+    "add_reactions":   { "label": "Add Reactions",   "desc": "Allows members to add reactions to messages." },
+    "mention_everyone":{ "label": "Mention Everyone","desc": "Allows members to use @everyone and @here." },
+    "read_message_history": { "label": "Read Message History", "desc": "Allows members to read previous messages." },
+    "use_external_emojis":  { "label": "Use External Emojis",  "desc": "Allows members to use emojis from other servers." },
+    "send_tts_messages":    { "label": "Send TTS Messages",    "desc": "Allows members to send text-to-speech messages." },
+    "connect":         { "label": "Connect",         "desc": "Allows members to connect to voice channels." },
+    "speak":           { "label": "Speak",           "desc": "Allows members to speak in voice channels." },
+    "video":           { "label": "Video",           "desc": "Allows members to share video in voice channels." },
+    "mute_members":    { "label": "Mute Members",    "desc": "Allows members to mute other members in voice channels." },
+    "deafen_members":  { "label": "Deafen Members",  "desc": "Allows members to deafen other members in voice channels." },
+    "move_members":    { "label": "Move Members",    "desc": "Allows members to move others between voice channels." },
+    "use_voice_activity": { "label": "Use Voice Activity", "desc": "Allows members to use voice activity detection." },
+    "priority_speaker":{ "label": "Priority Speaker","desc": "Lowers others' volume while speaking." },
+    "administrator":   { "label": "Administrator",   "desc": "Grants all permissions and bypasses channel permissions. This is a dangerous permission!" }
   }
 }

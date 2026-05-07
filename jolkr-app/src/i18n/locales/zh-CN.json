@@ -1,67 +1,39 @@
 {
   "common": {
-    "ok": "确定",
-    "cancel": "取消",
-    "save": "保存",
-    "delete": "删除",
-    "edit": "编辑",
-    "close": "关闭",
-    "loading": "加载中…",
-    "someone": "某人",
-    "required": "*",
-    "goHome": "返回主页"
+    "ok": "确定", "cancel": "取消", "save": "保存", "delete": "删除",
+    "edit": "编辑", "close": "关闭", "loading": "加载中…",
+    "someone": "某人", "required": "*", "goHome": "返回主页",
+    "add": "添加", "saveChanges": "保存更改"
   },
 
   "auth": {
-    "shared": {
-      "emailLabel": "电子邮件",
-      "passwordLabel": "密码"
-    },
-
+    "shared": { "emailLabel": "电子邮件", "passwordLabel": "密码" },
     "login": {
-      "title": "欢迎回来！",
-      "subtitle": "很高兴再次见到您！",
-      "submit": "登录",
-      "submitting": "正在登录…",
+      "title": "欢迎回来！", "subtitle": "很高兴再次见到您！",
+      "submit": "登录", "submitting": "正在登录…",
       "forgotPassword": "忘记密码？",
-      "needAccount": "还没有账号？",
-      "register": "注册"
+      "needAccount": "还没有账号？", "register": "注册"
     },
-
     "register": {
-      "title": "创建账号",
-      "subtitle": "立即加入 Jolkr",
-      "usernameLabel": "用户名",
-      "submit": "继续",
-      "submitting": "创建中…",
-      "haveAccount": "已经有账号了？",
-      "login": "登录"
+      "title": "创建账号", "subtitle": "立即加入 Jolkr",
+      "usernameLabel": "用户名", "submit": "继续", "submitting": "创建中…",
+      "haveAccount": "已经有账号了？", "login": "登录"
     },
-
     "forgot": {
       "title": "忘记密码？",
       "subtitle": "输入您的电子邮件，我们将向您发送重置链接。",
-      "emailPlaceholder": "you@example.com",
-      "submit": "发送重置链接",
-      "submitting": "发送中…",
-      "rememberPassword": "记起密码了？",
-      "login": "登录",
+      "emailPlaceholder": "you@example.com", "submit": "发送重置链接", "submitting": "发送中…",
+      "rememberPassword": "记起密码了？", "login": "登录",
       "checkEmailTitle": "请检查您的邮箱",
       "checkEmailBody": "如果 {email} 存在账号，我们已发送密码重置链接。",
-      "backToLogin": "返回登录",
-      "errorGeneric": "出错了"
+      "backToLogin": "返回登录", "errorGeneric": "出错了"
     },
-
     "reset": {
-      "title": "设置新密码",
-      "subtitle": "请在下方输入您的新密码。",
+      "title": "设置新密码", "subtitle": "请在下方输入您的新密码。",
       "newPasswordLabel": "新密码",
-      "newPasswordPlaceholder": "至少 {min} 个字符",
-      "newPasswordHint": "{min} 个字符以上",
-      "confirmPasswordLabel": "确认密码",
-      "confirmPasswordPlaceholder": "再次输入新密码",
-      "submit": "重置密码",
-      "submitting": "重置中…",
+      "newPasswordPlaceholder": "至少 {min} 个字符", "newPasswordHint": "{min} 个字符以上",
+      "confirmPasswordLabel": "确认密码", "confirmPasswordPlaceholder": "再次输入新密码",
+      "submit": "重置密码", "submitting": "重置中…",
       "passwordsMismatch": "密码不匹配",
       "passwordTooShort": "密码至少需要 {min} 个字符",
       "errorGeneric": "重置密码失败",
@@ -69,35 +41,254 @@
       "successBody": "您现在可以使用新密码登录。",
       "goToLogin": "前往登录"
     },
-
     "verify": {
-      "verifyingTitle": "正在验证您的邮箱…",
-      "verifiedTitle": "邮箱已验证！",
+      "verifyingTitle": "正在验证您的邮箱…", "verifiedTitle": "邮箱已验证！",
       "verifiedBody": "您的邮箱已验证。您现在可以使用 Jolkr。",
-      "goToApp": "前往 Jolkr",
-      "failedTitle": "验证失败",
+      "goToApp": "前往 Jolkr", "failedTitle": "验证失败",
       "failedSubtitle": "链接可能已过期。请尝试请求新的链接。",
-      "requestNewLink": "请求新链接",
-      "errorGeneric": "验证失败",
+      "requestNewLink": "请求新链接", "errorGeneric": "验证失败",
       "pendingTitle": "验证您的邮箱",
       "pendingBody": "我们已向 {email} 发送了验证链接。请检查您的收件箱并点击链接以继续。",
       "yourEmailFallback": "您的邮箱",
       "sentMessage": "验证邮件已发送！请检查您的收件箱。",
-      "resendBtn": "重新发送验证邮件",
-      "sendingBtn": "发送中…",
-      "sentBtn": "邮件已发送",
-      "signOut": "退出",
-      "resendError": "发送失败"
+      "resendBtn": "重新发送验证邮件", "sendingBtn": "发送中…", "sentBtn": "邮件已发送",
+      "signOut": "退出", "resendError": "发送失败"
     }
   },
 
-  "notFound": {
-    "title": "页面未找到",
-    "message": "您寻找的页面不存在或已被移动。"
+  "notFound": { "title": "页面未找到", "message": "您寻找的页面不存在或已被移动。" },
+  "inviteAccept": { "joining": "正在加入服务器…", "errorGeneric": "无效或过期的邀请" },
+
+  "settings": {
+    "nav": {
+      "userSettings": "用户设置", "appSettings": "应用设置",
+      "account": "我的账号", "privacy": "隐私与安全", "connections": "连接",
+      "appearance": "外观", "accessibility": "辅助功能", "voice": "语音和视频",
+      "notifications": "通知", "keybinds": "快捷键", "language": "语言"
+    },
+    "account": {
+      "title": "我的账号", "changeBannerColor": "更改横幅颜色", "editProfile": "编辑个人资料",
+      "displayName": "显示名称", "displayNamePlaceholder": "其他人看到的名称",
+      "username": "用户名", "bio": "个人简介", "bioPlaceholder": "告诉别人关于您的事…",
+      "noBio": "未设置个人简介",
+      "profileAlt": "个人资料", "accountInfo": "账号信息",
+      "emailLabel": "电子邮件", "emailMasked": "••••••••••",
+      "passwordSection": "密码与认证",
+      "passwordHelp": "使用强密码和双因素认证保护您的账号。",
+      "changePassword": "更改密码", "enable2FA": "启用双因素认证",
+      "logOut": "退出登录", "dangerZone": "危险区域",
+      "deleteHelp": "删除您的账号是永久性的且无法撤销。",
+      "deleteAccount": "删除账号"
+    },
+    "bannerColors": { "sage": "鼠尾草", "gold": "金色", "ocean": "海洋", "royal": "皇家", "berry": "莓果", "coral": "珊瑚" },
+    "privacy": {
+      "title": "隐私与安全",
+      "dmFilterTitle": "安全的私信",
+      "dmFilterDesc": "控制谁可以向您发送私信。",
+      "dmAll": "允许所有私信", "dmFriends": "仅好友", "dmNone": "无人",
+      "allowFriendReqsLabel": "允许好友请求",
+      "allowFriendReqsDesc": "允许其他人向您发送好友请求。",
+      "readReceiptsLabel": "已读回执",
+      "readReceiptsDesc": "在私信中显示您已读消息的时间。",
+      "dataPrivacy": "数据与隐私",
+      "analyticsLabel": "使用分析",
+      "analyticsDesc": "通过发送匿名使用数据帮助改进 Jolkr。"
+    },
+    "connections": {
+      "title": "连接",
+      "intro": "连接您的账号以分享活动并解锁集成。",
+      "music": "音乐", "gaming": "游戏", "development": "开发", "streaming": "直播", "video": "视频", "social": "社交"
+    },
+    "appearance": {
+      "title": "外观", "colorModeTitle": "颜色模式", "colorModeDesc": "选择您喜欢的主题。",
+      "colorModeLight": "浅色", "colorModeSystem": "系统", "colorModeDark": "深色",
+      "messageDisplayTitle": "消息显示",
+      "messageDisplayDesc": "紧凑模式一次显示更多消息。",
+      "displayCozy": "舒适 — 宽敞、舒适阅读",
+      "displayCompact": "紧凑 — 一次可见更多消息",
+      "fontSizeTitle": "聊天字体大小 — {size}px",
+      "fontSizeDesc": "调整聊天消息中文字的大小。"
+    },
+    "accessibility": {
+      "title": "辅助功能",
+      "reducedMotionLabel": "减少动效",
+      "reducedMotionDesc": "最小化整个应用中的动画和过渡。",
+      "highContrastLabel": "高对比度",
+      "highContrastDesc": "增加文字和背景之间的对比度。",
+      "roleColorsLabel": "显示身份组颜色",
+      "roleColorsDesc": "在成员列表中显示带颜色的身份组名称。"
+    },
+    "voice": {
+      "title": "语音和视频",
+      "inputDevice": "输入设备", "outputDevice": "输出设备",
+      "outputUnsupported": "此浏览器不支持选择输出设备。",
+      "outputUnsupportedTitle": "此浏览器不支持",
+      "systemDefault": "系统默认",
+      "microphoneFallback": "麦克风 ({id}…)", "speakersFallback": "扬声器 ({id}…)", "cameraFallback": "摄像头 ({id}…)",
+      "inputVolume": "输入音量 — {volume}%", "outputVolume": "输出音量 — {volume}%",
+      "cameraSection": "摄像头", "cameraDevice": "摄像头设备", "cameraUnavailable": "摄像头不可用",
+      "advancedSection": "高级",
+      "noiseSuppressionLabel": "噪音抑制",
+      "noiseSuppressionDesc": "在语音通话期间过滤背景噪音。",
+      "echoCancellationLabel": "回声消除",
+      "echoCancellationDesc": "从麦克风输入中消除回声。",
+      "autoGainLabel": "自动增益控制",
+      "autoGainDesc": "自动调整麦克风灵敏度。"
+    },
+    "notifications": {
+      "title": "通知",
+      "desktopLabel": "启用桌面通知",
+      "desktopDesc": "应用在后台时显示通知。",
+      "soundsLabel": "通知声音",
+      "soundsDesc": "收到通知时播放声音。",
+      "permissionDeniedToast": "通知权限被拒绝 — 请在浏览器/操作系统设置中启用。",
+      "unsupportedToast": "此环境不支持桌面通知。",
+      "triggers": "通知触发器",
+      "mentionsLabel": "@提及", "mentionsDesc": "有人在频道中提及您时通知。",
+      "dmsLabel": "私信", "dmsDesc": "通知所有新私信。",
+      "badgeLabel": "未读徽章", "badgeDesc": "在应用图标上显示未读数量徽章。"
+    },
+    "keybinds": {
+      "title": "快捷键", "intro": "默认键盘快捷键。自定义快捷键即将推出。",
+      "openSwitcher": "打开快速切换", "toggleMute": "切换静音", "toggleDeafen": "切换拒听",
+      "markRead": "标记服务器为已读", "jumpUnread": "跳转到最旧未读",
+      "uploadFile": "上传文件", "search": "搜索", "focusInput": "聚焦聊天输入",
+      "editLast": "编辑最后一条消息", "replyMessage": "回复消息", "toggleSettings": "切换设置"
+    },
+    "language": {
+      "title": "语言", "displayTitle": "显示语言",
+      "displayDesc": "选择整个应用使用的语言。",
+      "saveError": "保存语言偏好失败"
+    }
   },
 
-  "inviteAccept": {
-    "joining": "正在加入服务器…",
-    "errorGeneric": "无效或过期的邀请"
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "服务器设置", "moderation": "审核", "dangerZone": "危险区域",
+      "overview": "概览", "roles": "身份组", "invites": "邀请", "bans": "封禁",
+      "auditLog": "审计日志", "deleteServer": "删除服务器"
+    },
+    "leaveBtn": "离开服务器",
+    "overview": {
+      "bannerTitle": "横幅背景",
+      "bannerSolid": "纯色", "bannerGradients": "渐变", "bannerImage": "图片",
+      "bannerImageUrl": "图片 URL (https://…)",
+      "bannerUploading": "上传中…", "bannerUpload": "上传", "bannerRemove": "移除横幅图片",
+      "iconAlt": "服务器图标",
+      "namePlaceholder": "服务器名称",
+      "descriptionPlaceholder": "您的服务器是关于什么的？",
+      "discoveryLabel": "服务器发现",
+      "discoveryDesc": "让服务器在服务器浏览器中可被发现"
+    },
+    "gradients": {
+      "oceanBreeze": "海洋微风", "sunsetGlow": "日落光辉", "forestMist": "森林薄雾",
+      "royalVelvet": "皇家天鹅绒", "berryBurst": "莓果爆发", "midnight": "午夜"
+    },
+    "roles": {
+      "allRoles": "所有身份组", "createRole": "创建身份组",
+      "permissionsTitle": "权限", "clearPermissions": "清除权限",
+      "deleteRole": "删除身份组", "createError": "创建身份组失败"
+    },
+    "invites": {
+      "expireAfter": "过期时间", "maxUses": "最大使用次数",
+      "expireNever": "永不", "expire30m": "30 分钟", "expire1h": "1 小时", "expire6h": "6 小时",
+      "expire12h": "12 小时", "expire1d": "1 天", "expire7d": "7 天",
+      "usesUnlimited": "无限制", "uses1": "1 次", "uses5": "5 次",
+      "uses10": "10 次", "uses25": "25 次", "uses50": "50 次", "uses100": "100 次",
+      "creating": "创建中…", "createBtn": "创建邀请", "createError": "创建邀请失败",
+      "emptyTitle": "暂无邀请",
+      "emptyDesc": "在上方创建邀请以开始邀请人加入您的服务器。",
+      "allInvites": "所有邀请", "copyTitle": "点击复制邀请链接",
+      "copiedToast": "邀请链接已复制！", "copyFailedToast": "复制失败 — 链接：{url}",
+      "usesProgress": "{used} / {max} 次使用", "expiresAt": "{date} 过期", "revoke": "撤销"
+    },
+    "bans": {
+      "emptyTitle": "无被封禁用户",
+      "emptyDesc": "您的服务器是干净的！被封禁的用户将出现在这里。",
+      "reasonLabel": "原因：{reason}", "noReason": "未提供原因",
+      "bannedAt": "{date} 被封禁", "unban": "解除封禁"
+    },
+    "audit": {
+      "emptyTitle": "暂无活动",
+      "emptyDesc": "执行服务器操作时，审计日志条目将出现在这里。",
+      "byUser": "由 {name}", "onTarget": " 对 {type}: {idShort}…",
+      "reasonLabel": "原因：{reason}",
+      "actions": {
+        "MemberJoin": "成员加入", "MemberLeave": "成员离开", "MemberUpdate": "成员更新",
+        "ChannelCreate": "频道创建", "ChannelUpdate": "频道更新", "ChannelDelete": "频道删除",
+        "RoleCreate": "身份组创建", "RoleUpdate": "身份组更新", "RoleDelete": "身份组删除",
+        "ServerUpdate": "服务器更新", "ServerDelete": "服务器删除",
+        "BanCreate": "用户被封禁", "BanDelete": "用户被解除封禁", "Kick": "用户被踢出"
+      }
+    },
+    "delete": {
+      "title": "删除服务器",
+      "warning": "此操作无法撤销。所有频道、消息和数据将被永久删除。",
+      "btn": "删除服务器"
+    },
+    "leaveConfirm": {
+      "title": "离开服务器",
+      "body": "您确定要离开 {serverName} 吗？没有邀请将无法重新加入。",
+      "confirm": "离开服务器"
+    },
+    "deleteConfirm": {
+      "title": "删除服务器",
+      "body": "您确定要永久删除 {serverName} 吗？此操作无法撤销。",
+      "confirm": "删除服务器"
+    }
+  },
+
+  "channelSettings": {
+    "nav": { "channelSettings": "频道设置", "overview": "概览", "permissions": "权限" },
+    "overview": {
+      "title": "频道概览", "nameLabel": "频道名称", "topicLabel": "频道主题",
+      "topicPlaceholder": "让大家知道这个频道是关于什么的",
+      "systemNotice": "这是一个系统频道，无法修改。",
+      "nsfwLabel": "NSFW 频道", "nsfwDesc": "年龄限制内容",
+      "slowmodeLabel": "慢速模式（秒）",
+      "slowmodeHint": "用户每个间隔可以发送一条消息。0 = 禁用。"
+    },
+    "permissions": {
+      "title": "频道权限", "addOverride": "添加覆盖",
+      "systemNotice": "系统频道权限无法修改。",
+      "rolesMembers": "身份组 / 成员", "removeOverride": "移除覆盖",
+      "addModalTitle": "添加权限覆盖",
+      "typeLabel": "类型", "typeRole": "身份组", "typeMember": "成员",
+      "selectRole": "选择身份组…",
+      "memberIdLabel": "成员 ID", "memberIdPlaceholder": "输入成员 ID", "roleLabel": "身份组"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "常规服务器权限",
+    "groupMember": "成员权限",
+    "groupText": "文字频道权限",
+    "groupVoice": "语音频道权限",
+    "ariaEnable": "启用 {label}", "ariaDisable": "禁用 {label}",
+    "view_channels":   { "label": "查看频道",         "desc": "允许默认查看频道（私密频道除外）。" },
+    "manage_channels": { "label": "管理频道",         "desc": "允许创建、编辑或删除频道。" },
+    "manage_server":   { "label": "管理服务器",       "desc": "允许更改服务器名称、图标和其他设置。" },
+    "kick_members":    { "label": "踢出成员",         "desc": "允许将其他成员踢出服务器。" },
+    "ban_members":     { "label": "封禁成员",         "desc": "允许从服务器封禁其他成员。" },
+    "manage_roles":    { "label": "管理身份组",       "desc": "允许创建新身份组，并编辑/删除低于自己最高身份组的身份组。" },
+    "create_invite":   { "label": "创建邀请",         "desc": "允许创建服务器邀请链接。" },
+    "send_messages":   { "label": "发送消息",         "desc": "允许在文字频道发送消息。" },
+    "manage_messages": { "label": "管理消息",         "desc": "允许删除和置顶消息。" },
+    "embed_links":     { "label": "嵌入链接",         "desc": "允许在消息中嵌入链接。" },
+    "attach_files":    { "label": "附加文件",         "desc": "允许在消息中附加文件。" },
+    "add_reactions":   { "label": "添加反应",         "desc": "允许向消息添加反应。" },
+    "mention_everyone":{ "label": "提及所有人",       "desc": "允许使用 @everyone 和 @here。" },
+    "read_message_history": { "label": "读取消息历史", "desc": "允许阅读以前的消息。" },
+    "use_external_emojis":  { "label": "使用外部表情",  "desc": "允许使用其他服务器的表情。" },
+    "send_tts_messages":    { "label": "发送 TTS 消息", "desc": "允许发送文本转语音消息。" },
+    "connect":         { "label": "连接",             "desc": "允许连接到语音频道。" },
+    "speak":           { "label": "说话",             "desc": "允许在语音频道中说话。" },
+    "video":           { "label": "视频",             "desc": "允许在语音频道中分享视频。" },
+    "mute_members":    { "label": "静音成员",         "desc": "允许在语音频道中将其他成员静音。" },
+    "deafen_members":  { "label": "拒听成员",         "desc": "允许在语音频道中拒听其他成员。" },
+    "move_members":    { "label": "移动成员",         "desc": "允许在语音频道之间移动成员。" },
+    "use_voice_activity": { "label": "使用语音活动",  "desc": "允许使用语音活动检测。" },
+    "priority_speaker":{ "label": "优先发言者",       "desc": "在您说话时降低其他人的音量。" },
+    "administrator":   { "label": "管理员",           "desc": "授予所有权限并绕过频道权限。这是一个危险的权限！" }
   }
 }

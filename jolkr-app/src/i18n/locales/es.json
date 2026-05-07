@@ -1,67 +1,40 @@
 {
   "common": {
-    "ok": "OK",
-    "cancel": "Cancelar",
-    "save": "Guardar",
-    "delete": "Eliminar",
-    "edit": "Editar",
-    "close": "Cerrar",
-    "loading": "Cargando…",
-    "someone": "Alguien",
-    "required": "*",
-    "goHome": "Ir al inicio"
+    "ok": "OK", "cancel": "Cancelar", "save": "Guardar", "delete": "Eliminar",
+    "edit": "Editar", "close": "Cerrar", "loading": "Cargando…",
+    "someone": "Alguien", "required": "*", "goHome": "Ir al inicio",
+    "add": "Añadir", "saveChanges": "Guardar cambios"
   },
 
   "auth": {
-    "shared": {
-      "emailLabel": "Correo electrónico",
-      "passwordLabel": "Contraseña"
-    },
-
+    "shared": { "emailLabel": "Correo electrónico", "passwordLabel": "Contraseña" },
     "login": {
-      "title": "¡Bienvenido de nuevo!",
-      "subtitle": "¡Nos alegra verte otra vez!",
-      "submit": "Iniciar sesión",
-      "submitting": "Iniciando sesión…",
+      "title": "¡Bienvenido de nuevo!", "subtitle": "¡Nos alegra verte otra vez!",
+      "submit": "Iniciar sesión", "submitting": "Iniciando sesión…",
       "forgotPassword": "¿Olvidaste tu contraseña?",
-      "needAccount": "¿No tienes una cuenta?",
-      "register": "Registrarse"
+      "needAccount": "¿No tienes una cuenta?", "register": "Registrarse"
     },
-
     "register": {
-      "title": "Crear una cuenta",
-      "subtitle": "Únete a Jolkr hoy",
-      "usernameLabel": "Nombre de usuario",
-      "submit": "Continuar",
-      "submitting": "Creando…",
-      "haveAccount": "¿Ya tienes una cuenta?",
-      "login": "Iniciar sesión"
+      "title": "Crear una cuenta", "subtitle": "Únete a Jolkr hoy",
+      "usernameLabel": "Nombre de usuario", "submit": "Continuar", "submitting": "Creando…",
+      "haveAccount": "¿Ya tienes una cuenta?", "login": "Iniciar sesión"
     },
-
     "forgot": {
       "title": "¿Olvidaste tu contraseña?",
       "subtitle": "Introduce tu correo y te enviaremos un enlace para restablecerla.",
-      "emailPlaceholder": "tu@ejemplo.com",
-      "submit": "Enviar enlace",
-      "submitting": "Enviando…",
-      "rememberPassword": "¿Recuerdas tu contraseña?",
-      "login": "Iniciar sesión",
+      "emailPlaceholder": "tu@ejemplo.com", "submit": "Enviar enlace", "submitting": "Enviando…",
+      "rememberPassword": "¿Recuerdas tu contraseña?", "login": "Iniciar sesión",
       "checkEmailTitle": "Revisa tu correo",
       "checkEmailBody": "Si existe una cuenta para {email}, hemos enviado un enlace de restablecimiento.",
-      "backToLogin": "Volver al inicio de sesión",
-      "errorGeneric": "Algo salió mal"
+      "backToLogin": "Volver al inicio de sesión", "errorGeneric": "Algo salió mal"
     },
-
     "reset": {
-      "title": "Establecer nueva contraseña",
-      "subtitle": "Introduce tu nueva contraseña a continuación.",
+      "title": "Establecer nueva contraseña", "subtitle": "Introduce tu nueva contraseña a continuación.",
       "newPasswordLabel": "Nueva contraseña",
-      "newPasswordPlaceholder": "Mín. {min} caracteres",
-      "newPasswordHint": "{min}+ caracteres",
+      "newPasswordPlaceholder": "Mín. {min} caracteres", "newPasswordHint": "{min}+ caracteres",
       "confirmPasswordLabel": "Confirmar contraseña",
       "confirmPasswordPlaceholder": "Repite tu nueva contraseña",
-      "submit": "Restablecer contraseña",
-      "submitting": "Restableciendo…",
+      "submit": "Restablecer contraseña", "submitting": "Restableciendo…",
       "passwordsMismatch": "Las contraseñas no coinciden",
       "passwordTooShort": "La contraseña debe tener al menos {min} caracteres",
       "errorGeneric": "Error al restablecer la contraseña",
@@ -69,35 +42,254 @@
       "successBody": "Ahora puedes iniciar sesión con tu nueva contraseña.",
       "goToLogin": "Ir al inicio de sesión"
     },
-
     "verify": {
-      "verifyingTitle": "Verificando tu correo…",
-      "verifiedTitle": "¡Correo verificado!",
+      "verifyingTitle": "Verificando tu correo…", "verifiedTitle": "¡Correo verificado!",
       "verifiedBody": "Tu correo ha sido verificado. Ya puedes usar Jolkr.",
-      "goToApp": "Ir a Jolkr",
-      "failedTitle": "Verificación fallida",
+      "goToApp": "Ir a Jolkr", "failedTitle": "Verificación fallida",
       "failedSubtitle": "El enlace puede haber caducado. Intenta solicitar uno nuevo.",
-      "requestNewLink": "Solicitar nuevo enlace",
-      "errorGeneric": "Error de verificación",
+      "requestNewLink": "Solicitar nuevo enlace", "errorGeneric": "Error de verificación",
       "pendingTitle": "Verifica tu correo",
       "pendingBody": "Hemos enviado un enlace de verificación a {email}. Revisa tu bandeja de entrada y haz clic en el enlace para continuar.",
       "yourEmailFallback": "tu correo",
       "sentMessage": "¡Correo de verificación enviado! Revisa tu bandeja de entrada.",
-      "resendBtn": "Reenviar correo de verificación",
-      "sendingBtn": "Enviando…",
-      "sentBtn": "Correo enviado",
-      "signOut": "Cerrar sesión",
-      "resendError": "Error al reenviar"
+      "resendBtn": "Reenviar correo de verificación", "sendingBtn": "Enviando…", "sentBtn": "Correo enviado",
+      "signOut": "Cerrar sesión", "resendError": "Error al reenviar"
     }
   },
 
-  "notFound": {
-    "title": "Página no encontrada",
-    "message": "La página que buscas no existe o ha sido movida."
+  "notFound": { "title": "Página no encontrada", "message": "La página que buscas no existe o ha sido movida." },
+  "inviteAccept": { "joining": "Uniéndose al servidor…", "errorGeneric": "Invitación inválida o caducada" },
+
+  "settings": {
+    "nav": {
+      "userSettings": "Ajustes de usuario", "appSettings": "Ajustes de la app",
+      "account": "Mi cuenta", "privacy": "Privacidad y seguridad", "connections": "Conexiones",
+      "appearance": "Apariencia", "accessibility": "Accesibilidad", "voice": "Voz y vídeo",
+      "notifications": "Notificaciones", "keybinds": "Atajos", "language": "Idioma"
+    },
+    "account": {
+      "title": "Mi cuenta", "changeBannerColor": "Cambiar color del banner", "editProfile": "Editar perfil",
+      "displayName": "Nombre visible", "displayNamePlaceholder": "Cómo te ven los demás",
+      "username": "Nombre de usuario", "bio": "Biografía", "bioPlaceholder": "Cuéntanos sobre ti…",
+      "noBio": "Sin biografía",
+      "profileAlt": "Perfil", "accountInfo": "Información de la cuenta",
+      "emailLabel": "Correo electrónico", "emailMasked": "••••••••••",
+      "passwordSection": "Contraseña y autenticación",
+      "passwordHelp": "Mantén tu cuenta segura con una contraseña fuerte y autenticación en dos pasos.",
+      "changePassword": "Cambiar contraseña", "enable2FA": "Activar autenticación en dos pasos",
+      "logOut": "Cerrar sesión", "dangerZone": "Zona de peligro",
+      "deleteHelp": "Eliminar tu cuenta es permanente y no se puede deshacer.",
+      "deleteAccount": "Eliminar cuenta"
+    },
+    "bannerColors": { "sage": "Salvia", "gold": "Oro", "ocean": "Océano", "royal": "Real", "berry": "Baya", "coral": "Coral" },
+    "privacy": {
+      "title": "Privacidad y seguridad",
+      "dmFilterTitle": "Mensajes directos seguros",
+      "dmFilterDesc": "Controla quién puede enviarte mensajes directos.",
+      "dmAll": "Permitir todos los MD", "dmFriends": "Solo amigos", "dmNone": "Nadie",
+      "allowFriendReqsLabel": "Permitir solicitudes de amistad",
+      "allowFriendReqsDesc": "Deja que otros te envíen solicitudes de amistad.",
+      "readReceiptsLabel": "Confirmaciones de lectura",
+      "readReceiptsDesc": "Muestra cuándo has leído los mensajes en MD.",
+      "dataPrivacy": "Datos y privacidad",
+      "analyticsLabel": "Análisis de uso",
+      "analyticsDesc": "Ayuda a mejorar Jolkr enviando datos de uso anónimos."
+    },
+    "connections": {
+      "title": "Conexiones",
+      "intro": "Conecta tus cuentas para compartir tu actividad y desbloquear integraciones.",
+      "music": "Música", "gaming": "Juegos", "development": "Desarrollo", "streaming": "Streaming", "video": "Vídeo", "social": "Social"
+    },
+    "appearance": {
+      "title": "Apariencia", "colorModeTitle": "Modo de color", "colorModeDesc": "Elige tu tema preferido.",
+      "colorModeLight": "Claro", "colorModeSystem": "Sistema", "colorModeDark": "Oscuro",
+      "messageDisplayTitle": "Visualización de mensajes",
+      "messageDisplayDesc": "El modo compacto muestra más mensajes a la vez.",
+      "displayCozy": "Cómodo — espacioso, lectura agradable",
+      "displayCompact": "Compacto — más mensajes visibles a la vez",
+      "fontSizeTitle": "Tamaño de fuente del chat — {size}px",
+      "fontSizeDesc": "Cambia el tamaño del texto en los mensajes."
+    },
+    "accessibility": {
+      "title": "Accesibilidad",
+      "reducedMotionLabel": "Reducir movimiento",
+      "reducedMotionDesc": "Minimiza animaciones y transiciones en toda la app.",
+      "highContrastLabel": "Alto contraste",
+      "highContrastDesc": "Aumenta el contraste entre texto y fondo.",
+      "roleColorsLabel": "Mostrar colores de roles",
+      "roleColorsDesc": "Muestra nombres de roles con código de color en las listas de miembros."
+    },
+    "voice": {
+      "title": "Voz y vídeo",
+      "inputDevice": "Dispositivo de entrada", "outputDevice": "Dispositivo de salida",
+      "outputUnsupported": "La selección del dispositivo de salida no es compatible con este navegador.",
+      "outputUnsupportedTitle": "No compatible con este navegador",
+      "systemDefault": "Predeterminado del sistema",
+      "microphoneFallback": "Micrófono ({id}…)", "speakersFallback": "Altavoces ({id}…)", "cameraFallback": "Cámara ({id}…)",
+      "inputVolume": "Volumen de entrada — {volume}%", "outputVolume": "Volumen de salida — {volume}%",
+      "cameraSection": "Cámara", "cameraDevice": "Dispositivo de cámara", "cameraUnavailable": "Cámara no disponible",
+      "advancedSection": "Avanzado",
+      "noiseSuppressionLabel": "Supresión de ruido",
+      "noiseSuppressionDesc": "Filtra el ruido de fondo durante las llamadas de voz.",
+      "echoCancellationLabel": "Cancelación de eco",
+      "echoCancellationDesc": "Elimina el eco de la entrada del micrófono.",
+      "autoGainLabel": "Control de ganancia automático",
+      "autoGainDesc": "Ajusta automáticamente la sensibilidad del micrófono."
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "desktopLabel": "Activar notificaciones de escritorio",
+      "desktopDesc": "Muestra notificaciones cuando la app esté en segundo plano.",
+      "soundsLabel": "Sonidos de notificación",
+      "soundsDesc": "Reproduce un sonido cuando recibes una notificación.",
+      "permissionDeniedToast": "Permiso de notificación denegado — actívalo en los ajustes de tu navegador/SO.",
+      "unsupportedToast": "Las notificaciones de escritorio no son compatibles con este entorno.",
+      "triggers": "Activadores de notificación",
+      "mentionsLabel": "@menciones", "mentionsDesc": "Notificar cuando alguien te mencione en un canal.",
+      "dmsLabel": "Mensajes directos", "dmsDesc": "Notificar para todos los nuevos mensajes directos.",
+      "badgeLabel": "Insignia de no leídos", "badgeDesc": "Muestra la insignia de no leídos en el icono de la app."
+    },
+    "keybinds": {
+      "title": "Atajos", "intro": "Atajos de teclado predeterminados. Atajos personalizados próximamente.",
+      "openSwitcher": "Abrir selector rápido", "toggleMute": "Silenciar/activar", "toggleDeafen": "Ensordecer/activar",
+      "markRead": "Marcar servidor como leído", "jumpUnread": "Ir al más antiguo no leído",
+      "uploadFile": "Subir archivo", "search": "Buscar", "focusInput": "Enfocar entrada del chat",
+      "editLast": "Editar último mensaje", "replyMessage": "Responder mensaje", "toggleSettings": "Alternar ajustes"
+    },
+    "language": {
+      "title": "Idioma", "displayTitle": "Idioma de visualización",
+      "displayDesc": "Elige el idioma utilizado en toda la app.",
+      "saveError": "Error al guardar la preferencia de idioma"
+    }
   },
 
-  "inviteAccept": {
-    "joining": "Uniéndose al servidor…",
-    "errorGeneric": "Invitación inválida o caducada"
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "Ajustes del servidor", "moderation": "Moderación", "dangerZone": "Zona de peligro",
+      "overview": "Resumen", "roles": "Roles", "invites": "Invitaciones", "bans": "Baneos",
+      "auditLog": "Registro de auditoría", "deleteServer": "Eliminar servidor"
+    },
+    "leaveBtn": "Salir del servidor",
+    "overview": {
+      "bannerTitle": "Fondo del banner",
+      "bannerSolid": "Colores sólidos", "bannerGradients": "Degradados", "bannerImage": "Imagen",
+      "bannerImageUrl": "URL de imagen (https://…)",
+      "bannerUploading": "Subiendo…", "bannerUpload": "Subir", "bannerRemove": "Quitar imagen del banner",
+      "iconAlt": "Icono del servidor",
+      "namePlaceholder": "Nombre del servidor",
+      "descriptionPlaceholder": "¿De qué trata tu servidor?",
+      "discoveryLabel": "Descubrimiento del servidor",
+      "discoveryDesc": "Hacer servidor visible en el navegador de servidores"
+    },
+    "gradients": {
+      "oceanBreeze": "Brisa del océano", "sunsetGlow": "Brillo del atardecer", "forestMist": "Niebla del bosque",
+      "royalVelvet": "Terciopelo real", "berryBurst": "Estallido de bayas", "midnight": "Medianoche"
+    },
+    "roles": {
+      "allRoles": "Todos los roles", "createRole": "Crear rol",
+      "permissionsTitle": "Permisos", "clearPermissions": "Borrar permisos",
+      "deleteRole": "Eliminar rol", "createError": "Error al crear el rol"
+    },
+    "invites": {
+      "expireAfter": "Expira después de", "maxUses": "Usos máximos",
+      "expireNever": "Nunca", "expire30m": "30 minutos", "expire1h": "1 hora", "expire6h": "6 horas",
+      "expire12h": "12 horas", "expire1d": "1 día", "expire7d": "7 días",
+      "usesUnlimited": "Sin límite", "uses1": "1 uso", "uses5": "5 usos",
+      "uses10": "10 usos", "uses25": "25 usos", "uses50": "50 usos", "uses100": "100 usos",
+      "creating": "Creando…", "createBtn": "Crear invitación", "createError": "Error al crear la invitación",
+      "emptyTitle": "Aún no hay invitaciones",
+      "emptyDesc": "Crea una invitación arriba para empezar a invitar a personas a tu servidor.",
+      "allInvites": "Todas las invitaciones", "copyTitle": "Haz clic para copiar el enlace de invitación",
+      "copiedToast": "¡Enlace de invitación copiado!", "copyFailedToast": "Error al copiar — enlace: {url}",
+      "usesProgress": "{used} / {max} usos", "expiresAt": "Expira el {date}", "revoke": "Revocar"
+    },
+    "bans": {
+      "emptyTitle": "Sin usuarios baneados",
+      "emptyDesc": "¡Tu servidor está limpio! Los usuarios baneados aparecerán aquí.",
+      "reasonLabel": "Razón: {reason}", "noReason": "Sin razón proporcionada",
+      "bannedAt": "Baneado el {date}", "unban": "Desbanear"
+    },
+    "audit": {
+      "emptyTitle": "Aún no hay actividad",
+      "emptyDesc": "Las entradas del registro de auditoría aparecerán aquí cuando se realicen acciones.",
+      "byUser": "por {name}", "onTarget": " sobre {type}: {idShort}…",
+      "reasonLabel": "Razón: {reason}",
+      "actions": {
+        "MemberJoin": "Miembro unido", "MemberLeave": "Miembro salió", "MemberUpdate": "Miembro actualizado",
+        "ChannelCreate": "Canal creado", "ChannelUpdate": "Canal actualizado", "ChannelDelete": "Canal eliminado",
+        "RoleCreate": "Rol creado", "RoleUpdate": "Rol actualizado", "RoleDelete": "Rol eliminado",
+        "ServerUpdate": "Servidor actualizado", "ServerDelete": "Servidor eliminado",
+        "BanCreate": "Usuario baneado", "BanDelete": "Usuario desbaneado", "Kick": "Usuario expulsado"
+      }
+    },
+    "delete": {
+      "title": "Eliminar servidor",
+      "warning": "Esta acción no se puede deshacer. Todos los canales, mensajes y datos se eliminarán permanentemente.",
+      "btn": "Eliminar servidor"
+    },
+    "leaveConfirm": {
+      "title": "Salir del servidor",
+      "body": "¿Seguro que quieres salir de {serverName}? No podrás volver a unirte sin una invitación.",
+      "confirm": "Salir del servidor"
+    },
+    "deleteConfirm": {
+      "title": "Eliminar servidor",
+      "body": "¿Seguro que quieres eliminar permanentemente {serverName}? Esta acción no se puede deshacer.",
+      "confirm": "Eliminar servidor"
+    }
+  },
+
+  "channelSettings": {
+    "nav": { "channelSettings": "Ajustes del canal", "overview": "Resumen", "permissions": "Permisos" },
+    "overview": {
+      "title": "Resumen del canal", "nameLabel": "NOMBRE DEL CANAL", "topicLabel": "TEMA DEL CANAL",
+      "topicPlaceholder": "Que todos sepan de qué trata este canal",
+      "systemNotice": "Este es un canal del sistema y no se puede modificar.",
+      "nsfwLabel": "Canal NSFW", "nsfwDesc": "Contenido restringido por edad",
+      "slowmodeLabel": "MODO LENTO (SEGUNDOS)",
+      "slowmodeHint": "Los usuarios pueden enviar un mensaje por intervalo. 0 = desactivado."
+    },
+    "permissions": {
+      "title": "Permisos del canal", "addOverride": "Añadir excepción",
+      "systemNotice": "Los permisos del canal del sistema no se pueden modificar.",
+      "rolesMembers": "ROLES / MIEMBROS", "removeOverride": "Quitar excepción",
+      "addModalTitle": "Añadir excepción de permiso",
+      "typeLabel": "TIPO", "typeRole": "Rol", "typeMember": "Miembro",
+      "selectRole": "Selecciona un rol…",
+      "memberIdLabel": "ID DE MIEMBRO", "memberIdPlaceholder": "Introduce ID de miembro", "roleLabel": "ROL"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "Permisos generales del servidor",
+    "groupMember": "Permisos de miembro",
+    "groupText": "Permisos del canal de texto",
+    "groupVoice": "Permisos del canal de voz",
+    "ariaEnable": "Activar {label}", "ariaDisable": "Desactivar {label}",
+    "view_channels":   { "label": "Ver canales",          "desc": "Permite ver canales por defecto (excluyendo privados)." },
+    "manage_channels": { "label": "Gestionar canales",    "desc": "Permite crear, editar o eliminar canales." },
+    "manage_server":   { "label": "Gestionar servidor",   "desc": "Permite cambiar nombre del servidor, icono y otros ajustes." },
+    "kick_members":    { "label": "Expulsar miembros",    "desc": "Permite expulsar a otros miembros del servidor." },
+    "ban_members":     { "label": "Banear miembros",      "desc": "Permite banear a otros miembros del servidor." },
+    "manage_roles":    { "label": "Gestionar roles",      "desc": "Permite crear nuevos roles y editar/eliminar roles inferiores." },
+    "create_invite":   { "label": "Crear invitaciones",   "desc": "Permite crear enlaces de invitación al servidor." },
+    "send_messages":   { "label": "Enviar mensajes",      "desc": "Permite enviar mensajes en canales de texto." },
+    "manage_messages": { "label": "Gestionar mensajes",   "desc": "Permite eliminar y fijar mensajes." },
+    "embed_links":     { "label": "Incrustar enlaces",    "desc": "Permite incrustar enlaces en mensajes." },
+    "attach_files":    { "label": "Adjuntar archivos",    "desc": "Permite adjuntar archivos a mensajes." },
+    "add_reactions":   { "label": "Añadir reacciones",    "desc": "Permite añadir reacciones a los mensajes." },
+    "mention_everyone":{ "label": "Mencionar a todos",    "desc": "Permite usar @everyone y @here." },
+    "read_message_history": { "label": "Leer historial de mensajes", "desc": "Permite leer mensajes anteriores." },
+    "use_external_emojis":  { "label": "Usar emojis externos",       "desc": "Permite usar emojis de otros servidores." },
+    "send_tts_messages":    { "label": "Enviar mensajes TTS",        "desc": "Permite enviar mensajes de texto a voz." },
+    "connect":         { "label": "Conectar",             "desc": "Permite conectarse a canales de voz." },
+    "speak":           { "label": "Hablar",               "desc": "Permite hablar en canales de voz." },
+    "video":           { "label": "Vídeo",                "desc": "Permite compartir vídeo en canales de voz." },
+    "mute_members":    { "label": "Silenciar miembros",   "desc": "Permite silenciar a otros miembros en canales de voz." },
+    "deafen_members":  { "label": "Ensordecer miembros",  "desc": "Permite ensordecer a otros miembros en canales de voz." },
+    "move_members":    { "label": "Mover miembros",       "desc": "Permite mover miembros entre canales de voz." },
+    "use_voice_activity": { "label": "Usar actividad de voz", "desc": "Permite usar la detección de actividad de voz." },
+    "priority_speaker":{ "label": "Hablante prioritario", "desc": "Reduce el volumen de los demás mientras hablas." },
+    "administrator":   { "label": "Administrador",        "desc": "Concede todos los permisos y omite los permisos de canal. ¡Es un permiso peligroso!" }
   }
 }

@@ -14,7 +14,7 @@
 
 export type LocaleCode =
   | 'en-US'
-  | 'en-GB'
+  | 'nl'
   | 'fr'
   | 'de'
   | 'es'
@@ -28,7 +28,7 @@ export type LocaleCode =
  * codes the backend accepts. Default sits at index 0.
  */
 export const SUPPORTED_LOCALES: readonly LocaleCode[] = [
-  'en-US', 'en-GB', 'fr', 'de', 'es', 'it', 'ja', 'ko', 'zh-CN',
+  'en-US', 'nl', 'fr', 'de', 'es', 'it', 'ja', 'ko', 'zh-CN',
 ] as const;
 
 export const DEFAULT_LOCALE: LocaleCode = 'en-US';
@@ -41,7 +41,7 @@ export interface Translations {
 /** Display label for the language picker (shown in the Settings dropdown). */
 export const LOCALE_LABELS: Record<LocaleCode, string> = {
   'en-US': 'English (US)',
-  'en-GB': 'English (UK)',
+  'nl':    'Nederlands',
   'fr':    'Français',
   'de':    'Deutsch',
   'es':    'Español',

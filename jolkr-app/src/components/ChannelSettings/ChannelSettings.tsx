@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Hash, Lock, Shield, Save, Plus, Trash2, Check, XCircle
 } from 'lucide-react'
@@ -7,6 +7,7 @@ import * as api from '../../api/client'
 import * as P from '../../utils/permissions'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { useT } from '../../hooks/useT'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import s from './ChannelSettings.module.css'
 
@@ -20,18 +21,20 @@ interface Props {
   onUpdate: (channelId: string, data: Partial<ApiChannel>) => void
 }
 
-const NAV: SettingsNavGroup<Section>[] = [
-  {
-    group: 'Channel Settings',
-    items: [
-      { id: 'overview', label: 'Overview', icon: <Hash size={15} strokeWidth={1.5} /> },
-      { id: 'permissions', label: 'Permissions', icon: <Shield size={15} strokeWidth={1.5} /> },
-    ],
-  },
-]
-
 export function ChannelSettings({ channel, serverId, serverPermissions, onClose, onUpdate }: Props) {
+  const { t } = useT()
   const canManage = P.hasPermission(serverPermissions, P.MANAGE_CHANNELS)
+
+  // NAV labels are translated — memoised on the active locale (via t identity).
+  const NAV = useMemo<SettingsNavGroup<Section>[]>(() => [
+    {
+      group: t('channelSettings.nav.channelSettings'),
+      items: [
+        { id: 'overview', label: t('channelSettings.nav.overview'), icon: <Hash size={15} strokeWidth={1.5} /> },
+        { id: 'permissions', label: t('channelSettings.nav.permissions'), icon: <Shield size={15} strokeWidth={1.5} /> },
+      ],
+    },
+  ], [t])
 
   const [section, setSection] = useState<Section>('overview')
   const [editedChannel, setEditedChannel] = useState<Partial<ApiChannel>>({})
@@ -133,11 +136,11 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
   const renderOverview = () => (
     <div className={s.section}>
       <div className={s.sectionHeader}>
-        <h2 className="txt-medium txt-semibold">Channel Overview</h2>
+        <h2 className="txt-medium txt-semibold">{t('channelSettings.overview.title')}</h2>
       </div>
 
       <div className={s.field}>
-        <label className={`${s.label} txt-tiny txt-semibold`}>CHANNEL NAME</label>
+        <label className={`${s.label} txt-tiny txt-semibold`}>{t('channelSettings.overview.nameLabel')}</label>
         <input
           type="text"
           className={s.input}
@@ -148,12 +151,12 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
       </div>
 
       <div className={s.field}>
-        <label className={`${s.label} txt-tiny txt-semibold`}>CHANNEL TOPIC</label>
+        <label className={`${s.label} txt-tiny txt-semibold`}>{t('channelSettings.overview.topicLabel')}</label>
         <textarea
           className={s.textarea}
           value={editedChannel.topic ?? channel.topic ?? ''}
           onChange={e => handleFieldChange('topic', e.target.value)}
-          placeholder="Let everyone know what this channel is about"
+          placeholder={t('channelSettings.overview.topicPlaceholder')}
           disabled={!canManage || channel.is_system}
           rows={3}
         />
@@ -162,14 +165,14 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
       {channel.is_system && (
         <div className={s.systemNotice}>
           <Lock size={14} strokeWidth={1.5} />
-          <span className="txt-small">This is a system channel and cannot be modified.</span>
+          <span className="txt-small">{t('channelSettings.overview.systemNotice')}</span>
         </div>
       )}
 
       <div className={s.toggleRow}>
         <div className={s.toggleInfo}>
-          <span className="txt-small txt-semibold">NSFW Channel</span>
-          <span className={`${s.toggleDesc} txt-tiny`}>Age-restricted content</span>
+          <span className="txt-small txt-semibold">{t('channelSettings.overview.nsfwLabel')}</span>
+          <span className={`${s.toggleDesc} txt-tiny`}>{t('channelSettings.overview.nsfwDesc')}</span>
         </div>
         <label className={s.toggle}>
           <input
@@ -183,7 +186,7 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
       </div>
 
       <div className={s.field}>
-        <label className={`${s.label} txt-tiny txt-semibold`}>SLOWMODE (SECONDS)</label>
+        <label className={`${s.label} txt-tiny txt-semibold`}>{t('channelSettings.overview.slowmodeLabel')}</label>
         <input
           type="number"
           className={s.input}
@@ -193,13 +196,13 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
           max={21600}
           disabled={!canManage || channel.is_system}
         />
-        <span className={`${s.fieldHint} txt-tiny`}>Users can send one message per interval. 0 = disabled.</span>
+        <span className={`${s.fieldHint} txt-tiny`}>{t('channelSettings.overview.slowmodeHint')}</span>
       </div>
 
       {hasChanges && canManage && !channel.is_system && (
         <button className={s.saveBtn} onClick={handleSave}>
           <Save size={14} strokeWidth={1.5} />
-          Save Changes
+          {t('common.saveChanges')}
         </button>
       )}
     </div>
@@ -211,11 +214,11 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
     return (
       <div className={s.section}>
         <div className={s.sectionHeader}>
-          <h2 className="txt-medium txt-semibold">Channel Permissions</h2>
+          <h2 className="txt-medium txt-semibold">{t('channelSettings.permissions.title')}</h2>
           {canManage && !channel.is_system && (
             <button className={s.addBtn} onClick={() => setShowAddOverwrite(true)}>
               <Plus size={14} strokeWidth={1.5} />
-              Add Override
+              {t('channelSettings.permissions.addOverride')}
             </button>
           )}
         </div>
@@ -223,14 +226,14 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
         {channel.is_system && (
           <div className={s.systemNotice}>
             <Lock size={14} strokeWidth={1.5} />
-            <span className="txt-small">System channel permissions cannot be modified.</span>
+            <span className="txt-small">{t('channelSettings.permissions.systemNotice')}</span>
           </div>
         )}
 
         <div className={s.permissionsLayout}>
           <div className={s.overwritesList}>
             <div className={s.overwritesHeader}>
-              <span className="txt-tiny txt-semibold">ROLES / MEMBERS</span>
+              <span className="txt-tiny txt-semibold">{t('channelSettings.permissions.rolesMembers')}</span>
             </div>
             {overwrites.map((overwrite, idx) => {
               const role = roles.find(r => r.id === overwrite.target_id)
@@ -260,7 +263,7 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
                   <button
                     className={s.deleteOverwriteBtn}
                     onClick={() => handleDeleteOverwrite(selectedOverwrite)}
-                    title="Remove override"
+                    title={t('channelSettings.permissions.removeOverride')}
                   >
                     <Trash2 size={14} strokeWidth={1.5} />
                   </button>
@@ -275,7 +278,7 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
 
                   return (
                     <div key={perm.key} className={s.permissionRow}>
-                      <span className="txt-small">{perm.label}</span>
+                      <span className="txt-small">{t(`permissions.${perm.key}Label`)}</span>
                       <button
                         className={`${s.permissionToggle} ${s[state]}`}
                         onClick={() => handleTogglePermission(selectedOverwrite.id, perm.flag, selectedOverwrite.allow, selectedOverwrite.deny)}

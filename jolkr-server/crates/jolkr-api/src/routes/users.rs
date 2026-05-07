@@ -43,7 +43,7 @@ pub(crate) struct UpdateMeRequest {
 /// only validates BCP-47 *shape* — this list pins the *set* so adding a
 /// language is a one-line FE+BE change with no migration required.
 pub(crate) const SUPPORTED_LOCALES: &[&str] = &[
-    "en-US", "en-GB", "fr", "de", "es", "it", "ja", "ko", "zh-CN",
+    "en-US", "nl", "fr", "de", "es", "it", "ja", "ko", "zh-CN",
 ];
 
 #[derive(Debug, Deserialize)]

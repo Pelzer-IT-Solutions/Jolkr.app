@@ -1,67 +1,39 @@
 {
   "common": {
-    "ok": "확인",
-    "cancel": "취소",
-    "save": "저장",
-    "delete": "삭제",
-    "edit": "편집",
-    "close": "닫기",
-    "loading": "로딩 중…",
-    "someone": "누군가",
-    "required": "*",
-    "goHome": "홈으로"
+    "ok": "확인", "cancel": "취소", "save": "저장", "delete": "삭제",
+    "edit": "편집", "close": "닫기", "loading": "로딩 중…",
+    "someone": "누군가", "required": "*", "goHome": "홈으로",
+    "add": "추가", "saveChanges": "변경사항 저장"
   },
 
   "auth": {
-    "shared": {
-      "emailLabel": "이메일",
-      "passwordLabel": "비밀번호"
-    },
-
+    "shared": { "emailLabel": "이메일", "passwordLabel": "비밀번호" },
     "login": {
-      "title": "다시 오신 것을 환영합니다!",
-      "subtitle": "다시 만나서 정말 반가워요!",
-      "submit": "로그인",
-      "submitting": "로그인 중…",
+      "title": "다시 오신 것을 환영합니다!", "subtitle": "다시 만나서 정말 반가워요!",
+      "submit": "로그인", "submitting": "로그인 중…",
       "forgotPassword": "비밀번호를 잊으셨나요?",
-      "needAccount": "계정이 없으신가요?",
-      "register": "가입하기"
+      "needAccount": "계정이 없으신가요?", "register": "가입하기"
     },
-
     "register": {
-      "title": "계정 만들기",
-      "subtitle": "지금 Jolkr에 가입하세요",
-      "usernameLabel": "사용자 이름",
-      "submit": "계속",
-      "submitting": "생성 중…",
-      "haveAccount": "이미 계정이 있으신가요?",
-      "login": "로그인"
+      "title": "계정 만들기", "subtitle": "지금 Jolkr에 가입하세요",
+      "usernameLabel": "사용자 이름", "submit": "계속", "submitting": "생성 중…",
+      "haveAccount": "이미 계정이 있으신가요?", "login": "로그인"
     },
-
     "forgot": {
       "title": "비밀번호를 잊으셨나요?",
       "subtitle": "이메일을 입력하시면 재설정 링크를 보내드립니다.",
-      "emailPlaceholder": "you@example.com",
-      "submit": "링크 보내기",
-      "submitting": "전송 중…",
-      "rememberPassword": "비밀번호가 기억나셨나요?",
-      "login": "로그인",
+      "emailPlaceholder": "you@example.com", "submit": "링크 보내기", "submitting": "전송 중…",
+      "rememberPassword": "비밀번호가 기억나셨나요?", "login": "로그인",
       "checkEmailTitle": "이메일을 확인하세요",
       "checkEmailBody": "{email}의 계정이 존재하는 경우, 비밀번호 재설정 링크를 보냈습니다.",
-      "backToLogin": "로그인으로 돌아가기",
-      "errorGeneric": "문제가 발생했습니다"
+      "backToLogin": "로그인으로 돌아가기", "errorGeneric": "문제가 발생했습니다"
     },
-
     "reset": {
-      "title": "새 비밀번호 설정",
-      "subtitle": "아래에 새 비밀번호를 입력하세요.",
+      "title": "새 비밀번호 설정", "subtitle": "아래에 새 비밀번호를 입력하세요.",
       "newPasswordLabel": "새 비밀번호",
-      "newPasswordPlaceholder": "최소 {min}자",
-      "newPasswordHint": "{min}자 이상",
-      "confirmPasswordLabel": "비밀번호 확인",
-      "confirmPasswordPlaceholder": "새 비밀번호를 다시 입력하세요",
-      "submit": "비밀번호 재설정",
-      "submitting": "재설정 중…",
+      "newPasswordPlaceholder": "최소 {min}자", "newPasswordHint": "{min}자 이상",
+      "confirmPasswordLabel": "비밀번호 확인", "confirmPasswordPlaceholder": "새 비밀번호를 다시 입력하세요",
+      "submit": "비밀번호 재설정", "submitting": "재설정 중…",
       "passwordsMismatch": "비밀번호가 일치하지 않습니다",
       "passwordTooShort": "비밀번호는 최소 {min}자 이상이어야 합니다",
       "errorGeneric": "비밀번호 재설정에 실패했습니다",
@@ -69,35 +41,254 @@
       "successBody": "이제 새 비밀번호로 로그인할 수 있습니다.",
       "goToLogin": "로그인으로 이동"
     },
-
     "verify": {
-      "verifyingTitle": "이메일을 확인하는 중…",
-      "verifiedTitle": "이메일이 확인되었습니다!",
+      "verifyingTitle": "이메일을 확인하는 중…", "verifiedTitle": "이메일이 확인되었습니다!",
       "verifiedBody": "이메일이 확인되었습니다. 이제 Jolkr를 사용할 수 있습니다.",
-      "goToApp": "Jolkr로 이동",
-      "failedTitle": "확인 실패",
+      "goToApp": "Jolkr로 이동", "failedTitle": "확인 실패",
       "failedSubtitle": "링크가 만료되었을 수 있습니다. 새 링크를 요청해 보세요.",
-      "requestNewLink": "새 링크 요청",
-      "errorGeneric": "확인에 실패했습니다",
+      "requestNewLink": "새 링크 요청", "errorGeneric": "확인에 실패했습니다",
       "pendingTitle": "이메일을 확인해 주세요",
       "pendingBody": "{email}로 확인 링크를 보냈습니다. 받은 편지함을 확인하고 링크를 클릭하여 계속하세요.",
       "yourEmailFallback": "귀하의 이메일",
       "sentMessage": "확인 이메일을 보냈습니다! 받은 편지함을 확인하세요.",
-      "resendBtn": "확인 이메일 재전송",
-      "sendingBtn": "전송 중…",
-      "sentBtn": "이메일 전송됨",
-      "signOut": "로그아웃",
-      "resendError": "전송에 실패했습니다"
+      "resendBtn": "확인 이메일 재전송", "sendingBtn": "전송 중…", "sentBtn": "이메일 전송됨",
+      "signOut": "로그아웃", "resendError": "전송에 실패했습니다"
     }
   },
 
-  "notFound": {
-    "title": "페이지를 찾을 수 없습니다",
-    "message": "찾으시는 페이지가 존재하지 않거나 이동되었습니다."
+  "notFound": { "title": "페이지를 찾을 수 없습니다", "message": "찾으시는 페이지가 존재하지 않거나 이동되었습니다." },
+  "inviteAccept": { "joining": "서버에 참여 중…", "errorGeneric": "유효하지 않거나 만료된 초대" },
+
+  "settings": {
+    "nav": {
+      "userSettings": "사용자 설정", "appSettings": "앱 설정",
+      "account": "내 계정", "privacy": "개인정보 및 보안", "connections": "연결",
+      "appearance": "모양", "accessibility": "접근성", "voice": "음성 및 비디오",
+      "notifications": "알림", "keybinds": "단축키", "language": "언어"
+    },
+    "account": {
+      "title": "내 계정", "changeBannerColor": "배너 색상 변경", "editProfile": "프로필 편집",
+      "displayName": "표시 이름", "displayNamePlaceholder": "다른 사람들에게 보이는 이름",
+      "username": "사용자 이름", "bio": "자기소개", "bioPlaceholder": "자신에 대해 알려주세요…",
+      "noBio": "자기소개가 설정되지 않음",
+      "profileAlt": "프로필", "accountInfo": "계정 정보",
+      "emailLabel": "이메일", "emailMasked": "••••••••••",
+      "passwordSection": "비밀번호 및 인증",
+      "passwordHelp": "강력한 비밀번호와 2단계 인증으로 계정을 안전하게 유지하세요.",
+      "changePassword": "비밀번호 변경", "enable2FA": "2단계 인증 활성화",
+      "logOut": "로그아웃", "dangerZone": "위험 구역",
+      "deleteHelp": "계정 삭제는 영구적이며 되돌릴 수 없습니다.",
+      "deleteAccount": "계정 삭제"
+    },
+    "bannerColors": { "sage": "세이지", "gold": "골드", "ocean": "오션", "royal": "로얄", "berry": "베리", "coral": "코랄" },
+    "privacy": {
+      "title": "개인정보 및 보안",
+      "dmFilterTitle": "안전한 다이렉트 메시지",
+      "dmFilterDesc": "누가 다이렉트 메시지를 보낼 수 있는지 제어합니다.",
+      "dmAll": "모든 DM 허용", "dmFriends": "친구만", "dmNone": "아무도 안 됨",
+      "allowFriendReqsLabel": "친구 요청 허용",
+      "allowFriendReqsDesc": "다른 사람이 친구 요청을 보낼 수 있도록 허용합니다.",
+      "readReceiptsLabel": "읽음 확인",
+      "readReceiptsDesc": "DM에서 메시지를 읽은 시점을 표시합니다.",
+      "dataPrivacy": "데이터 및 개인정보",
+      "analyticsLabel": "사용 분석",
+      "analyticsDesc": "익명의 사용 데이터를 보내 Jolkr 개선에 도움을 주세요."
+    },
+    "connections": {
+      "title": "연결",
+      "intro": "계정을 연결하여 활동을 공유하고 통합을 잠금 해제하세요.",
+      "music": "음악", "gaming": "게임", "development": "개발", "streaming": "스트리밍", "video": "동영상", "social": "소셜"
+    },
+    "appearance": {
+      "title": "모양", "colorModeTitle": "색상 모드", "colorModeDesc": "선호하는 테마를 선택하세요.",
+      "colorModeLight": "라이트", "colorModeSystem": "시스템", "colorModeDark": "다크",
+      "messageDisplayTitle": "메시지 표시",
+      "messageDisplayDesc": "콤팩트 모드는 한 번에 더 많은 메시지를 표시합니다.",
+      "displayCozy": "편안 — 넓고 편안한 읽기",
+      "displayCompact": "콤팩트 — 한 번에 더 많은 메시지 표시",
+      "fontSizeTitle": "채팅 글꼴 크기 — {size}px",
+      "fontSizeDesc": "채팅 메시지의 텍스트 크기를 조정합니다."
+    },
+    "accessibility": {
+      "title": "접근성",
+      "reducedMotionLabel": "동작 감소",
+      "reducedMotionDesc": "앱 전체의 애니메이션과 전환을 최소화합니다.",
+      "highContrastLabel": "높은 대비",
+      "highContrastDesc": "텍스트와 배경 간의 대비를 높입니다.",
+      "roleColorsLabel": "역할 색상 표시",
+      "roleColorsDesc": "구성원 목록에서 색상으로 구분된 역할 이름을 표시합니다."
+    },
+    "voice": {
+      "title": "음성 및 비디오",
+      "inputDevice": "입력 장치", "outputDevice": "출력 장치",
+      "outputUnsupported": "이 브라우저에서는 출력 장치 선택을 지원하지 않습니다.",
+      "outputUnsupportedTitle": "이 브라우저에서 지원되지 않음",
+      "systemDefault": "시스템 기본값",
+      "microphoneFallback": "마이크 ({id}…)", "speakersFallback": "스피커 ({id}…)", "cameraFallback": "카메라 ({id}…)",
+      "inputVolume": "입력 볼륨 — {volume}%", "outputVolume": "출력 볼륨 — {volume}%",
+      "cameraSection": "카메라", "cameraDevice": "카메라 장치", "cameraUnavailable": "카메라를 사용할 수 없음",
+      "advancedSection": "고급",
+      "noiseSuppressionLabel": "노이즈 억제",
+      "noiseSuppressionDesc": "음성 통화 중 배경 소음을 필터링합니다.",
+      "echoCancellationLabel": "에코 제거",
+      "echoCancellationDesc": "마이크 입력에서 에코를 제거합니다.",
+      "autoGainLabel": "자동 게인 제어",
+      "autoGainDesc": "마이크 감도를 자동으로 조정합니다."
+    },
+    "notifications": {
+      "title": "알림",
+      "desktopLabel": "데스크톱 알림 활성화",
+      "desktopDesc": "앱이 백그라운드에 있을 때 알림을 표시합니다.",
+      "soundsLabel": "알림 소리",
+      "soundsDesc": "알림을 받을 때 소리를 재생합니다.",
+      "permissionDeniedToast": "알림 권한 거부됨 — 브라우저/OS 설정에서 활성화하세요.",
+      "unsupportedToast": "이 환경에서는 데스크톱 알림이 지원되지 않습니다.",
+      "triggers": "알림 트리거",
+      "mentionsLabel": "@멘션", "mentionsDesc": "채널에서 누군가 멘션할 때 알립니다.",
+      "dmsLabel": "다이렉트 메시지", "dmsDesc": "모든 새 다이렉트 메시지를 알립니다.",
+      "badgeLabel": "읽지 않음 배지", "badgeDesc": "앱 아이콘에 읽지 않은 메시지 수 배지를 표시합니다."
+    },
+    "keybinds": {
+      "title": "단축키", "intro": "기본 키보드 단축키. 사용자 정의 단축키 곧 제공 예정.",
+      "openSwitcher": "빠른 전환 열기", "toggleMute": "음소거 전환", "toggleDeafen": "음성 차단 전환",
+      "markRead": "서버를 읽음으로 표시", "jumpUnread": "가장 오래된 읽지 않은 항목으로 이동",
+      "uploadFile": "파일 업로드", "search": "검색", "focusInput": "채팅 입력에 포커스",
+      "editLast": "마지막 메시지 편집", "replyMessage": "메시지에 답장", "toggleSettings": "설정 전환"
+    },
+    "language": {
+      "title": "언어", "displayTitle": "표시 언어",
+      "displayDesc": "앱 전체에서 사용되는 언어를 선택합니다.",
+      "saveError": "언어 설정 저장 실패"
+    }
   },
 
-  "inviteAccept": {
-    "joining": "서버에 참여 중…",
-    "errorGeneric": "유효하지 않거나 만료된 초대"
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "서버 설정", "moderation": "모더레이션", "dangerZone": "위험 구역",
+      "overview": "개요", "roles": "역할", "invites": "초대", "bans": "차단",
+      "auditLog": "감사 로그", "deleteServer": "서버 삭제"
+    },
+    "leaveBtn": "서버 나가기",
+    "overview": {
+      "bannerTitle": "배너 배경",
+      "bannerSolid": "단색", "bannerGradients": "그라데이션", "bannerImage": "이미지",
+      "bannerImageUrl": "이미지 URL (https://…)",
+      "bannerUploading": "업로드 중…", "bannerUpload": "업로드", "bannerRemove": "이미지 배너 제거",
+      "iconAlt": "서버 아이콘",
+      "namePlaceholder": "서버 이름",
+      "descriptionPlaceholder": "서버에 대해 어떤 내용인가요?",
+      "discoveryLabel": "서버 검색",
+      "discoveryDesc": "서버 브라우저에서 서버를 찾을 수 있도록 만들기"
+    },
+    "gradients": {
+      "oceanBreeze": "오션 브리즈", "sunsetGlow": "선셋 글로우", "forestMist": "포레스트 미스트",
+      "royalVelvet": "로얄 벨벳", "berryBurst": "베리 버스트", "midnight": "미드나잇"
+    },
+    "roles": {
+      "allRoles": "모든 역할", "createRole": "역할 만들기",
+      "permissionsTitle": "권한", "clearPermissions": "권한 지우기",
+      "deleteRole": "역할 삭제", "createError": "역할 생성 실패"
+    },
+    "invites": {
+      "expireAfter": "만료 시간", "maxUses": "최대 사용 횟수",
+      "expireNever": "안 함", "expire30m": "30분", "expire1h": "1시간", "expire6h": "6시간",
+      "expire12h": "12시간", "expire1d": "1일", "expire7d": "7일",
+      "usesUnlimited": "제한 없음", "uses1": "1회", "uses5": "5회",
+      "uses10": "10회", "uses25": "25회", "uses50": "50회", "uses100": "100회",
+      "creating": "생성 중…", "createBtn": "초대 만들기", "createError": "초대 생성 실패",
+      "emptyTitle": "아직 초대 없음",
+      "emptyDesc": "위에서 초대를 만들어 사람들을 서버에 초대하세요.",
+      "allInvites": "모든 초대", "copyTitle": "클릭하여 초대 링크 복사",
+      "copiedToast": "초대 링크가 복사되었습니다!", "copyFailedToast": "복사 실패 — 링크: {url}",
+      "usesProgress": "{used} / {max}회 사용", "expiresAt": "{date}에 만료", "revoke": "취소"
+    },
+    "bans": {
+      "emptyTitle": "차단된 사용자 없음",
+      "emptyDesc": "서버가 깨끗합니다! 차단된 사용자가 여기에 표시됩니다.",
+      "reasonLabel": "이유: {reason}", "noReason": "이유가 제공되지 않음",
+      "bannedAt": "{date}에 차단됨", "unban": "차단 해제"
+    },
+    "audit": {
+      "emptyTitle": "아직 활동 없음",
+      "emptyDesc": "서버 작업이 수행되면 감사 로그 항목이 여기에 표시됩니다.",
+      "byUser": "{name}이(가)", "onTarget": " {type}: {idShort}…에 대해",
+      "reasonLabel": "이유: {reason}",
+      "actions": {
+        "MemberJoin": "구성원 참가", "MemberLeave": "구성원 떠남", "MemberUpdate": "구성원 업데이트",
+        "ChannelCreate": "채널 생성", "ChannelUpdate": "채널 업데이트", "ChannelDelete": "채널 삭제",
+        "RoleCreate": "역할 생성", "RoleUpdate": "역할 업데이트", "RoleDelete": "역할 삭제",
+        "ServerUpdate": "서버 업데이트", "ServerDelete": "서버 삭제",
+        "BanCreate": "사용자 차단", "BanDelete": "사용자 차단 해제", "Kick": "사용자 추방"
+      }
+    },
+    "delete": {
+      "title": "서버 삭제",
+      "warning": "이 작업은 되돌릴 수 없습니다. 모든 채널, 메시지 및 데이터가 영구적으로 삭제됩니다.",
+      "btn": "서버 삭제"
+    },
+    "leaveConfirm": {
+      "title": "서버 나가기",
+      "body": "정말로 {serverName}에서 나가시겠습니까? 초대 없이는 다시 참여할 수 없습니다.",
+      "confirm": "서버 나가기"
+    },
+    "deleteConfirm": {
+      "title": "서버 삭제",
+      "body": "정말로 {serverName}을(를) 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "confirm": "서버 삭제"
+    }
+  },
+
+  "channelSettings": {
+    "nav": { "channelSettings": "채널 설정", "overview": "개요", "permissions": "권한" },
+    "overview": {
+      "title": "채널 개요", "nameLabel": "채널 이름", "topicLabel": "채널 주제",
+      "topicPlaceholder": "이 채널이 무엇에 관한 것인지 모두에게 알려주세요",
+      "systemNotice": "이 채널은 시스템 채널이며 수정할 수 없습니다.",
+      "nsfwLabel": "NSFW 채널", "nsfwDesc": "연령 제한 콘텐츠",
+      "slowmodeLabel": "슬로우 모드 (초)",
+      "slowmodeHint": "사용자는 간격당 하나의 메시지를 보낼 수 있습니다. 0 = 비활성화."
+    },
+    "permissions": {
+      "title": "채널 권한", "addOverride": "재정의 추가",
+      "systemNotice": "시스템 채널 권한은 수정할 수 없습니다.",
+      "rolesMembers": "역할 / 구성원", "removeOverride": "재정의 제거",
+      "addModalTitle": "권한 재정의 추가",
+      "typeLabel": "유형", "typeRole": "역할", "typeMember": "구성원",
+      "selectRole": "역할 선택…",
+      "memberIdLabel": "구성원 ID", "memberIdPlaceholder": "구성원 ID 입력", "roleLabel": "역할"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "일반 서버 권한",
+    "groupMember": "구성원 권한",
+    "groupText": "텍스트 채널 권한",
+    "groupVoice": "음성 채널 권한",
+    "ariaEnable": "{label} 활성화", "ariaDisable": "{label} 비활성화",
+    "view_channels":   { "label": "채널 보기",            "desc": "기본적으로 채널을 볼 수 있도록 허용 (비공개 채널 제외)." },
+    "manage_channels": { "label": "채널 관리",            "desc": "채널 생성, 편집 또는 삭제를 허용합니다." },
+    "manage_server":   { "label": "서버 관리",            "desc": "서버 이름, 아이콘 및 기타 설정 변경을 허용합니다." },
+    "kick_members":    { "label": "구성원 추방",          "desc": "서버에서 다른 구성원을 추방하도록 허용합니다." },
+    "ban_members":     { "label": "구성원 차단",          "desc": "서버에서 다른 구성원을 차단하도록 허용합니다." },
+    "manage_roles":    { "label": "역할 관리",            "desc": "새 역할을 만들고 자신의 최고 역할보다 낮은 역할을 편집/삭제할 수 있습니다." },
+    "create_invite":   { "label": "초대 만들기",          "desc": "서버에 초대 링크를 만들 수 있도록 허용합니다." },
+    "send_messages":   { "label": "메시지 보내기",        "desc": "텍스트 채널에서 메시지를 보낼 수 있습니다." },
+    "manage_messages": { "label": "메시지 관리",          "desc": "메시지 삭제 및 고정을 허용합니다." },
+    "embed_links":     { "label": "링크 임베드",          "desc": "메시지에 링크를 임베드할 수 있도록 허용합니다." },
+    "attach_files":    { "label": "파일 첨부",            "desc": "메시지에 파일을 첨부할 수 있도록 허용합니다." },
+    "add_reactions":   { "label": "반응 추가",            "desc": "메시지에 반응을 추가할 수 있습니다." },
+    "mention_everyone":{ "label": "@everyone 멘션",       "desc": "@everyone 및 @here를 사용할 수 있습니다." },
+    "read_message_history": { "label": "메시지 기록 읽기", "desc": "이전 메시지를 읽을 수 있도록 허용합니다." },
+    "use_external_emojis":  { "label": "외부 이모지 사용",  "desc": "다른 서버의 이모지를 사용할 수 있습니다." },
+    "send_tts_messages":    { "label": "TTS 메시지 보내기", "desc": "텍스트 음성 변환 메시지를 보낼 수 있습니다." },
+    "connect":         { "label": "연결",                 "desc": "음성 채널에 연결할 수 있도록 허용합니다." },
+    "speak":           { "label": "말하기",               "desc": "음성 채널에서 말할 수 있도록 허용합니다." },
+    "video":           { "label": "비디오",               "desc": "음성 채널에서 비디오를 공유할 수 있습니다." },
+    "mute_members":    { "label": "구성원 음소거",        "desc": "음성 채널에서 다른 구성원을 음소거할 수 있습니다." },
+    "deafen_members":  { "label": "구성원 음성 차단",     "desc": "음성 채널에서 다른 구성원의 음성을 차단할 수 있습니다." },
+    "move_members":    { "label": "구성원 이동",          "desc": "구성원을 음성 채널 간에 이동할 수 있습니다." },
+    "use_voice_activity": { "label": "음성 활동 사용",    "desc": "음성 활동 감지를 사용할 수 있습니다." },
+    "priority_speaker":{ "label": "우선 발언자",          "desc": "말할 때 다른 사람의 볼륨을 낮춥니다." },
+    "administrator":   { "label": "관리자",               "desc": "모든 권한을 부여하고 채널 권한을 우회합니다. 위험한 권한입니다!" }
   }
 }

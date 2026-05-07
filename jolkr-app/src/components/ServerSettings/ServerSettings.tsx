@@ -11,6 +11,8 @@ import * as P from '../../utils/permissions'
 import { useAuthStore } from '../../stores/auth'
 import { buildInviteUrl } from '../../platform/config'
 import { useToast } from '../../stores/toast'
+import { useT, type T } from '../../hooks/useT'
+import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import ServerIcon from '../ServerIcon/ServerIcon'
 import { Select } from '../ui/Select'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
@@ -37,31 +39,18 @@ interface Props {
   onLeave?: (serverId: string) => void
 }
 
-const NAV: { group: string; items: { id: Section; label: string; icon: React.ReactNode }[] }[] = [
-  {
-    group: 'Server Settings',
-    items: [
-      { id: 'overview', label: 'Overview', icon: <Info size={15} strokeWidth={1.5} /> },
-      { id: 'roles', label: 'Roles', icon: <Shield size={15} strokeWidth={1.5} /> },
-      { id: 'invites', label: 'Invites', icon: <Link2 size={15} strokeWidth={1.5} /> },
-    ],
-  },
-  {
-    group: 'Moderation',
-    items: [
-      { id: 'bans', label: 'Bans', icon: <Shield size={15} strokeWidth={1.5} /> },
-      { id: 'audit', label: 'Audit Log', icon: <ScrollText size={15} strokeWidth={1.5} /> },
-    ],
-  },
-  {
-    group: 'Danger Zone',
-    items: [
-      { id: 'delete', label: 'Delete Server', icon: <Trash2 size={15} strokeWidth={1.5} /> },
-    ],
-  },
-]
+/** Backend audit-log action codes — keys into `serverSettings.audit.actions.*`. */
+const AUDIT_ACTION_KEYS = new Set([
+  'MemberJoin', 'MemberLeave', 'MemberUpdate',
+  'ChannelCreate', 'ChannelUpdate', 'ChannelDelete',
+  'RoleCreate', 'RoleUpdate', 'RoleDelete',
+  'ServerUpdate', 'ServerDelete',
+  'BanCreate', 'BanDelete', 'Kick',
+])
 
 export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }: Props) {
+  const { t, tx } = useT()
+  const fmt = useLocaleFormatters()
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwner = currentUserId === server.owner_id
   const [section, setSection] = useState<Section>('overview')
@@ -134,7 +123,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
       const created = await api.createInvite(server.id, Object.keys(body).length > 0 ? body : undefined)
       setInvites(prev => [created, ...prev])
     } catch (e) {
-      setCreateInviteError((e as Error).message || 'Failed to create invite')
+      setCreateInviteError((e as Error).message || t('serverSettings.invites.createError'))
     } finally {
       setCreatingInvite(false)
     }
@@ -145,11 +134,11 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     try {
       await navigator.clipboard.writeText(url)
       setCopiedInviteId(invite.id)
-      showToast('Invite link copied!', 'success')
+      showToast(t('serverSettings.invites.copiedToast'), 'success')
       setTimeout(() => setCopiedInviteId(prev => prev === invite.id ? null : prev), 2000)
     } catch {
       // Clipboard API can fail when the window isn't focused — show the URL so the user can copy manually
-      showToast(`Copy failed — link: ${url}`, 'error', 6000)
+      showToast(t('serverSettings.invites.copyFailedToast', { url }), 'error', 6000)
     }
   }
 
@@ -308,24 +297,31 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   }
 
   // Compose nav groups for the shell — counts and the danger variant for
-  // Delete Server are computed per-render from the loaded data.
-  const navGroups: SettingsNavGroup<Section>[] = useMemo(() => NAV.map(group => ({
-    group: group.group,
-    items: group.items.map(item => {
-      let count: number | undefined
-      if (item.id === 'roles') count = roles.length
-      else if (item.id === 'invites') count = invites.length
-      else if (item.id === 'bans') count = bans.length
-      else if (item.id === 'audit') count = auditLog.length
-      return {
-        id: item.id,
-        label: item.label,
-        icon: item.icon,
-        count,
-        variant: item.id === 'delete' ? ('danger' as const) : undefined,
-      }
-    }),
-  })), [roles.length, invites.length, bans.length, auditLog.length])
+  // Delete Server are computed per-render from the loaded data; labels are
+  // pulled from the active locale via t().
+  const navGroups: SettingsNavGroup<Section>[] = useMemo(() => [
+    {
+      group: t('serverSettings.nav.serverSettings'),
+      items: [
+        { id: 'overview' as const, label: t('serverSettings.nav.overview'), icon: <Info size={15} strokeWidth={1.5} /> },
+        { id: 'roles' as const,    label: t('serverSettings.nav.roles'),    icon: <Shield size={15} strokeWidth={1.5} />, count: roles.length },
+        { id: 'invites' as const,  label: t('serverSettings.nav.invites'),  icon: <Link2 size={15} strokeWidth={1.5} />, count: invites.length },
+      ],
+    },
+    {
+      group: t('serverSettings.nav.moderation'),
+      items: [
+        { id: 'bans' as const,  label: t('serverSettings.nav.bans'),     icon: <Shield size={15} strokeWidth={1.5} />, count: bans.length },
+        { id: 'audit' as const, label: t('serverSettings.nav.auditLog'), icon: <ScrollText size={15} strokeWidth={1.5} />, count: auditLog.length },
+      ],
+    },
+    {
+      group: t('serverSettings.nav.dangerZone'),
+      items: [
+        { id: 'delete' as const, label: t('serverSettings.nav.deleteServer'), icon: <Trash2 size={15} strokeWidth={1.5} />, variant: 'danger' as const },
+      ],
+    },
+  ], [t, roles.length, invites.length, bans.length, auditLog.length])
 
   return (
     <>
@@ -343,7 +339,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
       navFooter={!isOwner ? (
         <button className={s.leaveBtn} onClick={() => setShowLeaveConfirm(true)}>
           <Users size={14} strokeWidth={1.5} />
-          <span className="txt-small">Leave Server</span>
+          <span className="txt-small">{t('serverSettings.leaveBtn')}</span>
         </button>
       ) : undefined}
       scrollNoPadding={section === 'roles'}
@@ -361,6 +357,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                 iconFileRef={iconFileRef}
                 onUpdate={onUpdate}
                 onIconUpload={handleIconUpload}
+                t={t}
               />
             )}
 
@@ -370,7 +367,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                 <div className={s.rolesLayout}>
                   {/* Left: Role List */}
                   <div className={s.rolesLeftPanel}>
-                    <span className={`${s.rolesListHeader} txt-tiny txt-semibold`}>All Roles</span>
+                    <span className={`${s.rolesListHeader} txt-tiny txt-semibold`}>{t('serverSettings.roles.allRoles')}</span>
                     <div className={`${s.rolesList} scrollbar-thin`}>
                       {rolesOrdered.map(role => (
                         <button
@@ -393,7 +390,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                       onClick={handleCreateRole}
                     >
                       <Plus size={14} strokeWidth={1.5} />
-                      <span>Create Role</span>
+                      <span>{t('serverSettings.roles.createRole')}</span>
                     </button>
                   </div>
 
@@ -435,21 +432,22 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                           {/* Permissions Section */}
                           <div className={s.permissionsSection}>
                             <div className={s.permissionsSectionHeader}>
-                              <h4 className={`${s.permissionsSectionTitle} txt-small txt-semibold`}>Permissions</h4>
+                              <h4 className={`${s.permissionsSectionTitle} txt-small txt-semibold`}>{t('serverSettings.roles.permissionsTitle')}</h4>
                               <button
                                 className={s.clearPermsBtn}
                                 onClick={() => setEditingRolePermissions(0)}
                               >
-                                Clear permissions
+                                {t('serverSettings.roles.clearPermissions')}
                               </button>
                             </div>
                             <div className={`${s.permissionsList} scrollbar-thin scroll-view-y`}>
                               <PermissionGroup
-                                title="General Server Permissions"
+                                t={t}
+                                titleKey="permissions.groupGeneral"
                                 permissions={[
-                                  { flag: P.VIEW_CHANNELS, label: 'View Channels', description: 'Allows members to view channels by default (excluding private channels).' },
-                                  { flag: P.MANAGE_CHANNELS, label: 'Manage Channels', description: 'Allows members to create, edit, or delete channels.' },
-                                  { flag: P.MANAGE_SERVER, label: 'Manage Server', description: 'Allows members to change server name, icon, and other settings.' },
+                                  { flag: P.VIEW_CHANNELS,   key: 'view_channels' },
+                                  { flag: P.MANAGE_CHANNELS, key: 'manage_channels' },
+                                  { flag: P.MANAGE_SERVER,   key: 'manage_server' },
                                 ]}
                                 currentPermissions={currentPermissions}
                                 isEditing={isRoleSelected}
@@ -457,12 +455,13 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                               />
 
                               <PermissionGroup
-                                title="Member Permissions"
+                                t={t}
+                                titleKey="permissions.groupMember"
                                 permissions={[
-                                  { flag: P.KICK_MEMBERS, label: 'Kick Members', description: 'Allows members to kick other members from the server.' },
-                                  { flag: P.BAN_MEMBERS, label: 'Ban Members', description: 'Allows members to ban other members from the server.' },
-                                  { flag: P.MANAGE_ROLES, label: 'Manage Roles', description: 'Allows members to create new roles and edit or delete roles lower than their highest role.' },
-                                  { flag: P.CREATE_INVITE, label: 'Create Invites', description: 'Allows members to create invite links to the server.' },
+                                  { flag: P.KICK_MEMBERS,  key: 'kick_members' },
+                                  { flag: P.BAN_MEMBERS,   key: 'ban_members' },
+                                  { flag: P.MANAGE_ROLES,  key: 'manage_roles' },
+                                  { flag: P.CREATE_INVITE, key: 'create_invite' },
                                 ]}
                                 currentPermissions={currentPermissions}
                                 isEditing={isRoleSelected}
@@ -470,12 +469,13 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                               />
 
                               <PermissionGroup
-                                title="Text Channel Permissions"
+                                t={t}
+                                titleKey="permissions.groupText"
                                 permissions={[
-                                  { flag: P.SEND_MESSAGES, label: 'Send Messages', description: 'Allows members to send messages in text channels.' },
-                                  { flag: P.MANAGE_MESSAGES, label: 'Manage Messages', description: 'Allows members to delete and pin messages in text channels.' },
-                                  { flag: P.EMBED_LINKS, label: 'Embed Links', description: 'Allows members to embed links in messages.' },
-                                  { flag: P.ATTACH_FILES, label: 'Attach Files', description: 'Allows members to attach files to messages.' },
+                                  { flag: P.SEND_MESSAGES,   key: 'send_messages' },
+                                  { flag: P.MANAGE_MESSAGES, key: 'manage_messages' },
+                                  { flag: P.EMBED_LINKS,     key: 'embed_links' },
+                                  { flag: P.ATTACH_FILES,    key: 'attach_files' },
                                 ]}
                                 currentPermissions={currentPermissions}
                                 isEditing={isRoleSelected}
@@ -483,13 +483,14 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                               />
 
                               <PermissionGroup
-                                title="Voice Channel Permissions"
+                                t={t}
+                                titleKey="permissions.groupVoice"
                                 permissions={[
-                                  { flag: P.CONNECT, label: 'Connect', description: 'Allows members to connect to voice channels.' },
-                                  { flag: P.SPEAK, label: 'Speak', description: 'Allows members to speak in voice channels.' },
-                                  { flag: P.VIDEO, label: 'Video', description: 'Allows members to share video in voice channels.' },
-                                  { flag: P.MUTE_MEMBERS, label: 'Mute Members', description: 'Allows members to mute other members in voice channels.' },
-                                  { flag: P.DEAFEN_MEMBERS, label: 'Deafen Members', description: 'Allows members to deafen other members in voice channels.' },
+                                  { flag: P.CONNECT,        key: 'connect' },
+                                  { flag: P.SPEAK,          key: 'speak' },
+                                  { flag: P.VIDEO,          key: 'video' },
+                                  { flag: P.MUTE_MEMBERS,   key: 'mute_members' },
+                                  { flag: P.DEAFEN_MEMBERS, key: 'deafen_members' },
                                 ]}
                                 currentPermissions={currentPermissions}
                                 isEditing={isRoleSelected}
@@ -498,15 +499,15 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
 
                               <div className={s.permissionItem}>
                                 <div className={s.permissionInfo}>
-                                  <span className={`${s.permissionLabel} txt-small txt-medium`}>Administrator</span>
-                                  <span className={`${s.permissionDesc} txt-tiny`}>Grants all permissions and bypasses channel permissions. This is a dangerous permission!</span>
+                                  <span className={`${s.permissionLabel} txt-small txt-medium`}>{t('permissions.administrator.label')}</span>
+                                  <span className={`${s.permissionDesc} txt-tiny`}>{t('permissions.administrator.desc')}</span>
                                 </div>
                                 <div className={s.permToggleGroup}>
                                   <button
                                     className={`${s.permToggleBtn} ${(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? s.permToggleBtnActive : ''}`}
                                     onClick={isRoleSelected ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
                                     disabled={!isRoleSelected}
-                                    aria-label={(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? 'Disable Administrator' : 'Enable Administrator'}
+                                    aria-label={(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? t('permissions.ariaDisable', { label: t('permissions.administrator.label') }) : t('permissions.ariaEnable', { label: t('permissions.administrator.label') })}
                                   >
                                     <Check size={16} strokeWidth={2.5} />
                                   </button>
@@ -514,7 +515,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                                     className={`${s.permToggleBtn} ${(currentPermissions & P.ADMINISTRATOR) !== P.ADMINISTRATOR ? s.permToggleBtnDeny : ''}`}
                                     onClick={isRoleSelected ? () => handlePermissionToggle(P.ADMINISTRATOR) : undefined}
                                     disabled={!isRoleSelected}
-                                    aria-label={(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? 'Disable Administrator' : 'Enable Administrator'}
+                                    aria-label={(currentPermissions & P.ADMINISTRATOR) === P.ADMINISTRATOR ? t('permissions.ariaDisable', { label: t('permissions.administrator.label') }) : t('permissions.ariaEnable', { label: t('permissions.administrator.label') })}
                                   >
                                     <X size={16} strokeWidth={2.5} />
                                   </button>
@@ -532,7 +533,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                                   onClick={() => handleDeleteRole(role.id)}
                                 >
                                   <Trash2 size={14} strokeWidth={1.5} />
-                                  <span>Delete Role</span>
+                                  <span>{t('serverSettings.roles.deleteRole')}</span>
                                 </button>
                               )}
                             </div>
@@ -541,7 +542,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                                 className={s.cancelBtn}
                                 onClick={handleCancelEditRoleInfo}
                               >
-                                Cancel
+                                {t('common.cancel')}
                               </button>
                               <button
                                 className={s.saveBtn}
@@ -549,7 +550,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                                 disabled={!hasRoleChanges}
                               >
                                 <Save size={14} strokeWidth={1.5} />
-                                <span>Save</span>
+                                <span>{t('common.save')}</span>
                               </button>
                             </div>
                           </div>
@@ -566,35 +567,35 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
               <div className={s.section}>
                 <div className={s.inviteCreateRow}>
                   <div className={s.inviteCreateField}>
-                    <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>Expire after</label>
+                    <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>{t('serverSettings.invites.expireAfter')}</label>
                     <Select
                       value={createInviteMaxAge}
                       onChange={e => setCreateInviteMaxAge(Number(e.target.value))}
                       disabled={creatingInvite}
                     >
-                      <option value={0}>Never</option>
-                      <option value={1800}>30 minutes</option>
-                      <option value={3600}>1 hour</option>
-                      <option value={21600}>6 hours</option>
-                      <option value={43200}>12 hours</option>
-                      <option value={86400}>1 day</option>
-                      <option value={604800}>7 days</option>
+                      <option value={0}>{t('serverSettings.invites.expireNever')}</option>
+                      <option value={1800}>{t('serverSettings.invites.expire30m')}</option>
+                      <option value={3600}>{t('serverSettings.invites.expire1h')}</option>
+                      <option value={21600}>{t('serverSettings.invites.expire6h')}</option>
+                      <option value={43200}>{t('serverSettings.invites.expire12h')}</option>
+                      <option value={86400}>{t('serverSettings.invites.expire1d')}</option>
+                      <option value={604800}>{t('serverSettings.invites.expire7d')}</option>
                     </Select>
                   </div>
                   <div className={s.inviteCreateField}>
-                    <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>Max uses</label>
+                    <label className={`${s.inviteCreateLabel} txt-tiny txt-semibold`}>{t('serverSettings.invites.maxUses')}</label>
                     <Select
                       value={createInviteMaxUses}
                       onChange={e => setCreateInviteMaxUses(Number(e.target.value))}
                       disabled={creatingInvite}
                     >
-                      <option value={0}>No limit</option>
-                      <option value={1}>1 use</option>
-                      <option value={5}>5 uses</option>
-                      <option value={10}>10 uses</option>
-                      <option value={25}>25 uses</option>
-                      <option value={50}>50 uses</option>
-                      <option value={100}>100 uses</option>
+                      <option value={0}>{t('serverSettings.invites.usesUnlimited')}</option>
+                      <option value={1}>{t('serverSettings.invites.uses1')}</option>
+                      <option value={5}>{t('serverSettings.invites.uses5')}</option>
+                      <option value={10}>{t('serverSettings.invites.uses10')}</option>
+                      <option value={25}>{t('serverSettings.invites.uses25')}</option>
+                      <option value={50}>{t('serverSettings.invites.uses50')}</option>
+                      <option value={100}>{t('serverSettings.invites.uses100')}</option>
                     </Select>
                   </div>
                   <button
@@ -603,7 +604,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                     disabled={creatingInvite}
                   >
                     <Link2 size={14} strokeWidth={1.5} />
-                    {creatingInvite ? 'Creating…' : 'Create Invite'}
+                    {creatingInvite ? t('serverSettings.invites.creating') : t('serverSettings.invites.createBtn')}
                   </button>
                 </div>
 
@@ -616,13 +617,13 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                     <div className={s.emptyStateIcon}>
                       <Link2 size={32} strokeWidth={1.5} />
                     </div>
-                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Invites Yet</span>
-                    <span className={`${s.emptyStateDesc} txt-small`}>Create an invite above to start inviting people to your server.</span>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>{t('serverSettings.invites.emptyTitle')}</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>{t('serverSettings.invites.emptyDesc')}</span>
                   </div>
                 ) : (
                   <>
                     <div className={s.sectionHeaderWithTitle}>
-                      <span className={`${s.sectionTitle} txt-tiny txt-semibold`}>All Invites</span>
+                      <span className={`${s.sectionTitle} txt-tiny txt-semibold`}>{t('serverSettings.invites.allInvites')}</span>
                     </div>
                     <div className={s.invitesList}>
                       {invites.map(invite => (
@@ -632,7 +633,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                               type="button"
                               className={s.inviteCopyBtn}
                               onClick={() => handleCopyInvite(invite)}
-                              title="Click to copy invite link"
+                              title={t('serverSettings.invites.copyTitle')}
                             >
                               <code className={s.inviteCode}>{invite.code}</code>
                               {copiedInviteId === invite.id
@@ -640,15 +641,15 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                                 : <Copy size={13} strokeWidth={1.5} />}
                             </button>
                             <span className={`${s.inviteMeta} txt-tiny`}>
-                              {invite.use_count} / {invite.max_uses ?? '\u221E'} uses
-                              {invite.expires_at && ` \u00B7 Expires ${new Date(invite.expires_at).toLocaleString()}`}
+                              {t('serverSettings.invites.usesProgress', { used: invite.use_count, max: invite.max_uses ?? '\u221E' })}
+                              {invite.expires_at && ` \u00B7 ${t('serverSettings.invites.expiresAt', { date: fmt.formatDate(invite.expires_at, 'long') })}`}
                             </span>
                           </div>
                           <button
                             className={s.revokeBtn}
                             onClick={() => handleDeleteInvite(invite.id)}
                           >
-                            Revoke
+                            {t('serverSettings.invites.revoke')}
                           </button>
                         </div>
                       ))}
@@ -666,8 +667,8 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                     <div className={s.emptyStateIcon}>
                       <Shield size={32} strokeWidth={1.5} />
                     </div>
-                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Banned Users</span>
-                    <span className={`${s.emptyStateDesc} txt-small`}>Your server is clean! Banned users will appear here.</span>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>{t('serverSettings.bans.emptyTitle')}</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>{t('serverSettings.bans.emptyDesc')}</span>
                   </div>
                 ) : (
                   <div className={s.bansList}>
@@ -682,9 +683,9 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                               {ban.user_id}
                             </span>
                             <span className={s.banMeta}>
-                              {ban.reason ? `Reason: ${ban.reason}` : 'No reason provided'}
+                              {ban.reason ? t('serverSettings.bans.reasonLabel', { reason: ban.reason }) : t('serverSettings.bans.noReason')}
                               {' \u00B7 '}
-                              Banned {new Date(ban.created_at).toLocaleDateString()}
+                              {t('serverSettings.bans.bannedAt', { date: fmt.formatDate(ban.created_at, 'long') })}
                             </span>
                           </div>
                         </div>
@@ -692,7 +693,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                           className={s.unbanBtn}
                           onClick={() => handleUnban(ban.id)}
                         >
-                          Unban
+                          {t('serverSettings.bans.unban')}
                         </button>
                       </div>
                     ))}
@@ -709,15 +710,16 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                     <div className={s.emptyStateIcon}>
                       <ScrollText size={32} strokeWidth={1.5} />
                     </div>
-                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>No Activity Yet</span>
-                    <span className={`${s.emptyStateDesc} txt-small`}>Audit log entries will appear here when server actions are performed.</span>
+                    <span className={`${s.emptyStateTitle} txt-small txt-medium`}>{t('serverSettings.audit.emptyTitle')}</span>
+                    <span className={`${s.emptyStateDesc} txt-small`}>{t('serverSettings.audit.emptyDesc')}</span>
                   </div>
                 ) : (
                   <div className={s.auditList}>
                     {(() => {
-                      // Group entries by day
+                      // Group entries by day — using locale-aware long-form date
+                      // so the header reads naturally in every shipped locale.
                       const grouped = auditLog.reduce((acc, entry) => {
-                        const date = new Date(entry.created_at).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                        const date = fmt.formatDate(entry.created_at, 'long')
                         if (!acc[date]) acc[date] = []
                         acc[date].push(entry)
                         return acc
@@ -735,25 +737,27 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                                 <div className={s.auditContent}>
                                   <div className={s.auditHeader}>
                                     <span className={`${s.auditAction} txt-small txt-medium`}>
-                                      {formatActionType(entry.action_type)}
+                                      {AUDIT_ACTION_KEYS.has(entry.action_type)
+                                        ? t(`serverSettings.audit.actions.${entry.action_type}`)
+                                        : entry.action_type.replace(/([A-Z])/g, ' $1').trim()}
                                     </span>
                                     <span className={`${s.auditTime} txt-tiny`}>
-                                      {new Date(entry.created_at).toLocaleString()}
+                                      {fmt.formatDate(entry.created_at, 'short')} {fmt.formatTime(entry.created_at)}
                                     </span>
                                   </div>
                                   <div className={s.auditDetails}>
                                     <span className={`${s.auditUser} txt-tiny`}>
-                                      by {members.find(m => m.user_id === entry.user_id)?.nickname || entry.user_id}
+                                      {t('serverSettings.audit.byUser', { name: members.find(m => m.user_id === entry.user_id)?.nickname || entry.user_id })}
                                     </span>
                                     {entry.target_type && entry.target_id && (
                                       <span className={`${s.auditTarget} txt-tiny`}>
-                                        {' '}on {entry.target_type}: {entry.target_id.slice(0, 8)}...
+                                        {t('serverSettings.audit.onTarget', { type: entry.target_type, idShort: entry.target_id.slice(0, 8) })}
                                       </span>
                                     )}
                                   </div>
                                   {entry.reason && (
                                     <span className={`${s.auditReason} txt-tiny`}>
-                                      Reason: {entry.reason}
+                                      {t('serverSettings.audit.reasonLabel', { reason: entry.reason })}
                                     </span>
                                   )}
                                   {entry.changes && Object.keys(entry.changes).length > 0 && (
@@ -781,16 +785,16 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
             {section === 'delete' && (
               <div className={s.section}>
                 <div className={s.dangerZone}>
-                  <h3 className={`${s.dangerTitle} txt-small txt-semibold`}>Delete Server</h3>
+                  <h3 className={`${s.dangerTitle} txt-small txt-semibold`}>{t('serverSettings.delete.title')}</h3>
                   <p className={`${s.dangerText} txt-small`}>
-                    This action cannot be undone. All channels, messages, and data will be permanently deleted.
+                    {t('serverSettings.delete.warning')}
                   </p>
                   <button
                     className={s.deleteBtn}
                     onClick={() => setShowDeleteConfirm(true)}
                   >
                     <Trash2 size={14} strokeWidth={1.5} />
-                    <span>Delete Server</span>
+                    <span>{t('serverSettings.delete.btn')}</span>
                   </button>
                 </div>
               </div>
@@ -802,17 +806,17 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     {showLeaveConfirm && createPortal(
       <div className={s.confirmOverlay} onClick={() => setShowLeaveConfirm(false)}>
         <div className={s.confirmModal}>
-          <h3 className="txt-small txt-semibold">Leave Server</h3>
+          <h3 className="txt-small txt-semibold">{t('serverSettings.leaveConfirm.title')}</h3>
           <p className={`${s.confirmText} txt-small`}>
-            Are you sure you want to leave <strong>{server.name}</strong>? You won't be able to rejoin unless you have an invite.
+            {tx('serverSettings.leaveConfirm.body', { serverName: <strong>{server.name}</strong> })}
           </p>
           <div className={s.confirmActions}>
-            <button className={s.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>Cancel</button>
+            <button className={s.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>{t('common.cancel')}</button>
             <button
               className={s.confirmLeaveBtn}
               onClick={() => { onLeave?.(server.id); onClose() }}
             >
-              Leave Server
+              {t('serverSettings.leaveConfirm.confirm')}
             </button>
           </div>
         </div>
@@ -824,17 +828,17 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     {showDeleteConfirm && createPortal(
       <div className={s.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>
         <div className={s.confirmModal}>
-          <h3 className="txt-small txt-semibold">Delete Server</h3>
+          <h3 className="txt-small txt-semibold">{t('serverSettings.deleteConfirm.title')}</h3>
           <p className={`${s.confirmText} txt-small`}>
-            Are you sure you want to permanently delete <strong>{server.name}</strong>? This action cannot be undone.
+            {tx('serverSettings.deleteConfirm.body', { serverName: <strong>{server.name}</strong> })}
           </p>
           <div className={s.confirmActions}>
-            <button className={s.cancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+            <button className={s.cancelBtn} onClick={() => setShowDeleteConfirm(false)}>{t('common.cancel')}</button>
             <button
               className={s.confirmDeleteBtn}
               onClick={() => { onDelete?.(server.id); onClose() }}
             >
-              Delete Server
+              {t('serverSettings.deleteConfirm.confirm')}
             </button>
           </div>
         </div>
@@ -845,15 +849,17 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   )
 }
 
-// Overview — solid colors match Settings.tsx AccountSection (BANNER_COLORS)
+// Overview — solid colors match Settings.tsx AccountSection (BANNER_COLORS).
+// `nameKey` looks up the localised swatch label under `settings.bannerColors.*`
+// (shared with the profile-banner picker in Settings.tsx).
 const BANNER_COLORS = [
-  { name: 'Sage', value: 'oklch(60% 0.1 136)' },
-  { name: 'Gold', value: 'oklch(65% 0.12 85)' },
-  { name: 'Ocean', value: 'oklch(60% 0.12 215)' },
-  { name: 'Royal', value: 'oklch(55% 0.18 280)' },
-  { name: 'Berry', value: 'oklch(55% 0.18 340)' },
-  { name: 'Coral', value: 'oklch(60% 0.15 25)' },
-]
+  { nameKey: 'sage',  value: 'oklch(60% 0.1 136)' },
+  { nameKey: 'gold',  value: 'oklch(65% 0.12 85)' },
+  { nameKey: 'ocean', value: 'oklch(60% 0.12 215)' },
+  { nameKey: 'royal', value: 'oklch(55% 0.18 280)' },
+  { nameKey: 'berry', value: 'oklch(55% 0.18 340)' },
+  { nameKey: 'coral', value: 'oklch(60% 0.15 25)' },
+] as const
 
 function hueFromOklch(oklch: string): number | null {
   const m = oklch.match(/oklch\([^\s]+\s+[^\s]+\s+(\d+)/)
@@ -862,14 +868,14 @@ function hueFromOklch(oklch: string): number | null {
 
 const BANNER_PRESETS = {
   gradients: [
-    { name: 'Ocean Breeze', value: 'linear-gradient(135deg, oklch(60% 0.12 215), oklch(55% 0.1 180))' },
-    { name: 'Sunset Glow', value: 'linear-gradient(135deg, oklch(65% 0.15 45), oklch(55% 0.18 340))' },
-    { name: 'Forest Mist', value: 'linear-gradient(135deg, oklch(60% 0.1 136), oklch(55% 0.08 160))' },
-    { name: 'Royal Velvet', value: 'linear-gradient(135deg, oklch(55% 0.18 280), oklch(50% 0.15 320))' },
-    { name: 'Berry Burst', value: 'linear-gradient(135deg, oklch(55% 0.18 340), oklch(60% 0.12 25))' },
-    { name: 'Midnight', value: 'linear-gradient(135deg, oklch(40% 0.05 250), oklch(35% 0.08 280))' },
+    { nameKey: 'oceanBreeze', value: 'linear-gradient(135deg, oklch(60% 0.12 215), oklch(55% 0.1 180))' },
+    { nameKey: 'sunsetGlow',  value: 'linear-gradient(135deg, oklch(65% 0.15 45), oklch(55% 0.18 340))' },
+    { nameKey: 'forestMist',  value: 'linear-gradient(135deg, oklch(60% 0.1 136), oklch(55% 0.08 160))' },
+    { nameKey: 'royalVelvet', value: 'linear-gradient(135deg, oklch(55% 0.18 280), oklch(50% 0.15 320))' },
+    { nameKey: 'berryBurst',  value: 'linear-gradient(135deg, oklch(55% 0.18 340), oklch(60% 0.12 25))' },
+    { nameKey: 'midnight',    value: 'linear-gradient(135deg, oklch(40% 0.05 250), oklch(35% 0.08 280))' },
   ],
-}
+} as const
 
 interface OverviewSectionProps {
   server: Server
@@ -882,6 +888,9 @@ interface OverviewSectionProps {
   iconFileRef: React.RefObject<HTMLInputElement | null>
   onUpdate: (serverId: string, data: Partial<Server>) => void
   onIconUpload: (e: React.ChangeEvent<HTMLInputElement>) => void
+  /** Translate function passed from the parent so consumer ergonomics stay
+   *  hook-free in this presentational subcomponent. */
+  t: T['t']
 }
 
 function OverviewSection({
@@ -894,6 +903,7 @@ function OverviewSection({
   iconFileRef,
   onUpdate,
   onIconUpload,
+  t,
 }: OverviewSectionProps) {
   const [showBannerMenu, setShowBannerMenu] = useState(false)
   const [bannerPopoverPos, setBannerPopoverPos] = useState({ top: 0, left: 0 })
@@ -1025,7 +1035,7 @@ function OverviewSection({
               type="button"
               className={`${s.colorPickerBtn} ${showBannerMenu ? s.colorPickerActive : ''}`}
               onClick={() => setShowBannerMenu(v => !v)}
-              title="Banner background"
+              title={t('serverSettings.overview.bannerTitle')}
               aria-expanded={showBannerMenu}
               aria-haspopup="dialog"
             >
@@ -1041,10 +1051,10 @@ function OverviewSection({
               className={s.bannerPopover}
               style={{ top: bannerPopoverPos.top, left: bannerPopoverPos.left }}
               role="dialog"
-              aria-label="Banner background"
+              aria-label={t('serverSettings.overview.bannerTitle')}
             >
               <div className={s.bannerPopoverSection}>
-                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Solid colors</span>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>{t('serverSettings.overview.bannerSolid')}</span>
                 <div className={s.bannerPopoverSwatches}>
                   {BANNER_COLORS.map(c => (
                     <button
@@ -1053,37 +1063,37 @@ function OverviewSection({
                       className={`${s.colorPickerSwatch} ${isSolidColorActive(c.value) ? s.colorPickerSwatchActive : ''}`}
                       style={{ background: c.value }}
                       onClick={() => handleBannerColorSelect(c.value)}
-                      title={c.name}
+                      title={t(`settings.bannerColors.${c.nameKey}`)}
                     />
                   ))}
                 </div>
               </div>
 
               <div className={s.bannerPopoverSection}>
-                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Gradients</span>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>{t('serverSettings.overview.bannerGradients')}</span>
                 <div className={s.bannerPopoverSwatches}>
                   {BANNER_PRESETS.gradients.map(g => (
                     <button
-                      key={g.name}
+                      key={g.nameKey}
                       type="button"
                       className={`${s.colorPickerSwatch} ${currentGradient === g.value ? s.colorPickerSwatchActive : ''}`}
                       style={{ background: g.value }}
                       onClick={() => handleGradientSelect(g.value)}
-                      title={g.name}
+                      title={t(`serverSettings.gradients.${g.nameKey}`)}
                     />
                   ))}
                 </div>
               </div>
 
               <div className={s.bannerPopoverSection}>
-                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>Image</span>
+                <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>{t('serverSettings.overview.bannerImage')}</span>
                 <div className={s.bannerPopoverImageRow}>
                   <input
                     type="text"
                     className={s.bannerPopoverUrlInput}
                     value={currentBannerUrl}
                     onChange={e => handleImageUrlChange(e.target.value)}
-                    placeholder="Image URL (https://…)"
+                    placeholder={t('serverSettings.overview.bannerImageUrl')}
                     autoComplete="off"
                   />
                   <input
@@ -1100,7 +1110,7 @@ function OverviewSection({
                     onClick={() => bannerFileInputRef.current?.click()}
                   >
                     <Upload size={14} strokeWidth={1.5} />
-                    {bannerUploading ? 'Uploading…' : 'Upload'}
+                    {bannerUploading ? t('serverSettings.overview.bannerUploading') : t('serverSettings.overview.bannerUpload')}
                   </button>
                 </div>
                 {currentBannerUrl ? (
@@ -1109,7 +1119,7 @@ function OverviewSection({
                     className={s.bannerPopoverClearImage}
                     onClick={() => handleImageUrlChange('')}
                   >
-                    Remove image banner
+                    {t('serverSettings.overview.bannerRemove')}
                   </button>
                 ) : null}
               </div>
@@ -1133,7 +1143,7 @@ function OverviewSection({
             />
             <div className={s.previewAvatar}>
               {iconPreviewUrl ? (
-                <img src={iconPreviewUrl} alt="Server Icon" className={s.previewAvatarImg} />
+                <img src={iconPreviewUrl} alt={t('serverSettings.overview.iconAlt')} className={s.previewAvatarImg} />
               ) : (
                 <ServerIcon name={currentName} iconUrl={server.icon_url} serverId={server.id} size="lg" />
               )}
@@ -1150,14 +1160,14 @@ function OverviewSection({
               className={s.inlineNameInput}
               value={currentName}
               onChange={(e) => handleFieldChange('name', e.target.value)}
-              placeholder="Server Name"
+              placeholder={t('serverSettings.overview.namePlaceholder')}
               maxLength={100}
             />
             <textarea
               className={s.inlineDescInput}
               value={currentDescription}
               onChange={(e) => handleFieldChange('description', e.target.value)}
-              placeholder="What's your server about?"
+              placeholder={t('serverSettings.overview.descriptionPlaceholder')}
               rows={2}
               maxLength={500}
             />
@@ -1168,8 +1178,8 @@ function OverviewSection({
       {/* Discoverable Toggle */}
       <div className={s.simpleFieldRow}>
         <div className={s.toggleMeta}>
-          <span className={`${s.toggleLabel} txt-small txt-medium`}>Server Discovery</span>
-          <span className={`${s.toggleDesc} txt-tiny`}>Make server discoverable in server browser</span>
+          <span className={`${s.toggleLabel} txt-small txt-medium`}>{t('serverSettings.overview.discoveryLabel')}</span>
+          <span className={`${s.toggleDesc} txt-tiny`}>{t('serverSettings.overview.discoveryDesc')}</span>
         </div>
         <button
           className={`${s.toggle} ${currentDiscoverable ? s.toggleOn : ''}`}
@@ -1186,7 +1196,7 @@ function OverviewSection({
         <div className={s.saveActions}>
           <button className={s.saveChangesBtn} onClick={handleSave}>
             <Save size={14} strokeWidth={1.5} />
-            Save Changes
+            {t('common.saveChanges')}
           </button>
         </div>
       )}
@@ -1215,41 +1225,25 @@ function AuditIcon({ actionType }: { actionType: string }) {
   return <span className={s.auditIconInner}>{iconMap[actionType] || '\uD83D\uDCCC'}</span>
 }
 
-function formatActionType(actionType: string): string {
-  const formatMap: Record<string, string> = {
-    'MemberJoin': 'Member Joined',
-    'MemberLeave': 'Member Left',
-    'MemberUpdate': 'Member Updated',
-    'ChannelCreate': 'Channel Created',
-    'ChannelUpdate': 'Channel Updated',
-    'ChannelDelete': 'Channel Deleted',
-    'RoleCreate': 'Role Created',
-    'RoleUpdate': 'Role Updated',
-    'RoleDelete': 'Role Deleted',
-    'ServerUpdate': 'Server Updated',
-    'ServerDelete': 'Server Deleted',
-    'BanCreate': 'User Banned',
-    'BanDelete': 'User Unbanned',
-    'Kick': 'User Kicked',
-  }
-  return formatMap[actionType] || actionType.replace(/([A-Z])/g, ' $1').trim()
-}
-
-// Permission Group Component
+// Permission Group Component — labels + descriptions resolved against the
+// shared `permissions.<key>.label/.desc` namespace so the same strings stay
+// in sync between server-wide role permissions and per-channel overwrites.
 interface PermissionDef {
   flag: number
-  label: string
-  description: string
+  /** snake_case key matching the shared `permissions` JSON namespace. */
+  key: string
 }
 
 function PermissionGroup({
-  title,
+  t,
+  titleKey,
   permissions,
   currentPermissions,
   isEditing,
   onToggle
 }: {
-  title: string
+  t: T['t']
+  titleKey: string
   permissions: PermissionDef[]
   currentPermissions: number
   isEditing: boolean
@@ -1257,21 +1251,25 @@ function PermissionGroup({
 }) {
   return (
     <div className={s.permissionGroup}>
-      <h5 className={`${s.permissionGroupTitle} txt-tiny txt-semibold`}>{title}</h5>
+      <h5 className={`${s.permissionGroupTitle} txt-tiny txt-semibold`}>{t(titleKey)}</h5>
       {permissions.map(perm => {
         const isGranted = (currentPermissions & perm.flag) === perm.flag
+        const label = t(`permissions.${perm.key}.label`)
+        const aria = isGranted
+          ? t('permissions.ariaDisable', { label })
+          : t('permissions.ariaEnable', { label })
         return (
           <div key={perm.flag} className={s.permissionItem}>
             <div className={s.permissionInfo}>
-              <span className={`${s.permissionLabel} txt-small txt-medium`}>{perm.label}</span>
-              <span className={`${s.permissionDesc} txt-tiny`}>{perm.description}</span>
+              <span className={`${s.permissionLabel} txt-small txt-medium`}>{label}</span>
+              <span className={`${s.permissionDesc} txt-tiny`}>{t(`permissions.${perm.key}.desc`)}</span>
             </div>
             <div className={s.permToggleGroup}>
               <button
                 className={`${s.permToggleBtn} ${isGranted ? s.permToggleBtnActive : ''}`}
                 onClick={isEditing ? () => onToggle(perm.flag) : undefined}
                 disabled={!isEditing}
-                aria-label={isGranted ? `Disable ${perm.label}` : `Enable ${perm.label}`}
+                aria-label={aria}
               >
                 <Check size={16} strokeWidth={2.5} />
               </button>
@@ -1279,7 +1277,7 @@ function PermissionGroup({
                 className={`${s.permToggleBtn} ${!isGranted ? s.permToggleBtnDeny : ''}`}
                 onClick={isEditing ? () => onToggle(perm.flag) : undefined}
                 disabled={!isEditing}
-                aria-label={isGranted ? `Disable ${perm.label}` : `Enable ${perm.label}`}
+                aria-label={aria}
               >
                 <X size={16} strokeWidth={2.5} />
               </button>
