@@ -135,7 +135,7 @@ export function transformMessage(
         text: fallbackText,
         content: replyMsg.content,
         nonce: replyMsg.nonce,
-        channelId: replyMsg.channel_id ?? replyMsg.dm_channel_id ?? null,
+        channelId: replyMsg.channel_id ?? null,
       }
     }
   }

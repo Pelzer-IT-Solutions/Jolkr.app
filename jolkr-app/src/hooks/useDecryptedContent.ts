@@ -16,15 +16,18 @@ const DECRYPT_FAIL_MSG = '[Encrypted message — keys unavailable]';
  * Decryption uses the channel's shared symmetric key.
  */
 export function useDecryptedContent(
-  content: string,
+  content: string | null,
   nonce?: string | null,
   isDm?: boolean,
   channelId?: string,
 ): DecryptedState {
   const [state, setState] = useState<DecryptedState>(() => {
     if (!nonce) {
-      // No nonce = plain text (shouldn't happen, but handle gracefully)
-      return { displayContent: content, isEncrypted: false, decrypting: false };
+      // No nonce = plain text (shouldn't happen, but handle gracefully).
+      // `content` may legitimately be null for encrypted-only messages that
+      // arrive without a nonce due to a backend bug — coerce to '' so the
+      // renderer doesn't blow up on String methods.
+      return { displayContent: content ?? '', isEncrypted: false, decrypting: false };
     }
     return { displayContent: '', isEncrypted: true, decrypting: true };
   });
@@ -34,7 +37,7 @@ export function useDecryptedContent(
   useEffect(() => {
     if (!nonce) {
       // Defer setState past the effect body to satisfy set-state-in-effect.
-      queueMicrotask(() => setState({ displayContent: content, isEncrypted: false, decrypting: false }));
+      queueMicrotask(() => setState({ displayContent: content ?? '', isEncrypted: false, decrypting: false }));
       return;
     }
 
@@ -59,6 +62,14 @@ export function useDecryptedContent(
       retryRef.current = 0;
       const localKeys = getLocalKeys();
       if (!localKeys) {
+        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        return;
+      }
+
+      // `content` IS the ciphertext when `nonce` is set — null here means a
+      // malformed encrypted message (nonce without ciphertext). Bail out
+      // instead of passing null to the decrypter.
+      if (content == null) {
         setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
         return;
       }

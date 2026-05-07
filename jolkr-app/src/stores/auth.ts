@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import type { User, UpdateMeBody } from '../api/types';
+import type { MeProfile, User, UpdateMeBody } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
 import { useVoiceStore } from './voice';
+import { useUsersStore } from './users';
 import { resetAllStores } from './reset';
 
 /**
@@ -16,7 +17,7 @@ type UserPatch = Partial<Pick<User,
 >>;
 
 interface AuthState {
-  user: User | null;
+  user: MeProfile | null;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -35,9 +36,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email, password) => {
     set({ loading: true, error: null });
     try {
-      await api.login(email, password);
-      const user = await api.getMe();
+      const { user } = await api.login(email, password);
       set({ user, loading: false });
+      useUsersStore.getState().upsertUser(user);
       wsClient.connect();
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
@@ -48,9 +49,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (email, username, password) => {
     set({ loading: true, error: null });
     try {
-      await api.register(email, username, password);
-      const user = await api.getMe();
+      const { user } = await api.register(email, username, password);
       set({ user, loading: false });
+      useUsersStore.getState().upsertUser(user);
       if (user.email_verified) {
         wsClient.connect();
       }
@@ -67,6 +68,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await api.getMe();
       set({ user, loading: false });
+      useUsersStore.getState().upsertUser(user);
       if (user.email_verified) {
         wsClient.connect();
       }
@@ -83,6 +85,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   updateProfile: async (body) => {
     const user = await api.updateMe(body);
     set({ user });
+    useUsersStore.getState().upsertUser(user);
   },
 
   applyUserUpdate: (data) => {
