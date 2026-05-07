@@ -3,7 +3,146 @@
     "ok": "确定", "cancel": "取消", "save": "保存", "delete": "删除",
     "edit": "编辑", "close": "关闭", "loading": "加载中…",
     "someone": "某人", "required": "*", "goHome": "返回主页",
-    "add": "添加", "saveChanges": "保存更改"
+    "add": "添加", "saveChanges": "保存更改",
+    "loadingDots": "加载中...", "unknown": "未知", "send": "发送 (Enter)"
+  },
+
+  "time": {
+    "todayAt": "今天 {time}",
+    "yesterdayAt": "昨天 {time}",
+    "dateAt": "{date} {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "展开频道",
+      "threads": "话题", "pinnedMessages": "置顶消息",
+      "filesAndPins": "文件与置顶", "members": "成员",
+      "alreadyInCall": "已在通话中",
+      "startVoiceCall": "开始语音通话",
+      "startVideoCall": "开始视频通话",
+      "videoCall1on1Only": "视频通话仅支持 1 对 1"
+    },
+    "dropZone": {
+      "drop": "释放以附加",
+      "limit": "每个文件最多 {limit}",
+      "tooLargeAlert": "文件过大 (最大 {limit}): {names}"
+    },
+    "composer": {
+      "placeholderChannel": "向 #{channel} 发送消息",
+      "placeholderDm": "向 {target} 发送消息",
+      "emoji": "表情", "attachFile": "附加文件",
+      "gif": "GIF", "createPoll": "创建投票", "send": "发送 (Enter)",
+      "fmtBold": "粗体 (Ctrl+B)", "fmtItalic": "斜体 (Ctrl+I)",
+      "fmtStrike": "删除线", "fmtCode": "代码"
+    },
+    "autocomplete": {
+      "membersHeader": "成员",
+      "emojiHeader": "匹配 :{query} 的表情"
+    },
+    "replyCard": {
+      "replyingTo": "回复 {name}",
+      "cancel": "取消回复"
+    },
+    "empty": {
+      "dmTitle": "与 {name} 还没有消息",
+      "dmFallbackName": "此用户",
+      "dmBody": "在下方发送消息以开始对话。",
+      "channelTitle": "欢迎来到 #{channel}",
+      "channelBody": "成为第一个发言的人 — 在下方输入消息开启频道。"
+    },
+    "readOnly": {
+      "system": "这是一个系统频道",
+      "noPermission": "您没有权限在此频道发送消息",
+      "generic": "这是一个只读频道"
+    },
+    "typing": {
+      "one": "{name} 正在输入…",
+      "two": "{a} 和 {b} 正在输入…",
+      "many": "多人正在输入…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(已编辑)",
+    "unencryptedBadge": "未加密",
+    "ariaOpenProfile": "打开 {name} 的资料",
+    "decrypt": {
+      "decrypting": "解密中…", "decryptingShort": "...",
+      "encryptedMessage": "加密消息",
+      "failed": "[加密消息 — 密钥不可用]"
+    },
+    "actions": {
+      "addReaction": "添加反应", "reply": "回复",
+      "edit": "编辑消息", "delete": "删除消息",
+      "deleteShift": "删除消息 (Shift+点击)", "more": "更多选项"
+    },
+    "menu": {
+      "reply": "回复", "editMessage": "编辑消息",
+      "copyText": "复制文本", "pinMessage": "置顶消息",
+      "unpinMessage": "取消置顶", "startThread": "开始话题",
+      "openThread": "打开话题", "deleteMessage": "删除消息",
+      "deleteForMe": "为我删除", "reportMessage": "举报消息"
+    },
+    "editHint": {
+      "escapeTo": "Esc 以", "cancel": "取消",
+      "enterTo": "Enter 以", "save": "保存", "separator": "·"
+    },
+    "thread": {
+      "one": "话题中 {count} 条回复",
+      "other": "话题中 {count} 条回复"
+    },
+    "copyFailed": "复制失败"
+  },
+
+  "reactions": {
+    "count": { "one": "{count} 个反应", "other": "{count} 个反应" },
+    "userFallback": "用户 {idShort}"
+  },
+
+  "pinned": {
+    "loading": "加载中...", "empty": "没有置顶消息",
+    "decrypting": "解密中...", "unknownAuthor": "未知", "unpin": "取消置顶"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "加载话题中...", "empty": "暂无话题",
+      "untitled": "未命名话题",
+      "replies": { "one": "{count} 条回复", "other": "{count} 条回复" }
+    },
+    "panel": {
+      "back": "返回话题", "fallbackTitle": "话题",
+      "loading": "加载中...", "empty": "暂无回复",
+      "replyPlaceholder": "在话题中回复", "send": "发送 (Enter)",
+      "unknownAuthor": "未知", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "创建投票", "ariaLabel": "创建投票",
+      "questionLabel": "问题",
+      "questionPlaceholder": "您想问什么？",
+      "optionsLabel": "选项",
+      "optionPlaceholder": "选项 {n}",
+      "removeOption": "移除选项", "addOption": "添加选项",
+      "multiVoteLabel": "允许多次投票",
+      "multiVoteSub": "投票者可以选择多个选项",
+      "anonymousLabel": "匿名",
+      "anonymousSub": "隐藏谁投了什么",
+      "cancel": "取消", "submit": "创建投票",
+      "submitting": "创建中…", "errorGeneric": "创建投票失败"
+    },
+    "display": {
+      "closed": "已关闭",
+      "voteCount": { "one": "{count} 票", "other": "{count} 票" },
+      "multipleChoice": "多选", "anonymous": "匿名"
+    }
+  },
+
+  "attachments": {
+    "openImage": "打开 {filename}"
   },
 
   "auth": {

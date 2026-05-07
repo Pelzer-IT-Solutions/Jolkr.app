@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Plus, Trash2 } from 'lucide-react'
 import * as api from '../../api/client'
+import { useT } from '../../hooks/useT'
 import s from './PollCreator.module.css'
 
 interface Props {
@@ -22,6 +23,7 @@ const MAX_OPTION_LEN = 100
  * normal WS path. We don't have to do anything with the response here.
  */
 export function PollCreator({ open, channelId, onClose }: Props) {
+  const { t } = useT()
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState<string[]>(['', ''])
   const [multiSelect, setMultiSelect] = useState(false)
@@ -90,7 +92,7 @@ export function PollCreator({ open, channelId, onClose }: Props) {
       // Backend broadcasts MessageCreate → message lands in channel via WS.
       onClose()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create poll'
+      const msg = err instanceof Error ? err.message : t('poll.create.errorGeneric')
       setError(msg)
     } finally {
       setSubmitting(false)
@@ -103,10 +105,10 @@ export function PollCreator({ open, channelId, onClose }: Props) {
 
   return createPortal(
     <div className={s.overlay} onClick={handleOverlayClick}>
-      <div className={s.modal} role="dialog" aria-modal="true" aria-label="Create poll">
+      <div className={s.modal} role="dialog" aria-modal="true" aria-label={t('poll.create.ariaLabel')}>
         <div className={s.header}>
-          <span className={s.title}>Create a Poll</span>
-          <button type="button" className={s.closeBtn} onClick={onClose} title="Close" aria-label="Close">
+          <span className={s.title}>{t('poll.create.title')}</span>
+          <button type="button" className={s.closeBtn} onClick={onClose} title={t('common.close')} aria-label={t('common.close')}>
             <X size={14} strokeWidth={1.5} />
           </button>
         </div>
@@ -115,13 +117,13 @@ export function PollCreator({ open, channelId, onClose }: Props) {
           {/* Question */}
           <div className={s.fieldGroup}>
             <label className={`${s.label} txt-tiny txt-semibold`} htmlFor="poll-question">
-              Question <span className={s.required}>*</span>
+              {t('poll.create.questionLabel')} <span className={s.required}>{t('common.required')}</span>
             </label>
             <input
               id="poll-question"
               ref={questionRef}
               className={`${s.input} txt-small`}
-              placeholder="What do you want to ask?"
+              placeholder={t('poll.create.questionPlaceholder')}
               value={question}
               onChange={(e) => setQuestion(e.target.value.slice(0, MAX_QUESTION_LEN))}
               maxLength={MAX_QUESTION_LEN}
@@ -134,7 +136,7 @@ export function PollCreator({ open, channelId, onClose }: Props) {
           {/* Options */}
           <div className={s.fieldGroup}>
             <label className={`${s.label} txt-tiny txt-semibold`}>
-              Options <span className={s.required}>*</span>
+              {t('poll.create.optionsLabel')} <span className={s.required}>{t('common.required')}</span>
             </label>
             <div className={s.optionRows}>
               {/* index keys are safe — option order is fixed by the user typing
@@ -143,7 +145,7 @@ export function PollCreator({ open, channelId, onClose }: Props) {
                 <div key={i} className={s.optionRow}>
                   <input
                     className={`${s.input} txt-small`}
-                    placeholder={`Option ${i + 1}`}
+                    placeholder={t('poll.create.optionPlaceholder', { n: i + 1 })}
                     value={opt}
                     onChange={(e) => setOptionAt(i, e.target.value.slice(0, MAX_OPTION_LEN))}
                     maxLength={MAX_OPTION_LEN}
@@ -153,8 +155,8 @@ export function PollCreator({ open, channelId, onClose }: Props) {
                       type="button"
                       className={s.optionRemove}
                       onClick={() => removeOption(i)}
-                      title="Remove option"
-                      aria-label="Remove option"
+                      title={t('poll.create.removeOption')}
+                      aria-label={t('poll.create.removeOption')}
                     >
                       <Trash2 size={14} strokeWidth={1.5} />
                     </button>
@@ -165,7 +167,7 @@ export function PollCreator({ open, channelId, onClose }: Props) {
             {options.length < MAX_OPTIONS && (
               <button type="button" className={`${s.addOptionBtn} txt-tiny txt-semibold`} onClick={addOption}>
                 <Plus size={12} strokeWidth={1.75} />
-                <span>Add option</span>
+                <span>{t('poll.create.addOption')}</span>
               </button>
             )}
           </div>
@@ -180,8 +182,8 @@ export function PollCreator({ open, channelId, onClose }: Props) {
                 onChange={(e) => setMultiSelect(e.target.checked)}
               />
               <div className={s.toggleText}>
-                <span className={`${s.toggleTitle} txt-small txt-medium`}>Allow multiple votes</span>
-                <span className={`${s.toggleSub} txt-tiny`}>Voters can pick more than one option</span>
+                <span className={`${s.toggleTitle} txt-small txt-medium`}>{t('poll.create.multiVoteLabel')}</span>
+                <span className={`${s.toggleSub} txt-tiny`}>{t('poll.create.multiVoteSub')}</span>
               </div>
             </label>
             <label className={s.toggleRow}>
@@ -192,8 +194,8 @@ export function PollCreator({ open, channelId, onClose }: Props) {
                 onChange={(e) => setAnonymous(e.target.checked)}
               />
               <div className={s.toggleText}>
-                <span className={`${s.toggleTitle} txt-small txt-medium`}>Anonymous</span>
-                <span className={`${s.toggleSub} txt-tiny`}>Hide who voted for what</span>
+                <span className={`${s.toggleTitle} txt-small txt-medium`}>{t('poll.create.anonymousLabel')}</span>
+                <span className={`${s.toggleSub} txt-tiny`}>{t('poll.create.anonymousSub')}</span>
               </div>
             </label>
           </div>
@@ -202,10 +204,10 @@ export function PollCreator({ open, channelId, onClose }: Props) {
 
           <div className={s.footer}>
             <button type="button" className={`${s.cancelBtn} txt-small`} onClick={onClose}>
-              Cancel
+              {t('poll.create.cancel')}
             </button>
             <button type="submit" className={`${s.submitBtn} txt-small`} disabled={!canSubmit}>
-              {submitting ? 'Creating…' : 'Create Poll'}
+              {submitting ? t('poll.create.submitting') : t('poll.create.submit')}
             </button>
           </div>
         </form>

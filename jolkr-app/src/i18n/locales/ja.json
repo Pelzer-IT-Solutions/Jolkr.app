@@ -3,7 +3,146 @@
     "ok": "OK", "cancel": "キャンセル", "save": "保存", "delete": "削除",
     "edit": "編集", "close": "閉じる", "loading": "読み込み中…",
     "someone": "誰か", "required": "*", "goHome": "ホームへ",
-    "add": "追加", "saveChanges": "変更を保存"
+    "add": "追加", "saveChanges": "変更を保存",
+    "loadingDots": "読み込み中...", "unknown": "不明", "send": "送信 (Enter)"
+  },
+
+  "time": {
+    "todayAt": "今日 {time}",
+    "yesterdayAt": "昨日 {time}",
+    "dateAt": "{date} {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "チャンネルを展開",
+      "threads": "スレッド", "pinnedMessages": "ピン留めメッセージ",
+      "filesAndPins": "ファイルとピン", "members": "メンバー",
+      "alreadyInCall": "すでに通話中",
+      "startVoiceCall": "音声通話を開始",
+      "startVideoCall": "ビデオ通話を開始",
+      "videoCall1on1Only": "ビデオ通話は 1 対 1 のみです"
+    },
+    "dropZone": {
+      "drop": "ドロップして添付",
+      "limit": "ファイルあたり最大 {limit}",
+      "tooLargeAlert": "ファイルが大きすぎます (最大 {limit}): {names}"
+    },
+    "composer": {
+      "placeholderChannel": "#{channel} へメッセージ",
+      "placeholderDm": "{target} へメッセージ",
+      "emoji": "絵文字", "attachFile": "ファイルを添付",
+      "gif": "GIF", "createPoll": "投票を作成", "send": "送信 (Enter)",
+      "fmtBold": "太字 (Ctrl+B)", "fmtItalic": "斜体 (Ctrl+I)",
+      "fmtStrike": "取り消し線", "fmtCode": "コード"
+    },
+    "autocomplete": {
+      "membersHeader": "メンバー",
+      "emojiHeader": ":{query} に一致する絵文字"
+    },
+    "replyCard": {
+      "replyingTo": "{name} に返信",
+      "cancel": "返信をキャンセル"
+    },
+    "empty": {
+      "dmTitle": "{name} とのメッセージはまだありません",
+      "dmFallbackName": "このユーザー",
+      "dmBody": "下にメッセージを送信して会話を始めましょう。",
+      "channelTitle": "#{channel} へようこそ",
+      "channelBody": "最初に何か言ってみましょう — 下にメッセージを入力してチャンネルを盛り上げましょう。"
+    },
+    "readOnly": {
+      "system": "これはシステムチャンネルです",
+      "noPermission": "このチャンネルでメッセージを送信する権限がありません",
+      "generic": "これは読み取り専用のチャンネルです"
+    },
+    "typing": {
+      "one": "{name} が入力中…",
+      "two": "{a} と {b} が入力中…",
+      "many": "複数の人が入力中…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(編集済み)",
+    "unencryptedBadge": "暗号化されていません",
+    "ariaOpenProfile": "{name} のプロフィールを開く",
+    "decrypt": {
+      "decrypting": "復号中…", "decryptingShort": "...",
+      "encryptedMessage": "暗号化されたメッセージ",
+      "failed": "[暗号化されたメッセージ — 鍵が利用できません]"
+    },
+    "actions": {
+      "addReaction": "リアクションを追加", "reply": "返信",
+      "edit": "メッセージを編集", "delete": "メッセージを削除",
+      "deleteShift": "メッセージを削除 (Shift+クリック)", "more": "その他のオプション"
+    },
+    "menu": {
+      "reply": "返信", "editMessage": "メッセージを編集",
+      "copyText": "テキストをコピー", "pinMessage": "メッセージをピン留め",
+      "unpinMessage": "ピン留めを解除", "startThread": "スレッドを開始",
+      "openThread": "スレッドを開く", "deleteMessage": "メッセージを削除",
+      "deleteForMe": "自分用に削除", "reportMessage": "メッセージを報告"
+    },
+    "editHint": {
+      "escapeTo": "Esc で", "cancel": "キャンセル",
+      "enterTo": "Enter で", "save": "保存", "separator": "·"
+    },
+    "thread": {
+      "one": "スレッド内に {count} 件の返信",
+      "other": "スレッド内に {count} 件の返信"
+    },
+    "copyFailed": "コピーに失敗しました"
+  },
+
+  "reactions": {
+    "count": { "one": "{count} 件のリアクション", "other": "{count} 件のリアクション" },
+    "userFallback": "ユーザー {idShort}"
+  },
+
+  "pinned": {
+    "loading": "読み込み中...", "empty": "ピン留めされたメッセージはありません",
+    "decrypting": "復号中...", "unknownAuthor": "不明", "unpin": "ピン留めを解除"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "スレッドを読み込み中...", "empty": "スレッドはまだありません",
+      "untitled": "無題のスレッド",
+      "replies": { "one": "{count} 件の返信", "other": "{count} 件の返信" }
+    },
+    "panel": {
+      "back": "スレッドに戻る", "fallbackTitle": "スレッド",
+      "loading": "読み込み中...", "empty": "返信はまだありません",
+      "replyPlaceholder": "スレッドで返信", "send": "送信 (Enter)",
+      "unknownAuthor": "不明", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "投票を作成", "ariaLabel": "投票を作成",
+      "questionLabel": "質問",
+      "questionPlaceholder": "何を質問しますか？",
+      "optionsLabel": "選択肢",
+      "optionPlaceholder": "選択肢 {n}",
+      "removeOption": "選択肢を削除", "addOption": "選択肢を追加",
+      "multiVoteLabel": "複数投票を許可",
+      "multiVoteSub": "投票者は複数の選択肢を選べます",
+      "anonymousLabel": "匿名",
+      "anonymousSub": "誰が何に投票したかを隠す",
+      "cancel": "キャンセル", "submit": "投票を作成",
+      "submitting": "作成中…", "errorGeneric": "投票の作成に失敗しました"
+    },
+    "display": {
+      "closed": "終了",
+      "voteCount": { "one": "{count} 票", "other": "{count} 票" },
+      "multipleChoice": "複数選択", "anonymous": "匿名"
+    }
+  },
+
+  "attachments": {
+    "openImage": "{filename} を開く"
   },
 
   "auth": {

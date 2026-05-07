@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isE2EEReady, getLocalKeys } from '../services/e2ee';
 import { decryptChannelMessage } from '../crypto/channelKeys';
+import { tStatic } from './useT';
 
 interface DecryptedState {
   displayContent: string;
@@ -8,7 +9,11 @@ interface DecryptedState {
   decrypting: boolean;
 }
 
-const DECRYPT_FAIL_MSG = '[Encrypted message — keys unavailable]';
+/** Resolve the localised "decryption failed" label on every read so a
+ *  locale switch picks it up without remounting every cached message. */
+function failMsg(): string {
+  return tStatic('message.decrypt.failed');
+}
 
 /**
  * Hook that decrypts message content.
@@ -42,7 +47,7 @@ export function useDecryptedContent(
     }
 
     if (!channelId) {
-      queueMicrotask(() => setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false }));
+      queueMicrotask(() => setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false }));
       return;
     }
 
@@ -55,14 +60,14 @@ export function useDecryptedContent(
           retryTimerRef.current = setTimeout(attempt, 1000);
           return;
         }
-        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
         return;
       }
 
       retryRef.current = 0;
       const localKeys = getLocalKeys();
       if (!localKeys) {
-        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
         return;
       }
 
@@ -70,7 +75,7 @@ export function useDecryptedContent(
       // malformed encrypted message (nonce without ciphertext). Bail out
       // instead of passing null to the decrypter.
       if (content == null) {
-        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
         return;
       }
 
@@ -83,7 +88,7 @@ export function useDecryptedContent(
         .catch((err) => {
           if (!cancelled) {
             console.warn('E2EE: Failed to decrypt message:', err);
-            setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+            setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
           }
         });
     };

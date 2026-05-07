@@ -3,7 +3,147 @@
     "ok": "OK", "cancel": "Annuleren", "save": "Opslaan", "delete": "Verwijderen",
     "edit": "Bewerken", "close": "Sluiten", "loading": "Laden…",
     "someone": "Iemand", "required": "*", "goHome": "Naar Start",
-    "add": "Toevoegen", "saveChanges": "Wijzigingen opslaan"
+    "add": "Toevoegen", "saveChanges": "Wijzigingen opslaan",
+    "loadingDots": "Laden...", "unknown": "Onbekend", "send": "Verzenden (Enter)"
+  },
+
+  "time": {
+    "todayAt": "Vandaag om {time}",
+    "yesterdayAt": "Gisteren om {time}",
+    "dateAt": "{date} om {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "Kanalen uitvouwen",
+      "threads": "Threads", "pinnedMessages": "Vastgepinde berichten",
+      "filesAndPins": "Bestanden en pins", "members": "Leden",
+      "alreadyInCall": "Al in een gesprek",
+      "startVoiceCall": "Spraakgesprek starten",
+      "startVideoCall": "Video­gesprek starten",
+      "videoCall1on1Only": "Videogesprekken zijn alleen 1-op-1"
+    },
+    "dropZone": {
+      "drop": "Loslaten om te uploaden",
+      "limit": "Maximaal {limit} per bestand",
+      "tooLargeAlert": "Bestand te groot (max {limit}): {names}"
+    },
+    "composer": {
+      "placeholderChannel": "Bericht naar #{channel}",
+      "placeholderDm": "Bericht naar {target}",
+      "emoji": "Emoji", "attachFile": "Bestand bijvoegen",
+      "gif": "GIF", "createPoll": "Peiling maken", "send": "Verzenden (Enter)",
+      "fmtBold": "Vet (Ctrl+B)", "fmtItalic": "Cursief (Ctrl+I)",
+      "fmtStrike": "Doorhalen", "fmtCode": "Code"
+    },
+    "autocomplete": {
+      "membersHeader": "Leden",
+      "emojiHeader": "Emoji die overeenkomt met :{query}"
+    },
+    "replyCard": {
+      "replyingTo": "Reageren op {name}",
+      "cancel": "Antwoord annuleren"
+    },
+    "empty": {
+      "dmTitle": "Nog geen berichten met {name}",
+      "dmFallbackName": "deze gebruiker",
+      "dmBody": "Stuur hieronder een bericht om het gesprek te starten.",
+      "channelTitle": "Welkom in #{channel}",
+      "channelBody": "Wees de eerste die iets zegt — typ hieronder een bericht om het kanaal op gang te brengen."
+    },
+    "readOnly": {
+      "system": "Dit is een systeemkanaal",
+      "noPermission": "Je hebt geen rechten om berichten in dit kanaal te versturen",
+      "generic": "Dit is een alleen-lezen kanaal"
+    },
+    "typing": {
+      "one": "{name} is aan het typen…",
+      "two": "{a} en {b} zijn aan het typen…",
+      "many": "Meerdere mensen zijn aan het typen…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(bewerkt)",
+    "unencryptedBadge": "onversleuteld",
+    "ariaOpenProfile": "Profiel van {name} openen",
+    "decrypt": {
+      "decrypting": "Ontsleutelen…",
+      "decryptingShort": "...",
+      "encryptedMessage": "Versleuteld bericht",
+      "failed": "[Versleuteld bericht — sleutels niet beschikbaar]"
+    },
+    "actions": {
+      "addReaction": "Reactie toevoegen", "reply": "Antwoorden",
+      "edit": "Bericht bewerken", "delete": "Bericht verwijderen",
+      "deleteShift": "Bericht verwijderen (Shift+klik)", "more": "Meer opties"
+    },
+    "menu": {
+      "reply": "Antwoorden", "editMessage": "Bericht bewerken",
+      "copyText": "Tekst kopiëren", "pinMessage": "Bericht vastpinnen",
+      "unpinMessage": "Pin verwijderen", "startThread": "Thread starten",
+      "openThread": "Thread openen", "deleteMessage": "Bericht verwijderen",
+      "deleteForMe": "Verwijderen voor mij", "reportMessage": "Bericht rapporteren"
+    },
+    "editHint": {
+      "escapeTo": "escape om te", "cancel": "annuleren",
+      "enterTo": "enter om te", "save": "opslaan", "separator": "·"
+    },
+    "thread": {
+      "one": "{count} antwoord in thread",
+      "other": "{count} antwoorden in thread"
+    },
+    "copyFailed": "Kopiëren mislukt"
+  },
+
+  "reactions": {
+    "count": { "one": "{count} reactie", "other": "{count} reacties" },
+    "userFallback": "Gebruiker {idShort}"
+  },
+
+  "pinned": {
+    "loading": "Laden...", "empty": "Geen vastgepinde berichten",
+    "decrypting": "Ontsleutelen...", "unknownAuthor": "Onbekend", "unpin": "Pin verwijderen"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "Threads laden...", "empty": "Nog geen threads",
+      "untitled": "Naamloze thread",
+      "replies": { "one": "{count} antwoord", "other": "{count} antwoorden" }
+    },
+    "panel": {
+      "back": "Terug naar threads", "fallbackTitle": "Thread",
+      "loading": "Laden...", "empty": "Nog geen antwoorden",
+      "replyPlaceholder": "Antwoord in thread", "send": "Verzenden (Enter)",
+      "unknownAuthor": "Onbekend", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "Peiling maken", "ariaLabel": "Peiling maken",
+      "questionLabel": "Vraag",
+      "questionPlaceholder": "Wat wil je vragen?",
+      "optionsLabel": "Opties",
+      "optionPlaceholder": "Optie {n}",
+      "removeOption": "Optie verwijderen", "addOption": "Optie toevoegen",
+      "multiVoteLabel": "Meerdere stemmen toestaan",
+      "multiVoteSub": "Stemmers kunnen meer dan één optie kiezen",
+      "anonymousLabel": "Anoniem",
+      "anonymousSub": "Verberg wie op wat heeft gestemd",
+      "cancel": "Annuleren", "submit": "Peiling maken",
+      "submitting": "Maken…", "errorGeneric": "Peiling maken mislukt"
+    },
+    "display": {
+      "closed": "Gesloten",
+      "voteCount": { "one": "{count} stem", "other": "{count} stemmen" },
+      "multipleChoice": "meerkeuze", "anonymous": "anoniem"
+    }
+  },
+
+  "attachments": {
+    "openImage": "{filename} openen"
   },
 
   "auth": {

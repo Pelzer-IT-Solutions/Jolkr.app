@@ -5,6 +5,9 @@
  */
 
 import { displayName } from '../utils/format'
+import { tStatic } from '../hooks/useT'
+import { getLocaleCode } from '../stores/locale'
+import { formatDate, formatTime } from '../i18n/formatters'
 import type {
   User,
   Server as ApiServer,
@@ -67,21 +70,30 @@ export function userToAvatar(user: User): { color: string; letter: string; avata
   }
 }
 
-/** Format ISO timestamp to display string (e.g. "Today at 3:45 PM"). */
+/**
+ * Format an ISO timestamp into a locale-aware display string.
+ * Hot path — called for every message in the chat. Reads the active locale
+ * via `getLocaleCode()` (zustand store, sync), then formats the time/date
+ * fragments through the cached `Intl.*` wrappers and substitutes them into
+ * the active dict's `time.todayAt` / `time.yesterdayAt` / `time.dateAt`
+ * templates so the word-order and separators stay correct in every locale.
+ */
 export function formatTimestamp(iso: string): string {
   const date = new Date(iso)
   const now = new Date()
+  const locale = getLocaleCode()
+  const time = formatTime(iso, locale)
+
   const isToday = date.toDateString() === now.toDateString()
+  if (isToday) return tStatic('time.todayAt', { time })
 
   const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
-  const isYesterday = date.toDateString() === yesterday.toDateString()
+  if (date.toDateString() === yesterday.toDateString()) {
+    return tStatic('time.yesterdayAt', { time })
+  }
 
-  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-
-  if (isToday) return `Today at ${time}`
-  if (isYesterday) return `Yesterday at ${time}`
-  return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${time}`
+  return tStatic('time.dateAt', { date: formatDate(iso, locale, 'short'), time })
 }
 
 /** Map backend user status / presence to UI MemberStatus. */

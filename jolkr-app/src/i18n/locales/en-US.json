@@ -7,11 +7,193 @@
     "edit": "Edit",
     "close": "Close",
     "loading": "Loading…",
+    "loadingDots": "Loading...",
     "someone": "Someone",
     "required": "*",
     "goHome": "Go Home",
     "add": "Add",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "unknown": "Unknown",
+    "send": "Send (Enter)"
+  },
+
+  "time": {
+    "todayAt": "Today at {time}",
+    "yesterdayAt": "Yesterday at {time}",
+    "dateAt": "{date} at {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "Expand channels",
+      "threads": "Threads",
+      "pinnedMessages": "Pinned messages",
+      "filesAndPins": "Files & pins",
+      "members": "Members",
+      "alreadyInCall": "Already in a call",
+      "startVoiceCall": "Start voice call",
+      "startVideoCall": "Start video call",
+      "videoCall1on1Only": "Video calls are 1-on-1 only"
+    },
+    "dropZone": {
+      "drop": "Drop to attach",
+      "limit": "Up to {limit} per file",
+      "tooLargeAlert": "File too large (max {limit}): {names}"
+    },
+    "composer": {
+      "placeholderChannel": "Message #{channel}",
+      "placeholderDm": "Message {target}",
+      "emoji": "Emoji",
+      "attachFile": "Attach file",
+      "gif": "GIF",
+      "createPoll": "Create poll",
+      "send": "Send (Enter)",
+      "fmtBold": "Bold (Ctrl+B)",
+      "fmtItalic": "Italic (Ctrl+I)",
+      "fmtStrike": "Strikethrough",
+      "fmtCode": "Code"
+    },
+    "autocomplete": {
+      "membersHeader": "Members",
+      "emojiHeader": "Emoji matching :{query}"
+    },
+    "replyCard": {
+      "replyingTo": "Replying to {name}",
+      "cancel": "Cancel reply"
+    },
+    "empty": {
+      "dmTitle": "No messages yet with {name}",
+      "dmFallbackName": "this user",
+      "dmBody": "Send a message below to start the conversation.",
+      "channelTitle": "Welcome to #{channel}",
+      "channelBody": "Be the first to say something — type a message below to get the channel going."
+    },
+    "readOnly": {
+      "system": "This is a system channel",
+      "noPermission": "You do not have permission to send messages in this channel",
+      "generic": "This is a read-only channel"
+    },
+    "typing": {
+      "one": "{name} is typing…",
+      "two": "{a} and {b} are typing…",
+      "many": "Several people are typing…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(edited)",
+    "unencryptedBadge": "unencrypted",
+    "ariaOpenProfile": "Open profile of {name}",
+    "decrypt": {
+      "decrypting": "Decrypting…",
+      "decryptingShort": "...",
+      "encryptedMessage": "Encrypted message",
+      "failed": "[Encrypted message — keys unavailable]"
+    },
+    "actions": {
+      "addReaction": "Add reaction",
+      "reply": "Reply",
+      "edit": "Edit message",
+      "delete": "Delete message",
+      "deleteShift": "Delete message (Shift+click)",
+      "more": "More options"
+    },
+    "menu": {
+      "reply": "Reply",
+      "editMessage": "Edit Message",
+      "copyText": "Copy Text",
+      "pinMessage": "Pin Message",
+      "unpinMessage": "Unpin Message",
+      "startThread": "Start Thread",
+      "openThread": "Open Thread",
+      "deleteMessage": "Delete Message",
+      "deleteForMe": "Delete for me",
+      "reportMessage": "Report Message"
+    },
+    "editHint": {
+      "escapeTo": "escape to",
+      "cancel": "cancel",
+      "enterTo": "enter to",
+      "save": "save",
+      "separator": "·"
+    },
+    "thread": {
+      "one": "{count} reply in thread",
+      "other": "{count} replies in thread"
+    },
+    "copyFailed": "Copy failed"
+  },
+
+  "reactions": {
+    "count": {
+      "one": "{count} reaction",
+      "other": "{count} reactions"
+    },
+    "userFallback": "User {idShort}"
+  },
+
+  "pinned": {
+    "loading": "Loading...",
+    "empty": "No pinned messages",
+    "decrypting": "Decrypting...",
+    "unknownAuthor": "Unknown",
+    "unpin": "Unpin"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "Loading threads...",
+      "empty": "No threads yet",
+      "untitled": "Untitled thread",
+      "replies": {
+        "one": "{count} reply",
+        "other": "{count} replies"
+      }
+    },
+    "panel": {
+      "back": "Back to threads",
+      "fallbackTitle": "Thread",
+      "loading": "Loading...",
+      "empty": "No replies yet",
+      "replyPlaceholder": "Reply in thread",
+      "send": "Send (Enter)",
+      "unknownAuthor": "Unknown",
+      "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "Create a Poll",
+      "ariaLabel": "Create poll",
+      "questionLabel": "Question",
+      "questionPlaceholder": "What do you want to ask?",
+      "optionsLabel": "Options",
+      "optionPlaceholder": "Option {n}",
+      "removeOption": "Remove option",
+      "addOption": "Add option",
+      "multiVoteLabel": "Allow multiple votes",
+      "multiVoteSub": "Voters can pick more than one option",
+      "anonymousLabel": "Anonymous",
+      "anonymousSub": "Hide who voted for what",
+      "cancel": "Cancel",
+      "submit": "Create Poll",
+      "submitting": "Creating…",
+      "errorGeneric": "Failed to create poll"
+    },
+    "display": {
+      "closed": "Closed",
+      "voteCount": {
+        "one": "{count} vote",
+        "other": "{count} votes"
+      },
+      "multipleChoice": "multiple choice",
+      "anonymous": "anonymous"
+    }
+  },
+
+  "attachments": {
+    "openImage": "Open {filename}"
   },
 
   "auth": {

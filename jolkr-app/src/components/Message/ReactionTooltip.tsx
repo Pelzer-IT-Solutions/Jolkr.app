@@ -7,6 +7,7 @@ import { useServersStore } from '../../stores/servers';
 import { hashColor } from '../../adapters/transforms';
 import { displayName } from '../../utils/format';
 import { emojiToImgUrl } from '../../utils/emoji';
+import { useT } from '../../hooks/useT';
 import Avatar from '../Avatar/Avatar';
 import s from './ReactionTooltip.module.css';
 
@@ -27,6 +28,7 @@ interface UserInfo {
 }
 
 export function ReactionTooltip({ reaction, children, serverId, userMap, dmParticipantNames }: Props) {
+  const { t, tn } = useT();
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -95,13 +97,13 @@ export function ReactionTooltip({ reaction, children, serverId, userMap, dmParti
       // Last resort
       return {
         id: userId,
-        name: `User ${userId.slice(0, 6)}`,
+        name: t('reactions.userFallback', { idShort: userId.slice(0, 6) }),
         color: hashColor(userId),
         avatarUrl: null,
         isMe: false,
       };
     });
-  }, [reaction.userIds, currentUserId, currentUser, serverId, serverMembers, userMap, dmParticipantNames]);
+  }, [reaction.userIds, currentUserId, currentUser, serverId, serverMembers, userMap, dmParticipantNames, t]);
 
   // Sort: current user first, then by name
   const sortedUsers = useMemo(() => {
@@ -146,7 +148,7 @@ export function ReactionTooltip({ reaction, children, serverId, userMap, dmParti
     >
       <div className={s.header}>
         <img src={emojiToImgUrl(reaction.emoji)} alt={reaction.emoji} className={s.emojiImg} draggable={false} />
-        <span className={s.count}>{reaction.count} reaction{reaction.count !== 1 ? 's' : ''}</span>
+        <span className={s.count}>{tn('reactions.count', reaction.count)}</span>
       </div>
       <div className={`${s.userList}${sortedUsers.length > 6 ? ` ${s.userListScrollable}` : ''}`}>
         {sortedUsers.map((user) => (

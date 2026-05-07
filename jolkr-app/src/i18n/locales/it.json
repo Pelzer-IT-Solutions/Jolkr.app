@@ -3,7 +3,146 @@
     "ok": "OK", "cancel": "Annulla", "save": "Salva", "delete": "Elimina",
     "edit": "Modifica", "close": "Chiudi", "loading": "Caricamento…",
     "someone": "Qualcuno", "required": "*", "goHome": "Vai alla home",
-    "add": "Aggiungi", "saveChanges": "Salva modifiche"
+    "add": "Aggiungi", "saveChanges": "Salva modifiche",
+    "loadingDots": "Caricamento...", "unknown": "Sconosciuto", "send": "Invia (Invio)"
+  },
+
+  "time": {
+    "todayAt": "Oggi alle {time}",
+    "yesterdayAt": "Ieri alle {time}",
+    "dateAt": "{date} alle {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "Espandi canali",
+      "threads": "Discussioni", "pinnedMessages": "Messaggi fissati",
+      "filesAndPins": "File e fissati", "members": "Membri",
+      "alreadyInCall": "Già in chiamata",
+      "startVoiceCall": "Avvia chiamata vocale",
+      "startVideoCall": "Avvia videochiamata",
+      "videoCall1on1Only": "Le videochiamate sono solo 1-a-1"
+    },
+    "dropZone": {
+      "drop": "Rilascia per allegare",
+      "limit": "Fino a {limit} per file",
+      "tooLargeAlert": "File troppo grande (max {limit}): {names}"
+    },
+    "composer": {
+      "placeholderChannel": "Messaggio a #{channel}",
+      "placeholderDm": "Messaggio a {target}",
+      "emoji": "Emoji", "attachFile": "Allega file",
+      "gif": "GIF", "createPoll": "Crea sondaggio", "send": "Invia (Invio)",
+      "fmtBold": "Grassetto (Ctrl+B)", "fmtItalic": "Corsivo (Ctrl+I)",
+      "fmtStrike": "Barrato", "fmtCode": "Codice"
+    },
+    "autocomplete": {
+      "membersHeader": "Membri",
+      "emojiHeader": "Emoji corrispondente a :{query}"
+    },
+    "replyCard": {
+      "replyingTo": "Risposta a {name}",
+      "cancel": "Annulla risposta"
+    },
+    "empty": {
+      "dmTitle": "Nessun messaggio ancora con {name}",
+      "dmFallbackName": "questo utente",
+      "dmBody": "Invia un messaggio qui sotto per iniziare la conversazione.",
+      "channelTitle": "Benvenuto in #{channel}",
+      "channelBody": "Sii il primo a dire qualcosa — scrivi un messaggio qui sotto per dare il via al canale."
+    },
+    "readOnly": {
+      "system": "Questo è un canale di sistema",
+      "noPermission": "Non hai i permessi per inviare messaggi in questo canale",
+      "generic": "Questo è un canale in sola lettura"
+    },
+    "typing": {
+      "one": "{name} sta scrivendo…",
+      "two": "{a} e {b} stanno scrivendo…",
+      "many": "Diverse persone stanno scrivendo…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(modificato)",
+    "unencryptedBadge": "non cifrato",
+    "ariaOpenProfile": "Apri il profilo di {name}",
+    "decrypt": {
+      "decrypting": "Decifrazione…", "decryptingShort": "...",
+      "encryptedMessage": "Messaggio cifrato",
+      "failed": "[Messaggio cifrato — chiavi non disponibili]"
+    },
+    "actions": {
+      "addReaction": "Aggiungi reazione", "reply": "Rispondi",
+      "edit": "Modifica messaggio", "delete": "Elimina messaggio",
+      "deleteShift": "Elimina messaggio (Maiusc+clic)", "more": "Altre opzioni"
+    },
+    "menu": {
+      "reply": "Rispondi", "editMessage": "Modifica messaggio",
+      "copyText": "Copia testo", "pinMessage": "Fissa messaggio",
+      "unpinMessage": "Rimuovi fissaggio", "startThread": "Avvia discussione",
+      "openThread": "Apri discussione", "deleteMessage": "Elimina messaggio",
+      "deleteForMe": "Elimina per me", "reportMessage": "Segnala messaggio"
+    },
+    "editHint": {
+      "escapeTo": "esc per", "cancel": "annullare",
+      "enterTo": "invio per", "save": "salvare", "separator": "·"
+    },
+    "thread": {
+      "one": "{count} risposta nella discussione",
+      "other": "{count} risposte nella discussione"
+    },
+    "copyFailed": "Copia fallita"
+  },
+
+  "reactions": {
+    "count": { "one": "{count} reazione", "other": "{count} reazioni" },
+    "userFallback": "Utente {idShort}"
+  },
+
+  "pinned": {
+    "loading": "Caricamento...", "empty": "Nessun messaggio fissato",
+    "decrypting": "Decifrazione...", "unknownAuthor": "Sconosciuto", "unpin": "Rimuovi fissaggio"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "Caricamento discussioni...", "empty": "Nessuna discussione ancora",
+      "untitled": "Discussione senza titolo",
+      "replies": { "one": "{count} risposta", "other": "{count} risposte" }
+    },
+    "panel": {
+      "back": "Torna alle discussioni", "fallbackTitle": "Discussione",
+      "loading": "Caricamento...", "empty": "Nessuna risposta ancora",
+      "replyPlaceholder": "Rispondi nella discussione", "send": "Invia (Invio)",
+      "unknownAuthor": "Sconosciuto", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "Crea un sondaggio", "ariaLabel": "Crea sondaggio",
+      "questionLabel": "Domanda",
+      "questionPlaceholder": "Cosa vuoi chiedere?",
+      "optionsLabel": "Opzioni",
+      "optionPlaceholder": "Opzione {n}",
+      "removeOption": "Rimuovi opzione", "addOption": "Aggiungi opzione",
+      "multiVoteLabel": "Consenti voti multipli",
+      "multiVoteSub": "Gli elettori possono scegliere più di un'opzione",
+      "anonymousLabel": "Anonimo",
+      "anonymousSub": "Nascondi chi ha votato cosa",
+      "cancel": "Annulla", "submit": "Crea sondaggio",
+      "submitting": "Creazione…", "errorGeneric": "Creazione sondaggio fallita"
+    },
+    "display": {
+      "closed": "Chiuso",
+      "voteCount": { "one": "{count} voto", "other": "{count} voti" },
+      "multipleChoice": "scelta multipla", "anonymous": "anonimo"
+    }
+  },
+
+  "attachments": {
+    "openImage": "Apri {filename}"
   },
 
   "auth": {

@@ -18,6 +18,8 @@ import { PollCreator } from '../Poll/PollCreator'
 import { useCallStore } from '../../stores/call'
 import { useVoiceStore } from '../../stores/voice'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useT } from '../../hooks/useT'
+import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import s from './ChatArea.module.css'
 
 // Attachment size cap (mirrors backend MAX_ATTACHMENT_SIZE).
@@ -71,6 +73,8 @@ interface Props {
 }
 
 export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
+  const { t, tx } = useT()
+  const fmt = useLocaleFormatters()
   const listRef    = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<RichInputHandle>(null)
   const contentRef = useRef('')
@@ -104,11 +108,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     const list = Array.from(incoming)
     const oversized = list.filter((f) => f.size > MAX_FILE_SIZE)
     if (oversized.length) {
-      alert(`File too large (max ${MAX_FILE_SIZE_LABEL}): ${oversized.map((f) => f.name).join(', ')}`)
+      alert(t('chat.dropZone.tooLargeAlert', {
+        limit: MAX_FILE_SIZE_LABEL,
+        names: oversized.map((f) => f.name).join(', '),
+      }))
     }
     const valid = list.filter((f) => f.size <= MAX_FILE_SIZE)
     if (valid.length) setPendingFiles((prev) => [...prev, ...valid])
-  }, [])
+  }, [t])
 
   // Tracks previous values to distinguish navigation from message sends
   const prevAnimKeyRef    = useRef<string | null>(null)
@@ -315,14 +322,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     if (e.key === 'Escape' && replyingTo) setReplyingTo(null)
   }
 
-  // Format a message's day as a separator label. Locale-aware, weekday + date.
-  // Same format for every separator — no "Today" / "Yesterday" smartness.
+  // Format a message's day as a separator label. Locale-aware via the
+  // shared formatter — same format for every separator; no "Today" /
+  // "Yesterday" smartness because the per-message timestamp already does
+  // that via formatTimestamp.
   const formatDayLabel = (iso: string) => {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return ''
-    return d.toLocaleDateString(undefined, {
-      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-    })
+    return fmt.formatDate(iso, 'long')
   }
 
   // Cheap day key: YYYY-MM-DD in local time. Used to detect day boundaries.
@@ -341,8 +348,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const dmFirstP      = dmConversation?.participants[0]
   const dmName        = dmConversation?.name ?? (dmFirstP ? `@${dmFirstP.name}` : '')
   const inputPlaceholder = isDm
-    ? `Message ${dmName}`
-    : `Message #${channel.name}`
+    ? t('chat.composer.placeholderDm', { target: dmName })
+    : t('chat.composer.placeholderChannel', { channel: channel.name })
 
   // ── Voice call wiring (DM) ───────────────────────────────────────
   // Works for both 1-on-1 and group DMs. The SFU treats `dm_id` as a room id
@@ -360,12 +367,12 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const inAnyCall      = !!activeCallDmId || !!outgoingCall || !!incomingCall || voiceState !== 'disconnected'
   const callDisabled      = !isDm || !dmConversation || inAnyCall
   const videoCallDisabled = callDisabled || isGroupDm
-  const callTitle         = inAnyCall ? 'Already in a call' : 'Start voice call'
+  const callTitle         = inAnyCall ? t('chat.header.alreadyInCall') : t('chat.header.startVoiceCall')
   const videoCallTitle    = inAnyCall
-    ? 'Already in a call'
+    ? t('chat.header.alreadyInCall')
     : isGroupDm
-      ? 'Video calls are 1-on-1 only'
-      : 'Start video call'
+      ? t('chat.header.videoCall1on1Only')
+      : t('chat.header.startVideoCall')
 
   const handleStartCall = useCallback(() => {
     if (callDisabled || !dmConversation) return
@@ -426,14 +433,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         <div className={s.dropOverlay} aria-hidden>
           <div className={s.dropBox}>
             <Paperclip size={28} strokeWidth={1.5} />
-            <span className="txt-body txt-semibold">Drop to attach</span>
-            <span className={`${s.dropHint} txt-small`}>Up to {MAX_FILE_SIZE_LABEL} per file</span>
+            <span className="txt-body txt-semibold">{t('chat.dropZone.drop')}</span>
+            <span className={`${s.dropHint} txt-small`}>{t('chat.dropZone.limit', { limit: MAX_FILE_SIZE_LABEL })}</span>
           </div>
         </div>
       )}
       <header className={s.header}>
         {sidebarCollapsed && (
-          <button className={s.iconBtn} title="Expand channels" aria-label="Expand channels" onClick={onExpandSidebar}>
+          <button className={s.iconBtn} title={t('chat.header.expandChannels')} aria-label={t('chat.header.expandChannels')} onClick={onExpandSidebar}>
             <SidebarIcon />
           </button>
         )}
@@ -501,8 +508,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               {hasThreads && (
                 <button
                   className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
-                  title="Threads"
-                  aria-label="Threads"
+                  title={t('chat.header.threads')}
+                  aria-label={t('chat.header.threads')}
                   onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
                 >
                   <ThreadsIcon />
@@ -511,8 +518,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               {hasPinnedMessages && (
                 <button
                   className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
-                  title="Pinned messages"
-                  aria-label="Pinned messages"
+                  title={t('chat.header.pinnedMessages')}
+                  aria-label={t('chat.header.pinnedMessages')}
                   onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
                 >
                   <Pin size={14} strokeWidth={1.5} />
@@ -522,8 +529,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           )}
           <button
             className={`${s.iconBtn} ${rightPanelMode === 'members' ? s.active : ''}`}
-            title={isDm ? 'Files & pins' : 'Members'}
-            aria-label={isDm ? 'Files & pins' : 'Members'}
+            title={isDm ? t('chat.header.filesAndPins') : t('chat.header.members')}
+            aria-label={isDm ? t('chat.header.filesAndPins') : t('chat.header.members')}
             onClick={() => onSetRightPanelMode(rightPanelMode === 'members' ? null : 'members')}
           >
             {isDm ? <FilesIcon /> : <MembersIcon />}
@@ -538,13 +545,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               <div className={s.chatEmptyIcon}>{isDm ? '💬' : '👋'}</div>
               <h2 className={`${s.chatEmptyTitle} txt-body txt-semibold`}>
                 {isDm
-                  ? `No messages yet with ${dmConversation?.name ?? dmConversation?.participants[0]?.name ?? 'this user'}`
-                  : `Welcome to #${channel.name}`}
+                  ? t('chat.empty.dmTitle', {
+                      name: dmConversation?.name ?? dmConversation?.participants[0]?.name ?? t('chat.empty.dmFallbackName'),
+                    })
+                  : t('chat.empty.channelTitle', { channel: channel.name })}
               </h2>
               <p className={`${s.chatEmptyText} txt-small`}>
-                {isDm
-                  ? 'Send a message below to start the conversation.'
-                  : 'Be the first to say something — type a message below to get the channel going.'}
+                {isDm ? t('chat.empty.dmBody') : t('chat.empty.channelBody')}
               </p>
             </div>
           ) : null}
@@ -608,7 +615,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           <div className={s.composerWrap}>
             <div className={`${s.composer} ${s.readOnly}`} style={{ padding: '.725rem .625rem' }}>
               <span className="txt-small" style={{ opacity: 0.4, textAlign: 'center', width: '100%' }}>
-                {channel.is_system ? 'This is a system channel' : !canSendMessages ? 'You do not have permission to send messages in this channel' : 'This is a read-only channel'}
+                {channel.is_system
+                  ? t('chat.readOnly.system')
+                  : !canSendMessages
+                    ? t('chat.readOnly.noPermission')
+                    : t('chat.readOnly.generic')}
               </span>
             </div>
           </div>
@@ -623,10 +634,10 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               </span>
               <span className={`${s.typingText} txt-tiny`}>
                 {typingUsers.length === 1
-                  ? <><strong>{typingUsers[0]}</strong> is typing...</>
+                  ? tx('chat.typing.one', { name: <strong>{typingUsers[0]}</strong> })
                   : typingUsers.length === 2
-                  ? <><strong>{typingUsers[0]}</strong> and <strong>{typingUsers[1]}</strong> are typing...</>
-                  : <>Several people are typing...</>
+                  ? tx('chat.typing.two', { a: <strong>{typingUsers[0]}</strong>, b: <strong>{typingUsers[1]}</strong> })
+                  : t('chat.typing.many')
                 }
               </span>
             </div>
@@ -642,7 +653,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
             {mentionQuery !== null && mentionMatches.length > 0 && (
               <div role="listbox" className={s.autocomplete}>
-                <div className={s.autocompleteHeader}>Members</div>
+                <div className={s.autocompleteHeader}>{t('chat.autocomplete.membersHeader')}</div>
                 {mentionMatches.map((u, i) => (
                   <button
                     key={u.id}
@@ -660,7 +671,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
             {emojiQuery !== null && emojiMatches.length > 0 && (
               <div role="listbox" className={s.autocomplete}>
-                <div className={s.autocompleteHeader}>Emoji matching :{emojiQuery}</div>
+                <div className={s.autocompleteHeader}>{t('chat.autocomplete.emojiHeader', { query: emojiQuery })}</div>
                 {emojiMatches.map((entry, i) => (
                   <button
                     key={entry.name}
@@ -703,16 +714,16 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                   style={{ top: fmtBar.top, left: fmtBar.left }}
                   onMouseDown={e => e.preventDefault()}
                 >
-                  <button className={s.fmtBtn} title="Bold (Ctrl+B)" onClick={() => insertFormatting('**', '**')}>
+                  <button className={s.fmtBtn} title={t('chat.composer.fmtBold')} onClick={() => insertFormatting('**', '**')}>
                     <Bold size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Italic (Ctrl+I)" onClick={() => insertFormatting('*', '*')}>
+                  <button className={s.fmtBtn} title={t('chat.composer.fmtItalic')} onClick={() => insertFormatting('*', '*')}>
                     <Italic size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Strikethrough" onClick={() => insertFormatting('~~', '~~')}>
+                  <button className={s.fmtBtn} title={t('chat.composer.fmtStrike')} onClick={() => insertFormatting('~~', '~~')}>
                     <Strikethrough size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Code" onClick={() => insertFormatting('`', '`')}>
+                  <button className={s.fmtBtn} title={t('chat.composer.fmtCode')} onClick={() => insertFormatting('`', '`')}>
                     <Code size={14} strokeWidth={2} />
                   </button>
                 </div>
@@ -721,7 +732,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <button
                   ref={composerEmojiBtnRef}
                   className={s.emojiBtn}
-                  title="Emoji"
+                  title={t('chat.composer.emoji')}
                   onClick={() => {
                     if (!showComposerEmoji && composerEmojiBtnRef.current) {
                       const r = composerEmojiBtnRef.current.getBoundingClientRect()
@@ -766,13 +777,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                         e.target.value = ''
                       }}
                     />
-                    <button className={s.composerBtn} title="Attach file" onClick={() => fileInputRef.current?.click()}>
+                    <button className={s.composerBtn} title={t('chat.composer.attachFile')} onClick={() => fileInputRef.current?.click()}>
                       <AttachIcon />
                     </button>
                     <button
                       ref={gifBtnRef}
                       className={s.composerBtn}
-                      title="GIF"
+                      title={t('chat.composer.gif')}
                       onClick={() => {
                         if (!showGifPicker && gifBtnRef.current) {
                           const r = gifBtnRef.current.getBoundingClientRect()
@@ -799,13 +810,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 {!isDm && (
                   <button
                     className={s.composerBtn}
-                    title="Create poll"
+                    title={t('chat.composer.createPoll')}
                     onClick={() => setPollCreatorOpen(true)}
                   >
                     <PollIcon />
                   </button>
                 )}
-                <button className={s.sendBtn} title="Send (Enter)" onClick={send}>
+                <button className={s.sendBtn} title={t('chat.composer.send')} onClick={send}>
                   <SendIcon />
                 </button>
               </div>
@@ -840,6 +851,7 @@ function ReplyComposerCard({
   isDm: boolean
   onCancel: () => void
 }) {
+  const { t, tx } = useT()
   const { displayContent, decrypting } = useDecryptedContent(
     replyingTo.content,
     replyingTo.nonce,
@@ -847,7 +859,7 @@ function ReplyComposerCard({
     replyingTo.channel_id,
   )
   const previewSource = replyingTo.nonce
-    ? (decrypting ? 'Decrypting…' : (displayContent || 'Encrypted message'))
+    ? (decrypting ? t('message.decrypt.decrypting') : (displayContent || t('message.decrypt.encryptedMessage')))
     : (displayContent || replyingTo.content)
   const preview = previewSource.length > 72 ? previewSource.slice(0, 72) + '…' : previewSource
 
@@ -856,13 +868,13 @@ function ReplyComposerCard({
       <div className={s.replyCardInner}>
         <ReplySmallIcon />
         <span className={`${s.replyCardLabel} txt-tiny`}>
-          Replying to <strong>{replyingTo.author}</strong>
+          {tx('chat.replyCard.replyingTo', { name: <strong>{replyingTo.author}</strong> })}
         </span>
         <span className={`${s.replyCardPreview} txt-tiny`}>
           {preview}
         </span>
       </div>
-      <button className={s.replyCardClose} title="Cancel reply" onClick={onCancel}>
+      <button className={s.replyCardClose} title={t('chat.replyCard.cancel')} onClick={onCancel}>
         <CloseIcon />
       </button>
     </div>

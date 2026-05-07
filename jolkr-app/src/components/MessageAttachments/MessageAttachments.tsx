@@ -4,6 +4,7 @@ import type { Attachment } from '../../api/types'
 import { rewriteStorageUrl } from '../../platform/config'
 import { formatBytes } from '../../utils/format'
 import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
+import { useT } from '../../hooks/useT'
 import ImageLightbox from '../ImageLightbox/ImageLightbox'
 import s from './MessageAttachments.module.css'
 
@@ -70,12 +71,13 @@ export function MessageAttachments({ attachments }: Props) {
 // ── Tile components ───────────────────────────────────────────────────
 
 function ImageTile({ attachment, onOpen }: { attachment: Attachment; onOpen: () => void }) {
+  const { t } = useT()
   const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
   return (
     <button
       className={s.media}
       onClick={onOpen}
-      aria-label={`Open ${attachment.filename}`}
+      aria-label={t('attachments.openImage', { filename: attachment.filename })}
       disabled={!blobUrl}
     >
       {blobUrl ? (

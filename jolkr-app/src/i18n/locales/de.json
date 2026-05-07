@@ -3,7 +3,146 @@
     "ok": "OK", "cancel": "Abbrechen", "save": "Speichern", "delete": "Löschen",
     "edit": "Bearbeiten", "close": "Schließen", "loading": "Lädt…",
     "someone": "Jemand", "required": "*", "goHome": "Zur Startseite",
-    "add": "Hinzufügen", "saveChanges": "Änderungen speichern"
+    "add": "Hinzufügen", "saveChanges": "Änderungen speichern",
+    "loadingDots": "Lädt...", "unknown": "Unbekannt", "send": "Senden (Eingabe)"
+  },
+
+  "time": {
+    "todayAt": "Heute um {time}",
+    "yesterdayAt": "Gestern um {time}",
+    "dateAt": "{date} um {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "Kanäle erweitern",
+      "threads": "Threads", "pinnedMessages": "Angepinnte Nachrichten",
+      "filesAndPins": "Dateien und Pins", "members": "Mitglieder",
+      "alreadyInCall": "Bereits in einem Anruf",
+      "startVoiceCall": "Sprachanruf starten",
+      "startVideoCall": "Videoanruf starten",
+      "videoCall1on1Only": "Videoanrufe sind nur 1-zu-1"
+    },
+    "dropZone": {
+      "drop": "Loslassen zum Anhängen",
+      "limit": "Bis zu {limit} pro Datei",
+      "tooLargeAlert": "Datei zu groß (max {limit}): {names}"
+    },
+    "composer": {
+      "placeholderChannel": "Nachricht an #{channel}",
+      "placeholderDm": "Nachricht an {target}",
+      "emoji": "Emoji", "attachFile": "Datei anhängen",
+      "gif": "GIF", "createPoll": "Umfrage erstellen", "send": "Senden (Eingabe)",
+      "fmtBold": "Fett (Strg+B)", "fmtItalic": "Kursiv (Strg+I)",
+      "fmtStrike": "Durchgestrichen", "fmtCode": "Code"
+    },
+    "autocomplete": {
+      "membersHeader": "Mitglieder",
+      "emojiHeader": "Emoji passend zu :{query}"
+    },
+    "replyCard": {
+      "replyingTo": "Antwort an {name}",
+      "cancel": "Antwort abbrechen"
+    },
+    "empty": {
+      "dmTitle": "Noch keine Nachrichten mit {name}",
+      "dmFallbackName": "diesem Benutzer",
+      "dmBody": "Sende unten eine Nachricht, um die Konversation zu starten.",
+      "channelTitle": "Willkommen in #{channel}",
+      "channelBody": "Sei der Erste, der etwas sagt — tippe unten eine Nachricht, um den Kanal in Gang zu bringen."
+    },
+    "readOnly": {
+      "system": "Dies ist ein Systemkanal",
+      "noPermission": "Du hast keine Berechtigung, in diesem Kanal Nachrichten zu senden",
+      "generic": "Dies ist ein schreibgeschützter Kanal"
+    },
+    "typing": {
+      "one": "{name} schreibt…",
+      "two": "{a} und {b} schreiben…",
+      "many": "Mehrere Personen schreiben…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(bearbeitet)",
+    "unencryptedBadge": "unverschlüsselt",
+    "ariaOpenProfile": "Profil von {name} öffnen",
+    "decrypt": {
+      "decrypting": "Entschlüsseln…", "decryptingShort": "...",
+      "encryptedMessage": "Verschlüsselte Nachricht",
+      "failed": "[Verschlüsselte Nachricht — Schlüssel nicht verfügbar]"
+    },
+    "actions": {
+      "addReaction": "Reaktion hinzufügen", "reply": "Antworten",
+      "edit": "Nachricht bearbeiten", "delete": "Nachricht löschen",
+      "deleteShift": "Nachricht löschen (Umschalt+Klick)", "more": "Weitere Optionen"
+    },
+    "menu": {
+      "reply": "Antworten", "editMessage": "Nachricht bearbeiten",
+      "copyText": "Text kopieren", "pinMessage": "Nachricht anpinnen",
+      "unpinMessage": "Anpinnen aufheben", "startThread": "Thread starten",
+      "openThread": "Thread öffnen", "deleteMessage": "Nachricht löschen",
+      "deleteForMe": "Für mich löschen", "reportMessage": "Nachricht melden"
+    },
+    "editHint": {
+      "escapeTo": "Esc zum", "cancel": "Abbrechen",
+      "enterTo": "Eingabe zum", "save": "Speichern", "separator": "·"
+    },
+    "thread": {
+      "one": "{count} Antwort im Thread",
+      "other": "{count} Antworten im Thread"
+    },
+    "copyFailed": "Kopieren fehlgeschlagen"
+  },
+
+  "reactions": {
+    "count": { "one": "{count} Reaktion", "other": "{count} Reaktionen" },
+    "userFallback": "Benutzer {idShort}"
+  },
+
+  "pinned": {
+    "loading": "Lädt...", "empty": "Keine angepinnten Nachrichten",
+    "decrypting": "Entschlüsseln...", "unknownAuthor": "Unbekannt", "unpin": "Anpinnen aufheben"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "Threads werden geladen...", "empty": "Noch keine Threads",
+      "untitled": "Unbenannter Thread",
+      "replies": { "one": "{count} Antwort", "other": "{count} Antworten" }
+    },
+    "panel": {
+      "back": "Zurück zu Threads", "fallbackTitle": "Thread",
+      "loading": "Lädt...", "empty": "Noch keine Antworten",
+      "replyPlaceholder": "Im Thread antworten", "send": "Senden (Eingabe)",
+      "unknownAuthor": "Unbekannt", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "Umfrage erstellen", "ariaLabel": "Umfrage erstellen",
+      "questionLabel": "Frage",
+      "questionPlaceholder": "Was möchtest du fragen?",
+      "optionsLabel": "Optionen",
+      "optionPlaceholder": "Option {n}",
+      "removeOption": "Option entfernen", "addOption": "Option hinzufügen",
+      "multiVoteLabel": "Mehrere Stimmen erlauben",
+      "multiVoteSub": "Wähler können mehr als eine Option auswählen",
+      "anonymousLabel": "Anonym",
+      "anonymousSub": "Verbergen, wer für was gestimmt hat",
+      "cancel": "Abbrechen", "submit": "Umfrage erstellen",
+      "submitting": "Erstellen…", "errorGeneric": "Umfrage konnte nicht erstellt werden"
+    },
+    "display": {
+      "closed": "Geschlossen",
+      "voteCount": { "one": "{count} Stimme", "other": "{count} Stimmen" },
+      "multipleChoice": "Mehrfachauswahl", "anonymous": "anonym"
+    }
+  },
+
+  "attachments": {
+    "openImage": "{filename} öffnen"
   },
 
   "auth": {
