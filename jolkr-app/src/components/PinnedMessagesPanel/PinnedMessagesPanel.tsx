@@ -62,6 +62,9 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
 
   // Sync messages/loading from the cache when the panel's identity changes —
   // state-during-render avoids set-state-in-effect on the synchronous reset path.
+  // Stale-while-revalidate: a `pinnedVersion` bump invalidates the cache key,
+  // but we keep showing the previous list rather than flashing "Loading..." —
+  // the effect below silently fetches the new state and swaps it in.
   const [prevKey, setPrevKey] = useState(key)
   if (key !== prevKey) {
     setPrevKey(key)
@@ -69,7 +72,8 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
     if (cachedNow !== undefined) {
       setMessages(cachedNow)
       setLoading(false)
-    } else {
+    } else if (messages.length === 0) {
+      // No previous data to show — only then flip the loading flag.
       setLoading(true)
     }
   }
@@ -79,13 +83,8 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
     if (cache.get(k) !== undefined) return // already populated synchronously above
     const fetchPromise = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
     fetchPromise.then(msgs => {
-      // Normalize DM messages: dm_channel_id → channel_id
-      const normalized = msgs.map((m) => ({
-        ...m,
-        channel_id: m.channel_id ?? (m as unknown as { dm_channel_id?: string }).dm_channel_id ?? channelId,
-      }))
-      cache.set(k, normalized)
-      setMessages(normalized)
+      cache.set(k, msgs)
+      setMessages(msgs)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [channelId, isDm, pinnedVersion])

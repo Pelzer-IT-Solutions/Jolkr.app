@@ -604,24 +604,6 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           <div className={s.spacer} />
         </div>
 
-        {typingUsers && typingUsers.length > 0 && (
-          <div className={s.typingIndicator}>
-            <span className={s.typingDots}>
-              <span className={s.dot} />
-              <span className={s.dot} />
-              <span className={s.dot} />
-            </span>
-            <span className={`${s.typingText} txt-tiny`}>
-              {typingUsers.length === 1
-                ? <><strong>{typingUsers[0]}</strong> is typing...</>
-                : typingUsers.length === 2
-                ? <><strong>{typingUsers[0]}</strong> and <strong>{typingUsers[1]}</strong> are typing...</>
-                : <>Several people are typing...</>
-              }
-            </span>
-          </div>
-        )}
-
         {isReadOnly ? (
           <div className={s.composerWrap}>
             <div className={`${s.composer} ${s.readOnly}`} style={{ padding: '.725rem .625rem' }}>
@@ -632,6 +614,23 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           </div>
         ) : (
         <div className={s.composerWrap}>
+          {typingUsers && typingUsers.length > 0 && (
+            <div className={s.typingIndicator}>
+              <span className={s.typingDots}>
+                <span className={s.dot} />
+                <span className={s.dot} />
+                <span className={s.dot} />
+              </span>
+              <span className={`${s.typingText} txt-tiny`}>
+                {typingUsers.length === 1
+                  ? <><strong>{typingUsers[0]}</strong> is typing...</>
+                  : typingUsers.length === 2
+                  ? <><strong>{typingUsers[0]}</strong> and <strong>{typingUsers[1]}</strong> are typing...</>
+                  : <>Several people are typing...</>
+                }
+              </span>
+            </div>
+          )}
           <div className={s.composerStack}>
             {replyingTo && (
               <ReplyComposerCard

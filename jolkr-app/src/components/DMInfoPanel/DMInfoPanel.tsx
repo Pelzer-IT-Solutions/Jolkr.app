@@ -89,29 +89,36 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
 
   // Reset transient state when the panel's identity changes — state-during-render
   // avoids set-state-in-effect on the synchronous setLoading/setFiles calls.
+  // Stale-while-revalidate: when only `pinnedVersion` bumps (pin/unpin event),
+  // keep the previously rendered pin list visible while the silent re-fetch
+  // resolves so the panel doesn't flash a skeleton between identical states.
   const fetchKey = `${open}|${dmId}|${pinnedVersion ?? 0}`
+  const dmKey = `${open}|${dmId}`
   const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
+  const [prevDmKey, setPrevDmKey] = useState(dmKey)
   if (fetchKey !== prevFetchKey) {
     setPrevFetchKey(fetchKey)
+    const dmIdentityChanged = dmKey !== prevDmKey
     if (!open || !dmId || dmId.startsWith('draft:')) {
       setFiles([])
-    } else {
+    } else if (dmIdentityChanged) {
+      // Different DM (or panel just opened) — show skeleton while fetching.
       setLoadingPins(true)
       setLoadingFiles(true)
     }
+    // Else: only pinnedVersion bumped — leave existing data in place; the
+    // effects below will quietly swap it for the fresh payload.
+    if (dmIdentityChanged) setPrevDmKey(dmKey)
   }
 
   // Fetch pinned messages when panel becomes open or dmId changes. Drafts
   // (`draft:…` ids) only exist locally — skip the fetch.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
-    api.getDmPinnedMessages(dmId).then(msgs => {
-      const normalized = msgs.map(m => ({
-        ...m,
-        channel_id: m.channel_id ?? (m as unknown as { dm_channel_id?: string }).dm_channel_id ?? dmId,
-      }))
-      setPinned(normalized)
-    }).catch(() => setPinned([])).finally(() => setLoadingPins(false))
+    api.getDmPinnedMessages(dmId)
+      .then(setPinned)
+      .catch(() => setPinned([]))
+      .finally(() => setLoadingPins(false))
   }, [open, dmId, pinnedVersion])
 
   // Fetch shared files. Re-runs alongside pinnedVersion bumps so newly-uploaded
