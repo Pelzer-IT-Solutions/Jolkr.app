@@ -1,0 +1,27 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "loading": "Cargando…",
+    "someone": "Alguien",
+    "required": "*"
+  },
+
+  "auth": {
+    "login": {
+      "title": "¡Bienvenido de nuevo!",
+      "subtitle": "¡Nos alegra verte otra vez!",
+      "emailLabel": "Correo electrónico",
+      "passwordLabel": "Contraseña",
+      "submit": "Iniciar sesión",
+      "submitting": "Iniciando sesión…",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "needAccount": "¿No tienes una cuenta?",
+      "register": "Registrarse"
+    }
+  }
+}

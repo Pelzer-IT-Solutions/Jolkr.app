@@ -1,0 +1,27 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "loading": "Lädt…",
+    "someone": "Jemand",
+    "required": "*"
+  },
+
+  "auth": {
+    "login": {
+      "title": "Willkommen zurück!",
+      "subtitle": "Wir freuen uns, dich wiederzusehen!",
+      "emailLabel": "E-Mail",
+      "passwordLabel": "Passwort",
+      "submit": "Anmelden",
+      "submitting": "Anmeldung läuft…",
+      "forgotPassword": "Passwort vergessen?",
+      "needAccount": "Noch kein Konto?",
+      "register": "Registrieren"
+    }
+  }
+}

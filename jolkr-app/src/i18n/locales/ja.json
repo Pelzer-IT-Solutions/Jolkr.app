@@ -1,0 +1,27 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "delete": "削除",
+    "edit": "編集",
+    "close": "閉じる",
+    "loading": "読み込み中…",
+    "someone": "誰か",
+    "required": "*"
+  },
+
+  "auth": {
+    "login": {
+      "title": "おかえりなさい！",
+      "subtitle": "またお会いできて嬉しいです！",
+      "emailLabel": "メールアドレス",
+      "passwordLabel": "パスワード",
+      "submit": "ログイン",
+      "submitting": "ログイン中…",
+      "forgotPassword": "パスワードをお忘れですか？",
+      "needAccount": "アカウントをお持ちでないですか？",
+      "register": "登録"
+    }
+  }
+}

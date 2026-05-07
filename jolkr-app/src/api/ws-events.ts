@@ -97,7 +97,7 @@ export type WsEvent =
    * Fanned out to the user themselves PLUS every mutual server/DM member so
    * everyone's local cache stays in sync without polling.
    */
-  | { op: 'UserUpdate'; d: { user_id: string; display_name?: string | null; avatar_url?: string | null; bio?: string | null; status?: string | null; banner_color?: string | null; show_read_receipts?: boolean | null; dm_filter?: DmFilter | null; allow_friend_requests?: boolean | null } }
+  | { op: 'UserUpdate'; d: { user_id: string; display_name?: string | null; avatar_url?: string | null; bio?: string | null; status?: string | null; banner_color?: string | null; show_read_receipts?: boolean | null; dm_filter?: DmFilter | null; allow_friend_requests?: boolean | null; preferred_language?: string | null } }
   | { op: 'EmailVerified'; d: { user_id: string } }
 
   // ── GIF favorites (cross-session sync) ────────────────────────────

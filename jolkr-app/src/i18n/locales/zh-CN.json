@@ -1,0 +1,27 @@
+{
+  "common": {
+    "ok": "确定",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "loading": "加载中…",
+    "someone": "某人",
+    "required": "*"
+  },
+
+  "auth": {
+    "login": {
+      "title": "欢迎回来！",
+      "subtitle": "很高兴再次见到您！",
+      "emailLabel": "电子邮件",
+      "passwordLabel": "密码",
+      "submit": "登录",
+      "submitting": "正在登录…",
+      "forgotPassword": "忘记密码？",
+      "needAccount": "还没有账号？",
+      "register": "注册"
+    }
+  }
+}

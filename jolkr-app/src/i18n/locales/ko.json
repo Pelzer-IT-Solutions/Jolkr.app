@@ -1,0 +1,27 @@
+{
+  "common": {
+    "ok": "확인",
+    "cancel": "취소",
+    "save": "저장",
+    "delete": "삭제",
+    "edit": "편집",
+    "close": "닫기",
+    "loading": "로딩 중…",
+    "someone": "누군가",
+    "required": "*"
+  },
+
+  "auth": {
+    "login": {
+      "title": "다시 오신 것을 환영합니다!",
+      "subtitle": "다시 만나서 정말 반가워요!",
+      "emailLabel": "이메일",
+      "passwordLabel": "비밀번호",
+      "submit": "로그인",
+      "submitting": "로그인 중…",
+      "forgotPassword": "비밀번호를 잊으셨나요?",
+      "needAccount": "계정이 없으신가요?",
+      "register": "가입하기"
+    }
+  }
+}

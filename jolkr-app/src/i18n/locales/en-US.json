@@ -1,0 +1,27 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading…",
+    "someone": "Someone",
+    "required": "*"
+  },
+
+  "auth": {
+    "login": {
+      "title": "Welcome back!",
+      "subtitle": "We're so excited to see you again!",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Log In",
+      "submitting": "Logging in…",
+      "forgotPassword": "Forgot your password?",
+      "needAccount": "Need an account?",
+      "register": "Register"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "loading": "Chargement…",
+    "someone": "Quelqu'un",
+    "required": "*"
+  },
+
+  "auth": {
+    "login": {
+      "title": "Content de vous revoir !",
+      "subtitle": "Nous sommes ravis de vous revoir !",
+      "emailLabel": "E-mail",
+      "passwordLabel": "Mot de passe",
+      "submit": "Se connecter",
+      "submitting": "Connexion…",
+      "forgotPassword": "Mot de passe oublié ?",
+      "needAccount": "Vous n'avez pas de compte ?",
+      "register": "S'inscrire"
+    }
+  }
+}

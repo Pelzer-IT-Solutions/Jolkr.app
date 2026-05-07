@@ -23,6 +23,9 @@ export interface User {
   dm_filter?: DmFilter | null;
   /** Privacy: whether others can send friend requests to this user. */
   allow_friend_requests?: boolean | null;
+  /** Preferred UI language (BCP-47 lite — e.g. `en-US`, `fr`, `zh-CN`).
+   *  Authoritative for the self-profile only; other surfaces ignore it. */
+  preferred_language?: string | null;
   created_at?: string | null;
 }
 
@@ -51,6 +54,9 @@ export interface UpdateMeBody {
   banner_color?: string;
   dm_filter?: DmFilter;
   allow_friend_requests?: boolean;
+  /** BCP-47 lite — must be one of the 9 supported codes; the backend
+   *  rejects anything else with HTTP 400 ("Unsupported language code"). */
+  preferred_language?: string;
 }
 
 /**
