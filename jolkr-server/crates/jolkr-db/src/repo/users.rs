@@ -96,6 +96,7 @@ impl UserRepo {
         banner_color: Option<&str>,
         dm_filter: Option<&str>,
         allow_friend_requests: Option<bool>,
+        preferred_language: Option<&str>,
     ) -> Result<UserRow, JolkrError> {
         let now = Utc::now();
         let user = sqlx::query_as::<_, UserRow>(
@@ -109,7 +110,8 @@ impl UserRepo {
                 banner_color          = COALESCE($7, banner_color),
                 dm_filter             = COALESCE($8, dm_filter),
                 allow_friend_requests = COALESCE($9, allow_friend_requests),
-                updated_at            = $10
+                preferred_language    = COALESCE($10, preferred_language),
+                updated_at            = $11
             WHERE id = $1
             RETURNING *
             ",
@@ -123,6 +125,7 @@ impl UserRepo {
         .bind(banner_color)
         .bind(dm_filter)
         .bind(allow_friend_requests)
+        .bind(preferred_language)
         .bind(now)
         .fetch_optional(pool)
         .await?

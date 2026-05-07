@@ -36,7 +36,15 @@ pub(crate) struct UpdateMeRequest {
     pub banner_color: Option<String>,
     pub dm_filter: Option<String>,
     pub allow_friend_requests: Option<bool>,
+    pub preferred_language: Option<String>,
 }
+
+/// UI languages currently shipped by the FE. The DB-level CHECK constraint
+/// only validates BCP-47 *shape* — this list pins the *set* so adding a
+/// language is a one-line FE+BE change with no migration required.
+pub(crate) const SUPPORTED_LOCALES: &[&str] = &[
+    "en-US", "en-GB", "fr", "de", "es", "it", "ja", "ko", "zh-CN",
+];
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct SearchQuery {
@@ -107,6 +115,13 @@ pub(crate) async fn update_me(
     if let Some(ref v) = body.avatar_url {
         if v.len() > 512 { return Err(AppError(jolkr_common::JolkrError::Validation("Avatar URL must be 512 characters or less".into()))); }
     }
+    if let Some(ref v) = body.preferred_language {
+        if !SUPPORTED_LOCALES.contains(&v.as_str()) {
+            return Err(AppError(jolkr_common::JolkrError::Validation(
+                "Unsupported language code".into(),
+            )));
+        }
+    }
 
     let mut profile = UserService::update_me(
         &state.pool,
@@ -120,6 +135,7 @@ pub(crate) async fn update_me(
             banner_color: body.banner_color,
             dm_filter: body.dm_filter,
             allow_friend_requests: body.allow_friend_requests,
+            preferred_language: body.preferred_language,
         },
     )
     .await?;
@@ -140,6 +156,7 @@ pub(crate) async fn update_me(
         show_read_receipts: Some(profile.show_read_receipts),
         dm_filter: Some(profile.dm_filter.clone()),
         allow_friend_requests: Some(profile.allow_friend_requests),
+        preferred_language: profile.preferred_language.clone(),
     };
     state.nats.publish_to_user(auth.user_id, &self_event).await;
 
@@ -159,6 +176,7 @@ pub(crate) async fn update_me(
         show_read_receipts: None,
         dm_filter: None,
         allow_friend_requests: None,
+        preferred_language: None,
     };
     match list_mutual_user_ids(&state.pool, auth.user_id).await {
         Ok(mutual_ids) => {

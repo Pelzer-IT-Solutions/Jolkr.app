@@ -40,6 +40,10 @@ pub struct UserProfile {
     /// Account creation timestamp. Public — drives the "joined" date in
     /// profile cards. Discord exposes the same; not privacy-sensitive.
     pub created_at: DateTime<Utc>,
+    /// Preferred UI language (BCP-47 lite). Public so peer surfaces *could*
+    /// adapt — but in practice consumers use it only for the self-profile
+    /// to drive the FE locale store.
+    pub preferred_language: Option<String>,
 }
 
 impl From<UserRow> for UserProfile {
@@ -59,6 +63,7 @@ impl From<UserRow> for UserProfile {
             dm_filter: row.dm_filter,
             allow_friend_requests: row.allow_friend_requests,
             created_at: row.created_at,
+            preferred_language: row.preferred_language,
         }
     }
 }
@@ -98,6 +103,9 @@ pub struct MeProfile {
     pub allow_friend_requests: bool,
     /// Account creation timestamp.
     pub created_at: DateTime<Utc>,
+    /// Preferred UI language (BCP-47 lite) — drives the FE locale store on
+    /// boot and is mirrored into all the user's sessions via WS UserUpdate.
+    pub preferred_language: Option<String>,
 }
 
 impl From<UserRow> for MeProfile {
@@ -118,6 +126,7 @@ impl From<UserRow> for MeProfile {
             dm_filter: row.dm_filter,
             allow_friend_requests: row.allow_friend_requests,
             created_at: row.created_at,
+            preferred_language: row.preferred_language,
         }
     }
 }
@@ -141,6 +150,9 @@ pub struct UpdateProfileRequest {
     pub dm_filter: Option<String>,
     /// Privacy: whether others can send friend requests to this user.
     pub allow_friend_requests: Option<bool>,
+    /// Preferred UI language (BCP-47 lite). Whitelist enforcement happens
+    /// at the API layer before this struct is built; the service trusts it.
+    pub preferred_language: Option<String>,
 }
 
 /// Domain service for `user` operations.
@@ -209,6 +221,7 @@ impl UserService {
             req.banner_color.as_deref(),
             req.dm_filter.as_deref(),
             req.allow_friend_requests,
+            req.preferred_language.as_deref(),
         )
         .await?;
         Ok(UserProfile::from(row))
