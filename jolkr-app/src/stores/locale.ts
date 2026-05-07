@@ -64,8 +64,15 @@ export const useLocaleStore = create<LocaleState>((set, get) => ({
 
   setLocale: async (code) => {
     if (!SUPPORTED_LOCALES.includes(code)) return;
-    if (get().code === code) return;
+    // Always resolve through the loader (cached after first hit) so the
+    // boot path — where `code` is restored from localStorage but `dict`
+    // is still the eager-loaded en-US fallback — actually swaps the dict.
+    // The earlier `if (get().code === code) return` short-circuited that
+    // boot dict-load, leaving the UI on English even when the user had
+    // already chosen a different language.
     const dict = await loadLocale(code);
+    const state = get();
+    if (state.code === code && state.dict === dict) return;
     set({ code, dict });
     try { localStorage.setItem(STORAGE_KEYS.LOCALE, code); } catch { /* best-effort */ }
   },
