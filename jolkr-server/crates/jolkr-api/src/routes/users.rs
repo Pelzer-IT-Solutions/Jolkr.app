@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use jolkr_core::UserService;
 use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
-use jolkr_core::services::user::{UpdateProfileRequest, UserProfile};
+use jolkr_core::services::user::{MeProfile, UpdateProfileRequest, UserProfile};
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
@@ -18,6 +18,12 @@ use crate::routes::AppState;
 #[derive(Debug, Serialize)]
 pub(crate) struct UserResponse {
     pub user: UserProfile,
+}
+
+/// Response for `/users/@me` — adds `email` on top of the public profile.
+#[derive(Debug, Serialize)]
+pub(crate) struct MeResponse {
+    pub user: MeProfile,
 }
 
 #[derive(Debug, Deserialize)]
@@ -61,14 +67,25 @@ async fn presign_avatar(state: &AppState, profile: &mut UserProfile) {
     }
 }
 
+/// Re-presign avatar_url for the self-profile shape.
+async fn presign_avatar_me(state: &AppState, profile: &mut MeProfile) {
+    if let Some(ref avatar) = profile.avatar_url {
+        if !avatar.starts_with("http") {
+            if let Ok(url) = state.storage.presign_get(avatar, PRESIGN_EXPIRY_SECS).await {
+                profile.avatar_url = Some(url);
+            }
+        }
+    }
+}
+
 /// GET /api/users/@me
 pub(crate) async fn get_me(
     State(state): State<AppState>,
     auth: AuthUser,
-) -> Result<Json<UserResponse>, AppError> {
-    let mut profile = UserService::get_profile(&state.pool, auth.user_id).await?;
-    presign_avatar(&state, &mut profile).await;
-    Ok(Json(UserResponse { user: profile }))
+) -> Result<Json<MeResponse>, AppError> {
+    let mut profile = UserService::get_me(&state.pool, auth.user_id).await?;
+    presign_avatar_me(&state, &mut profile).await;
+    Ok(Json(MeResponse { user: profile }))
 }
 
 /// PATCH /api/users/@me
@@ -76,7 +93,7 @@ pub(crate) async fn update_me(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<UpdateMeRequest>,
-) -> Result<Json<UserResponse>, AppError> {
+) -> Result<Json<MeResponse>, AppError> {
     // Input length validation to prevent DB DoS
     if let Some(ref v) = body.display_name {
         if v.len() > 64 { return Err(AppError(jolkr_common::JolkrError::Validation("Display name must be 64 characters or less".into()))); }
@@ -91,7 +108,7 @@ pub(crate) async fn update_me(
         if v.len() > 512 { return Err(AppError(jolkr_common::JolkrError::Validation("Avatar URL must be 512 characters or less".into()))); }
     }
 
-    let mut profile = UserService::update_profile(
+    let mut profile = UserService::update_me(
         &state.pool,
         auth.user_id,
         UpdateProfileRequest {
@@ -107,7 +124,7 @@ pub(crate) async fn update_me(
     )
     .await?;
 
-    presign_avatar(&state, &mut profile).await;
+    presign_avatar_me(&state, &mut profile).await;
 
     // Broadcast profile update to all sessions of this user.
     // Self-only privacy preferences (show_read_receipts, dm_filter,
@@ -152,7 +169,7 @@ pub(crate) async fn update_me(
         Err(e) => tracing::warn!("Failed to fan out UserUpdate to mutuals: {e}"),
     }
 
-    Ok(Json(UserResponse { user: profile }))
+    Ok(Json(MeResponse { user: profile }))
 }
 
 /// Collect every distinct user_id who shares either a server membership or a
