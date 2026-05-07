@@ -8,9 +8,11 @@ import { deriveE2EESeed } from '../crypto/e2ee';
 import { initE2EE } from '../services/e2ee';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import { useT } from '../hooks/useT';
 
 export default function Login() {
   useEffect(resetAuthTheme, []);
+  const { t } = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const login = useAuthStore((s) => s.login);
@@ -70,14 +72,14 @@ export default function Login() {
         <div style={styles.iconWrap}>
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" style={{ width: 32, height: 32 }} />
         </div>
-        <h1 style={styles.title}>Welcome back!</h1>
-        <p style={styles.subtitle}>We're so excited to see you again!</p>
+        <h1 style={styles.title}>{t('auth.login.title')}</h1>
+        <p style={styles.subtitle}>{t('auth.login.subtitle')}</p>
 
         {error && <div role="alert" id="auth-error" style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={styles.label}>
-            <span style={styles.labelText}>Email <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
+            <span style={styles.labelText}>{t('auth.login.emailLabel')} <span style={{ color: 'var(--text-shout, #f85149)' }}>{t('common.required')}</span></span>
             <input
               type="email"
               name="email"
@@ -93,7 +95,7 @@ export default function Login() {
             />
           </label>
           <label style={styles.label}>
-            <span style={styles.labelText}>Password <span style={{ color: 'var(--text-shout, #f85149)' }}>*</span></span>
+            <span style={styles.labelText}>{t('auth.login.passwordLabel')} <span style={{ color: 'var(--text-shout, #f85149)' }}>{t('common.required')}</span></span>
             <input
               type="password"
               name="password"
@@ -105,16 +107,16 @@ export default function Login() {
               aria-describedby={error ? 'auth-error' : undefined}
               style={styles.input}
             />
-            <Link to="/forgot-password" style={styles.link}>Forgot your password?</Link>
+            <Link to="/forgot-password" style={styles.link}>{t('auth.login.forgotPassword')}</Link>
           </label>
           <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? 'Logging in...' : 'Log In'}
+            {loading ? t('auth.login.submitting') : t('auth.login.submit')}
           </button>
         </form>
 
         <p style={styles.footer}>
-          Need an account?{' '}
-          <Link to="/register" style={styles.link}>Register</Link>
+          {t('auth.login.needAccount')}{' '}
+          <Link to="/register" style={styles.link}>{t('auth.login.register')}</Link>
         </p>
       </div>
     </div>

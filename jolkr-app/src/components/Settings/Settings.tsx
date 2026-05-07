@@ -8,8 +8,11 @@ import type { DmFilter } from '../../api/types'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import { Select } from '../ui/Select'
 import { useAuthStore } from '../../stores/auth'
+import { useLocaleStore } from '../../stores/locale'
 import { useToast } from '../../stores/toast'
 import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
+import * as api from '../../api/client'
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type LocaleCode } from '../../i18n/types'
 import { ensureNotificationPermission } from '../../services/notifications'
 import { STORAGE_KEYS } from '../../utils/storageKeys'
 import {
@@ -742,15 +745,38 @@ function KeybindsSection() {
 /* ─────────────────────────────────────────
    SECTION: Language
 ───────────────────────────────────────── */
-const LANGUAGES = ['English (US)', 'English (UK)', 'Français', 'Deutsch', 'Español', 'Italiano', '日本語', '한국어', '中文 (简体)']
 function LanguageSection() {
-  const [lang, setLang] = useState('English (US)')
+  const code = useLocaleStore(s => s.code)
+  const setLocale = useLocaleStore(s => s.setLocale)
+  const showToast = useToast(s => s.show)
+
+  // Optimistic switch — flip the FE locale immediately, then PATCH /users/@me
+  // so it syncs across devices via the WS UserUpdate fan-out. PATCH errors
+  // surface as a toast but the local choice stays (per design — "rollback
+  // would feel broken"); the next successful save reconciles.
+  const handleChange = async (next: LocaleCode) => {
+    if (next === code) return
+    await setLocale(next)
+    try {
+      await api.updateMe({ preferred_language: next })
+    } catch (e) {
+      console.warn('Failed to persist preferred_language:', e)
+      showToast('Failed to save language preference', 'error')
+    }
+  }
+
   return (
     <div className={s.section}>
       <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Language</h2>
       <SettingBlock title="Display Language" description="Choose the language used throughout the app.">
-        <Select className={s.selectMaxWidth} value={lang} onChange={e => setLang(e.target.value)}>
-          {LANGUAGES.map(l => <option key={l}>{l}</option>)}
+        <Select
+          className={s.selectMaxWidth}
+          value={code}
+          onChange={e => handleChange(e.target.value as LocaleCode)}
+        >
+          {SUPPORTED_LOCALES.map(c => (
+            <option key={c} value={c}>{LOCALE_LABELS[c]}</option>
+          ))}
         </Select>
       </SettingBlock>
     </div>

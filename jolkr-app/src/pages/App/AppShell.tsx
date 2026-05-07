@@ -6,6 +6,7 @@ import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
 import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
 import { useToast } from '../../stores/toast'
+import { useLocaleStore } from '../../stores/locale'
 import { buildInviteUrl } from '../../platform/config'
 import { orbsForHue } from '../../utils/theme'
 import * as api from '../../api/client'
@@ -42,6 +43,15 @@ export default function AppShell() {
   const init = useAppInit()
   const memos = useAppMemos(init)
   const handlers = useAppHandlers(init, memos)
+
+  // Mirror the active locale onto <html lang="..."> for screen readers,
+  // Intl.Segmenter, browser hyphenation, and any CSS that targets `:lang(…)`.
+  // Subscribe via a selector so we re-run only on locale switches, not on
+  // every store mutation.
+  const localeCode = useLocaleStore(s => s.code)
+  useEffect(() => {
+    document.documentElement.lang = localeCode
+  }, [localeCode])
 
   // ── Destructure init ──
   const {
