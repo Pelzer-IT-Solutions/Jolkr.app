@@ -3,11 +3,27 @@ import type { Server, Channel, ChannelKind, Member, Role, Category, ServerEmoji 
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
+import { useUsersStore } from './users';
+
+/** Push embedded user objects from a member list into the global users cache
+ *  so non-server surfaces (typing indicator, profile cards in DMs) can resolve
+ *  display names by `user_id` without re-fetching. */
+function indexMemberUsers(members: Member[]): void {
+  const users = members.map((m) => m.user).filter((u): u is NonNullable<Member['user']> => Boolean(u));
+  if (users.length) useUsersStore.getState().upsertUsers(users);
+}
 
 interface ServersState {
   servers: Server[];
   channels: Record<string, Channel[]>;
   members: Record<string, Member[]>;
+  /**
+   * Members visible to the active channel (post role + overwrite filtering).
+   * Keyed by channel id. Populated via `fetchChannelMembers`. The server-wide
+   * `members` map stays the source of truth for moderator views and lookups
+   * across panels — this map only gates the in-channel member panel.
+   */
+  channelMembers: Record<string, Member[]>;
   categories: Record<string, Category[]>;
   roles: Record<string, Role[]>;
   permissions: Record<string, number>;
@@ -17,13 +33,14 @@ interface ServersState {
   fetchServers: () => Promise<void>;
   fetchChannels: (serverId: string) => Promise<void>;
   fetchMembers: (serverId: string) => Promise<void>;
+  fetchChannelMembers: (channelId: string) => Promise<void>;
   fetchCategories: (serverId: string) => Promise<void>;
   fetchRoles: (serverId: string) => Promise<void>;
   fetchPermissions: (serverId: string) => Promise<void>;
   fetchChannelPermissions: (channelId: string) => Promise<void>;
   fetchMembersWithRoles: (serverId: string) => Promise<void>;
   createServer: (name: string, description?: string) => Promise<Server>;
-  createChannel: (serverId: string, name: string, kind: ChannelKind, topic?: string, categoryId?: string) => Promise<Channel>;
+  createChannel: (serverId: string, name: string, kind: ChannelKind, categoryId?: string) => Promise<Channel>;
   updateServer: (id: string, body: { name?: string; description?: string; icon_url?: string }) => Promise<Server>;
   updateChannel: (id: string, serverId: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) => Promise<Channel>;
   deleteServer: (id: string) => Promise<void>;
@@ -53,11 +70,16 @@ function removeServerState(serverId: string, state: ServersState) {
   const { [serverId]: _perm, ...restPermissions } = state.permissions;
   const { [serverId]: _emo, ...restEmojis } = state.emojis;
   const chPerms = { ...state.channelPermissions };
-  for (const cid of channelIds) delete chPerms[cid];
+  const chMembers = { ...state.channelMembers };
+  for (const cid of channelIds) {
+    delete chPerms[cid];
+    delete chMembers[cid];
+  }
   return {
     servers: state.servers.filter((s) => s.id !== serverId),
     channels: restChannels,
     members: restMembers,
+    channelMembers: chMembers,
     categories: restCategories,
     roles: restRoles,
     permissions: restPermissions,
@@ -70,6 +92,7 @@ export const useServersStore = create<ServersState>((set, get) => ({
   servers: [],
   channels: {},
   members: {},
+  channelMembers: {},
   categories: {},
   roles: {},
   permissions: {},
@@ -106,8 +129,22 @@ export const useServersStore = create<ServersState>((set, get) => ({
       // Use enriched endpoint — includes full User objects with avatar_url
       const members = await api.getMembersWithRoles(serverId);
       set({ members: { ...get().members, [serverId]: members } });
+      indexMemberUsers(members);
     } catch (e) {
       console.warn('Failed to fetch members:', e);
+    }
+  },
+
+  fetchChannelMembers: async (channelId) => {
+    try {
+      // No skip-if-cached: a role/overwrite mutation must always be able to
+      // refresh the visible audience; cache invalidation is by intent here.
+      const members = await api.getChannelMembers(channelId);
+      set({ channelMembers: { ...get().channelMembers, [channelId]: members } });
+      // Endpoint returns lightweight rows (no embedded `user`), so nothing
+      // to push into the global users cache from here.
+    } catch (e) {
+      console.warn('Failed to fetch channel members:', e);
     }
   },
 
@@ -139,6 +176,7 @@ export const useServersStore = create<ServersState>((set, get) => ({
     try {
       const members = await api.getMembersWithRoles(serverId);
       set({ members: { ...get().members, [serverId]: members } });
+      indexMemberUsers(members);
     } catch (e) {
       console.warn('Failed to fetch members with roles:', e);
     }
@@ -150,8 +188,8 @@ export const useServersStore = create<ServersState>((set, get) => ({
     return server;
   },
 
-  createChannel: async (serverId, name, kind, topic, categoryId) => {
-    const channel = await api.createChannel(serverId, { name, kind, topic, category_id: categoryId });
+  createChannel: async (serverId, name, kind, categoryId) => {
+    const channel = await api.createChannel(serverId, { name, kind, category_id: categoryId });
     const current = get().channels[serverId] ?? [];
     if (!current.some((c) => c.id === channel.id)) {
       set({ channels: { ...get().channels, [serverId]: [...current, channel] } });
@@ -273,7 +311,7 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   reset: () => {
-    set({ servers: [], channels: {}, members: {}, categories: {}, roles: {}, permissions: {}, channelPermissions: {}, emojis: {}, loading: false });
+    set({ servers: [], channels: {}, members: {}, channelMembers: {}, categories: {}, roles: {}, permissions: {}, channelPermissions: {}, emojis: {}, loading: false });
   },
 
   fetchEmojis: async (serverId) => {
@@ -371,8 +409,17 @@ wsClient.on((event) => {
       if (!server_id || !user_id) break;
       if (!store.servers.some((s) => s.id === server_id)) break;
       const current = store.members[server_id] ?? [];
+      // Drop the leaver from the per-channel rosters too — channelMembers is
+      // a strict subset of `members` so the same filter applies.
+      const channelIds = (store.channels[server_id] ?? []).map((c) => c.id);
+      const nextChannelMembers = { ...store.channelMembers };
+      for (const cid of channelIds) {
+        const list = nextChannelMembers[cid];
+        if (list) nextChannelMembers[cid] = list.filter((m) => m.user_id !== user_id);
+      }
       useServersStore.setState({
         members: { ...store.members, [server_id]: current.filter((m) => m.user_id !== user_id) },
+        channelMembers: nextChannelMembers,
       });
       break;
     }

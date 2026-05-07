@@ -25,7 +25,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const { isDark, pref: colorPref, setPreference: setColorPref } = useColorMode()
 
   const {
-    user, servers, channelsByServer, membersByServer, categoriesByServer,
+    user, servers, channelsByServer, membersByServer, channelMembersByChannel, categoriesByServer,
     storeMessages, presences, unreadCounts, serverPermissions,
     dmList, dmUsers, activeServerId, activeChannelId, dmActive, activeDmId,
     tabbedIds, serverThemes, channelPermissions,
@@ -97,11 +97,27 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
       const chs = channelsByServer[srv.id] ?? []
       const cats = categoriesByServer[srv.id] ?? []
       const mems = membersByServer[srv.id] ?? []
+      // Hide categories whose channels are all gated away by role/overwrite —
+      // empty folders just look broken in the sidebar. Channels are already
+      // filtered server-side via VIEW_CHANNELS, so a category with zero
+      // entries in `chs` is one the caller can't see into.
+      const visibleCats = cats.filter(cat => chs.some(ch => ch.category_id === cat.id))
       const memberGroup = transformMemberGroup(mems, userMap, presenceMap)
       const totalUnread = chs.reduce((sum, ch) => sum + (unreadCounts[ch.id] ?? 0), 0)
-      return transformServer(srv, chs, cats, memberGroup, totalUnread, unreadCounts)
+      return transformServer(srv, chs, visibleCats, memberGroup, totalUnread, unreadCounts)
     })
   }, [servers, channelsByServer, categoriesByServer, membersByServer, userMap, presenceMap, unreadCounts])
+
+  // Channel-aware members: when a server channel is active, prefer the
+  // backend-filtered list (only members with VIEW_CHANNELS on this channel).
+  // Falls back to the server-wide roster while the per-channel fetch is in
+  // flight or for DMs where the concept doesn't apply.
+  const activeChannelMembers = useMemo(() => {
+    if (dmActive || !activeServerId || !activeChannelId) return null
+    const filtered = channelMembersByChannel[activeChannelId]
+    if (!filtered) return null
+    return transformMemberGroup(filtered, userMap, presenceMap)
+  }, [dmActive, activeServerId, activeChannelId, channelMembersByChannel, userMap, presenceMap])
 
   // ── Transform: messages → UI ──
   const effectiveChannelId = dmActive ? activeDmId : activeChannelId
@@ -219,7 +235,7 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
     inviteableServerIds, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
-    mentionableUsers,
+    mentionableUsers, activeChannelMembers,
     viewport, effectiveLeftCollapsed, effectiveRightCollapsed, effectiveRightMode,
   }
 }

@@ -11,6 +11,7 @@ import { wsClient } from '../../api/ws'
 import * as api from '../../api/client'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useCallStore } from '../../stores/call'
+import { useUsersStore } from '../../stores/users'
 
 import type { DmChannel, User, Role } from '../../api/types'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
@@ -28,6 +29,7 @@ export function useAppInit() {
   const servers = useServersStore(s => s.servers)
   const channelsByServer = useServersStore(s => s.channels)
   const membersByServer = useServersStore(s => s.members)
+  const channelMembersByChannel = useServersStore(s => s.channelMembers)
   const categoriesByServer = useServersStore(s => s.categories)
   const storeMessages = useMessagesStore(s => s.messages)
   const threadListVersion = useMessagesStore(s => s.threadListVersion)
@@ -35,7 +37,7 @@ export function useAppInit() {
   const unreadCounts = useUnreadStore(s => s.counts)
   const serverPermissions = useServersStore(s => s.permissions)
   const channelPermissions = useServersStore(s => s.channelPermissions)
-  const { fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions, fetchChannelPermissions } = useServersStore.getState()
+  const { fetchServers, fetchChannels, fetchMembers, fetchChannelMembers, fetchCategories, fetchPermissions, fetchChannelPermissions } = useServersStore.getState()
   const { fetchMessages, sendMessage, sendDmMessage, editMessage, deleteMessage } = useMessagesStore.getState()
 
   // ── DMs ──
@@ -146,6 +148,7 @@ export function useAppInit() {
           const map = new Map<string, User>()
           users.forEach(u => { if (u) map.set(u.id, u) })
           setDmUsers(map)
+          useUsersStore.getState().upsertUsers(users)
         })
         // Fetch presence for DM participants
         api.queryPresence(idArr).then(p => {
@@ -156,11 +159,7 @@ export function useAppInit() {
       const srvs = useServersStore.getState().servers
       const themes: Record<string, ServerTheme> = {}
       srvs.forEach(srv => {
-        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
-          themes[srv.id] = srv.theme as unknown as ServerTheme
-        } else {
-          themes[srv.id] = { hue: null, orbs: [] }
-        }
+        themes[srv.id] = srv.theme ?? { hue: null, orbs: [] }
       })
       setServerThemes(themes)
 
@@ -342,7 +341,12 @@ export function useAppInit() {
     fetchMessages(channelId, dmActive)
 
     // Fetch channel-level permissions (accounts for channel overwrites)
-    if (!dmActive) fetchChannelPermissions(channelId)
+    // and the role-aware member roster so the side panel only lists people
+    // who can actually see this channel.
+    if (!dmActive) {
+      fetchChannelPermissions(channelId)
+      fetchChannelMembers(channelId).catch(console.warn)
+    }
 
     // Mark as read locally
     const prevUnread = useUnreadStore.getState().counts[channelId] ?? 0
@@ -485,14 +489,18 @@ export function useAppInit() {
           const existing = prev.get(user_id)
           if (!existing) return prev
           const next = new Map(prev)
-          next.set(user_id, {
+          const updated = {
             ...existing,
             ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
             ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
             ...(event.d.bio !== undefined && { bio: event.d.bio }),
             ...(event.d.status !== undefined && { status: event.d.status }),
             ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
-          })
+          }
+          next.set(user_id, updated)
+          // Mirror into the global users cache so non-React consumers
+          // (typing indicator, etc.) pick up the rename live.
+          useUsersStore.getState().upsertUser(updated)
           return next
         })
 
@@ -557,25 +565,38 @@ export function useAppInit() {
             break
           }
         }
-        // Drop server + per-channel permission caches so the next read
-        // refetches with the new role data baked in.
+        // Drop server + per-channel permission caches AND the per-channel
+        // visible-member rosters so the next reads refetch with the new role
+        // data baked in.
         const { [serverId]: _serverPerm, ...restServerPerms } = s.permissions
         const channelIds = (s.channels[serverId] ?? []).map(c => c.id)
         const restChanPerms = { ...s.channelPermissions }
-        for (const cid of channelIds) delete restChanPerms[cid]
+        const restChannelMembers = { ...s.channelMembers }
+        for (const cid of channelIds) {
+          delete restChanPerms[cid]
+          delete restChannelMembers[cid]
+        }
         useServersStore.setState({
           roles: { ...s.roles, [serverId]: nextRoles },
           permissions: restServerPerms,
           channelPermissions: restChanPerms,
+          channelMembers: restChannelMembers,
         })
         // Refetch immediately so the gated UI updates without a user action.
         fetchPermissions(serverId).catch(console.warn)
+        // If the active channel belongs to this server, refresh its visible
+        // member list right away so the panel reflects the new role layout.
+        if (activeChannelId && channelIds.includes(activeChannelId)) {
+          fetchChannelMembers(activeChannelId).catch(console.warn)
+        }
         return
       }
 
       // ChannelPermissionUpdate: an overwrite was upserted/deleted. Drop the
       // cached permissions for this channel and refetch so gated UI (composer,
-      // pin button, etc.) reflects the new effective perms.
+      // pin button, etc.) reflects the new effective perms. The visible
+      // members list also depends on overwrites, so refresh that too — when
+      // it's the active channel this keeps the right-hand panel honest.
       if (event.op === 'ChannelPermissionUpdate') {
         const { channel_id } = event.d
         if (!channel_id) return
@@ -583,17 +604,30 @@ export function useAppInit() {
         const { [channel_id]: _drop, ...restChanPerms } = s.channelPermissions
         useServersStore.setState({ channelPermissions: restChanPerms })
         fetchChannelPermissions(channel_id).catch(console.warn)
+        if (channel_id === activeChannelId) {
+          fetchChannelMembers(channel_id).catch(console.warn)
+        }
         return
       }
 
       // MemberUpdate: when role_ids change for the SELF user, refetch server
       // permissions so gated UI updates immediately. The servers store also
       // patches the member's role_ids (see stores/servers.ts subscriber).
+      // Any role_ids change can shift channel visibility, so also drop the
+      // active channel's visible-member cache and refetch — applies to both
+      // self and other-user updates because the right-hand panel reflects
+      // everyone, not just me.
       if (event.op === 'MemberUpdate') {
         const { server_id, user_id, role_ids } = event.d
         const me = useAuthStore.getState().user
         if (server_id && me && user_id === me.id && role_ids !== undefined) {
           fetchPermissions(server_id).catch(console.warn)
+        }
+        if (server_id && role_ids !== undefined && activeChannelId) {
+          const channels = useServersStore.getState().channels[server_id] ?? []
+          if (channels.some(c => c.id === activeChannelId)) {
+            fetchChannelMembers(activeChannelId).catch(console.warn)
+          }
         }
         // Don't return — fall through in case future handlers need this event.
       }
@@ -640,6 +674,7 @@ export function useAppInit() {
               fetched.forEach(u => { if (u) merged.set(u.id, u) })
               return merged
             })
+            useUsersStore.getState().upsertUsers(fetched)
           })
           .catch(console.warn)
         // Also fetch presence so the status dot is correct.
@@ -649,10 +684,14 @@ export function useAppInit() {
         return prevUsers
       })
     })
-    // fetchPermissions / fetchChannelPermissions are module-scoped store actions
-    // (destructured from useServersStore.getState() at module load) so they're
-    // stable references — listing them here is purely for the rule.
-  }, [fetchChannelPermissions, fetchPermissions])
+    // fetch* are module-scoped store actions (destructured from
+    // `useServersStore.getState()` at module load) so they're stable
+    // references — listing them is purely for the lint rule. activeChannelId
+    // is read inside the WS listener via closure: the listener is registered
+    // once at mount and re-reads the latest value through the `activeChannelId`
+    // closure on every event, so capturing it as a dep would just thrash the
+    // listener registration without changing behaviour.
+  }, [fetchChannelPermissions, fetchPermissions, fetchChannelMembers, activeChannelId])
 
   // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
   useEffect(() => {
@@ -660,8 +699,8 @@ export function useAppInit() {
       const next = { ...prev }
       let changed = false
       for (const srv of servers) {
-        if (srv.theme && typeof srv.theme === 'object' && 'orbs' in srv.theme) {
-          const t = srv.theme as unknown as ServerTheme
+        if (srv.theme) {
+          const t = srv.theme
           if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
             next[srv.id] = t
             changed = true
@@ -674,9 +713,9 @@ export function useAppInit() {
 
   return {
     navigate, location,
-    user, servers, channelsByServer, membersByServer, categoriesByServer,
+    user, servers, channelsByServer, membersByServer, channelMembersByChannel, categoriesByServer,
     storeMessages, presences, unreadCounts, serverPermissions, channelPermissions,
-    fetchServers, fetchChannels, fetchMembers, fetchCategories, fetchPermissions, fetchChannelPermissions,
+    fetchServers, fetchChannels, fetchMembers, fetchChannelMembers, fetchCategories, fetchPermissions, fetchChannelPermissions,
     fetchMessages, sendMessage, sendDmMessage, editMessage, deleteMessage,
     dmList, setDmList, dmUsers, setDmUsers,
     tabbedIds, setTabbedIds, activeServerId, setActiveServerId,

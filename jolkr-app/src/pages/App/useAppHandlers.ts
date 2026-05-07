@@ -11,6 +11,7 @@ import { orbsForHue } from '../../utils/theme'
 import { useMessagesStore } from '../../stores/messages'
 import { useVoiceStore } from '../../stores/voice'
 import { useToast } from '../../stores/toast'
+import { useUsersStore } from '../../stores/users'
 import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
 import { logErr } from '../../utils/logErr'
 
@@ -498,6 +499,7 @@ export function useAppHandlers(
         for (const u of resolved) next.set(u.id, u)
         return next
       })
+      useUsersStore.getState().upsertUsers(resolved)
 
       const memberIds = [user.id, ...resolved.map(u => u.id)]
 

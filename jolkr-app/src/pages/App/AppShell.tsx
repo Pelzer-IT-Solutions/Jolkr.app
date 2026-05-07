@@ -82,7 +82,7 @@ export default function AppShell() {
     inviteableServerIds, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
-    mentionableUsers,
+    mentionableUsers, activeChannelMembers,
     viewport, effectiveLeftCollapsed, effectiveRightCollapsed, effectiveRightMode,
   } = memos
 
@@ -433,7 +433,7 @@ export default function AppShell() {
                     />
                   ) : activeServer ? (
                     <MemberPanel
-                      members={activeServer.members}
+                      members={activeChannelMembers ?? activeServer.members}
                       mode={effectiveRightMode}
                       serverId={activeServerId}
                       channelId={activeChannelId}
