@@ -11,27 +11,37 @@
  */
 
 import type {
-  Message, Server, Channel, Member, Category, DmChannel, GifFavorite, Friendship, Thread, Poll, Role, ChannelOverwrite, DmFilter,
+  Message, Server, Channel, Category, DmChannel, GifFavorite, Friendship, Thread, Poll, Role, ChannelOverwrite, DmFilter,
 } from './types';
 
-/** Reactions on the wire have `user_ids` (snake) — see `Reaction` in api/types.ts. */
+/**
+ * Reactions on the wire come without `me` — backend only sends aggregated
+ * counts + `user_ids`. Consumers derive `me` themselves by checking whether
+ * the current user's id is in `user_ids` (see `messages.ts::ReactionUpdate`).
+ */
 interface ReactionPayload {
   emoji: string;
   count: number;
-  me: boolean;
   user_ids: string[];
 }
 
 export type WsEvent =
   // ── Connection lifecycle ──────────────────────────────────────────
-  | { op: 'Ready'; d: { user_id?: string } }
-  | { op: 'HeartbeatAck'; d: Record<string, unknown> }
+  | { op: 'Ready'; d: { user_id: string; session_id: string } }
+  | { op: 'HeartbeatAck'; d: { seq: number } }
   /** Synthetic event emitted by the client after MAX_ATTEMPTS failed reconnects. */
   | { op: 'Disconnected'; d: { reason: string } }
+  /** Server-side error pushed over the gateway (e.g. permission denied on Subscribe). */
+  | { op: 'Error'; d: { message: string } }
 
   // ── Messages ──────────────────────────────────────────────────────
   | { op: 'MessageCreate' | 'MessageUpdate'; d: { message: Message } }
-  | { op: 'MessageDelete'; d: { message_id: string; channel_id?: string; dm_channel_id?: string } }
+  /**
+   * For DM messages, `channel_id` carries the DM channel id (backend converts
+   * via `dm_to_message_info` before fanning out). There is no separate
+   * `dm_channel_id` field on the wire.
+   */
+  | { op: 'MessageDelete'; d: { message_id: string; channel_id: string } }
   | { op: 'ReactionUpdate'; d: { channel_id: string; message_id: string; reactions: ReactionPayload[] } }
   | { op: 'PollUpdate'; d: { channel_id: string; message_id: string; poll: Poll } }
   | { op: 'ThreadCreate' | 'ThreadUpdate'; d: { thread: Thread } }
@@ -43,7 +53,7 @@ export type WsEvent =
   | { op: 'CategoryDelete'; d: { server_id: string; category_id: string } }
   | { op: 'ServerUpdate'; d: { server: Server } }
   | { op: 'ServerDelete'; d: { server_id: string } }
-  | { op: 'MemberJoin'; d: { server_id: string; user_id: string; member?: Member } }
+  | { op: 'MemberJoin'; d: { server_id: string; user_id: string } }
   | { op: 'MemberLeave'; d: { server_id: string; user_id: string } }
   /**
    * Per-field semantics:
@@ -74,7 +84,12 @@ export type WsEvent =
 
   // ── Presence / typing ─────────────────────────────────────────────
   | { op: 'PresenceUpdate'; d: { user_id: string; status: string } }
-  | { op: 'TypingStart'; d: { channel_id: string; user_id: string; username?: string; display_name?: string } }
+  /**
+   * Typing-start ping. Backend only sends ids + a server timestamp; the
+   * display name is resolved client-side via the members/users cache by the
+   * typing store, so we don't pay a DB roundtrip per keystroke.
+   */
+  | { op: 'TypingStart'; d: { channel_id: string; user_id: string; timestamp: number } }
 
   // ── User profile ──────────────────────────────────────────────────
   /**
@@ -83,7 +98,7 @@ export type WsEvent =
    * everyone's local cache stays in sync without polling.
    */
   | { op: 'UserUpdate'; d: { user_id: string; display_name?: string | null; avatar_url?: string | null; bio?: string | null; status?: string | null; banner_color?: string | null; show_read_receipts?: boolean | null; dm_filter?: DmFilter | null; allow_friend_requests?: boolean | null } }
-  | { op: 'EmailVerified'; d: { user_id?: string } }
+  | { op: 'EmailVerified'; d: { user_id: string } }
 
   // ── GIF favorites (cross-session sync) ────────────────────────────
   | { op: 'GifFavoriteUpdate'; d: { added?: GifFavorite | null; removed_gif_id?: string | null } }

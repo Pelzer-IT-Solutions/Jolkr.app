@@ -1,5 +1,5 @@
 import type {
-  User, Server, Channel, Message, Member, Ban,
+  User, MeProfile, Server, ServerThemeData, Channel, Message, Member, Ban,
   DmChannel, Friendship, Invite, TokenPair, Attachment,
   PreKeyBundleResponse, Role, Category, ChannelOverwrite, Thread,
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
@@ -264,26 +264,35 @@ async function request<T>(
 }
 
 // Auth
-export async function register(email: string, username: string, password: string): Promise<TokenPair> {
+
+/** Auth response shape — backend returns the full self-profile so the FE
+ *  can populate its auth store in one round-trip without a follow-up
+ *  `getMe()` call. */
+interface AuthResponse {
+  user: MeProfile;
+  tokens: TokenPair;
+}
+
+export async function register(
+  email: string, username: string, password: string,
+): Promise<AuthResponse> {
   clearLogoutFlag(); // Allow token writes for explicit register
-  const data = await request<{ tokens: TokenPair }>('/auth/register', {
+  const data = await request<AuthResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, username, password }),
   });
-  const tokens = data.tokens ?? (data as unknown as TokenPair);
-  await setTokens(tokens);
-  return tokens;
+  await setTokens(data.tokens);
+  return data;
 }
 
-export async function login(email: string, password: string): Promise<TokenPair> {
+export async function login(email: string, password: string): Promise<AuthResponse> {
   clearLogoutFlag(); // Allow token writes for explicit login
-  const data = await request<{ tokens: TokenPair }>('/auth/login', {
+  const data = await request<AuthResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  const tokens = data.tokens ?? (data as unknown as TokenPair);
-  await setTokens(tokens);
-  return tokens;
+  await setTokens(data.tokens);
+  return data;
 }
 
 export async function resetPassword(email: string, newPassword: string, adminSecret: string): Promise<void> {
@@ -329,13 +338,32 @@ export async function changePassword(currentPassword: string, newPassword: strin
 }
 
 // Users
-export const getMe = () => request<User>('/users/@me', {}, 'user');
+export const getMe = () => request<MeProfile>('/users/@me', {}, 'user');
 export const updateMe = (body: UpdateMeBody) =>
-  request<User>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
+  request<MeProfile>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
 export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
+/**
+ * Fetch multiple user profiles in a single round-trip via the backend batch
+ * endpoint. The backend caps the request at 100 ids; the client mirrors the
+ * cap and chunks larger inputs so callers don't have to think about it.
+ */
 export const getUsersBatch = async (ids: string[]): Promise<User[]> => {
-  const results = await Promise.all(ids.map((id) => getUser(id).catch(() => null)));
-  return results.filter((u): u is User => u !== null);
+  if (ids.length === 0) return [];
+  const BATCH_SIZE = 100;
+  const out: User[] = [];
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const slice = ids.slice(i, i + BATCH_SIZE);
+    try {
+      const users = await request<User[]>('/users/batch', {
+        method: 'POST',
+        body: JSON.stringify({ ids: slice }),
+      }, 'users');
+      out.push(...users);
+    } catch (e) {
+      console.warn('[getUsersBatch] batch fetch failed', e);
+    }
+  }
+  return out;
 };
 export const searchUsers = (q: string) => request<User[]>(`/users/search?q=${encodeURIComponent(q)}`, {}, 'users');
 
@@ -344,7 +372,7 @@ export const getServers = () => request<Server[]>('/servers', {}, 'servers');
 export const createServer = (body: { name: string; description?: string }) =>
   request<Server>('/servers', { method: 'POST', body: JSON.stringify(body) }, 'server');
 export const getServer = (id: string) => request<Server>(`/servers/${id}`, {}, 'server');
-export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean; theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null }) =>
+export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean; theme?: ServerThemeData | null }) =>
   request<Server>(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'server');
 export const deleteServer = (id: string) =>
   request<void>(`/servers/${id}`, { method: 'DELETE' });
@@ -407,15 +435,27 @@ export const removeRole = (serverId: string, roleId: string, userId: string) =>
   request<void>(`/servers/${serverId}/roles/${roleId}/members/${userId}`, { method: 'DELETE' });
 export const getMembersWithRoles = (serverId: string) =>
   request<Member[]>(`/servers/${serverId}/members-with-roles`, {}, 'members');
+/**
+ * Members who can actually see the given channel — backend applies the same
+ * role + overwrite layering as `compute_channel_permissions` and filters out
+ * anyone whose effective permissions don't include `VIEW_CHANNELS`. Used by
+ * the member panel so private channels list only their visible audience.
+ */
+export const getChannelMembers = (channelId: string) =>
+  request<Member[]>(`/channels/${channelId}/members`, {}, 'members');
 export const getMyPermissions = (serverId: string) =>
   request<{ permissions: number }>(`/servers/${serverId}/permissions/@me`);
 
 // Channels
 export const getChannels = (serverId: string) =>
   request<Channel[]>(`/servers/${serverId}/channels/list`, {}, 'channels');
-export const createChannel = (serverId: string, body: { name: string; kind: ChannelKind; topic?: string; category_id?: string }) =>
+export const createChannel = (serverId: string, body: { name: string; kind: ChannelKind; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
 export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
+// TODO(BE): `is_system` is silently dropped by the backend `UpdateChannelRequest`.
+// The "Archive Channel" UI in ChannelSidebar wires through here but currently
+// has no effect server-side. Either add the field to UpdateChannelRequest or
+// remove the FE feature.
 export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
 export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>

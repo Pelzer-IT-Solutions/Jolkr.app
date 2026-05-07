@@ -1,11 +1,16 @@
 /** Who is allowed to start a new DM with the user. */
 export type DmFilter = 'all' | 'friends' | 'none';
 
+/**
+ * Public user profile, returned by `/users/:id`, `/users/search`,
+ * `/users/batch`, and embedded in members / friendships / messages. Privacy-
+ * sensitive fields (`email`) are stripped — only the self-profile
+ * (`MeProfile`) carries them.
+ */
 export interface User {
   id: string;
   username: string;
   display_name?: string | null;
-  email?: string | null;
   avatar_url?: string | null;
   status?: string | null;
   bio?: string | null;
@@ -22,12 +27,22 @@ export interface User {
 }
 
 /**
+ * Self-profile returned by `/users/@me` (GET + PATCH). Adds the
+ * privacy-sensitive `email` on top of the public `User` shape so callers can
+ * distinguish "this is me" from "this is some other user" at the type level.
+ */
+export interface MeProfile extends User {
+  email: string;
+}
+
+/**
  * Body accepted by `PATCH /users/@me`. Mirrors the server `UpdateMeRequest`.
  * Used by both `api.updateMe` and `useAuthStore.updateProfile` so the shape
- * stays in one place.
+ * stays in one place. Username is intentionally NOT included — the backend
+ * route does not accept it; rename has to go through a dedicated flow if it
+ * ever ships.
  */
 export interface UpdateMeBody {
-  username?: string;
   display_name?: string;
   bio?: string;
   avatar_url?: string;
@@ -36,6 +51,16 @@ export interface UpdateMeBody {
   banner_color?: string;
   dm_filter?: DmFilter;
   allow_friend_requests?: boolean;
+}
+
+/**
+ * Theme blob attached to a server. Backend stores it as untyped JSON, so
+ * `theme` arrives as `null` (no theme set) or matches this shape — defined
+ * once here so callers don't repeat the literal anonymous type.
+ */
+export interface ServerThemeData {
+  hue: number | null;
+  orbs: { id: string; x: number; y: number; hue: number; scale?: number }[];
 }
 
 export interface Server {
@@ -47,7 +72,7 @@ export interface Server {
   description?: string | null;
   is_public?: boolean;
   member_count?: number;
-  theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null;
+  theme?: ServerThemeData | null;
   created_at?: string | null;
 }
 
@@ -77,12 +102,18 @@ export interface Reaction {
 
 export interface Message {
   id: string;
+  /**
+   * Carries the channel id for server-channel messages and the DM channel id
+   * for DM messages — backend `dm_to_message_info` unifies the two on both
+   * HTTP and WS, so consumers don't need a separate `dm_channel_id` branch.
+   */
   channel_id: string;
-  /** Backend variant for DM messages — when present, used in place of
-   *  `channel_id` so the message lands in the right DM bucket. */
-  dm_channel_id?: string | null;
   author_id: string;
-  content: string;
+  /**
+   * Plaintext message content. `null` when the message is end-to-end
+   * encrypted — in that case `nonce` is set and the renderer must decrypt.
+   */
+  content: string | null;
   nonce?: string | null;
   created_at: string;
   updated_at?: string | null;
@@ -214,13 +245,25 @@ export interface DmChannel {
   last_message?: DmLastMessage | null;
 }
 
+/**
+ * Lightweight user shape embedded in `Friendship.requester` / `addressee` —
+ * the backend only joins these four fields to power the friends panel
+ * without an extra round-trip. This is intentionally narrower than `User`.
+ */
+export interface FriendshipUser {
+  id: string;
+  username: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
+}
+
 export interface Friendship {
   id: string;
   requester_id: string;
   addressee_id: string;
   status: 'pending' | 'accepted' | 'blocked';
-  requester?: User;
-  addressee?: User;
+  requester?: FriendshipUser;
+  addressee?: FriendshipUser;
 }
 
 export interface Ban {
