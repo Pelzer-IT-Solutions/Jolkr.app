@@ -79,7 +79,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={styles.label}>
-            <span style={styles.labelText}>{t('auth.login.emailLabel')} <span style={{ color: 'var(--text-shout, #f85149)' }}>{t('common.required')}</span></span>
+            <span style={styles.labelText}>{t('auth.shared.emailLabel')} <span style={{ color: 'var(--text-shout, #f85149)' }}>{t('common.required')}</span></span>
             <input
               type="email"
               name="email"
@@ -95,7 +95,7 @@ export default function Login() {
             />
           </label>
           <label style={styles.label}>
-            <span style={styles.labelText}>{t('auth.login.passwordLabel')} <span style={{ color: 'var(--text-shout, #f85149)' }}>{t('common.required')}</span></span>
+            <span style={styles.labelText}>{t('auth.shared.passwordLabel')} <span style={{ color: 'var(--text-shout, #f85149)' }}>{t('common.required')}</span></span>
             <input
               type="password"
               name="password"

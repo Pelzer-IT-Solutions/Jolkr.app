@@ -4,10 +4,12 @@ import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
 import * as api from '../api/client';
 import Button from '../components/ui/Button';
+import { useT } from '../hooks/useT';
 import s from './InviteAccept.module.css';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
 export default function InviteAccept() {
+  const { t } = useT();
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -33,15 +35,15 @@ export default function InviteAccept() {
         navigate(`/servers/${invite.server_id}`, { replace: true });
       })
       .catch((e) => {
-        setError((e as Error).message || 'Invalid or expired invite');
+        setError((e as Error).message || t('inviteAccept.errorGeneric'));
         setJoining(false);
       });
-  }, [code, user, loading, navigate]);
+  }, [code, user, loading, navigate, t]);
 
   if (loading || joining) {
     return (
       <div className={s.page}>
-        <div className={s.message}>Joining server...</div>
+        <div className={s.message}>{t('inviteAccept.joining')}</div>
       </div>
     );
   }
@@ -51,7 +53,7 @@ export default function InviteAccept() {
       <div className={s.errorPage}>
         <div className={s.errorMessage}>{error}</div>
         <Button onClick={() => navigate('/', { replace: true })}>
-          Go Home
+          {t('common.goHome')}
         </Button>
       </div>
     );

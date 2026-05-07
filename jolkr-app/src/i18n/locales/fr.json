@@ -8,20 +8,96 @@
     "close": "Fermer",
     "loading": "Chargement…",
     "someone": "Quelqu'un",
-    "required": "*"
+    "required": "*",
+    "goHome": "Accueil"
   },
 
   "auth": {
+    "shared": {
+      "emailLabel": "E-mail",
+      "passwordLabel": "Mot de passe"
+    },
+
     "login": {
       "title": "Content de vous revoir !",
       "subtitle": "Nous sommes ravis de vous revoir !",
-      "emailLabel": "E-mail",
-      "passwordLabel": "Mot de passe",
       "submit": "Se connecter",
       "submitting": "Connexion…",
       "forgotPassword": "Mot de passe oublié ?",
       "needAccount": "Vous n'avez pas de compte ?",
       "register": "S'inscrire"
+    },
+
+    "register": {
+      "title": "Créer un compte",
+      "subtitle": "Rejoignez Jolkr aujourd'hui",
+      "usernameLabel": "Nom d'utilisateur",
+      "submit": "Continuer",
+      "submitting": "Création…",
+      "haveAccount": "Vous avez déjà un compte ?",
+      "login": "Se connecter"
+    },
+
+    "forgot": {
+      "title": "Mot de passe oublié ?",
+      "subtitle": "Saisissez votre e-mail et nous vous enverrons un lien de réinitialisation.",
+      "emailPlaceholder": "vous@exemple.com",
+      "submit": "Envoyer le lien",
+      "submitting": "Envoi…",
+      "rememberPassword": "Vous vous souvenez de votre mot de passe ?",
+      "login": "Se connecter",
+      "checkEmailTitle": "Vérifiez votre e-mail",
+      "checkEmailBody": "Si un compte existe pour {email}, nous avons envoyé un lien de réinitialisation.",
+      "backToLogin": "Retour à la connexion",
+      "errorGeneric": "Une erreur est survenue"
+    },
+
+    "reset": {
+      "title": "Définir un nouveau mot de passe",
+      "subtitle": "Saisissez votre nouveau mot de passe ci-dessous.",
+      "newPasswordLabel": "Nouveau mot de passe",
+      "newPasswordPlaceholder": "Min. {min} caractères",
+      "newPasswordHint": "{min}+ caractères",
+      "confirmPasswordLabel": "Confirmer le mot de passe",
+      "confirmPasswordPlaceholder": "Répétez votre nouveau mot de passe",
+      "submit": "Réinitialiser",
+      "submitting": "Réinitialisation…",
+      "passwordsMismatch": "Les mots de passe ne correspondent pas",
+      "passwordTooShort": "Le mot de passe doit contenir au moins {min} caractères",
+      "errorGeneric": "Échec de la réinitialisation",
+      "successTitle": "Mot de passe réinitialisé",
+      "successBody": "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+      "goToLogin": "Aller à la connexion"
+    },
+
+    "verify": {
+      "verifyingTitle": "Vérification de votre e-mail…",
+      "verifiedTitle": "E-mail vérifié !",
+      "verifiedBody": "Votre e-mail a été vérifié. Vous pouvez maintenant utiliser Jolkr.",
+      "goToApp": "Aller à Jolkr",
+      "failedTitle": "Échec de la vérification",
+      "failedSubtitle": "Le lien a peut-être expiré. Essayez d'en demander un nouveau.",
+      "requestNewLink": "Demander un nouveau lien",
+      "errorGeneric": "Échec de la vérification",
+      "pendingTitle": "Vérifiez votre e-mail",
+      "pendingBody": "Nous avons envoyé un lien de vérification à {email}. Consultez votre boîte de réception et cliquez sur le lien pour continuer.",
+      "yourEmailFallback": "votre e-mail",
+      "sentMessage": "E-mail de vérification envoyé ! Consultez votre boîte de réception.",
+      "resendBtn": "Renvoyer l'e-mail",
+      "sendingBtn": "Envoi…",
+      "sentBtn": "E-mail envoyé",
+      "signOut": "Se déconnecter",
+      "resendError": "Échec de l'envoi"
     }
+  },
+
+  "notFound": {
+    "title": "Page introuvable",
+    "message": "La page que vous recherchez n'existe pas ou a été déplacée."
+  },
+
+  "inviteAccept": {
+    "joining": "Connexion au serveur…",
+    "errorGeneric": "Invitation invalide ou expirée"
   }
 }

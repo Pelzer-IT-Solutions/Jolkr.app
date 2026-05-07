@@ -8,20 +8,96 @@
     "close": "닫기",
     "loading": "로딩 중…",
     "someone": "누군가",
-    "required": "*"
+    "required": "*",
+    "goHome": "홈으로"
   },
 
   "auth": {
+    "shared": {
+      "emailLabel": "이메일",
+      "passwordLabel": "비밀번호"
+    },
+
     "login": {
       "title": "다시 오신 것을 환영합니다!",
       "subtitle": "다시 만나서 정말 반가워요!",
-      "emailLabel": "이메일",
-      "passwordLabel": "비밀번호",
       "submit": "로그인",
       "submitting": "로그인 중…",
       "forgotPassword": "비밀번호를 잊으셨나요?",
       "needAccount": "계정이 없으신가요?",
       "register": "가입하기"
+    },
+
+    "register": {
+      "title": "계정 만들기",
+      "subtitle": "지금 Jolkr에 가입하세요",
+      "usernameLabel": "사용자 이름",
+      "submit": "계속",
+      "submitting": "생성 중…",
+      "haveAccount": "이미 계정이 있으신가요?",
+      "login": "로그인"
+    },
+
+    "forgot": {
+      "title": "비밀번호를 잊으셨나요?",
+      "subtitle": "이메일을 입력하시면 재설정 링크를 보내드립니다.",
+      "emailPlaceholder": "you@example.com",
+      "submit": "링크 보내기",
+      "submitting": "전송 중…",
+      "rememberPassword": "비밀번호가 기억나셨나요?",
+      "login": "로그인",
+      "checkEmailTitle": "이메일을 확인하세요",
+      "checkEmailBody": "{email}의 계정이 존재하는 경우, 비밀번호 재설정 링크를 보냈습니다.",
+      "backToLogin": "로그인으로 돌아가기",
+      "errorGeneric": "문제가 발생했습니다"
+    },
+
+    "reset": {
+      "title": "새 비밀번호 설정",
+      "subtitle": "아래에 새 비밀번호를 입력하세요.",
+      "newPasswordLabel": "새 비밀번호",
+      "newPasswordPlaceholder": "최소 {min}자",
+      "newPasswordHint": "{min}자 이상",
+      "confirmPasswordLabel": "비밀번호 확인",
+      "confirmPasswordPlaceholder": "새 비밀번호를 다시 입력하세요",
+      "submit": "비밀번호 재설정",
+      "submitting": "재설정 중…",
+      "passwordsMismatch": "비밀번호가 일치하지 않습니다",
+      "passwordTooShort": "비밀번호는 최소 {min}자 이상이어야 합니다",
+      "errorGeneric": "비밀번호 재설정에 실패했습니다",
+      "successTitle": "비밀번호가 재설정되었습니다",
+      "successBody": "이제 새 비밀번호로 로그인할 수 있습니다.",
+      "goToLogin": "로그인으로 이동"
+    },
+
+    "verify": {
+      "verifyingTitle": "이메일을 확인하는 중…",
+      "verifiedTitle": "이메일이 확인되었습니다!",
+      "verifiedBody": "이메일이 확인되었습니다. 이제 Jolkr를 사용할 수 있습니다.",
+      "goToApp": "Jolkr로 이동",
+      "failedTitle": "확인 실패",
+      "failedSubtitle": "링크가 만료되었을 수 있습니다. 새 링크를 요청해 보세요.",
+      "requestNewLink": "새 링크 요청",
+      "errorGeneric": "확인에 실패했습니다",
+      "pendingTitle": "이메일을 확인해 주세요",
+      "pendingBody": "{email}로 확인 링크를 보냈습니다. 받은 편지함을 확인하고 링크를 클릭하여 계속하세요.",
+      "yourEmailFallback": "귀하의 이메일",
+      "sentMessage": "확인 이메일을 보냈습니다! 받은 편지함을 확인하세요.",
+      "resendBtn": "확인 이메일 재전송",
+      "sendingBtn": "전송 중…",
+      "sentBtn": "이메일 전송됨",
+      "signOut": "로그아웃",
+      "resendError": "전송에 실패했습니다"
     }
+  },
+
+  "notFound": {
+    "title": "페이지를 찾을 수 없습니다",
+    "message": "찾으시는 페이지가 존재하지 않거나 이동되었습니다."
+  },
+
+  "inviteAccept": {
+    "joining": "서버에 참여 중…",
+    "errorGeneric": "유효하지 않거나 만료된 초대"
   }
 }

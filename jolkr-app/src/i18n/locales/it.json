@@ -8,20 +8,96 @@
     "close": "Chiudi",
     "loading": "Caricamento…",
     "someone": "Qualcuno",
-    "required": "*"
+    "required": "*",
+    "goHome": "Vai alla home"
   },
 
   "auth": {
+    "shared": {
+      "emailLabel": "Email",
+      "passwordLabel": "Password"
+    },
+
     "login": {
       "title": "Bentornato!",
       "subtitle": "Siamo felici di rivederti!",
-      "emailLabel": "Email",
-      "passwordLabel": "Password",
       "submit": "Accedi",
       "submitting": "Accesso in corso…",
       "forgotPassword": "Password dimenticata?",
       "needAccount": "Non hai un account?",
       "register": "Registrati"
+    },
+
+    "register": {
+      "title": "Crea un account",
+      "subtitle": "Unisciti a Jolkr oggi",
+      "usernameLabel": "Nome utente",
+      "submit": "Continua",
+      "submitting": "Creazione…",
+      "haveAccount": "Hai già un account?",
+      "login": "Accedi"
+    },
+
+    "forgot": {
+      "title": "Password dimenticata?",
+      "subtitle": "Inserisci la tua email e ti invieremo un link per reimpostarla.",
+      "emailPlaceholder": "tu@esempio.com",
+      "submit": "Invia link",
+      "submitting": "Invio…",
+      "rememberPassword": "Ti ricordi la password?",
+      "login": "Accedi",
+      "checkEmailTitle": "Controlla la tua email",
+      "checkEmailBody": "Se esiste un account per {email}, abbiamo inviato un link di reimpostazione.",
+      "backToLogin": "Torna all'accesso",
+      "errorGeneric": "Qualcosa è andato storto"
+    },
+
+    "reset": {
+      "title": "Imposta nuova password",
+      "subtitle": "Inserisci la tua nuova password qui sotto.",
+      "newPasswordLabel": "Nuova password",
+      "newPasswordPlaceholder": "Min. {min} caratteri",
+      "newPasswordHint": "{min}+ caratteri",
+      "confirmPasswordLabel": "Conferma password",
+      "confirmPasswordPlaceholder": "Ripeti la tua nuova password",
+      "submit": "Reimposta password",
+      "submitting": "Reimpostazione…",
+      "passwordsMismatch": "Le password non corrispondono",
+      "passwordTooShort": "La password deve contenere almeno {min} caratteri",
+      "errorGeneric": "Reimpostazione fallita",
+      "successTitle": "Password reimpostata",
+      "successBody": "Ora puoi accedere con la tua nuova password.",
+      "goToLogin": "Vai all'accesso"
+    },
+
+    "verify": {
+      "verifyingTitle": "Verifica della tua email…",
+      "verifiedTitle": "Email verificata!",
+      "verifiedBody": "La tua email è stata verificata. Ora puoi usare Jolkr.",
+      "goToApp": "Vai a Jolkr",
+      "failedTitle": "Verifica fallita",
+      "failedSubtitle": "Il link potrebbe essere scaduto. Prova a richiederne uno nuovo.",
+      "requestNewLink": "Richiedi nuovo link",
+      "errorGeneric": "Verifica fallita",
+      "pendingTitle": "Verifica la tua email",
+      "pendingBody": "Abbiamo inviato un link di verifica a {email}. Controlla la tua casella di posta e clicca sul link per continuare.",
+      "yourEmailFallback": "la tua email",
+      "sentMessage": "Email di verifica inviata! Controlla la tua casella di posta.",
+      "resendBtn": "Reinvia email di verifica",
+      "sendingBtn": "Invio…",
+      "sentBtn": "Email inviata",
+      "signOut": "Disconnetti",
+      "resendError": "Invio fallito"
     }
+  },
+
+  "notFound": {
+    "title": "Pagina non trovata",
+    "message": "La pagina che stai cercando non esiste o è stata spostata."
+  },
+
+  "inviteAccept": {
+    "joining": "Connessione al server…",
+    "errorGeneric": "Invito non valido o scaduto"
   }
 }

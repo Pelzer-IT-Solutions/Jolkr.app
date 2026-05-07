@@ -8,20 +8,96 @@
     "close": "Schließen",
     "loading": "Lädt…",
     "someone": "Jemand",
-    "required": "*"
+    "required": "*",
+    "goHome": "Zur Startseite"
   },
 
   "auth": {
+    "shared": {
+      "emailLabel": "E-Mail",
+      "passwordLabel": "Passwort"
+    },
+
     "login": {
       "title": "Willkommen zurück!",
       "subtitle": "Wir freuen uns, dich wiederzusehen!",
-      "emailLabel": "E-Mail",
-      "passwordLabel": "Passwort",
       "submit": "Anmelden",
       "submitting": "Anmeldung läuft…",
       "forgotPassword": "Passwort vergessen?",
       "needAccount": "Noch kein Konto?",
       "register": "Registrieren"
+    },
+
+    "register": {
+      "title": "Konto erstellen",
+      "subtitle": "Tritt Jolkr noch heute bei",
+      "usernameLabel": "Benutzername",
+      "submit": "Weiter",
+      "submitting": "Erstellung…",
+      "haveAccount": "Hast du bereits ein Konto?",
+      "login": "Anmelden"
+    },
+
+    "forgot": {
+      "title": "Passwort vergessen?",
+      "subtitle": "Gib deine E-Mail ein und wir senden dir einen Link zum Zurücksetzen.",
+      "emailPlaceholder": "du@beispiel.de",
+      "submit": "Link senden",
+      "submitting": "Wird gesendet…",
+      "rememberPassword": "Erinnerst du dich an dein Passwort?",
+      "login": "Anmelden",
+      "checkEmailTitle": "Prüfe deine E-Mails",
+      "checkEmailBody": "Falls ein Konto für {email} existiert, haben wir einen Link zum Zurücksetzen gesendet.",
+      "backToLogin": "Zurück zur Anmeldung",
+      "errorGeneric": "Etwas ist schiefgelaufen"
+    },
+
+    "reset": {
+      "title": "Neues Passwort festlegen",
+      "subtitle": "Gib unten dein neues Passwort ein.",
+      "newPasswordLabel": "Neues Passwort",
+      "newPasswordPlaceholder": "Mind. {min} Zeichen",
+      "newPasswordHint": "{min}+ Zeichen",
+      "confirmPasswordLabel": "Passwort bestätigen",
+      "confirmPasswordPlaceholder": "Wiederhole dein neues Passwort",
+      "submit": "Passwort zurücksetzen",
+      "submitting": "Wird zurückgesetzt…",
+      "passwordsMismatch": "Passwörter stimmen nicht überein",
+      "passwordTooShort": "Passwort muss mindestens {min} Zeichen lang sein",
+      "errorGeneric": "Zurücksetzen fehlgeschlagen",
+      "successTitle": "Passwort erfolgreich zurückgesetzt",
+      "successBody": "Du kannst dich jetzt mit deinem neuen Passwort anmelden.",
+      "goToLogin": "Zur Anmeldung"
+    },
+
+    "verify": {
+      "verifyingTitle": "E-Mail wird überprüft…",
+      "verifiedTitle": "E-Mail bestätigt!",
+      "verifiedBody": "Deine E-Mail wurde bestätigt. Du kannst Jolkr jetzt verwenden.",
+      "goToApp": "Zu Jolkr",
+      "failedTitle": "Bestätigung fehlgeschlagen",
+      "failedSubtitle": "Der Link ist möglicherweise abgelaufen. Fordere einen neuen an.",
+      "requestNewLink": "Neuen Link anfordern",
+      "errorGeneric": "Bestätigung fehlgeschlagen",
+      "pendingTitle": "Bestätige deine E-Mail",
+      "pendingBody": "Wir haben einen Bestätigungslink an {email} gesendet. Prüfe dein Postfach und klicke auf den Link, um fortzufahren.",
+      "yourEmailFallback": "deine E-Mail",
+      "sentMessage": "Bestätigungs-E-Mail gesendet! Prüfe dein Postfach.",
+      "resendBtn": "Bestätigungs-E-Mail erneut senden",
+      "sendingBtn": "Wird gesendet…",
+      "sentBtn": "E-Mail gesendet",
+      "signOut": "Abmelden",
+      "resendError": "Senden fehlgeschlagen"
     }
+  },
+
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "message": "Die gesuchte Seite existiert nicht oder wurde verschoben."
+  },
+
+  "inviteAccept": {
+    "joining": "Server wird beigetreten…",
+    "errorGeneric": "Ungültige oder abgelaufene Einladung"
   }
 }

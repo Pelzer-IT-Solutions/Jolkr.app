@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
 import * as api from '../api/client';
 import { useAuthStore } from '../stores/auth';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
+import { useT } from '../hooks/useT';
 
 const s: Record<string, React.CSSProperties> = {
   page: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-default)' },
@@ -29,6 +30,7 @@ export default function VerifyEmail() {
 }
 
 function ConfirmVerification({ token }: { token: string }) {
+  const { t } = useT();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -42,9 +44,9 @@ function ConfirmVerification({ token }: { token: string }) {
       })
       .catch((e) => {
         setStatus('error');
-        setError((e as Error).message || 'Verification failed');
+        setError((e as Error).message || t('auth.verify.errorGeneric'));
       });
-  }, [token, loadUser]);
+  }, [token, loadUser, t]);
 
   return (
     <div style={s.page}>
@@ -52,27 +54,27 @@ function ConfirmVerification({ token }: { token: string }) {
         {status === 'loading' && (
           <>
             <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>&#8987;</div>
-            <h1 style={s.title}>Verifying your email...</h1>
+            <h1 style={s.title}>{t('auth.verify.verifyingTitle')}</h1>
           </>
         )}
         {status === 'success' && (
           <>
             <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>&#10003;</div>
-            <h1 style={s.title}>Email Verified!</h1>
-            <p style={s.subtitle}>Your email has been verified. You can now use Jolkr.</p>
+            <h1 style={s.title}>{t('auth.verify.verifiedTitle')}</h1>
+            <p style={s.subtitle}>{t('auth.verify.verifiedBody')}</p>
             <button style={s.button} onClick={() => navigate('/')}>
-              Go to Jolkr
+              {t('auth.verify.goToApp')}
             </button>
           </>
         )}
         {status === 'error' && (
           <>
             <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>&#10007;</div>
-            <h1 style={s.title}>Verification Failed</h1>
+            <h1 style={s.title}>{t('auth.verify.failedTitle')}</h1>
             <div style={s.error}>{error}</div>
-            <p style={s.subtitle}>The link may have expired. Try requesting a new one.</p>
+            <p style={s.subtitle}>{t('auth.verify.failedSubtitle')}</p>
             <button style={s.button} onClick={() => navigate('/verify-email')}>
-              Request New Link
+              {t('auth.verify.requestNewLink')}
             </button>
           </>
         )}
@@ -82,6 +84,7 @@ function ConfirmVerification({ token }: { token: string }) {
 }
 
 function PendingVerification() {
+  const { t, tx } = useT();
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +98,7 @@ function PendingVerification() {
       await api.resendVerification();
       setSent(true);
     } catch (e) {
-      setError((e as Error).message || 'Failed to resend');
+      setError((e as Error).message || t('auth.verify.resendError'));
     } finally {
       setLoading(false);
     }
@@ -105,28 +108,27 @@ function PendingVerification() {
     <div style={s.page}>
       <div style={s.card}>
         <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>&#9993;</div>
-        <h1 style={s.title}>Verify your email</h1>
+        <h1 style={s.title}>{t('auth.verify.pendingTitle')}</h1>
         <p style={s.subtitle}>
-          We sent a verification link to{' '}
-          <strong>{user?.email || 'your email'}</strong>.
-          <br />
-          Check your inbox and click the link to continue.
+          {tx('auth.verify.pendingBody', {
+            email: <strong>{user?.email || t('auth.verify.yourEmailFallback')}</strong>,
+          })}
         </p>
 
         {error && <div style={s.error}>{error}</div>}
-        {sent && <div style={s.success}>Verification email sent! Check your inbox.</div>}
+        {sent && <div style={s.success}>{t('auth.verify.sentMessage')}</div>}
 
         <button
           style={s.button}
           onClick={handleResend}
           disabled={loading || sent}
         >
-          {loading ? 'Sending...' : sent ? 'Email Sent' : 'Resend Verification Email'}
+          {loading ? t('auth.verify.sendingBtn') : sent ? t('auth.verify.sentBtn') : t('auth.verify.resendBtn')}
         </button>
 
         <div style={{ marginTop: '1.5rem' }}>
           <button style={s.link} onClick={() => logout()}>
-            Sign out
+            {t('auth.verify.signOut')}
           </button>
         </div>
       </div>

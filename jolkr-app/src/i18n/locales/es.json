@@ -8,20 +8,96 @@
     "close": "Cerrar",
     "loading": "Cargando…",
     "someone": "Alguien",
-    "required": "*"
+    "required": "*",
+    "goHome": "Ir al inicio"
   },
 
   "auth": {
+    "shared": {
+      "emailLabel": "Correo electrónico",
+      "passwordLabel": "Contraseña"
+    },
+
     "login": {
       "title": "¡Bienvenido de nuevo!",
       "subtitle": "¡Nos alegra verte otra vez!",
-      "emailLabel": "Correo electrónico",
-      "passwordLabel": "Contraseña",
       "submit": "Iniciar sesión",
       "submitting": "Iniciando sesión…",
       "forgotPassword": "¿Olvidaste tu contraseña?",
       "needAccount": "¿No tienes una cuenta?",
       "register": "Registrarse"
+    },
+
+    "register": {
+      "title": "Crear una cuenta",
+      "subtitle": "Únete a Jolkr hoy",
+      "usernameLabel": "Nombre de usuario",
+      "submit": "Continuar",
+      "submitting": "Creando…",
+      "haveAccount": "¿Ya tienes una cuenta?",
+      "login": "Iniciar sesión"
+    },
+
+    "forgot": {
+      "title": "¿Olvidaste tu contraseña?",
+      "subtitle": "Introduce tu correo y te enviaremos un enlace para restablecerla.",
+      "emailPlaceholder": "tu@ejemplo.com",
+      "submit": "Enviar enlace",
+      "submitting": "Enviando…",
+      "rememberPassword": "¿Recuerdas tu contraseña?",
+      "login": "Iniciar sesión",
+      "checkEmailTitle": "Revisa tu correo",
+      "checkEmailBody": "Si existe una cuenta para {email}, hemos enviado un enlace de restablecimiento.",
+      "backToLogin": "Volver al inicio de sesión",
+      "errorGeneric": "Algo salió mal"
+    },
+
+    "reset": {
+      "title": "Establecer nueva contraseña",
+      "subtitle": "Introduce tu nueva contraseña a continuación.",
+      "newPasswordLabel": "Nueva contraseña",
+      "newPasswordPlaceholder": "Mín. {min} caracteres",
+      "newPasswordHint": "{min}+ caracteres",
+      "confirmPasswordLabel": "Confirmar contraseña",
+      "confirmPasswordPlaceholder": "Repite tu nueva contraseña",
+      "submit": "Restablecer contraseña",
+      "submitting": "Restableciendo…",
+      "passwordsMismatch": "Las contraseñas no coinciden",
+      "passwordTooShort": "La contraseña debe tener al menos {min} caracteres",
+      "errorGeneric": "Error al restablecer la contraseña",
+      "successTitle": "Contraseña restablecida",
+      "successBody": "Ahora puedes iniciar sesión con tu nueva contraseña.",
+      "goToLogin": "Ir al inicio de sesión"
+    },
+
+    "verify": {
+      "verifyingTitle": "Verificando tu correo…",
+      "verifiedTitle": "¡Correo verificado!",
+      "verifiedBody": "Tu correo ha sido verificado. Ya puedes usar Jolkr.",
+      "goToApp": "Ir a Jolkr",
+      "failedTitle": "Verificación fallida",
+      "failedSubtitle": "El enlace puede haber caducado. Intenta solicitar uno nuevo.",
+      "requestNewLink": "Solicitar nuevo enlace",
+      "errorGeneric": "Error de verificación",
+      "pendingTitle": "Verifica tu correo",
+      "pendingBody": "Hemos enviado un enlace de verificación a {email}. Revisa tu bandeja de entrada y haz clic en el enlace para continuar.",
+      "yourEmailFallback": "tu correo",
+      "sentMessage": "¡Correo de verificación enviado! Revisa tu bandeja de entrada.",
+      "resendBtn": "Reenviar correo de verificación",
+      "sendingBtn": "Enviando…",
+      "sentBtn": "Correo enviado",
+      "signOut": "Cerrar sesión",
+      "resendError": "Error al reenviar"
     }
+  },
+
+  "notFound": {
+    "title": "Página no encontrada",
+    "message": "La página que buscas no existe o ha sido movida."
+  },
+
+  "inviteAccept": {
+    "joining": "Uniéndose al servidor…",
+    "errorGeneric": "Invitación inválida o caducada"
   }
 }

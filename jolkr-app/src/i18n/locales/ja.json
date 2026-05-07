@@ -8,20 +8,96 @@
     "close": "閉じる",
     "loading": "読み込み中…",
     "someone": "誰か",
-    "required": "*"
+    "required": "*",
+    "goHome": "ホームへ"
   },
 
   "auth": {
+    "shared": {
+      "emailLabel": "メールアドレス",
+      "passwordLabel": "パスワード"
+    },
+
     "login": {
       "title": "おかえりなさい！",
       "subtitle": "またお会いできて嬉しいです！",
-      "emailLabel": "メールアドレス",
-      "passwordLabel": "パスワード",
       "submit": "ログイン",
       "submitting": "ログイン中…",
       "forgotPassword": "パスワードをお忘れですか？",
       "needAccount": "アカウントをお持ちでないですか？",
       "register": "登録"
+    },
+
+    "register": {
+      "title": "アカウントを作成",
+      "subtitle": "今すぐ Jolkr に参加しよう",
+      "usernameLabel": "ユーザー名",
+      "submit": "次へ",
+      "submitting": "作成中…",
+      "haveAccount": "すでにアカウントをお持ちですか？",
+      "login": "ログイン"
+    },
+
+    "forgot": {
+      "title": "パスワードをお忘れですか？",
+      "subtitle": "メールアドレスを入力してください。リセットリンクをお送りします。",
+      "emailPlaceholder": "you@example.com",
+      "submit": "リンクを送信",
+      "submitting": "送信中…",
+      "rememberPassword": "パスワードを思い出しましたか？",
+      "login": "ログイン",
+      "checkEmailTitle": "メールをご確認ください",
+      "checkEmailBody": "{email} のアカウントが存在する場合、リセットリンクを送信しました。",
+      "backToLogin": "ログインに戻る",
+      "errorGeneric": "問題が発生しました"
+    },
+
+    "reset": {
+      "title": "新しいパスワードを設定",
+      "subtitle": "新しいパスワードを以下に入力してください。",
+      "newPasswordLabel": "新しいパスワード",
+      "newPasswordPlaceholder": "最低 {min} 文字",
+      "newPasswordHint": "{min} 文字以上",
+      "confirmPasswordLabel": "パスワードの確認",
+      "confirmPasswordPlaceholder": "新しいパスワードを再入力",
+      "submit": "パスワードをリセット",
+      "submitting": "リセット中…",
+      "passwordsMismatch": "パスワードが一致しません",
+      "passwordTooShort": "パスワードは {min} 文字以上である必要があります",
+      "errorGeneric": "パスワードのリセットに失敗しました",
+      "successTitle": "パスワードのリセット完了",
+      "successBody": "新しいパスワードでログインできます。",
+      "goToLogin": "ログインへ"
+    },
+
+    "verify": {
+      "verifyingTitle": "メールを確認中…",
+      "verifiedTitle": "メールが確認されました！",
+      "verifiedBody": "メールアドレスが確認されました。Jolkr をご利用いただけます。",
+      "goToApp": "Jolkr へ",
+      "failedTitle": "確認に失敗しました",
+      "failedSubtitle": "リンクの有効期限が切れている可能性があります。新しいリンクをリクエストしてください。",
+      "requestNewLink": "新しいリンクをリクエスト",
+      "errorGeneric": "確認に失敗しました",
+      "pendingTitle": "メールアドレスを確認してください",
+      "pendingBody": "{email} に確認リンクを送信しました。受信トレイを確認し、リンクをクリックして続行してください。",
+      "yourEmailFallback": "メールアドレス",
+      "sentMessage": "確認メールを送信しました！受信トレイをご確認ください。",
+      "resendBtn": "確認メールを再送信",
+      "sendingBtn": "送信中…",
+      "sentBtn": "メールを送信しました",
+      "signOut": "サインアウト",
+      "resendError": "再送信に失敗しました"
     }
+  },
+
+  "notFound": {
+    "title": "ページが見つかりません",
+    "message": "お探しのページは存在しないか、移動されました。"
+  },
+
+  "inviteAccept": {
+    "joining": "サーバーに参加中…",
+    "errorGeneric": "無効または期限切れの招待"
   }
 }
