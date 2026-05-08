@@ -307,13 +307,15 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
                   value={newOverwriteType}
                   onChange={e => setNewOverwriteType(e.target.value as 'role' | 'member')}
                 >
-                  <option value="role">Role</option>
-                  <option value="member">Member</option>
+                  <option value="role">{t('channelSettings.permissions.typeRole')}</option>
+                  <option value="member">{t('channelSettings.permissions.typeMember')}</option>
                 </select>
               </div>
               <div className={s.field}>
                 <label className={`${s.label} txt-tiny txt-semibold`}>
-                  {newOverwriteType === 'role' ? 'ROLE' : 'MEMBER ID'}
+                  {newOverwriteType === 'role'
+                    ? t('channelSettings.permissions.roleLabel')
+                    : t('channelSettings.permissions.memberIdLabel')}
                 </label>
                 {newOverwriteType === 'role' ? (
                   <select
@@ -321,7 +323,7 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
                     value={newOverwriteTargetId}
                     onChange={e => setNewOverwriteTargetId(e.target.value)}
                   >
-                    <option value="">Select a role...</option>
+                    <option value="">{t('channelSettings.permissions.selectRole')}</option>
                     {roles.map(role => (
                       <option key={role.id} value={role.id}>{role.name}</option>
                     ))}
@@ -332,16 +334,16 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
                     className={s.input}
                     value={newOverwriteTargetId}
                     onChange={e => setNewOverwriteTargetId(e.target.value)}
-                    placeholder="Enter member ID"
+                    placeholder={t('channelSettings.permissions.memberIdPlaceholder')}
                   />
                 )}
               </div>
               <div className={s.addOverwriteActions}>
                 <button className={s.cancelBtn} onClick={() => setShowAddOverwrite(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button className={s.addOverwriteBtn} onClick={handleAddOverwrite}>
-                  Add
+                  {t('common.add')}
                 </button>
               </div>
             </div>

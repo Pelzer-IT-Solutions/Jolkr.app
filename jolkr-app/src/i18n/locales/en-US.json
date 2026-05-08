@@ -14,7 +14,9 @@
     "add": "Add",
     "saveChanges": "Save Changes",
     "unknown": "Unknown",
-    "send": "Send (Enter)"
+    "send": "Send (Enter)",
+    "dismiss": "Dismiss",
+    "expandSidebar": "Expand sidebar"
   },
 
   "time": {
@@ -574,6 +576,34 @@
     "available": "Update {version} available",
     "updateNow": "Update Now",
     "errorGeneric": "Update failed"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Welcome to Jolkr",
+    "welcomeBody": "Join or create a server to get started, or send a direct message."
+  },
+
+  "themePicker": {
+    "title": "Server theme",
+    "scrollToResize": "Scroll to resize",
+    "noneLabel": "None",
+    "modeLight": "Light",
+    "modeAuto": "Auto",
+    "modeDark": "Dark",
+    "presets": {
+      "rose": "Rose",
+      "coral": "Coral",
+      "orange": "Orange",
+      "amber": "Amber",
+      "lime": "Lime",
+      "jolkr": "Jolkr",
+      "emerald": "Emerald",
+      "cyan": "Cyan",
+      "sky": "Sky",
+      "indigo": "Indigo",
+      "purple": "Purple",
+      "fuchsia": "Fuchsia"
+    }
   },
 
   "auth": {

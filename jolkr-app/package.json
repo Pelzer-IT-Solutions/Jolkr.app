@@ -12,7 +12,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "version:bump": "node scripts/bump-version.mjs"
+    "version:bump": "node scripts/bump-version.mjs",
+    "verify:locales": "node scripts/verify-locales.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

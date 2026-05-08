@@ -4,7 +4,8 @@
     "edit": "编辑", "close": "关闭", "loading": "加载中…",
     "someone": "某人", "required": "*", "goHome": "返回主页",
     "add": "添加", "saveChanges": "保存更改",
-    "loadingDots": "加载中...", "unknown": "未知", "send": "发送 (Enter)"
+    "loadingDots": "加载中...", "unknown": "未知", "send": "发送 (Enter)",
+    "dismiss": "关闭", "expandSidebar": "展开侧边栏"
   },
 
   "time": {
@@ -410,6 +411,23 @@
     "available": "更新 {version} 可用",
     "updateNow": "立即更新",
     "errorGeneric": "更新失败"
+  },
+
+  "appShell": {
+    "welcomeTitle": "欢迎来到 Jolkr",
+    "welcomeBody": "加入或创建服务器开始使用，或发送一条私信。"
+  },
+
+  "themePicker": {
+    "title": "服务器主题",
+    "scrollToResize": "滚动以调整大小",
+    "noneLabel": "无",
+    "modeLight": "浅色", "modeAuto": "自动", "modeDark": "深色",
+    "presets": {
+      "rose": "玫瑰", "coral": "珊瑚", "orange": "橙色", "amber": "琥珀",
+      "lime": "青柠", "jolkr": "Jolkr", "emerald": "翡翠", "cyan": "青色",
+      "sky": "天蓝", "indigo": "靛蓝", "purple": "紫色", "fuchsia": "品红"
+    }
   },
 
   "auth": {

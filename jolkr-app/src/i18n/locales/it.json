@@ -4,7 +4,8 @@
     "edit": "Modifica", "close": "Chiudi", "loading": "Caricamento…",
     "someone": "Qualcuno", "required": "*", "goHome": "Vai alla home",
     "add": "Aggiungi", "saveChanges": "Salva modifiche",
-    "loadingDots": "Caricamento...", "unknown": "Sconosciuto", "send": "Invia (Invio)"
+    "loadingDots": "Caricamento...", "unknown": "Sconosciuto", "send": "Invia (Invio)",
+    "dismiss": "Chiudi", "expandSidebar": "Espandi barra laterale"
   },
 
   "time": {
@@ -412,6 +413,23 @@
     "available": "Aggiornamento {version} disponibile",
     "updateNow": "Aggiorna ora",
     "errorGeneric": "Aggiornamento fallito"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Benvenuto su Jolkr",
+    "welcomeBody": "Unisciti a un server o creane uno per iniziare, o invia un messaggio diretto."
+  },
+
+  "themePicker": {
+    "title": "Tema del server",
+    "scrollToResize": "Scorri per ridimensionare",
+    "noneLabel": "Nessuno",
+    "modeLight": "Chiaro", "modeAuto": "Auto", "modeDark": "Scuro",
+    "presets": {
+      "rose": "Rosa", "coral": "Corallo", "orange": "Arancione", "amber": "Ambra",
+      "lime": "Lime", "jolkr": "Jolkr", "emerald": "Smeraldo", "cyan": "Ciano",
+      "sky": "Cielo", "indigo": "Indaco", "purple": "Viola", "fuchsia": "Fucsia"
+    }
   },
 
   "auth": {

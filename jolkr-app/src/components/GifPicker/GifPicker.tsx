@@ -248,7 +248,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
           <Search size={18} className={s.searchIcon} />
           <input
             className={s.searchInput}
-            placeholder="Search Tenor"
+            placeholder={t('gifPicker.searchPlaceholder')}
             value={query}
             onChange={(e) => {
               const val = e.target.value
@@ -327,7 +327,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
                 <img
                   className={s.categoryImg}
                   src={resolveUrl(favGifs[0].preview_url)}
-                  alt="Favorites"
+                  alt={t('gifPicker.favorites')}
                   loading="lazy"
                 />
               ) : (

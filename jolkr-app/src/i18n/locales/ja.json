@@ -4,7 +4,8 @@
     "edit": "編集", "close": "閉じる", "loading": "読み込み中…",
     "someone": "誰か", "required": "*", "goHome": "ホームへ",
     "add": "追加", "saveChanges": "変更を保存",
-    "loadingDots": "読み込み中...", "unknown": "不明", "send": "送信 (Enter)"
+    "loadingDots": "読み込み中...", "unknown": "不明", "send": "送信 (Enter)",
+    "dismiss": "閉じる", "expandSidebar": "サイドバーを展開"
   },
 
   "time": {
@@ -410,6 +411,23 @@
     "available": "アップデート {version} が利用可能",
     "updateNow": "今すぐアップデート",
     "errorGeneric": "アップデート失敗"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Jolkr へようこそ",
+    "welcomeBody": "サーバーに参加または作成して始めましょう、もしくはダイレクトメッセージを送信してください。"
+  },
+
+  "themePicker": {
+    "title": "サーバーテーマ",
+    "scrollToResize": "スクロールでサイズ変更",
+    "noneLabel": "なし",
+    "modeLight": "ライト", "modeAuto": "自動", "modeDark": "ダーク",
+    "presets": {
+      "rose": "ローズ", "coral": "コーラル", "orange": "オレンジ", "amber": "アンバー",
+      "lime": "ライム", "jolkr": "Jolkr", "emerald": "エメラルド", "cyan": "シアン",
+      "sky": "スカイ", "indigo": "インディゴ", "purple": "パープル", "fuchsia": "フューシャ"
+    }
   },
 
   "auth": {

@@ -4,7 +4,8 @@
     "edit": "Bewerken", "close": "Sluiten", "loading": "Laden…",
     "someone": "Iemand", "required": "*", "goHome": "Naar Start",
     "add": "Toevoegen", "saveChanges": "Wijzigingen opslaan",
-    "loadingDots": "Laden...", "unknown": "Onbekend", "send": "Verzenden (Enter)"
+    "loadingDots": "Laden...", "unknown": "Onbekend", "send": "Verzenden (Enter)",
+    "dismiss": "Sluiten", "expandSidebar": "Zijbalk uitvouwen"
   },
 
   "time": {
@@ -413,6 +414,23 @@
     "available": "Update {version} beschikbaar",
     "updateNow": "Nu bijwerken",
     "errorGeneric": "Update mislukt"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Welkom bij Jolkr",
+    "welcomeBody": "Word lid van of maak een server om te beginnen, of stuur een direct bericht."
+  },
+
+  "themePicker": {
+    "title": "Server-thema",
+    "scrollToResize": "Scroll om grootte te wijzigen",
+    "noneLabel": "Geen",
+    "modeLight": "Licht", "modeAuto": "Auto", "modeDark": "Donker",
+    "presets": {
+      "rose": "Roos", "coral": "Koraal", "orange": "Oranje", "amber": "Amber",
+      "lime": "Lime", "jolkr": "Jolkr", "emerald": "Smaragd", "cyan": "Cyaan",
+      "sky": "Sky", "indigo": "Indigo", "purple": "Paars", "fuchsia": "Fuchsia"
+    }
   },
 
   "auth": {

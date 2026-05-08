@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 import { useToast } from '../stores/toast';
+import { useT } from '../hooks/useT';
 import s from './Toast.module.css';
 
 export default function Toast() {
+  const { t } = useT();
   const message = useToast((s) => s.message);
   const kind = useToast((s) => s.kind);
   const duration = useToast((s) => s.duration);
@@ -41,7 +43,7 @@ export default function Toast() {
         {kind === 'error' && <AlertCircle className={s.icon} />}
         {kind === 'info' && <Info className={s.icon} />}
         <span className={s.message}>{message}</span>
-        <button onClick={() => setClosing(true)} className={s.dismiss} aria-label="Dismiss">
+        <button onClick={() => setClosing(true)} className={s.dismiss} aria-label={t('common.dismiss')}>
           <X className={s.dismissIcon} />
         </button>
       </div>

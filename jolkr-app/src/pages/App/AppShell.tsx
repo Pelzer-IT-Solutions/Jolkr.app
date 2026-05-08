@@ -422,15 +422,15 @@ export default function AppShell() {
                         <button
                           type="button"
                           className={s.emptyExpandBtn}
-                          title="Expand sidebar"
+                          title={t('common.expandSidebar')}
                           onClick={handleExpandSidebar}
                         >
                           <PanelLeftOpen size={14} strokeWidth={1.5} />
                         </button>
                       )}
                       <div style={{ fontSize: '3rem' }}>👋</div>
-                      <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
-                      <p className="txt-small">Join or create a server to get started, or send a direct message.</p>
+                      <h2 className="txt-body txt-semibold">{t('appShell.welcomeTitle')}</h2>
+                      <p className="txt-small">{t('appShell.welcomeBody')}</p>
                     </div>
                   ))}
 

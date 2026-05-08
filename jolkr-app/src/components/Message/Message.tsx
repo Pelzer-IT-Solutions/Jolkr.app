@@ -494,8 +494,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                 <button
                   ref={emojiTriggerRef}
                   className={s.dmActionBtn}
-                  title="Add reaction"
-                  aria-label="Add reaction"
+                  title={t('message.actions.addReaction')}
+                  aria-label={t('message.actions.addReaction')}
                   onClick={() => {
                     if (!showEmoji && emojiTriggerRef.current) {
                       const r = emojiTriggerRef.current.getBoundingClientRect()

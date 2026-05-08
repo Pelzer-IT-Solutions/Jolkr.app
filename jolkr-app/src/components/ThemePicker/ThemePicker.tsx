@@ -5,6 +5,7 @@ import type { ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
 import { buildBackground, orbsForHue } from '../../utils/theme'
 import { useMenuPosition } from '../../utils/position'
+import { useT } from '../../hooks/useT'
 import s from './ThemePicker.module.css'
 
 const BASE_ORB_SIZE = 32 // px diameter for all orbs (before scale)
@@ -12,19 +13,19 @@ const MIN_SCALE = 0.5
 const MAX_SCALE = 2.0
 const SCALE_STEP = 0.1
 
-const PRESETS: { hue: number; label: string }[] = [
-  { hue: 350, label: 'Rose' },
-  { hue: 15,  label: 'Coral' },
-  { hue: 35,  label: 'Orange' },
-  { hue: 65,  label: 'Amber' },
-  { hue: 100, label: 'Lime' },
-  { hue: 136, label: 'Jolkr' },
-  { hue: 165, label: 'Emerald' },
-  { hue: 195, label: 'Cyan' },
-  { hue: 220, label: 'Sky' },
-  { hue: 250, label: 'Indigo' },
-  { hue: 280, label: 'Purple' },
-  { hue: 310, label: 'Fuchsia' },
+const PRESETS: { hue: number; labelKey: string }[] = [
+  { hue: 350, labelKey: 'themePicker.presets.rose' },
+  { hue: 15,  labelKey: 'themePicker.presets.coral' },
+  { hue: 35,  labelKey: 'themePicker.presets.orange' },
+  { hue: 65,  labelKey: 'themePicker.presets.amber' },
+  { hue: 100, labelKey: 'themePicker.presets.lime' },
+  { hue: 136, labelKey: 'themePicker.presets.jolkr' },
+  { hue: 165, labelKey: 'themePicker.presets.emerald' },
+  { hue: 195, labelKey: 'themePicker.presets.cyan' },
+  { hue: 220, labelKey: 'themePicker.presets.sky' },
+  { hue: 250, labelKey: 'themePicker.presets.indigo' },
+  { hue: 280, labelKey: 'themePicker.presets.purple' },
+  { hue: 310, labelKey: 'themePicker.presets.fuchsia' },
 ]
 
 interface Props {
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref }: Props) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   // Raw trigger position from the click; clamped to the viewport via
   // useMenuPosition so the picker can't open partially off-screen on small
@@ -213,7 +215,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
       <button
         ref={triggerRef}
         className={s.trigger}
-        title="Server theme"
+        title={t('themePicker.title')}
         onClick={openPicker}
       >
         <SunIcon />
@@ -235,7 +237,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
             {/* Size indicator when orb selected */}
             {selectedOrbId && (
               <div className={s.sizeHint}>
-                Scroll to resize
+                {t('themePicker.scrollToResize')}
               </div>
             )}
 
@@ -303,7 +305,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
           <div className={`${s.presets} scrollbar-none scroll-view-x`}>
             <button
               className={`${s.preset} ${s.presetNone} ${theme.hue === null && theme.orbs.length === 0 ? s.presetActive : ''}`}
-              title="None"
+              title={t('themePicker.noneLabel')}
               onClick={handleNoneClick}
             />
 
@@ -314,7 +316,7 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
                   key={p.hue}
                   className={`${s.preset} ${isActive ? s.presetActive : ''}`}
                   style={{ background: `oklch(72% 0.18 ${p.hue})` }}
-                  title={p.label}
+                  title={t(p.labelKey)}
                   onClick={() => handlePresetClick(p.hue)}
                 />
               )
@@ -325,17 +327,17 @@ export function ThemePicker({ theme, onChange, isDark, colorPref, onSetColorPref
           <div className={s.modeFooter}>
             <div className={s.modeSegment}>
               {([
-                { value: 'light',  label: 'Light',  icon: <SegSunIcon /> },
-                { value: 'system', label: 'Auto',   icon: <SegAutoIcon /> },
-                { value: 'dark',   label: 'Dark',   icon: <SegMoonIcon /> },
-              ] as const).map(({ value, label, icon }) => (
+                { value: 'light',  labelKey: 'themePicker.modeLight', icon: <SegSunIcon /> },
+                { value: 'system', labelKey: 'themePicker.modeAuto',  icon: <SegAutoIcon /> },
+                { value: 'dark',   labelKey: 'themePicker.modeDark',  icon: <SegMoonIcon /> },
+              ] as const).map(({ value, labelKey, icon }) => (
                 <button
                   key={value}
                   className={`${s.modeBtn} ${colorPref === value ? s.modeBtnActive : ''}`}
                   onClick={() => onSetColorPref(value)}
                 >
                   {icon}
-                  <span>{label}</span>
+                  <span>{t(labelKey)}</span>
                 </button>
               ))}
             </div>
