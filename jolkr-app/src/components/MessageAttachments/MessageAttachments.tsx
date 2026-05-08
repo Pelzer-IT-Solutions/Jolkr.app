@@ -8,6 +8,7 @@ import { useT } from '../../hooks/useT'
 import ImageLightbox from '../ImageLightbox/ImageLightbox'
 import NMVideoPlayer from '../NMVideoPlayer/NMVideoPlayer'
 import NMMusicPlayer from '../NMMusicPlayer/NMMusicPlayer'
+import CodeBlockTile from '../CodeBlockTile/CodeBlockTile'
 import s from './MessageAttachments.module.css'
 
 interface Props {
@@ -39,6 +40,21 @@ function isAudio(att: Attachment): boolean {
   // extension. mpegurl is intentionally absent — those are HLS playlists
   // and routed to the video player instead.
   return /\.(mp3|flac|ogg|wav|m4a|aac|opus|wma)(\?.*)?$/i.test(att.filename)
+}
+
+// Filename suffixes whose content is human-readable code/text. Anything
+// matched here is rendered with syntax highlighting (CodeBlockTile)
+// instead of a generic file chip. The list is intentionally narrow —
+// random `text/plain` blobs we didn't recognise still fall through to
+// the file chip so users can download them without us trying to parse.
+const CODE_FILE_RE = /\.(js|mjs|cjs|jsx|ts|tsx|py|rb|php|rs|go|java|kt|swift|c|h|cpp|hpp|cs|lua|sh|bash|zsh|ps1|sql|graphql|gql|css|scss|less|json|yaml|yml|toml|md|markdown|xml|svg|html|htm|vue|svelte|ini|conf|cfg|env|diff|patch|dockerfile|makefile|log|txt)(\?.*)?$/i
+
+function isCode(att: Attachment): boolean {
+  if (CODE_FILE_RE.test(att.filename)) return true
+  // text/* types we trust as code-renderable. Text/html is excluded
+  // server-side (forced to attachment download), so this check only sees
+  // things like text/plain, text/css, text/markdown, etc.
+  return att.content_type.toLowerCase().startsWith('text/')
 }
 
 /** Resolve an attachment URL into something the DOM can consume.
@@ -78,6 +94,9 @@ export function MessageAttachments({ attachments }: Props) {
           }
           if (isAudio(att)) {
             return <AudioTile key={att.id} attachment={att} />
+          }
+          if (isCode(att)) {
+            return <CodeBlockTile key={att.id} attachment={att} src={resolveAttachmentSrc(att.url)} />
           }
           return <FileTile key={att.id} attachment={att} />
         })}

@@ -611,6 +611,13 @@
     "speedNormal": "Normal"
   },
 
+  "codeBlock": {
+    "loading": "Loading…",
+    "expand": "Show more",
+    "collapse": "Show less",
+    "download": "Download"
+  },
+
   "themePicker": {
     "title": "Server theme",
     "scrollToResize": "Scroll to resize",

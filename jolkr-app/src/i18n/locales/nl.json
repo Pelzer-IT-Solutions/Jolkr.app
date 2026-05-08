@@ -442,6 +442,13 @@
     "playbackSpeed": "Afspeelsnelheid", "speedNormal": "Normaal"
   },
 
+  "codeBlock": {
+    "loading": "Laden…",
+    "expand": "Meer tonen",
+    "collapse": "Minder tonen",
+    "download": "Downloaden"
+  },
+
   "themePicker": {
     "title": "Server-thema",
     "scrollToResize": "Scroll om grootte te wijzigen",

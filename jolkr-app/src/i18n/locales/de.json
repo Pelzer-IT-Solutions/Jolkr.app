@@ -441,6 +441,13 @@
     "playbackSpeed": "Wiedergabegeschwindigkeit", "speedNormal": "Normal"
   },
 
+  "codeBlock": {
+    "loading": "Lädt…",
+    "expand": "Mehr anzeigen",
+    "collapse": "Weniger anzeigen",
+    "download": "Herunterladen"
+  },
+
   "themePicker": {
     "title": "Server-Design",
     "scrollToResize": "Scrollen zum Ändern der Größe",

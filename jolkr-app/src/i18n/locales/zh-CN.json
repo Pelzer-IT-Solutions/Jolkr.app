@@ -439,6 +439,13 @@
     "playbackSpeed": "播放速度", "speedNormal": "正常"
   },
 
+  "codeBlock": {
+    "loading": "加载中…",
+    "expand": "显示更多",
+    "collapse": "收起",
+    "download": "下载"
+  },
+
   "themePicker": {
     "title": "服务器主题",
     "scrollToResize": "滚动以调整大小",

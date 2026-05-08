@@ -31,7 +31,10 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
           if (!cancelled) setResolvedTitle(videoInfo.id);
           return;
         }
-        // All platforms: fetch title via our oEmbed proxy
+        // Direct file URLs (mp4/webm/...) and bare HLS streams have no
+        // oEmbed provider — skip the lookup so we don't pepper the proxy
+        // with guaranteed 404s on URLs like content.jwplatform.com/*.m3u8.
+        if (videoInfo.platform === 'direct' || videoInfo.platform === 'hls') return;
         const data = await getOembed(embed.url);
         if (data.title && !cancelled) setResolvedTitle(data.title);
       } catch { /* ignore */ }

@@ -439,6 +439,13 @@
     "playbackSpeed": "재생 속도", "speedNormal": "보통"
   },
 
+  "codeBlock": {
+    "loading": "로딩 중…",
+    "expand": "더 보기",
+    "collapse": "접기",
+    "download": "다운로드"
+  },
+
   "themePicker": {
     "title": "서버 테마",
     "scrollToResize": "스크롤하여 크기 조정",

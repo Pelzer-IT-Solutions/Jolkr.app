@@ -48,6 +48,14 @@ export function useNMMusic({ src, filename }: UseNMMusicConfig): NMMusicResult {
   // also exposes an `isPlaying()` method, but TS can't disambiguate it
   // from the `isPlaying: boolean` property in the same class hierarchy.
   const isPlayingRef = useRef(false);
+  // The PlayerCore engine doesn't load the source URL into its audio
+  // element until `playTrack(item)` is called — `setQueue` alone leaves
+  // the queue prepared but cold, so a bare `play()` before that happens
+  // is a no-op. We hold the queue item here and lazy-call playTrack on
+  // the first toggle so the user-initiated click is what actually starts
+  // playback (no autoplay, no pre-fetch on mount).
+  const trackRef = useRef<BasePlaylistItem | null>(null);
+  const trackStartedRef = useRef(false);
 
   const [state, setState] = useState<NMMusicState>({
     isPlaying: false,
@@ -80,12 +88,15 @@ export function useNMMusic({ src, filename }: UseNMMusicConfig): NMMusicResult {
 
         playerRef.current = player;
 
-        player.setQueue([{
+        const track: BasePlaylistItem = {
           name: filename,
           path: src,
           album_track: [],
           artist_track: [],
-        }]);
+        };
+        trackRef.current = track;
+        trackStartedRef.current = false;
+        player.setQueue([track]);
 
         player.on('play', () => {
           isPlayingRef.current = true;
@@ -140,13 +151,28 @@ export function useNMMusic({ src, filename }: UseNMMusicConfig): NMMusicResult {
     };
   }, [src, filename]);
 
-  const play = useCallback(() => { playerRef.current?.play?.(); }, []);
+  const ensureTrackLoaded = useCallback(() => {
+    if (trackStartedRef.current) return;
+    const p = playerRef.current;
+    const track = trackRef.current;
+    if (!p || !track) return;
+    p.playTrack(track);
+    trackStartedRef.current = true;
+  }, []);
+  const play = useCallback(() => {
+    if (!trackStartedRef.current) ensureTrackLoaded();
+    else playerRef.current?.play?.();
+  }, [ensureTrackLoaded]);
   const pause = useCallback(() => { playerRef.current?.pause?.(); }, []);
   const togglePlay = useCallback(() => {
     const p = playerRef.current;
     if (!p) return;
+    if (!trackStartedRef.current) {
+      ensureTrackLoaded();
+      return;
+    }
     if (isPlayingRef.current) p.pause(); else p.play();
-  }, []);
+  }, [ensureTrackLoaded]);
   const seek = useCallback((time: number) => { playerRef.current?.seek?.(time); }, []);
   const skip = useCallback((delta: number) => {
     const p = playerRef.current;

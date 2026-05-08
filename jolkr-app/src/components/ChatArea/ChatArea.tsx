@@ -38,14 +38,45 @@ const MAX_FILE_SIZE_LABEL = `${MAX_FILE_SIZE_MB} MB`
 // purely a UX choice).
 const MAX_INLINE_TEXT_LENGTH = 5000
 
-// Browsers don't ship a built-in MIME for every video container, so for
-// extensions our server's allowlist accepts (HLS playlists, MKV) we fill
-// in the type from the filename when the File object reports an empty
-// `.type`. Without this, FormData uploads send Content-Type empty and the
-// server's MIME whitelist rejects the file silently.
+// Browsers leave `File.type` empty for extensions they don't recognise
+// (notably .m3u8, .mkv, and most code/source files). We fill it in from
+// the filename so the server stores a useful content-type and our renderer
+// can route the attachment to the right tile (video player, music player,
+// code block, etc). Mappings stay deliberately conservative — anything
+// not listed keeps the browser's empty type and lands in the generic
+// file chip.
 const EXT_TO_MIME: Record<string, string> = {
+  // Streaming + extra video container
   m3u8: 'application/vnd.apple.mpegurl',
   mkv: 'video/x-matroska',
+  // Structured data / config
+  json: 'application/json',
+  xml:  'application/xml',
+  yaml: 'application/yaml',
+  yml:  'application/yaml',
+  toml: 'application/toml',
+  // Code & plain-text — all served as text/plain so the browser doesn't
+  // try to execute them when a chip is opened directly. Display routing
+  // happens FE-side via the filename suffix, not the MIME.
+  js: 'text/plain', mjs: 'text/plain', cjs: 'text/plain',
+  ts: 'text/plain', tsx: 'text/plain', jsx: 'text/plain',
+  py: 'text/plain', rb: 'text/plain', php: 'text/plain',
+  rs: 'text/plain', go: 'text/plain', java: 'text/plain', kt: 'text/plain', swift: 'text/plain',
+  c: 'text/plain', h: 'text/plain', cpp: 'text/plain', hpp: 'text/plain', cs: 'text/plain',
+  lua: 'text/plain', sh: 'text/plain', bash: 'text/plain', zsh: 'text/plain', ps1: 'text/plain',
+  sql: 'text/plain', graphql: 'text/plain', gql: 'text/plain',
+  css: 'text/plain', scss: 'text/plain', less: 'text/plain',
+  md: 'text/plain', markdown: 'text/plain',
+  log: 'text/plain', txt: 'text/plain',
+  ini: 'text/plain', conf: 'text/plain', cfg: 'text/plain', env: 'text/plain',
+  vue: 'text/plain', svelte: 'text/plain',
+  dockerfile: 'text/plain', makefile: 'text/plain',
+  diff: 'text/plain', patch: 'text/plain',
+  // SVG: keep as text so the CodeBlockTile can show source; the server
+  // already forces SVG to download for safety regardless.
+  svg: 'image/svg+xml',
+  // HTML kept text/plain so we render it as code, never as live markup
+  html: 'text/plain', htm: 'text/plain',
 }
 function normalizeFileType(file: File): File {
   if (file.type) return file
@@ -822,7 +853,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*,video/*,.pdf,.txt,.zip,.doc,.docx"
+                      // Intentionally permissive — chat allows any file. Display
+                      // routing happens at render time via MIME / extension
+                      // detection in MessageAttachments (video → NMVideoPlayer,
+                      // audio → NMMusicPlayer, code/text → CodeBlockTile, else
+                      // → file chip).
                       multiple
                       style={{ display: 'none' }}
                       onChange={(e) => {
