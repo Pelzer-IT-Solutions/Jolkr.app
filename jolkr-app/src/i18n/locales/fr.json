@@ -375,7 +375,8 @@
     "createThreadFailed": "Impossible de créer le fil",
     "inviteCopied": "Lien d'invitation copié !",
     "inviteCopyFailed": "Échec de la copie — lien : {url}",
-    "inviteCreateFailed": "Impossible de créer l'invitation"
+    "inviteCreateFailed": "Impossible de créer l'invitation",
+    "uploadFailed": "Échec de l'envoi"
   },
 
   "call": {

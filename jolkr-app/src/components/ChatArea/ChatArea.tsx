@@ -38,6 +38,23 @@ const MAX_FILE_SIZE_LABEL = `${MAX_FILE_SIZE_MB} MB`
 // purely a UX choice).
 const MAX_INLINE_TEXT_LENGTH = 5000
 
+// Browsers don't ship a built-in MIME for every video container, so for
+// extensions our server's allowlist accepts (HLS playlists, MKV) we fill
+// in the type from the filename when the File object reports an empty
+// `.type`. Without this, FormData uploads send Content-Type empty and the
+// server's MIME whitelist rejects the file silently.
+const EXT_TO_MIME: Record<string, string> = {
+  m3u8: 'application/vnd.apple.mpegurl',
+  mkv: 'video/x-matroska',
+}
+function normalizeFileType(file: File): File {
+  if (file.type) return file
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  const mime = ext ? EXT_TO_MIME[ext] : undefined
+  if (!mime) return file
+  return new File([file], file.name, { type: mime, lastModified: file.lastModified })
+}
+
 export interface MentionableUser {
   id: string
   username: string
@@ -126,7 +143,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         names: oversized.map((f) => f.name).join(', '),
       }))
     }
-    const valid = list.filter((f) => f.size <= MAX_FILE_SIZE)
+    const valid = list.filter((f) => f.size <= MAX_FILE_SIZE).map(normalizeFileType)
     if (valid.length) setPendingFiles((prev) => [...prev, ...valid])
   }, [t])
 

@@ -524,7 +524,8 @@
     "createThreadFailed": "Failed to create thread",
     "inviteCopied": "Invite link copied!",
     "inviteCopyFailed": "Copy failed — link: {url}",
-    "inviteCreateFailed": "Failed to create invite"
+    "inviteCreateFailed": "Failed to create invite",
+    "uploadFailed": "Upload failed"
   },
 
   "call": {

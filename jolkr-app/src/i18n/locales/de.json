@@ -375,7 +375,8 @@
     "createThreadFailed": "Thread konnte nicht erstellt werden",
     "inviteCopied": "Einladungslink kopiert!",
     "inviteCopyFailed": "Kopieren fehlgeschlagen — Link: {url}",
-    "inviteCreateFailed": "Einladung konnte nicht erstellt werden"
+    "inviteCreateFailed": "Einladung konnte nicht erstellt werden",
+    "uploadFailed": "Upload fehlgeschlagen"
   },
 
   "call": {

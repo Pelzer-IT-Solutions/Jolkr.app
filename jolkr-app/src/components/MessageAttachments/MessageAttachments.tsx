@@ -16,8 +16,20 @@ interface Props {
 function isImage(att: Attachment): boolean {
   return att.content_type.startsWith('image/')
 }
+
+// HLS playlists ride on a handful of MIME spellings depending on which
+// tool produced them; older clients also send the audio variant for
+// audio-only streams. The filename probe covers servers that fall back
+// to application/octet-stream for unknown extensions.
+const HLS_MIME_TYPES = new Set([
+  'application/vnd.apple.mpegurl',
+  'application/x-mpegurl',
+  'audio/mpegurl',
+])
 function isVideo(att: Attachment): boolean {
-  return att.content_type.startsWith('video/')
+  if (att.content_type.startsWith('video/')) return true
+  if (HLS_MIME_TYPES.has(att.content_type.toLowerCase())) return true
+  return /\.m3u8(\?.*)?$/i.test(att.filename)
 }
 
 /** Resolve an attachment URL into something the DOM can consume.

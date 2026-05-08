@@ -42,6 +42,66 @@
   object-fit: contain;
 }
 
+/* Up-scale the chrome in fullscreen so it stays comfortably hit-target
+   sized on a typical 24"+ monitor. Lucide icons render as <svg> and
+   honour explicit width/height in CSS, so we re-size everything from
+   one place rather than passing different props from the JSX. */
+.wrap:fullscreen .controls {
+  padding: 3rem 1.25rem 1rem;
+}
+.wrap:fullscreen .ctrlBtn {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+.wrap:fullscreen .ctrlBtn svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.wrap:fullscreen .progressBar {
+  height: 1.25rem;
+}
+.wrap:fullscreen .progressTrack {
+  height: 5px;
+}
+.wrap:fullscreen .progressBar:hover .progressTrack {
+  height: 7px;
+}
+.wrap:fullscreen .progressThumb {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.wrap:fullscreen .timeLabel {
+  font-size: 0.95rem;
+}
+.wrap:fullscreen .scrubLabel {
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.625rem;
+}
+.wrap:fullscreen .volumeWrap:hover .volumeSlider,
+.wrap:fullscreen .volumeWrap:focus-within .volumeSlider {
+  width: 6.5rem;
+}
+.wrap:fullscreen .centerBtn {
+  width: 6rem;
+  height: 6rem;
+}
+.wrap:fullscreen .centerBtn svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.wrap:fullscreen .settingsMenu {
+  min-width: 11rem;
+  font-size: 0.9375rem;
+}
+.wrap:fullscreen .settingsItem {
+  padding: 0.5625rem 0.75rem 0.5625rem 1.75rem;
+  font-size: 0.875rem;
+}
+.wrap:fullscreen .liveBadge {
+  font-size: 0.8125rem;
+  padding: 0.3125rem 0.625rem;
+}
+
 .container {
   width: 100%;
   height: 100%;

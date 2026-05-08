@@ -373,7 +373,8 @@
     "createThreadFailed": "스레드를 만들 수 없습니다",
     "inviteCopied": "초대 링크가 복사되었습니다!",
     "inviteCopyFailed": "복사 실패 — 링크: {url}",
-    "inviteCreateFailed": "초대를 만들 수 없습니다"
+    "inviteCreateFailed": "초대를 만들 수 없습니다",
+    "uploadFailed": "업로드 실패"
   },
 
   "call": {

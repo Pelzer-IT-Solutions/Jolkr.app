@@ -373,7 +373,8 @@
     "createThreadFailed": "无法创建话题",
     "inviteCopied": "邀请链接已复制！",
     "inviteCopyFailed": "复制失败 — 链接：{url}",
-    "inviteCreateFailed": "无法创建邀请"
+    "inviteCreateFailed": "无法创建邀请",
+    "uploadFailed": "上传失败"
   },
 
   "call": {

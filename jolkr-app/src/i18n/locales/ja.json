@@ -373,7 +373,8 @@
     "createThreadFailed": "スレッドを作成できませんでした",
     "inviteCopied": "招待リンクをコピーしました！",
     "inviteCopyFailed": "コピーに失敗しました — リンク: {url}",
-    "inviteCreateFailed": "招待を作成できませんでした"
+    "inviteCreateFailed": "招待を作成できませんでした",
+    "uploadFailed": "アップロード失敗"
   },
 
   "call": {

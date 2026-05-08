@@ -376,7 +376,8 @@
     "createThreadFailed": "Thread aanmaken mislukt",
     "inviteCopied": "Uitnodigingslink gekopieerd!",
     "inviteCopyFailed": "Kopiëren mislukt — link: {url}",
-    "inviteCreateFailed": "Uitnodiging aanmaken mislukt"
+    "inviteCreateFailed": "Uitnodiging aanmaken mislukt",
+    "uploadFailed": "Upload mislukt"
   },
 
   "call": {

@@ -221,7 +221,9 @@ export function useAppHandlers(
       msg = await sendMessage(channelId, encrypted.encryptedContent, replyTo?.id, encrypted.nonce)
     }
 
-    // Upload attachments after message is created
+    // Upload attachments after message is created. Surface failures via a
+    // toast — silent rejections (e.g. server MIME whitelist) used to leave
+    // the user with an empty message and no clue why.
     if (files?.length && msg?.id) {
       for (const file of files) {
         try {
@@ -232,6 +234,8 @@ export function useAppHandlers(
           }
         } catch (err) {
           console.error('Attachment upload failed:', err)
+          const reason = err instanceof Error ? err.message : tStatic('toast.uploadFailed')
+          useToast.getState().show(`${file.name}: ${reason}`, 'error', 6000)
         }
       }
     }

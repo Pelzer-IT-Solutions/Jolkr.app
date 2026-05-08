@@ -375,7 +375,8 @@
     "createThreadFailed": "No se pudo crear el hilo",
     "inviteCopied": "¡Enlace de invitación copiado!",
     "inviteCopyFailed": "Error al copiar — enlace: {url}",
-    "inviteCreateFailed": "No se pudo crear la invitación"
+    "inviteCreateFailed": "No se pudo crear la invitación",
+    "uploadFailed": "Error al subir"
   },
 
   "call": {
