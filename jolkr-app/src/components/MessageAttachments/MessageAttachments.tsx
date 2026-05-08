@@ -7,6 +7,7 @@ import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
 import { useT } from '../../hooks/useT'
 import ImageLightbox from '../ImageLightbox/ImageLightbox'
 import NMVideoPlayer from '../NMVideoPlayer/NMVideoPlayer'
+import NMMusicPlayer from '../NMMusicPlayer/NMMusicPlayer'
 import s from './MessageAttachments.module.css'
 
 interface Props {
@@ -30,6 +31,14 @@ function isVideo(att: Attachment): boolean {
   if (att.content_type.startsWith('video/')) return true
   if (HLS_MIME_TYPES.has(att.content_type.toLowerCase())) return true
   return /\.m3u8(\?.*)?$/i.test(att.filename)
+}
+function isAudio(att: Attachment): boolean {
+  if (att.content_type.startsWith('audio/')) return true
+  // Servers that fall back to application/octet-stream for unfamiliar
+  // codecs still pass through if the filename has a recognised audio
+  // extension. mpegurl is intentionally absent — those are HLS playlists
+  // and routed to the video player instead.
+  return /\.(mp3|flac|ogg|wav|m4a|aac|opus|wma)(\?.*)?$/i.test(att.filename)
 }
 
 /** Resolve an attachment URL into something the DOM can consume.
@@ -66,6 +75,9 @@ export function MessageAttachments({ attachments }: Props) {
           }
           if (isVideo(att)) {
             return <VideoTile key={att.id} attachment={att} />
+          }
+          if (isAudio(att)) {
+            return <AudioTile key={att.id} attachment={att} />
           }
           return <FileTile key={att.id} attachment={att} />
         })}
@@ -113,6 +125,12 @@ function VideoTile({ attachment }: { attachment: Attachment }) {
       <NMVideoPlayer src={blobUrl} title={attachment.filename} />
     </div>
   )
+}
+
+function AudioTile({ attachment }: { attachment: Attachment }) {
+  const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
+  if (!blobUrl) return <span className={`${s.audioLoading} ${s.loadingTile}`} />
+  return <NMMusicPlayer src={blobUrl} filename={attachment.filename} />
 }
 
 function FileTile({ attachment }: { attachment: Attachment }) {

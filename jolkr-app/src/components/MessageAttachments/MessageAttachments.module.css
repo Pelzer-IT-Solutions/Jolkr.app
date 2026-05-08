@@ -37,6 +37,14 @@
   transform: scale(1.04);
 }
 
+.audioLoading {
+  display: inline-block;
+  width: 100%;
+  max-width: 28rem;
+  height: 4.5rem;
+  border-radius: 0.625rem;
+}
+
 /* Placeholder shown while the authed blob URL is being fetched. Sized as
    a small square — image's intrinsic dimensions will replace it once
    loaded. */
