@@ -1,10 +1,14 @@
-export type VideoPlatform = 'youtube' | 'vimeo' | 'twitch' | 'tiktok' | 'vidmount' | 'facebook' | 'dailymotion' | 'bitchute' | 'vidyard' | 'direct' | 'hls';
+export type VideoPlatform = 'youtube' | 'vimeo' | 'twitch' | 'tiktok' | 'vidmount' | 'facebook' | 'dailymotion' | 'bitchute' | 'vidyard' | 'spotify' | 'direct' | 'hls';
+
+/** Spotify resource kind — drives iframe height in VideoEmbed (compact for
+ *  tracks, taller for collections). */
+export type SpotifyKind = 'track' | 'album' | 'playlist' | 'artist' | 'episode' | 'show';
 
 export interface VideoInfo {
   platform: VideoPlatform;
   id?: string;
   src?: string;
-  kind?: 'channel' | 'vod' | 'clip';
+  kind?: 'channel' | 'vod' | 'clip' | SpotifyKind;
 }
 
 const DIRECT_VIDEO_EXTS = /\.(mp4|webm|ogg|mov)(\?.*)?$/i;
@@ -93,6 +97,16 @@ export function parseVideoUrl(url: string): VideoInfo | null {
       if (watchMatch) return { platform: 'vidmount', id: watchMatch[1], src: url };
     }
 
+    // Spotify (track, album, playlist, artist, episode, show)
+    if (host === 'open.spotify.com') {
+      // Pathname begins with optional locale (`/intl-nl/...`) which we
+      // strip; the meaningful prefix is the resource kind. Spotify ids
+      // are 22-char base62.
+      const stripped = u.pathname.replace(/^\/intl-[a-z]{2}/i, '');
+      const m = stripped.match(/^\/(track|album|playlist|artist|episode|show)\/([A-Za-z0-9]+)/);
+      if (m) return { platform: 'spotify', id: m[2], kind: m[1] as SpotifyKind };
+    }
+
     // HLS
     if (HLS_EXT.test(u.pathname)) {
       return { platform: 'hls', src: url };
@@ -127,6 +141,7 @@ const PLATFORM_COLORS: Record<VideoPlatform, string> = {
   dailymotion: '#00AAFF',
   bitchute: '#EF4136',
   vidyard: '#00BF6F',
+  spotify: '#1DB954',
   direct: '#5865F2',
   hls: '#00E5A0',
 };
@@ -145,6 +160,7 @@ const PLATFORM_NAMES: Record<VideoPlatform, string> = {
   dailymotion: 'Dailymotion',
   bitchute: 'BitChute',
   vidyard: 'Vidyard',
+  spotify: 'Spotify',
   direct: 'Video',
   hls: 'Live Stream',
 };

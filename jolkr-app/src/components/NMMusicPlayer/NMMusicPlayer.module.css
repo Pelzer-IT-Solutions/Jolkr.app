@@ -15,17 +15,19 @@
   overflow: hidden;
 }
 
-/* Spectrum analyzer canvas. audiomotion-analyzer paints into this when
-   the chip is mounted; we let it span the full chip and sit BEHIND the
-   header / controls so the visualisation is a backdrop, not a fight
-   with the buttons.
+/* Spectrum analyzer canvas. audiomotion-analyzer paints into this; we
+   let it span the full chip and sit BEHIND the header / controls so
+   the visualisation is a backdrop, not a fight with the buttons.
 
-   `!important` flags are required: the music-player wrapper deliberately
-   hides its analyzer canvas (`canvas.style.opacity = "0"`, fixed
-   1400×320, position:absolute) ~500 ms after creation because the
-   library expects consumers to read the analyzer's frequency data
-   themselves rather than show its canvas. We DO want to show it, so
-   we override its inline styles via stylesheet importance. */
+   Canvas background is forced to the chip's own `--bg-loud` (rather
+   than transparent) so the visible chip colour stays identical whether
+   or not playback is active — bars draw straight on top of it instead
+   of darkening the chip when the analyzer's clear pass exposes the
+   default canvas surface.
+
+   `!important` flags are required: the music-player wrapper sometimes
+   pushes inline styles onto the analyzer canvas (opacity:0, fixed
+   1400×320, position:absolute). `!important` keeps our layout intact. */
 .visualizer {
   position: absolute !important;
   inset: 0 !important;
@@ -33,7 +35,8 @@
   height: 100% !important;
   pointer-events: none !important;
   z-index: 0;
-  opacity: 0.55 !important;
+  opacity: 1 !important;
+  background: var(--bg-loud) !important;
 }
 
 /* Lift content above the canvas. `position: relative` is enough — no

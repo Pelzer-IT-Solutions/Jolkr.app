@@ -57,6 +57,20 @@
   border: none;
 }
 
+/* Spotify embeds use fixed pixel heights (152 / 352) instead of an
+   aspect ratio — the height is set inline by SpotifyEmbed. */
+.spotifyWrap {
+  width: 100%;
+  background: transparent;
+  border-radius: 0.625rem;
+  overflow: hidden;
+}
+.spotifyWrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
 /* ── Thumbnail (collapsed) ── */
 .thumb {
   position: relative;

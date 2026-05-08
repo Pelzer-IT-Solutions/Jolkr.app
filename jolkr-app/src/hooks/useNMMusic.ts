@@ -142,6 +142,13 @@ export function useNMMusic({ src, filename, visualizerCanvasRef }: UseNMMusicCon
               canvas,
               source: audioEl,
               connectSpeakers: true,
+              // `overlay: true` is the difference between a transparent
+              // canvas and one painted black on every resize. Without it
+              // AudioMotion does `_ctx.fillRect(0, 0, w, h)` with #000
+              // (see audioMotion-analyzer.js:2634-2638), which obliterates
+              // our chip background — even though `bgAlpha:0` already
+              // suggests transparency.
+              overlay: true,
               mode: 2,
               bgAlpha: 0,
               showBgColor: false,

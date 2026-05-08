@@ -15,7 +15,7 @@ export interface VideoEmbedProps {
 }
 
 function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
-  const isIframePlatform = ['youtube', 'vimeo', 'twitch', 'tiktok', 'vidmount', 'facebook', 'dailymotion', 'vidyard'].includes(videoInfo.platform);
+  const isIframePlatform = ['youtube', 'vimeo', 'twitch', 'tiktok', 'vidmount', 'facebook', 'dailymotion', 'vidyard', 'spotify'].includes(videoInfo.platform);
   const [expanded, setExpanded] = useState(isIframePlatform);
   const borderColor = getPlatformColor(videoInfo.platform);
   const platformName = embed.site_name || getPlatformName(videoInfo.platform);
@@ -145,7 +145,32 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
   if ((platform === 'direct' || platform === 'hls') && src)
     return <NMVideoPlayer src={src} title={embed.title ?? ''} image={embed.image_url ?? ''} autoPlay />;
 
+  if (platform === 'spotify' && id) {
+    // Spotify iframe heights are fixed: tracks render compact (152 px),
+    // collections render the full card (352 px). Anything else (artist /
+    // episode / show) gets the full card too.
+    const compact = kind === 'track';
+    return <SpotifyEmbed src={`https://open.spotify.com/embed/${kind ?? 'track'}/${id}`} compact={compact} />;
+  }
+
   return null;
+}
+
+/* ── Spotify iframe ── */
+
+function SpotifyEmbed({ src, compact }: { src: string; compact: boolean }) {
+  return (
+    <div className={s.spotifyWrap} style={{ height: compact ? 152 : 352 }}>
+      <iframe
+        src={src}
+        title="Spotify"
+        loading="lazy"
+        frameBorder="0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  );
 }
 
 /* ── Iframe player ── */
