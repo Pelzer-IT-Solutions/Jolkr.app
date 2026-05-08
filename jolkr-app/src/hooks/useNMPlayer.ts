@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { TimeData, VolumeState } from '@nomercy-entertainment/nomercy-video-player';
+import { isMobile } from '../platform/detect';
 
 interface NMPlayerState {
   isPlaying: boolean;
@@ -183,16 +184,21 @@ export function useNMPlayer(config: UseNMPlayerConfig): NMPlayerResult {
     if (p && p.videoElement) p.videoElement.muted = !p.videoElement.muted;
   }, []);
 
-  // Android WebView only triggers WebChromeClient.onShowCustomView (the
-  // host's native fullscreen path) when requestFullscreen is called on
-  // the actual <video> element. The SDK's `videoElement` field may not
-  // be wired immediately, so fall back to a DOM query.
-  const requestFullscreen = useCallback((fallback?: HTMLElement | null) => {
-    const target =
+  // Pick the right fullscreen target per platform:
+  // - Desktop / web: prefer the wrapper element (keeps our custom controls
+  //   visible). Requesting fullscreen on a <video> directly causes the
+  //   browser to overlay its native HTML5 controls.
+  // - Mobile WebView (Android): the host's native fullscreen path
+  //   (WebChromeClient.onShowCustomView) only fires when requestFullscreen
+  //   is invoked on the actual <video> element, so we keep that order.
+  const requestFullscreen = useCallback((wrapper?: HTMLElement | null) => {
+    const videoTarget =
       (playerRef.current?.videoElement as HTMLElement | undefined) ??
       containerRef.current?.querySelector('video') ??
-      fallback ??
       null;
+    const target = isMobile()
+      ? (videoTarget ?? wrapper ?? null)
+      : (wrapper ?? videoTarget);
     if (!target) return;
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => { });
