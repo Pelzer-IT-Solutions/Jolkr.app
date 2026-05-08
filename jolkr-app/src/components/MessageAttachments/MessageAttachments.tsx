@@ -6,6 +6,7 @@ import { formatBytes } from '../../utils/format'
 import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
 import { useT } from '../../hooks/useT'
 import ImageLightbox from '../ImageLightbox/ImageLightbox'
+import NMVideoPlayer from '../NMVideoPlayer/NMVideoPlayer'
 import s from './MessageAttachments.module.css'
 
 interface Props {
@@ -92,8 +93,13 @@ function ImageTile({ attachment, onOpen }: { attachment: Attachment; onOpen: () 
 function VideoTile({ attachment }: { attachment: Attachment }) {
   const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
   if (!blobUrl) return <span className={`${s.media} ${s.loadingTile}`} />
+  // Uploaded videos route through the same NoMercy player as URL-based video
+  // embeds so playback UI (controls, fullscreen, buffering, mute) is identical.
+  // No autoPlay — chat videos shouldn't start until the user clicks.
   return (
-    <video className={s.media} src={blobUrl} controls preload="metadata" />
+    <div className={s.media}>
+      <NMVideoPlayer src={blobUrl} title={attachment.filename} />
+    </div>
   )
 }
 
