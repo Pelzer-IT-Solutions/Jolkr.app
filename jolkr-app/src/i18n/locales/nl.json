@@ -27,7 +27,13 @@
     "dropZone": {
       "drop": "Loslaten om te uploaden",
       "limit": "Maximaal {limit} per bestand",
+      "tooLargeTitle": "Bestand te groot",
       "tooLargeAlert": "Bestand te groot (max {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "Nieuwe thread",
+      "namePlaceholder": "Threadnaam (optioneel)",
+      "createBtn": "Aanmaken"
     },
     "composer": {
       "placeholderChannel": "Bericht naar #{channel}",

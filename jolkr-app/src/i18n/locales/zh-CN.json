@@ -27,7 +27,13 @@
     "dropZone": {
       "drop": "释放以附加",
       "limit": "每个文件最多 {limit}",
+      "tooLargeTitle": "文件过大",
       "tooLargeAlert": "文件过大 (最大 {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "新建话题",
+      "namePlaceholder": "话题名称（可选）",
+      "createBtn": "创建"
     },
     "composer": {
       "placeholderChannel": "向 #{channel} 发送消息",

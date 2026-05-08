@@ -17,6 +17,7 @@ import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import { Menu, MenuItem, MenuDivider } from '../Menu'
 import { ThemePicker } from '../ThemePicker/ThemePicker'
+import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
 import { useT } from '../../hooks/useT'
 import s from './ChannelSidebar.module.css'
 
@@ -126,6 +127,9 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [channelContextMenu, setChannelContextMenu] = useState<{ x: number; y: number; channelId: string } | null>(null)
   const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; categoryId: string } | null>(null)
+  // Pending delete-confirmations. Holds the target id while the modal is open.
+  const [pendingDeleteChannelId, setPendingDeleteChannelId] = useState<string | null>(null)
+  const [pendingDeleteCategoryName, setPendingDeleteCategoryName] = useState<string | null>(null)
   // `categoryId` (when set on a channel-create) routes the new channel into a
   // specific folder. Without it, the channel is created uncategorized.
   // `kind` selects text vs voice — chosen at menu-open time, then carried
@@ -696,9 +700,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               label={t('channelSidebar.menuDeleteChannel')}
               danger
               onClick={() => {
-                if (window.confirm(t('channelSidebar.confirmDeleteChannel'))) {
-                  onDeleteChannel(channelContextMenu.channelId)
-                }
+                setPendingDeleteChannelId(channelContextMenu.channelId)
                 setChannelContextMenu(null)
               }}
             />
@@ -755,19 +757,43 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               label={t('channelSidebar.menuDeleteFolder')}
               danger
               onClick={() => {
-                if (window.confirm(t('channelSidebar.confirmDeleteFolder'))) {
-                  const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
-                  if (category) {
-                    const serverCat = server.categories.find(c => c.name === category.name)
-                    if (serverCat) onDeleteCategory(serverCat.name)
-                  }
-                }
+                const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
+                const serverCat = category && server.categories.find(c => c.name === category.name)
+                if (serverCat) setPendingDeleteCategoryName(serverCat.name)
                 setCategoryContextMenu(null)
               }}
             />
           </>
         )}
       </Menu>
+
+      <ConfirmDialog
+        open={pendingDeleteChannelId !== null}
+        title={t('channelSidebar.menuDeleteChannel')}
+        body={t('channelSidebar.confirmDeleteChannel')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        danger
+        onConfirm={() => {
+          if (pendingDeleteChannelId && onDeleteChannel) onDeleteChannel(pendingDeleteChannelId)
+          setPendingDeleteChannelId(null)
+        }}
+        onCancel={() => setPendingDeleteChannelId(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingDeleteCategoryName !== null}
+        title={t('channelSidebar.menuDeleteFolder')}
+        body={t('channelSidebar.confirmDeleteFolder')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        danger
+        onConfirm={() => {
+          if (pendingDeleteCategoryName && onDeleteCategory) onDeleteCategory(pendingDeleteCategoryName)
+          setPendingDeleteCategoryName(null)
+        }}
+        onCancel={() => setPendingDeleteCategoryName(null)}
+      />
     </aside>
   )
 }

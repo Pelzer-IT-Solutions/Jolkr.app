@@ -27,7 +27,13 @@
     "dropZone": {
       "drop": "Déposer pour joindre",
       "limit": "Jusqu'à {limit} par fichier",
+      "tooLargeTitle": "Fichier trop volumineux",
       "tooLargeAlert": "Fichier trop volumineux (max {limit}) : {names}"
+    },
+    "threadPrompt": {
+      "title": "Nouveau fil",
+      "namePlaceholder": "Nom du fil (facultatif)",
+      "createBtn": "Créer"
     },
     "composer": {
       "placeholderChannel": "Message à #{channel}",

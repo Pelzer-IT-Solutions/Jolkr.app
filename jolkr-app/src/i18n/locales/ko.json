@@ -27,7 +27,13 @@
     "dropZone": {
       "drop": "놓아서 첨부",
       "limit": "파일당 최대 {limit}",
+      "tooLargeTitle": "파일이 너무 큽니다",
       "tooLargeAlert": "파일이 너무 큽니다 (최대 {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "새 스레드",
+      "namePlaceholder": "스레드 이름 (선택사항)",
+      "createBtn": "만들기"
     },
     "composer": {
       "placeholderChannel": "#{channel}에 메시지",

@@ -20,6 +20,7 @@ import { useVoiceStore } from '../../stores/voice'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useT } from '../../hooks/useT'
 import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
+import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
 import s from './ChatArea.module.css'
 
 // Attachment size cap (mirrors backend MAX_ATTACHMENT_SIZE).
@@ -96,6 +97,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
   // File attachment state
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [oversizeAlert, setOversizeAlert] = useState<string | null>(null)
 
   // Drag & drop state. We use a counter to handle the dragenter/leave bubble
   // pattern — a single ref-counted depth lets us correctly detect "actually
@@ -108,7 +110,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     const list = Array.from(incoming)
     const oversized = list.filter((f) => f.size > MAX_FILE_SIZE)
     if (oversized.length) {
-      alert(t('chat.dropZone.tooLargeAlert', {
+      setOversizeAlert(t('chat.dropZone.tooLargeAlert', {
         limit: MAX_FILE_SIZE_LABEL,
         names: oversized.map((f) => f.name).join(', '),
       }))
@@ -832,6 +834,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           onClose={() => setPollCreatorOpen(false)}
         />
       )}
+      <ConfirmDialog
+        open={oversizeAlert !== null}
+        title={t('chat.dropZone.tooLargeTitle')}
+        body={oversizeAlert ?? ''}
+        confirmLabel={t('common.ok')}
+        onConfirm={() => setOversizeAlert(null)}
+        onCancel={() => setOversizeAlert(null)}
+      />
     </main>
   )
 }

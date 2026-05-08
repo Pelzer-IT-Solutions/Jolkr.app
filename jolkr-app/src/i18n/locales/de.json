@@ -27,7 +27,13 @@
     "dropZone": {
       "drop": "Loslassen zum Anhängen",
       "limit": "Bis zu {limit} pro Datei",
+      "tooLargeTitle": "Datei zu groß",
       "tooLargeAlert": "Datei zu groß (max {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "Neuer Thread",
+      "namePlaceholder": "Thread-Name (optional)",
+      "createBtn": "Erstellen"
     },
     "composer": {
       "placeholderChannel": "Nachricht an #{channel}",

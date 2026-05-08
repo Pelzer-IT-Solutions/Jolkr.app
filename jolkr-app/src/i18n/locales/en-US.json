@@ -40,7 +40,13 @@
     "dropZone": {
       "drop": "Drop to attach",
       "limit": "Up to {limit} per file",
+      "tooLargeTitle": "File too large",
       "tooLargeAlert": "File too large (max {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "New Thread",
+      "namePlaceholder": "Thread name (optional)",
+      "createBtn": "Create"
     },
     "composer": {
       "placeholderChannel": "Message #{channel}",

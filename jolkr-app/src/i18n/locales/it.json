@@ -27,7 +27,13 @@
     "dropZone": {
       "drop": "Rilascia per allegare",
       "limit": "Fino a {limit} per file",
+      "tooLargeTitle": "File troppo grande",
       "tooLargeAlert": "File troppo grande (max {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "Nuovo thread",
+      "namePlaceholder": "Nome del thread (facoltativo)",
+      "createBtn": "Crea"
     },
     "composer": {
       "placeholderChannel": "Messaggio a #{channel}",

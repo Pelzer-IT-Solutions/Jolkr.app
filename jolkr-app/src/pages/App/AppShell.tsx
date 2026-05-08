@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
 import type { MemberStatus } from '../../types'
@@ -8,6 +8,7 @@ import { useServersStore, selectServerRoles, selectServerMembers } from '../../s
 import { useToast } from '../../stores/toast'
 import { useLocaleStore } from '../../stores/locale'
 import { useT } from '../../hooks/useT'
+import PromptDialog from '../../components/ui/PromptDialog/PromptDialog'
 import { buildInviteUrl } from '../../platform/config'
 import { orbsForHue } from '../../utils/theme'
 import * as api from '../../api/client'
@@ -45,6 +46,9 @@ export default function AppShell() {
   const init = useAppInit()
   const memos = useAppMemos(init)
   const handlers = useAppHandlers(init, memos)
+
+  // Pending message id for the "create thread" prompt — replaces window.prompt().
+  const [threadPromptMsgId, setThreadPromptMsgId] = useState<string | null>(null)
 
   // Mirror the active locale onto <html lang="..."> for screen readers,
   // Intl.Segmenter, browser hyphenation, and any CSS that targets `:lang(…)`.
@@ -403,17 +407,9 @@ export default function AppShell() {
                       canSendMessages={canSendMessages}
                       canAttachFiles={canAttachFiles}
                       onOpenThread={handleOpenThreadById}
-                      onStartThread={async (messageId) => {
+                      onStartThread={(messageId) => {
                         if (dmActive || !activeChannelId) return
-                        const name = window.prompt('Thread name (optional)')?.trim()
-                        try {
-                          await api.createThread(activeChannelId, messageId, name || undefined)
-                          // Backend will emit ThreadCreate WS event → store bumps
-                          // threadListVersion → ThreadListPanel + threadsCount refresh.
-                        } catch (err) {
-                          const msg = err instanceof Error ? err.message : t('toast.createThreadFailed')
-                          useToast.getState().show(msg, 'error')
-                        }
+                        setThreadPromptMsgId(messageId)
                       }}
                     />
                   ) : (
@@ -716,6 +712,29 @@ export default function AppShell() {
           onStartDm={openDmDraft}
         />
       )}
+
+      <PromptDialog
+        open={threadPromptMsgId !== null}
+        title={t('chat.threadPrompt.title')}
+        placeholder={t('chat.threadPrompt.namePlaceholder')}
+        submitLabel={t('chat.threadPrompt.createBtn')}
+        cancelLabel={t('common.cancel')}
+        allowEmpty
+        onSubmit={async (name) => {
+          const messageId = threadPromptMsgId
+          setThreadPromptMsgId(null)
+          if (!messageId || !activeChannelId) return
+          try {
+            await api.createThread(activeChannelId, messageId, name || undefined)
+            // Backend emits ThreadCreate → store bumps threadListVersion →
+            // ThreadListPanel + threadsCount refresh.
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : t('toast.createThreadFailed')
+            useToast.getState().show(msg, 'error')
+          }
+        }}
+        onCancel={() => setThreadPromptMsgId(null)}
+      />
     </>
   )
 }

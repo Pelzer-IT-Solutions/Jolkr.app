@@ -27,7 +27,13 @@
     "dropZone": {
       "drop": "ドロップして添付",
       "limit": "ファイルあたり最大 {limit}",
+      "tooLargeTitle": "ファイルが大きすぎます",
       "tooLargeAlert": "ファイルが大きすぎます (最大 {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "新しいスレッド",
+      "namePlaceholder": "スレッド名 (任意)",
+      "createBtn": "作成"
     },
     "composer": {
       "placeholderChannel": "#{channel} へメッセージ",

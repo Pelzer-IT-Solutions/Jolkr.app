@@ -27,7 +27,13 @@
     "dropZone": {
       "drop": "Suelta para adjuntar",
       "limit": "Hasta {limit} por archivo",
+      "tooLargeTitle": "Archivo demasiado grande",
       "tooLargeAlert": "Archivo demasiado grande (máx {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "Nuevo hilo",
+      "namePlaceholder": "Nombre del hilo (opcional)",
+      "createBtn": "Crear"
     },
     "composer": {
       "placeholderChannel": "Mensaje a #{channel}",
