@@ -41,7 +41,10 @@
       "emoji": "Emoji", "attachFile": "Datei anhängen",
       "gif": "GIF", "createPoll": "Umfrage erstellen", "send": "Senden (Eingabe)",
       "fmtBold": "Fett (Strg+B)", "fmtItalic": "Kursiv (Strg+I)",
-      "fmtStrike": "Durchgestrichen", "fmtCode": "Code"
+      "fmtStrike": "Durchgestrichen", "fmtCode": "Code",
+      "renameFile": "Datei umbenennen", "removeFile": "Entfernen",
+      "renameFileTitle": "Datei umbenennen",
+      "renameFilePlaceholder": "Dateiname"
     },
     "autocomplete": {
       "membersHeader": "Mitglieder",

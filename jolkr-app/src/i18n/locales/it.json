@@ -41,7 +41,10 @@
       "emoji": "Emoji", "attachFile": "Allega file",
       "gif": "GIF", "createPoll": "Crea sondaggio", "send": "Invia (Invio)",
       "fmtBold": "Grassetto (Ctrl+B)", "fmtItalic": "Corsivo (Ctrl+I)",
-      "fmtStrike": "Barrato", "fmtCode": "Codice"
+      "fmtStrike": "Barrato", "fmtCode": "Codice",
+      "renameFile": "Rinomina file", "removeFile": "Rimuovi",
+      "renameFileTitle": "Rinomina file",
+      "renameFilePlaceholder": "Nome file"
     },
     "autocomplete": {
       "membersHeader": "Membri",

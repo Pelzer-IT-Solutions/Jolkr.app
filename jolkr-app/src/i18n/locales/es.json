@@ -41,7 +41,10 @@
       "emoji": "Emoji", "attachFile": "Adjuntar archivo",
       "gif": "GIF", "createPoll": "Crear encuesta", "send": "Enviar (Intro)",
       "fmtBold": "Negrita (Ctrl+B)", "fmtItalic": "Cursiva (Ctrl+I)",
-      "fmtStrike": "Tachado", "fmtCode": "Código"
+      "fmtStrike": "Tachado", "fmtCode": "Código",
+      "renameFile": "Renombrar archivo", "removeFile": "Quitar",
+      "renameFileTitle": "Renombrar archivo",
+      "renameFilePlaceholder": "Nombre del archivo"
     },
     "autocomplete": {
       "membersHeader": "Miembros",

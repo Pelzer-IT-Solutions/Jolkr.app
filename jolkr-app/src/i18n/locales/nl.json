@@ -41,7 +41,10 @@
       "emoji": "Emoji", "attachFile": "Bestand bijvoegen",
       "gif": "GIF", "createPoll": "Peiling maken", "send": "Verzenden (Enter)",
       "fmtBold": "Vet (Ctrl+B)", "fmtItalic": "Cursief (Ctrl+I)",
-      "fmtStrike": "Doorhalen", "fmtCode": "Code"
+      "fmtStrike": "Doorhalen", "fmtCode": "Code",
+      "renameFile": "Bestandsnaam wijzigen", "removeFile": "Verwijderen",
+      "renameFileTitle": "Bestandsnaam wijzigen",
+      "renameFilePlaceholder": "Bestandsnaam"
     },
     "autocomplete": {
       "membersHeader": "Leden",

@@ -59,7 +59,11 @@
       "fmtBold": "Bold (Ctrl+B)",
       "fmtItalic": "Italic (Ctrl+I)",
       "fmtStrike": "Strikethrough",
-      "fmtCode": "Code"
+      "fmtCode": "Code",
+      "renameFile": "Rename file",
+      "removeFile": "Remove",
+      "renameFileTitle": "Rename file",
+      "renameFilePlaceholder": "Filename"
     },
     "autocomplete": {
       "membersHeader": "Members",

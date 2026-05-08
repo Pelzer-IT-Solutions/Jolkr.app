@@ -41,7 +41,10 @@
       "emoji": "絵文字", "attachFile": "ファイルを添付",
       "gif": "GIF", "createPoll": "投票を作成", "send": "送信 (Enter)",
       "fmtBold": "太字 (Ctrl+B)", "fmtItalic": "斜体 (Ctrl+I)",
-      "fmtStrike": "取り消し線", "fmtCode": "コード"
+      "fmtStrike": "取り消し線", "fmtCode": "コード",
+      "renameFile": "ファイル名を変更", "removeFile": "削除",
+      "renameFileTitle": "ファイル名を変更",
+      "renameFilePlaceholder": "ファイル名"
     },
     "autocomplete": {
       "membersHeader": "メンバー",

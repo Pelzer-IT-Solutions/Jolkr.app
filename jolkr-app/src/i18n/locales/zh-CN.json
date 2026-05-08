@@ -41,7 +41,10 @@
       "emoji": "表情", "attachFile": "附加文件",
       "gif": "GIF", "createPoll": "创建投票", "send": "发送 (Enter)",
       "fmtBold": "粗体 (Ctrl+B)", "fmtItalic": "斜体 (Ctrl+I)",
-      "fmtStrike": "删除线", "fmtCode": "代码"
+      "fmtStrike": "删除线", "fmtCode": "代码",
+      "renameFile": "重命名文件", "removeFile": "移除",
+      "renameFileTitle": "重命名文件",
+      "renameFilePlaceholder": "文件名"
     },
     "autocomplete": {
       "membersHeader": "成员",

@@ -41,7 +41,10 @@
       "emoji": "이모지", "attachFile": "파일 첨부",
       "gif": "GIF", "createPoll": "투표 만들기", "send": "보내기 (Enter)",
       "fmtBold": "굵게 (Ctrl+B)", "fmtItalic": "기울임 (Ctrl+I)",
-      "fmtStrike": "취소선", "fmtCode": "코드"
+      "fmtStrike": "취소선", "fmtCode": "코드",
+      "renameFile": "파일 이름 변경", "removeFile": "제거",
+      "renameFileTitle": "파일 이름 변경",
+      "renameFilePlaceholder": "파일 이름"
     },
     "autocomplete": {
       "membersHeader": "구성원",

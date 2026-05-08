@@ -4,6 +4,7 @@ import {
   PanelLeftOpen, AlignLeft, Users, Smile,
   Paperclip, ImagePlay, SendHorizontal,
   Bold, Italic, Strikethrough, Code, Pin, BarChart3,
+  Pencil,
 } from 'lucide-react'
 import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
@@ -21,13 +22,21 @@ import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useT } from '../../hooks/useT'
 import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
+import PromptDialog from '../ui/PromptDialog/PromptDialog'
 import s from './ChatArea.module.css'
 
 // Attachment size cap (mirrors backend MAX_ATTACHMENT_SIZE).
 // MB literal drives both the byte cap and the human-readable label so they can't drift.
-const MAX_FILE_SIZE_MB = 25
+const MAX_FILE_SIZE_MB = 250
 const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
 const MAX_FILE_SIZE_LABEL = `${MAX_FILE_SIZE_MB} MB`
+
+// Mirrors Discord's "long message" cutover: anything longer than this is
+// promoted to a message.txt attachment so the inline encrypted message body
+// stays small and readable. Tune in concert with the server's per-message
+// content cap (currently effectively unbounded in our schema, so this is
+// purely a UX choice).
+const MAX_INLINE_TEXT_LENGTH = 5000
 
 export interface MentionableUser {
   id: string
@@ -98,6 +107,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   // File attachment state
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [oversizeAlert, setOversizeAlert] = useState<string | null>(null)
+  // Index of the pending file currently being renamed (open prompt-dialog).
+  const [renamingFileIdx, setRenamingFileIdx] = useState<number | null>(null)
 
   // Drag & drop state. We use a counter to handle the dragenter/leave bubble
   // pattern — a single ref-counted depth lets us correctly detect "actually
@@ -298,7 +309,20 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     const text = contentRef.current.trim()
     if (!text && pendingFiles.length === 0) return
     const replyRef = replyingTo ? { id: replyingTo.id, author: replyingTo.author, text: replyingTo.content } : undefined
-    onSend(text || '', replyRef, pendingFiles.length > 0 ? pendingFiles : undefined)
+
+    // Discord-style long-message cutover: when the body crosses the inline
+    // limit, ship it as `message.txt` instead so the encrypted message body
+    // stays compact and the recipient can read or download the full text.
+    let finalText = text
+    let finalFiles: File[] | undefined = pendingFiles.length > 0 ? pendingFiles : undefined
+    if (text.length > MAX_INLINE_TEXT_LENGTH) {
+      const blob = new Blob([text], { type: 'text/plain' })
+      const file = new File([blob], 'message.txt', { type: 'text/plain' })
+      finalFiles = finalFiles ? [...finalFiles, file] : [file]
+      finalText = ''
+    }
+
+    onSend(finalText, replyRef, finalFiles)
     inputRef.current?.clear()
     contentRef.current = ''
     setPendingFiles([])
@@ -698,9 +722,19 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                     ) : (
                       <div className={s.pendingFileIcon}><AttachIcon /></div>
                     )}
-                    <span className={`${s.pendingFileName} txt-tiny`}>{file.name}</span>
+                    <span className={`${s.pendingFileName} txt-tiny`} title={file.name}>{file.name}</span>
+                    <button
+                      className={s.pendingFileEdit}
+                      title={t('chat.composer.renameFile')}
+                      aria-label={t('chat.composer.renameFile')}
+                      onClick={() => setRenamingFileIdx(i)}
+                    >
+                      <Pencil size={11} />
+                    </button>
                     <button
                       className={s.pendingFileRemove}
+                      title={t('chat.composer.removeFile')}
+                      aria-label={t('chat.composer.removeFile')}
                       onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
                     >
                       <X size={12} />
@@ -841,6 +875,26 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         confirmLabel={t('common.ok')}
         onConfirm={() => setOversizeAlert(null)}
         onCancel={() => setOversizeAlert(null)}
+      />
+      <PromptDialog
+        open={renamingFileIdx !== null}
+        title={t('chat.composer.renameFileTitle')}
+        placeholder={t('chat.composer.renameFilePlaceholder')}
+        defaultValue={renamingFileIdx !== null ? pendingFiles[renamingFileIdx]?.name ?? '' : ''}
+        submitLabel={t('common.save')}
+        cancelLabel={t('common.cancel')}
+        onSubmit={(newName) => {
+          const idx = renamingFileIdx
+          setRenamingFileIdx(null)
+          if (idx === null) return
+          // Files are immutable — wrap with a fresh File carrying the new
+          // name. The original byte content is reused (not copied) by the
+          // browser, so this is cheap even for large attachments.
+          setPendingFiles(prev => prev.map((f, j) => (
+            j === idx ? new File([f], newName, { type: f.type, lastModified: f.lastModified }) : f
+          )))
+        }}
+        onCancel={() => setRenamingFileIdx(null)}
       />
     </main>
   )
