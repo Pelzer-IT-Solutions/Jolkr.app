@@ -429,6 +429,17 @@
     "welcomeBody": "Tritt einem Server bei oder erstelle einen, oder sende eine Direktnachricht."
   },
 
+  "player": {
+    "play": "Wiedergabe", "pause": "Pause",
+    "mute": "Stummschalten", "unmute": "Stummschaltung aufheben",
+    "volume": "Lautstärke",
+    "skipBack": "{seconds}s zurück", "skipForward": "{seconds}s vor",
+    "fullscreen": "Vollbild", "exitFullscreen": "Vollbild beenden",
+    "enterPip": "Bild-in-Bild", "exitPip": "Bild-in-Bild beenden",
+    "settings": "Einstellungen",
+    "playbackSpeed": "Wiedergabegeschwindigkeit", "speedNormal": "Normal"
+  },
+
   "themePicker": {
     "title": "Server-Design",
     "scrollToResize": "Scrollen zum Ändern der Größe",

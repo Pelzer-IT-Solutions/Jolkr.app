@@ -593,6 +593,23 @@
     "welcomeBody": "Join or create a server to get started, or send a direct message."
   },
 
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "volume": "Volume",
+    "skipBack": "Back {seconds}s",
+    "skipForward": "Forward {seconds}s",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "enterPip": "Picture in picture",
+    "exitPip": "Exit picture in picture",
+    "settings": "Settings",
+    "playbackSpeed": "Playback speed",
+    "speedNormal": "Normal"
+  },
+
   "themePicker": {
     "title": "Server theme",
     "scrollToResize": "Scroll to resize",

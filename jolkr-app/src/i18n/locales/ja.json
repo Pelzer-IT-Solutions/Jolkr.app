@@ -427,6 +427,17 @@
     "welcomeBody": "サーバーに参加または作成して始めましょう、もしくはダイレクトメッセージを送信してください。"
   },
 
+  "player": {
+    "play": "再生", "pause": "一時停止",
+    "mute": "ミュート", "unmute": "ミュート解除",
+    "volume": "音量",
+    "skipBack": "{seconds}秒戻る", "skipForward": "{seconds}秒進む",
+    "fullscreen": "全画面", "exitFullscreen": "全画面を終了",
+    "enterPip": "ピクチャーインピクチャー", "exitPip": "ピクチャーインピクチャーを終了",
+    "settings": "設定",
+    "playbackSpeed": "再生速度", "speedNormal": "標準"
+  },
+
   "themePicker": {
     "title": "サーバーテーマ",
     "scrollToResize": "スクロールでサイズ変更",

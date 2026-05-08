@@ -429,6 +429,17 @@
     "welcomeBody": "Unisciti a un server o creane uno per iniziare, o invia un messaggio diretto."
   },
 
+  "player": {
+    "play": "Riproduci", "pause": "Pausa",
+    "mute": "Silenzia", "unmute": "Riattiva audio",
+    "volume": "Volume",
+    "skipBack": "{seconds}s indietro", "skipForward": "{seconds}s avanti",
+    "fullscreen": "Schermo intero", "exitFullscreen": "Esci da schermo intero",
+    "enterPip": "Picture in picture", "exitPip": "Esci da picture in picture",
+    "settings": "Impostazioni",
+    "playbackSpeed": "Velocità di riproduzione", "speedNormal": "Normale"
+  },
+
   "themePicker": {
     "title": "Tema del server",
     "scrollToResize": "Scorri per ridimensionare",

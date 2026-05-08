@@ -427,6 +427,17 @@
     "welcomeBody": "加入或创建服务器开始使用，或发送一条私信。"
   },
 
+  "player": {
+    "play": "播放", "pause": "暂停",
+    "mute": "静音", "unmute": "取消静音",
+    "volume": "音量",
+    "skipBack": "后退 {seconds} 秒", "skipForward": "前进 {seconds} 秒",
+    "fullscreen": "全屏", "exitFullscreen": "退出全屏",
+    "enterPip": "画中画", "exitPip": "退出画中画",
+    "settings": "设置",
+    "playbackSpeed": "播放速度", "speedNormal": "正常"
+  },
+
   "themePicker": {
     "title": "服务器主题",
     "scrollToResize": "滚动以调整大小",

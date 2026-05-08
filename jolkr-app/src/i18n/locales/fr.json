@@ -429,6 +429,17 @@
     "welcomeBody": "Rejoignez ou créez un serveur pour commencer, ou envoyez un message direct."
   },
 
+  "player": {
+    "play": "Lecture", "pause": "Pause",
+    "mute": "Couper le son", "unmute": "Activer le son",
+    "volume": "Volume",
+    "skipBack": "Reculer de {seconds}s", "skipForward": "Avancer de {seconds}s",
+    "fullscreen": "Plein écran", "exitFullscreen": "Quitter le plein écran",
+    "enterPip": "Image dans l'image", "exitPip": "Quitter l'image dans l'image",
+    "settings": "Paramètres",
+    "playbackSpeed": "Vitesse de lecture", "speedNormal": "Normal"
+  },
+
   "themePicker": {
     "title": "Thème du serveur",
     "scrollToResize": "Faites défiler pour redimensionner",

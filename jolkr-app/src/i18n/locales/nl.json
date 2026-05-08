@@ -430,6 +430,17 @@
     "welcomeBody": "Word lid van of maak een server om te beginnen, of stuur een direct bericht."
   },
 
+  "player": {
+    "play": "Afspelen", "pause": "Pauzeren",
+    "mute": "Dempen", "unmute": "Dempen opheffen",
+    "volume": "Volume",
+    "skipBack": "{seconds} sec terug", "skipForward": "{seconds} sec vooruit",
+    "fullscreen": "Volledig scherm", "exitFullscreen": "Volledig scherm afsluiten",
+    "enterPip": "Picture-in-picture", "exitPip": "Picture-in-picture afsluiten",
+    "settings": "Instellingen",
+    "playbackSpeed": "Afspeelsnelheid", "speedNormal": "Normaal"
+  },
+
   "themePicker": {
     "title": "Server-thema",
     "scrollToResize": "Scroll om grootte te wijzigen",
