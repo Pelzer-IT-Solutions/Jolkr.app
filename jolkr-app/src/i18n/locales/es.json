@@ -145,6 +145,211 @@
     "openImage": "Abrir {filename}"
   },
 
+  "userStatus": {
+    "online": "En línea", "idle": "Inactivo", "dnd": "No molestar",
+    "offline": "Desconectado", "invisible": "Invisible"
+  },
+
+  "dmSidebar": {
+    "title": "Mensajes directos",
+    "backToChat": "Volver al chat", "friends": "Amigos",
+    "newMessage": "Nuevo mensaje", "collapseSidebar": "Contraer barra lateral",
+    "emptyTitle": "Aún no hay conversaciones",
+    "emptySubtitle": "Inicia un nuevo mensaje para empezar a chatear"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "Volver al chat", "info": "Info", "unpin": "Desfijar",
+    "pinnedMessages": "Mensajes fijados", "noPinned": "Aún no hay mensajes fijados",
+    "sharedFiles": "Archivos compartidos", "noFiles": "Aún no hay archivos compartidos",
+    "decrypting": "Descifrando…"
+  },
+
+  "newDmModal": {
+    "title": "Nuevo mensaje", "close": "Cerrar",
+    "addMore": "Añadir más...",
+    "searchPlaceholder": "Buscar amigos o escribir un nombre de usuario...",
+    "loadingFriends": "Cargando amigos...", "searching": "Buscando...",
+    "online": "En línea — {count}", "offline": "Desconectado — {count}",
+    "noUsersFound": "No se encontraron usuarios",
+    "noFriendsYet": "Aún no tienes amigos — busca por nombre de usuario arriba",
+    "createGroup": "Crear DM grupal", "startConversation": "Iniciar conversación"
+  },
+
+  "profileCard": {
+    "ariaProfile": "Perfil de {name}",
+    "loadError": "No se pudo cargar el perfil del usuario", "loading": "Cargando…",
+    "about": "Acerca de", "memberSince": "Miembro desde", "safetyNumber": "Número de seguridad",
+    "sendMessage": "Enviar mensaje", "addFriend": "Añadir amigo",
+    "requestPending": "Solicitud de amistad pendiente", "removeFriend": "Eliminar amigo",
+    "userBlocked": "Usuario bloqueado", "block": "Bloquear", "editProfile": "Editar perfil",
+    "errFriendSend": "Error al enviar la solicitud",
+    "errFriendRemove": "Error al eliminar al amigo",
+    "errBlock": "Error al bloquear al usuario"
+  },
+
+  "memberPanel": {
+    "backToChat": "Volver al chat",
+    "online": "En línea — {count}", "offline": "Desconectado — {count}",
+    "members": "Miembros — {count}",
+    "pinnedMessages": "Mensajes fijados", "threads": "Hilos"
+  },
+
+  "tabBar": {
+    "yourServers": "Tus servidores", "search": "Buscar (⌘K)",
+    "directMessages": "Mensajes directos", "notifications": "Notificaciones",
+    "profile": "Perfil",
+    "onVideoCallOther": "En videollamada (otro dispositivo)",
+    "onCallOther": "En llamada (otro dispositivo)",
+    "joinServer": "Unirse a un servidor", "createServer": "Crear un servidor",
+    "browserTitle": "Tus servidores",
+    "channelsCount": { "one": "{count} canal", "other": "{count} canales" },
+    "open": "abierto",
+    "muteServer": "Silenciar servidor", "unmuteServer": "Activar sonido del servidor",
+    "markAsRead": "Marcar como leído", "serverSettings": "Ajustes del servidor",
+    "closeTab": "Cerrar pestaña", "leaveServer": "Salir del servidor",
+    "setStatus": "Establecer estado", "settings": "Ajustes", "logOut": "Cerrar sesión",
+    "serverOptions": "Opciones del servidor", "onVideoCall": "En videollamada", "onCall": "En llamada"
+  },
+
+  "notificationsPanel": { "title": "Notificaciones", "empty": "Aún no hay notificaciones" },
+
+  "friendsPanel": {
+    "close": "Cerrar",
+    "tabAll": "Todos", "tabOnline": "En línea", "tabPending": "Pendientes", "tabAdd": "Añadir amigo",
+    "incoming": "Entrantes ({count})", "outgoing": "Salientes ({count})",
+    "cancel": "Cancelar", "noPending": "No hay solicitudes de amistad pendientes",
+    "addIntro": "Añade amigos con su nombre de usuario, correo o código QR.",
+    "myQrCode": "Mi código QR", "scanQr": "Escanear QR",
+    "orSearch": "o busca", "searchPlaceholder": "Nombre de usuario o correo…",
+    "searching": "Buscando…", "noUsersFound": "No se encontraron usuarios",
+    "sending": "Enviando…", "addBtn": "Añadir",
+    "noFriendsFound": "No se encontraron amigos",
+    "requestSent": "Solicitud de amistad enviada",
+    "requestFailed": "Error al enviar la solicitud de amistad"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "Ver perfil",
+    "addFriend": "Añadir amigo", "removeFriend": "Eliminar amigo",
+    "mute": "Silenciar", "unmute": "Activar sonido",
+    "block": "Bloquear", "unblock": "Desbloquear",
+    "closeDm": "Cerrar DM", "moderation": "Moderación",
+    "kick": "Expulsar", "ban": "Banear",
+    "assignRole": "Asignar rol", "inviteToServer": "Invitar al servidor",
+    "reportUser": "Reportar usuario"
+  },
+
+  "channelSidebar": {
+    "title": "Canales", "newChannel": "Nuevo canal",
+    "backToChat": "Volver al chat", "collapseSidebar": "Contraer barra lateral",
+    "ariaServerChannels": "Canales del servidor",
+    "menuNewFolder": "Nueva carpeta", "menuNewText": "Nuevo canal de texto",
+    "menuNewVoice": "Nuevo canal de voz",
+    "menuChannelSettings": "Ajustes del canal", "menuRenameChannel": "Renombrar canal",
+    "menuArchiveChannel": "Archivar canal", "menuDeleteChannel": "Eliminar canal",
+    "confirmDeleteChannel": "¿Eliminar este canal? Esta acción no se puede deshacer.",
+    "menuCreateText": "Crear canal de texto", "menuCreateVoice": "Crear canal de voz",
+    "menuRenameFolder": "Renombrar carpeta", "menuDeleteFolder": "Eliminar carpeta",
+    "confirmDeleteFolder": "¿Eliminar esta carpeta? Los canales dentro no se eliminarán.",
+    "placeholderFolder": "Nombre de carpeta…", "placeholderVoice": "nombre-canal-voz…",
+    "placeholderText": "nombre-canal…", "channelOptions": "Opciones del canal"
+  },
+
+  "deleteMessageDialog": {
+    "title": "¿Eliminar mensaje?",
+    "bodyOwner": "Este mensaje será eliminado. Elige si quieres eliminarlo solo para ti o para todos.",
+    "bodyNonOwner": "Esto solo ocultará el mensaje en tu lado. Otros miembros lo seguirán viendo.",
+    "deleteForEveryone": "Eliminar para todos",
+    "deleteForBoth": "Eliminar para ambos",
+    "deleteForMe": "Eliminar para mí", "cancel": "Cancelar"
+  },
+
+  "createServerModal": {
+    "title": "Crear un servidor",
+    "description": "Dale un hogar a tu comunidad. Personalízalo para hacerlo tuyo.",
+    "iconLabel": "Icono del servidor",
+    "iconHelper": "Mostrado en pestañas y el navegador de servidores",
+    "nameLabel": "Nombre del servidor", "namePlaceholder": "Mi servidor genial",
+    "iconCharLabel": "Carácter del icono",
+    "iconCharPlaceholder": "Deja vacío para usar la primera letra del nombre",
+    "colorLabel": "Tema de color", "privacyLabel": "Privacidad",
+    "publicTitle": "Público", "publicDesc": "Cualquiera puede unirse con el ID del servidor",
+    "privateTitle": "Privado", "privateDesc": "Los miembros necesitan un código de acceso para unirse",
+    "cancel": "Cancelar", "submit": "Crear servidor",
+    "colors": {
+      "neutral": "Neutro", "red": "Rojo", "orange": "Naranja", "yellow": "Amarillo",
+      "green": "Verde", "teal": "Turquesa", "blue": "Azul",
+      "indigo": "Índigo", "purple": "Morado", "pink": "Rosa"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "Unirse a un servidor",
+    "description": "Introduce un ID de invitación para unirte a un servidor existente. Pídele al propietario un código de acceso si el servidor es privado.",
+    "serverIdLabel": "ID del servidor", "serverIdPlaceholder": "ej. pixel-workshop",
+    "accessCodeLabel": "Código de acceso", "accessCodePlaceholder": "Deja vacío para servidores públicos",
+    "errorEmpty": "Por favor introduce un ID de servidor.",
+    "errorNotFound": "Servidor no encontrado. Comprueba el ID e inténtalo de nuevo.",
+    "cancel": "Cancelar", "submit": "Unirse"
+  },
+
+  "reportModal": {
+    "title": "Reportar usuario",
+    "description": "Por favor selecciona una razón para reportar a este usuario. Tu reporte será revisado por nuestro equipo de moderación.",
+    "additionalLabel": "Detalles adicionales (opcional)",
+    "additionalPlaceholder": "Proporciona cualquier contexto adicional que pueda ayudar a nuestros moderadores...",
+    "charCount": "{used}/{max}",
+    "cancel": "Cancelar", "submitting": "Enviando...", "submit": "Enviar reporte",
+    "successTitle": "Reporte enviado",
+    "successBody": "Gracias por ayudar a mantener nuestra comunidad segura. Revisaremos tu reporte y tomaremos las medidas apropiadas.",
+    "close": "Cerrar",
+    "reasons": {
+      "harassment": { "label": "Acoso o intimidación", "desc": "Abuso o intimidación dirigida" },
+      "spam": { "label": "Spam", "desc": "Mensajes no deseados o repetitivos" },
+      "inappropriate": { "label": "Contenido inapropiado", "desc": "Material NSFW o explícito" },
+      "violence": { "label": "Amenazas o violencia", "desc": "Amenazas directas o contenido violento" },
+      "other": { "label": "Otro", "desc": "Otra cosa" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "Vista previa de la imagen",
+    "zoomIn": "Acercar (+)", "zoomOut": "Alejar (-)",
+    "download": "Descargar", "openExternal": "Abrir en pestaña nueva",
+    "moreOptions": "Más opciones", "copyImage": "Copiar imagen",
+    "copyLink": "Copiar enlace", "viewDetails": "Ver detalles",
+    "close": "Cerrar (Esc)", "previous": "Imagen anterior", "next": "Siguiente imagen",
+    "filename": "Nombre del archivo", "size": "Tamaño"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Buscar en Tenor", "back": "Atrás", "close": "Cerrar",
+    "favorites": "Favoritos", "noFavorites": "Aún no hay favoritos",
+    "noResults": "No se encontraron GIFs",
+    "removeFav": "Eliminar de favoritos", "addFav": "Añadir a favoritos",
+    "loading": "Cargando...", "clearSearch": "Borrar búsqueda"
+  },
+
+  "qrScanner": {
+    "title": "Escanear código QR", "close": "Cerrar",
+    "hint": "Apunta tu cámara a un código QR de Jolkr",
+    "errorInvalid": "Código QR de Jolkr no válido",
+    "errorSelfAdd": "No puedes añadirte a ti mismo como amigo",
+    "errorCameraDenied": "Acceso a la cámara denegado. Permite los permisos de cámara e inténtalo de nuevo.",
+    "errorNoCamera": "No se encontró ninguna cámara en este dispositivo.",
+    "errorStartCamera": "No se pudo iniciar la cámara: {msg}",
+    "errorUserNotFound": "Usuario no encontrado",
+    "successSent": "Solicitud de amistad enviada a {username}",
+    "sending": "Enviando…", "sendBtn": "Enviar solicitud de amistad"
+  },
+
+  "qrDisplay": {
+    "title": "Tu código QR", "close": "Cerrar",
+    "hint": "Tus amigos pueden escanear este código para añadirte",
+    "copyLink": "Copiar enlace", "copied": "¡Copiado!"
+  },
+
   "auth": {
     "shared": { "emailLabel": "Correo electrónico", "passwordLabel": "Contraseña" },
     "login": {

@@ -145,6 +145,211 @@
     "openImage": "Ouvrir {filename}"
   },
 
+  "userStatus": {
+    "online": "En ligne", "idle": "Inactif", "dnd": "Ne pas déranger",
+    "offline": "Hors ligne", "invisible": "Invisible"
+  },
+
+  "dmSidebar": {
+    "title": "Messages directs",
+    "backToChat": "Retour au chat", "friends": "Amis",
+    "newMessage": "Nouveau message", "collapseSidebar": "Réduire la barre",
+    "emptyTitle": "Aucune conversation",
+    "emptySubtitle": "Démarrez un nouveau message pour commencer à discuter"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "Retour au chat", "info": "Infos", "unpin": "Désépingler",
+    "pinnedMessages": "Messages épinglés", "noPinned": "Aucun message épinglé pour l'instant",
+    "sharedFiles": "Fichiers partagés", "noFiles": "Aucun fichier partagé pour l'instant",
+    "decrypting": "Déchiffrement…"
+  },
+
+  "newDmModal": {
+    "title": "Nouveau message", "close": "Fermer",
+    "addMore": "Ajouter d'autres...",
+    "searchPlaceholder": "Rechercher des amis ou taper un nom d'utilisateur...",
+    "loadingFriends": "Chargement des amis...", "searching": "Recherche...",
+    "online": "En ligne — {count}", "offline": "Hors ligne — {count}",
+    "noUsersFound": "Aucun utilisateur trouvé",
+    "noFriendsYet": "Pas encore d'amis — recherchez par nom d'utilisateur ci-dessus",
+    "createGroup": "Créer un DM groupé", "startConversation": "Démarrer une conversation"
+  },
+
+  "profileCard": {
+    "ariaProfile": "Profil de {name}",
+    "loadError": "Impossible de charger le profil utilisateur", "loading": "Chargement…",
+    "about": "À propos", "memberSince": "Membre depuis", "safetyNumber": "Numéro de sécurité",
+    "sendMessage": "Envoyer un message", "addFriend": "Ajouter en ami",
+    "requestPending": "Demande d'ami en attente", "removeFriend": "Retirer l'ami",
+    "userBlocked": "Utilisateur bloqué", "block": "Bloquer", "editProfile": "Modifier le profil",
+    "errFriendSend": "Échec de l'envoi de la demande",
+    "errFriendRemove": "Échec du retrait de l'ami",
+    "errBlock": "Échec du blocage de l'utilisateur"
+  },
+
+  "memberPanel": {
+    "backToChat": "Retour au chat",
+    "online": "En ligne — {count}", "offline": "Hors ligne — {count}",
+    "members": "Membres — {count}",
+    "pinnedMessages": "Messages épinglés", "threads": "Discussions"
+  },
+
+  "tabBar": {
+    "yourServers": "Vos serveurs", "search": "Rechercher (⌘K)",
+    "directMessages": "Messages directs", "notifications": "Notifications",
+    "profile": "Profil",
+    "onVideoCallOther": "En appel vidéo (autre appareil)",
+    "onCallOther": "En appel (autre appareil)",
+    "joinServer": "Rejoindre un serveur", "createServer": "Créer un serveur",
+    "browserTitle": "Vos serveurs",
+    "channelsCount": { "one": "{count} canal", "other": "{count} canaux" },
+    "open": "ouvert",
+    "muteServer": "Couper le serveur", "unmuteServer": "Réactiver le serveur",
+    "markAsRead": "Marquer comme lu", "serverSettings": "Paramètres du serveur",
+    "closeTab": "Fermer l'onglet", "leaveServer": "Quitter le serveur",
+    "setStatus": "Définir le statut", "settings": "Paramètres", "logOut": "Déconnexion",
+    "serverOptions": "Options du serveur", "onVideoCall": "En appel vidéo", "onCall": "En appel"
+  },
+
+  "notificationsPanel": { "title": "Notifications", "empty": "Aucune notification pour l'instant" },
+
+  "friendsPanel": {
+    "close": "Fermer",
+    "tabAll": "Tous", "tabOnline": "En ligne", "tabPending": "En attente", "tabAdd": "Ajouter un ami",
+    "incoming": "Entrantes ({count})", "outgoing": "Sortantes ({count})",
+    "cancel": "Annuler", "noPending": "Aucune demande d'ami en attente",
+    "addIntro": "Ajoutez des amis avec leur nom d'utilisateur, e-mail ou code QR.",
+    "myQrCode": "Mon code QR", "scanQr": "Scanner QR",
+    "orSearch": "ou recherchez", "searchPlaceholder": "Nom d'utilisateur ou e-mail…",
+    "searching": "Recherche…", "noUsersFound": "Aucun utilisateur trouvé",
+    "sending": "Envoi…", "addBtn": "Ajouter",
+    "noFriendsFound": "Aucun ami trouvé",
+    "requestSent": "Demande d'ami envoyée",
+    "requestFailed": "Échec de l'envoi de la demande d'ami"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "Voir le profil",
+    "addFriend": "Ajouter en ami", "removeFriend": "Retirer l'ami",
+    "mute": "Couper", "unmute": "Réactiver",
+    "block": "Bloquer", "unblock": "Débloquer",
+    "closeDm": "Fermer le DM", "moderation": "Modération",
+    "kick": "Expulser", "ban": "Bannir",
+    "assignRole": "Attribuer un rôle", "inviteToServer": "Inviter sur un serveur",
+    "reportUser": "Signaler l'utilisateur"
+  },
+
+  "channelSidebar": {
+    "title": "Canaux", "newChannel": "Nouveau canal",
+    "backToChat": "Retour au chat", "collapseSidebar": "Réduire la barre",
+    "ariaServerChannels": "Canaux du serveur",
+    "menuNewFolder": "Nouveau dossier", "menuNewText": "Nouveau canal texte",
+    "menuNewVoice": "Nouveau canal vocal",
+    "menuChannelSettings": "Paramètres du canal", "menuRenameChannel": "Renommer le canal",
+    "menuArchiveChannel": "Archiver le canal", "menuDeleteChannel": "Supprimer le canal",
+    "confirmDeleteChannel": "Supprimer ce canal ? Cette action est irréversible.",
+    "menuCreateText": "Créer un canal texte", "menuCreateVoice": "Créer un canal vocal",
+    "menuRenameFolder": "Renommer le dossier", "menuDeleteFolder": "Supprimer le dossier",
+    "confirmDeleteFolder": "Supprimer ce dossier ? Les canaux à l'intérieur ne seront pas supprimés.",
+    "placeholderFolder": "Nom du dossier…", "placeholderVoice": "nom-du-canal-vocal…",
+    "placeholderText": "nom-du-canal…", "channelOptions": "Options du canal"
+  },
+
+  "deleteMessageDialog": {
+    "title": "Supprimer le message ?",
+    "bodyOwner": "Ce message sera supprimé. Choisissez de le supprimer pour vous seul ou pour tout le monde.",
+    "bodyNonOwner": "Cela ne masquera le message que de votre côté. Les autres membres le verront toujours.",
+    "deleteForEveryone": "Supprimer pour tout le monde",
+    "deleteForBoth": "Supprimer pour nous deux",
+    "deleteForMe": "Supprimer pour moi", "cancel": "Annuler"
+  },
+
+  "createServerModal": {
+    "title": "Créer un serveur",
+    "description": "Donnez un foyer à votre communauté. Personnalisez-le pour qu'il soit le vôtre.",
+    "iconLabel": "Icône du serveur",
+    "iconHelper": "Affichée dans les onglets et le navigateur de serveurs",
+    "nameLabel": "Nom du serveur", "namePlaceholder": "Mon super serveur",
+    "iconCharLabel": "Caractère d'icône",
+    "iconCharPlaceholder": "Laissez vide pour utiliser la première lettre du nom",
+    "colorLabel": "Thème de couleur", "privacyLabel": "Confidentialité",
+    "publicTitle": "Public", "publicDesc": "N'importe qui peut rejoindre avec l'ID du serveur",
+    "privateTitle": "Privé", "privateDesc": "Les membres ont besoin d'un code d'accès pour rejoindre",
+    "cancel": "Annuler", "submit": "Créer le serveur",
+    "colors": {
+      "neutral": "Neutre", "red": "Rouge", "orange": "Orange", "yellow": "Jaune",
+      "green": "Vert", "teal": "Turquoise", "blue": "Bleu",
+      "indigo": "Indigo", "purple": "Violet", "pink": "Rose"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "Rejoindre un serveur",
+    "description": "Entrez un ID d'invitation pour rejoindre un serveur existant. Demandez au propriétaire un code d'accès si le serveur est privé.",
+    "serverIdLabel": "ID du serveur", "serverIdPlaceholder": "ex. pixel-workshop",
+    "accessCodeLabel": "Code d'accès", "accessCodePlaceholder": "Laissez vide pour les serveurs publics",
+    "errorEmpty": "Veuillez entrer un ID de serveur.",
+    "errorNotFound": "Serveur non trouvé. Vérifiez l'ID et réessayez.",
+    "cancel": "Annuler", "submit": "Rejoindre"
+  },
+
+  "reportModal": {
+    "title": "Signaler l'utilisateur",
+    "description": "Veuillez sélectionner une raison pour signaler cet utilisateur. Votre signalement sera examiné par notre équipe de modération.",
+    "additionalLabel": "Détails supplémentaires (facultatif)",
+    "additionalPlaceholder": "Fournissez tout contexte supplémentaire qui pourrait aider nos modérateurs...",
+    "charCount": "{used}/{max}",
+    "cancel": "Annuler", "submitting": "Envoi...", "submit": "Envoyer le signalement",
+    "successTitle": "Signalement envoyé",
+    "successBody": "Merci d'aider à garder notre communauté en sécurité. Nous examinerons votre signalement et prendrons les mesures appropriées.",
+    "close": "Fermer",
+    "reasons": {
+      "harassment": { "label": "Harcèlement ou intimidation", "desc": "Abus ou intimidation ciblés" },
+      "spam": { "label": "Spam", "desc": "Messages indésirables ou répétitifs" },
+      "inappropriate": { "label": "Contenu inapproprié", "desc": "Contenu NSFW ou explicite" },
+      "violence": { "label": "Menaces ou violence", "desc": "Menaces directes ou contenu violent" },
+      "other": { "label": "Autre", "desc": "Autre chose" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "Aperçu de l'image",
+    "zoomIn": "Zoom avant (+)", "zoomOut": "Zoom arrière (-)",
+    "download": "Télécharger", "openExternal": "Ouvrir dans un nouvel onglet",
+    "moreOptions": "Plus d'options", "copyImage": "Copier l'image",
+    "copyLink": "Copier le lien", "viewDetails": "Voir les détails",
+    "close": "Fermer (Échap)", "previous": "Image précédente", "next": "Image suivante",
+    "filename": "Nom du fichier", "size": "Taille"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Rechercher Tenor", "back": "Retour", "close": "Fermer",
+    "favorites": "Favoris", "noFavorites": "Aucun favori pour l'instant",
+    "noResults": "Aucun GIF trouvé",
+    "removeFav": "Retirer des favoris", "addFav": "Ajouter aux favoris",
+    "loading": "Chargement...", "clearSearch": "Effacer la recherche"
+  },
+
+  "qrScanner": {
+    "title": "Scanner le code QR", "close": "Fermer",
+    "hint": "Pointez votre caméra vers un code QR Jolkr",
+    "errorInvalid": "Code QR Jolkr non valide",
+    "errorSelfAdd": "Vous ne pouvez pas vous ajouter en tant qu'ami",
+    "errorCameraDenied": "Accès caméra refusé. Autorisez les permissions caméra et réessayez.",
+    "errorNoCamera": "Aucune caméra trouvée sur cet appareil.",
+    "errorStartCamera": "Impossible de démarrer la caméra : {msg}",
+    "errorUserNotFound": "Utilisateur non trouvé",
+    "successSent": "Demande d'ami envoyée à {username}",
+    "sending": "Envoi…", "sendBtn": "Envoyer la demande d'ami"
+  },
+
+  "qrDisplay": {
+    "title": "Votre code QR", "close": "Fermer",
+    "hint": "Vos amis peuvent scanner ce code pour vous ajouter",
+    "copyLink": "Copier le lien", "copied": "Copié !"
+  },
+
   "auth": {
     "shared": { "emailLabel": "E-mail", "passwordLabel": "Mot de passe" },
     "login": {

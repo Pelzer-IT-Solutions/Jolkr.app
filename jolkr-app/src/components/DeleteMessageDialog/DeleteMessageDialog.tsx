@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useT } from '../../hooks/useT'
 import s from './DeleteMessageDialog.module.css'
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function DeleteMessageDialog({ isOwn, isGroup = false, onClose, onDeleteForEveryone, onDeleteForMe }: Props) {
+  const { t } = useT()
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -28,16 +30,14 @@ export function DeleteMessageDialog({ isOwn, isGroup = false, onClose, onDeleteF
     if (e.target === e.currentTarget) onClose()
   }
 
-  const everyoneLabel = isGroup ? 'Delete for everyone' : 'Delete for both of us'
+  const everyoneLabel = isGroup ? t('deleteMessageDialog.deleteForEveryone') : t('deleteMessageDialog.deleteForBoth')
 
   return createPortal(
     <div className={s.overlay} onClick={handleOverlayClick} role="dialog" aria-modal="true">
       <div className={s.modal}>
-        <span className={s.title}>Delete message?</span>
+        <span className={s.title}>{t('deleteMessageDialog.title')}</span>
         <p className={`${s.body} txt-small`}>
-          {isOwn
-            ? 'This message will be removed. Choose whether to remove it just for you, or for everyone.'
-            : 'This will only hide the message on your side. Other members will still see it.'}
+          {isOwn ? t('deleteMessageDialog.bodyOwner') : t('deleteMessageDialog.bodyNonOwner')}
         </p>
 
         <div className={s.actions}>
@@ -47,10 +47,10 @@ export function DeleteMessageDialog({ isOwn, isGroup = false, onClose, onDeleteF
             </button>
           )}
           <button type="button" className={`${s.btn} ${isOwn ? '' : s.btnDanger}`} onClick={() => { onDeleteForMe(); onClose() }}>
-            Delete for me
+            {t('deleteMessageDialog.deleteForMe')}
           </button>
           <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={onClose}>
-            Cancel
+            {t('deleteMessageDialog.cancel')}
           </button>
         </div>
       </div>

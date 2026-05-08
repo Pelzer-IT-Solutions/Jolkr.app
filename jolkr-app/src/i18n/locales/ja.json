@@ -145,6 +145,209 @@
     "openImage": "{filename} を開く"
   },
 
+  "userStatus": {
+    "online": "オンライン", "idle": "離席中", "dnd": "取り込み中",
+    "offline": "オフライン", "invisible": "非表示"
+  },
+
+  "dmSidebar": {
+    "title": "ダイレクトメッセージ", "backToChat": "チャットに戻る",
+    "friends": "フレンド", "newMessage": "新しいメッセージ",
+    "collapseSidebar": "サイドバーを折りたたむ",
+    "emptyTitle": "会話はまだありません",
+    "emptySubtitle": "新しいメッセージを送信してチャットを始めましょう"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "チャットに戻る", "info": "情報",
+    "unpin": "ピン留めを解除", "pinnedMessages": "ピン留めメッセージ",
+    "noPinned": "ピン留めされたメッセージはまだありません",
+    "sharedFiles": "共有ファイル", "noFiles": "共有ファイルはまだありません",
+    "decrypting": "復号中…"
+  },
+
+  "newDmModal": {
+    "title": "新しいメッセージ", "close": "閉じる", "addMore": "さらに追加...",
+    "searchPlaceholder": "フレンドを検索またはユーザー名を入力...",
+    "loadingFriends": "フレンドを読み込み中...", "searching": "検索中...",
+    "online": "オンライン — {count}", "offline": "オフライン — {count}",
+    "noUsersFound": "ユーザーが見つかりません",
+    "noFriendsYet": "フレンドがまだいません — 上でユーザー名を検索",
+    "createGroup": "グループ DM を作成", "startConversation": "会話を始める"
+  },
+
+  "profileCard": {
+    "ariaProfile": "{name} のプロフィール",
+    "loadError": "ユーザープロフィールを読み込めませんでした",
+    "loading": "読み込み中…", "about": "自己紹介",
+    "memberSince": "登録日", "safetyNumber": "セーフティナンバー",
+    "sendMessage": "メッセージを送信", "addFriend": "フレンドに追加",
+    "requestPending": "フレンドリクエスト保留中", "removeFriend": "フレンドを削除",
+    "userBlocked": "ユーザーをブロックしました", "block": "ブロック",
+    "editProfile": "プロフィールを編集",
+    "errFriendSend": "リクエストの送信に失敗しました",
+    "errFriendRemove": "フレンドの削除に失敗しました",
+    "errBlock": "ユーザーのブロックに失敗しました"
+  },
+
+  "memberPanel": {
+    "backToChat": "チャットに戻る",
+    "online": "オンライン — {count}", "offline": "オフライン — {count}",
+    "members": "メンバー — {count}",
+    "pinnedMessages": "ピン留めメッセージ", "threads": "スレッド"
+  },
+
+  "tabBar": {
+    "yourServers": "あなたのサーバー", "search": "検索 (⌘K)",
+    "directMessages": "ダイレクトメッセージ", "notifications": "通知",
+    "profile": "プロフィール",
+    "onVideoCallOther": "ビデオ通話中（他のデバイス）",
+    "onCallOther": "通話中（他のデバイス）",
+    "joinServer": "サーバーに参加", "createServer": "サーバーを作成",
+    "browserTitle": "あなたのサーバー",
+    "channelsCount": { "one": "{count} チャンネル", "other": "{count} チャンネル" },
+    "open": "開く", "muteServer": "サーバーをミュート", "unmuteServer": "サーバーのミュート解除",
+    "markAsRead": "既読にする", "serverSettings": "サーバー設定",
+    "closeTab": "タブを閉じる", "leaveServer": "サーバーを退出",
+    "setStatus": "ステータスを設定", "settings": "設定", "logOut": "ログアウト",
+    "serverOptions": "サーバーオプション",
+    "onVideoCall": "ビデオ通話中", "onCall": "通話中"
+  },
+
+  "notificationsPanel": { "title": "通知", "empty": "通知はまだありません" },
+
+  "friendsPanel": {
+    "close": "閉じる", "tabAll": "すべて", "tabOnline": "オンライン",
+    "tabPending": "保留中", "tabAdd": "フレンドを追加",
+    "incoming": "受信中 ({count})", "outgoing": "送信済み ({count})",
+    "cancel": "キャンセル", "noPending": "保留中のフレンドリクエストはありません",
+    "addIntro": "ユーザー名、メール、または QR コードでフレンドを追加します。",
+    "myQrCode": "自分の QR コード", "scanQr": "QR をスキャン", "orSearch": "または検索",
+    "searchPlaceholder": "ユーザー名またはメール…", "searching": "検索中…",
+    "noUsersFound": "ユーザーが見つかりません",
+    "sending": "送信中…", "addBtn": "追加", "noFriendsFound": "フレンドが見つかりません",
+    "requestSent": "フレンドリクエストを送信しました",
+    "requestFailed": "フレンドリクエストの送信に失敗しました"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "プロフィールを見る", "addFriend": "フレンドに追加",
+    "removeFriend": "フレンドを削除", "mute": "ミュート", "unmute": "ミュート解除",
+    "block": "ブロック", "unblock": "ブロック解除", "closeDm": "DM を閉じる",
+    "moderation": "モデレーション", "kick": "キック", "ban": "BAN",
+    "assignRole": "ロールを割り当て", "inviteToServer": "サーバーに招待",
+    "reportUser": "ユーザーを報告"
+  },
+
+  "channelSidebar": {
+    "title": "チャンネル", "newChannel": "新しいチャンネル",
+    "backToChat": "チャットに戻る", "collapseSidebar": "サイドバーを折りたたむ",
+    "ariaServerChannels": "サーバーチャンネル",
+    "menuNewFolder": "新しいフォルダ", "menuNewText": "新しいテキストチャンネル",
+    "menuNewVoice": "新しいボイスチャンネル", "menuChannelSettings": "チャンネル設定",
+    "menuRenameChannel": "チャンネル名を変更", "menuArchiveChannel": "チャンネルをアーカイブ",
+    "menuDeleteChannel": "チャンネルを削除",
+    "confirmDeleteChannel": "このチャンネルを削除しますか？元に戻せません。",
+    "menuCreateText": "テキストチャンネルを作成", "menuCreateVoice": "ボイスチャンネルを作成",
+    "menuRenameFolder": "フォルダ名を変更", "menuDeleteFolder": "フォルダを削除",
+    "confirmDeleteFolder": "このフォルダを削除しますか？中のチャンネルは削除されません。",
+    "placeholderFolder": "フォルダ名…", "placeholderVoice": "voice-channel-name…",
+    "placeholderText": "channel-name…", "channelOptions": "チャンネルオプション"
+  },
+
+  "deleteMessageDialog": {
+    "title": "メッセージを削除しますか？",
+    "bodyOwner": "このメッセージは削除されます。自分だけのために削除するか、全員に対して削除するかを選択してください。",
+    "bodyNonOwner": "これはあなたの側でのみメッセージを非表示にします。他のメンバーには引き続き表示されます。",
+    "deleteForEveryone": "全員から削除", "deleteForBoth": "両方から削除",
+    "deleteForMe": "自分から削除", "cancel": "キャンセル"
+  },
+
+  "createServerModal": {
+    "title": "サーバーを作成",
+    "description": "コミュニティに居場所を。自分だけのカスタマイズを。",
+    "iconLabel": "サーバーアイコン",
+    "iconHelper": "タブとサーバーブラウザに表示されます",
+    "nameLabel": "サーバー名", "namePlaceholder": "私の素敵なサーバー",
+    "iconCharLabel": "アイコン文字",
+    "iconCharPlaceholder": "空白の場合、名前の最初の文字を使用",
+    "colorLabel": "カラーテーマ", "privacyLabel": "プライバシー",
+    "publicTitle": "公開", "publicDesc": "サーバー ID で誰でも参加できます",
+    "privateTitle": "非公開", "privateDesc": "メンバーは参加するためにアクセスコードが必要です",
+    "cancel": "キャンセル", "submit": "サーバーを作成",
+    "colors": {
+      "neutral": "ニュートラル", "red": "レッド", "orange": "オレンジ", "yellow": "イエロー",
+      "green": "グリーン", "teal": "ティール", "blue": "ブルー", "indigo": "インディゴ",
+      "purple": "パープル", "pink": "ピンク"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "サーバーに参加",
+    "description": "既存のサーバーに参加するには招待 ID を入力してください。サーバーが非公開の場合はオーナーにアクセスコードを尋ねてください。",
+    "serverIdLabel": "サーバー ID", "serverIdPlaceholder": "例: pixel-workshop",
+    "accessCodeLabel": "アクセスコード",
+    "accessCodePlaceholder": "公開サーバーの場合は空白",
+    "errorEmpty": "サーバー ID を入力してください。",
+    "errorNotFound": "サーバーが見つかりません。ID を確認してもう一度お試しください。",
+    "cancel": "キャンセル", "submit": "サーバーに参加"
+  },
+
+  "reportModal": {
+    "title": "ユーザーを報告",
+    "description": "このユーザーを報告する理由を選択してください。報告は当社のモデレーションチームによって確認されます。",
+    "additionalLabel": "追加情報（任意）",
+    "additionalPlaceholder": "モデレーターの参考になる追加のコンテキストを入力してください...",
+    "charCount": "{used}/{max}", "cancel": "キャンセル",
+    "submitting": "送信中...", "submit": "報告を送信",
+    "successTitle": "報告を送信しました",
+    "successBody": "コミュニティの安全維持にご協力いただきありがとうございます。報告を確認し、適切な措置を講じます。",
+    "close": "閉じる",
+    "reasons": {
+      "harassment": { "label": "嫌がらせまたはいじめ", "desc": "対象を絞った虐待または威圧" },
+      "spam": { "label": "スパム", "desc": "迷惑または繰り返しのメッセージ" },
+      "inappropriate": { "label": "不適切なコンテンツ", "desc": "NSFW または露骨な内容" },
+      "violence": { "label": "脅迫または暴力", "desc": "直接的な脅迫または暴力的なコンテンツ" },
+      "other": { "label": "その他", "desc": "それ以外のもの" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "画像プレビュー", "zoomIn": "ズームイン (+)", "zoomOut": "ズームアウト (-)",
+    "download": "ダウンロード", "openExternal": "新しいタブで開く",
+    "moreOptions": "その他のオプション", "copyImage": "画像をコピー",
+    "copyLink": "リンクをコピー", "viewDetails": "詳細を見る",
+    "close": "閉じる (Esc)", "previous": "前の画像", "next": "次の画像",
+    "filename": "ファイル名", "size": "サイズ"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Tenor を検索", "back": "戻る", "close": "閉じる",
+    "favorites": "お気に入り", "noFavorites": "お気に入りはまだありません",
+    "noResults": "GIF が見つかりません",
+    "removeFav": "お気に入りから削除", "addFav": "お気に入りに追加",
+    "loading": "読み込み中...", "clearSearch": "検索をクリア"
+  },
+
+  "qrScanner": {
+    "title": "QR コードをスキャン", "close": "閉じる",
+    "hint": "Jolkr QR コードにカメラを向けてください",
+    "errorInvalid": "有効な Jolkr QR コードではありません",
+    "errorSelfAdd": "自分自身をフレンドとして追加することはできません",
+    "errorCameraDenied": "カメラへのアクセスが拒否されました。カメラの許可を有効にしてもう一度お試しください。",
+    "errorNoCamera": "このデバイスにはカメラが見つかりません。",
+    "errorStartCamera": "カメラを起動できませんでした: {msg}",
+    "errorUserNotFound": "ユーザーが見つかりません",
+    "successSent": "{username} にフレンドリクエストを送信しました",
+    "sending": "送信中…", "sendBtn": "フレンドリクエストを送信"
+  },
+
+  "qrDisplay": {
+    "title": "あなたの QR コード", "close": "閉じる",
+    "hint": "フレンドはこのコードをスキャンしてあなたを追加できます",
+    "copyLink": "リンクをコピー", "copied": "コピーしました！"
+  },
+
   "auth": {
     "shared": { "emailLabel": "メールアドレス", "passwordLabel": "パスワード" },
     "login": {

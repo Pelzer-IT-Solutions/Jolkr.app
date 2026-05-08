@@ -196,6 +196,307 @@
     "openImage": "Open {filename}"
   },
 
+  "userStatus": {
+    "online": "Online",
+    "idle": "Idle",
+    "dnd": "Do Not Disturb",
+    "offline": "Offline",
+    "invisible": "Invisible"
+  },
+
+  "dmSidebar": {
+    "title": "Direct Messages",
+    "backToChat": "Back to chat",
+    "friends": "Friends",
+    "newMessage": "New message",
+    "collapseSidebar": "Collapse sidebar",
+    "emptyTitle": "No conversations yet",
+    "emptySubtitle": "Start a new message to begin chatting"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "Back to chat",
+    "info": "Info",
+    "unpin": "Unpin",
+    "pinnedMessages": "Pinned Messages",
+    "noPinned": "No pinned messages yet",
+    "sharedFiles": "Shared Files",
+    "noFiles": "No shared files yet",
+    "decrypting": "Decrypting…"
+  },
+
+  "newDmModal": {
+    "title": "New Message",
+    "close": "Close",
+    "addMore": "Add more...",
+    "searchPlaceholder": "Search friends or type a username...",
+    "loadingFriends": "Loading friends...",
+    "searching": "Searching...",
+    "online": "Online — {count}",
+    "offline": "Offline — {count}",
+    "noUsersFound": "No users found",
+    "noFriendsYet": "No friends yet — search by username above",
+    "createGroup": "Create Group DM",
+    "startConversation": "Start Conversation"
+  },
+
+  "profileCard": {
+    "ariaProfile": "{name} profile",
+    "loadError": "Could not load user profile",
+    "loading": "Loading…",
+    "about": "About",
+    "memberSince": "Member Since",
+    "safetyNumber": "Safety Number",
+    "sendMessage": "Send Message",
+    "addFriend": "Add Friend",
+    "requestPending": "Friend request pending",
+    "removeFriend": "Remove Friend",
+    "userBlocked": "User blocked",
+    "block": "Block",
+    "editProfile": "Edit Profile",
+    "errFriendSend": "Failed to send request",
+    "errFriendRemove": "Failed to remove friend",
+    "errBlock": "Failed to block user"
+  },
+
+  "memberPanel": {
+    "backToChat": "Back to chat",
+    "online": "Online — {count}",
+    "offline": "Offline — {count}",
+    "members": "Members — {count}",
+    "pinnedMessages": "Pinned Messages",
+    "threads": "Threads"
+  },
+
+  "tabBar": {
+    "yourServers": "Your servers",
+    "search": "Search (⌘K)",
+    "directMessages": "Direct messages",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "onVideoCallOther": "On a video call (other device)",
+    "onCallOther": "On a call (other device)",
+    "joinServer": "Join a Server",
+    "createServer": "Create a Server",
+    "browserTitle": "Your servers",
+    "channelsCount": {
+      "one": "{count} channel",
+      "other": "{count} channels"
+    },
+    "open": "open",
+    "muteServer": "Mute Server",
+    "unmuteServer": "Unmute Server",
+    "markAsRead": "Mark as Read",
+    "serverSettings": "Server Settings",
+    "closeTab": "Close Tab",
+    "leaveServer": "Leave Server",
+    "setStatus": "Set status",
+    "settings": "Settings",
+    "logOut": "Log Out",
+    "serverOptions": "Server options",
+    "onVideoCall": "On video call",
+    "onCall": "On a call"
+  },
+
+  "notificationsPanel": {
+    "title": "Notifications",
+    "empty": "No notifications yet"
+  },
+
+  "friendsPanel": {
+    "close": "Close",
+    "tabAll": "All",
+    "tabOnline": "Online",
+    "tabPending": "Pending",
+    "tabAdd": "Add Friend",
+    "incoming": "Incoming ({count})",
+    "outgoing": "Outgoing ({count})",
+    "cancel": "Cancel",
+    "noPending": "No pending friend requests",
+    "addIntro": "Add friends with their username, email, or QR code.",
+    "myQrCode": "My QR Code",
+    "scanQr": "Scan QR",
+    "orSearch": "or search",
+    "searchPlaceholder": "Username or email…",
+    "searching": "Searching…",
+    "noUsersFound": "No users found",
+    "sending": "Sending…",
+    "addBtn": "Add",
+    "noFriendsFound": "No friends found",
+    "requestSent": "Friend request sent",
+    "requestFailed": "Failed to send friend request"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "View Profile",
+    "addFriend": "Add Friend",
+    "removeFriend": "Remove Friend",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "block": "Block",
+    "unblock": "Unblock",
+    "closeDm": "Close DM",
+    "moderation": "Moderation",
+    "kick": "Kick",
+    "ban": "Ban",
+    "assignRole": "Assign Role",
+    "inviteToServer": "Invite to Server",
+    "reportUser": "Report User"
+  },
+
+  "channelSidebar": {
+    "title": "Channels",
+    "newChannel": "New channel",
+    "backToChat": "Back to chat",
+    "collapseSidebar": "Collapse sidebar",
+    "ariaServerChannels": "Server channels",
+    "menuNewFolder": "New Folder",
+    "menuNewText": "New Text Channel",
+    "menuNewVoice": "New Voice Channel",
+    "menuChannelSettings": "Channel Settings",
+    "menuRenameChannel": "Rename Channel",
+    "menuArchiveChannel": "Archive Channel",
+    "menuDeleteChannel": "Delete Channel",
+    "confirmDeleteChannel": "Delete this channel? This cannot be undone.",
+    "menuCreateText": "Create Text Channel",
+    "menuCreateVoice": "Create Voice Channel",
+    "menuRenameFolder": "Rename Folder",
+    "menuDeleteFolder": "Delete Folder",
+    "confirmDeleteFolder": "Delete this folder? Channels inside will not be deleted.",
+    "placeholderFolder": "Folder name…",
+    "placeholderVoice": "voice-channel-name…",
+    "placeholderText": "channel-name…",
+    "channelOptions": "Channel options"
+  },
+
+  "deleteMessageDialog": {
+    "title": "Delete message?",
+    "bodyOwner": "This message will be removed. Choose whether to remove it just for you, or for everyone.",
+    "bodyNonOwner": "This will only hide the message on your side. Other members will still see it.",
+    "deleteForEveryone": "Delete for everyone",
+    "deleteForBoth": "Delete for both of us",
+    "deleteForMe": "Delete for me",
+    "cancel": "Cancel"
+  },
+
+  "createServerModal": {
+    "title": "Create a Server",
+    "description": "Give your community a home. Customise it to make it yours.",
+    "iconLabel": "Server icon",
+    "iconHelper": "Shown in tabs and the server browser",
+    "nameLabel": "Server Name",
+    "namePlaceholder": "My Awesome Server",
+    "iconCharLabel": "Icon Character",
+    "iconCharPlaceholder": "Leave blank to use first letter of name",
+    "colorLabel": "Color Theme",
+    "privacyLabel": "Privacy",
+    "publicTitle": "Public",
+    "publicDesc": "Anyone can join with the server ID",
+    "privateTitle": "Private",
+    "privateDesc": "Members need an access code to join",
+    "cancel": "Cancel",
+    "submit": "Create Server",
+    "colors": {
+      "neutral": "Neutral",
+      "red": "Red",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "green": "Green",
+      "teal": "Teal",
+      "blue": "Blue",
+      "indigo": "Indigo",
+      "purple": "Purple",
+      "pink": "Pink"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "Join a Server",
+    "description": "Enter an invite ID to join an existing server. Ask the server owner for an access code if the server is private.",
+    "serverIdLabel": "Server ID",
+    "serverIdPlaceholder": "e.g. pixel-workshop",
+    "accessCodeLabel": "Access Code",
+    "accessCodePlaceholder": "Leave blank for public servers",
+    "errorEmpty": "Please enter a server ID.",
+    "errorNotFound": "Server not found. Check the ID and try again.",
+    "cancel": "Cancel",
+    "submit": "Join Server"
+  },
+
+  "reportModal": {
+    "title": "Report User",
+    "description": "Please select a reason for reporting this user. Your report will be reviewed by our moderation team.",
+    "additionalLabel": "Additional Details (optional)",
+    "additionalPlaceholder": "Provide any additional context that might help our moderators...",
+    "charCount": "{used}/{max}",
+    "cancel": "Cancel",
+    "submitting": "Submitting...",
+    "submit": "Submit Report",
+    "successTitle": "Report Submitted",
+    "successBody": "Thank you for helping keep our community safe. We'll review your report and take appropriate action.",
+    "close": "Close",
+    "reasons": {
+      "harassment": { "label": "Harassment or Bullying", "desc": "Targeted abuse or intimidation" },
+      "spam": { "label": "Spam", "desc": "Unwanted or repetitive messages" },
+      "inappropriate": { "label": "Inappropriate Content", "desc": "NSFW or explicit material" },
+      "violence": { "label": "Threats or Violence", "desc": "Direct threats or violent content" },
+      "other": { "label": "Other", "desc": "Something else" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "Image preview",
+    "zoomIn": "Zoom in (+)",
+    "zoomOut": "Zoom out (-)",
+    "download": "Download",
+    "openExternal": "Open in new tab",
+    "moreOptions": "More options",
+    "copyImage": "Copy image",
+    "copyLink": "Copy link",
+    "viewDetails": "View details",
+    "close": "Close (Esc)",
+    "previous": "Previous image",
+    "next": "Next image",
+    "filename": "Filename",
+    "size": "Size"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Search Tenor",
+    "back": "Back",
+    "close": "Close",
+    "favorites": "Favorites",
+    "noFavorites": "No favorites yet",
+    "noResults": "No GIFs found",
+    "removeFav": "Remove from favorites",
+    "addFav": "Add to favorites",
+    "loading": "Loading...",
+    "clearSearch": "Clear search"
+  },
+
+  "qrScanner": {
+    "title": "Scan QR Code",
+    "close": "Close",
+    "hint": "Point your camera at a Jolkr QR code",
+    "errorInvalid": "Not a valid Jolkr QR code",
+    "errorSelfAdd": "You can't add yourself as a friend",
+    "errorCameraDenied": "Camera access denied. Allow camera permissions and try again.",
+    "errorNoCamera": "No camera found on this device.",
+    "errorStartCamera": "Could not start camera: {msg}",
+    "errorUserNotFound": "User not found",
+    "successSent": "Friend request sent to {username}",
+    "sending": "Sending…",
+    "sendBtn": "Send Friend Request"
+  },
+
+  "qrDisplay": {
+    "title": "Your QR Code",
+    "close": "Close",
+    "hint": "Friends can scan this code to add you",
+    "copyLink": "Copy Link",
+    "copied": "Copied!"
+  },
+
   "auth": {
     "shared": {
       "emailLabel": "Email",

@@ -1,6 +1,7 @@
 import { SquarePen, Users, PanelLeftClose, ArrowLeft } from 'lucide-react'
 import type { DMConversation } from '../../types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useT } from '../../hooks/useT'
 import Avatar from '../Avatar/Avatar'
 import s from './DMSidebar.module.css'
 
@@ -18,22 +19,23 @@ interface Props {
 }
 
 export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onOpenFriends, onConversationContextMenu, collapsed = false, onCollapse, isMobile = false }: Props) {
+  const { t } = useT()
   return (
     <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
       <div className={s.header}>
         {isMobile && onCollapse && (
-          <button className={s.iconBtn} title="Back to chat" aria-label="Back to chat" onClick={onCollapse}>
+          <button className={s.iconBtn} title={t('dmSidebar.backToChat')} aria-label={t('dmSidebar.backToChat')} onClick={onCollapse}>
             <ArrowLeft size={14} strokeWidth={1.5} />
           </button>
         )}
-        <span className={`${s.title} txt-small txt-semibold`}>Direct Messages</span>
+        <span className={`${s.title} txt-small txt-semibold`}>{t('dmSidebar.title')}</span>
         <div className={s.actions}>
           {onOpenFriends && (
-            <button className={s.iconBtn} title="Friends" aria-label="Friends" onClick={onOpenFriends}><Users size={14} strokeWidth={1.5} /></button>
+            <button className={s.iconBtn} title={t('dmSidebar.friends')} aria-label={t('dmSidebar.friends')} onClick={onOpenFriends}><Users size={14} strokeWidth={1.5} /></button>
           )}
-          <button className={s.iconBtn} title="New message" aria-label="New message" onClick={onNewMessage}><ComposeIcon /></button>
+          <button className={s.iconBtn} title={t('dmSidebar.newMessage')} aria-label={t('dmSidebar.newMessage')} onClick={onNewMessage}><ComposeIcon /></button>
           {!isMobile && onCollapse && (
-            <button className={s.iconBtn} title="Collapse sidebar" aria-label="Collapse sidebar" onClick={onCollapse}>
+            <button className={s.iconBtn} title={t('dmSidebar.collapseSidebar')} aria-label={t('dmSidebar.collapseSidebar')} onClick={onCollapse}>
               <PanelLeftClose size={14} strokeWidth={1.5} />
             </button>
           )}
@@ -44,12 +46,12 @@ export function DMSidebar({ conversations, activeId, onSelect, onNewMessage, onO
         {conversations.length === 0 && (
           <div style={{ padding: '2rem 1rem', textAlign: 'center', opacity: 0.4 }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💬</div>
-            <p className="txt-small">No conversations yet</p>
-            <p className="txt-tiny" style={{ marginTop: '0.25rem' }}>Start a new message to begin chatting</p>
+            <p className="txt-small">{t('dmSidebar.emptyTitle')}</p>
+            <p className="txt-tiny" style={{ marginTop: '0.25rem' }}>{t('dmSidebar.emptySubtitle')}</p>
           </div>
         )}
         {conversations.map(conv => {
-          const displayName = conv.name ?? conv.participants[0]?.name ?? 'Unknown'
+          const displayName = conv.name ?? conv.participants[0]?.name ?? t('common.unknown')
           const isActive    = conv.id === activeId
           return (
             <button
@@ -103,11 +105,12 @@ function ConvAvatar({ conv }: { conv: DMConversation }) {
 }
 
 function DmPreview({ content, nonce, channelId }: { content: string; nonce?: string | null; channelId: string }) {
+  const { t } = useT()
   const { displayContent, decrypting } = useDecryptedContent(content, nonce, true, channelId)
   if (decrypting) return <span className={`${s.preview} txt-tiny txt-truncate`}>...</span>
   // Don't show the "[Encrypted message — keys unavailable]" placeholder
-  if (displayContent.startsWith('[Encrypted')) return <span className={`${s.preview} txt-tiny txt-truncate`}>Encrypted message</span>
-  return <span className={`${s.preview} txt-tiny txt-truncate`}>{displayContent.slice(0, 80)}</span>
+  if (displayContent.startsWith('[')) return <span className={`${s.preview} txt-tiny txt-truncate`}>{t('message.decrypt.encryptedMessage')}</span>
+  return <span className={`${s.preview} txt-tiny txt-truncate`} dir="auto">{displayContent.slice(0, 80)}</span>
 }
 
 function ComposeIcon() { return <SquarePen size={14} strokeWidth={1.5} /> }

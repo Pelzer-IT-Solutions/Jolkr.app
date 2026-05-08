@@ -2,19 +2,22 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Globe, Lock } from 'lucide-react'
 
+import { useT } from '../../hooks/useT'
 import s from './CreateServerModal.module.css'
 
-const COLOR_SWATCHES: { label: string; hue: number | null; color: string }[] = [
-  { label: 'Neutral',  hue: null, color: 'oklch(50% 0 0)'       },
-  { label: 'Red',      hue: 20,   color: 'oklch(58% 0.2 20)'    },
-  { label: 'Orange',   hue: 40,   color: 'oklch(65% 0.18 40)'   },
-  { label: 'Yellow',   hue: 65,   color: 'oklch(70% 0.16 65)'   },
-  { label: 'Green',    hue: 143,  color: 'oklch(58% 0.18 143)'  },
-  { label: 'Teal',     hue: 192,  color: 'oklch(58% 0.14 192)'  },
-  { label: 'Blue',     hue: 220,  color: 'oklch(55% 0.2 220)'   },
-  { label: 'Indigo',   hue: 255,  color: 'oklch(55% 0.2 255)'   },
-  { label: 'Purple',   hue: 280,  color: 'oklch(55% 0.2 280)'   },
-  { label: 'Pink',     hue: 330,  color: 'oklch(60% 0.2 330)'   },
+/** `labelKey` resolves to a colour name under `createServerModal.colors.*`
+ *  so the swatch tooltip flips per locale. Hue/colour are language-neutral. */
+const COLOR_SWATCHES: { labelKey: string; hue: number | null; color: string }[] = [
+  { labelKey: 'neutral', hue: null, color: 'oklch(50% 0 0)'       },
+  { labelKey: 'red',     hue: 20,   color: 'oklch(58% 0.2 20)'    },
+  { labelKey: 'orange',  hue: 40,   color: 'oklch(65% 0.18 40)'   },
+  { labelKey: 'yellow',  hue: 65,   color: 'oklch(70% 0.16 65)'   },
+  { labelKey: 'green',   hue: 143,  color: 'oklch(58% 0.18 143)'  },
+  { labelKey: 'teal',    hue: 192,  color: 'oklch(58% 0.14 192)'  },
+  { labelKey: 'blue',    hue: 220,  color: 'oklch(55% 0.2 220)'   },
+  { labelKey: 'indigo',  hue: 255,  color: 'oklch(55% 0.2 255)'   },
+  { labelKey: 'purple',  hue: 280,  color: 'oklch(55% 0.2 280)'   },
+  { labelKey: 'pink',    hue: 330,  color: 'oklch(60% 0.2 330)'   },
 ]
 
 interface CreateServerData {
@@ -31,6 +34,7 @@ interface Props {
 }
 
 export function CreateServerModal({ onClose, onCreate }: Props) {
+  const { t } = useT()
   const [name,    setName]    = useState('')
   const [icon,    setIcon]    = useState('')
   const [selectedSwatch, setSelectedSwatch] = useState(0)
@@ -74,14 +78,14 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
     <div className={s.overlay} onClick={handleOverlayClick}>
       <div className={s.modal}>
         <div className={s.header}>
-          <span className={s.title}>Create a Server</span>
+          <span className={s.title}>{t('createServerModal.title')}</span>
           <button className={s.closeBtn} onClick={onClose} type="button">
             <X size={14} strokeWidth={1.5} />
           </button>
         </div>
 
         <div className={s.desc}>
-          <p className="txt-small">Give your community a home. Customise it to make it yours.</p>
+          <p className="txt-small">{t('createServerModal.description')}</p>
         </div>
 
         <form className={s.body} onSubmit={handleSubmit}>
@@ -91,20 +95,20 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
               <span className={s.iconChar}>{iconChar}</span>
             </div>
             <div className={s.iconMeta}>
-              <span className={`${s.iconLabel} txt-tiny txt-semibold`}>Server icon</span>
-              <span className="txt-tiny" style={{ color: 'var(--text-faint)' }}>Shown in tabs and the server browser</span>
+              <span className={`${s.iconLabel} txt-tiny txt-semibold`}>{t('createServerModal.iconLabel')}</span>
+              <span className="txt-tiny" style={{ color: 'var(--text-faint)' }}>{t('createServerModal.iconHelper')}</span>
             </div>
           </div>
 
           {/* Server name */}
           <div className={s.fieldGroup}>
             <label className={`${s.label} txt-tiny txt-semibold`}>
-              Server Name <span className={s.required}>*</span>
+              {t('createServerModal.nameLabel')} <span className={s.required}>{t('common.required')}</span>
             </label>
             <input
               ref={nameRef}
               className={`${s.input} txt-small`}
-              placeholder="My Awesome Server"
+              placeholder={t('createServerModal.namePlaceholder')}
               value={name}
               onChange={e => setName(e.target.value)}
               maxLength={60}
@@ -114,11 +118,11 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
           {/* Icon character */}
           <div className={s.fieldGroup}>
             <label className={`${s.label} txt-tiny txt-semibold`}>
-              Icon Character <span className={s.optional}>Optional</span>
+              {t('createServerModal.iconCharLabel')} <span className={s.optional}>Optional</span>
             </label>
             <input
               className={`${s.input} txt-small`}
-              placeholder="Leave blank to use first letter of name"
+              placeholder={t('createServerModal.iconCharPlaceholder')}
               value={icon}
               onChange={e => setIcon(e.target.value.slice(0, 2))}
               maxLength={2}
@@ -127,15 +131,15 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
 
           {/* Color theme */}
           <div className={s.fieldGroup}>
-            <label className={`${s.label} txt-tiny txt-semibold`}>Color Theme</label>
+            <label className={`${s.label} txt-tiny txt-semibold`}>{t('createServerModal.colorLabel')}</label>
             <div className={s.swatches}>
               {COLOR_SWATCHES.map((sw, i) => (
                 <button
-                  key={sw.label}
+                  key={sw.labelKey}
                   type="button"
                   className={`${s.swatch} ${selectedSwatch === i ? s.swatchActive : ''}`}
                   style={{ '--swatch-color': sw.color } as React.CSSProperties}
-                  title={sw.label}
+                  title={t(`createServerModal.colors.${sw.labelKey}`)}
                   onClick={() => setSelectedSwatch(i)}
                 />
               ))}
@@ -144,7 +148,7 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
 
           {/* Privacy */}
           <div className={s.fieldGroup}>
-            <label className={`${s.label} txt-tiny txt-semibold`}>Privacy</label>
+            <label className={`${s.label} txt-tiny txt-semibold`}>{t('createServerModal.privacyLabel')}</label>
             <div className={s.privacyOptions}>
               <button
                 type="button"
@@ -153,8 +157,8 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
               >
                 <div className={s.privacyIcon}><Globe size={16} strokeWidth={1.5} /></div>
                 <div className={s.privacyText}>
-                  <span className={`${s.privacyTitle} txt-small txt-medium`}>Public</span>
-                  <span className={`${s.privacySub} txt-tiny`}>Anyone can join with the server ID</span>
+                  <span className={`${s.privacyTitle} txt-small txt-medium`}>{t('createServerModal.publicTitle')}</span>
+                  <span className={`${s.privacySub} txt-tiny`}>{t('createServerModal.publicDesc')}</span>
                 </div>
                 <div className={`${s.privacyRadio} ${privacy === 'public' ? s.privacyRadioActive : ''}`} />
               </button>
@@ -166,8 +170,8 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
               >
                 <div className={s.privacyIcon}><Lock size={16} strokeWidth={1.5} /></div>
                 <div className={s.privacyText}>
-                  <span className={`${s.privacyTitle} txt-small txt-medium`}>Private</span>
-                  <span className={`${s.privacySub} txt-tiny`}>Members need an access code to join</span>
+                  <span className={`${s.privacyTitle} txt-small txt-medium`}>{t('createServerModal.privateTitle')}</span>
+                  <span className={`${s.privacySub} txt-tiny`}>{t('createServerModal.privateDesc')}</span>
                 </div>
                 <div className={`${s.privacyRadio} ${privacy === 'private' ? s.privacyRadioActive : ''}`} />
               </button>
@@ -175,9 +179,9 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
           </div>
 
           <div className={s.footer}>
-            <button type="button" className={`${s.cancelBtn} txt-small`} onClick={onClose}>Cancel</button>
+            <button type="button" className={`${s.cancelBtn} txt-small`} onClick={onClose}>{t('createServerModal.cancel')}</button>
             <button type="submit" className={`${s.submitBtn} txt-small`} disabled={!name.trim()}>
-              Create Server
+              {t('createServerModal.submit')}
             </button>
           </div>
         </form>

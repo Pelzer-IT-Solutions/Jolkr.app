@@ -146,6 +146,211 @@
     "openImage": "{filename} openen"
   },
 
+  "userStatus": {
+    "online": "Online", "idle": "Inactief", "dnd": "Niet storen",
+    "offline": "Offline", "invisible": "Onzichtbaar"
+  },
+
+  "dmSidebar": {
+    "title": "Directe berichten",
+    "backToChat": "Terug naar chat", "friends": "Vrienden",
+    "newMessage": "Nieuw bericht", "collapseSidebar": "Zijbalk inklappen",
+    "emptyTitle": "Nog geen gesprekken",
+    "emptySubtitle": "Start een nieuw bericht om te beginnen met chatten"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "Terug naar chat", "info": "Info", "unpin": "Pin verwijderen",
+    "pinnedMessages": "Vastgepinde berichten", "noPinned": "Nog geen vastgepinde berichten",
+    "sharedFiles": "Gedeelde bestanden", "noFiles": "Nog geen gedeelde bestanden",
+    "decrypting": "Ontsleutelen…"
+  },
+
+  "newDmModal": {
+    "title": "Nieuw bericht", "close": "Sluiten",
+    "addMore": "Meer toevoegen...",
+    "searchPlaceholder": "Zoek vrienden of typ een gebruikersnaam...",
+    "loadingFriends": "Vrienden laden...", "searching": "Zoeken...",
+    "online": "Online — {count}", "offline": "Offline — {count}",
+    "noUsersFound": "Geen gebruikers gevonden",
+    "noFriendsYet": "Nog geen vrienden — zoek hierboven op gebruikersnaam",
+    "createGroup": "Groeps-DM maken", "startConversation": "Gesprek starten"
+  },
+
+  "profileCard": {
+    "ariaProfile": "Profiel van {name}",
+    "loadError": "Kon gebruikersprofiel niet laden", "loading": "Laden…",
+    "about": "Over", "memberSince": "Lid sinds", "safetyNumber": "Beveiligingsnummer",
+    "sendMessage": "Bericht sturen", "addFriend": "Vriend toevoegen",
+    "requestPending": "Vriendverzoek in behandeling", "removeFriend": "Vriend verwijderen",
+    "userBlocked": "Gebruiker geblokkeerd", "block": "Blokkeren",
+    "editProfile": "Profiel bewerken",
+    "errFriendSend": "Verzoek versturen mislukt",
+    "errFriendRemove": "Vriend verwijderen mislukt",
+    "errBlock": "Gebruiker blokkeren mislukt"
+  },
+
+  "memberPanel": {
+    "backToChat": "Terug naar chat",
+    "online": "Online — {count}", "offline": "Offline — {count}",
+    "members": "Leden — {count}",
+    "pinnedMessages": "Vastgepinde berichten", "threads": "Threads"
+  },
+
+  "tabBar": {
+    "yourServers": "Je servers", "search": "Zoeken (⌘K)",
+    "directMessages": "Directe berichten", "notifications": "Notificaties",
+    "profile": "Profiel",
+    "onVideoCallOther": "In een videogesprek (ander apparaat)",
+    "onCallOther": "In een gesprek (ander apparaat)",
+    "joinServer": "Server toetreden", "createServer": "Server maken",
+    "browserTitle": "Je servers",
+    "channelsCount": { "one": "{count} kanaal", "other": "{count} kanalen" },
+    "open": "open",
+    "muteServer": "Server dempen", "unmuteServer": "Demping opheffen",
+    "markAsRead": "Markeer als gelezen", "serverSettings": "Serverinstellingen",
+    "closeTab": "Tab sluiten", "leaveServer": "Server verlaten",
+    "setStatus": "Status instellen", "settings": "Instellingen", "logOut": "Uitloggen",
+    "serverOptions": "Serveropties", "onVideoCall": "In videogesprek", "onCall": "In gesprek"
+  },
+
+  "notificationsPanel": { "title": "Notificaties", "empty": "Nog geen notificaties" },
+
+  "friendsPanel": {
+    "close": "Sluiten",
+    "tabAll": "Alle", "tabOnline": "Online", "tabPending": "In behandeling", "tabAdd": "Vriend toevoegen",
+    "incoming": "Inkomend ({count})", "outgoing": "Uitgaand ({count})",
+    "cancel": "Annuleren", "noPending": "Geen vriendverzoeken in behandeling",
+    "addIntro": "Voeg vrienden toe via gebruikersnaam, e-mail of QR-code.",
+    "myQrCode": "Mijn QR-code", "scanQr": "QR scannen",
+    "orSearch": "of zoek", "searchPlaceholder": "Gebruikersnaam of e-mail…",
+    "searching": "Zoeken…", "noUsersFound": "Geen gebruikers gevonden",
+    "sending": "Verzenden…", "addBtn": "Toevoegen",
+    "noFriendsFound": "Geen vrienden gevonden",
+    "requestSent": "Vriendverzoek verstuurd",
+    "requestFailed": "Vriendverzoek versturen mislukt"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "Profiel bekijken",
+    "addFriend": "Vriend toevoegen", "removeFriend": "Vriend verwijderen",
+    "mute": "Dempen", "unmute": "Demping opheffen",
+    "block": "Blokkeren", "unblock": "Deblokkeren",
+    "closeDm": "DM sluiten", "moderation": "Moderatie",
+    "kick": "Schoppen", "ban": "Verbannen",
+    "assignRole": "Rol toewijzen", "inviteToServer": "Uitnodigen voor server",
+    "reportUser": "Gebruiker rapporteren"
+  },
+
+  "channelSidebar": {
+    "title": "Kanalen", "newChannel": "Nieuw kanaal",
+    "backToChat": "Terug naar chat", "collapseSidebar": "Zijbalk inklappen",
+    "ariaServerChannels": "Serverkanalen",
+    "menuNewFolder": "Nieuwe map", "menuNewText": "Nieuw tekstkanaal",
+    "menuNewVoice": "Nieuw spraakkanaal",
+    "menuChannelSettings": "Kanaalinstellingen", "menuRenameChannel": "Kanaal hernoemen",
+    "menuArchiveChannel": "Kanaal archiveren", "menuDeleteChannel": "Kanaal verwijderen",
+    "confirmDeleteChannel": "Dit kanaal verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "menuCreateText": "Tekstkanaal maken", "menuCreateVoice": "Spraakkanaal maken",
+    "menuRenameFolder": "Map hernoemen", "menuDeleteFolder": "Map verwijderen",
+    "confirmDeleteFolder": "Deze map verwijderen? Kanalen erin worden niet verwijderd.",
+    "placeholderFolder": "Mapnaam…", "placeholderVoice": "spraakkanaal-naam…",
+    "placeholderText": "kanaal-naam…", "channelOptions": "Kanaalopties"
+  },
+
+  "deleteMessageDialog": {
+    "title": "Bericht verwijderen?",
+    "bodyOwner": "Dit bericht wordt verwijderd. Kies of je het alleen voor jezelf of voor iedereen wilt verwijderen.",
+    "bodyNonOwner": "Dit verbergt het bericht alleen aan jouw kant. Andere leden blijven het zien.",
+    "deleteForEveryone": "Verwijderen voor iedereen",
+    "deleteForBoth": "Verwijderen voor ons beiden",
+    "deleteForMe": "Verwijderen voor mij", "cancel": "Annuleren"
+  },
+
+  "createServerModal": {
+    "title": "Server maken",
+    "description": "Geef je gemeenschap een thuis. Pas hem aan om hem van jou te maken.",
+    "iconLabel": "Server-icoon",
+    "iconHelper": "Te zien in tabs en de serverbrowser",
+    "nameLabel": "Servernaam", "namePlaceholder": "Mijn geweldige server",
+    "iconCharLabel": "Icoon-teken",
+    "iconCharPlaceholder": "Laat leeg om eerste letter van naam te gebruiken",
+    "colorLabel": "Kleurthema", "privacyLabel": "Privacy",
+    "publicTitle": "Openbaar", "publicDesc": "Iedereen kan toetreden met de server-ID",
+    "privateTitle": "Privé", "privateDesc": "Leden hebben een toegangscode nodig om toe te treden",
+    "cancel": "Annuleren", "submit": "Server maken",
+    "colors": {
+      "neutral": "Neutraal", "red": "Rood", "orange": "Oranje", "yellow": "Geel",
+      "green": "Groen", "teal": "Turquoise", "blue": "Blauw",
+      "indigo": "Indigo", "purple": "Paars", "pink": "Roze"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "Server toetreden",
+    "description": "Voer een uitnodigings-ID in om een bestaande server toe te treden. Vraag de servereigenaar om een toegangscode als de server privé is.",
+    "serverIdLabel": "Server-ID", "serverIdPlaceholder": "bijv. pixel-workshop",
+    "accessCodeLabel": "Toegangscode", "accessCodePlaceholder": "Laat leeg voor openbare servers",
+    "errorEmpty": "Voer een server-ID in.", "errorNotFound": "Server niet gevonden. Controleer de ID en probeer opnieuw.",
+    "cancel": "Annuleren", "submit": "Toetreden"
+  },
+
+  "reportModal": {
+    "title": "Gebruiker rapporteren",
+    "description": "Selecteer een reden om deze gebruiker te rapporteren. Je rapport wordt door ons moderatieteam beoordeeld.",
+    "additionalLabel": "Aanvullende details (optioneel)",
+    "additionalPlaceholder": "Geef extra context die onze moderators kan helpen...",
+    "charCount": "{used}/{max}",
+    "cancel": "Annuleren", "submitting": "Verzenden...", "submit": "Rapport indienen",
+    "successTitle": "Rapport ingediend",
+    "successBody": "Bedankt dat je onze gemeenschap veilig helpt houden. We bekijken je rapport en nemen de juiste actie.",
+    "close": "Sluiten",
+    "reasons": {
+      "harassment": { "label": "Pesterij of intimidatie", "desc": "Gericht misbruik of intimidatie" },
+      "spam": { "label": "Spam", "desc": "Ongewenste of repetitieve berichten" },
+      "inappropriate": { "label": "Ongepaste inhoud", "desc": "NSFW of expliciet materiaal" },
+      "violence": { "label": "Bedreigingen of geweld", "desc": "Directe bedreigingen of gewelddadige inhoud" },
+      "other": { "label": "Anders", "desc": "Iets anders" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "Afbeeldingsvoorbeeld",
+    "zoomIn": "Inzoomen (+)", "zoomOut": "Uitzoomen (-)",
+    "download": "Downloaden", "openExternal": "Openen in nieuw tabblad",
+    "moreOptions": "Meer opties", "copyImage": "Afbeelding kopiëren",
+    "copyLink": "Link kopiëren", "viewDetails": "Details bekijken",
+    "close": "Sluiten (Esc)", "previous": "Vorige afbeelding", "next": "Volgende afbeelding",
+    "filename": "Bestandsnaam", "size": "Grootte"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Zoek op Tenor", "back": "Terug", "close": "Sluiten",
+    "favorites": "Favorieten", "noFavorites": "Nog geen favorieten",
+    "noResults": "Geen GIF's gevonden",
+    "removeFav": "Verwijderen uit favorieten", "addFav": "Toevoegen aan favorieten",
+    "loading": "Laden...", "clearSearch": "Zoekopdracht wissen"
+  },
+
+  "qrScanner": {
+    "title": "QR-code scannen", "close": "Sluiten",
+    "hint": "Richt je camera op een Jolkr QR-code",
+    "errorInvalid": "Geen geldige Jolkr QR-code",
+    "errorSelfAdd": "Je kunt jezelf niet als vriend toevoegen",
+    "errorCameraDenied": "Cameratoegang geweigerd. Sta cameramachtigingen toe en probeer opnieuw.",
+    "errorNoCamera": "Geen camera gevonden op dit apparaat.",
+    "errorStartCamera": "Kon camera niet starten: {msg}",
+    "errorUserNotFound": "Gebruiker niet gevonden",
+    "successSent": "Vriendverzoek verstuurd naar {username}",
+    "sending": "Verzenden…", "sendBtn": "Vriendverzoek versturen"
+  },
+
+  "qrDisplay": {
+    "title": "Jouw QR-code", "close": "Sluiten",
+    "hint": "Vrienden kunnen deze code scannen om je toe te voegen",
+    "copyLink": "Link kopiëren", "copied": "Gekopieerd!"
+  },
+
   "auth": {
     "shared": { "emailLabel": "E-mail", "passwordLabel": "Wachtwoord" },
     "login": {

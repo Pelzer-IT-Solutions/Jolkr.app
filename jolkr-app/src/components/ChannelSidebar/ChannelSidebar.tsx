@@ -17,6 +17,7 @@ import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import { Menu, MenuItem, MenuDivider } from '../Menu'
 import { ThemePicker } from '../ThemePicker/ThemePicker'
+import { useT } from '../../hooks/useT'
 import s from './ChannelSidebar.module.css'
 
 // Diff the layout before vs. after a drag and produce the API payloads:
@@ -114,6 +115,7 @@ interface Props {
 }
 
 export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, isMobile = false, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, canEditTheme, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings, onReorderChannels }: Props) {
+  const { t } = useT()
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
   const [localCats,          setLocalCats]           = useState<CategoryDisplay[]>(server.categories)
   const [localExtraChannels, setLocalExtraChannels]  = useState<ChannelDisplay[]>([])
@@ -474,10 +476,10 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   return (
     <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
       <div className={s.header}>
-        <span className={`${s.title} txt-small txt-semibold`}>Channels</span>
+        <span className={`${s.title} txt-small txt-semibold`}>{t('channelSidebar.title')}</span>
         <div className={s.actions}>
           {canManageChannels && (
-            <button ref={addBtnRef} className={s.iconBtn} title="New channel" aria-label="New channel" onClick={handleAddClick}><PlusIcon /></button>
+            <button ref={addBtnRef} className={s.iconBtn} title={t('channelSidebar.newChannel')} aria-label={t('channelSidebar.newChannel')} onClick={handleAddClick}><PlusIcon /></button>
           )}
           {canEditTheme && (
             <ThemePicker
@@ -490,8 +492,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
           )}
           <button
             className={s.iconBtn}
-            title={isMobile ? 'Back to chat' : 'Collapse sidebar'}
-            aria-label={isMobile ? 'Back to chat' : 'Collapse sidebar'}
+            title={isMobile ? t('channelSidebar.backToChat') : t('channelSidebar.collapseSidebar')}
+            aria-label={isMobile ? t('channelSidebar.backToChat') : t('channelSidebar.collapseSidebar')}
             onClick={onCollapse}
           >
             {isMobile ? <ArrowLeft size={14} strokeWidth={1.5} /> : <CollapseIcon />}
@@ -508,7 +510,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         onDragCancel={handleDragCancel}
       >
         <nav
-          aria-label="Server channels"
+          aria-label={t('channelSidebar.ariaServerChannels')}
           className={`${s.scroll} scrollbar-thin scroll-view-y`}
           onContextMenu={handleContextMenu}
         >
@@ -558,7 +560,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                       <input
                         ref={inputRef}
                         className={`${s.newItemInput} txt-small`}
-                        placeholder={creating.kind === 'voice' ? 'voice-channel-name…' : 'channel-name…'}
+                        placeholder={creating.kind === 'voice' ? t('channelSidebar.placeholderVoice') : t('channelSidebar.placeholderText')}
                         value={newName}
                         onChange={e => setNewName(e.target.value)}
                         onKeyDown={confirmCreate}
@@ -618,9 +620,9 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                 ref={inputRef}
                 className={`${s.newItemInput} txt-small`}
                 placeholder={
-                  creating.type === 'folder' ? 'Folder name…' :
-                  creating.kind === 'voice' ? 'voice-channel-name…' :
-                  'channel-name…'
+                  creating.type === 'folder' ? t('channelSidebar.placeholderFolder') :
+                  creating.kind === 'voice' ? t('channelSidebar.placeholderVoice') :
+                  t('channelSidebar.placeholderText')
                 }
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
@@ -648,9 +650,9 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
       {/* ── Add / empty-space menu ── */}
       <Menu open={contextMenu !== null} position={contextMenu ?? { x: 0, y: 0 }} onClose={() => setContextMenu(null)}>
-        <MenuItem icon={<FolderPlus size={13} strokeWidth={1.5} />} label="New Folder" onClick={() => startCreating({ type: 'folder' })} />
-        <MenuItem icon={<Hash size={13} strokeWidth={1.5} />} label="New Text Channel" onClick={() => startCreating({ type: 'channel', kind: 'text' })} />
-        <MenuItem icon={<Volume2 size={13} strokeWidth={1.5} />} label="New Voice Channel" onClick={() => startCreating({ type: 'channel', kind: 'voice' })} />
+        <MenuItem icon={<FolderPlus size={13} strokeWidth={1.5} />} label={t('channelSidebar.menuNewFolder')} onClick={() => startCreating({ type: 'folder' })} />
+        <MenuItem icon={<Hash size={13} strokeWidth={1.5} />} label={t('channelSidebar.menuNewText')} onClick={() => startCreating({ type: 'channel', kind: 'text' })} />
+        <MenuItem icon={<Volume2 size={13} strokeWidth={1.5} />} label={t('channelSidebar.menuNewVoice')} onClick={() => startCreating({ type: 'channel', kind: 'voice' })} />
       </Menu>
 
       {/* ── Channel context menu ── */}
@@ -658,7 +660,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         {onOpenChannelSettings && channelContextMenu && (
           <MenuItem
             icon={<Settings size={13} strokeWidth={1.5} />}
-            label="Channel Settings"
+            label={t('channelSidebar.menuChannelSettings')}
             onClick={() => {
               onOpenChannelSettings(channelContextMenu.channelId)
               setChannelContextMenu(null)
@@ -668,7 +670,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         {canManageChannels && channelContextMenu && (
           <MenuItem
             icon={<Edit3 size={13} strokeWidth={1.5} />}
-            label="Rename Channel"
+            label={t('channelSidebar.menuRenameChannel')}
             onClick={() => {
               const channel = channelMap[channelContextMenu.channelId]
               if (channel) startChannelRename(channel)
@@ -679,7 +681,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         {onArchiveChannel && channelContextMenu && (
           <MenuItem
             icon={<Archive size={13} strokeWidth={1.5} />}
-            label="Archive Channel"
+            label={t('channelSidebar.menuArchiveChannel')}
             onClick={() => {
               onArchiveChannel(channelContextMenu.channelId)
               setChannelContextMenu(null)
@@ -691,10 +693,10 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
             <MenuDivider />
             <MenuItem
               icon={<Trash2 size={13} strokeWidth={1.5} />}
-              label="Delete Channel"
+              label={t('channelSidebar.menuDeleteChannel')}
               danger
               onClick={() => {
-                if (window.confirm('Delete this channel? This cannot be undone.')) {
+                if (window.confirm(t('channelSidebar.confirmDeleteChannel'))) {
                   onDeleteChannel(channelContextMenu.channelId)
                 }
                 setChannelContextMenu(null)
@@ -723,12 +725,12 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
             <>
               <MenuItem
                 icon={<Hash size={13} strokeWidth={1.5} />}
-                label="Create Text Channel"
+                label={t('channelSidebar.menuCreateText')}
                 onClick={() => startInFolder('text')}
               />
               <MenuItem
                 icon={<Volume2 size={13} strokeWidth={1.5} />}
-                label="Create Voice Channel"
+                label={t('channelSidebar.menuCreateVoice')}
                 onClick={() => startInFolder('voice')}
               />
             </>
@@ -737,7 +739,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         {canManageChannels && categoryContextMenu && (
           <MenuItem
             icon={<Edit3 size={13} strokeWidth={1.5} />}
-            label="Rename Folder"
+            label={t('channelSidebar.menuRenameFolder')}
             onClick={() => {
               const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
               if (category) startCategoryRename(category)
@@ -750,10 +752,10 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
             <MenuDivider />
             <MenuItem
               icon={<Trash2 size={13} strokeWidth={1.5} />}
-              label="Delete Folder"
+              label={t('channelSidebar.menuDeleteFolder')}
               danger
               onClick={() => {
-                if (window.confirm('Delete this folder? Channels inside will not be deleted.')) {
+                if (window.confirm(t('channelSidebar.confirmDeleteFolder'))) {
                   const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
                   if (category) {
                     const serverCat = server.categories.find(c => c.name === category.name)
@@ -1030,6 +1032,7 @@ function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx, onConte
   onOpenChannelSettings?: (channelId: string) => void
   canManageChannels?: boolean
 }) {
+  const { t } = useT()
   const isText = channel.icon === '#'
 
   if (isEditing) {
@@ -1088,8 +1091,8 @@ function ChannelRow({ channel, active, onClick, isRevealing, staggerIdx, onConte
       {onContextMenu && (
         <button
           className={s.channelMenuBtn}
-          title="Channel options"
-          aria-label="Channel options"
+          title={t('channelSidebar.channelOptions')}
+          aria-label={t('channelSidebar.channelOptions')}
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()

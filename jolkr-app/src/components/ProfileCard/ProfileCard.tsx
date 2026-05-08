@@ -8,6 +8,8 @@ import { usePresenceStore } from '../../stores/presence';
 import * as api from '../../api/client';
 import Avatar from '../Avatar/Avatar';
 import { hashColor } from '../../adapters/transforms';
+import { useT } from '../../hooks/useT';
+import { useLocaleFormatters } from '../../hooks/useLocaleFormatters';
 import {
   lookupFriendship,
   invalidateFriendsCache,
@@ -17,11 +19,14 @@ import s from './ProfileCard.module.css';
 
 type FriendStatus = FriendshipState | 'loading';
 
-const STATUS_LABEL: Record<string, string> = {
-  online: 'Online',
-  idle: 'Idle',
-  dnd: 'Do not disturb',
-  offline: 'Offline',
+/** Maps presence-state strings to the shared `userStatus.*` namespace.
+ *  The 'dnd' entry resolves to "Do Not Disturb" in en-US — this map is
+ *  keyed by status code, not display text, so locale switches reflow. */
+const STATUS_KEY: Record<string, string> = {
+  online: 'userStatus.online',
+  idle: 'userStatus.idle',
+  dnd: 'userStatus.dnd',
+  offline: 'userStatus.offline',
 };
 
 /** Open-state for the profile card popover. Mirrors `UserContextMenuState` shape. */
@@ -41,6 +46,8 @@ export interface ProfileCardProps {
 }
 
 export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
+  const { t } = useT();
+  const fmt = useLocaleFormatters();
   const { userId, user: preloaded, x, y } = state;
   // Memoize anchor so the useLayoutEffect at line 128 doesn't get a new
   // object reference every render.
@@ -159,7 +166,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
       invalidateFriendsCache();
       setFriendStatus('pending');
     } catch (e) {
-      setActionError((e as Error).message || 'Failed to send request');
+      setActionError((e as Error).message || t('profileCard.errFriendSend'));
     }
     setActionLoading(false);
   };
@@ -175,7 +182,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
         setFriendStatus('none');
       }
     } catch (e) {
-      setActionError((e as Error).message || 'Failed to remove friend');
+      setActionError((e as Error).message || t('profileCard.errFriendRemove'));
     }
     setActionLoading(false);
   };
@@ -188,7 +195,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
       invalidateFriendsCache();
       setFriendStatus('blocked');
     } catch (e) {
-      setActionError((e as Error).message || 'Failed to block user');
+      setActionError((e as Error).message || t('profileCard.errBlock'));
     }
     setActionLoading(false);
   };
@@ -199,7 +206,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
         <div className={s.scrim} onClick={onClose} />
         <div ref={cardRef} className={s.card}>
           <div className={s.loadingBody}>
-            {fetchError ? 'Could not load user profile' : 'Loading…'}
+            {fetchError ? t('profileCard.loadError') : t('profileCard.loading')}
           </div>
         </div>
       </>,
@@ -207,15 +214,13 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
     );
   }
 
-  const joinedDate = user.created_at
-    ? new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-    : null;
+  const joinedDate = user.created_at ? fmt.formatDate(user.created_at, 'short') : null;
   const displayName = user.display_name || user.username;
 
   return createPortal(
     <>
       <div className={s.scrim} onClick={onClose} />
-      <div ref={cardRef} className={s.card} role="dialog" aria-label={`${displayName} profile`}>
+      <div ref={cardRef} className={s.card} role="dialog" aria-label={t('profileCard.ariaProfile', { name: displayName })}>
         <div className={s.banner} style={{ background: bannerColor }} />
 
         <div className={s.avatarWrap}>
@@ -237,7 +242,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
             )}
             <div className={s.statusRow}>
               <span className={`${s.statusDot} ${s[`status_${status}`] ?? ''}`} />
-              <span className={`txt-small ${s.statusLabel}`}>{STATUS_LABEL[status] ?? status}</span>
+              <span className={`txt-small ${s.statusLabel}`}>{STATUS_KEY[status] ? t(STATUS_KEY[status]) : status}</span>
             </div>
             {user.status && (
               <span className={`${s.customStatus} txt-small`}>{user.status}</span>
@@ -248,14 +253,14 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
 
           {user.bio && (
             <section className={s.section}>
-              <h3 className={`${s.sectionLabel} txt-tiny`}>About</h3>
-              <p className={`${s.bio} txt-small`}>{user.bio}</p>
+              <h3 className={`${s.sectionLabel} txt-tiny`}>{t('profileCard.about')}</h3>
+              <p className={`${s.bio} txt-small`} dir="auto">{user.bio}</p>
             </section>
           )}
 
           {joinedDate && (
             <section className={s.section}>
-              <h3 className={`${s.sectionLabel} txt-tiny`}>Member Since</h3>
+              <h3 className={`${s.sectionLabel} txt-tiny`}>{t('profileCard.memberSince')}</h3>
               <p className={`txt-small ${s.dim}`}>{joinedDate}</p>
             </section>
           )}
@@ -268,7 +273,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
                 onClick={() => setShowSafetyNumber((v) => !v)}
               >
                 <ShieldCheck size={11} strokeWidth={1.75} />
-                <span className="txt-tiny">Safety Number</span>
+                <span className="txt-tiny">{t('profileCard.safetyNumber')}</span>
                 <ChevronDown
                   size={11}
                   strokeWidth={1.75}
@@ -293,7 +298,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
                 disabled={actionLoading}
               >
                 <MessageCircle size={14} strokeWidth={1.75} />
-                Send Message
+                {t('profileCard.sendMessage')}
               </button>
 
               {friendStatus === 'none' && (
@@ -303,11 +308,11 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
                   disabled={actionLoading}
                 >
                   <UserPlus size={14} strokeWidth={1.75} />
-                  Add Friend
+                  {t('profileCard.addFriend')}
                 </button>
               )}
               {friendStatus === 'pending' && (
-                <div className={`${s.statusInline} txt-small`}>Friend request pending</div>
+                <div className={`${s.statusInline} txt-small`}>{t('profileCard.requestPending')}</div>
               )}
               {friendStatus === 'accepted' && (
                 <button
@@ -316,11 +321,11 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
                   disabled={actionLoading}
                 >
                   <UserMinus size={14} strokeWidth={1.75} />
-                  Remove Friend
+                  {t('profileCard.removeFriend')}
                 </button>
               )}
               {friendStatus === 'blocked' && (
-                <div className={`${s.statusInline} ${s.statusBlocked} txt-small`}>User blocked</div>
+                <div className={`${s.statusInline} ${s.statusBlocked} txt-small`}>{t('profileCard.userBlocked')}</div>
               )}
 
               {friendStatus !== 'blocked' && friendStatus !== 'loading' && (
@@ -330,7 +335,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
                   disabled={actionLoading}
                 >
                   <Ban size={14} strokeWidth={1.75} />
-                  Block
+                  {t('profileCard.block')}
                 </button>
               )}
             </>
@@ -342,7 +347,7 @@ export function ProfileCard({ state, onClose, onStartDm }: ProfileCardProps) {
               onClick={() => { onClose(); navigate('/settings'); }}
             >
               <Pencil size={14} strokeWidth={1.75} />
-              Edit Profile
+              {t('profileCard.editProfile')}
             </button>
           )}
         </div>

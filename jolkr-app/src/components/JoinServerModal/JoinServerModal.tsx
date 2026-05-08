@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Hash, KeyRound, AlertCircle } from 'lucide-react'
+import { useT } from '../../hooks/useT'
 import s from './JoinServerModal.module.css'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function JoinServerModal({ onClose, onJoin }: Props) {
+  const { t } = useT()
   const [serverId,    setServerId]    = useState('')
   const [accessCode,  setAccessCode]  = useState('')
   const [error,       setError]       = useState('')
@@ -29,9 +31,9 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const id = serverId.trim()
-    if (!id) { setError('Please enter a server ID.'); return }
+    if (!id) { setError(t('joinServerModal.errorEmpty')); return }
     const ok = onJoin(id, accessCode.trim())
-    if (!ok) setError('Server not found. Check the ID and try again.')
+    if (!ok) setError(t('joinServerModal.errorNotFound'))
   }
 
   function handleOverlayClick(e: React.MouseEvent) {
@@ -42,25 +44,25 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
     <div className={s.overlay} onClick={handleOverlayClick}>
       <div className={s.modal}>
         <div className={s.header}>
-          <span className={s.title}>Join a Server</span>
+          <span className={s.title}>{t('joinServerModal.title')}</span>
           <button className={s.closeBtn} onClick={onClose} type="button">
             <X size={14} strokeWidth={1.5} />
           </button>
         </div>
 
         <div className={s.desc}>
-          <p className="txt-small">Enter an invite ID to join an existing server. Ask the server owner for an access code if the server is private.</p>
+          <p className="txt-small">{t('joinServerModal.description')}</p>
         </div>
 
         <form className={s.body} onSubmit={handleSubmit}>
           <div className={s.fieldGroup}>
-            <label className={`${s.label} txt-tiny txt-semibold`}>Server ID <span className={s.required}>*</span></label>
+            <label className={`${s.label} txt-tiny txt-semibold`}>{t('joinServerModal.serverIdLabel')} <span className={s.required}>{t('common.required')}</span></label>
             <div className={`${s.inputWrap} ${error ? s.inputError : ''}`}>
               <Hash size={13} strokeWidth={1.5} className={s.inputIcon} />
               <input
                 ref={inputRef}
                 className={`${s.input} txt-small`}
-                placeholder="e.g. pixel-workshop"
+                placeholder={t('joinServerModal.serverIdPlaceholder')}
                 value={serverId}
                 onChange={e => { setServerId(e.target.value); setError('') }}
               />
@@ -69,13 +71,13 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
 
           <div className={s.fieldGroup}>
             <label className={`${s.label} txt-tiny txt-semibold`}>
-              Access Code <span className={s.optional}>Optional</span>
+              {t('joinServerModal.accessCodeLabel')} <span className={s.optional}>Optional</span>
             </label>
             <div className={s.inputWrap}>
               <KeyRound size={13} strokeWidth={1.5} className={s.inputIcon} />
               <input
                 className={`${s.input} txt-small`}
-                placeholder="Leave blank for public servers"
+                placeholder={t('joinServerModal.accessCodePlaceholder')}
                 value={accessCode}
                 onChange={e => setAccessCode(e.target.value)}
               />
@@ -90,9 +92,9 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
           )}
 
           <div className={s.footer}>
-            <button type="button" className={`${s.cancelBtn} txt-small`} onClick={onClose}>Cancel</button>
+            <button type="button" className={`${s.cancelBtn} txt-small`} onClick={onClose}>{t('joinServerModal.cancel')}</button>
             <button type="submit" className={`${s.submitBtn} txt-small`} disabled={!serverId.trim()}>
-              Join Server
+              {t('joinServerModal.submit')}
             </button>
           </div>
         </form>

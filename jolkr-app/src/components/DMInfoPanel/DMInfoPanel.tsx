@@ -4,6 +4,7 @@ import * as api from '../../api/client'
 import type { Message, User, Attachment } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { useT } from '../../hooks/useT'
 import { rewriteStorageUrl } from '../../platform/config'
 import s from './DMInfoPanel.module.css'
 
@@ -19,18 +20,19 @@ interface Props {
 function PinnedItem({ msg, dmId, onUnpin, users }: {
   msg: Message; dmId: string; onUnpin?: (id: string) => void; users?: Map<string, User>
 }) {
+  const { t } = useT()
   const { displayContent, decrypting } = useDecryptedContent(msg.content, msg.nonce, true, dmId)
   const author = users?.get(msg.author_id)
-  const authorName = author?.display_name ?? author?.username ?? 'Unknown'
+  const authorName = author?.display_name ?? author?.username ?? t('common.unknown')
 
   return (
     <div className={s.pinnedItem}>
       <div className={s.pinnedAuthor}>{authorName}</div>
-      <div className={s.pinnedContent}>
-        {decrypting ? 'Decrypting…' : (displayContent || '').slice(0, 200)}
+      <div className={s.pinnedContent} dir="auto">
+        {decrypting ? t('dmInfoPanel.decrypting') : (displayContent || '').slice(0, 200)}
       </div>
       {onUnpin && (
-        <button className={s.unpinBtn} title="Unpin" aria-label="Unpin" onClick={() => onUnpin(msg.id)}>
+        <button className={s.unpinBtn} title={t('dmInfoPanel.unpin')} aria-label={t('dmInfoPanel.unpin')} onClick={() => onUnpin(msg.id)}>
           <X size={12} strokeWidth={1.5} />
         </button>
       )}
@@ -81,6 +83,7 @@ function SkeletonLines({ count, variant = 'pinned' }: { count: number; variant?:
 }
 
 export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
+  const { t } = useT()
   const isRevealing = useRevealAnimation(0, [open], open, 300)
   const [pinned, setPinned] = useState<Message[]>([])
   const [loadingPins, setLoadingPins] = useState(false)
@@ -140,21 +143,21 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
     <aside className={`${s.panel} ${!open ? s.hidden : ''}`}>
       <div className={s.header}>
         {onMobileClose && (
-          <button className={s.backBtn} title="Back to chat" aria-label="Back to chat" onClick={onMobileClose}>
+          <button className={s.backBtn} title={t('dmInfoPanel.backToChat')} aria-label={t('dmInfoPanel.backToChat')} onClick={onMobileClose}>
             <ArrowLeft size={14} strokeWidth={1.5} />
           </button>
         )}
-        <span className={`${s.title} txt-tiny txt-semibold`}>Info</span>
+        <span className={`${s.title} txt-tiny txt-semibold`}>{t('dmInfoPanel.info')}</span>
       </div>
 
       <div className={`${s.scroll} scrollbar-thin`}>
         <div className={`${s.sectionTitle} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}>
-          Pinned Messages
+          {t('dmInfoPanel.pinnedMessages')}
         </div>
         {loadingPins ? (
           <SkeletonLines count={2} />
         ) : pinned.length === 0 ? (
-          <div className={`txt-tiny ${s.emptyHint}`}>No pinned messages yet</div>
+          <div className={`txt-tiny ${s.emptyHint}`}>{t('dmInfoPanel.noPinned')}</div>
         ) : (
           pinned.map(msg => (
             <PinnedItem key={msg.id} msg={msg} dmId={dmId} onUnpin={onUnpin ? handleUnpin : undefined} users={users} />
@@ -162,12 +165,12 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
         )}
 
         <div className={`${s.sectionTitle} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}>
-          Shared Files
+          {t('dmInfoPanel.sharedFiles')}
         </div>
         {loadingFiles ? (
           <SkeletonLines count={2} variant="file" />
         ) : files.length === 0 ? (
-          <div className={`txt-tiny ${s.emptyHint}`}>No shared files yet</div>
+          <div className={`txt-tiny ${s.emptyHint}`}>{t('dmInfoPanel.noFiles')}</div>
         ) : (
           files.map(att => <SharedFileRow key={att.id} att={att} />)
         )}
