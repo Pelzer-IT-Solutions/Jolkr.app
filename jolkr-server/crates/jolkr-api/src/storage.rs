@@ -11,8 +11,8 @@ pub struct Storage {
     bucket: Box<Bucket>,
 }
 
-/// Maximum file size: 25 MB.
-pub const MAX_FILE_SIZE: usize = 25 * 1024 * 1024;
+/// Maximum file size: 250 MB.
+pub const MAX_FILE_SIZE: usize = 250 * 1024 * 1024;
 
 impl Storage {
     /// Connect to MinIO / S3 and ensure the bucket exists.
