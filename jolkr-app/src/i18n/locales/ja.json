@@ -348,6 +348,70 @@
     "copyLink": "リンクをコピー", "copied": "コピーしました！"
   },
 
+  "toast": {
+    "friendRequestSent": "フレンドリクエストを送信しました",
+    "friendRequestFailed": "フレンドリクエストの送信に失敗しました",
+    "friendRequestNotSent": "フレンドリクエストを送信できませんでした",
+    "startConversationFailed": "会話を開始できませんでした",
+    "createDmFailed": "DM を作成できませんでした",
+    "reactionFailed": "リアクションに失敗しました",
+    "pinFailed": "ピン留め/解除に失敗しました",
+    "unpinFailed": "ピン留め解除に失敗しました",
+    "deleteChannelFailed": "チャンネルの削除に失敗しました",
+    "leaveServerFailed": "サーバーの退出に失敗しました",
+    "deleteServerFailed": "サーバーの削除に失敗しました",
+    "createThreadFailed": "スレッドを作成できませんでした",
+    "inviteCopied": "招待リンクをコピーしました！",
+    "inviteCopyFailed": "コピーに失敗しました — リンク: {url}",
+    "inviteCreateFailed": "招待を作成できませんでした"
+  },
+
+  "call": {
+    "initiateFailed": "通話を開始できませんでした",
+    "acceptFailed": "通話を受けられませんでした",
+    "incoming": {
+      "ariaVideo": "ビデオ通話の着信", "ariaVoice": "着信",
+      "subtitleVideo": "が呼び出し中 — ビデオ", "subtitleVoice": "が呼び出し中…",
+      "decline": "拒否", "accept": "応答"
+    },
+    "outgoing": {
+      "ariaVideo": "ビデオ通話の発信", "ariaVoice": "発信",
+      "subtitleVideo": "発信中 — ビデオ…", "subtitleVoice": "発信中…",
+      "cancel": "キャンセル"
+    },
+    "window": {
+      "ariaVideoCall": "ビデオ通話", "connecting": "接続中…",
+      "youFallback": "あなた",
+      "mute": "ミュート", "unmute": "ミュート解除",
+      "cameraUnavailable": "カメラが利用できません",
+      "cameraOn": "カメラをオン", "cameraOff": "カメラをオフ",
+      "switchCamera": "カメラを切り替え",
+      "minimize": "ピクチャーインピクチャーに最小化",
+      "minimizeAria": "最小化", "endCall": "通話を終了"
+    },
+    "pip": {
+      "aria": "ピクチャーインピクチャー通話",
+      "expand": "拡大", "expandAria": "全画面に拡大",
+      "endCall": "通話を終了"
+    },
+    "bar": {
+      "errorPrefix": "音声エラー: {error}", "dismiss": "閉じる",
+      "connecting": "接続中…", "connected": "音声接続済み",
+      "voiceFallback": "音声",
+      "mute": "ミュート", "unmute": "ミュート解除",
+      "muteAria": "マイクをミュート", "unmuteAria": "マイクのミュートを解除",
+      "deafen": "デフン", "undeafen": "デフン解除",
+      "disconnect": "切断",
+      "disconnectAria": "音声から切断"
+    }
+  },
+
+  "update": {
+    "available": "アップデート {version} が利用可能",
+    "updateNow": "今すぐアップデート",
+    "errorGeneric": "アップデート失敗"
+  },
+
   "auth": {
     "shared": { "emailLabel": "メールアドレス", "passwordLabel": "パスワード" },
     "login": {

@@ -348,6 +348,70 @@
     "copyLink": "링크 복사", "copied": "복사됨!"
   },
 
+  "toast": {
+    "friendRequestSent": "친구 요청을 보냈습니다",
+    "friendRequestFailed": "친구 요청 전송 실패",
+    "friendRequestNotSent": "친구 요청을 보낼 수 없습니다",
+    "startConversationFailed": "대화를 시작할 수 없습니다",
+    "createDmFailed": "DM을 만들 수 없습니다",
+    "reactionFailed": "반응 실패",
+    "pinFailed": "고정/해제 실패",
+    "unpinFailed": "고정 해제 실패",
+    "deleteChannelFailed": "채널 삭제 실패",
+    "leaveServerFailed": "서버 나가기 실패",
+    "deleteServerFailed": "서버 삭제 실패",
+    "createThreadFailed": "스레드를 만들 수 없습니다",
+    "inviteCopied": "초대 링크가 복사되었습니다!",
+    "inviteCopyFailed": "복사 실패 — 링크: {url}",
+    "inviteCreateFailed": "초대를 만들 수 없습니다"
+  },
+
+  "call": {
+    "initiateFailed": "통화를 시작할 수 없습니다",
+    "acceptFailed": "통화를 받을 수 없습니다",
+    "incoming": {
+      "ariaVideo": "수신 영상 통화", "ariaVoice": "수신 통화",
+      "subtitleVideo": "전화 중 — 영상", "subtitleVoice": "전화 중…",
+      "decline": "거절", "accept": "수락"
+    },
+    "outgoing": {
+      "ariaVideo": "발신 영상 통화", "ariaVoice": "발신 통화",
+      "subtitleVideo": "전화 거는 중 — 영상…", "subtitleVoice": "전화 거는 중…",
+      "cancel": "취소"
+    },
+    "window": {
+      "ariaVideoCall": "영상 통화", "connecting": "연결 중…",
+      "youFallback": "나",
+      "mute": "음소거", "unmute": "음소거 해제",
+      "cameraUnavailable": "카메라를 사용할 수 없습니다",
+      "cameraOn": "카메라 켜기", "cameraOff": "카메라 끄기",
+      "switchCamera": "카메라 전환",
+      "minimize": "PIP로 최소화",
+      "minimizeAria": "최소화", "endCall": "통화 종료"
+    },
+    "pip": {
+      "aria": "PIP 통화",
+      "expand": "확대", "expandAria": "전체 화면으로 확대",
+      "endCall": "통화 종료"
+    },
+    "bar": {
+      "errorPrefix": "음성 오류: {error}", "dismiss": "닫기",
+      "connecting": "연결 중…", "connected": "음성 연결됨",
+      "voiceFallback": "음성",
+      "mute": "음소거", "unmute": "음소거 해제",
+      "muteAria": "마이크 음소거", "unmuteAria": "마이크 음소거 해제",
+      "deafen": "차단", "undeafen": "차단 해제",
+      "disconnect": "연결 끊기",
+      "disconnectAria": "음성에서 연결 끊기"
+    }
+  },
+
+  "update": {
+    "available": "업데이트 {version} 사용 가능",
+    "updateNow": "지금 업데이트",
+    "errorGeneric": "업데이트 실패"
+  },
+
   "auth": {
     "shared": { "emailLabel": "이메일", "passwordLabel": "비밀번호" },
     "login": {

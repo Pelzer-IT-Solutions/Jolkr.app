@@ -350,6 +350,70 @@
     "copyLink": "Copier le lien", "copied": "Copié !"
   },
 
+  "toast": {
+    "friendRequestSent": "Demande d'ami envoyée",
+    "friendRequestFailed": "Échec de l'envoi de la demande d'ami",
+    "friendRequestNotSent": "La demande d'ami n'a pas pu être envoyée",
+    "startConversationFailed": "Impossible de démarrer la conversation",
+    "createDmFailed": "Impossible de créer le DM",
+    "reactionFailed": "Réaction échouée",
+    "pinFailed": "Échec de l'épinglage",
+    "unpinFailed": "Échec du désépinglage",
+    "deleteChannelFailed": "Suppression du salon échouée",
+    "leaveServerFailed": "Impossible de quitter le serveur",
+    "deleteServerFailed": "Suppression du serveur échouée",
+    "createThreadFailed": "Impossible de créer le fil",
+    "inviteCopied": "Lien d'invitation copié !",
+    "inviteCopyFailed": "Échec de la copie — lien : {url}",
+    "inviteCreateFailed": "Impossible de créer l'invitation"
+  },
+
+  "call": {
+    "initiateFailed": "Impossible de lancer l'appel",
+    "acceptFailed": "Impossible d'accepter l'appel",
+    "incoming": {
+      "ariaVideo": "Appel vidéo entrant", "ariaVoice": "Appel entrant",
+      "subtitleVideo": "appelle — vidéo", "subtitleVoice": "appelle…",
+      "decline": "Refuser", "accept": "Accepter"
+    },
+    "outgoing": {
+      "ariaVideo": "Appel vidéo sortant", "ariaVoice": "Appel sortant",
+      "subtitleVideo": "Appel — vidéo…", "subtitleVoice": "Appel…",
+      "cancel": "Annuler"
+    },
+    "window": {
+      "ariaVideoCall": "Appel vidéo", "connecting": "Connexion…",
+      "youFallback": "Vous",
+      "mute": "Couper le micro", "unmute": "Réactiver le micro",
+      "cameraUnavailable": "Caméra indisponible",
+      "cameraOn": "Activer la caméra", "cameraOff": "Désactiver la caméra",
+      "switchCamera": "Changer de caméra",
+      "minimize": "Réduire en image dans l'image",
+      "minimizeAria": "Réduire", "endCall": "Terminer l'appel"
+    },
+    "pip": {
+      "aria": "Appel en image dans l'image",
+      "expand": "Agrandir", "expandAria": "Agrandir en plein écran",
+      "endCall": "Terminer l'appel"
+    },
+    "bar": {
+      "errorPrefix": "Erreur vocale : {error}", "dismiss": "Fermer",
+      "connecting": "Connexion…", "connected": "Vocal connecté",
+      "voiceFallback": "Vocal",
+      "mute": "Couper le micro", "unmute": "Réactiver le micro",
+      "muteAria": "Couper le microphone", "unmuteAria": "Réactiver le microphone",
+      "deafen": "Mettre en sourdine", "undeafen": "Désactiver la sourdine",
+      "disconnect": "Déconnecter",
+      "disconnectAria": "Se déconnecter du vocal"
+    }
+  },
+
+  "update": {
+    "available": "Mise à jour {version} disponible",
+    "updateNow": "Mettre à jour maintenant",
+    "errorGeneric": "Échec de la mise à jour"
+  },
+
   "auth": {
     "shared": { "emailLabel": "E-mail", "passwordLabel": "Mot de passe" },
     "login": {

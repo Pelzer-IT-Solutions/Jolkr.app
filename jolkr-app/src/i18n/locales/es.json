@@ -350,6 +350,70 @@
     "copyLink": "Copiar enlace", "copied": "¡Copiado!"
   },
 
+  "toast": {
+    "friendRequestSent": "Solicitud de amistad enviada",
+    "friendRequestFailed": "Error al enviar la solicitud de amistad",
+    "friendRequestNotSent": "No se pudo enviar la solicitud de amistad",
+    "startConversationFailed": "No se pudo iniciar la conversación",
+    "createDmFailed": "No se pudo crear el MD",
+    "reactionFailed": "Reacción fallida",
+    "pinFailed": "Error al fijar/desfijar",
+    "unpinFailed": "Error al desfijar",
+    "deleteChannelFailed": "Error al eliminar el canal",
+    "leaveServerFailed": "Error al salir del servidor",
+    "deleteServerFailed": "Error al eliminar el servidor",
+    "createThreadFailed": "No se pudo crear el hilo",
+    "inviteCopied": "¡Enlace de invitación copiado!",
+    "inviteCopyFailed": "Error al copiar — enlace: {url}",
+    "inviteCreateFailed": "No se pudo crear la invitación"
+  },
+
+  "call": {
+    "initiateFailed": "No se pudo iniciar la llamada",
+    "acceptFailed": "No se pudo aceptar la llamada",
+    "incoming": {
+      "ariaVideo": "Videollamada entrante", "ariaVoice": "Llamada entrante",
+      "subtitleVideo": "está llamando — vídeo", "subtitleVoice": "está llamando…",
+      "decline": "Rechazar", "accept": "Aceptar"
+    },
+    "outgoing": {
+      "ariaVideo": "Videollamada saliente", "ariaVoice": "Llamada saliente",
+      "subtitleVideo": "Llamando — vídeo…", "subtitleVoice": "Llamando…",
+      "cancel": "Cancelar"
+    },
+    "window": {
+      "ariaVideoCall": "Videollamada", "connecting": "Conectando…",
+      "youFallback": "Tú",
+      "mute": "Silenciar", "unmute": "Activar sonido",
+      "cameraUnavailable": "Cámara no disponible",
+      "cameraOn": "Encender cámara", "cameraOff": "Apagar cámara",
+      "switchCamera": "Cambiar cámara",
+      "minimize": "Minimizar a imagen en imagen",
+      "minimizeAria": "Minimizar", "endCall": "Finalizar llamada"
+    },
+    "pip": {
+      "aria": "Llamada en imagen en imagen",
+      "expand": "Expandir", "expandAria": "Expandir a pantalla completa",
+      "endCall": "Finalizar llamada"
+    },
+    "bar": {
+      "errorPrefix": "Error de voz: {error}", "dismiss": "Descartar",
+      "connecting": "Conectando…", "connected": "Voz conectada",
+      "voiceFallback": "Voz",
+      "mute": "Silenciar", "unmute": "Activar sonido",
+      "muteAria": "Silenciar micrófono", "unmuteAria": "Activar micrófono",
+      "deafen": "Ensordecer", "undeafen": "Quitar ensordecer",
+      "disconnect": "Desconectar",
+      "disconnectAria": "Desconectar de voz"
+    }
+  },
+
+  "update": {
+    "available": "Actualización {version} disponible",
+    "updateNow": "Actualizar ahora",
+    "errorGeneric": "Error de actualización"
+  },
+
   "auth": {
     "shared": { "emailLabel": "Correo electrónico", "passwordLabel": "Contraseña" },
     "login": {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { type UpdateInfo, downloadAndInstallUpdate } from '../services/updater';
+import { useT } from '../hooks/useT';
 import Button from './ui/Button';
 import s from './UpdateNotification.module.css';
 
@@ -8,6 +9,7 @@ export interface UpdateNotificationProps {
 }
 
 export default function UpdateNotification({ update }: UpdateNotificationProps) {
+  const { tx, t } = useT();
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
@@ -18,7 +20,7 @@ export default function UpdateNotification({ update }: UpdateNotificationProps) 
     try {
       await downloadAndInstallUpdate(setProgress);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Update failed');
+      setError(e instanceof Error ? e.message : t('update.errorGeneric'));
       setDownloading(false);
     }
   };
@@ -26,7 +28,7 @@ export default function UpdateNotification({ update }: UpdateNotificationProps) 
   return (
     <div className={s.banner}>
       <span className={s.label}>
-        Update <strong>v{update.version}</strong> available
+        {tx('update.available', { version: <strong key="v">v{update.version}</strong> })}
       </span>
       {update.notes && (
         <span className={s.notes}>
@@ -47,7 +49,7 @@ export default function UpdateNotification({ update }: UpdateNotificationProps) 
           </div>
         ) : (
           <Button onClick={handleUpdate} size="xs">
-            Update Now
+            {t('update.updateNow')}
           </Button>
         )}
       </div>

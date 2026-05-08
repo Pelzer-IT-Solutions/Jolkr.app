@@ -497,6 +497,85 @@
     "copied": "Copied!"
   },
 
+  "toast": {
+    "friendRequestSent": "Friend request sent",
+    "friendRequestFailed": "Failed to send friend request",
+    "friendRequestNotSent": "Friend request could not be sent",
+    "startConversationFailed": "Failed to start conversation",
+    "createDmFailed": "Failed to create DM",
+    "reactionFailed": "Reaction failed",
+    "pinFailed": "Pin/unpin failed",
+    "unpinFailed": "Unpin failed",
+    "deleteChannelFailed": "Delete channel failed",
+    "leaveServerFailed": "Leave server failed",
+    "deleteServerFailed": "Delete server failed",
+    "createThreadFailed": "Failed to create thread",
+    "inviteCopied": "Invite link copied!",
+    "inviteCopyFailed": "Copy failed — link: {url}",
+    "inviteCreateFailed": "Failed to create invite"
+  },
+
+  "call": {
+    "initiateFailed": "Failed to initiate call",
+    "acceptFailed": "Failed to accept call",
+    "incoming": {
+      "ariaVideo": "Incoming video call",
+      "ariaVoice": "Incoming call",
+      "subtitleVideo": "is calling — video",
+      "subtitleVoice": "is calling…",
+      "decline": "Decline",
+      "accept": "Accept"
+    },
+    "outgoing": {
+      "ariaVideo": "Outgoing video call",
+      "ariaVoice": "Outgoing call",
+      "subtitleVideo": "Calling — video…",
+      "subtitleVoice": "Calling…",
+      "cancel": "Cancel"
+    },
+    "window": {
+      "ariaVideoCall": "Video call",
+      "connecting": "Connecting…",
+      "youFallback": "You",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "cameraUnavailable": "Camera unavailable",
+      "cameraOn": "Turn camera on",
+      "cameraOff": "Turn camera off",
+      "switchCamera": "Switch camera",
+      "minimize": "Minimize to picture-in-picture",
+      "minimizeAria": "Minimize",
+      "endCall": "End call"
+    },
+    "pip": {
+      "aria": "Picture-in-picture call",
+      "expand": "Expand",
+      "expandAria": "Expand to full screen",
+      "endCall": "End call"
+    },
+    "bar": {
+      "errorPrefix": "Voice error: {error}",
+      "dismiss": "Dismiss",
+      "connecting": "Connecting…",
+      "connected": "Voice connected",
+      "voiceFallback": "Voice",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "muteAria": "Mute microphone",
+      "unmuteAria": "Unmute microphone",
+      "deafen": "Deafen",
+      "undeafen": "Undeafen",
+      "disconnect": "Disconnect",
+      "disconnectAria": "Disconnect from voice"
+    }
+  },
+
+  "update": {
+    "available": "Update {version} available",
+    "updateNow": "Update Now",
+    "errorGeneric": "Update failed"
+  },
+
   "auth": {
     "shared": {
       "emailLabel": "Email",

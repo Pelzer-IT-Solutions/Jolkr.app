@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Maximize2, PhoneOff } from 'lucide-react';
 import { VideoTile } from '../VideoTile/VideoTile';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
+import { useT } from '../../hooks/useT';
 import s from './CallPipWindow.module.css';
 
 const STORAGE_KEY = STORAGE_KEYS.CALL_PIP_LAYOUT;
@@ -86,6 +87,7 @@ export function CallPipWindow({
   onExpand,
   onHangup,
 }: CallPipWindowProps) {
+  const { t } = useT();
   const [layout, setLayout] = useState<Layout>(() => loadLayout());
   const dragStateRef = useRef<{ kind: 'drag' | 'resize'; startX: number; startY: number; orig: Layout } | null>(null);
 
@@ -165,7 +167,7 @@ export function CallPipWindow({
       className={s.pip}
       style={{ left: layout.x, top: layout.y, width: layout.w, height: layout.h }}
       role="dialog"
-      aria-label="Picture-in-picture call"
+      aria-label={t('call.pip.aria')}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -186,16 +188,16 @@ export function CallPipWindow({
         <button
           className={s.ctrlBtn}
           onClick={onExpand}
-          title="Expand"
-          aria-label="Expand to full screen"
+          title={t('call.pip.expand')}
+          aria-label={t('call.pip.expandAria')}
         >
           <Maximize2 size={14} strokeWidth={2} />
         </button>
         <button
           className={s.hangupBtn}
           onClick={onHangup}
-          title="End call"
-          aria-label="End call"
+          title={t('call.pip.endCall')}
+          aria-label={t('call.pip.endCall')}
         >
           <PhoneOff size={14} strokeWidth={2} />
         </button>

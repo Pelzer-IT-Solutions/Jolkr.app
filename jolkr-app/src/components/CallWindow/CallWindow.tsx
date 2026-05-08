@@ -4,11 +4,13 @@ import { useVoiceStore } from '../../stores/voice';
 import { useCallStore } from '../../stores/call';
 import { useAuthStore } from '../../stores/auth';
 import { useViewport } from '../../hooks/useViewport';
+import { useT } from '../../hooks/useT';
 import { VideoTile } from '../VideoTile/VideoTile';
 import { CallPipWindow } from '../CallPipWindow/CallPipWindow';
 import s from './CallWindow.module.css';
 
 export function CallWindow() {
+  const { t } = useT();
   const [isMinimized, setIsMinimized] = useState(false);
 
   const callType        = useVoiceStore((st) => st.callType);
@@ -33,7 +35,7 @@ export function CallWindow() {
   // 1-on-1: the single other participant is the remote.
   const remote = participants[0];
   const remoteStream = remote ? remoteVideoStreams.get(remote.userId) ?? null : null;
-  const remoteName = channelName ?? 'Connecting…';
+  const remoteName = channelName ?? t('call.window.connecting');
 
   if (isMinimized) {
     return (
@@ -51,7 +53,7 @@ export function CallWindow() {
   }
 
   return (
-    <div className={s.overlay} role="dialog" aria-label="Video call">
+    <div className={s.overlay} role="dialog" aria-label={t('call.window.ariaVideoCall')}>
       <div className={s.stage}>
         <VideoTile
           stream={remoteStream}
@@ -68,7 +70,7 @@ export function CallWindow() {
           <VideoTile
             stream={localVideoStream}
             userId={user?.id ?? 'self'}
-            username={user?.display_name ?? user?.username ?? 'You'}
+            username={user?.display_name ?? user?.username ?? t('call.window.youFallback')}
             avatarUrl={user?.avatar_url ?? undefined}
             isMuted={isMuted}
             isCameraOn={isCameraOn}
@@ -82,8 +84,8 @@ export function CallWindow() {
         <button
           className={`${s.ctrlBtn} ${isMuted ? s.toggled : ''}`}
           onClick={toggleMute}
-          title={isMuted ? 'Unmute' : 'Mute'}
-          aria-label={isMuted ? 'Unmute' : 'Mute'}
+          title={isMuted ? t('call.window.unmute') : t('call.window.mute')}
+          aria-label={isMuted ? t('call.window.unmute') : t('call.window.mute')}
         >
           {isMuted ? <MicOff size={20} strokeWidth={1.75} /> : <Mic size={20} strokeWidth={1.75} />}
         </button>
@@ -92,8 +94,8 @@ export function CallWindow() {
           className={`${s.ctrlBtn} ${!isCameraOn ? s.toggled : ''}`}
           onClick={toggleCamera}
           disabled={isCameraUnavailable}
-          title={isCameraUnavailable ? 'Camera unavailable' : isCameraOn ? 'Turn camera off' : 'Turn camera on'}
-          aria-label={isCameraOn ? 'Turn camera off' : 'Turn camera on'}
+          title={isCameraUnavailable ? t('call.window.cameraUnavailable') : isCameraOn ? t('call.window.cameraOff') : t('call.window.cameraOn')}
+          aria-label={isCameraOn ? t('call.window.cameraOff') : t('call.window.cameraOn')}
         >
           {isCameraOn ? <Video size={20} strokeWidth={1.75} /> : <VideoOff size={20} strokeWidth={1.75} />}
         </button>
@@ -103,8 +105,8 @@ export function CallWindow() {
             className={s.ctrlBtn}
             onClick={() => { switchCamera(); }}
             disabled={!isCameraOn}
-            title="Switch camera"
-            aria-label="Switch camera"
+            title={t('call.window.switchCamera')}
+            aria-label={t('call.window.switchCamera')}
           >
             <RefreshCw size={20} strokeWidth={1.75} />
           </button>
@@ -113,8 +115,8 @@ export function CallWindow() {
         <button
           className={s.ctrlBtn}
           onClick={() => setIsMinimized(true)}
-          title="Minimize to picture-in-picture"
-          aria-label="Minimize"
+          title={t('call.window.minimize')}
+          aria-label={t('call.window.minimizeAria')}
         >
           <Minimize2 size={20} strokeWidth={1.75} />
         </button>
@@ -122,8 +124,8 @@ export function CallWindow() {
         <button
           className={s.hangupBtn}
           onClick={endActiveCall}
-          title="End call"
-          aria-label="End call"
+          title={t('call.window.endCall')}
+          aria-label={t('call.window.endCall')}
         >
           <PhoneOff size={22} strokeWidth={2} />
         </button>

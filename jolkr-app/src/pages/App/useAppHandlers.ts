@@ -14,6 +14,7 @@ import { useToast } from '../../stores/toast'
 import { useUsersStore } from '../../stores/users'
 import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
 import { logErr } from '../../utils/logErr'
+import { tStatic } from '../../hooks/useT'
 
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -190,7 +191,7 @@ export function useAppHandlers(
         materialisedMembers = real.members
       } catch (e) {
         console.error('Failed to create DM on first send:', e)
-        useToast.getState().show((e as Error).message || 'Failed to start conversation', 'error')
+        useToast.getState().show((e as Error).message || tStatic('toast.startConversationFailed'), 'error')
         return
       }
     }
@@ -241,7 +242,7 @@ export function useAppHandlers(
     const msg = currentApiMessages.find(m => m.id === msgId)
     const existing = msg?.reactions?.find(r => r.emoji === emoji)
     const onErr = (err: unknown) => {
-      const m = err instanceof Error ? err.message : 'Reaction failed'
+      const m = err instanceof Error ? err.message : tStatic('toast.reactionFailed')
       useToast.getState().show(m, 'error')
       console.error('Reaction toggle failed:', err)
     }
@@ -314,7 +315,7 @@ export function useAppHandlers(
       setPinnedVersion(v => v + 1)
     } catch (err) {
       console.error('Pin toggle failed:', err)
-      const m = err instanceof Error ? err.message : 'Pin/unpin failed'
+      const m = err instanceof Error ? err.message : tStatic('toast.pinFailed')
       useToast.getState().show(m, 'error')
       // Revert on failure
       const revertStore = useMessagesStore.getState()
@@ -344,7 +345,7 @@ export function useAppHandlers(
       }
     } catch (err) {
       console.error('Unpin failed:', err)
-      const m = err instanceof Error ? err.message : 'Unpin failed'
+      const m = err instanceof Error ? err.message : tStatic('toast.unpinFailed')
       useToast.getState().show(m, 'error')
     }
   }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
@@ -379,7 +380,7 @@ export function useAppHandlers(
         setActiveChannelId(chs?.find(c => c.kind === 'text')?.id ?? chs?.[0]?.id ?? '')
       }
     } catch (err) {
-      const m = err instanceof Error ? err.message : 'Delete channel failed'
+      const m = err instanceof Error ? err.message : tStatic('toast.deleteChannelFailed')
       useToast.getState().show(m, 'error')
       throw err
     }
@@ -531,7 +532,7 @@ export function useAppHandlers(
       setDmActive(true)
     } catch (e) {
       console.error('Failed to create DM:', e)
-      useToast.getState().show((e as Error).message || 'Failed to create DM', 'error')
+      useToast.getState().show((e as Error).message || tStatic('toast.createDmFailed'), 'error')
     }
     setNewDmOpen(false)
   }

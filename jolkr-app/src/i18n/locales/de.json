@@ -350,6 +350,70 @@
     "copyLink": "Link kopieren", "copied": "Kopiert!"
   },
 
+  "toast": {
+    "friendRequestSent": "Freundschaftsanfrage gesendet",
+    "friendRequestFailed": "Senden der Freundschaftsanfrage fehlgeschlagen",
+    "friendRequestNotSent": "Freundschaftsanfrage konnte nicht gesendet werden",
+    "startConversationFailed": "Unterhaltung konnte nicht gestartet werden",
+    "createDmFailed": "DM konnte nicht erstellt werden",
+    "reactionFailed": "Reaktion fehlgeschlagen",
+    "pinFailed": "Anpinnen/Lösen fehlgeschlagen",
+    "unpinFailed": "Lösen fehlgeschlagen",
+    "deleteChannelFailed": "Kanal löschen fehlgeschlagen",
+    "leaveServerFailed": "Server verlassen fehlgeschlagen",
+    "deleteServerFailed": "Server löschen fehlgeschlagen",
+    "createThreadFailed": "Thread konnte nicht erstellt werden",
+    "inviteCopied": "Einladungslink kopiert!",
+    "inviteCopyFailed": "Kopieren fehlgeschlagen — Link: {url}",
+    "inviteCreateFailed": "Einladung konnte nicht erstellt werden"
+  },
+
+  "call": {
+    "initiateFailed": "Anruf konnte nicht gestartet werden",
+    "acceptFailed": "Anruf konnte nicht angenommen werden",
+    "incoming": {
+      "ariaVideo": "Eingehender Videoanruf", "ariaVoice": "Eingehender Anruf",
+      "subtitleVideo": "ruft an — Video", "subtitleVoice": "ruft an…",
+      "decline": "Ablehnen", "accept": "Annehmen"
+    },
+    "outgoing": {
+      "ariaVideo": "Ausgehender Videoanruf", "ariaVoice": "Ausgehender Anruf",
+      "subtitleVideo": "Anrufen — Video…", "subtitleVoice": "Anrufen…",
+      "cancel": "Abbrechen"
+    },
+    "window": {
+      "ariaVideoCall": "Videoanruf", "connecting": "Verbinden…",
+      "youFallback": "Du",
+      "mute": "Stummschalten", "unmute": "Stummschaltung aufheben",
+      "cameraUnavailable": "Kamera nicht verfügbar",
+      "cameraOn": "Kamera einschalten", "cameraOff": "Kamera ausschalten",
+      "switchCamera": "Kamera wechseln",
+      "minimize": "Auf Bild-im-Bild minimieren",
+      "minimizeAria": "Minimieren", "endCall": "Anruf beenden"
+    },
+    "pip": {
+      "aria": "Bild-im-Bild-Anruf",
+      "expand": "Vergrößern", "expandAria": "Auf Vollbild vergrößern",
+      "endCall": "Anruf beenden"
+    },
+    "bar": {
+      "errorPrefix": "Sprachfehler: {error}", "dismiss": "Schließen",
+      "connecting": "Verbinden…", "connected": "Sprache verbunden",
+      "voiceFallback": "Sprache",
+      "mute": "Stummschalten", "unmute": "Stummschaltung aufheben",
+      "muteAria": "Mikrofon stummschalten", "unmuteAria": "Mikrofon-Stummschaltung aufheben",
+      "deafen": "Taub stellen", "undeafen": "Taubstellen aufheben",
+      "disconnect": "Verbindung trennen",
+      "disconnectAria": "Sprachverbindung trennen"
+    }
+  },
+
+  "update": {
+    "available": "Update {version} verfügbar",
+    "updateNow": "Jetzt aktualisieren",
+    "errorGeneric": "Update fehlgeschlagen"
+  },
+
   "auth": {
     "shared": { "emailLabel": "E-Mail", "passwordLabel": "Passwort" },
     "login": {

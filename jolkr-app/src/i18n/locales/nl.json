@@ -351,6 +351,70 @@
     "copyLink": "Link kopiëren", "copied": "Gekopieerd!"
   },
 
+  "toast": {
+    "friendRequestSent": "Vriendverzoek verzonden",
+    "friendRequestFailed": "Vriendverzoek versturen mislukt",
+    "friendRequestNotSent": "Vriendverzoek kon niet worden verstuurd",
+    "startConversationFailed": "Gesprek starten mislukt",
+    "createDmFailed": "DM aanmaken mislukt",
+    "reactionFailed": "Reactie mislukt",
+    "pinFailed": "Pin/unpin mislukt",
+    "unpinFailed": "Unpin mislukt",
+    "deleteChannelFailed": "Kanaal verwijderen mislukt",
+    "leaveServerFailed": "Server verlaten mislukt",
+    "deleteServerFailed": "Server verwijderen mislukt",
+    "createThreadFailed": "Thread aanmaken mislukt",
+    "inviteCopied": "Uitnodigingslink gekopieerd!",
+    "inviteCopyFailed": "Kopiëren mislukt — link: {url}",
+    "inviteCreateFailed": "Uitnodiging aanmaken mislukt"
+  },
+
+  "call": {
+    "initiateFailed": "Oproep starten mislukt",
+    "acceptFailed": "Oproep accepteren mislukt",
+    "incoming": {
+      "ariaVideo": "Inkomende videogesprek", "ariaVoice": "Inkomende oproep",
+      "subtitleVideo": "belt — video", "subtitleVoice": "belt…",
+      "decline": "Weigeren", "accept": "Accepteren"
+    },
+    "outgoing": {
+      "ariaVideo": "Uitgaande videogesprek", "ariaVoice": "Uitgaande oproep",
+      "subtitleVideo": "Bellen — video…", "subtitleVoice": "Bellen…",
+      "cancel": "Annuleren"
+    },
+    "window": {
+      "ariaVideoCall": "Videogesprek", "connecting": "Verbinden…",
+      "youFallback": "Jij",
+      "mute": "Dempen", "unmute": "Dempen opheffen",
+      "cameraUnavailable": "Camera niet beschikbaar",
+      "cameraOn": "Camera inschakelen", "cameraOff": "Camera uitschakelen",
+      "switchCamera": "Camera wisselen",
+      "minimize": "Minimaliseren naar picture-in-picture",
+      "minimizeAria": "Minimaliseren", "endCall": "Oproep beëindigen"
+    },
+    "pip": {
+      "aria": "Picture-in-picture oproep",
+      "expand": "Vergroten", "expandAria": "Naar volledig scherm",
+      "endCall": "Oproep beëindigen"
+    },
+    "bar": {
+      "errorPrefix": "Spraakfout: {error}", "dismiss": "Sluiten",
+      "connecting": "Verbinden…", "connected": "Spraak verbonden",
+      "voiceFallback": "Spraak",
+      "mute": "Dempen", "unmute": "Dempen opheffen",
+      "muteAria": "Microfoon dempen", "unmuteAria": "Microfoon dempen opheffen",
+      "deafen": "Doof", "undeafen": "Doof uit",
+      "disconnect": "Verbinding verbreken",
+      "disconnectAria": "Verbinding verbreken met spraak"
+    }
+  },
+
+  "update": {
+    "available": "Update {version} beschikbaar",
+    "updateNow": "Nu bijwerken",
+    "errorGeneric": "Update mislukt"
+  },
+
   "auth": {
     "shared": { "emailLabel": "E-mail", "passwordLabel": "Wachtwoord" },
     "login": {

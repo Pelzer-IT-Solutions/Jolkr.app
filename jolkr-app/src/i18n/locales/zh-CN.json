@@ -348,6 +348,70 @@
     "copyLink": "复制链接", "copied": "已复制！"
   },
 
+  "toast": {
+    "friendRequestSent": "已发送好友请求",
+    "friendRequestFailed": "发送好友请求失败",
+    "friendRequestNotSent": "无法发送好友请求",
+    "startConversationFailed": "无法开始对话",
+    "createDmFailed": "无法创建私信",
+    "reactionFailed": "反应失败",
+    "pinFailed": "置顶/取消置顶失败",
+    "unpinFailed": "取消置顶失败",
+    "deleteChannelFailed": "删除频道失败",
+    "leaveServerFailed": "退出服务器失败",
+    "deleteServerFailed": "删除服务器失败",
+    "createThreadFailed": "无法创建话题",
+    "inviteCopied": "邀请链接已复制！",
+    "inviteCopyFailed": "复制失败 — 链接：{url}",
+    "inviteCreateFailed": "无法创建邀请"
+  },
+
+  "call": {
+    "initiateFailed": "无法发起通话",
+    "acceptFailed": "无法接受通话",
+    "incoming": {
+      "ariaVideo": "来电视频通话", "ariaVoice": "来电",
+      "subtitleVideo": "正在呼叫 — 视频", "subtitleVoice": "正在呼叫…",
+      "decline": "拒绝", "accept": "接受"
+    },
+    "outgoing": {
+      "ariaVideo": "去电视频通话", "ariaVoice": "去电",
+      "subtitleVideo": "正在拨打 — 视频…", "subtitleVoice": "正在拨打…",
+      "cancel": "取消"
+    },
+    "window": {
+      "ariaVideoCall": "视频通话", "connecting": "连接中…",
+      "youFallback": "你",
+      "mute": "静音", "unmute": "取消静音",
+      "cameraUnavailable": "摄像头不可用",
+      "cameraOn": "打开摄像头", "cameraOff": "关闭摄像头",
+      "switchCamera": "切换摄像头",
+      "minimize": "最小化为画中画",
+      "minimizeAria": "最小化", "endCall": "结束通话"
+    },
+    "pip": {
+      "aria": "画中画通话",
+      "expand": "展开", "expandAria": "展开为全屏",
+      "endCall": "结束通话"
+    },
+    "bar": {
+      "errorPrefix": "语音错误：{error}", "dismiss": "关闭",
+      "connecting": "连接中…", "connected": "语音已连接",
+      "voiceFallback": "语音",
+      "mute": "静音", "unmute": "取消静音",
+      "muteAria": "麦克风静音", "unmuteAria": "取消麦克风静音",
+      "deafen": "屏蔽声音", "undeafen": "取消屏蔽声音",
+      "disconnect": "断开连接",
+      "disconnectAria": "断开语音连接"
+    }
+  },
+
+  "update": {
+    "available": "更新 {version} 可用",
+    "updateNow": "立即更新",
+    "errorGeneric": "更新失败"
+  },
+
   "auth": {
     "shared": { "emailLabel": "电子邮件", "passwordLabel": "密码" },
     "login": {

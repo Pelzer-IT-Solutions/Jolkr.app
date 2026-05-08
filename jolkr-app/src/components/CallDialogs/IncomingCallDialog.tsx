@@ -3,9 +3,11 @@ import { Phone, PhoneOff, Video, User as UserIcon } from 'lucide-react';
 import { useCallStore } from '../../stores/call';
 import { stopRingSound } from '../../hooks/useCallEvents';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useT } from '../../hooks/useT';
 import s from './CallDialogs.module.css';
 
 export default function IncomingCallDialog() {
+  const { t } = useT();
   const incomingCall   = useCallStore((s) => s.incomingCall);
   const acceptIncoming = useCallStore((s) => s.acceptIncoming);
   const rejectIncoming = useCallStore((s) => s.rejectIncoming);
@@ -27,8 +29,8 @@ export default function IncomingCallDialog() {
   if (!incomingCall) return null;
 
   const isVideo = incomingCall.isVideo;
-  const subtitle = isVideo ? 'is calling — video' : 'is calling…';
-  const ariaLabel = isVideo ? 'Incoming video call' : 'Incoming call';
+  const subtitle = isVideo ? t('call.incoming.subtitleVideo') : t('call.incoming.subtitleVoice');
+  const ariaLabel = isVideo ? t('call.incoming.ariaVideo') : t('call.incoming.ariaVoice');
 
   return (
     <div className={s.overlay}>
@@ -48,14 +50,14 @@ export default function IncomingCallDialog() {
             onClick={() => { stopRingSound(); rejectIncoming(); }}
           >
             <PhoneOff size={16} strokeWidth={2} />
-            Decline
+            {t('call.incoming.decline')}
           </button>
           <button
             className={`${s.btn} ${s.btnAccept}`}
             onClick={() => { stopRingSound(); acceptIncoming(); }}
           >
             {isVideo ? <Video size={16} strokeWidth={2} /> : <Phone size={16} strokeWidth={2} />}
-            Accept
+            {t('call.incoming.accept')}
           </button>
         </div>
       </div>

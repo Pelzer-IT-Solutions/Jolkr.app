@@ -57,7 +57,7 @@ export default function Login() {
         // Best-effort — but surface failures as a toast so the user knows the
         // friend-add (already friends, blocked, expired user) didn't land.
         api.sendFriendRequest(pendingAdd).catch((e) => {
-          const msg = e instanceof Error ? e.message : 'Friend request could not be sent';
+          const msg = e instanceof Error ? e.message : t('toast.friendRequestNotSent');
           useToast.getState().show(msg, 'error');
         });
       }

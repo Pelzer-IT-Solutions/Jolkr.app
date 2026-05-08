@@ -7,6 +7,7 @@ import { useMessagesStore } from '../../stores/messages'
 import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
 import { useToast } from '../../stores/toast'
 import { useLocaleStore } from '../../stores/locale'
+import { useT } from '../../hooks/useT'
 import { buildInviteUrl } from '../../platform/config'
 import { orbsForHue } from '../../utils/theme'
 import * as api from '../../api/client'
@@ -40,6 +41,7 @@ import { useAppHandlers } from './useAppHandlers'
 import s from '../../components/AppShell/AppShell.module.css'
 
 export default function AppShell() {
+  const { t } = useT()
   const init = useAppInit()
   const memos = useAppMemos(init)
   const handlers = useAppHandlers(init, memos)
@@ -292,7 +294,7 @@ export default function AppShell() {
               await api.leaveServer(serverId)
               await fetchServers()
             } catch (err) {
-              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              const msg = err instanceof Error ? err.message : t('toast.leaveServerFailed')
               useToast.getState().show(msg, 'error')
               console.error('Leave server failed:', err)
             }
@@ -409,7 +411,7 @@ export default function AppShell() {
                           // Backend will emit ThreadCreate WS event → store bumps
                           // threadListVersion → ThreadListPanel + threadsCount refresh.
                         } catch (err) {
-                          const msg = err instanceof Error ? err.message : 'Failed to create thread'
+                          const msg = err instanceof Error ? err.message : t('toast.createThreadFailed')
                           useToast.getState().show(msg, 'error')
                         }
                       }}
@@ -579,7 +581,7 @@ export default function AppShell() {
               setServerSettingsOpen(false)
               await fetchServers() // safety effect handles fallback
             } catch (err) {
-              const msg = err instanceof Error ? err.message : 'Delete server failed'
+              const msg = err instanceof Error ? err.message : t('toast.deleteServerFailed')
               useToast.getState().show(msg, 'error')
               throw err
             }
@@ -590,7 +592,7 @@ export default function AppShell() {
               setServerSettingsOpen(false)
               await fetchServers() // safety effect handles fallback
             } catch (err) {
-              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              const msg = err instanceof Error ? err.message : t('toast.leaveServerFailed')
               useToast.getState().show(msg, 'error')
               throw err
             }
@@ -660,7 +662,7 @@ export default function AppShell() {
             await api.sendFriendRequest(userId)
             invalidateFriendsCache()
           } catch (e) {
-            useToast.getState().show((e as Error).message || 'Failed to send friend request', 'error')
+            useToast.getState().show((e as Error).message || t('toast.friendRequestFailed'), 'error')
           }
           setUserContextMenu(null)
         }}
@@ -680,12 +682,12 @@ export default function AppShell() {
             const url = buildInviteUrl(invite.code)
             try {
               await navigator.clipboard.writeText(url)
-              useToast.getState().show('Invite link copied!', 'success')
+              useToast.getState().show(t('toast.inviteCopied'), 'success')
             } catch {
-              useToast.getState().show(`Copy failed — link: ${url}`, 'error', 6000)
+              useToast.getState().show(t('toast.inviteCopyFailed', { url }), 'error', 6000)
             }
           } else {
-            useToast.getState().show('Failed to create invite', 'error')
+            useToast.getState().show(t('toast.inviteCreateFailed'), 'error')
           }
           setUserContextMenu(null)
         }}

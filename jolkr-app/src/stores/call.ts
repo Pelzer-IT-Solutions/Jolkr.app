@@ -3,11 +3,12 @@ import * as api from '../api/client';
 import { useVoiceStore } from './voice';
 import { stopRingSound } from '../hooks/useCallEvents';
 import { useToast } from './toast';
+import { tStatic } from '../hooks/useT';
 
-function toastErr(prefix: string, err: unknown) {
-  const m = err instanceof Error ? err.message : prefix;
+function toastErr(fallbackKey: string, logPrefix: string, err: unknown) {
+  const m = err instanceof Error ? err.message : tStatic(fallbackKey);
   useToast.getState().show(m, 'error');
-  console.warn(prefix + ':', err);
+  console.warn(logPrefix + ':', err);
 }
 
 interface IncomingCall {
@@ -95,7 +96,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         }
       }, RING_TIMEOUT_MS);
     } catch (e) {
-      toastErr('Failed to initiate call', e);
+      toastErr('call.initiateFailed', 'Failed to initiate call', e);
     }
   },
 
@@ -115,7 +116,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       // Join voice channel (dmId as channelId, serverId=null for DM calls)
       await useVoiceStore.getState().joinChannel(dmId, null, callerUsername, incomingCall.callerId, { withVideo: isVideo });
     } catch (e) {
-      toastErr('Failed to accept call', e);
+      toastErr('call.acceptFailed', 'Failed to accept call', e);
       set({ incomingCall: null, activeCallDmId: null, activeCallType: null });
     }
   },

@@ -8,6 +8,7 @@ import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
 import { useToast } from './stores/toast';
+import { tStatic } from './hooks/useT';
 import { requestNotificationPermission } from './services/notifications';
 import { startUnreadBadge } from './services/unreadBadge';
 import { registerPush } from './services/pushRegistration';
@@ -172,9 +173,9 @@ function DeepLinkHandler() {
         }
         try {
           await api.sendFriendRequest(params.userId);
-          useToast.getState().show('Friend request sent', 'success');
+          useToast.getState().show(tStatic('toast.friendRequestSent'), 'success');
         } catch (e) {
-          const msg = e instanceof Error ? e.message : 'Failed to send friend request';
+          const msg = e instanceof Error ? e.message : tStatic('toast.friendRequestFailed');
           useToast.getState().show(msg, 'error');
         }
       }
