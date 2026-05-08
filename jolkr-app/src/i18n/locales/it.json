@@ -438,7 +438,8 @@
     "fullscreen": "Schermo intero", "exitFullscreen": "Esci da schermo intero",
     "enterPip": "Picture in picture", "exitPip": "Esci da picture in picture",
     "settings": "Impostazioni",
-    "playbackSpeed": "Velocità di riproduzione", "speedNormal": "Normale"
+    "playbackSpeed": "Velocità di riproduzione", "speedNormal": "Normale",
+    "download": "Scarica"
   },
 
   "codeBlock": {

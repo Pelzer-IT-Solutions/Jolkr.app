@@ -608,7 +608,8 @@
     "exitPip": "Exit picture in picture",
     "settings": "Settings",
     "playbackSpeed": "Playback speed",
-    "speedNormal": "Normal"
+    "speedNormal": "Normal",
+    "download": "Download"
   },
 
   "codeBlock": {

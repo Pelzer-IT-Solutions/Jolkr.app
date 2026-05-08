@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Music, Pause, Play, Volume2, VolumeX, Volume1 } from 'lucide-react';
+import { Download, Music, Pause, Play, Volume2, VolumeX, Volume1 } from 'lucide-react';
 import { useNMMusic } from '../../hooks/useNMMusic';
 import { useT } from '../../hooks/useT';
 import s from './NMMusicPlayer.module.css';
@@ -7,6 +7,12 @@ import s from './NMMusicPlayer.module.css';
 export interface NMMusicPlayerProps {
   src: string;
   filename: string;
+  /**
+   * Optional original attachment URL for downloading. When omitted the
+   * download button is hidden (used by URL-based audio embeds where the
+   * source is already public). Falls back to `src` when needed.
+   */
+  downloadUrl?: string;
 }
 
 /**
@@ -17,7 +23,7 @@ export interface NMMusicPlayerProps {
  * usage where simultaneous tracks are rare and the queue features of the
  * full music player aren't needed.
  */
-export default function NMMusicPlayer({ src, filename }: NMMusicPlayerProps) {
+export default function NMMusicPlayer({ src, filename, downloadUrl }: NMMusicPlayerProps) {
   const { t } = useT();
   const visualizerRef = useRef<HTMLCanvasElement>(null);
   const {
@@ -55,6 +61,17 @@ export default function NMMusicPlayer({ src, filename }: NMMusicPlayerProps) {
       <div className={s.header}>
         <span className={s.iconWrap}><Music size={16} strokeWidth={1.6} /></span>
         <span className={s.filename} title={filename}>{filename}</span>
+        {downloadUrl && (
+          <a
+            className={s.downloadBtn}
+            href={downloadUrl}
+            download={filename}
+            title={t('player.download')}
+            aria-label={t('player.download')}
+          >
+            <Download size={14} strokeWidth={1.7} />
+          </a>
+        )}
       </div>
 
       <div className={s.controls}>

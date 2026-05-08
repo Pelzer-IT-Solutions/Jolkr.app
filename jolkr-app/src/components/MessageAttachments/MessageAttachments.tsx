@@ -142,7 +142,12 @@ function VideoTile({ attachment }: { attachment: Attachment }) {
   return (
     <div className={s.media}>
       {blobUrl
-        ? <NMVideoPlayer src={blobUrl} title={attachment.filename} />
+        ? <NMVideoPlayer
+            src={blobUrl}
+            title={attachment.filename}
+            downloadUrl={blobUrl}
+            downloadFilename={attachment.filename}
+          />
         : <div className={s.videoSkeleton} />}
     </div>
   )
@@ -160,7 +165,7 @@ function AudioTile({ attachment }: { attachment: Attachment }) {
       </div>
     )
   }
-  return <NMMusicPlayer src={blobUrl} filename={attachment.filename} />
+  return <NMMusicPlayer src={blobUrl} filename={attachment.filename} downloadUrl={blobUrl} />
 }
 
 function FileTile({ attachment }: { attachment: Attachment }) {

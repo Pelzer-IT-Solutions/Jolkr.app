@@ -436,7 +436,8 @@
     "fullscreen": "全画面", "exitFullscreen": "全画面を終了",
     "enterPip": "ピクチャーインピクチャー", "exitPip": "ピクチャーインピクチャーを終了",
     "settings": "設定",
-    "playbackSpeed": "再生速度", "speedNormal": "標準"
+    "playbackSpeed": "再生速度", "speedNormal": "標準",
+    "download": "ダウンロード"
   },
 
   "codeBlock": {

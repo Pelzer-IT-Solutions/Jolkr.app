@@ -439,7 +439,8 @@
     "fullscreen": "Volledig scherm", "exitFullscreen": "Volledig scherm afsluiten",
     "enterPip": "Picture-in-picture", "exitPip": "Picture-in-picture afsluiten",
     "settings": "Instellingen",
-    "playbackSpeed": "Afspeelsnelheid", "speedNormal": "Normaal"
+    "playbackSpeed": "Afspeelsnelheid", "speedNormal": "Normaal",
+    "download": "Downloaden"
   },
 
   "codeBlock": {

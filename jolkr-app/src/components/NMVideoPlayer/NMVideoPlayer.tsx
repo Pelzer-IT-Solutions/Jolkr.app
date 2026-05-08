@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Maximize, Minimize, Pause, Play, Volume2, VolumeX, Volume1,
+  Download, Maximize, Minimize, Pause, Play, Volume2, VolumeX, Volume1,
   RotateCcw, RotateCw, Settings, PictureInPicture2,
 } from 'lucide-react';
 import { useNMPlayer } from '../../hooks/useNMPlayer';
@@ -14,6 +14,14 @@ export interface NMVideoPlayerProps {
   image?: string;
   /** When true, the player auto-starts playback once ready. Default: false. */
   autoPlay?: boolean;
+  /**
+   * Optional download URL for the underlying file. Renders a download
+   * button in the controls when set; omit for embeds where the source
+   * is a streaming URL the user can't usefully save (HLS, YouTube etc).
+   */
+  downloadUrl?: string;
+  /** Filename to use as the download attribute on the anchor. */
+  downloadFilename?: string;
 }
 
 const SKIP_SECONDS = 10;
@@ -25,7 +33,7 @@ const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
  * visible chrome — center play, scrubber with buffered overlay, skip ±10,
  * volume slider, settings (speed), PiP, fullscreen, keyboard shortcuts.
  */
-export default function NMVideoPlayer({ src, title = '', image = '', autoPlay = false }: NMVideoPlayerProps) {
+export default function NMVideoPlayer({ src, title = '', image = '', autoPlay = false, downloadUrl, downloadFilename }: NMVideoPlayerProps) {
   const { t } = useT();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {
@@ -234,6 +242,18 @@ export default function NMVideoPlayer({ src, title = '', image = '', autoPlay = 
           {isLive && <span className={s.timeLabel}>LIVE</span>}
 
           <div className={s.spacer} />
+
+          {downloadUrl && (
+            <a
+              className={s.ctrlBtn}
+              href={downloadUrl}
+              download={downloadFilename}
+              title={t('player.download')}
+              aria-label={t('player.download')}
+            >
+              <Download size={16} />
+            </a>
+          )}
 
           <div className={s.settingsWrap}>
             <button

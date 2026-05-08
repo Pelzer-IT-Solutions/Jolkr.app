@@ -436,7 +436,8 @@
     "fullscreen": "전체화면", "exitFullscreen": "전체화면 종료",
     "enterPip": "PIP", "exitPip": "PIP 종료",
     "settings": "설정",
-    "playbackSpeed": "재생 속도", "speedNormal": "보통"
+    "playbackSpeed": "재생 속도", "speedNormal": "보통",
+    "download": "다운로드"
   },
 
   "codeBlock": {
