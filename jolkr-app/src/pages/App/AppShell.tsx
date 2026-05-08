@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
 import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
 import type { MemberStatus } from '../../types'
@@ -6,6 +6,9 @@ import { useUnreadStore } from '../../stores/unread'
 import { useMessagesStore } from '../../stores/messages'
 import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
 import { useToast } from '../../stores/toast'
+import { useLocaleStore } from '../../stores/locale'
+import { useT } from '../../hooks/useT'
+import PromptDialog from '../../components/ui/PromptDialog/PromptDialog'
 import { buildInviteUrl } from '../../platform/config'
 import { orbsForHue } from '../../utils/theme'
 import * as api from '../../api/client'
@@ -39,9 +42,22 @@ import { useAppHandlers } from './useAppHandlers'
 import s from '../../components/AppShell/AppShell.module.css'
 
 export default function AppShell() {
+  const { t } = useT()
   const init = useAppInit()
   const memos = useAppMemos(init)
   const handlers = useAppHandlers(init, memos)
+
+  // Pending message id for the "create thread" prompt — replaces window.prompt().
+  const [threadPromptMsgId, setThreadPromptMsgId] = useState<string | null>(null)
+
+  // Mirror the active locale onto <html lang="..."> for screen readers,
+  // Intl.Segmenter, browser hyphenation, and any CSS that targets `:lang(…)`.
+  // Subscribe via a selector so we re-run only on locale switches, not on
+  // every store mutation.
+  const localeCode = useLocaleStore(s => s.code)
+  useEffect(() => {
+    document.documentElement.lang = localeCode
+  }, [localeCode])
 
   // ── Destructure init ──
   const {
@@ -82,7 +98,7 @@ export default function AppShell() {
     inviteableServerIds, ownerServerIds, settingsServerIds,
     activeTheme, chatAnimKey, typingUsers, appStyle, activeDmConv,
     isDmWithSystemUser, activeChannel, displayMessages,
-    mentionableUsers,
+    mentionableUsers, activeChannelMembers,
     viewport, effectiveLeftCollapsed, effectiveRightCollapsed, effectiveRightMode,
   } = memos
 
@@ -282,7 +298,7 @@ export default function AppShell() {
               await api.leaveServer(serverId)
               await fetchServers()
             } catch (err) {
-              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              const msg = err instanceof Error ? err.message : t('toast.leaveServerFailed')
               useToast.getState().show(msg, 'error')
               console.error('Leave server failed:', err)
             }
@@ -391,17 +407,9 @@ export default function AppShell() {
                       canSendMessages={canSendMessages}
                       canAttachFiles={canAttachFiles}
                       onOpenThread={handleOpenThreadById}
-                      onStartThread={async (messageId) => {
+                      onStartThread={(messageId) => {
                         if (dmActive || !activeChannelId) return
-                        const name = window.prompt('Thread name (optional)')?.trim()
-                        try {
-                          await api.createThread(activeChannelId, messageId, name || undefined)
-                          // Backend will emit ThreadCreate WS event → store bumps
-                          // threadListVersion → ThreadListPanel + threadsCount refresh.
-                        } catch (err) {
-                          const msg = err instanceof Error ? err.message : 'Failed to create thread'
-                          useToast.getState().show(msg, 'error')
-                        }
+                        setThreadPromptMsgId(messageId)
                       }}
                     />
                   ) : (
@@ -410,15 +418,15 @@ export default function AppShell() {
                         <button
                           type="button"
                           className={s.emptyExpandBtn}
-                          title="Expand sidebar"
+                          title={t('common.expandSidebar')}
                           onClick={handleExpandSidebar}
                         >
                           <PanelLeftOpen size={14} strokeWidth={1.5} />
                         </button>
                       )}
                       <div style={{ fontSize: '3rem' }}>👋</div>
-                      <h2 className="txt-body txt-semibold">Welcome to Jolkr</h2>
-                      <p className="txt-small">Join or create a server to get started, or send a direct message.</p>
+                      <h2 className="txt-body txt-semibold">{t('appShell.welcomeTitle')}</h2>
+                      <p className="txt-small">{t('appShell.welcomeBody')}</p>
                     </div>
                   ))}
 
@@ -433,7 +441,7 @@ export default function AppShell() {
                     />
                   ) : activeServer ? (
                     <MemberPanel
-                      members={activeServer.members}
+                      members={activeChannelMembers ?? activeServer.members}
                       mode={effectiveRightMode}
                       serverId={activeServerId}
                       channelId={activeChannelId}
@@ -569,7 +577,7 @@ export default function AppShell() {
               setServerSettingsOpen(false)
               await fetchServers() // safety effect handles fallback
             } catch (err) {
-              const msg = err instanceof Error ? err.message : 'Delete server failed'
+              const msg = err instanceof Error ? err.message : t('toast.deleteServerFailed')
               useToast.getState().show(msg, 'error')
               throw err
             }
@@ -580,7 +588,7 @@ export default function AppShell() {
               setServerSettingsOpen(false)
               await fetchServers() // safety effect handles fallback
             } catch (err) {
-              const msg = err instanceof Error ? err.message : 'Leave server failed'
+              const msg = err instanceof Error ? err.message : t('toast.leaveServerFailed')
               useToast.getState().show(msg, 'error')
               throw err
             }
@@ -650,7 +658,7 @@ export default function AppShell() {
             await api.sendFriendRequest(userId)
             invalidateFriendsCache()
           } catch (e) {
-            useToast.getState().show((e as Error).message || 'Failed to send friend request', 'error')
+            useToast.getState().show((e as Error).message || t('toast.friendRequestFailed'), 'error')
           }
           setUserContextMenu(null)
         }}
@@ -670,12 +678,12 @@ export default function AppShell() {
             const url = buildInviteUrl(invite.code)
             try {
               await navigator.clipboard.writeText(url)
-              useToast.getState().show('Invite link copied!', 'success')
+              useToast.getState().show(t('toast.inviteCopied'), 'success')
             } catch {
-              useToast.getState().show(`Copy failed — link: ${url}`, 'error', 6000)
+              useToast.getState().show(t('toast.inviteCopyFailed', { url }), 'error', 6000)
             }
           } else {
-            useToast.getState().show('Failed to create invite', 'error')
+            useToast.getState().show(t('toast.inviteCreateFailed'), 'error')
           }
           setUserContextMenu(null)
         }}
@@ -704,6 +712,29 @@ export default function AppShell() {
           onStartDm={openDmDraft}
         />
       )}
+
+      <PromptDialog
+        open={threadPromptMsgId !== null}
+        title={t('chat.threadPrompt.title')}
+        placeholder={t('chat.threadPrompt.namePlaceholder')}
+        submitLabel={t('chat.threadPrompt.createBtn')}
+        cancelLabel={t('common.cancel')}
+        allowEmpty
+        onSubmit={async (name) => {
+          const messageId = threadPromptMsgId
+          setThreadPromptMsgId(null)
+          if (!messageId || !activeChannelId) return
+          try {
+            await api.createThread(activeChannelId, messageId, name || undefined)
+            // Backend emits ThreadCreate → store bumps threadListVersion →
+            // ThreadListPanel + threadsCount refresh.
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : t('toast.createThreadFailed')
+            useToast.getState().show(msg, 'error')
+          }
+        }}
+        onCancel={() => setThreadPromptMsgId(null)}
+      />
     </>
   )
 }

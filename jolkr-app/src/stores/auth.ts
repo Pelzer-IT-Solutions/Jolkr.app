@@ -1,9 +1,11 @@
 import { create } from 'zustand';
-import type { User, UpdateMeBody } from '../api/types';
+import type { MeProfile, User, UpdateMeBody } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
 import { useVoiceStore } from './voice';
+import { useUsersStore } from './users';
+import { useLocaleStore } from './locale';
 import { resetAllStores } from './reset';
 
 /**
@@ -12,11 +14,11 @@ import { resetAllStores } from './reset';
  */
 type UserPatch = Partial<Pick<User,
   'status' | 'display_name' | 'avatar_url' | 'bio' | 'banner_color'
-  | 'show_read_receipts' | 'dm_filter' | 'allow_friend_requests'
+  | 'show_read_receipts' | 'dm_filter' | 'allow_friend_requests' | 'preferred_language'
 >>;
 
 interface AuthState {
-  user: User | null;
+  user: MeProfile | null;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -35,9 +37,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email, password) => {
     set({ loading: true, error: null });
     try {
-      await api.login(email, password);
-      const user = await api.getMe();
+      const { user } = await api.login(email, password);
       set({ user, loading: false });
+      useUsersStore.getState().upsertUser(user);
+      useLocaleStore.getState().applyMeProfile(user.preferred_language);
       wsClient.connect();
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
@@ -48,9 +51,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (email, username, password) => {
     set({ loading: true, error: null });
     try {
-      await api.register(email, username, password);
-      const user = await api.getMe();
+      const { user } = await api.register(email, username, password);
       set({ user, loading: false });
+      useUsersStore.getState().upsertUser(user);
+      useLocaleStore.getState().applyMeProfile(user.preferred_language);
       if (user.email_verified) {
         wsClient.connect();
       }
@@ -67,6 +71,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await api.getMe();
       set({ user, loading: false });
+      useUsersStore.getState().upsertUser(user);
+      useLocaleStore.getState().applyMeProfile(user.preferred_language);
       if (user.email_verified) {
         wsClient.connect();
       }
@@ -83,6 +89,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   updateProfile: async (body) => {
     const user = await api.updateMe(body);
     set({ user });
+    useUsersStore.getState().upsertUser(user);
+    useLocaleStore.getState().applyMeProfile(user.preferred_language);
   },
 
   applyUserUpdate: (data) => {
@@ -101,6 +109,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           ...(data.show_read_receipts !== undefined && { show_read_receipts: data.show_read_receipts }),
           ...(data.dm_filter !== undefined && { dm_filter: data.dm_filter }),
           ...(data.allow_friend_requests !== undefined && { allow_friend_requests: data.allow_friend_requests }),
+          ...(data.preferred_language !== undefined && { preferred_language: data.preferred_language }),
         },
       };
     });
@@ -127,6 +136,12 @@ wsClient.on((event) => {
     const me = useAuthStore.getState().user;
     if (me && event.d.user_id === me.id) {
       useAuthStore.getState().applyUserUpdate(event.d);
+      // Mirror the cross-device locale sync — when another session of the
+      // same user changes language, this one flips too. Self-only field
+      // (peer events strip it), so this never fires for other users.
+      if (event.d.preferred_language !== undefined) {
+        useLocaleStore.getState().applyMeProfile(event.d.preferred_language);
+      }
     }
   } else if (event.op === 'EmailVerified') {
     // Backend confirmed verification — refresh the user object so

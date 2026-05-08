@@ -9,6 +9,7 @@ import { useGifFavoritesStore } from './gif-favorites';
 import { useVoiceStore } from './voice';
 import { useContextMenuStore } from './context-menu';
 import { useToast } from './toast';
+import { useUsersStore } from './users';
 import { invalidateFriendsCache } from '../services/friendshipCache';
 import { resetPushRegistration } from '../services/pushRegistration';
 
@@ -24,6 +25,7 @@ export function resetAllStores() {
   useVoiceStore.getState().reset();
   useGifFavoritesStore.getState().reset();
   useContextMenuStore.getState().reset();
+  useUsersStore.getState().reset();
   useToast.getState().clear();
   resetPushRegistration();
   invalidateFriendsCache();

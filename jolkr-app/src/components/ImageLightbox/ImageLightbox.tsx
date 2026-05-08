@@ -9,6 +9,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap'
 import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
 import { rewriteStorageUrl } from '../../platform/config'
 import { formatBytes } from '../../utils/format'
+import { useT } from '../../hooks/useT'
 import s from './ImageLightbox.module.css'
 
 export interface LightboxImage {
@@ -41,6 +42,7 @@ function resolveSrc(rawUrl: string): string {
 }
 
 export default function ImageLightbox(props: Props) {
+  const { t } = useT()
   // Normalize both prop shapes into a single internal model — the legacy
   // "images" prop carries a precomputed src; the newer "attachments" prop
   // routes through useAuthedFileUrl below to get a blob: URL.
@@ -289,42 +291,42 @@ export default function ImageLightbox(props: Props) {
       onWheel={handleWheel}
       role="dialog"
       aria-modal="true"
-      aria-label="Image preview"
+      aria-label={t('imageLightbox.ariaPreview')}
     >
       {/* ── Toolbar ── */}
       <div className={s.toolbar} onClick={(e) => e.stopPropagation()}>
-        <button className={s.toolBtn} onClick={zoomIn}  disabled={scale >= MAX_SCALE} title="Zoom in (+)" aria-label="Zoom in"><ZoomIn size={18} strokeWidth={1.6} /></button>
-        <button className={s.toolBtn} onClick={zoomOut} disabled={scale <= MIN_SCALE} title="Zoom out (-)" aria-label="Zoom out"><ZoomOut size={18} strokeWidth={1.6} /></button>
-        <button className={s.toolBtn} onClick={handleDownload}     title="Download"           aria-label="Download"><Download size={18} strokeWidth={1.6} /></button>
-        <button className={s.toolBtn} onClick={handleOpenExternal} title="Open in new tab"    aria-label="Open in new tab"><ExternalLink size={18} strokeWidth={1.6} /></button>
+        <button className={s.toolBtn} onClick={zoomIn}  disabled={scale >= MAX_SCALE} title={t('imageLightbox.zoomIn')}  aria-label={t('imageLightbox.zoomIn')}><ZoomIn size={18} strokeWidth={1.6} /></button>
+        <button className={s.toolBtn} onClick={zoomOut} disabled={scale <= MIN_SCALE} title={t('imageLightbox.zoomOut')} aria-label={t('imageLightbox.zoomOut')}><ZoomOut size={18} strokeWidth={1.6} /></button>
+        <button className={s.toolBtn} onClick={handleDownload}     title={t('imageLightbox.download')}     aria-label={t('imageLightbox.download')}><Download size={18} strokeWidth={1.6} /></button>
+        <button className={s.toolBtn} onClick={handleOpenExternal} title={t('imageLightbox.openExternal')} aria-label={t('imageLightbox.openExternal')}><ExternalLink size={18} strokeWidth={1.6} /></button>
 
         <div className={s.moreWrap} ref={moreRef}>
           <button
             className={`${s.toolBtn} ${showMore ? s.toolBtnActive : ''}`}
             onClick={() => { setShowMore((v) => !v); setShowDetails(false) }}
-            title="More"
-            aria-label="More options"
+            title={t('imageLightbox.moreOptions')}
+            aria-label={t('imageLightbox.moreOptions')}
           >
             <MoreHorizontal size={18} strokeWidth={1.6} />
           </button>
           {showMore && (
             <div className={s.moreMenu}>
-              <button className={s.menuItem} onClick={handleCopyImage}><Copy size={14} strokeWidth={1.6} />Copy image</button>
-              <button className={s.menuItem} onClick={handleCopyLink}><Link size={14} strokeWidth={1.6} />Copy link</button>
+              <button className={s.menuItem} onClick={handleCopyImage}><Copy size={14} strokeWidth={1.6} />{t('imageLightbox.copyImage')}</button>
+              <button className={s.menuItem} onClick={handleCopyLink}><Link size={14} strokeWidth={1.6} />{t('imageLightbox.copyLink')}</button>
               <button
                 className={`${s.menuItem} ${showDetails ? s.active : ''}`}
                 onClick={() => setShowDetails((v) => !v)}
               >
-                <Info size={14} strokeWidth={1.6} />View details
+                <Info size={14} strokeWidth={1.6} />{t('imageLightbox.viewDetails')}
                 <ArrowRight size={12} strokeWidth={1.8} className={s.menuChevron} />
               </button>
               {showDetails && (
                 <div className={s.detailsBlock}>
-                  <span className={s.detailsLabel}>Filename</span>
+                  <span className={s.detailsLabel}>{t('imageLightbox.filename')}</span>
                   <span className={s.detailsValue}>{current.filename || current.alt}</span>
                   {(dimStr || sizeStr) && (
                     <>
-                      <span className={s.detailsLabel}>Size</span>
+                      <span className={s.detailsLabel}>{t('imageLightbox.size')}</span>
                       <span className={s.detailsValue}>{[dimStr, sizeStr].filter(Boolean).join(' · ')}</span>
                     </>
                   )}
@@ -334,17 +336,17 @@ export default function ImageLightbox(props: Props) {
           )}
         </div>
 
-        <button className={s.toolBtn} onClick={props.onClose} title="Close (Esc)" aria-label="Close">
+        <button className={s.toolBtn} onClick={props.onClose} title={t('imageLightbox.close')} aria-label={t('imageLightbox.close')}>
           <X size={18} strokeWidth={1.6} />
         </button>
       </div>
 
       {/* ── Prev / next ── */}
       {hasMultiple && (
-        <button className={`${s.navBtn} ${s.navBtnLeft}`} onClick={(e) => { e.stopPropagation(); goPrev() }} aria-label="Previous image"><ChevronLeft size={22} strokeWidth={1.8} /></button>
+        <button className={`${s.navBtn} ${s.navBtnLeft}`} onClick={(e) => { e.stopPropagation(); goPrev() }} aria-label={t('imageLightbox.previous')}><ChevronLeft size={22} strokeWidth={1.8} /></button>
       )}
       {hasMultiple && (
-        <button className={`${s.navBtn} ${s.navBtnRight}`} onClick={(e) => { e.stopPropagation(); goNext() }} aria-label="Next image"><ChevronRight size={22} strokeWidth={1.8} /></button>
+        <button className={`${s.navBtn} ${s.navBtnRight}`} onClick={(e) => { e.stopPropagation(); goNext() }} aria-label={t('imageLightbox.next')}><ChevronRight size={22} strokeWidth={1.8} /></button>
       )}
 
       {hasMultiple && <div className={s.counter}>{index + 1} / {items.length}</div>}

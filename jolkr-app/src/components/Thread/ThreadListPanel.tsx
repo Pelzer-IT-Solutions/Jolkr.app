@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import * as api from '../../api/client'
 import type { Thread } from '../../api/types'
 import { useMessagesStore } from '../../stores/messages'
+import { useT } from '../../hooks/useT'
 import s from './ThreadListPanel.module.css'
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
  *     in the messages store — see stores/messages.ts WS handler).
  */
 export function ThreadListPanel({ channelId, onOpenThread }: Props) {
+  const { t, tn } = useT()
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
   const threadListVersion = useMessagesStore(s => s.threadListVersion)
@@ -51,27 +53,27 @@ export function ThreadListPanel({ channelId, onOpenThread }: Props) {
   }, [channelId, threadListVersion])
 
   if (loading) {
-    return <div className={`${s.loading} txt-small`}>Loading threads...</div>
+    return <div className={`${s.loading} txt-small`}>{t('thread.list.loading')}</div>
   }
 
   if (threads.length === 0) {
-    return <div className={`${s.empty} txt-small`}>No threads yet</div>
+    return <div className={`${s.empty} txt-small`}>{t('thread.list.empty')}</div>
   }
 
   return (
     <ul className={s.list}>
-      {threads.map(t => (
-        <li key={t.id}>
+      {threads.map(thr => (
+        <li key={thr.id}>
           <button
             type="button"
             className={s.item}
-            onClick={() => onOpenThread(t)}
+            onClick={() => onOpenThread(thr)}
           >
-            <span className={`${s.name} txt-small txt-semibold txt-truncate`}>
-              {t.name ?? 'Untitled thread'}
+            <span className={`${s.name} txt-small txt-semibold txt-truncate`} dir="auto">
+              {thr.name ?? t('thread.list.untitled')}
             </span>
             <span className={`${s.meta} txt-tiny`}>
-              {t.message_count} {t.message_count === 1 ? 'reply' : 'replies'}
+              {tn('thread.list.replies', thr.message_count)}
             </span>
           </button>
         </li>

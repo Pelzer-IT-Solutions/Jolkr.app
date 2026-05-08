@@ -1,16 +1,16 @@
 import { create } from 'zustand'
 import { useShallow } from 'zustand/shallow'
 import { wsClient } from '../api/ws'
+import { useUsersStore } from './users'
 
 interface TypingEntry {
-  username: string
   timeoutId: ReturnType<typeof setTimeout>
 }
 
 interface TypingState {
   /** channelId → Record<userId, TypingEntry> */
   typing: Record<string, Record<string, TypingEntry>>
-  setTyping: (channelId: string, userId: string, username: string) => void
+  setTyping: (channelId: string, userId: string) => void
   clearTyping: (channelId: string, userId: string) => void
   reset: () => void
 }
@@ -20,7 +20,7 @@ const TYPING_TIMEOUT = 5000
 export const useTypingStore = create<TypingState>((set, get) => ({
   typing: {},
 
-  setTyping: (channelId, userId, username) => {
+  setTyping: (channelId, userId) => {
     const current = get().typing[channelId]?.[userId]
     if (current) clearTimeout(current.timeoutId)
 
@@ -33,7 +33,7 @@ export const useTypingStore = create<TypingState>((set, get) => ({
         ...state.typing,
         [channelId]: {
           ...state.typing[channelId],
-          [userId]: { username, timeoutId },
+          [userId]: { timeoutId },
         },
       },
     }))
@@ -64,24 +64,38 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   },
 }))
 
-/** Get array of usernames currently typing in a channel (excluding own userId) */
+/**
+ * Return display names of users currently typing in a channel (excluding self).
+ *
+ * The WS event only carries `user_id` — names are resolved against the
+ * shared users cache (fed by member fetches, DM-user lookups, friendship
+ * loads, and `UserUpdate` WS events) so we don't pay a DB roundtrip per
+ * keystroke and the indicator works equally well in servers and DMs. If a
+ * user can't be resolved we fall back to a generic label rather than
+ * leaking the raw uuid.
+ */
 export function useTypingUsers(channelId: string, ownUserId: string | undefined): string[] {
-  return useTypingStore(useShallow(state => {
+  const typingUserIds = useTypingStore(useShallow(state => {
     const channelTyping = state.typing[channelId]
     if (!channelTyping) return []
-    return Object.entries(channelTyping)
-      .filter(([uid]) => uid !== ownUserId)
-      .map(([, entry]) => entry.username)
+    return Object.keys(channelTyping).filter(uid => uid !== ownUserId)
+  }))
+
+  return useUsersStore(useShallow(state => {
+    if (typingUserIds.length === 0) return []
+    return typingUserIds.map(uid => {
+      const u = state.byId[uid]
+      return u?.display_name?.trim() || u?.username || 'Someone'
+    })
   }))
 }
 
 // Wire WS listener — receive typing events from other users
 wsClient.on((event) => {
   if (event.op === 'TypingStart') {
-    const { channel_id, user_id, username, display_name } = event.d
-    const name = username ?? display_name ?? 'Someone'
+    const { channel_id, user_id } = event.d
     if (channel_id && user_id) {
-      useTypingStore.getState().setTyping(channel_id, user_id, name)
+      useTypingStore.getState().setTyping(channel_id, user_id)
     }
   }
 })

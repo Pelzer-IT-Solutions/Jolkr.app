@@ -415,10 +415,10 @@
   color: var(--text-secondary);
   padding: 0 0.125rem;
 }
-.pendingFileRemove {
+.pendingFileRemove,
+.pendingFileEdit {
   position: absolute;
   top: -0.375rem;
-  right: -0.375rem;
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 50%;
@@ -432,12 +432,22 @@
   transition: background-color var(--transition), color var(--transition), transform 0.1s ease;
   opacity: 0;
 }
-.pendingFile:hover .pendingFileRemove {
+.pendingFileRemove { right: -0.375rem; }
+.pendingFileEdit   { right: 0.875rem; }
+
+.pendingFile:hover .pendingFileRemove,
+.pendingFile:hover .pendingFileEdit {
   opacity: 1;
 }
 .pendingFileRemove:hover {
   background: var(--jolkr-danger);
   color: white;
+  transform: scale(1.1);
+}
+.pendingFileEdit:hover {
+  background: var(--accent-default);
+  border-color: var(--accent-default);
+  color: var(--accent-text-strong);
   transform: scale(1.1);
 }
 
@@ -585,13 +595,16 @@
 .sendBtn:hover  { opacity: 0.85; }
 .sendBtn:active { transform: scale(0.93); }
 
-/* ─── Typing indicator ─── */
+/* ─── Typing indicator ───
+   Lives inside .composerWrap, sits directly above .composerStack so it floats
+   just above the input field instead of squatting at the top of the chat. */
 .typingIndicator {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.125rem 1rem 0.25rem;
+  padding: 0.125rem 0.5rem 0.25rem;
   min-height: 1.25rem;
+  pointer-events: none;
 }
 
 .typingText {

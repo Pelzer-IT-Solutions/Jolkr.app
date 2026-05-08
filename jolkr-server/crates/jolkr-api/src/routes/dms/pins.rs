@@ -19,9 +19,10 @@ pub(crate) async fn pin_dm_message(
     Path((dm_id, message_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<DmMessageResponse>, AppError> {
     let message = DmService::pin_message(&state.pool, dm_id, message_id, auth.user_id).await?;
+    let message = dm_to_message_info(&message);
 
     let event = crate::ws::events::GatewayEvent::MessageUpdate {
-        message: dm_to_message_info(&message),
+        message: message.clone(),
     };
     state.nats.publish_to_channel(dm_id, &event).await;
 
@@ -35,9 +36,10 @@ pub(crate) async fn unpin_dm_message(
     Path((dm_id, message_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<DmMessageResponse>, AppError> {
     let message = DmService::unpin_message(&state.pool, dm_id, message_id, auth.user_id).await?;
+    let message = dm_to_message_info(&message);
 
     let event = crate::ws::events::GatewayEvent::MessageUpdate {
-        message: dm_to_message_info(&message),
+        message: message.clone(),
     };
     state.nats.publish_to_channel(dm_id, &event).await;
 
@@ -51,6 +53,7 @@ pub(crate) async fn list_dm_pins(
     Path(dm_id): Path<Uuid>,
 ) -> Result<Json<DmMessagesResponse>, AppError> {
     let messages = DmService::list_pinned(&state.pool, dm_id, auth.user_id).await?;
+    let messages = messages.iter().map(dm_to_message_info).collect();
 
     Ok(Json(DmMessagesResponse { messages }))
 }

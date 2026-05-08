@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { X, Copy, Check } from 'lucide-react'
 import { useAuthStore } from '../../stores/auth'
+import { useT } from '../../hooks/useT'
 import Avatar from '../Avatar/Avatar'
 import s from './QrCodeDisplay.module.css'
 
@@ -34,6 +35,7 @@ const LOGO_DATA_URL =
   )
 
 export function QrCodeDisplay({ open, onClose }: Props) {
+  const { t } = useT()
   const user = useAuthStore(st => st.user)
   const [copied, setCopied] = useState(false)
 
@@ -60,8 +62,8 @@ export function QrCodeDisplay({ open, onClose }: Props) {
     <div className={s.overlay} onClick={handleOverlayClick}>
       <div className={s.modal}>
         <div className={s.header}>
-          <span className={`${s.title} txt-medium`}>Your QR Code</span>
-          <button className={s.closeBtn} onClick={onClose} aria-label="Close">
+          <span className={`${s.title} txt-medium`}>{t('qrDisplay.title')}</span>
+          <button className={s.closeBtn} onClick={onClose} aria-label={t('qrDisplay.close')}>
             <X size={14} strokeWidth={1.5} />
           </button>
         </div>
@@ -92,12 +94,12 @@ export function QrCodeDisplay({ open, onClose }: Props) {
           </div>
 
           <p className={`${s.hint} txt-tiny`}>
-            Friends can scan this code to add you
+            {t('qrDisplay.hint')}
           </p>
 
           <button className={`${s.copyBtn} txt-small txt-medium`} onClick={handleCopy}>
             {copied ? <Check size={14} strokeWidth={2} /> : <Copy size={14} strokeWidth={1.5} />}
-            {copied ? 'Copied!' : 'Copy Link'}
+            {copied ? t('qrDisplay.copied') : t('qrDisplay.copyLink')}
           </button>
         </div>
       </div>

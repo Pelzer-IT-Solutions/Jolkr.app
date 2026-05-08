@@ -14,14 +14,20 @@ pub(crate) struct DmChannelsResponse {
     pub channels: Vec<DmChannelInfo>,
 }
 
+/// HTTP response for a single DM message. The payload is the unified
+/// `MessageInfo` shape (`channel_id` carries the DM channel id) — same as
+/// what the WS gateway fans out via `dm_to_message_info`. Keeping HTTP and
+/// WS shapes identical means clients can use one type throughout.
 #[derive(Serialize)]
 pub(crate) struct DmMessageResponse {
-    pub message: DmMessageInfo,
+    pub message: MessageInfo,
 }
 
+/// HTTP response for a batch of DM messages — same shape contract as
+/// `DmMessageResponse`.
 #[derive(Serialize)]
 pub(crate) struct DmMessagesResponse {
-    pub messages: Vec<DmMessageInfo>,
+    pub messages: Vec<MessageInfo>,
 }
 
 /// Accept either `{ "user_id": "..." }` for 1-on-1 or `{ "user_ids": [...], "name"?: "..." }` for group DM.

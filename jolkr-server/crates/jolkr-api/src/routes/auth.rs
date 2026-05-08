@@ -6,11 +6,13 @@ use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 use jolkr_core::{AuthService, TokenPair};
-use jolkr_db::repo::SessionRepo;
+use jolkr_core::services::user::MeProfile;
+use jolkr_db::repo::{SessionRepo, UserRepo};
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
+use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 
 // ── Account lockout after repeated failed logins ─────────────────────────
 
@@ -119,24 +121,34 @@ pub(crate) struct VerifyEmailRequest {
 
 #[derive(Debug, Serialize)]
 pub(crate) struct AuthResponse {
-    pub user: UserDto,
+    /// Self-profile of the authenticated user. Same shape as `/users/@me`,
+    /// so the client can populate its auth store in one round-trip.
+    pub user: MeProfile,
     pub tokens: TokenPair,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct UserDto {
-    pub id: String,
-    pub email: String,
-    pub username: String,
-    pub display_name: Option<String>,
-    pub avatar_url: Option<String>,
-    pub is_system: bool,
-    pub email_verified: bool,
 }
 
 #[derive(Debug, Serialize)]
 pub(crate) struct TokenResponse {
     pub tokens: TokenPair,
+}
+
+/// Build a `MeProfile` for the just-authenticated user, with the avatar URL
+/// re-presigned if it's an S3 key. Centralised so register/login share it.
+async fn build_me_profile(
+    state: &AppState,
+    user_id: uuid::Uuid,
+) -> Result<MeProfile, AppError> {
+    let row = UserRepo::get_by_id(&state.pool, user_id).await
+        .map_err(AppError)?;
+    let mut me = MeProfile::from(row);
+    if let Some(ref avatar) = me.avatar_url {
+        if !avatar.starts_with("http") {
+            if let Ok(url) = state.storage.presign_get(avatar, PRESIGN_EXPIRY_SECS).await {
+                me.avatar_url = Some(url);
+            }
+        }
+    }
+    Ok(me)
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
@@ -183,18 +195,8 @@ pub(crate) async fn register(
         state.email.send_verification_email(&body.email, &user.username, &verify_url);
     }
 
-    Ok(Json(AuthResponse {
-        user: UserDto {
-            id: user.id.to_string(),
-            email: user.email,
-            username: user.username,
-            display_name: user.display_name,
-            avatar_url: user.avatar_url,
-            is_system: user.is_system,
-            email_verified: user.email_verified,
-        },
-        tokens,
-    }))
+    let me = build_me_profile(&state, user.id).await?;
+    Ok(Json(AuthResponse { user: me, tokens }))
 }
 
 /// POST /api/auth/login
@@ -209,18 +211,8 @@ pub(crate) async fn login(
         Ok((user, tokens)) => {
             // Success — clear any lockout counter
             clear_login_lockout(&state, &body.email).await;
-            Ok(Json(AuthResponse {
-                user: UserDto {
-                    id: user.id.to_string(),
-                    email: user.email,
-                    username: user.username,
-                    display_name: user.display_name,
-                    avatar_url: user.avatar_url,
-                    is_system: user.is_system,
-                    email_verified: user.email_verified,
-                },
-                tokens,
-            }))
+            let me = build_me_profile(&state, user.id).await?;
+            Ok(Json(AuthResponse { user: me, tokens }))
         }
         Err(e) => {
             // Record failed attempt

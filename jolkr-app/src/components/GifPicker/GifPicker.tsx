@@ -9,6 +9,7 @@ import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useColorMode } from '../../utils/colorMode'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { logErr } from '../../utils/logErr'
+import { useT } from '../../hooks/useT'
 import s from './GifPicker.module.css'
 
 const apiBase = getApiBaseUrl().replace(/\/api$/, '')
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function GifPicker({ onSelect, width = 450, height = 450 }: Props) {
+  const { t } = useT()
   const [view, setView] = useState<View>('home')
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 300)
@@ -191,7 +193,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
       return (
         <div className={s.body}>
           <div className={s.empty}>
-            <span>{view === 'favorites' ? 'No favorites yet' : 'No GIFs found'}</span>
+            <span>{view === 'favorites' ? t('gifPicker.noFavorites') : t('gifPicker.noResults')}</span>
           </div>
         </div>
       )
@@ -215,8 +217,8 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
           className={s.heartBtn}
           data-fav={favIds.has(gif.id)}
           onClick={(e) => { e.stopPropagation(); toggleFavorite(gif) }}
-          title={favIds.has(gif.id) ? 'Remove from favorites' : 'Add to favorites'}
-          aria-label={favIds.has(gif.id) ? 'Remove from favorites' : 'Add to favorites'}
+          title={favIds.has(gif.id) ? t('gifPicker.removeFav') : t('gifPicker.addFav')}
+          aria-label={favIds.has(gif.id) ? t('gifPicker.removeFav') : t('gifPicker.addFav')}
         >
           <Heart size={14} fill={favIds.has(gif.id) ? 'currentColor' : 'none'} />
         </button>
@@ -246,7 +248,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
           <Search size={18} className={s.searchIcon} />
           <input
             className={s.searchInput}
-            placeholder="Search Tenor"
+            placeholder={t('gifPicker.searchPlaceholder')}
             value={query}
             onChange={(e) => {
               const val = e.target.value
@@ -263,12 +265,12 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
     if (view === 'browse' && browseTitle) {
       return (
         <>
-          <button className={s.backBtn} onClick={goHome} title="Back" aria-label="Back">
+          <button className={s.backBtn} onClick={goHome} title={t('gifPicker.back')} aria-label={t('gifPicker.back')}>
             <ArrowLeft size={18} />
           </button>
           <div className={s.titleBar}>
             <span className={s.titleText}>{browseTitle}</span>
-            <button className={s.clearBtn} onClick={goHome} title="Close" aria-label="Close">
+            <button className={s.clearBtn} onClick={goHome} title={t('gifPicker.close')} aria-label={t('gifPicker.close')}>
               <X size={16} />
             </button>
           </div>
@@ -279,26 +281,26 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
     // Browse with free search or favorites
     return (
       <>
-        <button className={s.backBtn} onClick={goHome} title="Back" aria-label="Back">
+        <button className={s.backBtn} onClick={goHome} title={t('gifPicker.back')} aria-label={t('gifPicker.back')}>
           <ArrowLeft size={18} />
         </button>
         {view === 'favorites' ? (
           <div className={s.titleBar}>
             <Heart size={16} />
-            <span className={s.titleText}>Favorites</span>
+            <span className={s.titleText}>{t('gifPicker.favorites')}</span>
           </div>
         ) : (
           <div className={s.searchWrap}>
             <Search size={18} className={s.searchIcon} />
             <input
               className={s.searchInput}
-              placeholder="Search Tenor"
+              placeholder={t('gifPicker.searchPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
             />
             {query && (
-              <button className={s.clearBtn} onClick={() => setQuery('')} title="Clear" aria-label="Clear search" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+              <button className={s.clearBtn} onClick={() => setQuery('')} title={t('gifPicker.clearSearch')} aria-label={t('gifPicker.clearSearch')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
                 <X size={16} />
               </button>
             )}
@@ -325,7 +327,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
                 <img
                   className={s.categoryImg}
                   src={resolveUrl(favGifs[0].preview_url)}
-                  alt="Favorites"
+                  alt={t('gifPicker.favorites')}
                   loading="lazy"
                 />
               ) : (
@@ -369,7 +371,7 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
       {view === 'favorites' && renderGifGrid(favToGifItems(favGifs))}
 
       {loading && view !== 'home' && gifs.length === 0 && (
-        <div className={s.loading}>Loading...</div>
+        <div className={s.loading}>{t('gifPicker.loading')}</div>
       )}
 
     </div>

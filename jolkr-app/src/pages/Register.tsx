@@ -6,9 +6,11 @@ import { initE2EE } from '../services/e2ee';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import { MIN_PASSWORD_LENGTH } from '../utils/constants';
+import { useT } from '../hooks/useT';
 
 export default function Register() {
   useEffect(resetAuthTheme, []);
+  const { t } = useT();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -43,14 +45,14 @@ export default function Register() {
         <div style={styles.iconWrap}>
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="Jolkr" style={{ width: 32, height: 32 }} />
         </div>
-        <h1 style={styles.title}>Create an account</h1>
-        <p style={styles.subtitle}>Join Jolkr today</p>
+        <h1 style={styles.title}>{t('auth.register.title')}</h1>
+        <p style={styles.subtitle}>{t('auth.register.subtitle')}</p>
 
         {error && <div role="alert" id="auth-error" style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={styles.label}>
-            <span style={styles.labelText}>Email <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <span style={styles.labelText}>{t('auth.shared.emailLabel')} <span style={{ color: 'oklch(55% 0.2 25)' }}>{t('common.required')}</span></span>
             <input
               type="email"
               name="email"
@@ -66,7 +68,7 @@ export default function Register() {
             />
           </label>
           <label style={styles.label}>
-            <span style={styles.labelText}>Username <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <span style={styles.labelText}>{t('auth.register.usernameLabel')} <span style={{ color: 'oklch(55% 0.2 25)' }}>{t('common.required')}</span></span>
             <input
               type="text"
               name="username"
@@ -80,7 +82,7 @@ export default function Register() {
             />
           </label>
           <label style={styles.label}>
-            <span style={styles.labelText}>Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <span style={styles.labelText}>{t('auth.shared.passwordLabel')} <span style={{ color: 'oklch(55% 0.2 25)' }}>{t('common.required')}</span></span>
             <input
               type="password"
               name="password"
@@ -95,13 +97,13 @@ export default function Register() {
             />
           </label>
           <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? 'Creating...' : 'Continue'}
+            {loading ? t('auth.register.submitting') : t('auth.register.submit')}
           </button>
         </form>
 
         <p style={styles.footer}>
-          Already have an account?{' '}
-          <Link to="/login" style={styles.link}>Log In</Link>
+          {t('auth.register.haveAccount')}{' '}
+          <Link to="/login" style={styles.link}>{t('auth.register.login')}</Link>
         </p>
       </div>
     </div>

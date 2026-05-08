@@ -14,7 +14,7 @@ function transformReactions(msgs: Message[]): Message[] {
       reactions: m.reactions.map((r) => ({
         emoji: r.emoji,
         count: r.count,
-        me: currentUserId ? (r.user_ids ? r.user_ids.includes(currentUserId) : r.me ?? false) : false,
+        me: currentUserId ? (r.user_ids?.includes(currentUserId) ?? false) : false,
         user_ids: r.user_ids ?? [],
       })),
     };
@@ -58,26 +58,6 @@ interface MessagesState {
   reset: () => void;
 }
 
-// Map DM message response to Message interface
-function normalizeDmMessages(msgs: unknown[], dmId: string): Message[] {
-  return (msgs as Array<Record<string, unknown>>).map((m) => ({
-    id: m.id as string,
-    channel_id: (m.dm_channel_id as string) ?? dmId,
-    author_id: m.author_id as string,
-    content: (m.content as string) ?? '',
-    nonce: (m.nonce as string) ?? null,
-    created_at: m.created_at as string,
-    updated_at: (m.updated_at as string) ?? null,
-    is_edited: (m.is_edited as boolean) ?? false,
-    is_pinned: (m.is_pinned as boolean) ?? false,
-    reply_to_id: (m.reply_to_id as string) ?? null,
-    author: (m.author as Message['author']) ?? (m.sender as Message['author']) ?? null,
-    attachments: (m.attachments as Message['attachments']) ?? [],
-    reactions: (m.reactions as Reaction[]) ?? [],
-    embeds: (m.embeds as Message['embeds']) ?? [],
-  }));
-}
-
 const MAX_CACHED_CHANNELS = 30;
 
 /** Evict oldest channel message caches when exceeding limit */
@@ -109,13 +89,9 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       set({ loading: { ...get().loading, [channelId]: true } });
     }
     try {
-      let msgs: Message[];
-      if (isDm) {
-        const raw = await api.getDmMessages(channelId);
-        msgs = normalizeDmMessages(raw, channelId);
-      } else {
-        msgs = await api.getMessages(channelId);
-      }
+      const msgs = isDm
+        ? await api.getDmMessages(channelId)
+        : await api.getMessages(channelId);
       const reversed = transformReactions([...msgs].reverse());
       const evicted = evictOldChannels({ ...get().messages, [channelId]: reversed }, channelId);
       set({
@@ -136,13 +112,9 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     set({ loadingOlder: { ...get().loadingOlder, [channelId]: true } });
     try {
       const oldest = current[0];
-      let msgs: Message[];
-      if (isDm) {
-        const raw = await api.getDmMessages(channelId, 50, oldest.created_at);
-        msgs = normalizeDmMessages(raw, channelId);
-      } else {
-        msgs = await api.getMessages(channelId, 50, oldest.created_at);
-      }
+      const msgs = isDm
+        ? await api.getDmMessages(channelId, 50, oldest.created_at)
+        : await api.getMessages(channelId, 50, oldest.created_at);
       const reversed = transformReactions([...msgs].reverse());
       const fresh = get().messages[channelId] ?? [];
       set({
@@ -165,9 +137,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   editMessage: async (messageId, channelId, content, isDm, nonce) => {
     if (isDm) {
-      const raw = await api.editDmMessage(messageId, content, nonce);
-      const normalized = normalizeDmMessages([raw], channelId)[0];
-      get().updateMessage(channelId, normalized);
+      const updated = await api.editDmMessage(messageId, content, nonce);
+      get().updateMessage(channelId, updated);
     } else {
       const updated = await api.editMessage(messageId, content, nonce);
       get().updateMessage(channelId, updated);
@@ -338,12 +309,10 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
  * is parsed (api/ws.ts) — that's the real trust boundary.
  */
 function normalizeWsMessage(raw: Message): Message | null {
-  const channelId = raw.channel_id ?? raw.dm_channel_id;
-  if (!channelId || !raw.id) return null;
+  if (!raw.channel_id || !raw.id) return null;
   const currentUserId = useAuthStore.getState().user?.id;
   return {
     ...raw,
-    channel_id: channelId,
     content: raw.content ?? '',
     nonce: raw.nonce ?? null,
     created_at: raw.created_at ?? new Date().toISOString(),
@@ -407,8 +376,7 @@ wsClient.on((event) => {
       break;
     }
     case 'MessageDelete': {
-      const channelId = event.d.channel_id ?? event.d.dm_channel_id;
-      const messageId = event.d.message_id;
+      const { channel_id: channelId, message_id: messageId } = event.d;
       if (!channelId || !messageId) break;
       // Remove from channel messages
       store.removeMessage(channelId, messageId);

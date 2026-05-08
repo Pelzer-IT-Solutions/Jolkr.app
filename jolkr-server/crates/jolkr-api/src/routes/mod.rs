@@ -273,6 +273,7 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
                 .delete(channels::delete_channel),
         )
         .route("/api/channels/:id/permissions/@me", get(channels::get_my_channel_permissions))
+        .route("/api/channels/:id/members", get(channels::list_channel_members))
         .route("/api/channels/:id/overwrites", get(channels::list_overwrites).put(channels::upsert_overwrite))
         .route("/api/channels/:id/overwrites/:target_type/:target_id", delete(channels::delete_overwrite))
         .route("/api/channels/:id/read", post(channels::mark_channel_read))

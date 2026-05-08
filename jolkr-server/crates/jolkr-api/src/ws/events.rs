@@ -344,6 +344,11 @@ pub enum GatewayEvent {
         /// Sent only on the user's own user-channel, so other peers ignore it.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         allow_friend_requests: Option<bool>,
+        /// Self-only preference — UI language (BCP-47 lite). Sent only on the
+        /// user's own user-channel so all their sessions converge on the same
+        /// locale after a Settings change.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        preferred_language: Option<String>,
     },
 
     /// A user's email has been verified. Fired to all sessions of the user

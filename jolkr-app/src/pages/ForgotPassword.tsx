@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../api/client';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { MIN_PASSWORD_LENGTH } from '../utils/constants';
+import { useT } from '../hooks/useT';
 
 const s: Record<string, React.CSSProperties> = {
   page: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-default)' },
@@ -29,6 +30,7 @@ export default function ForgotPassword() {
 }
 
 function RequestResetForm() {
+  const { t, tx } = useT();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ function RequestResetForm() {
       await api.forgotPassword(email);
       setSubmitted(true);
     } catch (err) {
-      setError((err as Error).message || 'Something went wrong');
+      setError((err as Error).message || t('auth.forgot.errorGeneric'));
     } finally {
       setLoading(false);
     }
@@ -53,12 +55,12 @@ function RequestResetForm() {
       <div style={s.page}>
         <div style={{ ...s.card, textAlign: 'center' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>&#9993;</div>
-          <h1 style={s.title}>Check your email</h1>
+          <h1 style={s.title}>{t('auth.forgot.checkEmailTitle')}</h1>
           <p style={s.subtitle}>
-            If an account exists for <strong>{email}</strong>, we've sent a password reset link.
+            {tx('auth.forgot.checkEmailBody', { email: <strong>{email}</strong> })}
           </p>
           <Link to="/login" style={{ ...s.button, display: 'block', textAlign: 'center', textDecoration: 'none' }}>
-            Back to Login
+            {t('auth.forgot.backToLogin')}
           </Link>
         </div>
       </div>
@@ -68,12 +70,12 @@ function RequestResetForm() {
   return (
     <div style={s.page}>
       <div style={s.card}>
-        <h1 style={s.title}>Forgot your password?</h1>
-        <p style={s.subtitle}>Enter your email and we'll send you a reset link.</p>
+        <h1 style={s.title}>{t('auth.forgot.title')}</h1>
+        <p style={s.subtitle}>{t('auth.forgot.subtitle')}</p>
         {error && <div role="alert" id="auth-error" style={s.error}>{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={s.label}>
-            <span style={s.labelText}>Email <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <span style={s.labelText}>{t('auth.shared.emailLabel')} <span style={{ color: 'oklch(55% 0.2 25)' }}>{t('common.required')}</span></span>
             <input
               type="email"
               name="email"
@@ -83,21 +85,22 @@ function RequestResetForm() {
               required
               autoFocus
               inputMode="email"
-              placeholder="you@example.com"
+              placeholder={t('auth.forgot.emailPlaceholder')}
               aria-invalid={!!error}
               aria-describedby={error ? 'auth-error' : undefined}
               style={s.input}
             />
           </label>
-          <button type="submit" disabled={loading} style={s.button}>{loading ? 'Sending...' : 'Send Reset Link'}</button>
+          <button type="submit" disabled={loading} style={s.button}>{loading ? t('auth.forgot.submitting') : t('auth.forgot.submit')}</button>
         </form>
-        <p style={s.footer}>Remember your password? <Link to="/login" style={s.link}>Log In</Link></p>
+        <p style={s.footer}>{t('auth.forgot.rememberPassword')} <Link to="/login" style={s.link}>{t('auth.forgot.login')}</Link></p>
       </div>
     </div>
   );
 }
 
 function ResetPasswordForm({ token }: { token: string }) {
+  const { t } = useT();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -108,15 +111,15 @@ function ResetPasswordForm({ token }: { token: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) { setError('Passwords do not match'); return; }
-    if (!passwordOk) { setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`); return; }
+    if (newPassword !== confirmPassword) { setError(t('auth.reset.passwordsMismatch')); return; }
+    if (!passwordOk) { setError(t('auth.reset.passwordTooShort', { min: MIN_PASSWORD_LENGTH })); return; }
     setLoading(true);
     setError(null);
     try {
       await api.resetPasswordConfirm(token, newPassword);
       setSuccess(true);
     } catch (err) {
-      setError((err as Error).message || 'Failed to reset password');
+      setError((err as Error).message || t('auth.reset.errorGeneric'));
     } finally {
       setLoading(false);
     }
@@ -127,9 +130,9 @@ function ResetPasswordForm({ token }: { token: string }) {
       <div style={s.page}>
         <div style={{ ...s.card, textAlign: 'center' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>&#10003;</div>
-          <h1 style={s.title}>Password Reset Successful</h1>
-          <p style={s.subtitle}>You can now log in with your new password.</p>
-          <Link to="/login" style={{ ...s.button, display: 'block', textAlign: 'center', textDecoration: 'none' }}>Go to Login</Link>
+          <h1 style={s.title}>{t('auth.reset.successTitle')}</h1>
+          <p style={s.subtitle}>{t('auth.reset.successBody')}</p>
+          <Link to="/login" style={{ ...s.button, display: 'block', textAlign: 'center', textDecoration: 'none' }}>{t('auth.reset.goToLogin')}</Link>
         </div>
       </div>
     );
@@ -138,12 +141,12 @@ function ResetPasswordForm({ token }: { token: string }) {
   return (
     <div style={s.page}>
       <div style={s.card}>
-        <h1 style={s.title}>Set New Password</h1>
-        <p style={s.subtitle}>Enter your new password below.</p>
+        <h1 style={s.title}>{t('auth.reset.title')}</h1>
+        <p style={s.subtitle}>{t('auth.reset.subtitle')}</p>
         {error && <div role="alert" id="auth-error" style={s.error}>{error}</div>}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={s.label}>
-            <span style={s.labelText}>New Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <span style={s.labelText}>{t('auth.reset.newPasswordLabel')} <span style={{ color: 'oklch(55% 0.2 25)' }}>{t('common.required')}</span></span>
             <input
               type="password"
               name="new-password"
@@ -153,19 +156,19 @@ function ResetPasswordForm({ token }: { token: string }) {
               required
               minLength={MIN_PASSWORD_LENGTH}
               autoFocus
-              placeholder={`Min. ${MIN_PASSWORD_LENGTH} characters`}
+              placeholder={t('auth.reset.newPasswordPlaceholder', { min: MIN_PASSWORD_LENGTH })}
               aria-invalid={!!error}
               aria-describedby={error ? 'auth-error' : undefined}
               style={s.input}
             />
             {newPassword.length > 0 && (
               <span style={passwordOk ? s.hint : s.hintError}>
-                {passwordOk ? '✓ ' : ''}{MIN_PASSWORD_LENGTH}+ characters
+                {passwordOk ? '✓ ' : ''}{t('auth.reset.newPasswordHint', { min: MIN_PASSWORD_LENGTH })}
               </span>
             )}
           </label>
           <label style={s.label}>
-            <span style={s.labelText}>Confirm Password <span style={{ color: 'oklch(55% 0.2 25)' }}>*</span></span>
+            <span style={s.labelText}>{t('auth.reset.confirmPasswordLabel')} <span style={{ color: 'oklch(55% 0.2 25)' }}>{t('common.required')}</span></span>
             <input
               type="password"
               name="confirm-password"
@@ -174,15 +177,15 @@ function ResetPasswordForm({ token }: { token: string }) {
               onChange={e => setConfirmPassword(e.target.value)}
               required
               minLength={MIN_PASSWORD_LENGTH}
-              placeholder="Repeat your new password"
+              placeholder={t('auth.reset.confirmPasswordPlaceholder')}
               aria-invalid={!!error}
               aria-describedby={error ? 'auth-error' : undefined}
               style={s.input}
             />
           </label>
-          <button type="submit" disabled={loading} style={s.button}>{loading ? 'Resetting...' : 'Reset Password'}</button>
+          <button type="submit" disabled={loading} style={s.button}>{loading ? t('auth.reset.submitting') : t('auth.reset.submit')}</button>
         </form>
-        <p style={s.footer}><Link to="/login" style={s.link}>Back to Login</Link></p>
+        <p style={s.footer}><Link to="/login" style={s.link}>{t('auth.forgot.backToLogin')}</Link></p>
       </div>
     </div>
   );

@@ -19,22 +19,33 @@ use crate::storage::MAX_FILE_SIZE;
 ///
 /// Extracts the basename (last component after any path separator), removes
 /// null bytes, and collapses `..` sequences to prevent path traversal.
-/// Allowed MIME types for file uploads. Blocks dangerous types like text/html
-/// and application/javascript while allowing common media and document types.
-const ALLOWED_MIME_TYPES: &[&str] = &[
-    "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
-    "image/bmp", "image/tiff", "image/avif",
-    "video/mp4", "video/webm", "video/ogg", "video/quicktime",
-    "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm", "audio/aac", "audio/flac",
-    "application/pdf", "text/plain",
-    "application/octet-stream", // fallback for unknown types
+///
+/// Content-type policy: deny-list rather than allow-list. Chat is meant to
+/// accept any file the user wants to share, so we only block formats that
+/// could execute in a browser context if a malicious link is followed
+/// (HTML, JS, plus a few exotic application/* shells). Everything else —
+/// including arbitrary binaries, code source files, archives, captures —
+/// passes through and is served with `X-Content-Type-Options: nosniff` to
+/// stop the browser from re-interpreting it.
+const DENIED_MIME_TYPES: &[&str] = &[
+    "text/html", "application/xhtml+xml",
+    "text/javascript", "application/javascript", "application/x-javascript",
+    "application/ecmascript", "text/ecmascript",
+    "application/x-msdownload",      // .exe / .dll
+    "application/x-msdos-program",
+    "application/x-sh",              // shell scripts execute via download-and-run flows
+    "application/x-csh",
 ];
 
 /// Presigned URL lifetime in seconds (4 hours).
 pub(crate) const PRESIGN_EXPIRY_SECS: u32 = 4 * 3600;
 
 pub(crate) fn is_allowed_content_type(ct: &str) -> bool {
-    ALLOWED_MIME_TYPES.iter().any(|allowed| ct.eq_ignore_ascii_case(allowed))
+    // Empty / missing content-type is allowed — clients (notably browsers
+    // dropping certain extensions like .m3u8) can't always populate it.
+    // The frontend normalises known extensions before upload, the server
+    // accepts whatever lands.
+    !DENIED_MIME_TYPES.iter().any(|denied| ct.eq_ignore_ascii_case(denied))
 }
 
 /// Validate that actual file bytes match the claimed MIME type via magic bytes.

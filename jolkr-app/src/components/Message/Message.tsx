@@ -8,6 +8,7 @@ import type { MessageVM } from '../../types'
 import type { User, MessageEmbed } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useShiftKey } from '../../hooks/useShiftKey'
+import { useT } from '../../hooks/useT'
 import { useAuthStore } from '../../stores/auth'
 import { useToast } from '../../stores/toast'
 import { logErr } from '../../utils/logErr'
@@ -52,6 +53,7 @@ interface Props {
 }
 
 export function Message({ message, onToggleReaction, onDelete, onHideForMe, onReply, onEdit, onPin, onOpenAuthorProfile, isDm = false, isGroupDm = false, serverId, userMap, dmParticipantNames, canManageMessages = false, canAddReactions = false, onOpenThread, onStartThread }: Props) {
+  const { t, tn } = useT()
   const currentUserId = useAuthStore(s => s.user?.id)
   const isOwn = message.author_id === currentUserId || message.author === 'You'
   const shiftHeld = useShiftKey()
@@ -90,7 +92,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     message.replyTo?.channelId ?? undefined,
   )
   const replyText = message.replyTo?.nonce
-    ? (replyDecrypt.decrypting ? 'Decrypting…' : (replyDecrypt.displayContent || 'Encrypted message'))
+    ? (replyDecrypt.decrypting ? t('message.decrypt.decrypting') : (replyDecrypt.displayContent || t('message.decrypt.encryptedMessage')))
     : (message.replyTo?.text ?? '')
 
   // Client-side embed generation: extract URLs from displayed content and create
@@ -152,7 +154,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   function handleCopyText() {
     navigator.clipboard.writeText(messageContent).catch((e) => {
       logErr('Message.copyText', e)
-      useToast.getState().show('Copy failed', 'error')
+      useToast.getState().show(t('message.copyFailed'), 'error')
     })
     setShowMore(false)
   }
@@ -226,7 +228,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   }
 
   const editedTag = message.edited ? (
-    <span className={`${s.editedTag} txt-tiny`}>(edited)</span>
+    <span className={`${s.editedTag} txt-tiny`}>{t('message.editedTag')}</span>
   ) : null
 
   const replyBlock = message.replyTo ? (
@@ -267,14 +269,19 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
         contentEditable
         suppressContentEditableWarning
         onKeyDown={handleEditKeyDown}
+        dir="auto"
       />
       <span className={`${s.editHint} txt-tiny`}>
-        escape to <button className={s.editHintBtn} onClick={cancelEdit}>cancel</button> · enter to <button className={s.editHintBtn} onClick={saveEdit}>save</button>
+        {t('message.editHint.escapeTo')} <button className={s.editHintBtn} onClick={cancelEdit}>{t('message.editHint.cancel')}</button> {t('message.editHint.separator')} {t('message.editHint.enterTo')} <button className={s.editHintBtn} onClick={saveEdit}>{t('message.editHint.save')}</button>
       </span>
     </div>
   ) : (
-    <div className={`${s.text} txt-body`}>
-      <MessageContent content={decrypting ? '...' : messageContent} serverId={serverId} />
+    /* `dir="auto"` lets the browser detect message direction per-message
+       from the first strong directional character — ensures Arabic/Hebrew/
+       Farsi messages render right-to-left even though the surrounding UI
+       (and current locale set) is LTR. Latin messages stay LTR. */
+    <div className={`${s.text} txt-body`} dir="auto">
+      <MessageContent content={decrypting ? t('message.decrypt.decryptingShort') : messageContent} serverId={serverId} />
       {editedTag}
     </div>
   )
@@ -313,7 +320,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     >
       <MessageSquare size={11} strokeWidth={1.6} />
       <span className="txt-tiny txt-semibold">
-        {threadReplyCount} {threadReplyCount === 1 ? 'reply' : 'replies'} in thread
+        {tn('message.thread', threadReplyCount)}
       </span>
     </button>
   ) : null
@@ -352,8 +359,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
         <button
           ref={emojiTriggerRef}
           className={s.actionBtn}
-          title="Add reaction"
-          aria-label="Add reaction"
+          title={t('message.actions.addReaction')}
+          aria-label={t('message.actions.addReaction')}
           onClick={() => {
             if (!showEmoji && emojiTriggerRef.current) {
               const r = emojiTriggerRef.current.getBoundingClientRect()
@@ -377,17 +384,17 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
       )}
 
       {/* ── Reply ── */}
-      {onReply && <button className={s.actionBtn} title="Reply" aria-label="Reply" onClick={onReply}><ReplyIcon /></button>}
+      {onReply && <button className={s.actionBtn} title={t('message.actions.reply')} aria-label={t('message.actions.reply')} onClick={onReply}><ReplyIcon /></button>}
 
       {/* ── Edit (own only) ── */}
-      {isOwn && <button className={s.actionBtn} title="Edit message" aria-label="Edit message" onClick={startEdit}><EditIcon /></button>}
+      {isOwn && <button className={s.actionBtn} title={t('message.actions.edit')} aria-label={t('message.actions.edit')} onClick={startEdit}><EditIcon /></button>}
 
       {/* ── More options (Shift swaps to instant-delete when user can delete) ── */}
       <div ref={moreRef} className={s.actionWrap}>
         <button
           className={`${s.actionBtn} ${shiftDeleteArmed ? s.dangerBtn : ''}`}
-          title={shiftDeleteArmed ? 'Delete message (Shift+click)' : 'More options'}
-          aria-label={shiftDeleteArmed ? 'Delete message' : 'More options'}
+          title={shiftDeleteArmed ? t('message.actions.deleteShift') : t('message.actions.more')}
+          aria-label={shiftDeleteArmed ? t('message.actions.delete') : t('message.actions.more')}
           onClick={(e) => {
             // Use the actual click event's shift state, not the hook — that
             // way a click never desyncs from what the user thinks they did
@@ -413,39 +420,39 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
             style={{ position: 'fixed', top: morePos.y, left: morePos.x - 184 }}
           >
             <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
-              <ReplyIcon /><span>Reply</span>
+              <ReplyIcon /><span>{t('message.menu.reply')}</span>
             </button>
             {isOwn && (
               <button role="menuitem" className={s.menuItem} onClick={startEdit}>
-                <EditIcon /><span>Edit Message</span>
+                <EditIcon /><span>{t('message.menu.editMessage')}</span>
               </button>
             )}
             <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
-              <CopyIcon /><span>Copy Text</span>
+              <CopyIcon /><span>{t('message.menu.copyText')}</span>
             </button>
             {canManageMessages && onPin && (
               <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
-                <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
+                <PinIcon /><span>{message.is_pinned ? t('message.menu.unpinMessage') : t('message.menu.pinMessage')}</span>
               </button>
             )}
             {!isDm && onStartThread && !message.thread_id && (
               <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onStartThread(message.id) }}>
-                <ThreadIcon /><span>Start Thread</span>
+                <ThreadIcon /><span>{t('message.menu.startThread')}</span>
               </button>
             )}
             {!isDm && message.thread_id && onOpenThread && (
               <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onOpenThread(message.thread_id!) }}>
-                <ThreadIcon /><span>Open Thread</span>
+                <ThreadIcon /><span>{t('message.menu.openThread')}</span>
               </button>
             )}
             <div className={s.menuDivider} />
             {isOwn ? (
               <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleNormalDeleteClick}>
-                <TrashIcon /><span>Delete Message</span>
+                <TrashIcon /><span>{t('message.menu.deleteMessage')}</span>
               </button>
             ) : canManageMessages ? (
               <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleDelete}>
-                <TrashIcon /><span>Delete Message</span>
+                <TrashIcon /><span>{t('message.menu.deleteMessage')}</span>
               </button>
             ) : isDm && canHideForMe ? (
               <button
@@ -453,11 +460,11 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                 className={`${s.menuItem} ${s.danger}`}
                 onClick={() => { setShowMore(false); onHideForMe?.() }}
               >
-                <TrashIcon /><span>Delete for me</span>
+                <TrashIcon /><span>{t('message.menu.deleteForMe')}</span>
               </button>
             ) : (
               <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
-                <FlagIcon /><span>Report Message</span>
+                <FlagIcon /><span>{t('message.menu.reportMessage')}</span>
               </button>
             )}
           </div>,
@@ -487,8 +494,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                 <button
                   ref={emojiTriggerRef}
                   className={s.dmActionBtn}
-                  title="Add reaction"
-                  aria-label="Add reaction"
+                  title={t('message.actions.addReaction')}
+                  aria-label={t('message.actions.addReaction')}
                   onClick={() => {
                     if (!showEmoji && emojiTriggerRef.current) {
                       const r = emojiTriggerRef.current.getBoundingClientRect()
@@ -511,7 +518,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                 />
               )}
 
-              {onReply && <button className={s.dmActionBtn} title="Reply" aria-label="Reply" onClick={onReply}><ReplyIcon /></button>}
+              {onReply && <button className={s.dmActionBtn} title={t('message.actions.reply')} aria-label={t('message.actions.reply')} onClick={onReply}><ReplyIcon /></button>}
 
               <div ref={moreRef} className={s.actionWrap}>
                 <button
@@ -539,25 +546,25 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                     style={{ position: 'fixed', top: morePos.y, left: morePos.x - 184 }}
                   >
                     <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onReply?.() }}>
-                      <ReplyIcon /><span>Reply</span>
+                      <ReplyIcon /><span>{t('message.menu.reply')}</span>
                     </button>
                     {isOwn && (
                       <button role="menuitem" className={s.menuItem} onClick={startEdit}>
-                        <EditIcon /><span>Edit Message</span>
+                        <EditIcon /><span>{t('message.menu.editMessage')}</span>
                       </button>
                     )}
                     <button role="menuitem" className={s.menuItem} onClick={handleCopyText}>
-                      <CopyIcon /><span>Copy Text</span>
+                      <CopyIcon /><span>{t('message.menu.copyText')}</span>
                     </button>
                     {canManageMessages && onPin && (
                       <button role="menuitem" className={s.menuItem} onClick={() => { setShowMore(false); onPin() }}>
-                        <PinIcon /><span>{message.is_pinned ? 'Unpin Message' : 'Pin Message'}</span>
+                        <PinIcon /><span>{message.is_pinned ? t('message.menu.unpinMessage') : t('message.menu.pinMessage')}</span>
                       </button>
                     )}
                     <div className={s.menuDivider} />
                     {isOwn ? (
                       <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={handleNormalDeleteClick}>
-                        <TrashIcon /><span>Delete Message</span>
+                        <TrashIcon /><span>{t('message.menu.deleteMessage')}</span>
                       </button>
                     ) : canHideForMe ? (
                       <button
@@ -565,11 +572,11 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                         className={`${s.menuItem} ${s.danger}`}
                         onClick={() => { setShowMore(false); onHideForMe?.() }}
                       >
-                        <TrashIcon /><span>Delete for me</span>
+                        <TrashIcon /><span>{t('message.menu.deleteForMe')}</span>
                       </button>
                     ) : (
                       <button role="menuitem" className={`${s.menuItem} ${s.danger}`} onClick={() => setShowMore(false)}>
-                        <FlagIcon /><span>Report Message</span>
+                        <FlagIcon /><span>{t('message.menu.reportMessage')}</span>
                       </button>
                     )}
                   </div>,
@@ -596,8 +603,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
                 </span>
               </div>
             ) : (
-              <div className={`${s.text} txt-body`}>
-                <MessageContent content={decrypting ? '...' : messageContent} serverId={serverId} />
+              <div className={`${s.text} txt-body`} dir="auto">
+                <MessageContent content={decrypting ? t('message.decrypt.decryptingShort') : messageContent} serverId={serverId} />
                 {editedTag}
               </div>
             )}
@@ -639,7 +646,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   return (
     <>
     <article className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
-      <MessageAvatar message={message} onClick={handleAuthorClick} />
+      <MessageAvatar message={message} onClick={handleAuthorClick} ariaOpenLabel={t('message.ariaOpenProfile', { name: message.author })} />
       <div className={s.body}>
         <div className={s.meta}>
           {handleAuthorClick ? (
@@ -653,7 +660,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
           )}
           <time className={`${s.time} txt-tiny`}>{message.time}</time>
           {message.is_pinned && <Pin size={11} strokeWidth={1.4} className={s.pinnedBadge} />}
-          {showUnencryptedBadge && <span className={`${s.unencryptedBadge} txt-tiny`}>unencrypted</span>}
+          {showUnencryptedBadge && <span className={`${s.unencryptedBadge} txt-tiny`}>{t('message.unencryptedBadge')}</span>}
         </div>
         {body}
       </div>
@@ -665,13 +672,13 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
 }
 
 /* ─── Icons ─── */
-function MessageAvatar({ message, onClick }: { message: MessageVM; onClick?: (e: React.MouseEvent) => void }) {
+function MessageAvatar({ message, onClick, ariaOpenLabel }: { message: MessageVM; onClick?: (e: React.MouseEvent) => void; ariaOpenLabel: string }) {
   const avatar = (
     <Avatar url={message.avatarUrl} name={message.author} size="md" status={null} userId={message.author_id} className={s.avatar} color={message.color} />
   )
   if (!onClick) return avatar
   return (
-    <button type="button" onClick={onClick} className={s.avatarClickable} aria-label={`Open profile of ${message.author}`}>
+    <button type="button" onClick={onClick} className={s.avatarClickable} aria-label={ariaOpenLabel}>
       {avatar}
     </button>
   )

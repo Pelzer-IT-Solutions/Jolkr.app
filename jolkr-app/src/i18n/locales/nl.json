@@ -1,0 +1,759 @@
+{
+  "common": {
+    "ok": "OK", "cancel": "Annuleren", "save": "Opslaan", "delete": "Verwijderen",
+    "edit": "Bewerken", "close": "Sluiten", "loading": "Laden…",
+    "someone": "Iemand", "required": "*", "goHome": "Naar Start",
+    "add": "Toevoegen", "saveChanges": "Wijzigingen opslaan",
+    "loadingDots": "Laden...", "unknown": "Onbekend", "send": "Verzenden (Enter)",
+    "dismiss": "Sluiten", "expandSidebar": "Zijbalk uitvouwen"
+  },
+
+  "time": {
+    "todayAt": "Vandaag om {time}",
+    "yesterdayAt": "Gisteren om {time}",
+    "dateAt": "{date} om {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "Kanalen uitvouwen",
+      "threads": "Threads", "pinnedMessages": "Vastgepinde berichten",
+      "filesAndPins": "Bestanden en pins", "members": "Leden",
+      "alreadyInCall": "Al in een gesprek",
+      "startVoiceCall": "Spraakgesprek starten",
+      "startVideoCall": "Video­gesprek starten",
+      "videoCall1on1Only": "Videogesprekken zijn alleen 1-op-1"
+    },
+    "dropZone": {
+      "drop": "Loslaten om te uploaden",
+      "limit": "Maximaal {limit} per bestand",
+      "tooLargeTitle": "Bestand te groot",
+      "tooLargeAlert": "Bestand te groot (max {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "Nieuwe thread",
+      "namePlaceholder": "Threadnaam (optioneel)",
+      "createBtn": "Aanmaken"
+    },
+    "composer": {
+      "placeholderChannel": "Bericht naar #{channel}",
+      "placeholderDm": "Bericht naar {target}",
+      "emoji": "Emoji", "attachFile": "Bestand bijvoegen",
+      "gif": "GIF", "createPoll": "Peiling maken", "send": "Verzenden (Enter)",
+      "fmtBold": "Vet (Ctrl+B)", "fmtItalic": "Cursief (Ctrl+I)",
+      "fmtStrike": "Doorhalen", "fmtCode": "Code",
+      "renameFile": "Bestandsnaam wijzigen", "removeFile": "Verwijderen",
+      "renameFileTitle": "Bestandsnaam wijzigen",
+      "renameFilePlaceholder": "Bestandsnaam"
+    },
+    "autocomplete": {
+      "membersHeader": "Leden",
+      "emojiHeader": "Emoji die overeenkomt met :{query}"
+    },
+    "replyCard": {
+      "replyingTo": "Reageren op {name}",
+      "cancel": "Antwoord annuleren"
+    },
+    "empty": {
+      "dmTitle": "Nog geen berichten met {name}",
+      "dmFallbackName": "deze gebruiker",
+      "dmBody": "Stuur hieronder een bericht om het gesprek te starten.",
+      "channelTitle": "Welkom in #{channel}",
+      "channelBody": "Wees de eerste die iets zegt — typ hieronder een bericht om het kanaal op gang te brengen."
+    },
+    "readOnly": {
+      "system": "Dit is een systeemkanaal",
+      "noPermission": "Je hebt geen rechten om berichten in dit kanaal te versturen",
+      "generic": "Dit is een alleen-lezen kanaal"
+    },
+    "typing": {
+      "one": "{name} is aan het typen…",
+      "two": "{a} en {b} zijn aan het typen…",
+      "many": "Meerdere mensen zijn aan het typen…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(bewerkt)",
+    "unencryptedBadge": "onversleuteld",
+    "ariaOpenProfile": "Profiel van {name} openen",
+    "decrypt": {
+      "decrypting": "Ontsleutelen…",
+      "decryptingShort": "...",
+      "encryptedMessage": "Versleuteld bericht",
+      "failed": "[Versleuteld bericht — sleutels niet beschikbaar]"
+    },
+    "actions": {
+      "addReaction": "Reactie toevoegen", "reply": "Antwoorden",
+      "edit": "Bericht bewerken", "delete": "Bericht verwijderen",
+      "deleteShift": "Bericht verwijderen (Shift+klik)", "more": "Meer opties"
+    },
+    "menu": {
+      "reply": "Antwoorden", "editMessage": "Bericht bewerken",
+      "copyText": "Tekst kopiëren", "pinMessage": "Bericht vastpinnen",
+      "unpinMessage": "Pin verwijderen", "startThread": "Thread starten",
+      "openThread": "Thread openen", "deleteMessage": "Bericht verwijderen",
+      "deleteForMe": "Verwijderen voor mij", "reportMessage": "Bericht rapporteren"
+    },
+    "editHint": {
+      "escapeTo": "escape om te", "cancel": "annuleren",
+      "enterTo": "enter om te", "save": "opslaan", "separator": "·"
+    },
+    "thread": {
+      "one": "{count} antwoord in thread",
+      "other": "{count} antwoorden in thread"
+    },
+    "copyFailed": "Kopiëren mislukt"
+  },
+
+  "reactions": {
+    "count": { "one": "{count} reactie", "other": "{count} reacties" },
+    "userFallback": "Gebruiker {idShort}"
+  },
+
+  "pinned": {
+    "loading": "Laden...", "empty": "Geen vastgepinde berichten",
+    "decrypting": "Ontsleutelen...", "unknownAuthor": "Onbekend", "unpin": "Pin verwijderen"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "Threads laden...", "empty": "Nog geen threads",
+      "untitled": "Naamloze thread",
+      "replies": { "one": "{count} antwoord", "other": "{count} antwoorden" }
+    },
+    "panel": {
+      "back": "Terug naar threads", "fallbackTitle": "Thread",
+      "loading": "Laden...", "empty": "Nog geen antwoorden",
+      "replyPlaceholder": "Antwoord in thread", "send": "Verzenden (Enter)",
+      "unknownAuthor": "Onbekend", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "Peiling maken", "ariaLabel": "Peiling maken",
+      "questionLabel": "Vraag",
+      "questionPlaceholder": "Wat wil je vragen?",
+      "optionsLabel": "Opties",
+      "optionPlaceholder": "Optie {n}",
+      "removeOption": "Optie verwijderen", "addOption": "Optie toevoegen",
+      "multiVoteLabel": "Meerdere stemmen toestaan",
+      "multiVoteSub": "Stemmers kunnen meer dan één optie kiezen",
+      "anonymousLabel": "Anoniem",
+      "anonymousSub": "Verberg wie op wat heeft gestemd",
+      "cancel": "Annuleren", "submit": "Peiling maken",
+      "submitting": "Maken…", "errorGeneric": "Peiling maken mislukt"
+    },
+    "display": {
+      "closed": "Gesloten",
+      "voteCount": { "one": "{count} stem", "other": "{count} stemmen" },
+      "multipleChoice": "meerkeuze", "anonymous": "anoniem"
+    }
+  },
+
+  "attachments": {
+    "openImage": "{filename} openen"
+  },
+
+  "userStatus": {
+    "online": "Online", "idle": "Inactief", "dnd": "Niet storen",
+    "offline": "Offline", "invisible": "Onzichtbaar"
+  },
+
+  "dmSidebar": {
+    "title": "Directe berichten",
+    "backToChat": "Terug naar chat", "friends": "Vrienden",
+    "newMessage": "Nieuw bericht", "collapseSidebar": "Zijbalk inklappen",
+    "emptyTitle": "Nog geen gesprekken",
+    "emptySubtitle": "Start een nieuw bericht om te beginnen met chatten"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "Terug naar chat", "info": "Info", "unpin": "Pin verwijderen",
+    "pinnedMessages": "Vastgepinde berichten", "noPinned": "Nog geen vastgepinde berichten",
+    "sharedFiles": "Gedeelde bestanden", "noFiles": "Nog geen gedeelde bestanden",
+    "decrypting": "Ontsleutelen…"
+  },
+
+  "newDmModal": {
+    "title": "Nieuw bericht", "close": "Sluiten",
+    "addMore": "Meer toevoegen...",
+    "searchPlaceholder": "Zoek vrienden of typ een gebruikersnaam...",
+    "loadingFriends": "Vrienden laden...", "searching": "Zoeken...",
+    "online": "Online — {count}", "offline": "Offline — {count}",
+    "noUsersFound": "Geen gebruikers gevonden",
+    "noFriendsYet": "Nog geen vrienden — zoek hierboven op gebruikersnaam",
+    "createGroup": "Groeps-DM maken", "startConversation": "Gesprek starten"
+  },
+
+  "profileCard": {
+    "ariaProfile": "Profiel van {name}",
+    "loadError": "Kon gebruikersprofiel niet laden", "loading": "Laden…",
+    "about": "Over", "memberSince": "Lid sinds", "safetyNumber": "Beveiligingsnummer",
+    "sendMessage": "Bericht sturen", "addFriend": "Vriend toevoegen",
+    "requestPending": "Vriendverzoek in behandeling", "removeFriend": "Vriend verwijderen",
+    "userBlocked": "Gebruiker geblokkeerd", "block": "Blokkeren",
+    "editProfile": "Profiel bewerken",
+    "errFriendSend": "Verzoek versturen mislukt",
+    "errFriendRemove": "Vriend verwijderen mislukt",
+    "errBlock": "Gebruiker blokkeren mislukt"
+  },
+
+  "memberPanel": {
+    "backToChat": "Terug naar chat",
+    "online": "Online — {count}", "offline": "Offline — {count}",
+    "members": "Leden — {count}",
+    "pinnedMessages": "Vastgepinde berichten", "threads": "Threads"
+  },
+
+  "tabBar": {
+    "yourServers": "Je servers", "search": "Zoeken (⌘K)",
+    "directMessages": "Directe berichten", "notifications": "Notificaties",
+    "profile": "Profiel",
+    "onVideoCallOther": "In een videogesprek (ander apparaat)",
+    "onCallOther": "In een gesprek (ander apparaat)",
+    "joinServer": "Server toetreden", "createServer": "Server maken",
+    "browserTitle": "Je servers",
+    "channelsCount": { "one": "{count} kanaal", "other": "{count} kanalen" },
+    "open": "open",
+    "muteServer": "Server dempen", "unmuteServer": "Demping opheffen",
+    "markAsRead": "Markeer als gelezen", "serverSettings": "Serverinstellingen",
+    "closeTab": "Tab sluiten", "leaveServer": "Server verlaten",
+    "setStatus": "Status instellen", "settings": "Instellingen", "logOut": "Uitloggen",
+    "serverOptions": "Serveropties", "onVideoCall": "In videogesprek", "onCall": "In gesprek"
+  },
+
+  "notificationsPanel": { "title": "Notificaties", "empty": "Nog geen notificaties" },
+
+  "friendsPanel": {
+    "close": "Sluiten",
+    "tabAll": "Alle", "tabOnline": "Online", "tabPending": "In behandeling", "tabAdd": "Vriend toevoegen",
+    "incoming": "Inkomend ({count})", "outgoing": "Uitgaand ({count})",
+    "cancel": "Annuleren", "noPending": "Geen vriendverzoeken in behandeling",
+    "addIntro": "Voeg vrienden toe via gebruikersnaam, e-mail of QR-code.",
+    "myQrCode": "Mijn QR-code", "scanQr": "QR scannen",
+    "orSearch": "of zoek", "searchPlaceholder": "Gebruikersnaam of e-mail…",
+    "searching": "Zoeken…", "noUsersFound": "Geen gebruikers gevonden",
+    "sending": "Verzenden…", "addBtn": "Toevoegen",
+    "noFriendsFound": "Geen vrienden gevonden",
+    "requestSent": "Vriendverzoek verstuurd",
+    "requestFailed": "Vriendverzoek versturen mislukt"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "Profiel bekijken",
+    "addFriend": "Vriend toevoegen", "removeFriend": "Vriend verwijderen",
+    "mute": "Dempen", "unmute": "Demping opheffen",
+    "block": "Blokkeren", "unblock": "Deblokkeren",
+    "closeDm": "DM sluiten", "moderation": "Moderatie",
+    "kick": "Schoppen", "ban": "Verbannen",
+    "assignRole": "Rol toewijzen", "inviteToServer": "Uitnodigen voor server",
+    "reportUser": "Gebruiker rapporteren"
+  },
+
+  "channelSidebar": {
+    "title": "Kanalen", "newChannel": "Nieuw kanaal",
+    "backToChat": "Terug naar chat", "collapseSidebar": "Zijbalk inklappen",
+    "ariaServerChannels": "Serverkanalen",
+    "menuNewFolder": "Nieuwe map", "menuNewText": "Nieuw tekstkanaal",
+    "menuNewVoice": "Nieuw spraakkanaal",
+    "menuChannelSettings": "Kanaalinstellingen", "menuRenameChannel": "Kanaal hernoemen",
+    "menuArchiveChannel": "Kanaal archiveren", "menuDeleteChannel": "Kanaal verwijderen",
+    "confirmDeleteChannel": "Dit kanaal verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "menuCreateText": "Tekstkanaal maken", "menuCreateVoice": "Spraakkanaal maken",
+    "menuRenameFolder": "Map hernoemen", "menuDeleteFolder": "Map verwijderen",
+    "confirmDeleteFolder": "Deze map verwijderen? Kanalen erin worden niet verwijderd.",
+    "placeholderFolder": "Mapnaam…", "placeholderVoice": "spraakkanaal-naam…",
+    "placeholderText": "kanaal-naam…", "channelOptions": "Kanaalopties"
+  },
+
+  "deleteMessageDialog": {
+    "title": "Bericht verwijderen?",
+    "bodyOwner": "Dit bericht wordt verwijderd. Kies of je het alleen voor jezelf of voor iedereen wilt verwijderen.",
+    "bodyNonOwner": "Dit verbergt het bericht alleen aan jouw kant. Andere leden blijven het zien.",
+    "deleteForEveryone": "Verwijderen voor iedereen",
+    "deleteForBoth": "Verwijderen voor ons beiden",
+    "deleteForMe": "Verwijderen voor mij", "cancel": "Annuleren"
+  },
+
+  "createServerModal": {
+    "title": "Server maken",
+    "description": "Geef je gemeenschap een thuis. Pas hem aan om hem van jou te maken.",
+    "iconLabel": "Server-icoon",
+    "iconHelper": "Te zien in tabs en de serverbrowser",
+    "nameLabel": "Servernaam", "namePlaceholder": "Mijn geweldige server",
+    "iconCharLabel": "Icoon-teken",
+    "iconCharPlaceholder": "Laat leeg om eerste letter van naam te gebruiken",
+    "colorLabel": "Kleurthema", "privacyLabel": "Privacy",
+    "publicTitle": "Openbaar", "publicDesc": "Iedereen kan toetreden met de server-ID",
+    "privateTitle": "Privé", "privateDesc": "Leden hebben een toegangscode nodig om toe te treden",
+    "cancel": "Annuleren", "submit": "Server maken",
+    "colors": {
+      "neutral": "Neutraal", "red": "Rood", "orange": "Oranje", "yellow": "Geel",
+      "green": "Groen", "teal": "Turquoise", "blue": "Blauw",
+      "indigo": "Indigo", "purple": "Paars", "pink": "Roze"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "Server toetreden",
+    "description": "Voer een uitnodigings-ID in om een bestaande server toe te treden. Vraag de servereigenaar om een toegangscode als de server privé is.",
+    "serverIdLabel": "Server-ID", "serverIdPlaceholder": "bijv. pixel-workshop",
+    "accessCodeLabel": "Toegangscode", "accessCodePlaceholder": "Laat leeg voor openbare servers",
+    "errorEmpty": "Voer een server-ID in.", "errorNotFound": "Server niet gevonden. Controleer de ID en probeer opnieuw.",
+    "cancel": "Annuleren", "submit": "Toetreden"
+  },
+
+  "reportModal": {
+    "title": "Gebruiker rapporteren",
+    "description": "Selecteer een reden om deze gebruiker te rapporteren. Je rapport wordt door ons moderatieteam beoordeeld.",
+    "additionalLabel": "Aanvullende details (optioneel)",
+    "additionalPlaceholder": "Geef extra context die onze moderators kan helpen...",
+    "charCount": "{used}/{max}",
+    "cancel": "Annuleren", "submitting": "Verzenden...", "submit": "Rapport indienen",
+    "successTitle": "Rapport ingediend",
+    "successBody": "Bedankt dat je onze gemeenschap veilig helpt houden. We bekijken je rapport en nemen de juiste actie.",
+    "close": "Sluiten",
+    "reasons": {
+      "harassment": { "label": "Pesterij of intimidatie", "desc": "Gericht misbruik of intimidatie" },
+      "spam": { "label": "Spam", "desc": "Ongewenste of repetitieve berichten" },
+      "inappropriate": { "label": "Ongepaste inhoud", "desc": "NSFW of expliciet materiaal" },
+      "violence": { "label": "Bedreigingen of geweld", "desc": "Directe bedreigingen of gewelddadige inhoud" },
+      "other": { "label": "Anders", "desc": "Iets anders" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "Afbeeldingsvoorbeeld",
+    "zoomIn": "Inzoomen (+)", "zoomOut": "Uitzoomen (-)",
+    "download": "Downloaden", "openExternal": "Openen in nieuw tabblad",
+    "moreOptions": "Meer opties", "copyImage": "Afbeelding kopiëren",
+    "copyLink": "Link kopiëren", "viewDetails": "Details bekijken",
+    "close": "Sluiten (Esc)", "previous": "Vorige afbeelding", "next": "Volgende afbeelding",
+    "filename": "Bestandsnaam", "size": "Grootte"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Zoek op Tenor", "back": "Terug", "close": "Sluiten",
+    "favorites": "Favorieten", "noFavorites": "Nog geen favorieten",
+    "noResults": "Geen GIF's gevonden",
+    "removeFav": "Verwijderen uit favorieten", "addFav": "Toevoegen aan favorieten",
+    "loading": "Laden...", "clearSearch": "Zoekopdracht wissen"
+  },
+
+  "qrScanner": {
+    "title": "QR-code scannen", "close": "Sluiten",
+    "hint": "Richt je camera op een Jolkr QR-code",
+    "errorInvalid": "Geen geldige Jolkr QR-code",
+    "errorSelfAdd": "Je kunt jezelf niet als vriend toevoegen",
+    "errorCameraDenied": "Cameratoegang geweigerd. Sta cameramachtigingen toe en probeer opnieuw.",
+    "errorNoCamera": "Geen camera gevonden op dit apparaat.",
+    "errorStartCamera": "Kon camera niet starten: {msg}",
+    "errorUserNotFound": "Gebruiker niet gevonden",
+    "successSent": "Vriendverzoek verstuurd naar {username}",
+    "sending": "Verzenden…", "sendBtn": "Vriendverzoek versturen"
+  },
+
+  "qrDisplay": {
+    "title": "Jouw QR-code", "close": "Sluiten",
+    "hint": "Vrienden kunnen deze code scannen om je toe te voegen",
+    "copyLink": "Link kopiëren", "copied": "Gekopieerd!"
+  },
+
+  "toast": {
+    "friendRequestSent": "Vriendverzoek verzonden",
+    "friendRequestFailed": "Vriendverzoek versturen mislukt",
+    "friendRequestNotSent": "Vriendverzoek kon niet worden verstuurd",
+    "startConversationFailed": "Gesprek starten mislukt",
+    "createDmFailed": "DM aanmaken mislukt",
+    "reactionFailed": "Reactie mislukt",
+    "pinFailed": "Pin/unpin mislukt",
+    "unpinFailed": "Unpin mislukt",
+    "deleteChannelFailed": "Kanaal verwijderen mislukt",
+    "leaveServerFailed": "Server verlaten mislukt",
+    "deleteServerFailed": "Server verwijderen mislukt",
+    "createThreadFailed": "Thread aanmaken mislukt",
+    "inviteCopied": "Uitnodigingslink gekopieerd!",
+    "inviteCopyFailed": "Kopiëren mislukt — link: {url}",
+    "inviteCreateFailed": "Uitnodiging aanmaken mislukt",
+    "uploadFailed": "Upload mislukt"
+  },
+
+  "call": {
+    "initiateFailed": "Oproep starten mislukt",
+    "acceptFailed": "Oproep accepteren mislukt",
+    "incoming": {
+      "ariaVideo": "Inkomende videogesprek", "ariaVoice": "Inkomende oproep",
+      "subtitleVideo": "belt — video", "subtitleVoice": "belt…",
+      "decline": "Weigeren", "accept": "Accepteren"
+    },
+    "outgoing": {
+      "ariaVideo": "Uitgaande videogesprek", "ariaVoice": "Uitgaande oproep",
+      "subtitleVideo": "Bellen — video…", "subtitleVoice": "Bellen…",
+      "cancel": "Annuleren"
+    },
+    "window": {
+      "ariaVideoCall": "Videogesprek", "connecting": "Verbinden…",
+      "youFallback": "Jij",
+      "mute": "Dempen", "unmute": "Dempen opheffen",
+      "cameraUnavailable": "Camera niet beschikbaar",
+      "cameraOn": "Camera inschakelen", "cameraOff": "Camera uitschakelen",
+      "switchCamera": "Camera wisselen",
+      "minimize": "Minimaliseren naar picture-in-picture",
+      "minimizeAria": "Minimaliseren", "endCall": "Oproep beëindigen"
+    },
+    "pip": {
+      "aria": "Picture-in-picture oproep",
+      "expand": "Vergroten", "expandAria": "Naar volledig scherm",
+      "endCall": "Oproep beëindigen"
+    },
+    "bar": {
+      "errorPrefix": "Spraakfout: {error}", "dismiss": "Sluiten",
+      "connecting": "Verbinden…", "connected": "Spraak verbonden",
+      "voiceFallback": "Spraak",
+      "mute": "Dempen", "unmute": "Dempen opheffen",
+      "muteAria": "Microfoon dempen", "unmuteAria": "Microfoon dempen opheffen",
+      "deafen": "Doof", "undeafen": "Doof uit",
+      "disconnect": "Verbinding verbreken",
+      "disconnectAria": "Verbinding verbreken met spraak"
+    }
+  },
+
+  "update": {
+    "available": "Update {version} beschikbaar",
+    "updateNow": "Nu bijwerken",
+    "errorGeneric": "Update mislukt"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Welkom bij Jolkr",
+    "welcomeBody": "Word lid van of maak een server om te beginnen, of stuur een direct bericht."
+  },
+
+  "player": {
+    "play": "Afspelen", "pause": "Pauzeren",
+    "mute": "Dempen", "unmute": "Dempen opheffen",
+    "volume": "Volume",
+    "skipBack": "{seconds} sec terug", "skipForward": "{seconds} sec vooruit",
+    "fullscreen": "Volledig scherm", "exitFullscreen": "Volledig scherm afsluiten",
+    "enterPip": "Picture-in-picture", "exitPip": "Picture-in-picture afsluiten",
+    "settings": "Instellingen",
+    "playbackSpeed": "Afspeelsnelheid", "speedNormal": "Normaal",
+    "download": "Downloaden"
+  },
+
+  "codeBlock": {
+    "loading": "Laden…",
+    "expand": "Meer tonen",
+    "collapse": "Minder tonen",
+    "download": "Downloaden"
+  },
+
+  "themePicker": {
+    "title": "Server-thema",
+    "scrollToResize": "Scroll om grootte te wijzigen",
+    "noneLabel": "Geen",
+    "modeLight": "Licht", "modeAuto": "Auto", "modeDark": "Donker",
+    "presets": {
+      "rose": "Roos", "coral": "Koraal", "orange": "Oranje", "amber": "Amber",
+      "lime": "Lime", "jolkr": "Jolkr", "emerald": "Smaragd", "cyan": "Cyaan",
+      "sky": "Sky", "indigo": "Indigo", "purple": "Paars", "fuchsia": "Fuchsia"
+    }
+  },
+
+  "auth": {
+    "shared": { "emailLabel": "E-mail", "passwordLabel": "Wachtwoord" },
+    "login": {
+      "title": "Welkom terug!", "subtitle": "We zijn blij je weer te zien!",
+      "submit": "Inloggen", "submitting": "Bezig met inloggen…",
+      "forgotPassword": "Wachtwoord vergeten?",
+      "needAccount": "Heb je nog geen account?", "register": "Registreren"
+    },
+    "register": {
+      "title": "Account aanmaken", "subtitle": "Word vandaag nog lid van Jolkr",
+      "usernameLabel": "Gebruikersnaam", "submit": "Doorgaan", "submitting": "Aanmaken…",
+      "haveAccount": "Heb je al een account?", "login": "Inloggen"
+    },
+    "forgot": {
+      "title": "Wachtwoord vergeten?",
+      "subtitle": "Voer je e-mailadres in en we sturen je een resetlink.",
+      "emailPlaceholder": "jij@voorbeeld.nl", "submit": "Resetlink sturen", "submitting": "Verzenden…",
+      "rememberPassword": "Weet je je wachtwoord weer?", "login": "Inloggen",
+      "checkEmailTitle": "Controleer je e-mail",
+      "checkEmailBody": "Als er een account bestaat voor {email}, hebben we een resetlink gestuurd.",
+      "backToLogin": "Terug naar inloggen", "errorGeneric": "Er ging iets mis"
+    },
+    "reset": {
+      "title": "Nieuw wachtwoord instellen",
+      "subtitle": "Voer hieronder je nieuwe wachtwoord in.",
+      "newPasswordLabel": "Nieuw wachtwoord",
+      "newPasswordPlaceholder": "Min. {min} tekens", "newPasswordHint": "{min}+ tekens",
+      "confirmPasswordLabel": "Wachtwoord bevestigen",
+      "confirmPasswordPlaceholder": "Herhaal je nieuwe wachtwoord",
+      "submit": "Wachtwoord resetten", "submitting": "Resetten…",
+      "passwordsMismatch": "Wachtwoorden komen niet overeen",
+      "passwordTooShort": "Wachtwoord moet minimaal {min} tekens zijn",
+      "errorGeneric": "Wachtwoord resetten mislukt",
+      "successTitle": "Wachtwoord gereset",
+      "successBody": "Je kunt nu inloggen met je nieuwe wachtwoord.",
+      "goToLogin": "Naar inloggen"
+    },
+    "verify": {
+      "verifyingTitle": "E-mail verifiëren…", "verifiedTitle": "E-mail geverifieerd!",
+      "verifiedBody": "Je e-mailadres is geverifieerd. Je kunt Jolkr nu gebruiken.",
+      "goToApp": "Naar Jolkr", "failedTitle": "Verificatie mislukt",
+      "failedSubtitle": "De link is mogelijk verlopen. Vraag een nieuwe aan.",
+      "requestNewLink": "Nieuwe link aanvragen", "errorGeneric": "Verificatie mislukt",
+      "pendingTitle": "Verifieer je e-mail",
+      "pendingBody": "We hebben een verificatielink gestuurd naar {email}. Controleer je inbox en klik op de link om door te gaan.",
+      "yourEmailFallback": "je e-mail",
+      "sentMessage": "Verificatie-e-mail verzonden! Controleer je inbox.",
+      "resendBtn": "Verificatie-e-mail opnieuw sturen", "sendingBtn": "Verzenden…", "sentBtn": "E-mail verzonden",
+      "signOut": "Uitloggen", "resendError": "Opnieuw verzenden mislukt"
+    }
+  },
+
+  "notFound": {
+    "title": "Pagina niet gevonden",
+    "message": "De pagina die je zoekt bestaat niet of is verplaatst."
+  },
+  "inviteAccept": { "joining": "Verbinding maken met server…", "errorGeneric": "Ongeldige of verlopen uitnodiging" },
+
+  "settings": {
+    "nav": {
+      "userSettings": "Gebruikersinstellingen", "appSettings": "App-instellingen",
+      "account": "Mijn account", "privacy": "Privacy en veiligheid", "connections": "Verbindingen",
+      "appearance": "Weergave", "accessibility": "Toegankelijkheid", "voice": "Spraak en video",
+      "notifications": "Notificaties", "keybinds": "Sneltoetsen", "language": "Taal"
+    },
+    "account": {
+      "title": "Mijn account",
+      "changeBannerColor": "Bannerkleur wijzigen",
+      "editProfile": "Profiel bewerken",
+      "displayName": "Weergavenaam",
+      "displayNamePlaceholder": "Hoe anderen je zien",
+      "username": "Gebruikersnaam", "bio": "Bio",
+      "bioPlaceholder": "Vertel iets over jezelf…", "noBio": "Geen bio ingesteld",
+      "profileAlt": "Profiel", "accountInfo": "Accountinformatie",
+      "emailLabel": "E-mail", "emailMasked": "••••••••••",
+      "passwordSection": "Wachtwoord en authenticatie",
+      "passwordHelp": "Houd je account veilig met een sterk wachtwoord en tweefactorauthenticatie.",
+      "changePassword": "Wachtwoord wijzigen", "enable2FA": "Tweefactorauthenticatie inschakelen",
+      "logOut": "Uitloggen", "dangerZone": "Gevarenzone",
+      "deleteHelp": "Je account verwijderen is permanent en kan niet ongedaan worden gemaakt.",
+      "deleteAccount": "Account verwijderen"
+    },
+    "bannerColors": { "sage": "Salie", "gold": "Goud", "ocean": "Oceaan", "royal": "Royal", "berry": "Bes", "coral": "Koraal" },
+    "privacy": {
+      "title": "Privacy en veiligheid",
+      "dmFilterTitle": "Veilige directe berichten",
+      "dmFilterDesc": "Bepaal wie je directe berichten kan sturen.",
+      "dmAll": "Alle DM's toestaan", "dmFriends": "Alleen vrienden", "dmNone": "Niemand",
+      "allowFriendReqsLabel": "Vriendverzoeken toestaan",
+      "allowFriendReqsDesc": "Laat anderen vriendverzoeken naar jou sturen.",
+      "readReceiptsLabel": "Leesbevestigingen",
+      "readReceiptsDesc": "Toon wanneer je berichten hebt gelezen in DM's.",
+      "dataPrivacy": "Gegevens en privacy",
+      "analyticsLabel": "Gebruiksanalyse",
+      "analyticsDesc": "Help Jolkr verbeteren door anonieme gebruiksgegevens te delen."
+    },
+    "connections": {
+      "title": "Verbindingen",
+      "intro": "Koppel je accounts om je activiteit te delen en integraties te ontgrendelen.",
+      "music": "Muziek", "gaming": "Gaming", "development": "Ontwikkeling", "streaming": "Streaming", "video": "Video", "social": "Sociaal"
+    },
+    "appearance": {
+      "title": "Weergave",
+      "colorModeTitle": "Kleurmodus", "colorModeDesc": "Kies je voorkeursthema.",
+      "colorModeLight": "Licht", "colorModeSystem": "Systeem", "colorModeDark": "Donker",
+      "messageDisplayTitle": "Berichtweergave",
+      "messageDisplayDesc": "Compact toont meer berichten tegelijk.",
+      "displayCozy": "Comfortabel — ruim, prettig leesbaar",
+      "displayCompact": "Compact — meer berichten zichtbaar tegelijk",
+      "fontSizeTitle": "Lettergrootte chat — {size}px",
+      "fontSizeDesc": "Wijzig de tekstgrootte in chatberichten."
+    },
+    "accessibility": {
+      "title": "Toegankelijkheid",
+      "reducedMotionLabel": "Beweging beperken",
+      "reducedMotionDesc": "Minimaliseer animaties en overgangen in de hele app.",
+      "highContrastLabel": "Hoog contrast",
+      "highContrastDesc": "Verhoog het contrast tussen tekst en achtergrond.",
+      "roleColorsLabel": "Rolkleuren tonen",
+      "roleColorsDesc": "Toon kleurgecodeerde rolnamen in ledenlijsten."
+    },
+    "voice": {
+      "title": "Spraak en video",
+      "inputDevice": "Invoerapparaat", "outputDevice": "Uitvoerapparaat",
+      "outputUnsupported": "Uitvoerapparaat selecteren wordt niet ondersteund in deze browser.",
+      "outputUnsupportedTitle": "Niet ondersteund in deze browser",
+      "systemDefault": "Systeemstandaard",
+      "microphoneFallback": "Microfoon ({id}…)", "speakersFallback": "Speakers ({id}…)", "cameraFallback": "Camera ({id}…)",
+      "inputVolume": "Invoervolume — {volume}%", "outputVolume": "Uitvoervolume — {volume}%",
+      "cameraSection": "Camera", "cameraDevice": "Camera-apparaat", "cameraUnavailable": "Camera niet beschikbaar",
+      "advancedSection": "Geavanceerd",
+      "noiseSuppressionLabel": "Ruisonderdrukking",
+      "noiseSuppressionDesc": "Filter achtergrondgeluid tijdens spraakgesprekken.",
+      "echoCancellationLabel": "Echo-onderdrukking",
+      "echoCancellationDesc": "Verwijder echo van de microfooninvoer.",
+      "autoGainLabel": "Automatische niveauregeling",
+      "autoGainDesc": "Pas de microfoongevoeligheid automatisch aan."
+    },
+    "notifications": {
+      "title": "Notificaties",
+      "desktopLabel": "Bureaubladnotificaties inschakelen",
+      "desktopDesc": "Toon notificaties wanneer de app op de achtergrond is.",
+      "soundsLabel": "Notificatiegeluiden",
+      "soundsDesc": "Speel een geluid af wanneer je een notificatie ontvangt.",
+      "permissionDeniedToast": "Notificatietoestemming geweigerd — schakel het in via je browser-/OS-instellingen.",
+      "unsupportedToast": "Bureaubladnotificaties worden niet ondersteund in deze omgeving.",
+      "triggers": "Notificatietriggers",
+      "mentionsLabel": "@vermeldingen", "mentionsDesc": "Notificeer wanneer iemand je vermeldt in een kanaal.",
+      "dmsLabel": "Directe berichten", "dmsDesc": "Notificeer voor alle nieuwe directe berichten.",
+      "badgeLabel": "Ongelezen badge", "badgeDesc": "Toon ongelezen-aantal badge op het app-icoon."
+    },
+    "keybinds": {
+      "title": "Sneltoetsen", "intro": "Standaard sneltoetsen. Aangepaste sneltoetsen binnenkort beschikbaar.",
+      "openSwitcher": "Snelschakelaar openen", "toggleMute": "Dempen wisselen", "toggleDeafen": "Doof maken wisselen",
+      "markRead": "Server als gelezen markeren", "jumpUnread": "Naar oudste ongelezen springen",
+      "uploadFile": "Bestand uploaden", "search": "Zoeken", "focusInput": "Focus op chat-invoer",
+      "editLast": "Laatste bericht bewerken", "replyMessage": "Reageren op bericht", "toggleSettings": "Instellingen wisselen"
+    },
+    "language": {
+      "title": "Taal", "displayTitle": "Weergavetaal",
+      "displayDesc": "Kies de taal die in de hele app wordt gebruikt.",
+      "saveError": "Taalvoorkeur opslaan mislukt"
+    }
+  },
+
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "Serverinstellingen", "moderation": "Moderatie", "dangerZone": "Gevarenzone",
+      "overview": "Overzicht", "roles": "Rollen", "invites": "Uitnodigingen", "bans": "Verbanningen",
+      "auditLog": "Auditlogboek", "deleteServer": "Server verwijderen"
+    },
+    "leaveBtn": "Server verlaten",
+    "overview": {
+      "bannerTitle": "Bannerachtergrond",
+      "bannerSolid": "Effen kleuren", "bannerGradients": "Gradiënten", "bannerImage": "Afbeelding",
+      "bannerImageUrl": "Afbeeldings-URL (https://…)",
+      "bannerUploading": "Uploaden…", "bannerUpload": "Uploaden", "bannerRemove": "Banner-afbeelding verwijderen",
+      "iconAlt": "Server-icoon",
+      "namePlaceholder": "Servernaam",
+      "descriptionPlaceholder": "Waar gaat je server over?",
+      "discoveryLabel": "Server-ontdekking",
+      "discoveryDesc": "Maak server vindbaar in serverbrowser"
+    },
+    "gradients": {
+      "oceanBreeze": "Oceaanbries", "sunsetGlow": "Zonsondergang", "forestMist": "Bosmist",
+      "royalVelvet": "Koninklijk fluweel", "berryBurst": "Bessenexplosie", "midnight": "Middernacht"
+    },
+    "roles": {
+      "allRoles": "Alle rollen", "createRole": "Rol aanmaken",
+      "permissionsTitle": "Rechten", "clearPermissions": "Rechten wissen",
+      "deleteRole": "Rol verwijderen", "createError": "Rol aanmaken mislukt"
+    },
+    "invites": {
+      "expireAfter": "Verloopt na", "maxUses": "Max. gebruik",
+      "expireNever": "Nooit", "expire30m": "30 minuten", "expire1h": "1 uur", "expire6h": "6 uur",
+      "expire12h": "12 uur", "expire1d": "1 dag", "expire7d": "7 dagen",
+      "usesUnlimited": "Geen limiet", "uses1": "1 gebruik", "uses5": "5 keer",
+      "uses10": "10 keer", "uses25": "25 keer", "uses50": "50 keer", "uses100": "100 keer",
+      "creating": "Aanmaken…", "createBtn": "Uitnodiging aanmaken", "createError": "Uitnodiging aanmaken mislukt",
+      "emptyTitle": "Nog geen uitnodigingen",
+      "emptyDesc": "Maak hierboven een uitnodiging aan om mensen uit te nodigen.",
+      "allInvites": "Alle uitnodigingen", "copyTitle": "Klik om uitnodigingslink te kopiëren",
+      "copiedToast": "Uitnodigingslink gekopieerd!", "copyFailedToast": "Kopiëren mislukt — link: {url}",
+      "usesProgress": "{used} / {max} keer gebruikt", "expiresAt": "Verloopt {date}", "revoke": "Intrekken"
+    },
+    "bans": {
+      "emptyTitle": "Geen verbannen gebruikers",
+      "emptyDesc": "Je server is schoon! Verbannen gebruikers verschijnen hier.",
+      "reasonLabel": "Reden: {reason}", "noReason": "Geen reden opgegeven",
+      "bannedAt": "Verbannen op {date}", "unban": "Ontbannen"
+    },
+    "audit": {
+      "emptyTitle": "Nog geen activiteit",
+      "emptyDesc": "Auditlogboek-vermeldingen verschijnen hier wanneer er serveracties worden uitgevoerd.",
+      "byUser": "door {name}", "onTarget": " op {type}: {idShort}…",
+      "reasonLabel": "Reden: {reason}",
+      "actions": {
+        "MemberJoin": "Lid toegetreden", "MemberLeave": "Lid vertrokken", "MemberUpdate": "Lid bijgewerkt",
+        "ChannelCreate": "Kanaal aangemaakt", "ChannelUpdate": "Kanaal bijgewerkt", "ChannelDelete": "Kanaal verwijderd",
+        "RoleCreate": "Rol aangemaakt", "RoleUpdate": "Rol bijgewerkt", "RoleDelete": "Rol verwijderd",
+        "ServerUpdate": "Server bijgewerkt", "ServerDelete": "Server verwijderd",
+        "BanCreate": "Gebruiker verbannen", "BanDelete": "Gebruiker ontbannen", "Kick": "Gebruiker geschopt"
+      }
+    },
+    "delete": {
+      "title": "Server verwijderen",
+      "warning": "Deze actie kan niet ongedaan worden gemaakt. Alle kanalen, berichten en gegevens worden permanent verwijderd.",
+      "btn": "Server verwijderen"
+    },
+    "leaveConfirm": {
+      "title": "Server verlaten",
+      "body": "Weet je zeker dat je {serverName} wilt verlaten? Je kunt niet opnieuw deelnemen zonder uitnodiging.",
+      "confirm": "Server verlaten"
+    },
+    "deleteConfirm": {
+      "title": "Server verwijderen",
+      "body": "Weet je zeker dat je {serverName} permanent wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "confirm": "Server verwijderen"
+    }
+  },
+
+  "channelSettings": {
+    "nav": { "channelSettings": "Kanaalinstellingen", "overview": "Overzicht", "permissions": "Rechten" },
+    "overview": {
+      "title": "Kanaaloverzicht", "nameLabel": "KANAALNAAM", "topicLabel": "KANAALONDERWERP",
+      "topicPlaceholder": "Laat iedereen weten waar dit kanaal over gaat",
+      "systemNotice": "Dit is een systeemkanaal en kan niet gewijzigd worden.",
+      "nsfwLabel": "NSFW-kanaal", "nsfwDesc": "Inhoud met leeftijdsbeperking",
+      "slowmodeLabel": "LANGZAME MODUS (SECONDEN)",
+      "slowmodeHint": "Gebruikers kunnen één bericht per interval sturen. 0 = uit."
+    },
+    "permissions": {
+      "title": "Kanaalrechten", "addOverride": "Uitzondering toevoegen",
+      "systemNotice": "Rechten van systeemkanalen kunnen niet gewijzigd worden.",
+      "rolesMembers": "ROLLEN / LEDEN", "removeOverride": "Uitzondering verwijderen",
+      "addModalTitle": "Rechten-uitzondering toevoegen",
+      "typeLabel": "TYPE", "typeRole": "Rol", "typeMember": "Lid",
+      "selectRole": "Selecteer een rol…",
+      "memberIdLabel": "LID-ID", "memberIdPlaceholder": "Voer lid-ID in", "roleLabel": "ROL"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "Algemene serverrechten",
+    "groupMember": "Lidrechten",
+    "groupText": "Tekstkanaalrechten",
+    "groupVoice": "Spraakkanaalrechten",
+    "ariaEnable": "{label} inschakelen", "ariaDisable": "{label} uitschakelen",
+    "view_channels":   { "label": "Kanalen bekijken",   "desc": "Sta toe om kanalen standaard te bekijken (privé-kanalen uitgezonderd)." },
+    "manage_channels": { "label": "Kanalen beheren",    "desc": "Sta toe om kanalen aan te maken, te bewerken of te verwijderen." },
+    "manage_server":   { "label": "Server beheren",     "desc": "Sta toe om servernaam, icoon en andere instellingen te wijzigen." },
+    "kick_members":    { "label": "Leden schoppen",     "desc": "Sta toe om andere leden van de server te schoppen." },
+    "ban_members":     { "label": "Leden verbannen",    "desc": "Sta toe om andere leden van de server te verbannen." },
+    "manage_roles":    { "label": "Rollen beheren",     "desc": "Sta toe om nieuwe rollen aan te maken en lagere rollen te bewerken/verwijderen." },
+    "create_invite":   { "label": "Uitnodigingen aanmaken","desc": "Sta toe om uitnodigingslinks voor de server aan te maken." },
+    "send_messages":   { "label": "Berichten versturen","desc": "Sta toe om berichten in tekstkanalen te versturen." },
+    "manage_messages": { "label": "Berichten beheren",  "desc": "Sta toe om berichten te verwijderen en vast te pinnen." },
+    "embed_links":     { "label": "Links insluiten",    "desc": "Sta toe om links in berichten in te sluiten." },
+    "attach_files":    { "label": "Bestanden bijvoegen","desc": "Sta toe om bestanden aan berichten te koppelen." },
+    "add_reactions":   { "label": "Reacties toevoegen", "desc": "Sta toe om reacties aan berichten toe te voegen." },
+    "mention_everyone":{ "label": "Iedereen vermelden", "desc": "Sta toe om @everyone en @here te gebruiken." },
+    "read_message_history": { "label": "Berichtgeschiedenis lezen", "desc": "Sta toe om eerdere berichten te lezen." },
+    "use_external_emojis":  { "label": "Externe emoji's gebruiken",  "desc": "Sta toe om emoji's van andere servers te gebruiken." },
+    "send_tts_messages":    { "label": "TTS-berichten versturen",    "desc": "Sta toe om tekst-naar-spraakberichten te versturen." },
+    "connect":         { "label": "Verbinden",          "desc": "Sta toe om verbinding te maken met spraakkanalen." },
+    "speak":           { "label": "Spreken",            "desc": "Sta toe om te spreken in spraakkanalen." },
+    "video":           { "label": "Video",              "desc": "Sta toe om video te delen in spraakkanalen." },
+    "mute_members":    { "label": "Leden dempen",       "desc": "Sta toe om andere leden in spraakkanalen te dempen." },
+    "deafen_members":  { "label": "Leden doof maken",   "desc": "Sta toe om andere leden in spraakkanalen doof te maken." },
+    "move_members":    { "label": "Leden verplaatsen",  "desc": "Sta toe om leden tussen spraakkanalen te verplaatsen." },
+    "use_voice_activity": { "label": "Spraakactiviteit gebruiken", "desc": "Sta toe om spraakactiviteitsdetectie te gebruiken." },
+    "priority_speaker":{ "label": "Prioriteitsspreker", "desc": "Verlaagt het volume van anderen tijdens het spreken." },
+    "administrator":   { "label": "Administrator",      "desc": "Verleent alle rechten en omzeilt kanaalrechten. Dit is een gevaarlijk recht!" }
+  }
+}

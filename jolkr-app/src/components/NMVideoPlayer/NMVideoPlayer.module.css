@@ -1,0 +1,426 @@
+.wrap {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: black;
+  border-radius: inherit;
+  overflow: hidden;
+  outline: none;
+  font-feature-settings: 'tnum' 1;
+}
+
+.wrap:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-default);
+}
+
+/* When the wrapper itself is fullscreened (desktop), drop the aspect-ratio
+   constraint and fill the viewport. The <video> inside scales via its own
+   `width:100%; height:100%` rules and contained by `object-fit` set by
+   the player library. Letterboxing comes from the black wrap background. */
+.wrap:fullscreen {
+  aspect-ratio: auto;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+}
+
+.wrap:fullscreen .container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wrap:fullscreen .container video {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Up-scale the chrome in fullscreen so it stays comfortably hit-target
+   sized on a typical 24"+ monitor. Lucide icons render as <svg> and
+   honour explicit width/height in CSS, so we re-size everything from
+   one place rather than passing different props from the JSX. */
+.wrap:fullscreen .controls {
+  padding: 3rem 1.25rem 1rem;
+}
+.wrap:fullscreen .ctrlBtn {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+.wrap:fullscreen .ctrlBtn svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.wrap:fullscreen .progressBar {
+  height: 1.25rem;
+}
+.wrap:fullscreen .progressTrack {
+  height: 5px;
+}
+.wrap:fullscreen .progressBar:hover .progressTrack {
+  height: 7px;
+}
+.wrap:fullscreen .progressThumb {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.wrap:fullscreen .timeLabel {
+  font-size: 0.95rem;
+}
+.wrap:fullscreen .scrubLabel {
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.625rem;
+}
+.wrap:fullscreen .volumeWrap:hover .volumeSlider,
+.wrap:fullscreen .volumeWrap:focus-within .volumeSlider {
+  width: 6.5rem;
+}
+.wrap:fullscreen .centerBtn {
+  width: 6rem;
+  height: 6rem;
+}
+.wrap:fullscreen .centerBtn svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.wrap:fullscreen .settingsMenu {
+  min-width: 11rem;
+  font-size: 0.9375rem;
+}
+.wrap:fullscreen .settingsItem {
+  padding: 0.5625rem 0.75rem 0.5625rem 1.75rem;
+  font-size: 0.875rem;
+}
+.wrap:fullscreen .liveBadge {
+  font-size: 0.8125rem;
+  padding: 0.3125rem 0.625rem;
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.bufferOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* ── Center play/pause button ──────────────────────────────────────────── */
+.centerBtn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4.5rem;
+  height: 4.5rem;
+  border: none;
+  border-radius: 50%;
+  background: oklch(0% 0 0 / 0.55);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transform: translate(-50%, -50%) scale(1);
+  transition:
+    opacity 200ms var(--ease-out-quart),
+    transform 200ms var(--ease-out-quart),
+    background-color 150ms;
+  opacity: 0;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.centerBtn[data-visible='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.centerBtn:hover {
+  background: oklch(0% 0 0 / 0.75);
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* ── LIVE badge ────────────────────────────────────────────────────────── */
+.liveBadge {
+  position: absolute;
+  top: 0.625rem;
+  left: 0.625rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: oklch(58% 0.22 25);
+  color: white;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  text-shadow: 0 1px 2px oklch(0% 0 0 / 0.4);
+}
+.liveDot {
+  width: 0.375rem;
+  height: 0.375rem;
+  background: white;
+  border-radius: 50%;
+  animation: livePulse 1.6s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.errorMsg {
+  aspect-ratio: 16 / 9;
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: oklch(99% 0 0 / 0.6);
+  font-size: 0.875rem;
+}
+
+/* ── Controls overlay ─────────────────────────────────────────────────── */
+.controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent 0%, oklch(0% 0 0 / 0.7) 60%, oklch(0% 0 0 / 0.85) 100%);
+  padding: 2rem 0.75rem 0.625rem;
+  transition: opacity 200ms var(--ease-out-quart), transform 200ms var(--ease-out-quart);
+  user-select: none;
+}
+.controls[data-hidden='true'] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.5rem);
+}
+
+/* ── Progress (scrubber) bar ──────────────────────────────────────────── */
+.progressBar {
+  position: relative;
+  height: 1rem;
+  margin-bottom: 0.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.progressTrack {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: oklch(100% 0 0 / 0.2);
+  border-radius: 999px;
+  overflow: visible;
+  transition: height 120ms var(--ease-out-quart);
+}
+.progressBar:hover .progressTrack { height: 6px; }
+.progressBuffered {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: oklch(100% 0 0 / 0.35);
+  border-radius: inherit;
+  transition: width 200ms ease-out;
+}
+.progressPlayed {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: var(--accent-default);
+  border-radius: inherit;
+  transition: width 80ms linear;
+}
+.progressThumb {
+  position: absolute;
+  top: 50%;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--accent-default);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 140ms var(--ease-out-quart);
+  box-shadow: 0 1px 3px oklch(0% 0 0 / 0.4);
+}
+.progressBar:hover .progressThumb { transform: translate(-50%, -50%) scale(1); }
+
+.scrubLabel {
+  position: absolute;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  background: oklch(0% 0 0 / 0.85);
+  color: white;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ── Controls row ─────────────────────────────────────────────────────── */
+.controlsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ctrlBtn {
+  background: none;
+  border: none;
+  color: white;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 0.375rem;
+  transition: background-color 120ms, color 120ms, transform 80ms;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.ctrlBtn:hover {
+  background: oklch(100% 0 0 / 0.15);
+}
+.ctrlBtn:active {
+  transform: scale(0.92);
+}
+.ctrlBtnActive {
+  color: var(--accent-default);
+}
+
+/* ── Volume slider ────────────────────────────────────────────────────── */
+.volumeWrap {
+  display: flex;
+  align-items: center;
+}
+.volumeSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 4px;
+  margin-left: 0;
+  background: oklch(100% 0 0 / 0.25);
+  border-radius: 999px;
+  outline: none;
+  opacity: 0;
+  transition:
+    width 220ms var(--ease-out-quart),
+    margin-left 220ms var(--ease-out-quart),
+    opacity 180ms var(--ease-out-quart);
+  cursor: pointer;
+}
+.volumeWrap:hover .volumeSlider,
+.volumeWrap:focus-within .volumeSlider {
+  width: 5rem;
+  margin-left: 0.25rem;
+  opacity: 1;
+}
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 3px oklch(0% 0 0 / 0.4);
+}
+.volumeSlider::-moz-range-thumb {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  cursor: pointer;
+}
+
+/* Linear-gradient fill: white up to current volume, dim track beyond. */
+.volumeSlider {
+  background-image: linear-gradient(
+    to right,
+    white var(--vol, 0%),
+    oklch(100% 0 0 / 0.25) var(--vol, 0%)
+  );
+}
+
+/* ── Time + spacer ────────────────────────────────────────────────────── */
+.timeLabel {
+  font-size: 0.75rem;
+  color: oklch(100% 0 0 / 0.85);
+  font-variant-numeric: tabular-nums;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+.spacer { flex: 1; }
+
+/* ── Settings menu ────────────────────────────────────────────────────── */
+.settingsWrap {
+  position: relative;
+}
+.settingsMenu {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 9.5rem;
+  background: oklch(15% 0 0 / 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid oklch(100% 0 0 / 0.08);
+  border-radius: 0.5rem;
+  padding: 0.375rem;
+  box-shadow: 0 8px 24px oklch(0% 0 0 / 0.4), 0 2px 6px oklch(0% 0 0 / 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  animation: settingsIn 150ms var(--ease-out-quart) both;
+}
+@keyframes settingsIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+.settingsHeader {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: oklch(100% 0 0 / 0.55);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.375rem 0.625rem 0.25rem;
+}
+.settingsItem {
+  background: none;
+  border: none;
+  color: white;
+  text-align: left;
+  font-size: 0.8125rem;
+  padding: 0.4375rem 0.625rem 0.4375rem 1.5rem;
+  border-radius: 0.3125rem;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 100ms;
+}
+.settingsItem:hover {
+  background: oklch(100% 0 0 / 0.08);
+}
+.settingsItemActive {
+  color: var(--accent-default);
+  font-weight: 500;
+}
+.settingsItemActive::before {
+  content: '✓';
+  position: absolute;
+  left: 0.5rem;
+  font-size: 0.6875rem;
+}

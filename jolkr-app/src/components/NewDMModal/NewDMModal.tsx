@@ -9,6 +9,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { hashColor, avatarLetter } from '../../adapters/transforms'
 import { displayName } from '../../utils/format'
 import { rewriteStorageUrl } from '../../platform/config'
+import { useT } from '../../hooks/useT'
 import Avatar from '../Avatar/Avatar'
 import s from './NewDMModal.module.css'
 
@@ -49,6 +50,7 @@ function toDisplayUser(u: User, source: 'friend' | 'search'): DisplayUser {
 }
 
 export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Props) {
+  const { t } = useT()
   const [search, setSearch]           = useState('')
   const [selected, setSelected]       = useState<DisplayUser[]>([])
   const [friends, setFriends]         = useState<DisplayUser[]>([])
@@ -176,11 +178,11 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
   return createPortal(
     <div className={s.overlay} onClick={handleOverlayClick}>
       <div className={s.modal}>
-        <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
+        <button className={s.closeBtnOverlay} onClick={onClose} aria-label={t('newDmModal.close')}>
           <X size={18} strokeWidth={1.5} />
         </button>
         <div className={s.header}>
-          <span className={s.title}>New Message</span>
+          <span className={s.title}>{t('newDmModal.title')}</span>
         </div>
 
         <div className={s.searchArea}>
@@ -196,7 +198,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
             <input
               ref={inputRef}
               className={`${s.searchInput} txt-small`}
-              placeholder={selected.length ? 'Add more...' : 'Search friends or type a username...'}
+              placeholder={selected.length ? t('newDmModal.addMore') : t('newDmModal.searchPlaceholder')}
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
               onKeyDown={handleInputKeyDown}
@@ -206,19 +208,19 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
 
         <div className={`${s.list} scrollbar-thin`}>
           {loading && (
-            <div className={`${s.empty} txt-small`}>Loading friends...</div>
+            <div className={`${s.empty} txt-small`}>{t('newDmModal.loadingFriends')}</div>
           )}
 
           {searching && search.trim().length >= 2 && (
             <div className={`${s.empty} txt-small`}>
-              <Search size={14} style={{ opacity: 0.5 }} /> Searching...
+              <Search size={14} style={{ opacity: 0.5 }} /> {t('newDmModal.searching')}
             </div>
           )}
 
           {onlineUsers.length > 0 && (
             <>
               <span className={`${s.sectionLabel} txt-tiny txt-semibold`}>
-                Online — {onlineUsers.length}
+                {t('newDmModal.online', { count: onlineUsers.length })}
               </span>
               {onlineUsers.map(u => (
                 <UserRow key={u.id} user={u} selected={selectedIds.has(u.id)} onClick={() => toggleUser(u)} />
@@ -229,7 +231,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
           {offlineUsers.length > 0 && (
             <>
               <span className={`${s.sectionLabel} txt-tiny txt-semibold`}>
-                Offline — {offlineUsers.length}
+                {t('newDmModal.offline', { count: offlineUsers.length })}
               </span>
               {offlineUsers.map(u => (
                 <UserRow key={u.id} user={u} selected={selectedIds.has(u.id)} onClick={() => toggleUser(u)} />
@@ -239,7 +241,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
 
           {!loading && !searching && filtered.length === 0 && (
             <div className={`${s.empty} txt-small`}>
-              {search.trim() ? 'No users found' : 'No friends yet — search by username above'}
+              {search.trim() ? t('newDmModal.noUsersFound') : t('newDmModal.noFriendsYet')}
             </div>
           )}
         </div>
@@ -250,7 +252,7 @@ export function NewDMModal({ onClose, onCreate, existingDms: _existingDms }: Pro
             disabled={selected.length === 0}
             onClick={() => onCreate(selected.map(u => u.name))}
           >
-            {selected.length > 1 ? 'Create Group DM' : 'Start Conversation'}
+            {selected.length > 1 ? t('newDmModal.createGroup') : t('newDmModal.startConversation')}
           </button>
         </div>
       </div>

@@ -8,7 +8,7 @@ use uuid::Uuid;
 use jolkr_common::{JolkrError, Permissions};
 use jolkr_core::ChannelService;
 use jolkr_core::services::channel::{ChannelInfo, ChannelOverwriteInfo, CreateChannelRequest, UpdateChannelRequest, UpsertOverwriteRequest};
-use jolkr_db::repo::{ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
+use jolkr_db::repo::{ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
@@ -39,6 +39,24 @@ pub(crate) struct OverwritesResponse {
 #[derive(Debug, Serialize)]
 pub(crate) struct OverwriteResponse {
     pub overwrite: ChannelOverwriteInfo,
+}
+
+/// Member shape returned by `GET /api/channels/:id/members` — same fields as
+/// `MemberWithRoles` from the roles route so the frontend can reuse its
+/// existing `Member` type without a new shape.
+#[derive(Debug, Serialize)]
+pub(crate) struct ChannelMemberEntry {
+    pub id: Uuid,
+    pub server_id: Uuid,
+    pub user_id: Uuid,
+    pub nickname: Option<String>,
+    pub joined_at: String,
+    pub role_ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct ChannelMembersResponse {
+    pub members: Vec<ChannelMemberEntry>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -210,6 +228,85 @@ pub(crate) async fn get_my_channel_permissions(
 ) -> Result<Json<PermissionsResponse>, AppError> {
     let permissions = ChannelService::get_channel_permissions(&state.pool, id, auth.user_id).await?;
     Ok(Json(PermissionsResponse { permissions }))
+}
+
+/// GET /api/channels/:id/members
+///
+/// Returns the subset of server members that can actually see this channel
+/// (i.e. hold the `VIEW_CHANNELS` permission after role + overwrite layering).
+/// Caller must themselves have `VIEW_CHANNELS` — otherwise the channel is
+/// hidden from them entirely and this endpoint pretends it doesn't exist.
+pub(crate) async fn list_channel_members(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(channel_id): Path<Uuid>,
+) -> Result<Json<ChannelMembersResponse>, AppError> {
+    let channel = ChannelRepo::get_by_id(&state.pool, channel_id).await?;
+    let server = ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
+
+    // Caller must be a server member and have VIEW_CHANNELS on this channel
+    // (the server owner short-circuits the permission check).
+    let caller_has_access = if server.owner_id == auth.user_id {
+        true
+    } else {
+        let caller_member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
+            .await
+            .map_err(|_| AppError(JolkrError::Forbidden))?;
+        let perms = RoleRepo::compute_channel_permissions(
+            &state.pool,
+            channel.server_id,
+            channel_id,
+            caller_member.id,
+        ).await?;
+        Permissions::from(perms).has(Permissions::VIEW_CHANNELS)
+    };
+    if !caller_has_access {
+        return Err(AppError(JolkrError::Forbidden));
+    }
+
+    // Pull every dataset we need for the bulk computation in one go to avoid
+    // N+1 queries: members list, role assignments+permissions, channel
+    // overwrites, the @everyone role.
+    let members = MemberRepo::list_for_server(&state.pool, channel.server_id).await?;
+    let role_assignments = RoleRepo::get_roles_for_server_members(&state.pool, channel.server_id).await?;
+    let role_perms_batch = RoleRepo::get_member_roles_batch(&state.pool, channel.server_id).await?;
+    let overwrites = ChannelOverwriteRepo::list_for_channel(&state.pool, channel_id).await?;
+    let everyone = RoleRepo::get_default(&state.pool, channel.server_id).await.ok();
+
+    let member_user_pairs: Vec<(Uuid, Uuid)> =
+        members.iter().map(|m| (m.id, m.user_id)).collect();
+
+    let perms_by_member = RoleRepo::compute_channel_permissions_for_all_members(
+        &member_user_pairs,
+        &role_perms_batch,
+        &overwrites,
+        everyone.as_ref(),
+        server.owner_id,
+    );
+
+    // Build member_id → role_ids map for the response.
+    let mut role_map: std::collections::HashMap<Uuid, Vec<Uuid>> = std::collections::HashMap::new();
+    for (member_id, role_id) in role_assignments {
+        role_map.entry(member_id).or_default().push(role_id);
+    }
+
+    let result: Vec<ChannelMemberEntry> = members
+        .into_iter()
+        .filter(|m| {
+            let perms = perms_by_member.get(&m.id).copied().unwrap_or(0);
+            Permissions::from(perms).has(Permissions::VIEW_CHANNELS)
+        })
+        .map(|m| ChannelMemberEntry {
+            id: m.id,
+            server_id: m.server_id,
+            user_id: m.user_id,
+            nickname: m.nickname,
+            joined_at: m.joined_at.to_rfc3339(),
+            role_ids: role_map.remove(&m.id).unwrap_or_default(),
+        })
+        .collect();
+
+    Ok(Json(ChannelMembersResponse { members: result }))
 }
 
 /// GET /api/channels/:id/overwrites

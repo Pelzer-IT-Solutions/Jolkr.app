@@ -1,0 +1,1098 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading…",
+    "loadingDots": "Loading...",
+    "someone": "Someone",
+    "required": "*",
+    "goHome": "Go Home",
+    "add": "Add",
+    "saveChanges": "Save Changes",
+    "unknown": "Unknown",
+    "send": "Send (Enter)",
+    "dismiss": "Dismiss",
+    "expandSidebar": "Expand sidebar"
+  },
+
+  "time": {
+    "todayAt": "Today at {time}",
+    "yesterdayAt": "Yesterday at {time}",
+    "dateAt": "{date} at {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "Expand channels",
+      "threads": "Threads",
+      "pinnedMessages": "Pinned messages",
+      "filesAndPins": "Files & pins",
+      "members": "Members",
+      "alreadyInCall": "Already in a call",
+      "startVoiceCall": "Start voice call",
+      "startVideoCall": "Start video call",
+      "videoCall1on1Only": "Video calls are 1-on-1 only"
+    },
+    "dropZone": {
+      "drop": "Drop to attach",
+      "limit": "Up to {limit} per file",
+      "tooLargeTitle": "File too large",
+      "tooLargeAlert": "File too large (max {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "New Thread",
+      "namePlaceholder": "Thread name (optional)",
+      "createBtn": "Create"
+    },
+    "composer": {
+      "placeholderChannel": "Message #{channel}",
+      "placeholderDm": "Message {target}",
+      "emoji": "Emoji",
+      "attachFile": "Attach file",
+      "gif": "GIF",
+      "createPoll": "Create poll",
+      "send": "Send (Enter)",
+      "fmtBold": "Bold (Ctrl+B)",
+      "fmtItalic": "Italic (Ctrl+I)",
+      "fmtStrike": "Strikethrough",
+      "fmtCode": "Code",
+      "renameFile": "Rename file",
+      "removeFile": "Remove",
+      "renameFileTitle": "Rename file",
+      "renameFilePlaceholder": "Filename"
+    },
+    "autocomplete": {
+      "membersHeader": "Members",
+      "emojiHeader": "Emoji matching :{query}"
+    },
+    "replyCard": {
+      "replyingTo": "Replying to {name}",
+      "cancel": "Cancel reply"
+    },
+    "empty": {
+      "dmTitle": "No messages yet with {name}",
+      "dmFallbackName": "this user",
+      "dmBody": "Send a message below to start the conversation.",
+      "channelTitle": "Welcome to #{channel}",
+      "channelBody": "Be the first to say something — type a message below to get the channel going."
+    },
+    "readOnly": {
+      "system": "This is a system channel",
+      "noPermission": "You do not have permission to send messages in this channel",
+      "generic": "This is a read-only channel"
+    },
+    "typing": {
+      "one": "{name} is typing…",
+      "two": "{a} and {b} are typing…",
+      "many": "Several people are typing…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(edited)",
+    "unencryptedBadge": "unencrypted",
+    "ariaOpenProfile": "Open profile of {name}",
+    "decrypt": {
+      "decrypting": "Decrypting…",
+      "decryptingShort": "...",
+      "encryptedMessage": "Encrypted message",
+      "failed": "[Encrypted message — keys unavailable]"
+    },
+    "actions": {
+      "addReaction": "Add reaction",
+      "reply": "Reply",
+      "edit": "Edit message",
+      "delete": "Delete message",
+      "deleteShift": "Delete message (Shift+click)",
+      "more": "More options"
+    },
+    "menu": {
+      "reply": "Reply",
+      "editMessage": "Edit Message",
+      "copyText": "Copy Text",
+      "pinMessage": "Pin Message",
+      "unpinMessage": "Unpin Message",
+      "startThread": "Start Thread",
+      "openThread": "Open Thread",
+      "deleteMessage": "Delete Message",
+      "deleteForMe": "Delete for me",
+      "reportMessage": "Report Message"
+    },
+    "editHint": {
+      "escapeTo": "escape to",
+      "cancel": "cancel",
+      "enterTo": "enter to",
+      "save": "save",
+      "separator": "·"
+    },
+    "thread": {
+      "one": "{count} reply in thread",
+      "other": "{count} replies in thread"
+    },
+    "copyFailed": "Copy failed"
+  },
+
+  "reactions": {
+    "count": {
+      "one": "{count} reaction",
+      "other": "{count} reactions"
+    },
+    "userFallback": "User {idShort}"
+  },
+
+  "pinned": {
+    "loading": "Loading...",
+    "empty": "No pinned messages",
+    "decrypting": "Decrypting...",
+    "unknownAuthor": "Unknown",
+    "unpin": "Unpin"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "Loading threads...",
+      "empty": "No threads yet",
+      "untitled": "Untitled thread",
+      "replies": {
+        "one": "{count} reply",
+        "other": "{count} replies"
+      }
+    },
+    "panel": {
+      "back": "Back to threads",
+      "fallbackTitle": "Thread",
+      "loading": "Loading...",
+      "empty": "No replies yet",
+      "replyPlaceholder": "Reply in thread",
+      "send": "Send (Enter)",
+      "unknownAuthor": "Unknown",
+      "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "Create a Poll",
+      "ariaLabel": "Create poll",
+      "questionLabel": "Question",
+      "questionPlaceholder": "What do you want to ask?",
+      "optionsLabel": "Options",
+      "optionPlaceholder": "Option {n}",
+      "removeOption": "Remove option",
+      "addOption": "Add option",
+      "multiVoteLabel": "Allow multiple votes",
+      "multiVoteSub": "Voters can pick more than one option",
+      "anonymousLabel": "Anonymous",
+      "anonymousSub": "Hide who voted for what",
+      "cancel": "Cancel",
+      "submit": "Create Poll",
+      "submitting": "Creating…",
+      "errorGeneric": "Failed to create poll"
+    },
+    "display": {
+      "closed": "Closed",
+      "voteCount": {
+        "one": "{count} vote",
+        "other": "{count} votes"
+      },
+      "multipleChoice": "multiple choice",
+      "anonymous": "anonymous"
+    }
+  },
+
+  "attachments": {
+    "openImage": "Open {filename}"
+  },
+
+  "userStatus": {
+    "online": "Online",
+    "idle": "Idle",
+    "dnd": "Do Not Disturb",
+    "offline": "Offline",
+    "invisible": "Invisible"
+  },
+
+  "dmSidebar": {
+    "title": "Direct Messages",
+    "backToChat": "Back to chat",
+    "friends": "Friends",
+    "newMessage": "New message",
+    "collapseSidebar": "Collapse sidebar",
+    "emptyTitle": "No conversations yet",
+    "emptySubtitle": "Start a new message to begin chatting"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "Back to chat",
+    "info": "Info",
+    "unpin": "Unpin",
+    "pinnedMessages": "Pinned Messages",
+    "noPinned": "No pinned messages yet",
+    "sharedFiles": "Shared Files",
+    "noFiles": "No shared files yet",
+    "decrypting": "Decrypting…"
+  },
+
+  "newDmModal": {
+    "title": "New Message",
+    "close": "Close",
+    "addMore": "Add more...",
+    "searchPlaceholder": "Search friends or type a username...",
+    "loadingFriends": "Loading friends...",
+    "searching": "Searching...",
+    "online": "Online — {count}",
+    "offline": "Offline — {count}",
+    "noUsersFound": "No users found",
+    "noFriendsYet": "No friends yet — search by username above",
+    "createGroup": "Create Group DM",
+    "startConversation": "Start Conversation"
+  },
+
+  "profileCard": {
+    "ariaProfile": "{name} profile",
+    "loadError": "Could not load user profile",
+    "loading": "Loading…",
+    "about": "About",
+    "memberSince": "Member Since",
+    "safetyNumber": "Safety Number",
+    "sendMessage": "Send Message",
+    "addFriend": "Add Friend",
+    "requestPending": "Friend request pending",
+    "removeFriend": "Remove Friend",
+    "userBlocked": "User blocked",
+    "block": "Block",
+    "editProfile": "Edit Profile",
+    "errFriendSend": "Failed to send request",
+    "errFriendRemove": "Failed to remove friend",
+    "errBlock": "Failed to block user"
+  },
+
+  "memberPanel": {
+    "backToChat": "Back to chat",
+    "online": "Online — {count}",
+    "offline": "Offline — {count}",
+    "members": "Members — {count}",
+    "pinnedMessages": "Pinned Messages",
+    "threads": "Threads"
+  },
+
+  "tabBar": {
+    "yourServers": "Your servers",
+    "search": "Search (⌘K)",
+    "directMessages": "Direct messages",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "onVideoCallOther": "On a video call (other device)",
+    "onCallOther": "On a call (other device)",
+    "joinServer": "Join a Server",
+    "createServer": "Create a Server",
+    "browserTitle": "Your servers",
+    "channelsCount": {
+      "one": "{count} channel",
+      "other": "{count} channels"
+    },
+    "open": "open",
+    "muteServer": "Mute Server",
+    "unmuteServer": "Unmute Server",
+    "markAsRead": "Mark as Read",
+    "serverSettings": "Server Settings",
+    "closeTab": "Close Tab",
+    "leaveServer": "Leave Server",
+    "setStatus": "Set status",
+    "settings": "Settings",
+    "logOut": "Log Out",
+    "serverOptions": "Server options",
+    "onVideoCall": "On video call",
+    "onCall": "On a call"
+  },
+
+  "notificationsPanel": {
+    "title": "Notifications",
+    "empty": "No notifications yet"
+  },
+
+  "friendsPanel": {
+    "close": "Close",
+    "tabAll": "All",
+    "tabOnline": "Online",
+    "tabPending": "Pending",
+    "tabAdd": "Add Friend",
+    "incoming": "Incoming ({count})",
+    "outgoing": "Outgoing ({count})",
+    "cancel": "Cancel",
+    "noPending": "No pending friend requests",
+    "addIntro": "Add friends with their username, email, or QR code.",
+    "myQrCode": "My QR Code",
+    "scanQr": "Scan QR",
+    "orSearch": "or search",
+    "searchPlaceholder": "Username or email…",
+    "searching": "Searching…",
+    "noUsersFound": "No users found",
+    "sending": "Sending…",
+    "addBtn": "Add",
+    "noFriendsFound": "No friends found",
+    "requestSent": "Friend request sent",
+    "requestFailed": "Failed to send friend request"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "View Profile",
+    "addFriend": "Add Friend",
+    "removeFriend": "Remove Friend",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "block": "Block",
+    "unblock": "Unblock",
+    "closeDm": "Close DM",
+    "moderation": "Moderation",
+    "kick": "Kick",
+    "ban": "Ban",
+    "assignRole": "Assign Role",
+    "inviteToServer": "Invite to Server",
+    "reportUser": "Report User"
+  },
+
+  "channelSidebar": {
+    "title": "Channels",
+    "newChannel": "New channel",
+    "backToChat": "Back to chat",
+    "collapseSidebar": "Collapse sidebar",
+    "ariaServerChannels": "Server channels",
+    "menuNewFolder": "New Folder",
+    "menuNewText": "New Text Channel",
+    "menuNewVoice": "New Voice Channel",
+    "menuChannelSettings": "Channel Settings",
+    "menuRenameChannel": "Rename Channel",
+    "menuArchiveChannel": "Archive Channel",
+    "menuDeleteChannel": "Delete Channel",
+    "confirmDeleteChannel": "Delete this channel? This cannot be undone.",
+    "menuCreateText": "Create Text Channel",
+    "menuCreateVoice": "Create Voice Channel",
+    "menuRenameFolder": "Rename Folder",
+    "menuDeleteFolder": "Delete Folder",
+    "confirmDeleteFolder": "Delete this folder? Channels inside will not be deleted.",
+    "placeholderFolder": "Folder name…",
+    "placeholderVoice": "voice-channel-name…",
+    "placeholderText": "channel-name…",
+    "channelOptions": "Channel options"
+  },
+
+  "deleteMessageDialog": {
+    "title": "Delete message?",
+    "bodyOwner": "This message will be removed. Choose whether to remove it just for you, or for everyone.",
+    "bodyNonOwner": "This will only hide the message on your side. Other members will still see it.",
+    "deleteForEveryone": "Delete for everyone",
+    "deleteForBoth": "Delete for both of us",
+    "deleteForMe": "Delete for me",
+    "cancel": "Cancel"
+  },
+
+  "createServerModal": {
+    "title": "Create a Server",
+    "description": "Give your community a home. Customise it to make it yours.",
+    "iconLabel": "Server icon",
+    "iconHelper": "Shown in tabs and the server browser",
+    "nameLabel": "Server Name",
+    "namePlaceholder": "My Awesome Server",
+    "iconCharLabel": "Icon Character",
+    "iconCharPlaceholder": "Leave blank to use first letter of name",
+    "colorLabel": "Color Theme",
+    "privacyLabel": "Privacy",
+    "publicTitle": "Public",
+    "publicDesc": "Anyone can join with the server ID",
+    "privateTitle": "Private",
+    "privateDesc": "Members need an access code to join",
+    "cancel": "Cancel",
+    "submit": "Create Server",
+    "colors": {
+      "neutral": "Neutral",
+      "red": "Red",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "green": "Green",
+      "teal": "Teal",
+      "blue": "Blue",
+      "indigo": "Indigo",
+      "purple": "Purple",
+      "pink": "Pink"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "Join a Server",
+    "description": "Enter an invite ID to join an existing server. Ask the server owner for an access code if the server is private.",
+    "serverIdLabel": "Server ID",
+    "serverIdPlaceholder": "e.g. pixel-workshop",
+    "accessCodeLabel": "Access Code",
+    "accessCodePlaceholder": "Leave blank for public servers",
+    "errorEmpty": "Please enter a server ID.",
+    "errorNotFound": "Server not found. Check the ID and try again.",
+    "cancel": "Cancel",
+    "submit": "Join Server"
+  },
+
+  "reportModal": {
+    "title": "Report User",
+    "description": "Please select a reason for reporting this user. Your report will be reviewed by our moderation team.",
+    "additionalLabel": "Additional Details (optional)",
+    "additionalPlaceholder": "Provide any additional context that might help our moderators...",
+    "charCount": "{used}/{max}",
+    "cancel": "Cancel",
+    "submitting": "Submitting...",
+    "submit": "Submit Report",
+    "successTitle": "Report Submitted",
+    "successBody": "Thank you for helping keep our community safe. We'll review your report and take appropriate action.",
+    "close": "Close",
+    "reasons": {
+      "harassment": { "label": "Harassment or Bullying", "desc": "Targeted abuse or intimidation" },
+      "spam": { "label": "Spam", "desc": "Unwanted or repetitive messages" },
+      "inappropriate": { "label": "Inappropriate Content", "desc": "NSFW or explicit material" },
+      "violence": { "label": "Threats or Violence", "desc": "Direct threats or violent content" },
+      "other": { "label": "Other", "desc": "Something else" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "Image preview",
+    "zoomIn": "Zoom in (+)",
+    "zoomOut": "Zoom out (-)",
+    "download": "Download",
+    "openExternal": "Open in new tab",
+    "moreOptions": "More options",
+    "copyImage": "Copy image",
+    "copyLink": "Copy link",
+    "viewDetails": "View details",
+    "close": "Close (Esc)",
+    "previous": "Previous image",
+    "next": "Next image",
+    "filename": "Filename",
+    "size": "Size"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Search Tenor",
+    "back": "Back",
+    "close": "Close",
+    "favorites": "Favorites",
+    "noFavorites": "No favorites yet",
+    "noResults": "No GIFs found",
+    "removeFav": "Remove from favorites",
+    "addFav": "Add to favorites",
+    "loading": "Loading...",
+    "clearSearch": "Clear search"
+  },
+
+  "qrScanner": {
+    "title": "Scan QR Code",
+    "close": "Close",
+    "hint": "Point your camera at a Jolkr QR code",
+    "errorInvalid": "Not a valid Jolkr QR code",
+    "errorSelfAdd": "You can't add yourself as a friend",
+    "errorCameraDenied": "Camera access denied. Allow camera permissions and try again.",
+    "errorNoCamera": "No camera found on this device.",
+    "errorStartCamera": "Could not start camera: {msg}",
+    "errorUserNotFound": "User not found",
+    "successSent": "Friend request sent to {username}",
+    "sending": "Sending…",
+    "sendBtn": "Send Friend Request"
+  },
+
+  "qrDisplay": {
+    "title": "Your QR Code",
+    "close": "Close",
+    "hint": "Friends can scan this code to add you",
+    "copyLink": "Copy Link",
+    "copied": "Copied!"
+  },
+
+  "toast": {
+    "friendRequestSent": "Friend request sent",
+    "friendRequestFailed": "Failed to send friend request",
+    "friendRequestNotSent": "Friend request could not be sent",
+    "startConversationFailed": "Failed to start conversation",
+    "createDmFailed": "Failed to create DM",
+    "reactionFailed": "Reaction failed",
+    "pinFailed": "Pin/unpin failed",
+    "unpinFailed": "Unpin failed",
+    "deleteChannelFailed": "Delete channel failed",
+    "leaveServerFailed": "Leave server failed",
+    "deleteServerFailed": "Delete server failed",
+    "createThreadFailed": "Failed to create thread",
+    "inviteCopied": "Invite link copied!",
+    "inviteCopyFailed": "Copy failed — link: {url}",
+    "inviteCreateFailed": "Failed to create invite",
+    "uploadFailed": "Upload failed"
+  },
+
+  "call": {
+    "initiateFailed": "Failed to initiate call",
+    "acceptFailed": "Failed to accept call",
+    "incoming": {
+      "ariaVideo": "Incoming video call",
+      "ariaVoice": "Incoming call",
+      "subtitleVideo": "is calling — video",
+      "subtitleVoice": "is calling…",
+      "decline": "Decline",
+      "accept": "Accept"
+    },
+    "outgoing": {
+      "ariaVideo": "Outgoing video call",
+      "ariaVoice": "Outgoing call",
+      "subtitleVideo": "Calling — video…",
+      "subtitleVoice": "Calling…",
+      "cancel": "Cancel"
+    },
+    "window": {
+      "ariaVideoCall": "Video call",
+      "connecting": "Connecting…",
+      "youFallback": "You",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "cameraUnavailable": "Camera unavailable",
+      "cameraOn": "Turn camera on",
+      "cameraOff": "Turn camera off",
+      "switchCamera": "Switch camera",
+      "minimize": "Minimize to picture-in-picture",
+      "minimizeAria": "Minimize",
+      "endCall": "End call"
+    },
+    "pip": {
+      "aria": "Picture-in-picture call",
+      "expand": "Expand",
+      "expandAria": "Expand to full screen",
+      "endCall": "End call"
+    },
+    "bar": {
+      "errorPrefix": "Voice error: {error}",
+      "dismiss": "Dismiss",
+      "connecting": "Connecting…",
+      "connected": "Voice connected",
+      "voiceFallback": "Voice",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "muteAria": "Mute microphone",
+      "unmuteAria": "Unmute microphone",
+      "deafen": "Deafen",
+      "undeafen": "Undeafen",
+      "disconnect": "Disconnect",
+      "disconnectAria": "Disconnect from voice"
+    }
+  },
+
+  "update": {
+    "available": "Update {version} available",
+    "updateNow": "Update Now",
+    "errorGeneric": "Update failed"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Welcome to Jolkr",
+    "welcomeBody": "Join or create a server to get started, or send a direct message."
+  },
+
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "volume": "Volume",
+    "skipBack": "Back {seconds}s",
+    "skipForward": "Forward {seconds}s",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "enterPip": "Picture in picture",
+    "exitPip": "Exit picture in picture",
+    "settings": "Settings",
+    "playbackSpeed": "Playback speed",
+    "speedNormal": "Normal",
+    "download": "Download"
+  },
+
+  "codeBlock": {
+    "loading": "Loading…",
+    "expand": "Show more",
+    "collapse": "Show less",
+    "download": "Download"
+  },
+
+  "themePicker": {
+    "title": "Server theme",
+    "scrollToResize": "Scroll to resize",
+    "noneLabel": "None",
+    "modeLight": "Light",
+    "modeAuto": "Auto",
+    "modeDark": "Dark",
+    "presets": {
+      "rose": "Rose",
+      "coral": "Coral",
+      "orange": "Orange",
+      "amber": "Amber",
+      "lime": "Lime",
+      "jolkr": "Jolkr",
+      "emerald": "Emerald",
+      "cyan": "Cyan",
+      "sky": "Sky",
+      "indigo": "Indigo",
+      "purple": "Purple",
+      "fuchsia": "Fuchsia"
+    }
+  },
+
+  "auth": {
+    "shared": {
+      "emailLabel": "Email",
+      "passwordLabel": "Password"
+    },
+
+    "login": {
+      "title": "Welcome back!",
+      "subtitle": "We're so excited to see you again!",
+      "submit": "Log In",
+      "submitting": "Logging in…",
+      "forgotPassword": "Forgot your password?",
+      "needAccount": "Need an account?",
+      "register": "Register"
+    },
+
+    "register": {
+      "title": "Create an account",
+      "subtitle": "Join Jolkr today",
+      "usernameLabel": "Username",
+      "submit": "Continue",
+      "submitting": "Creating…",
+      "haveAccount": "Already have an account?",
+      "login": "Log In"
+    },
+
+    "forgot": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "emailPlaceholder": "you@example.com",
+      "submit": "Send Reset Link",
+      "submitting": "Sending…",
+      "rememberPassword": "Remember your password?",
+      "login": "Log In",
+      "checkEmailTitle": "Check your email",
+      "checkEmailBody": "If an account exists for {email}, we've sent a password reset link.",
+      "backToLogin": "Back to Login",
+      "errorGeneric": "Something went wrong"
+    },
+
+    "reset": {
+      "title": "Set New Password",
+      "subtitle": "Enter your new password below.",
+      "newPasswordLabel": "New Password",
+      "newPasswordPlaceholder": "Min. {min} characters",
+      "newPasswordHint": "{min}+ characters",
+      "confirmPasswordLabel": "Confirm Password",
+      "confirmPasswordPlaceholder": "Repeat your new password",
+      "submit": "Reset Password",
+      "submitting": "Resetting…",
+      "passwordsMismatch": "Passwords do not match",
+      "passwordTooShort": "Password must be at least {min} characters",
+      "errorGeneric": "Failed to reset password",
+      "successTitle": "Password Reset Successful",
+      "successBody": "You can now log in with your new password.",
+      "goToLogin": "Go to Login"
+    },
+
+    "verify": {
+      "verifyingTitle": "Verifying your email…",
+      "verifiedTitle": "Email Verified!",
+      "verifiedBody": "Your email has been verified. You can now use Jolkr.",
+      "goToApp": "Go to Jolkr",
+      "failedTitle": "Verification Failed",
+      "failedSubtitle": "The link may have expired. Try requesting a new one.",
+      "requestNewLink": "Request New Link",
+      "errorGeneric": "Verification failed",
+      "pendingTitle": "Verify your email",
+      "pendingBody": "We sent a verification link to {email}. Check your inbox and click the link to continue.",
+      "yourEmailFallback": "your email",
+      "sentMessage": "Verification email sent! Check your inbox.",
+      "resendBtn": "Resend Verification Email",
+      "sendingBtn": "Sending…",
+      "sentBtn": "Email Sent",
+      "signOut": "Sign out",
+      "resendError": "Failed to resend"
+    }
+  },
+
+  "notFound": {
+    "title": "Page Not Found",
+    "message": "The page you're looking for doesn't exist or has been moved."
+  },
+
+  "inviteAccept": {
+    "joining": "Joining server…",
+    "errorGeneric": "Invalid or expired invite"
+  },
+
+  "settings": {
+    "nav": {
+      "userSettings": "User Settings",
+      "appSettings": "App Settings",
+      "account": "My Account",
+      "privacy": "Privacy & Safety",
+      "connections": "Connections",
+      "appearance": "Appearance",
+      "accessibility": "Accessibility",
+      "voice": "Voice & Video",
+      "notifications": "Notifications",
+      "keybinds": "Keybinds",
+      "language": "Language"
+    },
+
+    "account": {
+      "title": "My Account",
+      "changeBannerColor": "Change banner color",
+      "editProfile": "Edit Profile",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "How others see you",
+      "username": "Username",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell others about yourself…",
+      "noBio": "No bio set",
+      "profileAlt": "Profile",
+      "accountInfo": "Account Information",
+      "emailLabel": "Email",
+      "emailMasked": "••••••••••",
+      "passwordSection": "Password & Authentication",
+      "passwordHelp": "Keep your account secure with a strong password and two-factor authentication.",
+      "changePassword": "Change Password",
+      "enable2FA": "Enable Two-Factor Auth",
+      "logOut": "Log Out",
+      "dangerZone": "Danger Zone",
+      "deleteHelp": "Deleting your account is permanent and cannot be undone.",
+      "deleteAccount": "Delete Account"
+    },
+
+    "bannerColors": {
+      "sage": "Sage",
+      "gold": "Gold",
+      "ocean": "Ocean",
+      "royal": "Royal",
+      "berry": "Berry",
+      "coral": "Coral"
+    },
+
+    "privacy": {
+      "title": "Privacy & Safety",
+      "dmFilterTitle": "Safe Direct Messaging",
+      "dmFilterDesc": "Control who can send you direct messages.",
+      "dmAll": "Allow all DMs",
+      "dmFriends": "Friends only",
+      "dmNone": "No one",
+      "allowFriendReqsLabel": "Allow friend requests",
+      "allowFriendReqsDesc": "Let others send you friend requests.",
+      "readReceiptsLabel": "Read receipts",
+      "readReceiptsDesc": "Show when you've read messages in DMs.",
+      "dataPrivacy": "Data & Privacy",
+      "analyticsLabel": "Usage analytics",
+      "analyticsDesc": "Help improve Jolkr by sending anonymous usage data."
+    },
+
+    "connections": {
+      "title": "Connections",
+      "intro": "Connect your accounts to share your activity and unlock integrations.",
+      "music": "Music",
+      "gaming": "Gaming",
+      "development": "Development",
+      "streaming": "Streaming",
+      "video": "Video",
+      "social": "Social"
+    },
+
+    "appearance": {
+      "title": "Appearance",
+      "colorModeTitle": "Color Mode",
+      "colorModeDesc": "Choose your preferred theme.",
+      "colorModeLight": "Light",
+      "colorModeSystem": "System",
+      "colorModeDark": "Dark",
+      "messageDisplayTitle": "Message Display",
+      "messageDisplayDesc": "Compact mode shows more messages at once.",
+      "displayCozy": "Cozy — spacious, comfortable reading",
+      "displayCompact": "Compact — more messages visible at once",
+      "fontSizeTitle": "Chat Font Size — {size}px",
+      "fontSizeDesc": "Resize the text in chat messages."
+    },
+
+    "accessibility": {
+      "title": "Accessibility",
+      "reducedMotionLabel": "Reduce motion",
+      "reducedMotionDesc": "Minimise animations and transitions throughout the app.",
+      "highContrastLabel": "High contrast",
+      "highContrastDesc": "Increase contrast between text and background.",
+      "roleColorsLabel": "Show role colours",
+      "roleColorsDesc": "Display colour-coded role names in member lists."
+    },
+
+    "voice": {
+      "title": "Voice & Video",
+      "inputDevice": "Input Device",
+      "outputDevice": "Output Device",
+      "outputUnsupported": "Output device selection is not supported in this browser.",
+      "outputUnsupportedTitle": "Not supported in this browser",
+      "systemDefault": "System default",
+      "microphoneFallback": "Microphone ({id}…)",
+      "speakersFallback": "Speakers ({id}…)",
+      "cameraFallback": "Camera ({id}…)",
+      "inputVolume": "Input Volume — {volume}%",
+      "outputVolume": "Output Volume — {volume}%",
+      "cameraSection": "Camera",
+      "cameraDevice": "Camera Device",
+      "cameraUnavailable": "Camera unavailable",
+      "advancedSection": "Advanced",
+      "noiseSuppressionLabel": "Noise suppression",
+      "noiseSuppressionDesc": "Filter out background noise during voice calls.",
+      "echoCancellationLabel": "Echo cancellation",
+      "echoCancellationDesc": "Remove echo from microphone input.",
+      "autoGainLabel": "Automatic gain control",
+      "autoGainDesc": "Automatically adjust microphone sensitivity."
+    },
+
+    "notifications": {
+      "title": "Notifications",
+      "desktopLabel": "Enable desktop notifications",
+      "desktopDesc": "Show notifications when the app is in the background.",
+      "soundsLabel": "Notification sounds",
+      "soundsDesc": "Play a sound when you receive a notification.",
+      "permissionDeniedToast": "Notification permission denied — enable it in your browser/OS settings.",
+      "unsupportedToast": "Desktop notifications are not supported in this environment.",
+      "triggers": "Notification triggers",
+      "mentionsLabel": "@mentions",
+      "mentionsDesc": "Notify when someone mentions you in a channel.",
+      "dmsLabel": "Direct messages",
+      "dmsDesc": "Notify for all new direct messages.",
+      "badgeLabel": "Unread badge",
+      "badgeDesc": "Show unread count badge on the app icon."
+    },
+
+    "keybinds": {
+      "title": "Keybinds",
+      "intro": "Default keyboard shortcuts. Custom keybinds coming soon.",
+      "openSwitcher": "Open Quick Switcher",
+      "toggleMute": "Toggle Mute",
+      "toggleDeafen": "Toggle Deafen",
+      "markRead": "Mark Server as Read",
+      "jumpUnread": "Jump to Oldest Unread",
+      "uploadFile": "Upload a File",
+      "search": "Search",
+      "focusInput": "Focus Chat Input",
+      "editLast": "Edit Last Message",
+      "replyMessage": "Reply to Message",
+      "toggleSettings": "Toggle Settings"
+    },
+
+    "language": {
+      "title": "Language",
+      "displayTitle": "Display Language",
+      "displayDesc": "Choose the language used throughout the app.",
+      "saveError": "Failed to save language preference"
+    }
+  },
+
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "Server Settings",
+      "moderation": "Moderation",
+      "dangerZone": "Danger Zone",
+      "overview": "Overview",
+      "roles": "Roles",
+      "invites": "Invites",
+      "bans": "Bans",
+      "auditLog": "Audit Log",
+      "deleteServer": "Delete Server"
+    },
+    "leaveBtn": "Leave Server",
+
+    "overview": {
+      "bannerTitle": "Banner background",
+      "bannerSolid": "Solid colors",
+      "bannerGradients": "Gradients",
+      "bannerImage": "Image",
+      "bannerImageUrl": "Image URL (https://…)",
+      "bannerUploading": "Uploading…",
+      "bannerUpload": "Upload",
+      "bannerRemove": "Remove image banner",
+      "iconAlt": "Server Icon",
+      "namePlaceholder": "Server Name",
+      "descriptionPlaceholder": "What's your server about?",
+      "discoveryLabel": "Server Discovery",
+      "discoveryDesc": "Make server discoverable in server browser"
+    },
+
+    "gradients": {
+      "oceanBreeze": "Ocean Breeze",
+      "sunsetGlow": "Sunset Glow",
+      "forestMist": "Forest Mist",
+      "royalVelvet": "Royal Velvet",
+      "berryBurst": "Berry Burst",
+      "midnight": "Midnight"
+    },
+
+    "roles": {
+      "allRoles": "All Roles",
+      "createRole": "Create Role",
+      "permissionsTitle": "Permissions",
+      "clearPermissions": "Clear permissions",
+      "deleteRole": "Delete Role",
+      "createError": "Failed to create role"
+    },
+
+    "invites": {
+      "expireAfter": "Expire after",
+      "maxUses": "Max uses",
+      "expireNever": "Never",
+      "expire30m": "30 minutes",
+      "expire1h": "1 hour",
+      "expire6h": "6 hours",
+      "expire12h": "12 hours",
+      "expire1d": "1 day",
+      "expire7d": "7 days",
+      "usesUnlimited": "No limit",
+      "uses1": "1 use",
+      "uses5": "5 uses",
+      "uses10": "10 uses",
+      "uses25": "25 uses",
+      "uses50": "50 uses",
+      "uses100": "100 uses",
+      "creating": "Creating…",
+      "createBtn": "Create Invite",
+      "createError": "Failed to create invite",
+      "emptyTitle": "No Invites Yet",
+      "emptyDesc": "Create an invite above to start inviting people to your server.",
+      "allInvites": "All Invites",
+      "copyTitle": "Click to copy invite link",
+      "copiedToast": "Invite link copied!",
+      "copyFailedToast": "Copy failed — link: {url}",
+      "usesProgress": "{used} / {max} uses",
+      "expiresAt": "Expires {date}",
+      "revoke": "Revoke"
+    },
+
+    "bans": {
+      "emptyTitle": "No Banned Users",
+      "emptyDesc": "Your server is clean! Banned users will appear here.",
+      "reasonLabel": "Reason: {reason}",
+      "noReason": "No reason provided",
+      "bannedAt": "Banned {date}",
+      "unban": "Unban"
+    },
+
+    "audit": {
+      "emptyTitle": "No Activity Yet",
+      "emptyDesc": "Audit log entries will appear here when server actions are performed.",
+      "byUser": "by {name}",
+      "onTarget": " on {type}: {idShort}…",
+      "reasonLabel": "Reason: {reason}",
+      "actions": {
+        "MemberJoin": "Member Joined",
+        "MemberLeave": "Member Left",
+        "MemberUpdate": "Member Updated",
+        "ChannelCreate": "Channel Created",
+        "ChannelUpdate": "Channel Updated",
+        "ChannelDelete": "Channel Deleted",
+        "RoleCreate": "Role Created",
+        "RoleUpdate": "Role Updated",
+        "RoleDelete": "Role Deleted",
+        "ServerUpdate": "Server Updated",
+        "ServerDelete": "Server Deleted",
+        "BanCreate": "User Banned",
+        "BanDelete": "User Unbanned",
+        "Kick": "User Kicked"
+      }
+    },
+
+    "delete": {
+      "title": "Delete Server",
+      "warning": "This action cannot be undone. All channels, messages, and data will be permanently deleted.",
+      "btn": "Delete Server"
+    },
+
+    "leaveConfirm": {
+      "title": "Leave Server",
+      "body": "Are you sure you want to leave {serverName}? You won't be able to rejoin unless you have an invite.",
+      "confirm": "Leave Server"
+    },
+
+    "deleteConfirm": {
+      "title": "Delete Server",
+      "body": "Are you sure you want to permanently delete {serverName}? This action cannot be undone.",
+      "confirm": "Delete Server"
+    }
+  },
+
+  "channelSettings": {
+    "nav": {
+      "channelSettings": "Channel Settings",
+      "overview": "Overview",
+      "permissions": "Permissions"
+    },
+    "overview": {
+      "title": "Channel Overview",
+      "nameLabel": "CHANNEL NAME",
+      "topicLabel": "CHANNEL TOPIC",
+      "topicPlaceholder": "Let everyone know what this channel is about",
+      "systemNotice": "This is a system channel and cannot be modified.",
+      "nsfwLabel": "NSFW Channel",
+      "nsfwDesc": "Age-restricted content",
+      "slowmodeLabel": "SLOWMODE (SECONDS)",
+      "slowmodeHint": "Users can send one message per interval. 0 = disabled."
+    },
+    "permissions": {
+      "title": "Channel Permissions",
+      "addOverride": "Add Override",
+      "systemNotice": "System channel permissions cannot be modified.",
+      "rolesMembers": "ROLES / MEMBERS",
+      "removeOverride": "Remove override",
+      "addModalTitle": "Add Permission Override",
+      "typeLabel": "TYPE",
+      "typeRole": "Role",
+      "typeMember": "Member",
+      "selectRole": "Select a role…",
+      "memberIdLabel": "MEMBER ID",
+      "memberIdPlaceholder": "Enter member ID",
+      "roleLabel": "ROLE"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "General Server Permissions",
+    "groupMember": "Member Permissions",
+    "groupText": "Text Channel Permissions",
+    "groupVoice": "Voice Channel Permissions",
+    "ariaEnable": "Enable {label}",
+    "ariaDisable": "Disable {label}",
+
+    "view_channels":   { "label": "View Channels",   "desc": "Allows members to view channels by default (excluding private channels)." },
+    "manage_channels": { "label": "Manage Channels", "desc": "Allows members to create, edit, or delete channels." },
+    "manage_server":   { "label": "Manage Server",   "desc": "Allows members to change server name, icon, and other settings." },
+    "kick_members":    { "label": "Kick Members",    "desc": "Allows members to kick other members from the server." },
+    "ban_members":     { "label": "Ban Members",     "desc": "Allows members to ban other members from the server." },
+    "manage_roles":    { "label": "Manage Roles",    "desc": "Allows members to create new roles and edit or delete roles lower than their highest role." },
+    "create_invite":   { "label": "Create Invites",  "desc": "Allows members to create invite links to the server." },
+    "send_messages":   { "label": "Send Messages",   "desc": "Allows members to send messages in text channels." },
+    "manage_messages": { "label": "Manage Messages", "desc": "Allows members to delete and pin messages in text channels." },
+    "embed_links":     { "label": "Embed Links",     "desc": "Allows members to embed links in messages." },
+    "attach_files":    { "label": "Attach Files",    "desc": "Allows members to attach files to messages." },
+    "add_reactions":   { "label": "Add Reactions",   "desc": "Allows members to add reactions to messages." },
+    "mention_everyone":{ "label": "Mention Everyone","desc": "Allows members to use @everyone and @here." },
+    "read_message_history": { "label": "Read Message History", "desc": "Allows members to read previous messages." },
+    "use_external_emojis":  { "label": "Use External Emojis",  "desc": "Allows members to use emojis from other servers." },
+    "send_tts_messages":    { "label": "Send TTS Messages",    "desc": "Allows members to send text-to-speech messages." },
+    "connect":         { "label": "Connect",         "desc": "Allows members to connect to voice channels." },
+    "speak":           { "label": "Speak",           "desc": "Allows members to speak in voice channels." },
+    "video":           { "label": "Video",           "desc": "Allows members to share video in voice channels." },
+    "mute_members":    { "label": "Mute Members",    "desc": "Allows members to mute other members in voice channels." },
+    "deafen_members":  { "label": "Deafen Members",  "desc": "Allows members to deafen other members in voice channels." },
+    "move_members":    { "label": "Move Members",    "desc": "Allows members to move others between voice channels." },
+    "use_voice_activity": { "label": "Use Voice Activity", "desc": "Allows members to use voice activity detection." },
+    "priority_speaker":{ "label": "Priority Speaker","desc": "Lowers others' volume while speaking." },
+    "administrator":   { "label": "Administrator",   "desc": "Grants all permissions and bypasses channel permissions. This is a dangerous permission!" }
+  }
+}

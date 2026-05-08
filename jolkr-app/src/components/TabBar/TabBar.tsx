@@ -22,6 +22,7 @@ import type { ServerDisplay, MemberStatus } from '../../types'
 import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
 import { isTauri, isMobile } from '../../platform/detect'
 import { useCallStore } from '../../stores/call'
+import { useT } from '../../hooks/useT'
 import s from './TabBar.module.css'
 
 // Tauri Android/iOS: disable drag-to-reorder so finger scrolling along the
@@ -94,11 +95,13 @@ function applyTabsMask(el: HTMLDivElement | null, left: number, right: number) {
 
 
 
-const STATUS_META: Record<MemberStatus, { label: string; color: string }> = {
-  online:  { label: 'Online',          color: 'oklch(65% 0.18 143)' },
-  idle:    { label: 'Idle',            color: 'oklch(75% 0.18 65)'  },
-  dnd:     { label: 'Do Not Disturb',  color: 'oklch(55% 0.2 25)'   },
-  offline: { label: 'Invisible',       color: 'oklch(50% 0 0)'      },
+/** `labelKey` resolves through `userStatus.*` so the dropdown reflects the
+ *  active locale; `color` stays in code as it isn't language-dependent. */
+const STATUS_META: Record<MemberStatus, { labelKey: string; color: string }> = {
+  online:  { labelKey: 'userStatus.online',    color: 'oklch(65% 0.18 143)' },
+  idle:    { labelKey: 'userStatus.idle',      color: 'oklch(75% 0.18 65)'  },
+  dnd:     { labelKey: 'userStatus.dnd',       color: 'oklch(55% 0.2 25)'   },
+  offline: { labelKey: 'userStatus.invisible', color: 'oklch(50% 0 0)'      },
 }
 
 interface UserInfo {
@@ -153,6 +156,7 @@ export function TabBar({
   onNotificationsClick, onOpenSettings, onJoinServer, onCreateServer,
   onLogout, onStatusChange, onOpenServerSettings, onToggleMuteServer, onMarkAllRead, onLeaveServer,
 }: Props) {
+  const { t } = useT()
   const [browserOpen,  setBrowserOpen]  = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [menuOpen,     setMenuOpen]     = useState(false)
@@ -337,7 +341,7 @@ export function TabBar({
   const avatarBg  = userProfile?.banner_color ?? user?.avatarColor ?? 'var(--accent)'
   const avatarUrl = userProfile?.avatar_url   ?? user?.avatarUrl   ?? null
   const avatarInitial = (userProfile?.display_name?.charAt(0) || user?.avatarLetter || '?').toUpperCase()
-  const displayName   = userProfile?.display_name ?? user?.displayName ?? 'User'
+  const displayName   = userProfile?.display_name ?? user?.displayName ?? t('common.unknown')
 
   return (
     <div className={s.bar}>
@@ -347,7 +351,7 @@ export function TabBar({
           ref={addBtnRef}
           className={`${s.addBtn} ${browserOpen ? s.addBtnActive : ''}`}
           onClick={() => setBrowserOpen(v => !v)}
-          title="Your servers"
+          title={t('tabBar.yourServers')}
         >
           <PlusIcon open={browserOpen} />
         </button>
@@ -360,19 +364,19 @@ export function TabBar({
                 onClick={() => { setBrowserOpen(false); onJoinServer() }}
               >
                 <span className={s.browserActionIcon}><LogIn size={14} strokeWidth={1.5} /></span>
-                <span className={`${s.browserActionLabel} txt-small txt-medium`}>Join a Server</span>
+                <span className={`${s.browserActionLabel} txt-small txt-medium`}>{t('tabBar.joinServer')}</span>
               </button>
               <button
                 className={s.browserActionRow}
                 onClick={() => { setBrowserOpen(false); onCreateServer() }}
               >
                 <span className={s.browserActionIcon}><ServerIcon size={14} strokeWidth={1.5} /></span>
-                <span className={`${s.browserActionLabel} txt-small txt-medium`}>Create a Server</span>
+                <span className={`${s.browserActionLabel} txt-small txt-medium`}>{t('tabBar.createServer')}</span>
               </button>
             </div>
             <div className={s.browserDivider} />
             <div className={s.browserHeader}>
-              <span className={`${s.browserTitle} txt-tiny txt-semibold`}>Your servers</span>
+              <span className={`${s.browserTitle} txt-tiny txt-semibold`}>{t('tabBar.browserTitle')}</span>
             </div>
             <div className={`${s.browserList} scrollbar-thin scroll-view-y`}>
               {allServers.map(server => {
@@ -395,10 +399,10 @@ export function TabBar({
                     </div>
                     <div className={s.browserMeta}>
                       <span className={`${s.browserName} txt-small txt-medium txt-truncate`}>{server.name}</span>
-                      <span className={`${s.browserSub} txt-tiny txt-truncate`}>{server.channels.length} channels</span>
+                      <span className={`${s.browserSub} txt-tiny txt-truncate`}>{t('tabBar.channelsCount', { count: server.channels.length })}</span>
                     </div>
                     {isTabbed
-                      ? <span className={s.tabbedPill}>open</span>
+                      ? <span className={s.tabbedPill}>{t('tabBar.open')}</span>
                       : <span className={s.addTabbedHint}><SmallPlusIcon /></span>
                     }
                   </button>
@@ -475,18 +479,18 @@ export function TabBar({
             <MenuSection>
               <MenuItem
                 icon={<VolumeX size={13} strokeWidth={1.5} />}
-                label={(mutedServerIds ?? []).includes(serverTabMenuOpen) ? 'Unmute Server' : 'Mute Server'}
+                label={(mutedServerIds ?? []).includes(serverTabMenuOpen) ? t('tabBar.unmuteServer') : t('tabBar.muteServer')}
                 onClick={() => { onToggleMuteServer?.(serverTabMenuOpen); setServerTabMenuOpen(null) }}
               />
               <MenuItem
                 icon={<CheckCheck size={13} strokeWidth={1.5} />}
-                label="Mark as Read"
+                label={t('tabBar.markAsRead')}
                 onClick={() => { onMarkAllRead?.(serverTabMenuOpen); setServerTabMenuOpen(null) }}
               />
               {onOpenServerSettings && (settingsServerIds ?? []).includes(serverTabMenuOpen) && (
                 <MenuItem
                   icon={<Settings size={13} strokeWidth={1.5} />}
-                  label="Server Settings"
+                  label={t('tabBar.serverSettings')}
                   onClick={() => { onOpenServerSettings(serverTabMenuOpen); setServerTabMenuOpen(null) }}
                 />
               )}
@@ -495,7 +499,7 @@ export function TabBar({
             <MenuSection>
               <MenuItem
                 icon={<X size={13} strokeWidth={1.5} />}
-                label="Close Tab"
+                label={t('tabBar.closeTab')}
                 onClick={() => { onClose(serverTabMenuOpen); setServerTabMenuOpen(null) }}
               />
             </MenuSection>
@@ -505,7 +509,7 @@ export function TabBar({
                 <MenuSection>
                   <MenuItem
                     icon={<LogOut size={13} strokeWidth={1.5} />}
-                    label="Leave Server"
+                    label={t('tabBar.leaveServer')}
                     danger
                     onClick={() => { onLeaveServer?.(serverTabMenuOpen); setServerTabMenuOpen(null) }}
                   />
@@ -521,21 +525,21 @@ export function TabBar({
         <button
           className={`${s.iconBtn} ${searchActive ? s.iconBtnActive : ''}`}
           onClick={onSearchClick}
-          title="Search (⌘K)"
+          title={t('tabBar.search')}
         >
           <SearchIcon />
         </button>
         <button
           className={`${s.iconBtn} ${dmActive ? s.iconBtnActive : ''}`}
           onClick={onDmClick}
-          title="Direct messages"
+          title={t('tabBar.directMessages')}
         >
           <DmIcon />
         </button>
         <button
           className={`${s.iconBtn} ${notificationsActive ? s.iconBtnActive : ''}`}
           onClick={onNotificationsClick}
-          title="Notifications"
+          title={t('tabBar.notifications')}
         >
           <BellIcon />
         </button>
@@ -546,8 +550,8 @@ export function TabBar({
           className={`${s.userChip} ${menuOpen ? s.userChipActive : ''}`}
           onClick={openMenu}
           title={showRemoteCallPill
-            ? (remoteSessionCall!.isVideo ? 'On a video call (other device)' : 'On a call (other device)')
-            : 'Profile'}
+            ? (remoteSessionCall!.isVideo ? t('tabBar.onVideoCallOther') : t('tabBar.onCallOther'))
+            : t('tabBar.profile')}
         >
           <div className={s.avatarWrap}>
             <div className={`${s.avatarFace} hasActivityAvatarFace`} style={{ background: avatarBg }}>
@@ -560,8 +564,8 @@ export function TabBar({
           <span className={`${s.userName} txt-small txt-medium`}>{displayName}</span>
           {showRemoteCallPill && (
             // TODO: server-side call-kind tracking required for "On video call" to render — currently always shows "On a call"
-            <span className={s.callPill} aria-label={remoteSessionCall!.isVideo ? 'On a video call' : 'On a call'}>
-              {remoteSessionCall!.isVideo ? 'On video call' : 'On a call'}
+            <span className={s.callPill} aria-label={remoteSessionCall!.isVideo ? t('tabBar.onVideoCall') : t('tabBar.onCall')}>
+              {remoteSessionCall!.isVideo ? t('tabBar.onVideoCall') : t('tabBar.onCall')}
             </span>
           )}
         </button>
@@ -587,7 +591,7 @@ export function TabBar({
             <div className={s.profileInfo}>
               <span className={`${s.profileName} txt-small txt-semibold`}>{displayName}</span>
               <span className={`${s.profileStatus} txt-tiny`} style={{ color: currentStatus.color }}>
-                {currentStatus.label}
+                {t(currentStatus.labelKey)}
               </span>
             </div>
           </div>
@@ -596,7 +600,7 @@ export function TabBar({
 
           {/* Status selector */}
           <div className={s.menuSection}>
-            <span className={`${s.menuSectionLabel} txt-tiny txt-semibold`}>Set status</span>
+            <span className={`${s.menuSectionLabel} txt-tiny txt-semibold`}>{t('tabBar.setStatus')}</span>
             {(Object.entries(STATUS_META) as [MemberStatus, typeof STATUS_META[MemberStatus]][]).map(([key, meta]) => (
               <button
                 key={key}
@@ -604,7 +608,7 @@ export function TabBar({
                 onClick={() => { setMenuOpen(false); onStatusChange?.(key) }}
               >
                 <span className={s.statusBullet} style={{ background: meta.color }} />
-                <span className={`${s.statusLabel} txt-small`}>{meta.label}</span>
+                <span className={`${s.statusLabel} txt-small`}>{t(meta.labelKey)}</span>
                 {status === key && <span className={s.statusCheck}>✓</span>}
               </button>
             ))}
@@ -616,7 +620,7 @@ export function TabBar({
           <div className={s.menuSection}>
             <button className={s.menuItem} onClick={() => { setMenuOpen(false); onOpenSettings() }}>
               <Settings size={13} strokeWidth={1.5} />
-              <span className="txt-small">Settings</span>
+              <span className="txt-small">{t('tabBar.settings')}</span>
             </button>
           </div>
 
@@ -626,7 +630,7 @@ export function TabBar({
           <div className={s.menuSection}>
             <button className={`${s.menuItem} ${s.menuItemDanger}`} onClick={() => { setMenuOpen(false); onLogout?.() }}>
               <LogOut size={13} strokeWidth={1.5} />
-              <span className="txt-small">Log Out</span>
+              <span className="txt-small">{t('tabBar.logOut')}</span>
             </button>
           </div>
         </div>,
@@ -648,6 +652,7 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
   onOpenMenu:       (id: string) => void
   menuBtnRefSetter: (el: HTMLButtonElement | null) => void
 }) {
+  const { t } = useT()
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: server.id })
 
   const style: React.CSSProperties = {
@@ -693,7 +698,7 @@ function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwit
         className={s.menuBtn}
         onPointerDown={e => e.stopPropagation()}
         onClick={e => { e.stopPropagation(); onOpenMenu(server.id) }}
-        title="Server options"
+        title={t('tabBar.serverOptions')}
       >
         {isMenuOpen ? <X size={12} strokeWidth={2} /> : <MoreHorizontal size={12} strokeWidth={2} />}
       </button>

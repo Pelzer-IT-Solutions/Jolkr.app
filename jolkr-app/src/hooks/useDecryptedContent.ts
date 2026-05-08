@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isE2EEReady, getLocalKeys } from '../services/e2ee';
 import { decryptChannelMessage } from '../crypto/channelKeys';
+import { tStatic } from './useT';
 
 interface DecryptedState {
   displayContent: string;
@@ -8,7 +9,11 @@ interface DecryptedState {
   decrypting: boolean;
 }
 
-const DECRYPT_FAIL_MSG = '[Encrypted message — keys unavailable]';
+/** Resolve the localised "decryption failed" label on every read so a
+ *  locale switch picks it up without remounting every cached message. */
+function failMsg(): string {
+  return tStatic('message.decrypt.failed');
+}
 
 /**
  * Hook that decrypts message content.
@@ -16,15 +21,18 @@ const DECRYPT_FAIL_MSG = '[Encrypted message — keys unavailable]';
  * Decryption uses the channel's shared symmetric key.
  */
 export function useDecryptedContent(
-  content: string,
+  content: string | null,
   nonce?: string | null,
   isDm?: boolean,
   channelId?: string,
 ): DecryptedState {
   const [state, setState] = useState<DecryptedState>(() => {
     if (!nonce) {
-      // No nonce = plain text (shouldn't happen, but handle gracefully)
-      return { displayContent: content, isEncrypted: false, decrypting: false };
+      // No nonce = plain text (shouldn't happen, but handle gracefully).
+      // `content` may legitimately be null for encrypted-only messages that
+      // arrive without a nonce due to a backend bug — coerce to '' so the
+      // renderer doesn't blow up on String methods.
+      return { displayContent: content ?? '', isEncrypted: false, decrypting: false };
     }
     return { displayContent: '', isEncrypted: true, decrypting: true };
   });
@@ -34,12 +42,12 @@ export function useDecryptedContent(
   useEffect(() => {
     if (!nonce) {
       // Defer setState past the effect body to satisfy set-state-in-effect.
-      queueMicrotask(() => setState({ displayContent: content, isEncrypted: false, decrypting: false }));
+      queueMicrotask(() => setState({ displayContent: content ?? '', isEncrypted: false, decrypting: false }));
       return;
     }
 
     if (!channelId) {
-      queueMicrotask(() => setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false }));
+      queueMicrotask(() => setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false }));
       return;
     }
 
@@ -52,14 +60,22 @@ export function useDecryptedContent(
           retryTimerRef.current = setTimeout(attempt, 1000);
           return;
         }
-        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
         return;
       }
 
       retryRef.current = 0;
       const localKeys = getLocalKeys();
       if (!localKeys) {
-        setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+        setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
+        return;
+      }
+
+      // `content` IS the ciphertext when `nonce` is set — null here means a
+      // malformed encrypted message (nonce without ciphertext). Bail out
+      // instead of passing null to the decrypter.
+      if (content == null) {
+        setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
         return;
       }
 
@@ -72,7 +88,7 @@ export function useDecryptedContent(
         .catch((err) => {
           if (!cancelled) {
             console.warn('E2EE: Failed to decrypt message:', err);
-            setState({ displayContent: DECRYPT_FAIL_MSG, isEncrypted: true, decrypting: false });
+            setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
           }
         });
     };

@@ -4,6 +4,7 @@ import * as api from '../../api/client'
 import type { Message } from '../../api/types'
 import type { User } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useT } from '../../hooks/useT'
 import s from './PinnedMessagesPanel.module.css'
 
 // Module-level cache so toggling the panel off and back on doesn't trigger a
@@ -31,20 +32,21 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
   onUnpin?: (id: string) => void
   users?: Map<string, User>
 }) {
+  const { t } = useT()
   const { displayContent, decrypting } = useDecryptedContent(
     msg.content, msg.nonce, isDm, channelId,
   )
   const author = users?.get(msg.author_id)
-  const authorName = author?.display_name ?? author?.username ?? 'Unknown'
+  const authorName = author?.display_name ?? author?.username ?? t('pinned.unknownAuthor')
 
   return (
     <div className={s.item}>
       <div className={`${s.itemAuthor} txt-tiny txt-semibold`}>{authorName}</div>
-      <div className={`${s.itemContent} txt-small`}>
-        {decrypting ? 'Decrypting...' : (displayContent || '').slice(0, 200)}
+      <div className={`${s.itemContent} txt-small`} dir="auto">
+        {decrypting ? t('pinned.decrypting') : (displayContent || '').slice(0, 200)}
       </div>
       {onUnpin && (
-        <button className={s.unpinBtn} title="Unpin" aria-label="Unpin" onClick={() => onUnpin(msg.id)}>
+        <button className={s.unpinBtn} title={t('pinned.unpin')} aria-label={t('pinned.unpin')} onClick={() => onUnpin(msg.id)}>
           <X size={12} strokeWidth={1.5} />
         </button>
       )}
@@ -53,6 +55,7 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
 }
 
 export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, users, pinnedVersion }: Props) {
+  const { t } = useT()
   const key = cacheKey(channelId, isDm, pinnedVersion ?? 0)
   const cached = cache.get(key)
   const [messages, setMessages] = useState<Message[]>(cached ?? [])
@@ -62,6 +65,9 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
 
   // Sync messages/loading from the cache when the panel's identity changes —
   // state-during-render avoids set-state-in-effect on the synchronous reset path.
+  // Stale-while-revalidate: a `pinnedVersion` bump invalidates the cache key,
+  // but we keep showing the previous list rather than flashing "Loading..." —
+  // the effect below silently fetches the new state and swaps it in.
   const [prevKey, setPrevKey] = useState(key)
   if (key !== prevKey) {
     setPrevKey(key)
@@ -69,7 +75,8 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
     if (cachedNow !== undefined) {
       setMessages(cachedNow)
       setLoading(false)
-    } else {
+    } else if (messages.length === 0) {
+      // No previous data to show — only then flip the loading flag.
       setLoading(true)
     }
   }
@@ -79,13 +86,8 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
     if (cache.get(k) !== undefined) return // already populated synchronously above
     const fetchPromise = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
     fetchPromise.then(msgs => {
-      // Normalize DM messages: dm_channel_id → channel_id
-      const normalized = msgs.map((m) => ({
-        ...m,
-        channel_id: m.channel_id ?? (m as unknown as { dm_channel_id?: string }).dm_channel_id ?? channelId,
-      }))
-      cache.set(k, normalized)
-      setMessages(normalized)
+      cache.set(k, msgs)
+      setMessages(msgs)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [channelId, isDm, pinnedVersion])
@@ -102,9 +104,9 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
   return (
     <div className={s.panel}>
       <div className={`${s.list} scrollbar-thin scroll-view-y`}>
-        {loading && <div className={`${s.empty} txt-small`}>Loading...</div>}
+        {loading && <div className={`${s.empty} txt-small`}>{t('pinned.loading')}</div>}
         {!loading && messages.length === 0 && (
-          <div className={`${s.empty} txt-small`}>No pinned messages</div>
+          <div className={`${s.empty} txt-small`}>{t('pinned.empty')}</div>
         )}
         {messages.map(msg => (
           <PinnedItem

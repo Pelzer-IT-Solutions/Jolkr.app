@@ -8,6 +8,7 @@ import { ThreadListPanel } from '../Thread/ThreadListPanel'
 import { ThreadPanel } from '../Thread/ThreadPanel'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { useT } from '../../hooks/useT'
 import s from './MemberPanel.module.css'
 
 /** How long the panel's collapse animation takes (matches `--transition`). */
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, users, pinnedVersion, onMobileClose, openThreadId, onOpenThread, onCloseThread }: Props) {
+  const { t } = useT()
   const visible = mode !== null
 
   // Hold the previous non-null mode while the panel is collapsing so we keep
@@ -123,7 +125,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
               className={`${s.category} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}
               style={revealStyle(0)}
             >
-              Online — {members.online.length}
+              {t('memberPanel.online', { count: members.online.length })}
             </div>
             {members.online.map((m, i) => (
               <button
@@ -149,7 +151,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
               className={`${s.category} ${s.categoryOffline} txt-tiny txt-semibold ${isRevealing ? 'revealing' : ''}`}
               style={revealStyle(offlineHeaderIdx)}
             >
-              Offline — {members.offline.length}
+              {t('memberPanel.offline', { count: members.offline.length })}
             </div>
             {members.offline.map((m, i) => (
               <button
@@ -178,9 +180,9 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
   // Get header title based on mode
   const getHeaderTitle = () => {
     switch (displayMode) {
-      case 'pinned': return 'Pinned Messages'
-      case 'threads': return 'Threads'
-      case 'members': return `Members — ${total}`
+      case 'pinned': return t('memberPanel.pinnedMessages')
+      case 'threads': return t('memberPanel.threads')
+      case 'members': return t('memberPanel.members', { count: total })
       default: return ''
     }
   }
@@ -194,7 +196,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
       {!hideOuterHeader && (
         <div className={s.header}>
           {onMobileClose && (
-            <button className={s.backBtn} title="Back to chat" aria-label="Back to chat" onClick={onMobileClose}>
+            <button className={s.backBtn} title={t('memberPanel.backToChat')} aria-label={t('memberPanel.backToChat')} onClick={onMobileClose}>
               <ArrowLeft size={14} strokeWidth={1.5} />
             </button>
           )}

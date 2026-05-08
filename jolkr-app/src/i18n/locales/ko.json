@@ -1,0 +1,747 @@
+{
+  "common": {
+    "ok": "확인", "cancel": "취소", "save": "저장", "delete": "삭제",
+    "edit": "편집", "close": "닫기", "loading": "로딩 중…",
+    "someone": "누군가", "required": "*", "goHome": "홈으로",
+    "add": "추가", "saveChanges": "변경사항 저장",
+    "loadingDots": "로딩 중...", "unknown": "알 수 없음", "send": "보내기 (Enter)",
+    "dismiss": "닫기", "expandSidebar": "사이드바 펼치기"
+  },
+
+  "time": {
+    "todayAt": "오늘 {time}",
+    "yesterdayAt": "어제 {time}",
+    "dateAt": "{date} {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "채널 확장",
+      "threads": "스레드", "pinnedMessages": "고정된 메시지",
+      "filesAndPins": "파일 및 고정", "members": "구성원",
+      "alreadyInCall": "이미 통화 중",
+      "startVoiceCall": "음성 통화 시작",
+      "startVideoCall": "영상 통화 시작",
+      "videoCall1on1Only": "영상 통화는 1:1만 가능합니다"
+    },
+    "dropZone": {
+      "drop": "놓아서 첨부",
+      "limit": "파일당 최대 {limit}",
+      "tooLargeTitle": "파일이 너무 큽니다",
+      "tooLargeAlert": "파일이 너무 큽니다 (최대 {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "새 스레드",
+      "namePlaceholder": "스레드 이름 (선택사항)",
+      "createBtn": "만들기"
+    },
+    "composer": {
+      "placeholderChannel": "#{channel}에 메시지",
+      "placeholderDm": "{target}에게 메시지",
+      "emoji": "이모지", "attachFile": "파일 첨부",
+      "gif": "GIF", "createPoll": "투표 만들기", "send": "보내기 (Enter)",
+      "fmtBold": "굵게 (Ctrl+B)", "fmtItalic": "기울임 (Ctrl+I)",
+      "fmtStrike": "취소선", "fmtCode": "코드",
+      "renameFile": "파일 이름 변경", "removeFile": "제거",
+      "renameFileTitle": "파일 이름 변경",
+      "renameFilePlaceholder": "파일 이름"
+    },
+    "autocomplete": {
+      "membersHeader": "구성원",
+      "emojiHeader": ":{query}와 일치하는 이모지"
+    },
+    "replyCard": {
+      "replyingTo": "{name}에게 답장",
+      "cancel": "답장 취소"
+    },
+    "empty": {
+      "dmTitle": "{name}와 아직 메시지가 없습니다",
+      "dmFallbackName": "이 사용자",
+      "dmBody": "아래에 메시지를 보내 대화를 시작하세요.",
+      "channelTitle": "#{channel}에 오신 것을 환영합니다",
+      "channelBody": "처음으로 무언가 말해보세요 — 아래에 메시지를 입력하여 채널을 시작하세요."
+    },
+    "readOnly": {
+      "system": "이것은 시스템 채널입니다",
+      "noPermission": "이 채널에서 메시지를 보낼 권한이 없습니다",
+      "generic": "이것은 읽기 전용 채널입니다"
+    },
+    "typing": {
+      "one": "{name}님이 입력 중…",
+      "two": "{a}님과 {b}님이 입력 중…",
+      "many": "여러 사람이 입력 중…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(편집됨)",
+    "unencryptedBadge": "암호화되지 않음",
+    "ariaOpenProfile": "{name}의 프로필 열기",
+    "decrypt": {
+      "decrypting": "복호화 중…", "decryptingShort": "...",
+      "encryptedMessage": "암호화된 메시지",
+      "failed": "[암호화된 메시지 — 키를 사용할 수 없음]"
+    },
+    "actions": {
+      "addReaction": "반응 추가", "reply": "답장",
+      "edit": "메시지 편집", "delete": "메시지 삭제",
+      "deleteShift": "메시지 삭제 (Shift+클릭)", "more": "더 많은 옵션"
+    },
+    "menu": {
+      "reply": "답장", "editMessage": "메시지 편집",
+      "copyText": "텍스트 복사", "pinMessage": "메시지 고정",
+      "unpinMessage": "고정 해제", "startThread": "스레드 시작",
+      "openThread": "스레드 열기", "deleteMessage": "메시지 삭제",
+      "deleteForMe": "나에게서 삭제", "reportMessage": "메시지 신고"
+    },
+    "editHint": {
+      "escapeTo": "Esc로", "cancel": "취소",
+      "enterTo": "Enter로", "save": "저장", "separator": "·"
+    },
+    "thread": {
+      "one": "스레드의 답장 {count}개",
+      "other": "스레드의 답장 {count}개"
+    },
+    "copyFailed": "복사 실패"
+  },
+
+  "reactions": {
+    "count": { "one": "반응 {count}개", "other": "반응 {count}개" },
+    "userFallback": "사용자 {idShort}"
+  },
+
+  "pinned": {
+    "loading": "로딩 중...", "empty": "고정된 메시지 없음",
+    "decrypting": "복호화 중...", "unknownAuthor": "알 수 없음", "unpin": "고정 해제"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "스레드 로딩 중...", "empty": "아직 스레드 없음",
+      "untitled": "제목 없는 스레드",
+      "replies": { "one": "답장 {count}개", "other": "답장 {count}개" }
+    },
+    "panel": {
+      "back": "스레드로 돌아가기", "fallbackTitle": "스레드",
+      "loading": "로딩 중...", "empty": "아직 답장 없음",
+      "replyPlaceholder": "스레드에 답장", "send": "보내기 (Enter)",
+      "unknownAuthor": "알 수 없음", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "투표 만들기", "ariaLabel": "투표 만들기",
+      "questionLabel": "질문",
+      "questionPlaceholder": "무엇을 묻고 싶으신가요?",
+      "optionsLabel": "옵션",
+      "optionPlaceholder": "옵션 {n}",
+      "removeOption": "옵션 제거", "addOption": "옵션 추가",
+      "multiVoteLabel": "복수 투표 허용",
+      "multiVoteSub": "투표자가 둘 이상의 옵션을 선택할 수 있습니다",
+      "anonymousLabel": "익명",
+      "anonymousSub": "누가 무엇에 투표했는지 숨기기",
+      "cancel": "취소", "submit": "투표 만들기",
+      "submitting": "만드는 중…", "errorGeneric": "투표 만들기 실패"
+    },
+    "display": {
+      "closed": "종료됨",
+      "voteCount": { "one": "{count}표", "other": "{count}표" },
+      "multipleChoice": "복수 선택", "anonymous": "익명"
+    }
+  },
+
+  "attachments": {
+    "openImage": "{filename} 열기"
+  },
+
+  "userStatus": {
+    "online": "온라인", "idle": "자리 비움", "dnd": "방해 금지",
+    "offline": "오프라인", "invisible": "숨김"
+  },
+
+  "dmSidebar": {
+    "title": "다이렉트 메시지", "backToChat": "채팅으로 돌아가기",
+    "friends": "친구", "newMessage": "새 메시지",
+    "collapseSidebar": "사이드바 접기",
+    "emptyTitle": "아직 대화가 없습니다",
+    "emptySubtitle": "새 메시지를 시작하여 채팅을 시작하세요"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "채팅으로 돌아가기", "info": "정보",
+    "unpin": "고정 해제", "pinnedMessages": "고정된 메시지",
+    "noPinned": "아직 고정된 메시지가 없습니다",
+    "sharedFiles": "공유된 파일", "noFiles": "아직 공유된 파일이 없습니다",
+    "decrypting": "복호화 중…"
+  },
+
+  "newDmModal": {
+    "title": "새 메시지", "close": "닫기", "addMore": "더 추가...",
+    "searchPlaceholder": "친구를 검색하거나 사용자 이름을 입력...",
+    "loadingFriends": "친구 불러오는 중...", "searching": "검색 중...",
+    "online": "온라인 — {count}", "offline": "오프라인 — {count}",
+    "noUsersFound": "사용자를 찾을 수 없습니다",
+    "noFriendsYet": "아직 친구가 없습니다 — 위에서 사용자 이름으로 검색하세요",
+    "createGroup": "그룹 DM 만들기", "startConversation": "대화 시작"
+  },
+
+  "profileCard": {
+    "ariaProfile": "{name} 프로필",
+    "loadError": "사용자 프로필을 불러올 수 없습니다",
+    "loading": "불러오는 중…", "about": "소개",
+    "memberSince": "가입일", "safetyNumber": "안전 번호",
+    "sendMessage": "메시지 보내기", "addFriend": "친구 추가",
+    "requestPending": "친구 요청 대기 중", "removeFriend": "친구 삭제",
+    "userBlocked": "사용자 차단됨", "block": "차단",
+    "editProfile": "프로필 편집",
+    "errFriendSend": "요청 전송 실패",
+    "errFriendRemove": "친구 삭제 실패",
+    "errBlock": "사용자 차단 실패"
+  },
+
+  "memberPanel": {
+    "backToChat": "채팅으로 돌아가기",
+    "online": "온라인 — {count}", "offline": "오프라인 — {count}",
+    "members": "멤버 — {count}",
+    "pinnedMessages": "고정된 메시지", "threads": "스레드"
+  },
+
+  "tabBar": {
+    "yourServers": "내 서버", "search": "검색 (⌘K)",
+    "directMessages": "다이렉트 메시지", "notifications": "알림",
+    "profile": "프로필",
+    "onVideoCallOther": "영상 통화 중 (다른 기기)",
+    "onCallOther": "통화 중 (다른 기기)",
+    "joinServer": "서버 참가", "createServer": "서버 만들기",
+    "browserTitle": "내 서버",
+    "channelsCount": { "one": "{count}개 채널", "other": "{count}개 채널" },
+    "open": "열기", "muteServer": "서버 음소거", "unmuteServer": "서버 음소거 해제",
+    "markAsRead": "읽음으로 표시", "serverSettings": "서버 설정",
+    "closeTab": "탭 닫기", "leaveServer": "서버 나가기",
+    "setStatus": "상태 설정", "settings": "설정", "logOut": "로그아웃",
+    "serverOptions": "서버 옵션",
+    "onVideoCall": "영상 통화 중", "onCall": "통화 중"
+  },
+
+  "notificationsPanel": { "title": "알림", "empty": "아직 알림이 없습니다" },
+
+  "friendsPanel": {
+    "close": "닫기", "tabAll": "전체", "tabOnline": "온라인",
+    "tabPending": "대기 중", "tabAdd": "친구 추가",
+    "incoming": "수신 ({count})", "outgoing": "발신 ({count})",
+    "cancel": "취소", "noPending": "대기 중인 친구 요청이 없습니다",
+    "addIntro": "사용자 이름, 이메일 또는 QR 코드로 친구를 추가하세요.",
+    "myQrCode": "내 QR 코드", "scanQr": "QR 스캔", "orSearch": "또는 검색",
+    "searchPlaceholder": "사용자 이름 또는 이메일…", "searching": "검색 중…",
+    "noUsersFound": "사용자를 찾을 수 없습니다",
+    "sending": "전송 중…", "addBtn": "추가", "noFriendsFound": "친구를 찾을 수 없습니다",
+    "requestSent": "친구 요청을 보냈습니다",
+    "requestFailed": "친구 요청 전송 실패"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "프로필 보기", "addFriend": "친구 추가",
+    "removeFriend": "친구 삭제", "mute": "음소거", "unmute": "음소거 해제",
+    "block": "차단", "unblock": "차단 해제", "closeDm": "DM 닫기",
+    "moderation": "관리", "kick": "추방", "ban": "차단",
+    "assignRole": "역할 할당", "inviteToServer": "서버에 초대",
+    "reportUser": "사용자 신고"
+  },
+
+  "channelSidebar": {
+    "title": "채널", "newChannel": "새 채널",
+    "backToChat": "채팅으로 돌아가기", "collapseSidebar": "사이드바 접기",
+    "ariaServerChannels": "서버 채널",
+    "menuNewFolder": "새 폴더", "menuNewText": "새 텍스트 채널",
+    "menuNewVoice": "새 음성 채널", "menuChannelSettings": "채널 설정",
+    "menuRenameChannel": "채널 이름 변경", "menuArchiveChannel": "채널 보관",
+    "menuDeleteChannel": "채널 삭제",
+    "confirmDeleteChannel": "이 채널을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "menuCreateText": "텍스트 채널 만들기", "menuCreateVoice": "음성 채널 만들기",
+    "menuRenameFolder": "폴더 이름 변경", "menuDeleteFolder": "폴더 삭제",
+    "confirmDeleteFolder": "이 폴더를 삭제하시겠습니까? 내부 채널은 삭제되지 않습니다.",
+    "placeholderFolder": "폴더 이름…", "placeholderVoice": "voice-channel-name…",
+    "placeholderText": "channel-name…", "channelOptions": "채널 옵션"
+  },
+
+  "deleteMessageDialog": {
+    "title": "메시지를 삭제하시겠습니까?",
+    "bodyOwner": "이 메시지가 삭제됩니다. 본인에게서만 삭제할지, 모두에게서 삭제할지 선택하세요.",
+    "bodyNonOwner": "이 작업은 본인 측에서만 메시지를 숨깁니다. 다른 멤버에게는 계속 표시됩니다.",
+    "deleteForEveryone": "모두에게서 삭제", "deleteForBoth": "양쪽에서 삭제",
+    "deleteForMe": "나에게서 삭제", "cancel": "취소"
+  },
+
+  "createServerModal": {
+    "title": "서버 만들기",
+    "description": "커뮤니티에 보금자리를 만들어주세요. 나만의 공간으로 꾸며보세요.",
+    "iconLabel": "서버 아이콘",
+    "iconHelper": "탭과 서버 브라우저에 표시됩니다",
+    "nameLabel": "서버 이름", "namePlaceholder": "내 멋진 서버",
+    "iconCharLabel": "아이콘 문자",
+    "iconCharPlaceholder": "비워두면 이름의 첫 글자를 사용합니다",
+    "colorLabel": "색상 테마", "privacyLabel": "프라이버시",
+    "publicTitle": "공개", "publicDesc": "서버 ID로 누구나 참가할 수 있습니다",
+    "privateTitle": "비공개", "privateDesc": "참가하려면 액세스 코드가 필요합니다",
+    "cancel": "취소", "submit": "서버 만들기",
+    "colors": {
+      "neutral": "뉴트럴", "red": "빨강", "orange": "주황", "yellow": "노랑",
+      "green": "초록", "teal": "청록", "blue": "파랑", "indigo": "남색",
+      "purple": "보라", "pink": "분홍"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "서버 참가",
+    "description": "기존 서버에 참가하려면 초대 ID를 입력하세요. 서버가 비공개인 경우 서버 소유자에게 액세스 코드를 요청하세요.",
+    "serverIdLabel": "서버 ID", "serverIdPlaceholder": "예: pixel-workshop",
+    "accessCodeLabel": "액세스 코드",
+    "accessCodePlaceholder": "공개 서버는 비워두세요",
+    "errorEmpty": "서버 ID를 입력해주세요.",
+    "errorNotFound": "서버를 찾을 수 없습니다. ID를 확인하고 다시 시도하세요.",
+    "cancel": "취소", "submit": "서버 참가"
+  },
+
+  "reportModal": {
+    "title": "사용자 신고",
+    "description": "이 사용자를 신고하는 이유를 선택하세요. 신고는 모더레이션 팀에서 검토합니다.",
+    "additionalLabel": "추가 정보 (선택사항)",
+    "additionalPlaceholder": "모더레이터에게 도움이 될 수 있는 추가 컨텍스트를 제공해주세요...",
+    "charCount": "{used}/{max}", "cancel": "취소",
+    "submitting": "제출 중...", "submit": "신고 제출",
+    "successTitle": "신고 제출 완료",
+    "successBody": "커뮤니티 안전을 지키는 데 도움을 주셔서 감사합니다. 신고를 검토하고 적절한 조치를 취하겠습니다.",
+    "close": "닫기",
+    "reasons": {
+      "harassment": { "label": "괴롭힘 또는 따돌림", "desc": "표적이 된 학대 또는 위협" },
+      "spam": { "label": "스팸", "desc": "원치 않거나 반복되는 메시지" },
+      "inappropriate": { "label": "부적절한 콘텐츠", "desc": "NSFW 또는 노골적인 자료" },
+      "violence": { "label": "협박 또는 폭력", "desc": "직접적인 협박 또는 폭력적 콘텐츠" },
+      "other": { "label": "기타", "desc": "그 외의 사유" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "이미지 미리보기", "zoomIn": "확대 (+)", "zoomOut": "축소 (-)",
+    "download": "다운로드", "openExternal": "새 탭에서 열기",
+    "moreOptions": "더 많은 옵션", "copyImage": "이미지 복사",
+    "copyLink": "링크 복사", "viewDetails": "세부정보 보기",
+    "close": "닫기 (Esc)", "previous": "이전 이미지", "next": "다음 이미지",
+    "filename": "파일 이름", "size": "크기"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Tenor 검색", "back": "뒤로", "close": "닫기",
+    "favorites": "즐겨찾기", "noFavorites": "아직 즐겨찾기가 없습니다",
+    "noResults": "GIF를 찾을 수 없습니다",
+    "removeFav": "즐겨찾기에서 제거", "addFav": "즐겨찾기에 추가",
+    "loading": "불러오는 중...", "clearSearch": "검색 지우기"
+  },
+
+  "qrScanner": {
+    "title": "QR 코드 스캔", "close": "닫기",
+    "hint": "Jolkr QR 코드에 카메라를 향하게 하세요",
+    "errorInvalid": "유효한 Jolkr QR 코드가 아닙니다",
+    "errorSelfAdd": "자신을 친구로 추가할 수 없습니다",
+    "errorCameraDenied": "카메라 액세스가 거부되었습니다. 카메라 권한을 허용하고 다시 시도하세요.",
+    "errorNoCamera": "이 기기에서 카메라를 찾을 수 없습니다.",
+    "errorStartCamera": "카메라를 시작할 수 없습니다: {msg}",
+    "errorUserNotFound": "사용자를 찾을 수 없습니다",
+    "successSent": "{username}에게 친구 요청을 보냈습니다",
+    "sending": "전송 중…", "sendBtn": "친구 요청 보내기"
+  },
+
+  "qrDisplay": {
+    "title": "내 QR 코드", "close": "닫기",
+    "hint": "친구가 이 코드를 스캔하여 추가할 수 있습니다",
+    "copyLink": "링크 복사", "copied": "복사됨!"
+  },
+
+  "toast": {
+    "friendRequestSent": "친구 요청을 보냈습니다",
+    "friendRequestFailed": "친구 요청 전송 실패",
+    "friendRequestNotSent": "친구 요청을 보낼 수 없습니다",
+    "startConversationFailed": "대화를 시작할 수 없습니다",
+    "createDmFailed": "DM을 만들 수 없습니다",
+    "reactionFailed": "반응 실패",
+    "pinFailed": "고정/해제 실패",
+    "unpinFailed": "고정 해제 실패",
+    "deleteChannelFailed": "채널 삭제 실패",
+    "leaveServerFailed": "서버 나가기 실패",
+    "deleteServerFailed": "서버 삭제 실패",
+    "createThreadFailed": "스레드를 만들 수 없습니다",
+    "inviteCopied": "초대 링크가 복사되었습니다!",
+    "inviteCopyFailed": "복사 실패 — 링크: {url}",
+    "inviteCreateFailed": "초대를 만들 수 없습니다",
+    "uploadFailed": "업로드 실패"
+  },
+
+  "call": {
+    "initiateFailed": "통화를 시작할 수 없습니다",
+    "acceptFailed": "통화를 받을 수 없습니다",
+    "incoming": {
+      "ariaVideo": "수신 영상 통화", "ariaVoice": "수신 통화",
+      "subtitleVideo": "전화 중 — 영상", "subtitleVoice": "전화 중…",
+      "decline": "거절", "accept": "수락"
+    },
+    "outgoing": {
+      "ariaVideo": "발신 영상 통화", "ariaVoice": "발신 통화",
+      "subtitleVideo": "전화 거는 중 — 영상…", "subtitleVoice": "전화 거는 중…",
+      "cancel": "취소"
+    },
+    "window": {
+      "ariaVideoCall": "영상 통화", "connecting": "연결 중…",
+      "youFallback": "나",
+      "mute": "음소거", "unmute": "음소거 해제",
+      "cameraUnavailable": "카메라를 사용할 수 없습니다",
+      "cameraOn": "카메라 켜기", "cameraOff": "카메라 끄기",
+      "switchCamera": "카메라 전환",
+      "minimize": "PIP로 최소화",
+      "minimizeAria": "최소화", "endCall": "통화 종료"
+    },
+    "pip": {
+      "aria": "PIP 통화",
+      "expand": "확대", "expandAria": "전체 화면으로 확대",
+      "endCall": "통화 종료"
+    },
+    "bar": {
+      "errorPrefix": "음성 오류: {error}", "dismiss": "닫기",
+      "connecting": "연결 중…", "connected": "음성 연결됨",
+      "voiceFallback": "음성",
+      "mute": "음소거", "unmute": "음소거 해제",
+      "muteAria": "마이크 음소거", "unmuteAria": "마이크 음소거 해제",
+      "deafen": "차단", "undeafen": "차단 해제",
+      "disconnect": "연결 끊기",
+      "disconnectAria": "음성에서 연결 끊기"
+    }
+  },
+
+  "update": {
+    "available": "업데이트 {version} 사용 가능",
+    "updateNow": "지금 업데이트",
+    "errorGeneric": "업데이트 실패"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Jolkr에 오신 것을 환영합니다",
+    "welcomeBody": "서버에 참가하거나 만들어 시작하거나, 다이렉트 메시지를 보내세요."
+  },
+
+  "player": {
+    "play": "재생", "pause": "일시정지",
+    "mute": "음소거", "unmute": "음소거 해제",
+    "volume": "음량",
+    "skipBack": "{seconds}초 뒤로", "skipForward": "{seconds}초 앞으로",
+    "fullscreen": "전체화면", "exitFullscreen": "전체화면 종료",
+    "enterPip": "PIP", "exitPip": "PIP 종료",
+    "settings": "설정",
+    "playbackSpeed": "재생 속도", "speedNormal": "보통",
+    "download": "다운로드"
+  },
+
+  "codeBlock": {
+    "loading": "로딩 중…",
+    "expand": "더 보기",
+    "collapse": "접기",
+    "download": "다운로드"
+  },
+
+  "themePicker": {
+    "title": "서버 테마",
+    "scrollToResize": "스크롤하여 크기 조정",
+    "noneLabel": "없음",
+    "modeLight": "라이트", "modeAuto": "자동", "modeDark": "다크",
+    "presets": {
+      "rose": "로즈", "coral": "코랄", "orange": "오렌지", "amber": "앰버",
+      "lime": "라임", "jolkr": "Jolkr", "emerald": "에메랄드", "cyan": "시안",
+      "sky": "스카이", "indigo": "인디고", "purple": "퍼플", "fuchsia": "푸시아"
+    }
+  },
+
+  "auth": {
+    "shared": { "emailLabel": "이메일", "passwordLabel": "비밀번호" },
+    "login": {
+      "title": "다시 오신 것을 환영합니다!", "subtitle": "다시 만나서 정말 반가워요!",
+      "submit": "로그인", "submitting": "로그인 중…",
+      "forgotPassword": "비밀번호를 잊으셨나요?",
+      "needAccount": "계정이 없으신가요?", "register": "가입하기"
+    },
+    "register": {
+      "title": "계정 만들기", "subtitle": "지금 Jolkr에 가입하세요",
+      "usernameLabel": "사용자 이름", "submit": "계속", "submitting": "생성 중…",
+      "haveAccount": "이미 계정이 있으신가요?", "login": "로그인"
+    },
+    "forgot": {
+      "title": "비밀번호를 잊으셨나요?",
+      "subtitle": "이메일을 입력하시면 재설정 링크를 보내드립니다.",
+      "emailPlaceholder": "you@example.com", "submit": "링크 보내기", "submitting": "전송 중…",
+      "rememberPassword": "비밀번호가 기억나셨나요?", "login": "로그인",
+      "checkEmailTitle": "이메일을 확인하세요",
+      "checkEmailBody": "{email}의 계정이 존재하는 경우, 비밀번호 재설정 링크를 보냈습니다.",
+      "backToLogin": "로그인으로 돌아가기", "errorGeneric": "문제가 발생했습니다"
+    },
+    "reset": {
+      "title": "새 비밀번호 설정", "subtitle": "아래에 새 비밀번호를 입력하세요.",
+      "newPasswordLabel": "새 비밀번호",
+      "newPasswordPlaceholder": "최소 {min}자", "newPasswordHint": "{min}자 이상",
+      "confirmPasswordLabel": "비밀번호 확인", "confirmPasswordPlaceholder": "새 비밀번호를 다시 입력하세요",
+      "submit": "비밀번호 재설정", "submitting": "재설정 중…",
+      "passwordsMismatch": "비밀번호가 일치하지 않습니다",
+      "passwordTooShort": "비밀번호는 최소 {min}자 이상이어야 합니다",
+      "errorGeneric": "비밀번호 재설정에 실패했습니다",
+      "successTitle": "비밀번호가 재설정되었습니다",
+      "successBody": "이제 새 비밀번호로 로그인할 수 있습니다.",
+      "goToLogin": "로그인으로 이동"
+    },
+    "verify": {
+      "verifyingTitle": "이메일을 확인하는 중…", "verifiedTitle": "이메일이 확인되었습니다!",
+      "verifiedBody": "이메일이 확인되었습니다. 이제 Jolkr를 사용할 수 있습니다.",
+      "goToApp": "Jolkr로 이동", "failedTitle": "확인 실패",
+      "failedSubtitle": "링크가 만료되었을 수 있습니다. 새 링크를 요청해 보세요.",
+      "requestNewLink": "새 링크 요청", "errorGeneric": "확인에 실패했습니다",
+      "pendingTitle": "이메일을 확인해 주세요",
+      "pendingBody": "{email}로 확인 링크를 보냈습니다. 받은 편지함을 확인하고 링크를 클릭하여 계속하세요.",
+      "yourEmailFallback": "귀하의 이메일",
+      "sentMessage": "확인 이메일을 보냈습니다! 받은 편지함을 확인하세요.",
+      "resendBtn": "확인 이메일 재전송", "sendingBtn": "전송 중…", "sentBtn": "이메일 전송됨",
+      "signOut": "로그아웃", "resendError": "전송에 실패했습니다"
+    }
+  },
+
+  "notFound": { "title": "페이지를 찾을 수 없습니다", "message": "찾으시는 페이지가 존재하지 않거나 이동되었습니다." },
+  "inviteAccept": { "joining": "서버에 참여 중…", "errorGeneric": "유효하지 않거나 만료된 초대" },
+
+  "settings": {
+    "nav": {
+      "userSettings": "사용자 설정", "appSettings": "앱 설정",
+      "account": "내 계정", "privacy": "개인정보 및 보안", "connections": "연결",
+      "appearance": "모양", "accessibility": "접근성", "voice": "음성 및 비디오",
+      "notifications": "알림", "keybinds": "단축키", "language": "언어"
+    },
+    "account": {
+      "title": "내 계정", "changeBannerColor": "배너 색상 변경", "editProfile": "프로필 편집",
+      "displayName": "표시 이름", "displayNamePlaceholder": "다른 사람들에게 보이는 이름",
+      "username": "사용자 이름", "bio": "자기소개", "bioPlaceholder": "자신에 대해 알려주세요…",
+      "noBio": "자기소개가 설정되지 않음",
+      "profileAlt": "프로필", "accountInfo": "계정 정보",
+      "emailLabel": "이메일", "emailMasked": "••••••••••",
+      "passwordSection": "비밀번호 및 인증",
+      "passwordHelp": "강력한 비밀번호와 2단계 인증으로 계정을 안전하게 유지하세요.",
+      "changePassword": "비밀번호 변경", "enable2FA": "2단계 인증 활성화",
+      "logOut": "로그아웃", "dangerZone": "위험 구역",
+      "deleteHelp": "계정 삭제는 영구적이며 되돌릴 수 없습니다.",
+      "deleteAccount": "계정 삭제"
+    },
+    "bannerColors": { "sage": "세이지", "gold": "골드", "ocean": "오션", "royal": "로얄", "berry": "베리", "coral": "코랄" },
+    "privacy": {
+      "title": "개인정보 및 보안",
+      "dmFilterTitle": "안전한 다이렉트 메시지",
+      "dmFilterDesc": "누가 다이렉트 메시지를 보낼 수 있는지 제어합니다.",
+      "dmAll": "모든 DM 허용", "dmFriends": "친구만", "dmNone": "아무도 안 됨",
+      "allowFriendReqsLabel": "친구 요청 허용",
+      "allowFriendReqsDesc": "다른 사람이 친구 요청을 보낼 수 있도록 허용합니다.",
+      "readReceiptsLabel": "읽음 확인",
+      "readReceiptsDesc": "DM에서 메시지를 읽은 시점을 표시합니다.",
+      "dataPrivacy": "데이터 및 개인정보",
+      "analyticsLabel": "사용 분석",
+      "analyticsDesc": "익명의 사용 데이터를 보내 Jolkr 개선에 도움을 주세요."
+    },
+    "connections": {
+      "title": "연결",
+      "intro": "계정을 연결하여 활동을 공유하고 통합을 잠금 해제하세요.",
+      "music": "음악", "gaming": "게임", "development": "개발", "streaming": "스트리밍", "video": "동영상", "social": "소셜"
+    },
+    "appearance": {
+      "title": "모양", "colorModeTitle": "색상 모드", "colorModeDesc": "선호하는 테마를 선택하세요.",
+      "colorModeLight": "라이트", "colorModeSystem": "시스템", "colorModeDark": "다크",
+      "messageDisplayTitle": "메시지 표시",
+      "messageDisplayDesc": "콤팩트 모드는 한 번에 더 많은 메시지를 표시합니다.",
+      "displayCozy": "편안 — 넓고 편안한 읽기",
+      "displayCompact": "콤팩트 — 한 번에 더 많은 메시지 표시",
+      "fontSizeTitle": "채팅 글꼴 크기 — {size}px",
+      "fontSizeDesc": "채팅 메시지의 텍스트 크기를 조정합니다."
+    },
+    "accessibility": {
+      "title": "접근성",
+      "reducedMotionLabel": "동작 감소",
+      "reducedMotionDesc": "앱 전체의 애니메이션과 전환을 최소화합니다.",
+      "highContrastLabel": "높은 대비",
+      "highContrastDesc": "텍스트와 배경 간의 대비를 높입니다.",
+      "roleColorsLabel": "역할 색상 표시",
+      "roleColorsDesc": "구성원 목록에서 색상으로 구분된 역할 이름을 표시합니다."
+    },
+    "voice": {
+      "title": "음성 및 비디오",
+      "inputDevice": "입력 장치", "outputDevice": "출력 장치",
+      "outputUnsupported": "이 브라우저에서는 출력 장치 선택을 지원하지 않습니다.",
+      "outputUnsupportedTitle": "이 브라우저에서 지원되지 않음",
+      "systemDefault": "시스템 기본값",
+      "microphoneFallback": "마이크 ({id}…)", "speakersFallback": "스피커 ({id}…)", "cameraFallback": "카메라 ({id}…)",
+      "inputVolume": "입력 볼륨 — {volume}%", "outputVolume": "출력 볼륨 — {volume}%",
+      "cameraSection": "카메라", "cameraDevice": "카메라 장치", "cameraUnavailable": "카메라를 사용할 수 없음",
+      "advancedSection": "고급",
+      "noiseSuppressionLabel": "노이즈 억제",
+      "noiseSuppressionDesc": "음성 통화 중 배경 소음을 필터링합니다.",
+      "echoCancellationLabel": "에코 제거",
+      "echoCancellationDesc": "마이크 입력에서 에코를 제거합니다.",
+      "autoGainLabel": "자동 게인 제어",
+      "autoGainDesc": "마이크 감도를 자동으로 조정합니다."
+    },
+    "notifications": {
+      "title": "알림",
+      "desktopLabel": "데스크톱 알림 활성화",
+      "desktopDesc": "앱이 백그라운드에 있을 때 알림을 표시합니다.",
+      "soundsLabel": "알림 소리",
+      "soundsDesc": "알림을 받을 때 소리를 재생합니다.",
+      "permissionDeniedToast": "알림 권한 거부됨 — 브라우저/OS 설정에서 활성화하세요.",
+      "unsupportedToast": "이 환경에서는 데스크톱 알림이 지원되지 않습니다.",
+      "triggers": "알림 트리거",
+      "mentionsLabel": "@멘션", "mentionsDesc": "채널에서 누군가 멘션할 때 알립니다.",
+      "dmsLabel": "다이렉트 메시지", "dmsDesc": "모든 새 다이렉트 메시지를 알립니다.",
+      "badgeLabel": "읽지 않음 배지", "badgeDesc": "앱 아이콘에 읽지 않은 메시지 수 배지를 표시합니다."
+    },
+    "keybinds": {
+      "title": "단축키", "intro": "기본 키보드 단축키. 사용자 정의 단축키 곧 제공 예정.",
+      "openSwitcher": "빠른 전환 열기", "toggleMute": "음소거 전환", "toggleDeafen": "음성 차단 전환",
+      "markRead": "서버를 읽음으로 표시", "jumpUnread": "가장 오래된 읽지 않은 항목으로 이동",
+      "uploadFile": "파일 업로드", "search": "검색", "focusInput": "채팅 입력에 포커스",
+      "editLast": "마지막 메시지 편집", "replyMessage": "메시지에 답장", "toggleSettings": "설정 전환"
+    },
+    "language": {
+      "title": "언어", "displayTitle": "표시 언어",
+      "displayDesc": "앱 전체에서 사용되는 언어를 선택합니다.",
+      "saveError": "언어 설정 저장 실패"
+    }
+  },
+
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "서버 설정", "moderation": "모더레이션", "dangerZone": "위험 구역",
+      "overview": "개요", "roles": "역할", "invites": "초대", "bans": "차단",
+      "auditLog": "감사 로그", "deleteServer": "서버 삭제"
+    },
+    "leaveBtn": "서버 나가기",
+    "overview": {
+      "bannerTitle": "배너 배경",
+      "bannerSolid": "단색", "bannerGradients": "그라데이션", "bannerImage": "이미지",
+      "bannerImageUrl": "이미지 URL (https://…)",
+      "bannerUploading": "업로드 중…", "bannerUpload": "업로드", "bannerRemove": "이미지 배너 제거",
+      "iconAlt": "서버 아이콘",
+      "namePlaceholder": "서버 이름",
+      "descriptionPlaceholder": "서버에 대해 어떤 내용인가요?",
+      "discoveryLabel": "서버 검색",
+      "discoveryDesc": "서버 브라우저에서 서버를 찾을 수 있도록 만들기"
+    },
+    "gradients": {
+      "oceanBreeze": "오션 브리즈", "sunsetGlow": "선셋 글로우", "forestMist": "포레스트 미스트",
+      "royalVelvet": "로얄 벨벳", "berryBurst": "베리 버스트", "midnight": "미드나잇"
+    },
+    "roles": {
+      "allRoles": "모든 역할", "createRole": "역할 만들기",
+      "permissionsTitle": "권한", "clearPermissions": "권한 지우기",
+      "deleteRole": "역할 삭제", "createError": "역할 생성 실패"
+    },
+    "invites": {
+      "expireAfter": "만료 시간", "maxUses": "최대 사용 횟수",
+      "expireNever": "안 함", "expire30m": "30분", "expire1h": "1시간", "expire6h": "6시간",
+      "expire12h": "12시간", "expire1d": "1일", "expire7d": "7일",
+      "usesUnlimited": "제한 없음", "uses1": "1회", "uses5": "5회",
+      "uses10": "10회", "uses25": "25회", "uses50": "50회", "uses100": "100회",
+      "creating": "생성 중…", "createBtn": "초대 만들기", "createError": "초대 생성 실패",
+      "emptyTitle": "아직 초대 없음",
+      "emptyDesc": "위에서 초대를 만들어 사람들을 서버에 초대하세요.",
+      "allInvites": "모든 초대", "copyTitle": "클릭하여 초대 링크 복사",
+      "copiedToast": "초대 링크가 복사되었습니다!", "copyFailedToast": "복사 실패 — 링크: {url}",
+      "usesProgress": "{used} / {max}회 사용", "expiresAt": "{date}에 만료", "revoke": "취소"
+    },
+    "bans": {
+      "emptyTitle": "차단된 사용자 없음",
+      "emptyDesc": "서버가 깨끗합니다! 차단된 사용자가 여기에 표시됩니다.",
+      "reasonLabel": "이유: {reason}", "noReason": "이유가 제공되지 않음",
+      "bannedAt": "{date}에 차단됨", "unban": "차단 해제"
+    },
+    "audit": {
+      "emptyTitle": "아직 활동 없음",
+      "emptyDesc": "서버 작업이 수행되면 감사 로그 항목이 여기에 표시됩니다.",
+      "byUser": "{name}이(가)", "onTarget": " {type}: {idShort}…에 대해",
+      "reasonLabel": "이유: {reason}",
+      "actions": {
+        "MemberJoin": "구성원 참가", "MemberLeave": "구성원 떠남", "MemberUpdate": "구성원 업데이트",
+        "ChannelCreate": "채널 생성", "ChannelUpdate": "채널 업데이트", "ChannelDelete": "채널 삭제",
+        "RoleCreate": "역할 생성", "RoleUpdate": "역할 업데이트", "RoleDelete": "역할 삭제",
+        "ServerUpdate": "서버 업데이트", "ServerDelete": "서버 삭제",
+        "BanCreate": "사용자 차단", "BanDelete": "사용자 차단 해제", "Kick": "사용자 추방"
+      }
+    },
+    "delete": {
+      "title": "서버 삭제",
+      "warning": "이 작업은 되돌릴 수 없습니다. 모든 채널, 메시지 및 데이터가 영구적으로 삭제됩니다.",
+      "btn": "서버 삭제"
+    },
+    "leaveConfirm": {
+      "title": "서버 나가기",
+      "body": "정말로 {serverName}에서 나가시겠습니까? 초대 없이는 다시 참여할 수 없습니다.",
+      "confirm": "서버 나가기"
+    },
+    "deleteConfirm": {
+      "title": "서버 삭제",
+      "body": "정말로 {serverName}을(를) 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "confirm": "서버 삭제"
+    }
+  },
+
+  "channelSettings": {
+    "nav": { "channelSettings": "채널 설정", "overview": "개요", "permissions": "권한" },
+    "overview": {
+      "title": "채널 개요", "nameLabel": "채널 이름", "topicLabel": "채널 주제",
+      "topicPlaceholder": "이 채널이 무엇에 관한 것인지 모두에게 알려주세요",
+      "systemNotice": "이 채널은 시스템 채널이며 수정할 수 없습니다.",
+      "nsfwLabel": "NSFW 채널", "nsfwDesc": "연령 제한 콘텐츠",
+      "slowmodeLabel": "슬로우 모드 (초)",
+      "slowmodeHint": "사용자는 간격당 하나의 메시지를 보낼 수 있습니다. 0 = 비활성화."
+    },
+    "permissions": {
+      "title": "채널 권한", "addOverride": "재정의 추가",
+      "systemNotice": "시스템 채널 권한은 수정할 수 없습니다.",
+      "rolesMembers": "역할 / 구성원", "removeOverride": "재정의 제거",
+      "addModalTitle": "권한 재정의 추가",
+      "typeLabel": "유형", "typeRole": "역할", "typeMember": "구성원",
+      "selectRole": "역할 선택…",
+      "memberIdLabel": "구성원 ID", "memberIdPlaceholder": "구성원 ID 입력", "roleLabel": "역할"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "일반 서버 권한",
+    "groupMember": "구성원 권한",
+    "groupText": "텍스트 채널 권한",
+    "groupVoice": "음성 채널 권한",
+    "ariaEnable": "{label} 활성화", "ariaDisable": "{label} 비활성화",
+    "view_channels":   { "label": "채널 보기",            "desc": "기본적으로 채널을 볼 수 있도록 허용 (비공개 채널 제외)." },
+    "manage_channels": { "label": "채널 관리",            "desc": "채널 생성, 편집 또는 삭제를 허용합니다." },
+    "manage_server":   { "label": "서버 관리",            "desc": "서버 이름, 아이콘 및 기타 설정 변경을 허용합니다." },
+    "kick_members":    { "label": "구성원 추방",          "desc": "서버에서 다른 구성원을 추방하도록 허용합니다." },
+    "ban_members":     { "label": "구성원 차단",          "desc": "서버에서 다른 구성원을 차단하도록 허용합니다." },
+    "manage_roles":    { "label": "역할 관리",            "desc": "새 역할을 만들고 자신의 최고 역할보다 낮은 역할을 편집/삭제할 수 있습니다." },
+    "create_invite":   { "label": "초대 만들기",          "desc": "서버에 초대 링크를 만들 수 있도록 허용합니다." },
+    "send_messages":   { "label": "메시지 보내기",        "desc": "텍스트 채널에서 메시지를 보낼 수 있습니다." },
+    "manage_messages": { "label": "메시지 관리",          "desc": "메시지 삭제 및 고정을 허용합니다." },
+    "embed_links":     { "label": "링크 임베드",          "desc": "메시지에 링크를 임베드할 수 있도록 허용합니다." },
+    "attach_files":    { "label": "파일 첨부",            "desc": "메시지에 파일을 첨부할 수 있도록 허용합니다." },
+    "add_reactions":   { "label": "반응 추가",            "desc": "메시지에 반응을 추가할 수 있습니다." },
+    "mention_everyone":{ "label": "@everyone 멘션",       "desc": "@everyone 및 @here를 사용할 수 있습니다." },
+    "read_message_history": { "label": "메시지 기록 읽기", "desc": "이전 메시지를 읽을 수 있도록 허용합니다." },
+    "use_external_emojis":  { "label": "외부 이모지 사용",  "desc": "다른 서버의 이모지를 사용할 수 있습니다." },
+    "send_tts_messages":    { "label": "TTS 메시지 보내기", "desc": "텍스트 음성 변환 메시지를 보낼 수 있습니다." },
+    "connect":         { "label": "연결",                 "desc": "음성 채널에 연결할 수 있도록 허용합니다." },
+    "speak":           { "label": "말하기",               "desc": "음성 채널에서 말할 수 있도록 허용합니다." },
+    "video":           { "label": "비디오",               "desc": "음성 채널에서 비디오를 공유할 수 있습니다." },
+    "mute_members":    { "label": "구성원 음소거",        "desc": "음성 채널에서 다른 구성원을 음소거할 수 있습니다." },
+    "deafen_members":  { "label": "구성원 음성 차단",     "desc": "음성 채널에서 다른 구성원의 음성을 차단할 수 있습니다." },
+    "move_members":    { "label": "구성원 이동",          "desc": "구성원을 음성 채널 간에 이동할 수 있습니다." },
+    "use_voice_activity": { "label": "음성 활동 사용",    "desc": "음성 활동 감지를 사용할 수 있습니다." },
+    "priority_speaker":{ "label": "우선 발언자",          "desc": "말할 때 다른 사람의 볼륨을 낮춥니다." },
+    "administrator":   { "label": "관리자",               "desc": "모든 권한을 부여하고 채널 권한을 우회합니다. 위험한 권한입니다!" }
+  }
+}

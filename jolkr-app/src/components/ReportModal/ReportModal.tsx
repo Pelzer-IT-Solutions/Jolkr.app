@@ -2,43 +2,13 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Flag, AlertCircle } from 'lucide-react'
 import type { MemberDisplay } from '../../types'
+import { useT } from '../../hooks/useT'
 import s from './ReportModal.module.css'
 
-type ReportReason = 'harassment' | 'spam' | 'nsfw' | 'violence' | 'other'
+type ReportReason = 'harassment' | 'spam' | 'inappropriate' | 'violence' | 'other'
 
-interface ReportOption {
-  value: ReportReason
-  label: string
-  description: string
-}
-
-const REPORT_OPTIONS: ReportOption[] = [
-  {
-    value: 'harassment',
-    label: 'Harassment or Bullying',
-    description: 'Targeted abuse or intimidation',
-  },
-  {
-    value: 'spam',
-    label: 'Spam',
-    description: 'Unwanted or repetitive messages',
-  },
-  {
-    value: 'nsfw',
-    label: 'Inappropriate Content',
-    description: 'NSFW or explicit material',
-  },
-  {
-    value: 'violence',
-    label: 'Threats or Violence',
-    description: 'Direct threats or violent content',
-  },
-  {
-    value: 'other',
-    label: 'Other',
-    description: 'Something else',
-  },
-]
+/** Reasons keyed for `reportModal.reasons.<key>.{label,desc}` lookup. */
+const REPORT_REASON_KEYS: ReportReason[] = ['harassment', 'spam', 'inappropriate', 'violence', 'other']
 
 interface Props {
   open: boolean
@@ -48,6 +18,7 @@ interface Props {
 }
 
 export function ReportModal({ open, onClose, user, onSubmit }: Props) {
+  const { t } = useT()
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null)
   const [details, setDetails] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -97,12 +68,12 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
             <div className={s.successIcon}>
               <Flag size={32} strokeWidth={1.5} />
             </div>
-            <h3 className={`${s.title} txt-title`}>Report Submitted</h3>
+            <h3 className={`${s.title} txt-title`}>{t('reportModal.successTitle')}</h3>
             <p className={`${s.description} txt-small`}>
-              Thank you for helping keep our community safe. We'll review your report and take appropriate action.
+              {t('reportModal.successBody')}
             </p>
             <button className={s.closeBtn} onClick={onClose}>
-              <span className="txt-small txt-medium">Close</span>
+              <span className="txt-small txt-medium">{t('reportModal.close')}</span>
             </button>
           </div>
         ) : (
@@ -112,7 +83,7 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
                 <AlertCircle size={20} strokeWidth={1.5} />
               </div>
               <div>
-                <h3 className={`${s.title} txt-title`}>Report User</h3>
+                <h3 className={`${s.title} txt-title`}>{t('reportModal.title')}</h3>
                 <p className={`${s.subtitle} txt-tiny`}>
                   @{user.username}
                 </p>
@@ -121,22 +92,22 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
 
             <div className={s.content}>
               <p className={`${s.description} txt-small`}>
-                Please select a reason for reporting this user. Your report will be reviewed by our moderation team.
+                {t('reportModal.description')}
               </p>
 
               <div className={s.options}>
-                {REPORT_OPTIONS.map(option => (
+                {REPORT_REASON_KEYS.map(key => (
                   <button
-                    key={option.value}
-                    className={`${s.option} ${selectedReason === option.value ? s.selected : ''}`}
-                    onClick={() => setSelectedReason(option.value)}
+                    key={key}
+                    className={`${s.option} ${selectedReason === key ? s.selected : ''}`}
+                    onClick={() => setSelectedReason(key)}
                   >
                     <div className={s.optionRadio}>
                       <div className={s.radioInner} />
                     </div>
                     <div className={s.optionText}>
-                      <span className={`${s.optionLabel} txt-small txt-medium`}>{option.label}</span>
-                      <span className={`${s.optionDescription} txt-tiny`}>{option.description}</span>
+                      <span className={`${s.optionLabel} txt-small txt-medium`}>{t(`reportModal.reasons.${key}.label`)}</span>
+                      <span className={`${s.optionDescription} txt-tiny`}>{t(`reportModal.reasons.${key}.desc`)}</span>
                     </div>
                   </button>
                 ))}
@@ -144,23 +115,23 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
 
               <div className={s.field}>
                 <label className={`${s.label} txt-small txt-semibold`}>
-                  Additional Details (optional)
+                  {t('reportModal.additionalLabel')}
                 </label>
                 <textarea
                   className={`${s.textarea} txt-small`}
                   value={details}
                   onChange={e => setDetails(e.target.value)}
-                  placeholder="Provide any additional context that might help our moderators..."
+                  placeholder={t('reportModal.additionalPlaceholder')}
                   rows={3}
                   maxLength={500}
                 />
-                <span className={`${s.charCount} txt-tiny`}>{details.length}/500</span>
+                <span className={`${s.charCount} txt-tiny`}>{t('reportModal.charCount', { used: details.length, max: 500 })}</span>
               </div>
             </div>
 
             <div className={s.footer}>
               <button className={s.cancelBtn} onClick={onClose}>
-                <span className="txt-small">Cancel</span>
+                <span className="txt-small">{t('reportModal.cancel')}</span>
               </button>
               <button
                 className={s.submitBtn}
@@ -168,11 +139,11 @@ export function ReportModal({ open, onClose, user, onSubmit }: Props) {
                 onClick={handleSubmit}
               >
                 {isSubmitting ? (
-                  <span className="txt-small">Submitting...</span>
+                  <span className="txt-small">{t('reportModal.submitting')}</span>
                 ) : (
                   <>
                     <Flag size={14} strokeWidth={1.5} />
-                    <span className="txt-small">Submit Report</span>
+                    <span className="txt-small">{t('reportModal.submit')}</span>
                   </>
                 )}
               </button>

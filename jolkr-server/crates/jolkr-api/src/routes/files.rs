@@ -119,12 +119,22 @@ fn safe_content_headers(content_type: &str, filename: &str) -> (String, String) 
         );
     }
 
-    // Safe inline types: images, video, audio, PDF, plain text
+    // Safe inline types: images, video, audio, PDF, text, HLS playlists,
+    // and structured data formats. The script-capable types (text/html,
+    // text/javascript, image/svg+xml) were already short-circuited above
+    // to attachment, so a `text/*` catch-all is safe here.
     if ct_lower.starts_with("image/")
         || ct_lower.starts_with("video/")
         || ct_lower.starts_with("audio/")
+        || ct_lower.starts_with("text/")
         || ct_lower == "application/pdf"
-        || ct_lower == "text/plain"
+        || ct_lower == "application/json"
+        || ct_lower == "application/xml"
+        || ct_lower == "application/yaml"
+        || ct_lower == "application/x-yaml"
+        || ct_lower == "application/toml"
+        || ct_lower == "application/vnd.apple.mpegurl"
+        || ct_lower == "application/x-mpegurl"
     {
         return (content_type.to_string(), "inline".to_string());
     }

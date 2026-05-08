@@ -123,6 +123,15 @@ class WsClient {
         break;
       case 'HeartbeatAck':
         break;
+      case 'Error': {
+        // Server-side gateway errors (e.g. permission denied on Subscribe).
+        // Log centrally so the failure is visible without every consumer
+        // having to handle it; consumers can still listen for finer-grained
+        // recovery via the dispatched event below.
+        const msg = typeof d?.message === 'string' ? d.message : 'unknown';
+        console.warn('[ws] gateway error:', msg);
+        break;
+      }
       default:
         break;
     }

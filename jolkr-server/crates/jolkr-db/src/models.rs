@@ -41,6 +41,9 @@ pub struct UserRow {
     pub dm_filter: String,
     /// Privacy: whether others can send friend requests to this user.
     pub allow_friend_requests: bool,
+    /// Preferred UI language (BCP-47 lite — e.g. `en-US`, `fr`, `zh-CN`).
+    /// `None` means "use client default"; whitelist enforcement is at the API.
+    pub preferred_language: Option<String>,
     /// Creation timestamp.
     pub created_at: DateTime<Utc>,
     /// Last-update timestamp.

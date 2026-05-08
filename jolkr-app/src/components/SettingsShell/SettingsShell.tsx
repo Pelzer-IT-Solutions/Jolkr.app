@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChevronRight, X } from 'lucide-react'
 import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { useT } from '../../hooks/useT'
 import s from './SettingsShell.module.css'
 
 /** A single nav item rendered in the shell's left rail. */
@@ -63,6 +64,7 @@ export function SettingsShell<TSection extends string>({
   scrollNoPadding,
   children,
 }: SettingsShellProps<TSection>) {
+  const { t } = useT()
   // One animation tick per group + per item, plus 1 for the optional header.
   const navTotal = useMemo(
     () => navGroups.reduce((sum, g) => sum + 1 + g.items.length, 0) + (navHeader ? 1 : 0),
@@ -82,7 +84,7 @@ export function SettingsShell<TSection extends string>({
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={s.modal}>
-        <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
+        <button className={s.closeBtnOverlay} onClick={onClose} aria-label={t('common.close')}>
           <X size={18} strokeWidth={1.5} />
         </button>
 

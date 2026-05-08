@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as api from '../../api/client'
 import type { Poll } from '../../api/types'
+import { useT } from '../../hooks/useT'
 import s from './PollDisplay.module.css'
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
  * mutation.
  */
 export function PollDisplay({ poll }: Props) {
+  const { t, tn } = useT()
   // `Date.now()` is impure — capture it in state and refresh once the
   // expiry passes so the "Closed" badge appears without a manual reload.
   const [now, setNow] = useState(() => Date.now())
@@ -46,8 +48,8 @@ export function PollDisplay({ poll }: Props) {
   return (
     <div className={s.poll} onClick={(e) => e.stopPropagation()}>
       <div className={s.header}>
-        <span className={`${s.question} txt-body txt-semibold`}>{poll.question}</span>
-        {expired && <span className={`${s.closedBadge} txt-tiny txt-semibold`}>Closed</span>}
+        <span className={`${s.question} txt-body txt-semibold`} dir="auto">{poll.question}</span>
+        {expired && <span className={`${s.closedBadge} txt-tiny txt-semibold`}>{t('poll.display.closed')}</span>}
       </div>
       <div className={s.options}>
         {poll.options.map((opt) => {
@@ -63,16 +65,16 @@ export function PollDisplay({ poll }: Props) {
               disabled={expired}
             >
               <div className={s.bar} style={{ width: `${pct}%` }} aria-hidden />
-              <span className={`${s.optionText} txt-small`}>{opt.text}</span>
+              <span className={`${s.optionText} txt-small`} dir="auto">{opt.text}</span>
               <span className={`${s.optionCount} txt-tiny txt-medium`}>{count}</span>
             </button>
           )
         })}
       </div>
       <div className={`${s.footer} txt-tiny`}>
-        {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
-        {poll.multi_select && <span className={s.footerMeta}> · multiple choice</span>}
-        {poll.anonymous && <span className={s.footerMeta}> · anonymous</span>}
+        {tn('poll.display.voteCount', totalVotes)}
+        {poll.multi_select && <span className={s.footerMeta}> · {t('poll.display.multipleChoice')}</span>}
+        {poll.anonymous && <span className={s.footerMeta}> · {t('poll.display.anonymous')}</span>}
       </div>
     </div>
   )

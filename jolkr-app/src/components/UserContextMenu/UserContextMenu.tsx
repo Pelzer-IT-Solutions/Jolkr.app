@@ -6,6 +6,7 @@ import type { Server as ApiServer, Role } from '../../api/types'
 import Avatar from '../Avatar/Avatar'
 import ServerIconComp from '../ServerIcon/ServerIcon'
 import { useClampedMenuPosition } from '../../hooks/useClampedMenuPosition'
+import { useT } from '../../hooks/useT'
 import s from './UserContextMenu.module.css'
 
 // Extend API Server with frontend-only display fields
@@ -71,6 +72,7 @@ export function UserContextMenu({
   isMuted = false,
   isFriend = false,
 }: Props) {
+  const { t } = useT()
   const menuRef = useRef<HTMLDivElement>(null)
   // Clamp the menu inside the viewport — without this it overflows when the
   // user right-clicks near a screen edge (e.g. inside the left sidebar).
@@ -173,41 +175,41 @@ export function UserContextMenu({
         {onViewProfile && (
           <button className={s.item} onClick={handleViewProfile}>
             <UserIcon size={14} strokeWidth={1.5} />
-            <span className="txt-small">View Profile</span>
+            <span className="txt-small">{t('userContextMenu.viewProfile')}</span>
           </button>
         )}
 
         {!isFriend && onAddFriend && (
           <button className={s.item} onClick={handleAddFriend}>
             <UserPlus size={14} strokeWidth={1.5} />
-            <span className="txt-small">Add Friend</span>
+            <span className="txt-small">{t('userContextMenu.addFriend')}</span>
           </button>
         )}
         {isFriend && onRemoveFriend && (
           <button className={`${s.item} ${s.danger}`} onClick={handleRemoveFriend}>
             <UserMinus size={14} strokeWidth={1.5} />
-            <span className="txt-small">Remove Friend</span>
+            <span className="txt-small">{t('userContextMenu.removeFriend')}</span>
           </button>
         )}
 
         {onMute && (
           <button className={s.item} onClick={handleMute}>
             <VolumeX size={14} strokeWidth={1.5} />
-            <span className="txt-small">{isMuted ? 'Unmute' : 'Mute'}</span>
+            <span className="txt-small">{isMuted ? t('userContextMenu.unmute') : t('userContextMenu.mute')}</span>
           </button>
         )}
 
         {onBlock && (
           <button className={`${s.item} ${s.danger}`} onClick={handleBlock}>
             <CircleSlash size={14} strokeWidth={1.5} />
-            <span className="txt-small">{isBlocked ? 'Unblock' : 'Block'}</span>
+            <span className="txt-small">{isBlocked ? t('userContextMenu.unblock') : t('userContextMenu.block')}</span>
           </button>
         )}
 
         {onCloseDm && (
           <button className={`${s.item} ${s.danger}`} onClick={handleCloseDm}>
             <X size={14} strokeWidth={1.5} />
-            <span className="txt-small">Close DM</span>
+            <span className="txt-small">{t('userContextMenu.closeDm')}</span>
           </button>
         )}
 
@@ -215,18 +217,18 @@ export function UserContextMenu({
           <>
             <div className={s.divider} />
             <div className={s.sectionLabel}>
-              <span className="txt-tiny">Moderation</span>
+              <span className="txt-tiny">{t('userContextMenu.moderation')}</span>
             </div>
             {canKick && onKick && (
               <button className={`${s.item} ${s.danger}`} onClick={() => { onKick(menu.user.user_id); onClose() }}>
                 <UserMinus size={14} strokeWidth={1.5} />
-                <span className="txt-small">Kick</span>
+                <span className="txt-small">{t('userContextMenu.kick')}</span>
               </button>
             )}
             {canBan && onBan && (
               <button className={`${s.item} ${s.danger}`} onClick={() => { onBan(menu.user.user_id); onClose() }}>
                 <Gavel size={14} strokeWidth={1.5} />
-                <span className="txt-small">Ban</span>
+                <span className="txt-small">{t('userContextMenu.ban')}</span>
               </button>
             )}
           </>
@@ -237,7 +239,7 @@ export function UserContextMenu({
             <div className={s.divider} />
             <div className={s.sectionLabel}>
               <Shield size={12} strokeWidth={1.5} />
-              <span className="txt-tiny">Assign Role</span>
+              <span className="txt-tiny">{t('userContextMenu.assignRole')}</span>
             </div>
             <div className={s.serverList}>
               {roles.filter(r => !r.is_default).map(role => {
@@ -266,7 +268,7 @@ export function UserContextMenu({
             <div className={s.divider} />
             <div className={s.sectionLabel}>
               <Link2 size={12} strokeWidth={1.5} />
-              <span className="txt-tiny">Invite to Server</span>
+              <span className="txt-tiny">{t('userContextMenu.inviteToServer')}</span>
             </div>
             <div className={s.serverList}>
               {servers.map(server => (
@@ -288,7 +290,7 @@ export function UserContextMenu({
         {onReport && (
           <button className={`${s.item} ${s.danger}`} onClick={handleReport}>
             <Flag size={14} strokeWidth={1.5} />
-            <span className="txt-small">Report User</span>
+            <span className="txt-small">{t('userContextMenu.reportUser')}</span>
           </button>
         )}
       </div>,

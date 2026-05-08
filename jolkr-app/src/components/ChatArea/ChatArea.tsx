@@ -4,6 +4,7 @@ import {
   PanelLeftOpen, AlignLeft, Users, Smile,
   Paperclip, ImagePlay, SendHorizontal,
   Bold, Italic, Strikethrough, Code, Pin, BarChart3,
+  Pencil,
 } from 'lucide-react'
 import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 import type { User } from '../../api/types'
@@ -18,13 +19,72 @@ import { PollCreator } from '../Poll/PollCreator'
 import { useCallStore } from '../../stores/call'
 import { useVoiceStore } from '../../stores/voice'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useT } from '../../hooks/useT'
+import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
+import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
+import PromptDialog from '../ui/PromptDialog/PromptDialog'
 import s from './ChatArea.module.css'
 
 // Attachment size cap (mirrors backend MAX_ATTACHMENT_SIZE).
 // MB literal drives both the byte cap and the human-readable label so they can't drift.
-const MAX_FILE_SIZE_MB = 25
+const MAX_FILE_SIZE_MB = 250
 const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
 const MAX_FILE_SIZE_LABEL = `${MAX_FILE_SIZE_MB} MB`
+
+// Mirrors Discord's "long message" cutover: anything longer than this is
+// promoted to a message.txt attachment so the inline encrypted message body
+// stays small and readable. Tune in concert with the server's per-message
+// content cap (currently effectively unbounded in our schema, so this is
+// purely a UX choice).
+const MAX_INLINE_TEXT_LENGTH = 5000
+
+// Browsers leave `File.type` empty for extensions they don't recognise
+// (notably .m3u8, .mkv, and most code/source files). We fill it in from
+// the filename so the server stores a useful content-type and our renderer
+// can route the attachment to the right tile (video player, music player,
+// code block, etc). Mappings stay deliberately conservative — anything
+// not listed keeps the browser's empty type and lands in the generic
+// file chip.
+const EXT_TO_MIME: Record<string, string> = {
+  // Streaming + extra video container
+  m3u8: 'application/vnd.apple.mpegurl',
+  mkv: 'video/x-matroska',
+  // Structured data / config
+  json: 'application/json',
+  xml:  'application/xml',
+  yaml: 'application/yaml',
+  yml:  'application/yaml',
+  toml: 'application/toml',
+  // Code & plain-text — all served as text/plain so the browser doesn't
+  // try to execute them when a chip is opened directly. Display routing
+  // happens FE-side via the filename suffix, not the MIME.
+  js: 'text/plain', mjs: 'text/plain', cjs: 'text/plain',
+  ts: 'text/plain', tsx: 'text/plain', jsx: 'text/plain',
+  py: 'text/plain', rb: 'text/plain', php: 'text/plain',
+  rs: 'text/plain', go: 'text/plain', java: 'text/plain', kt: 'text/plain', swift: 'text/plain',
+  c: 'text/plain', h: 'text/plain', cpp: 'text/plain', hpp: 'text/plain', cs: 'text/plain',
+  lua: 'text/plain', sh: 'text/plain', bash: 'text/plain', zsh: 'text/plain', ps1: 'text/plain',
+  sql: 'text/plain', graphql: 'text/plain', gql: 'text/plain',
+  css: 'text/plain', scss: 'text/plain', less: 'text/plain',
+  md: 'text/plain', markdown: 'text/plain',
+  log: 'text/plain', txt: 'text/plain',
+  ini: 'text/plain', conf: 'text/plain', cfg: 'text/plain', env: 'text/plain',
+  vue: 'text/plain', svelte: 'text/plain',
+  dockerfile: 'text/plain', makefile: 'text/plain',
+  diff: 'text/plain', patch: 'text/plain',
+  // SVG: keep as text so the CodeBlockTile can show source; the server
+  // already forces SVG to download for safety regardless.
+  svg: 'image/svg+xml',
+  // HTML kept text/plain so we render it as code, never as live markup
+  html: 'text/plain', htm: 'text/plain',
+}
+function normalizeFileType(file: File): File {
+  if (file.type) return file
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  const mime = ext ? EXT_TO_MIME[ext] : undefined
+  if (!mime) return file
+  return new File([file], file.name, { type: mime, lastModified: file.lastModified })
+}
 
 export interface MentionableUser {
   id: string
@@ -71,6 +131,8 @@ interface Props {
 }
 
 export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
+  const { t, tx } = useT()
+  const fmt = useLocaleFormatters()
   const listRef    = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<RichInputHandle>(null)
   const contentRef = useRef('')
@@ -92,6 +154,9 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
   // File attachment state
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [oversizeAlert, setOversizeAlert] = useState<string | null>(null)
+  // Index of the pending file currently being renamed (open prompt-dialog).
+  const [renamingFileIdx, setRenamingFileIdx] = useState<number | null>(null)
 
   // Drag & drop state. We use a counter to handle the dragenter/leave bubble
   // pattern — a single ref-counted depth lets us correctly detect "actually
@@ -104,11 +169,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     const list = Array.from(incoming)
     const oversized = list.filter((f) => f.size > MAX_FILE_SIZE)
     if (oversized.length) {
-      alert(`File too large (max ${MAX_FILE_SIZE_LABEL}): ${oversized.map((f) => f.name).join(', ')}`)
+      setOversizeAlert(t('chat.dropZone.tooLargeAlert', {
+        limit: MAX_FILE_SIZE_LABEL,
+        names: oversized.map((f) => f.name).join(', '),
+      }))
     }
-    const valid = list.filter((f) => f.size <= MAX_FILE_SIZE)
+    const valid = list.filter((f) => f.size <= MAX_FILE_SIZE).map(normalizeFileType)
     if (valid.length) setPendingFiles((prev) => [...prev, ...valid])
-  }, [])
+  }, [t])
 
   // Tracks previous values to distinguish navigation from message sends
   const prevAnimKeyRef    = useRef<string | null>(null)
@@ -289,7 +357,20 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     const text = contentRef.current.trim()
     if (!text && pendingFiles.length === 0) return
     const replyRef = replyingTo ? { id: replyingTo.id, author: replyingTo.author, text: replyingTo.content } : undefined
-    onSend(text || '', replyRef, pendingFiles.length > 0 ? pendingFiles : undefined)
+
+    // Discord-style long-message cutover: when the body crosses the inline
+    // limit, ship it as `message.txt` instead so the encrypted message body
+    // stays compact and the recipient can read or download the full text.
+    let finalText = text
+    let finalFiles: File[] | undefined = pendingFiles.length > 0 ? pendingFiles : undefined
+    if (text.length > MAX_INLINE_TEXT_LENGTH) {
+      const blob = new Blob([text], { type: 'text/plain' })
+      const file = new File([blob], 'message.txt', { type: 'text/plain' })
+      finalFiles = finalFiles ? [...finalFiles, file] : [file]
+      finalText = ''
+    }
+
+    onSend(finalText, replyRef, finalFiles)
     inputRef.current?.clear()
     contentRef.current = ''
     setPendingFiles([])
@@ -315,14 +396,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     if (e.key === 'Escape' && replyingTo) setReplyingTo(null)
   }
 
-  // Format a message's day as a separator label. Locale-aware, weekday + date.
-  // Same format for every separator — no "Today" / "Yesterday" smartness.
+  // Format a message's day as a separator label. Locale-aware via the
+  // shared formatter — same format for every separator; no "Today" /
+  // "Yesterday" smartness because the per-message timestamp already does
+  // that via formatTimestamp.
   const formatDayLabel = (iso: string) => {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return ''
-    return d.toLocaleDateString(undefined, {
-      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-    })
+    return fmt.formatDate(iso, 'long')
   }
 
   // Cheap day key: YYYY-MM-DD in local time. Used to detect day boundaries.
@@ -341,8 +422,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const dmFirstP      = dmConversation?.participants[0]
   const dmName        = dmConversation?.name ?? (dmFirstP ? `@${dmFirstP.name}` : '')
   const inputPlaceholder = isDm
-    ? `Message ${dmName}`
-    : `Message #${channel.name}`
+    ? t('chat.composer.placeholderDm', { target: dmName })
+    : t('chat.composer.placeholderChannel', { channel: channel.name })
 
   // ── Voice call wiring (DM) ───────────────────────────────────────
   // Works for both 1-on-1 and group DMs. The SFU treats `dm_id` as a room id
@@ -360,12 +441,12 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
   const inAnyCall      = !!activeCallDmId || !!outgoingCall || !!incomingCall || voiceState !== 'disconnected'
   const callDisabled      = !isDm || !dmConversation || inAnyCall
   const videoCallDisabled = callDisabled || isGroupDm
-  const callTitle         = inAnyCall ? 'Already in a call' : 'Start voice call'
+  const callTitle         = inAnyCall ? t('chat.header.alreadyInCall') : t('chat.header.startVoiceCall')
   const videoCallTitle    = inAnyCall
-    ? 'Already in a call'
+    ? t('chat.header.alreadyInCall')
     : isGroupDm
-      ? 'Video calls are 1-on-1 only'
-      : 'Start video call'
+      ? t('chat.header.videoCall1on1Only')
+      : t('chat.header.startVideoCall')
 
   const handleStartCall = useCallback(() => {
     if (callDisabled || !dmConversation) return
@@ -426,14 +507,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
         <div className={s.dropOverlay} aria-hidden>
           <div className={s.dropBox}>
             <Paperclip size={28} strokeWidth={1.5} />
-            <span className="txt-body txt-semibold">Drop to attach</span>
-            <span className={`${s.dropHint} txt-small`}>Up to {MAX_FILE_SIZE_LABEL} per file</span>
+            <span className="txt-body txt-semibold">{t('chat.dropZone.drop')}</span>
+            <span className={`${s.dropHint} txt-small`}>{t('chat.dropZone.limit', { limit: MAX_FILE_SIZE_LABEL })}</span>
           </div>
         </div>
       )}
       <header className={s.header}>
         {sidebarCollapsed && (
-          <button className={s.iconBtn} title="Expand channels" aria-label="Expand channels" onClick={onExpandSidebar}>
+          <button className={s.iconBtn} title={t('chat.header.expandChannels')} aria-label={t('chat.header.expandChannels')} onClick={onExpandSidebar}>
             <SidebarIcon />
           </button>
         )}
@@ -501,8 +582,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               {hasThreads && (
                 <button
                   className={`${s.iconBtn} ${rightPanelMode === 'threads' ? s.active : ''}`}
-                  title="Threads"
-                  aria-label="Threads"
+                  title={t('chat.header.threads')}
+                  aria-label={t('chat.header.threads')}
                   onClick={() => onSetRightPanelMode(rightPanelMode === 'threads' ? null : 'threads')}
                 >
                   <ThreadsIcon />
@@ -511,8 +592,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               {hasPinnedMessages && (
                 <button
                   className={`${s.iconBtn} ${rightPanelMode === 'pinned' ? s.active : ''}`}
-                  title="Pinned messages"
-                  aria-label="Pinned messages"
+                  title={t('chat.header.pinnedMessages')}
+                  aria-label={t('chat.header.pinnedMessages')}
                   onClick={() => onSetRightPanelMode(rightPanelMode === 'pinned' ? null : 'pinned')}
                 >
                   <Pin size={14} strokeWidth={1.5} />
@@ -522,8 +603,8 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           )}
           <button
             className={`${s.iconBtn} ${rightPanelMode === 'members' ? s.active : ''}`}
-            title={isDm ? 'Files & pins' : 'Members'}
-            aria-label={isDm ? 'Files & pins' : 'Members'}
+            title={isDm ? t('chat.header.filesAndPins') : t('chat.header.members')}
+            aria-label={isDm ? t('chat.header.filesAndPins') : t('chat.header.members')}
             onClick={() => onSetRightPanelMode(rightPanelMode === 'members' ? null : 'members')}
           >
             {isDm ? <FilesIcon /> : <MembersIcon />}
@@ -538,13 +619,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
               <div className={s.chatEmptyIcon}>{isDm ? '💬' : '👋'}</div>
               <h2 className={`${s.chatEmptyTitle} txt-body txt-semibold`}>
                 {isDm
-                  ? `No messages yet with ${dmConversation?.name ?? dmConversation?.participants[0]?.name ?? 'this user'}`
-                  : `Welcome to #${channel.name}`}
+                  ? t('chat.empty.dmTitle', {
+                      name: dmConversation?.name ?? dmConversation?.participants[0]?.name ?? t('chat.empty.dmFallbackName'),
+                    })
+                  : t('chat.empty.channelTitle', { channel: channel.name })}
               </h2>
               <p className={`${s.chatEmptyText} txt-small`}>
-                {isDm
-                  ? 'Send a message below to start the conversation.'
-                  : 'Be the first to say something — type a message below to get the channel going.'}
+                {isDm ? t('chat.empty.dmBody') : t('chat.empty.channelBody')}
               </p>
             </div>
           ) : null}
@@ -604,34 +685,37 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           <div className={s.spacer} />
         </div>
 
-        {typingUsers && typingUsers.length > 0 && (
-          <div className={s.typingIndicator}>
-            <span className={s.typingDots}>
-              <span className={s.dot} />
-              <span className={s.dot} />
-              <span className={s.dot} />
-            </span>
-            <span className={`${s.typingText} txt-tiny`}>
-              {typingUsers.length === 1
-                ? <><strong>{typingUsers[0]}</strong> is typing...</>
-                : typingUsers.length === 2
-                ? <><strong>{typingUsers[0]}</strong> and <strong>{typingUsers[1]}</strong> are typing...</>
-                : <>Several people are typing...</>
-              }
-            </span>
-          </div>
-        )}
-
         {isReadOnly ? (
           <div className={s.composerWrap}>
             <div className={`${s.composer} ${s.readOnly}`} style={{ padding: '.725rem .625rem' }}>
               <span className="txt-small" style={{ opacity: 0.4, textAlign: 'center', width: '100%' }}>
-                {channel.is_system ? 'This is a system channel' : !canSendMessages ? 'You do not have permission to send messages in this channel' : 'This is a read-only channel'}
+                {channel.is_system
+                  ? t('chat.readOnly.system')
+                  : !canSendMessages
+                    ? t('chat.readOnly.noPermission')
+                    : t('chat.readOnly.generic')}
               </span>
             </div>
           </div>
         ) : (
         <div className={s.composerWrap}>
+          {typingUsers && typingUsers.length > 0 && (
+            <div className={s.typingIndicator}>
+              <span className={s.typingDots}>
+                <span className={s.dot} />
+                <span className={s.dot} />
+                <span className={s.dot} />
+              </span>
+              <span className={`${s.typingText} txt-tiny`}>
+                {typingUsers.length === 1
+                  ? tx('chat.typing.one', { name: <strong>{typingUsers[0]}</strong> })
+                  : typingUsers.length === 2
+                  ? tx('chat.typing.two', { a: <strong>{typingUsers[0]}</strong>, b: <strong>{typingUsers[1]}</strong> })
+                  : t('chat.typing.many')
+                }
+              </span>
+            </div>
+          )}
           <div className={s.composerStack}>
             {replyingTo && (
               <ReplyComposerCard
@@ -643,7 +727,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
             {mentionQuery !== null && mentionMatches.length > 0 && (
               <div role="listbox" className={s.autocomplete}>
-                <div className={s.autocompleteHeader}>Members</div>
+                <div className={s.autocompleteHeader}>{t('chat.autocomplete.membersHeader')}</div>
                 {mentionMatches.map((u, i) => (
                   <button
                     key={u.id}
@@ -661,7 +745,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
 
             {emojiQuery !== null && emojiMatches.length > 0 && (
               <div role="listbox" className={s.autocomplete}>
-                <div className={s.autocompleteHeader}>Emoji matching :{emojiQuery}</div>
+                <div className={s.autocompleteHeader}>{t('chat.autocomplete.emojiHeader', { query: emojiQuery })}</div>
                 {emojiMatches.map((entry, i) => (
                   <button
                     key={entry.name}
@@ -686,9 +770,19 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                     ) : (
                       <div className={s.pendingFileIcon}><AttachIcon /></div>
                     )}
-                    <span className={`${s.pendingFileName} txt-tiny`}>{file.name}</span>
+                    <span className={`${s.pendingFileName} txt-tiny`} title={file.name}>{file.name}</span>
+                    <button
+                      className={s.pendingFileEdit}
+                      title={t('chat.composer.renameFile')}
+                      aria-label={t('chat.composer.renameFile')}
+                      onClick={() => setRenamingFileIdx(i)}
+                    >
+                      <Pencil size={11} />
+                    </button>
                     <button
                       className={s.pendingFileRemove}
+                      title={t('chat.composer.removeFile')}
+                      aria-label={t('chat.composer.removeFile')}
                       onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
                     >
                       <X size={12} />
@@ -704,16 +798,16 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                   style={{ top: fmtBar.top, left: fmtBar.left }}
                   onMouseDown={e => e.preventDefault()}
                 >
-                  <button className={s.fmtBtn} title="Bold (Ctrl+B)" onClick={() => insertFormatting('**', '**')}>
+                  <button className={s.fmtBtn} title={t('chat.composer.fmtBold')} onClick={() => insertFormatting('**', '**')}>
                     <Bold size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Italic (Ctrl+I)" onClick={() => insertFormatting('*', '*')}>
+                  <button className={s.fmtBtn} title={t('chat.composer.fmtItalic')} onClick={() => insertFormatting('*', '*')}>
                     <Italic size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Strikethrough" onClick={() => insertFormatting('~~', '~~')}>
+                  <button className={s.fmtBtn} title={t('chat.composer.fmtStrike')} onClick={() => insertFormatting('~~', '~~')}>
                     <Strikethrough size={14} strokeWidth={2} />
                   </button>
-                  <button className={s.fmtBtn} title="Code" onClick={() => insertFormatting('`', '`')}>
+                  <button className={s.fmtBtn} title={t('chat.composer.fmtCode')} onClick={() => insertFormatting('`', '`')}>
                     <Code size={14} strokeWidth={2} />
                   </button>
                 </div>
@@ -722,7 +816,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 <button
                   ref={composerEmojiBtnRef}
                   className={s.emojiBtn}
-                  title="Emoji"
+                  title={t('chat.composer.emoji')}
                   onClick={() => {
                     if (!showComposerEmoji && composerEmojiBtnRef.current) {
                       const r = composerEmojiBtnRef.current.getBoundingClientRect()
@@ -759,7 +853,11 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*,video/*,.pdf,.txt,.zip,.doc,.docx"
+                      // Intentionally permissive — chat allows any file. Display
+                      // routing happens at render time via MIME / extension
+                      // detection in MessageAttachments (video → NMVideoPlayer,
+                      // audio → NMMusicPlayer, code/text → CodeBlockTile, else
+                      // → file chip).
                       multiple
                       style={{ display: 'none' }}
                       onChange={(e) => {
@@ -767,13 +865,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                         e.target.value = ''
                       }}
                     />
-                    <button className={s.composerBtn} title="Attach file" onClick={() => fileInputRef.current?.click()}>
+                    <button className={s.composerBtn} title={t('chat.composer.attachFile')} onClick={() => fileInputRef.current?.click()}>
                       <AttachIcon />
                     </button>
                     <button
                       ref={gifBtnRef}
                       className={s.composerBtn}
-                      title="GIF"
+                      title={t('chat.composer.gif')}
                       onClick={() => {
                         if (!showGifPicker && gifBtnRef.current) {
                           const r = gifBtnRef.current.getBoundingClientRect()
@@ -800,13 +898,13 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 {!isDm && (
                   <button
                     className={s.composerBtn}
-                    title="Create poll"
+                    title={t('chat.composer.createPoll')}
                     onClick={() => setPollCreatorOpen(true)}
                   >
                     <PollIcon />
                   </button>
                 )}
-                <button className={s.sendBtn} title="Send (Enter)" onClick={send}>
+                <button className={s.sendBtn} title={t('chat.composer.send')} onClick={send}>
                   <SendIcon />
                 </button>
               </div>
@@ -822,6 +920,34 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
           onClose={() => setPollCreatorOpen(false)}
         />
       )}
+      <ConfirmDialog
+        open={oversizeAlert !== null}
+        title={t('chat.dropZone.tooLargeTitle')}
+        body={oversizeAlert ?? ''}
+        confirmLabel={t('common.ok')}
+        onConfirm={() => setOversizeAlert(null)}
+        onCancel={() => setOversizeAlert(null)}
+      />
+      <PromptDialog
+        open={renamingFileIdx !== null}
+        title={t('chat.composer.renameFileTitle')}
+        placeholder={t('chat.composer.renameFilePlaceholder')}
+        defaultValue={renamingFileIdx !== null ? pendingFiles[renamingFileIdx]?.name ?? '' : ''}
+        submitLabel={t('common.save')}
+        cancelLabel={t('common.cancel')}
+        onSubmit={(newName) => {
+          const idx = renamingFileIdx
+          setRenamingFileIdx(null)
+          if (idx === null) return
+          // Files are immutable — wrap with a fresh File carrying the new
+          // name. The original byte content is reused (not copied) by the
+          // browser, so this is cheap even for large attachments.
+          setPendingFiles(prev => prev.map((f, j) => (
+            j === idx ? new File([f], newName, { type: f.type, lastModified: f.lastModified }) : f
+          )))
+        }}
+        onCancel={() => setRenamingFileIdx(null)}
+      />
     </main>
   )
 }
@@ -841,6 +967,7 @@ function ReplyComposerCard({
   isDm: boolean
   onCancel: () => void
 }) {
+  const { t, tx } = useT()
   const { displayContent, decrypting } = useDecryptedContent(
     replyingTo.content,
     replyingTo.nonce,
@@ -848,7 +975,7 @@ function ReplyComposerCard({
     replyingTo.channel_id,
   )
   const previewSource = replyingTo.nonce
-    ? (decrypting ? 'Decrypting…' : (displayContent || 'Encrypted message'))
+    ? (decrypting ? t('message.decrypt.decrypting') : (displayContent || t('message.decrypt.encryptedMessage')))
     : (displayContent || replyingTo.content)
   const preview = previewSource.length > 72 ? previewSource.slice(0, 72) + '…' : previewSource
 
@@ -857,13 +984,13 @@ function ReplyComposerCard({
       <div className={s.replyCardInner}>
         <ReplySmallIcon />
         <span className={`${s.replyCardLabel} txt-tiny`}>
-          Replying to <strong>{replyingTo.author}</strong>
+          {tx('chat.replyCard.replyingTo', { name: <strong>{replyingTo.author}</strong> })}
         </span>
         <span className={`${s.replyCardPreview} txt-tiny`}>
           {preview}
         </span>
       </div>
-      <button className={s.replyCardClose} title="Cancel reply" onClick={onCancel}>
+      <button className={s.replyCardClose} title={t('chat.replyCard.cancel')} onClick={onCancel}>
         <CloseIcon />
       </button>
     </div>

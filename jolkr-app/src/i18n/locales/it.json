@@ -1,0 +1,750 @@
+{
+  "common": {
+    "ok": "OK", "cancel": "Annulla", "save": "Salva", "delete": "Elimina",
+    "edit": "Modifica", "close": "Chiudi", "loading": "Caricamento…",
+    "someone": "Qualcuno", "required": "*", "goHome": "Vai alla home",
+    "add": "Aggiungi", "saveChanges": "Salva modifiche",
+    "loadingDots": "Caricamento...", "unknown": "Sconosciuto", "send": "Invia (Invio)",
+    "dismiss": "Chiudi", "expandSidebar": "Espandi barra laterale"
+  },
+
+  "time": {
+    "todayAt": "Oggi alle {time}",
+    "yesterdayAt": "Ieri alle {time}",
+    "dateAt": "{date} alle {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "Espandi canali",
+      "threads": "Discussioni", "pinnedMessages": "Messaggi fissati",
+      "filesAndPins": "File e fissati", "members": "Membri",
+      "alreadyInCall": "Già in chiamata",
+      "startVoiceCall": "Avvia chiamata vocale",
+      "startVideoCall": "Avvia videochiamata",
+      "videoCall1on1Only": "Le videochiamate sono solo 1-a-1"
+    },
+    "dropZone": {
+      "drop": "Rilascia per allegare",
+      "limit": "Fino a {limit} per file",
+      "tooLargeTitle": "File troppo grande",
+      "tooLargeAlert": "File troppo grande (max {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "Nuovo thread",
+      "namePlaceholder": "Nome del thread (facoltativo)",
+      "createBtn": "Crea"
+    },
+    "composer": {
+      "placeholderChannel": "Messaggio a #{channel}",
+      "placeholderDm": "Messaggio a {target}",
+      "emoji": "Emoji", "attachFile": "Allega file",
+      "gif": "GIF", "createPoll": "Crea sondaggio", "send": "Invia (Invio)",
+      "fmtBold": "Grassetto (Ctrl+B)", "fmtItalic": "Corsivo (Ctrl+I)",
+      "fmtStrike": "Barrato", "fmtCode": "Codice",
+      "renameFile": "Rinomina file", "removeFile": "Rimuovi",
+      "renameFileTitle": "Rinomina file",
+      "renameFilePlaceholder": "Nome file"
+    },
+    "autocomplete": {
+      "membersHeader": "Membri",
+      "emojiHeader": "Emoji corrispondente a :{query}"
+    },
+    "replyCard": {
+      "replyingTo": "Risposta a {name}",
+      "cancel": "Annulla risposta"
+    },
+    "empty": {
+      "dmTitle": "Nessun messaggio ancora con {name}",
+      "dmFallbackName": "questo utente",
+      "dmBody": "Invia un messaggio qui sotto per iniziare la conversazione.",
+      "channelTitle": "Benvenuto in #{channel}",
+      "channelBody": "Sii il primo a dire qualcosa — scrivi un messaggio qui sotto per dare il via al canale."
+    },
+    "readOnly": {
+      "system": "Questo è un canale di sistema",
+      "noPermission": "Non hai i permessi per inviare messaggi in questo canale",
+      "generic": "Questo è un canale in sola lettura"
+    },
+    "typing": {
+      "one": "{name} sta scrivendo…",
+      "two": "{a} e {b} stanno scrivendo…",
+      "many": "Diverse persone stanno scrivendo…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(modificato)",
+    "unencryptedBadge": "non cifrato",
+    "ariaOpenProfile": "Apri il profilo di {name}",
+    "decrypt": {
+      "decrypting": "Decifrazione…", "decryptingShort": "...",
+      "encryptedMessage": "Messaggio cifrato",
+      "failed": "[Messaggio cifrato — chiavi non disponibili]"
+    },
+    "actions": {
+      "addReaction": "Aggiungi reazione", "reply": "Rispondi",
+      "edit": "Modifica messaggio", "delete": "Elimina messaggio",
+      "deleteShift": "Elimina messaggio (Maiusc+clic)", "more": "Altre opzioni"
+    },
+    "menu": {
+      "reply": "Rispondi", "editMessage": "Modifica messaggio",
+      "copyText": "Copia testo", "pinMessage": "Fissa messaggio",
+      "unpinMessage": "Rimuovi fissaggio", "startThread": "Avvia discussione",
+      "openThread": "Apri discussione", "deleteMessage": "Elimina messaggio",
+      "deleteForMe": "Elimina per me", "reportMessage": "Segnala messaggio"
+    },
+    "editHint": {
+      "escapeTo": "esc per", "cancel": "annullare",
+      "enterTo": "invio per", "save": "salvare", "separator": "·"
+    },
+    "thread": {
+      "one": "{count} risposta nella discussione",
+      "other": "{count} risposte nella discussione"
+    },
+    "copyFailed": "Copia fallita"
+  },
+
+  "reactions": {
+    "count": { "one": "{count} reazione", "other": "{count} reazioni" },
+    "userFallback": "Utente {idShort}"
+  },
+
+  "pinned": {
+    "loading": "Caricamento...", "empty": "Nessun messaggio fissato",
+    "decrypting": "Decifrazione...", "unknownAuthor": "Sconosciuto", "unpin": "Rimuovi fissaggio"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "Caricamento discussioni...", "empty": "Nessuna discussione ancora",
+      "untitled": "Discussione senza titolo",
+      "replies": { "one": "{count} risposta", "other": "{count} risposte" }
+    },
+    "panel": {
+      "back": "Torna alle discussioni", "fallbackTitle": "Discussione",
+      "loading": "Caricamento...", "empty": "Nessuna risposta ancora",
+      "replyPlaceholder": "Rispondi nella discussione", "send": "Invia (Invio)",
+      "unknownAuthor": "Sconosciuto", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "Crea un sondaggio", "ariaLabel": "Crea sondaggio",
+      "questionLabel": "Domanda",
+      "questionPlaceholder": "Cosa vuoi chiedere?",
+      "optionsLabel": "Opzioni",
+      "optionPlaceholder": "Opzione {n}",
+      "removeOption": "Rimuovi opzione", "addOption": "Aggiungi opzione",
+      "multiVoteLabel": "Consenti voti multipli",
+      "multiVoteSub": "Gli elettori possono scegliere più di un'opzione",
+      "anonymousLabel": "Anonimo",
+      "anonymousSub": "Nascondi chi ha votato cosa",
+      "cancel": "Annulla", "submit": "Crea sondaggio",
+      "submitting": "Creazione…", "errorGeneric": "Creazione sondaggio fallita"
+    },
+    "display": {
+      "closed": "Chiuso",
+      "voteCount": { "one": "{count} voto", "other": "{count} voti" },
+      "multipleChoice": "scelta multipla", "anonymous": "anonimo"
+    }
+  },
+
+  "attachments": {
+    "openImage": "Apri {filename}"
+  },
+
+  "userStatus": {
+    "online": "Online", "idle": "Inattivo", "dnd": "Non disturbare",
+    "offline": "Offline", "invisible": "Invisibile"
+  },
+
+  "dmSidebar": {
+    "title": "Messaggi diretti",
+    "backToChat": "Torna alla chat", "friends": "Amici",
+    "newMessage": "Nuovo messaggio", "collapseSidebar": "Comprimi la barra",
+    "emptyTitle": "Nessuna conversazione ancora",
+    "emptySubtitle": "Avvia un nuovo messaggio per iniziare a chattare"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "Torna alla chat", "info": "Info", "unpin": "Rimuovi fissaggio",
+    "pinnedMessages": "Messaggi fissati", "noPinned": "Nessun messaggio fissato ancora",
+    "sharedFiles": "File condivisi", "noFiles": "Nessun file condiviso ancora",
+    "decrypting": "Decifrazione…"
+  },
+
+  "newDmModal": {
+    "title": "Nuovo messaggio", "close": "Chiudi",
+    "addMore": "Aggiungi altri...",
+    "searchPlaceholder": "Cerca amici o digita un nome utente...",
+    "loadingFriends": "Caricamento amici...", "searching": "Ricerca...",
+    "online": "Online — {count}", "offline": "Offline — {count}",
+    "noUsersFound": "Nessun utente trovato",
+    "noFriendsYet": "Nessun amico ancora — cerca per nome utente sopra",
+    "createGroup": "Crea DM di gruppo", "startConversation": "Inizia conversazione"
+  },
+
+  "profileCard": {
+    "ariaProfile": "Profilo di {name}",
+    "loadError": "Impossibile caricare il profilo utente", "loading": "Caricamento…",
+    "about": "Informazioni", "memberSince": "Membro da", "safetyNumber": "Numero di sicurezza",
+    "sendMessage": "Invia messaggio", "addFriend": "Aggiungi amico",
+    "requestPending": "Richiesta di amicizia in attesa", "removeFriend": "Rimuovi amico",
+    "userBlocked": "Utente bloccato", "block": "Blocca", "editProfile": "Modifica profilo",
+    "errFriendSend": "Invio richiesta fallito",
+    "errFriendRemove": "Rimozione amico fallita",
+    "errBlock": "Blocco utente fallito"
+  },
+
+  "memberPanel": {
+    "backToChat": "Torna alla chat",
+    "online": "Online — {count}", "offline": "Offline — {count}",
+    "members": "Membri — {count}",
+    "pinnedMessages": "Messaggi fissati", "threads": "Discussioni"
+  },
+
+  "tabBar": {
+    "yourServers": "I tuoi server", "search": "Cerca (⌘K)",
+    "directMessages": "Messaggi diretti", "notifications": "Notifiche",
+    "profile": "Profilo",
+    "onVideoCallOther": "In videochiamata (altro dispositivo)",
+    "onCallOther": "In chiamata (altro dispositivo)",
+    "joinServer": "Entra in un server", "createServer": "Crea un server",
+    "browserTitle": "I tuoi server",
+    "channelsCount": { "one": "{count} canale", "other": "{count} canali" },
+    "open": "aperto",
+    "muteServer": "Silenzia server", "unmuteServer": "Riattiva server",
+    "markAsRead": "Segna come letto", "serverSettings": "Impostazioni server",
+    "closeTab": "Chiudi scheda", "leaveServer": "Lascia il server",
+    "setStatus": "Imposta stato", "settings": "Impostazioni", "logOut": "Esci",
+    "serverOptions": "Opzioni server", "onVideoCall": "In videochiamata", "onCall": "In chiamata"
+  },
+
+  "notificationsPanel": { "title": "Notifiche", "empty": "Nessuna notifica ancora" },
+
+  "friendsPanel": {
+    "close": "Chiudi",
+    "tabAll": "Tutti", "tabOnline": "Online", "tabPending": "In attesa", "tabAdd": "Aggiungi amico",
+    "incoming": "In entrata ({count})", "outgoing": "In uscita ({count})",
+    "cancel": "Annulla", "noPending": "Nessuna richiesta di amicizia in attesa",
+    "addIntro": "Aggiungi amici tramite nome utente, email o codice QR.",
+    "myQrCode": "Il mio codice QR", "scanQr": "Scansiona QR",
+    "orSearch": "o cerca", "searchPlaceholder": "Nome utente o email…",
+    "searching": "Ricerca…", "noUsersFound": "Nessun utente trovato",
+    "sending": "Invio…", "addBtn": "Aggiungi",
+    "noFriendsFound": "Nessun amico trovato",
+    "requestSent": "Richiesta di amicizia inviata",
+    "requestFailed": "Invio della richiesta di amicizia fallito"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "Vedi profilo",
+    "addFriend": "Aggiungi amico", "removeFriend": "Rimuovi amico",
+    "mute": "Silenzia", "unmute": "Riattiva",
+    "block": "Blocca", "unblock": "Sblocca",
+    "closeDm": "Chiudi DM", "moderation": "Moderazione",
+    "kick": "Espelli", "ban": "Banna",
+    "assignRole": "Assegna ruolo", "inviteToServer": "Invita al server",
+    "reportUser": "Segnala utente"
+  },
+
+  "channelSidebar": {
+    "title": "Canali", "newChannel": "Nuovo canale",
+    "backToChat": "Torna alla chat", "collapseSidebar": "Comprimi la barra",
+    "ariaServerChannels": "Canali del server",
+    "menuNewFolder": "Nuova cartella", "menuNewText": "Nuovo canale di testo",
+    "menuNewVoice": "Nuovo canale vocale",
+    "menuChannelSettings": "Impostazioni canale", "menuRenameChannel": "Rinomina canale",
+    "menuArchiveChannel": "Archivia canale", "menuDeleteChannel": "Elimina canale",
+    "confirmDeleteChannel": "Eliminare questo canale? Questa azione è irreversibile.",
+    "menuCreateText": "Crea canale di testo", "menuCreateVoice": "Crea canale vocale",
+    "menuRenameFolder": "Rinomina cartella", "menuDeleteFolder": "Elimina cartella",
+    "confirmDeleteFolder": "Eliminare questa cartella? I canali al suo interno non saranno eliminati.",
+    "placeholderFolder": "Nome cartella…", "placeholderVoice": "nome-canale-vocale…",
+    "placeholderText": "nome-canale…", "channelOptions": "Opzioni del canale"
+  },
+
+  "deleteMessageDialog": {
+    "title": "Eliminare il messaggio?",
+    "bodyOwner": "Questo messaggio sarà rimosso. Scegli se rimuoverlo solo per te o per tutti.",
+    "bodyNonOwner": "Questo nasconderà il messaggio solo dal tuo lato. Gli altri membri continueranno a vederlo.",
+    "deleteForEveryone": "Elimina per tutti",
+    "deleteForBoth": "Elimina per entrambi",
+    "deleteForMe": "Elimina per me", "cancel": "Annulla"
+  },
+
+  "createServerModal": {
+    "title": "Crea un server",
+    "description": "Dai una casa alla tua comunità. Personalizzalo per renderlo tuo.",
+    "iconLabel": "Icona del server",
+    "iconHelper": "Mostrata nelle schede e nel browser dei server",
+    "nameLabel": "Nome del server", "namePlaceholder": "Il mio fantastico server",
+    "iconCharLabel": "Carattere icona",
+    "iconCharPlaceholder": "Lascia vuoto per usare la prima lettera del nome",
+    "colorLabel": "Tema colore", "privacyLabel": "Privacy",
+    "publicTitle": "Pubblico", "publicDesc": "Chiunque può unirsi con l'ID del server",
+    "privateTitle": "Privato", "privateDesc": "I membri hanno bisogno di un codice di accesso",
+    "cancel": "Annulla", "submit": "Crea server",
+    "colors": {
+      "neutral": "Neutro", "red": "Rosso", "orange": "Arancione", "yellow": "Giallo",
+      "green": "Verde", "teal": "Turchese", "blue": "Blu",
+      "indigo": "Indaco", "purple": "Viola", "pink": "Rosa"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "Entra in un server",
+    "description": "Inserisci un ID di invito per entrare in un server esistente. Chiedi al proprietario un codice di accesso se il server è privato.",
+    "serverIdLabel": "ID del server", "serverIdPlaceholder": "es. pixel-workshop",
+    "accessCodeLabel": "Codice di accesso", "accessCodePlaceholder": "Lascia vuoto per server pubblici",
+    "errorEmpty": "Inserisci un ID server.",
+    "errorNotFound": "Server non trovato. Controlla l'ID e riprova.",
+    "cancel": "Annulla", "submit": "Entra"
+  },
+
+  "reportModal": {
+    "title": "Segnala utente",
+    "description": "Seleziona un motivo per segnalare questo utente. La tua segnalazione sarà esaminata dal nostro team di moderazione.",
+    "additionalLabel": "Dettagli aggiuntivi (facoltativo)",
+    "additionalPlaceholder": "Fornisci ogni contesto aggiuntivo che possa aiutare i nostri moderatori...",
+    "charCount": "{used}/{max}",
+    "cancel": "Annulla", "submitting": "Invio...", "submit": "Invia segnalazione",
+    "successTitle": "Segnalazione inviata",
+    "successBody": "Grazie per aiutarci a mantenere sicura la nostra comunità. Esamineremo la tua segnalazione e prenderemo le misure appropriate.",
+    "close": "Chiudi",
+    "reasons": {
+      "harassment": { "label": "Molestie o bullismo", "desc": "Abuso o intimidazione mirata" },
+      "spam": { "label": "Spam", "desc": "Messaggi indesiderati o ripetitivi" },
+      "inappropriate": { "label": "Contenuto inappropriato", "desc": "Materiale NSFW o esplicito" },
+      "violence": { "label": "Minacce o violenza", "desc": "Minacce dirette o contenuto violento" },
+      "other": { "label": "Altro", "desc": "Qualcos'altro" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "Anteprima immagine",
+    "zoomIn": "Ingrandisci (+)", "zoomOut": "Riduci (-)",
+    "download": "Scarica", "openExternal": "Apri in nuova scheda",
+    "moreOptions": "Altre opzioni", "copyImage": "Copia immagine",
+    "copyLink": "Copia link", "viewDetails": "Vedi dettagli",
+    "close": "Chiudi (Esc)", "previous": "Immagine precedente", "next": "Immagine successiva",
+    "filename": "Nome file", "size": "Dimensione"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Cerca su Tenor", "back": "Indietro", "close": "Chiudi",
+    "favorites": "Preferiti", "noFavorites": "Nessun preferito ancora",
+    "noResults": "Nessun GIF trovato",
+    "removeFav": "Rimuovi dai preferiti", "addFav": "Aggiungi ai preferiti",
+    "loading": "Caricamento...", "clearSearch": "Cancella ricerca"
+  },
+
+  "qrScanner": {
+    "title": "Scansiona codice QR", "close": "Chiudi",
+    "hint": "Punta la fotocamera verso un codice QR Jolkr",
+    "errorInvalid": "Codice QR Jolkr non valido",
+    "errorSelfAdd": "Non puoi aggiungere te stesso come amico",
+    "errorCameraDenied": "Accesso alla fotocamera negato. Concedi i permessi e riprova.",
+    "errorNoCamera": "Nessuna fotocamera trovata su questo dispositivo.",
+    "errorStartCamera": "Impossibile avviare la fotocamera: {msg}",
+    "errorUserNotFound": "Utente non trovato",
+    "successSent": "Richiesta di amicizia inviata a {username}",
+    "sending": "Invio…", "sendBtn": "Invia richiesta di amicizia"
+  },
+
+  "qrDisplay": {
+    "title": "Il tuo codice QR", "close": "Chiudi",
+    "hint": "Gli amici possono scansionare questo codice per aggiungerti",
+    "copyLink": "Copia link", "copied": "Copiato!"
+  },
+
+  "toast": {
+    "friendRequestSent": "Richiesta di amicizia inviata",
+    "friendRequestFailed": "Invio della richiesta di amicizia fallito",
+    "friendRequestNotSent": "La richiesta di amicizia non è stata inviata",
+    "startConversationFailed": "Impossibile avviare la conversazione",
+    "createDmFailed": "Impossibile creare il DM",
+    "reactionFailed": "Reazione fallita",
+    "pinFailed": "Pin/sblocco fallito",
+    "unpinFailed": "Sblocco fallito",
+    "deleteChannelFailed": "Eliminazione canale fallita",
+    "leaveServerFailed": "Uscita dal server fallita",
+    "deleteServerFailed": "Eliminazione server fallita",
+    "createThreadFailed": "Impossibile creare il thread",
+    "inviteCopied": "Link di invito copiato!",
+    "inviteCopyFailed": "Copia fallita — link: {url}",
+    "inviteCreateFailed": "Impossibile creare l'invito",
+    "uploadFailed": "Caricamento fallito"
+  },
+
+  "call": {
+    "initiateFailed": "Impossibile avviare la chiamata",
+    "acceptFailed": "Impossibile accettare la chiamata",
+    "incoming": {
+      "ariaVideo": "Videochiamata in arrivo", "ariaVoice": "Chiamata in arrivo",
+      "subtitleVideo": "sta chiamando — video", "subtitleVoice": "sta chiamando…",
+      "decline": "Rifiuta", "accept": "Accetta"
+    },
+    "outgoing": {
+      "ariaVideo": "Videochiamata in uscita", "ariaVoice": "Chiamata in uscita",
+      "subtitleVideo": "Chiamata — video…", "subtitleVoice": "Chiamata…",
+      "cancel": "Annulla"
+    },
+    "window": {
+      "ariaVideoCall": "Videochiamata", "connecting": "Connessione…",
+      "youFallback": "Tu",
+      "mute": "Silenzia", "unmute": "Riattiva audio",
+      "cameraUnavailable": "Fotocamera non disponibile",
+      "cameraOn": "Accendi fotocamera", "cameraOff": "Spegni fotocamera",
+      "switchCamera": "Cambia fotocamera",
+      "minimize": "Riduci a picture-in-picture",
+      "minimizeAria": "Riduci", "endCall": "Termina chiamata"
+    },
+    "pip": {
+      "aria": "Chiamata picture-in-picture",
+      "expand": "Espandi", "expandAria": "Espandi a schermo intero",
+      "endCall": "Termina chiamata"
+    },
+    "bar": {
+      "errorPrefix": "Errore vocale: {error}", "dismiss": "Chiudi",
+      "connecting": "Connessione…", "connected": "Voce connessa",
+      "voiceFallback": "Voce",
+      "mute": "Silenzia", "unmute": "Riattiva audio",
+      "muteAria": "Silenzia microfono", "unmuteAria": "Riattiva microfono",
+      "deafen": "Assorda", "undeafen": "Disattiva assordamento",
+      "disconnect": "Disconnetti",
+      "disconnectAria": "Disconnetti dalla voce"
+    }
+  },
+
+  "update": {
+    "available": "Aggiornamento {version} disponibile",
+    "updateNow": "Aggiorna ora",
+    "errorGeneric": "Aggiornamento fallito"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Benvenuto su Jolkr",
+    "welcomeBody": "Unisciti a un server o creane uno per iniziare, o invia un messaggio diretto."
+  },
+
+  "player": {
+    "play": "Riproduci", "pause": "Pausa",
+    "mute": "Silenzia", "unmute": "Riattiva audio",
+    "volume": "Volume",
+    "skipBack": "{seconds}s indietro", "skipForward": "{seconds}s avanti",
+    "fullscreen": "Schermo intero", "exitFullscreen": "Esci da schermo intero",
+    "enterPip": "Picture in picture", "exitPip": "Esci da picture in picture",
+    "settings": "Impostazioni",
+    "playbackSpeed": "Velocità di riproduzione", "speedNormal": "Normale",
+    "download": "Scarica"
+  },
+
+  "codeBlock": {
+    "loading": "Caricamento…",
+    "expand": "Mostra di più",
+    "collapse": "Mostra meno",
+    "download": "Scarica"
+  },
+
+  "themePicker": {
+    "title": "Tema del server",
+    "scrollToResize": "Scorri per ridimensionare",
+    "noneLabel": "Nessuno",
+    "modeLight": "Chiaro", "modeAuto": "Auto", "modeDark": "Scuro",
+    "presets": {
+      "rose": "Rosa", "coral": "Corallo", "orange": "Arancione", "amber": "Ambra",
+      "lime": "Lime", "jolkr": "Jolkr", "emerald": "Smeraldo", "cyan": "Ciano",
+      "sky": "Cielo", "indigo": "Indaco", "purple": "Viola", "fuchsia": "Fucsia"
+    }
+  },
+
+  "auth": {
+    "shared": { "emailLabel": "Email", "passwordLabel": "Password" },
+    "login": {
+      "title": "Bentornato!", "subtitle": "Siamo felici di rivederti!",
+      "submit": "Accedi", "submitting": "Accesso in corso…",
+      "forgotPassword": "Password dimenticata?",
+      "needAccount": "Non hai un account?", "register": "Registrati"
+    },
+    "register": {
+      "title": "Crea un account", "subtitle": "Unisciti a Jolkr oggi",
+      "usernameLabel": "Nome utente", "submit": "Continua", "submitting": "Creazione…",
+      "haveAccount": "Hai già un account?", "login": "Accedi"
+    },
+    "forgot": {
+      "title": "Password dimenticata?",
+      "subtitle": "Inserisci la tua email e ti invieremo un link per reimpostarla.",
+      "emailPlaceholder": "tu@esempio.com", "submit": "Invia link", "submitting": "Invio…",
+      "rememberPassword": "Ti ricordi la password?", "login": "Accedi",
+      "checkEmailTitle": "Controlla la tua email",
+      "checkEmailBody": "Se esiste un account per {email}, abbiamo inviato un link di reimpostazione.",
+      "backToLogin": "Torna all'accesso", "errorGeneric": "Qualcosa è andato storto"
+    },
+    "reset": {
+      "title": "Imposta nuova password", "subtitle": "Inserisci la tua nuova password qui sotto.",
+      "newPasswordLabel": "Nuova password",
+      "newPasswordPlaceholder": "Min. {min} caratteri", "newPasswordHint": "{min}+ caratteri",
+      "confirmPasswordLabel": "Conferma password",
+      "confirmPasswordPlaceholder": "Ripeti la tua nuova password",
+      "submit": "Reimposta password", "submitting": "Reimpostazione…",
+      "passwordsMismatch": "Le password non corrispondono",
+      "passwordTooShort": "La password deve contenere almeno {min} caratteri",
+      "errorGeneric": "Reimpostazione fallita",
+      "successTitle": "Password reimpostata",
+      "successBody": "Ora puoi accedere con la tua nuova password.",
+      "goToLogin": "Vai all'accesso"
+    },
+    "verify": {
+      "verifyingTitle": "Verifica della tua email…", "verifiedTitle": "Email verificata!",
+      "verifiedBody": "La tua email è stata verificata. Ora puoi usare Jolkr.",
+      "goToApp": "Vai a Jolkr", "failedTitle": "Verifica fallita",
+      "failedSubtitle": "Il link potrebbe essere scaduto. Prova a richiederne uno nuovo.",
+      "requestNewLink": "Richiedi nuovo link", "errorGeneric": "Verifica fallita",
+      "pendingTitle": "Verifica la tua email",
+      "pendingBody": "Abbiamo inviato un link di verifica a {email}. Controlla la tua casella di posta e clicca sul link per continuare.",
+      "yourEmailFallback": "la tua email",
+      "sentMessage": "Email di verifica inviata! Controlla la tua casella di posta.",
+      "resendBtn": "Reinvia email di verifica", "sendingBtn": "Invio…", "sentBtn": "Email inviata",
+      "signOut": "Disconnetti", "resendError": "Invio fallito"
+    }
+  },
+
+  "notFound": { "title": "Pagina non trovata", "message": "La pagina che stai cercando non esiste o è stata spostata." },
+  "inviteAccept": { "joining": "Connessione al server…", "errorGeneric": "Invito non valido o scaduto" },
+
+  "settings": {
+    "nav": {
+      "userSettings": "Impostazioni utente", "appSettings": "Impostazioni app",
+      "account": "Il mio account", "privacy": "Privacy e sicurezza", "connections": "Connessioni",
+      "appearance": "Aspetto", "accessibility": "Accessibilità", "voice": "Voce e video",
+      "notifications": "Notifiche", "keybinds": "Scorciatoie", "language": "Lingua"
+    },
+    "account": {
+      "title": "Il mio account", "changeBannerColor": "Cambia colore banner", "editProfile": "Modifica profilo",
+      "displayName": "Nome visualizzato", "displayNamePlaceholder": "Come ti vedono gli altri",
+      "username": "Nome utente", "bio": "Bio", "bioPlaceholder": "Racconta qualcosa di te…",
+      "noBio": "Nessuna bio impostata",
+      "profileAlt": "Profilo", "accountInfo": "Informazioni account",
+      "emailLabel": "Email", "emailMasked": "••••••••••",
+      "passwordSection": "Password e autenticazione",
+      "passwordHelp": "Mantieni il tuo account sicuro con una password forte e l'autenticazione a due fattori.",
+      "changePassword": "Cambia password", "enable2FA": "Attiva autenticazione a due fattori",
+      "logOut": "Disconnetti", "dangerZone": "Zona pericolosa",
+      "deleteHelp": "L'eliminazione del tuo account è permanente e non può essere annullata.",
+      "deleteAccount": "Elimina account"
+    },
+    "bannerColors": { "sage": "Salvia", "gold": "Oro", "ocean": "Oceano", "royal": "Reale", "berry": "Bacca", "coral": "Corallo" },
+    "privacy": {
+      "title": "Privacy e sicurezza",
+      "dmFilterTitle": "Messaggi diretti sicuri",
+      "dmFilterDesc": "Controlla chi può inviarti messaggi diretti.",
+      "dmAll": "Permetti tutti i DM", "dmFriends": "Solo amici", "dmNone": "Nessuno",
+      "allowFriendReqsLabel": "Permetti richieste di amicizia",
+      "allowFriendReqsDesc": "Lascia che altri ti inviino richieste di amicizia.",
+      "readReceiptsLabel": "Conferme di lettura",
+      "readReceiptsDesc": "Mostra quando hai letto i messaggi nei DM.",
+      "dataPrivacy": "Dati e privacy",
+      "analyticsLabel": "Analisi di utilizzo",
+      "analyticsDesc": "Aiuta a migliorare Jolkr inviando dati di utilizzo anonimi."
+    },
+    "connections": {
+      "title": "Connessioni",
+      "intro": "Collega i tuoi account per condividere la tua attività e sbloccare integrazioni.",
+      "music": "Musica", "gaming": "Gaming", "development": "Sviluppo", "streaming": "Streaming", "video": "Video", "social": "Social"
+    },
+    "appearance": {
+      "title": "Aspetto", "colorModeTitle": "Modalità colore", "colorModeDesc": "Scegli il tuo tema preferito.",
+      "colorModeLight": "Chiaro", "colorModeSystem": "Sistema", "colorModeDark": "Scuro",
+      "messageDisplayTitle": "Visualizzazione messaggi",
+      "messageDisplayDesc": "La modalità compatta mostra più messaggi alla volta.",
+      "displayCozy": "Comodo — spazioso, lettura piacevole",
+      "displayCompact": "Compatto — più messaggi visibili insieme",
+      "fontSizeTitle": "Dimensione carattere chat — {size}px",
+      "fontSizeDesc": "Ridimensiona il testo nei messaggi della chat."
+    },
+    "accessibility": {
+      "title": "Accessibilità",
+      "reducedMotionLabel": "Riduci movimento",
+      "reducedMotionDesc": "Minimizza animazioni e transizioni in tutta l'app.",
+      "highContrastLabel": "Contrasto elevato",
+      "highContrastDesc": "Aumenta il contrasto tra testo e sfondo.",
+      "roleColorsLabel": "Mostra colori dei ruoli",
+      "roleColorsDesc": "Visualizza nomi di ruoli colorati nelle liste membri."
+    },
+    "voice": {
+      "title": "Voce e video",
+      "inputDevice": "Dispositivo di ingresso", "outputDevice": "Dispositivo di uscita",
+      "outputUnsupported": "La selezione del dispositivo di uscita non è supportata in questo browser.",
+      "outputUnsupportedTitle": "Non supportato in questo browser",
+      "systemDefault": "Predefinito di sistema",
+      "microphoneFallback": "Microfono ({id}…)", "speakersFallback": "Altoparlanti ({id}…)", "cameraFallback": "Fotocamera ({id}…)",
+      "inputVolume": "Volume ingresso — {volume}%", "outputVolume": "Volume uscita — {volume}%",
+      "cameraSection": "Fotocamera", "cameraDevice": "Dispositivo fotocamera", "cameraUnavailable": "Fotocamera non disponibile",
+      "advancedSection": "Avanzate",
+      "noiseSuppressionLabel": "Soppressione del rumore",
+      "noiseSuppressionDesc": "Filtra il rumore di fondo durante le chiamate vocali.",
+      "echoCancellationLabel": "Cancellazione dell'eco",
+      "echoCancellationDesc": "Rimuove l'eco dall'ingresso del microfono.",
+      "autoGainLabel": "Controllo automatico del guadagno",
+      "autoGainDesc": "Regola automaticamente la sensibilità del microfono."
+    },
+    "notifications": {
+      "title": "Notifiche",
+      "desktopLabel": "Attiva notifiche desktop",
+      "desktopDesc": "Mostra notifiche quando l'app è in background.",
+      "soundsLabel": "Suoni di notifica",
+      "soundsDesc": "Riproduce un suono quando ricevi una notifica.",
+      "permissionDeniedToast": "Permesso di notifica negato — attivalo nelle impostazioni del browser/SO.",
+      "unsupportedToast": "Le notifiche desktop non sono supportate in questo ambiente.",
+      "triggers": "Trigger di notifica",
+      "mentionsLabel": "@menzioni", "mentionsDesc": "Notifica quando qualcuno ti menziona in un canale.",
+      "dmsLabel": "Messaggi diretti", "dmsDesc": "Notifica per tutti i nuovi messaggi diretti.",
+      "badgeLabel": "Badge non letti", "badgeDesc": "Mostra il badge dei non letti sull'icona dell'app."
+    },
+    "keybinds": {
+      "title": "Scorciatoie", "intro": "Scorciatoie da tastiera predefinite. Scorciatoie personalizzate in arrivo.",
+      "openSwitcher": "Apri selezione rapida", "toggleMute": "Attiva/disattiva muto", "toggleDeafen": "Attiva/disattiva ascolto",
+      "markRead": "Segna server come letto", "jumpUnread": "Vai al più vecchio non letto",
+      "uploadFile": "Carica un file", "search": "Cerca", "focusInput": "Metti a fuoco la chat",
+      "editLast": "Modifica ultimo messaggio", "replyMessage": "Rispondi al messaggio", "toggleSettings": "Apri/chiudi impostazioni"
+    },
+    "language": {
+      "title": "Lingua", "displayTitle": "Lingua di visualizzazione",
+      "displayDesc": "Scegli la lingua usata in tutta l'app.",
+      "saveError": "Errore nel salvataggio della preferenza di lingua"
+    }
+  },
+
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "Impostazioni server", "moderation": "Moderazione", "dangerZone": "Zona pericolosa",
+      "overview": "Panoramica", "roles": "Ruoli", "invites": "Inviti", "bans": "Bannati",
+      "auditLog": "Registro audit", "deleteServer": "Elimina server"
+    },
+    "leaveBtn": "Lascia il server",
+    "overview": {
+      "bannerTitle": "Sfondo banner",
+      "bannerSolid": "Colori pieni", "bannerGradients": "Gradienti", "bannerImage": "Immagine",
+      "bannerImageUrl": "URL immagine (https://…)",
+      "bannerUploading": "Caricamento…", "bannerUpload": "Carica", "bannerRemove": "Rimuovi banner immagine",
+      "iconAlt": "Icona del server",
+      "namePlaceholder": "Nome del server",
+      "descriptionPlaceholder": "Di cosa parla il tuo server?",
+      "discoveryLabel": "Scoperta server",
+      "discoveryDesc": "Rendi il server visibile nel browser dei server"
+    },
+    "gradients": {
+      "oceanBreeze": "Brezza oceanica", "sunsetGlow": "Bagliore al tramonto", "forestMist": "Nebbia della foresta",
+      "royalVelvet": "Velluto reale", "berryBurst": "Esplosione di bacche", "midnight": "Mezzanotte"
+    },
+    "roles": {
+      "allRoles": "Tutti i ruoli", "createRole": "Crea ruolo",
+      "permissionsTitle": "Permessi", "clearPermissions": "Cancella permessi",
+      "deleteRole": "Elimina ruolo", "createError": "Creazione del ruolo fallita"
+    },
+    "invites": {
+      "expireAfter": "Scade dopo", "maxUses": "Usi massimi",
+      "expireNever": "Mai", "expire30m": "30 minuti", "expire1h": "1 ora", "expire6h": "6 ore",
+      "expire12h": "12 ore", "expire1d": "1 giorno", "expire7d": "7 giorni",
+      "usesUnlimited": "Nessun limite", "uses1": "1 uso", "uses5": "5 usi",
+      "uses10": "10 usi", "uses25": "25 usi", "uses50": "50 usi", "uses100": "100 usi",
+      "creating": "Creazione…", "createBtn": "Crea invito", "createError": "Creazione invito fallita",
+      "emptyTitle": "Nessun invito ancora",
+      "emptyDesc": "Crea un invito sopra per iniziare a invitare persone al tuo server.",
+      "allInvites": "Tutti gli inviti", "copyTitle": "Clicca per copiare il link di invito",
+      "copiedToast": "Link di invito copiato!", "copyFailedToast": "Copia fallita — link: {url}",
+      "usesProgress": "{used} / {max} usi", "expiresAt": "Scade il {date}", "revoke": "Revoca"
+    },
+    "bans": {
+      "emptyTitle": "Nessun utente bannato",
+      "emptyDesc": "Il tuo server è pulito! Gli utenti bannati appariranno qui.",
+      "reasonLabel": "Motivo: {reason}", "noReason": "Nessun motivo fornito",
+      "bannedAt": "Bannato il {date}", "unban": "Sbanna"
+    },
+    "audit": {
+      "emptyTitle": "Nessuna attività ancora",
+      "emptyDesc": "Le voci del registro audit appariranno qui quando vengono eseguite azioni.",
+      "byUser": "da {name}", "onTarget": " su {type}: {idShort}…",
+      "reasonLabel": "Motivo: {reason}",
+      "actions": {
+        "MemberJoin": "Membro entrato", "MemberLeave": "Membro uscito", "MemberUpdate": "Membro aggiornato",
+        "ChannelCreate": "Canale creato", "ChannelUpdate": "Canale aggiornato", "ChannelDelete": "Canale eliminato",
+        "RoleCreate": "Ruolo creato", "RoleUpdate": "Ruolo aggiornato", "RoleDelete": "Ruolo eliminato",
+        "ServerUpdate": "Server aggiornato", "ServerDelete": "Server eliminato",
+        "BanCreate": "Utente bannato", "BanDelete": "Utente sbannato", "Kick": "Utente espulso"
+      }
+    },
+    "delete": {
+      "title": "Elimina server",
+      "warning": "Questa azione non può essere annullata. Tutti i canali, messaggi e dati saranno eliminati permanentemente.",
+      "btn": "Elimina server"
+    },
+    "leaveConfirm": {
+      "title": "Lascia il server",
+      "body": "Sei sicuro di voler lasciare {serverName}? Non potrai rientrare senza un invito.",
+      "confirm": "Lascia il server"
+    },
+    "deleteConfirm": {
+      "title": "Elimina server",
+      "body": "Sei sicuro di voler eliminare permanentemente {serverName}? Questa azione non può essere annullata.",
+      "confirm": "Elimina server"
+    }
+  },
+
+  "channelSettings": {
+    "nav": { "channelSettings": "Impostazioni canale", "overview": "Panoramica", "permissions": "Permessi" },
+    "overview": {
+      "title": "Panoramica del canale", "nameLabel": "NOME CANALE", "topicLabel": "ARGOMENTO CANALE",
+      "topicPlaceholder": "Fai sapere a tutti di cosa tratta questo canale",
+      "systemNotice": "Questo è un canale di sistema e non può essere modificato.",
+      "nsfwLabel": "Canale NSFW", "nsfwDesc": "Contenuto con restrizioni di età",
+      "slowmodeLabel": "MODALITÀ LENTA (SECONDI)",
+      "slowmodeHint": "Gli utenti possono inviare un messaggio per intervallo. 0 = disattivato."
+    },
+    "permissions": {
+      "title": "Permessi del canale", "addOverride": "Aggiungi eccezione",
+      "systemNotice": "I permessi del canale di sistema non possono essere modificati.",
+      "rolesMembers": "RUOLI / MEMBRI", "removeOverride": "Rimuovi eccezione",
+      "addModalTitle": "Aggiungi eccezione di permesso",
+      "typeLabel": "TIPO", "typeRole": "Ruolo", "typeMember": "Membro",
+      "selectRole": "Seleziona un ruolo…",
+      "memberIdLabel": "ID MEMBRO", "memberIdPlaceholder": "Inserisci ID membro", "roleLabel": "RUOLO"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "Permessi generali del server",
+    "groupMember": "Permessi membro",
+    "groupText": "Permessi canale di testo",
+    "groupVoice": "Permessi canale vocale",
+    "ariaEnable": "Attiva {label}", "ariaDisable": "Disattiva {label}",
+    "view_channels":   { "label": "Vedi canali",          "desc": "Permette di vedere i canali per impostazione predefinita (esclusi quelli privati)." },
+    "manage_channels": { "label": "Gestisci canali",      "desc": "Permette di creare, modificare o eliminare canali." },
+    "manage_server":   { "label": "Gestisci server",      "desc": "Permette di cambiare nome del server, icona e altre impostazioni." },
+    "kick_members":    { "label": "Espelli membri",       "desc": "Permette di espellere altri membri dal server." },
+    "ban_members":     { "label": "Banna membri",         "desc": "Permette di bannare altri membri dal server." },
+    "manage_roles":    { "label": "Gestisci ruoli",       "desc": "Permette di creare nuovi ruoli e modificare/eliminare ruoli inferiori." },
+    "create_invite":   { "label": "Crea inviti",          "desc": "Permette di creare link di invito al server." },
+    "send_messages":   { "label": "Invia messaggi",       "desc": "Permette di inviare messaggi nei canali di testo." },
+    "manage_messages": { "label": "Gestisci messaggi",    "desc": "Permette di eliminare e fissare messaggi." },
+    "embed_links":     { "label": "Incorpora link",       "desc": "Permette di incorporare link nei messaggi." },
+    "attach_files":    { "label": "Allega file",          "desc": "Permette di allegare file ai messaggi." },
+    "add_reactions":   { "label": "Aggiungi reazioni",    "desc": "Permette di aggiungere reazioni ai messaggi." },
+    "mention_everyone":{ "label": "Menziona tutti",       "desc": "Permette di usare @everyone e @here." },
+    "read_message_history": { "label": "Leggi cronologia messaggi", "desc": "Permette di leggere i messaggi precedenti." },
+    "use_external_emojis":  { "label": "Usa emoji esterne",         "desc": "Permette di usare emoji da altri server." },
+    "send_tts_messages":    { "label": "Invia messaggi TTS",        "desc": "Permette di inviare messaggi sintesi vocale." },
+    "connect":         { "label": "Connetti",             "desc": "Permette di connettersi ai canali vocali." },
+    "speak":           { "label": "Parla",                "desc": "Permette di parlare nei canali vocali." },
+    "video":           { "label": "Video",                "desc": "Permette di condividere video nei canali vocali." },
+    "mute_members":    { "label": "Silenzia membri",      "desc": "Permette di silenziare altri membri nei canali vocali." },
+    "deafen_members":  { "label": "Assorda membri",       "desc": "Permette di assordare altri membri nei canali vocali." },
+    "move_members":    { "label": "Sposta membri",        "desc": "Permette di spostare membri tra canali vocali." },
+    "use_voice_activity": { "label": "Usa attività vocale", "desc": "Permette di usare il rilevamento dell'attività vocale." },
+    "priority_speaker":{ "label": "Oratore prioritario",  "desc": "Riduce il volume degli altri mentre parli." },
+    "administrator":   { "label": "Amministratore",       "desc": "Concede tutti i permessi e ignora i permessi di canale. È un permesso pericoloso!" }
+  }
+}

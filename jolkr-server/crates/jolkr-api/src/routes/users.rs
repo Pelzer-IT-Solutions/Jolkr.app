@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use jolkr_core::UserService;
 use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
-use jolkr_core::services::user::{UpdateProfileRequest, UserProfile};
+use jolkr_core::services::user::{MeProfile, UpdateProfileRequest, UserProfile};
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
@@ -20,6 +20,12 @@ pub(crate) struct UserResponse {
     pub user: UserProfile,
 }
 
+/// Response for `/users/@me` — adds `email` on top of the public profile.
+#[derive(Debug, Serialize)]
+pub(crate) struct MeResponse {
+    pub user: MeProfile,
+}
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct UpdateMeRequest {
     pub display_name: Option<String>,
@@ -30,7 +36,15 @@ pub(crate) struct UpdateMeRequest {
     pub banner_color: Option<String>,
     pub dm_filter: Option<String>,
     pub allow_friend_requests: Option<bool>,
+    pub preferred_language: Option<String>,
 }
+
+/// UI languages currently shipped by the FE. The DB-level CHECK constraint
+/// only validates BCP-47 *shape* — this list pins the *set* so adding a
+/// language is a one-line FE+BE change with no migration required.
+pub(crate) const SUPPORTED_LOCALES: &[&str] = &[
+    "en-US", "nl", "fr", "de", "es", "it", "ja", "ko", "zh-CN",
+];
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct SearchQuery {
@@ -61,14 +75,25 @@ async fn presign_avatar(state: &AppState, profile: &mut UserProfile) {
     }
 }
 
+/// Re-presign avatar_url for the self-profile shape.
+async fn presign_avatar_me(state: &AppState, profile: &mut MeProfile) {
+    if let Some(ref avatar) = profile.avatar_url {
+        if !avatar.starts_with("http") {
+            if let Ok(url) = state.storage.presign_get(avatar, PRESIGN_EXPIRY_SECS).await {
+                profile.avatar_url = Some(url);
+            }
+        }
+    }
+}
+
 /// GET /api/users/@me
 pub(crate) async fn get_me(
     State(state): State<AppState>,
     auth: AuthUser,
-) -> Result<Json<UserResponse>, AppError> {
-    let mut profile = UserService::get_profile(&state.pool, auth.user_id).await?;
-    presign_avatar(&state, &mut profile).await;
-    Ok(Json(UserResponse { user: profile }))
+) -> Result<Json<MeResponse>, AppError> {
+    let mut profile = UserService::get_me(&state.pool, auth.user_id).await?;
+    presign_avatar_me(&state, &mut profile).await;
+    Ok(Json(MeResponse { user: profile }))
 }
 
 /// PATCH /api/users/@me
@@ -76,7 +101,7 @@ pub(crate) async fn update_me(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<UpdateMeRequest>,
-) -> Result<Json<UserResponse>, AppError> {
+) -> Result<Json<MeResponse>, AppError> {
     // Input length validation to prevent DB DoS
     if let Some(ref v) = body.display_name {
         if v.len() > 64 { return Err(AppError(jolkr_common::JolkrError::Validation("Display name must be 64 characters or less".into()))); }
@@ -90,8 +115,15 @@ pub(crate) async fn update_me(
     if let Some(ref v) = body.avatar_url {
         if v.len() > 512 { return Err(AppError(jolkr_common::JolkrError::Validation("Avatar URL must be 512 characters or less".into()))); }
     }
+    if let Some(ref v) = body.preferred_language {
+        if !SUPPORTED_LOCALES.contains(&v.as_str()) {
+            return Err(AppError(jolkr_common::JolkrError::Validation(
+                "Unsupported language code".into(),
+            )));
+        }
+    }
 
-    let mut profile = UserService::update_profile(
+    let mut profile = UserService::update_me(
         &state.pool,
         auth.user_id,
         UpdateProfileRequest {
@@ -103,11 +135,12 @@ pub(crate) async fn update_me(
             banner_color: body.banner_color,
             dm_filter: body.dm_filter,
             allow_friend_requests: body.allow_friend_requests,
+            preferred_language: body.preferred_language,
         },
     )
     .await?;
 
-    presign_avatar(&state, &mut profile).await;
+    presign_avatar_me(&state, &mut profile).await;
 
     // Broadcast profile update to all sessions of this user.
     // Self-only privacy preferences (show_read_receipts, dm_filter,
@@ -123,6 +156,7 @@ pub(crate) async fn update_me(
         show_read_receipts: Some(profile.show_read_receipts),
         dm_filter: Some(profile.dm_filter.clone()),
         allow_friend_requests: Some(profile.allow_friend_requests),
+        preferred_language: profile.preferred_language.clone(),
     };
     state.nats.publish_to_user(auth.user_id, &self_event).await;
 
@@ -142,6 +176,7 @@ pub(crate) async fn update_me(
         show_read_receipts: None,
         dm_filter: None,
         allow_friend_requests: None,
+        preferred_language: None,
     };
     match list_mutual_user_ids(&state.pool, auth.user_id).await {
         Ok(mutual_ids) => {
@@ -152,7 +187,7 @@ pub(crate) async fn update_me(
         Err(e) => tracing::warn!("Failed to fan out UserUpdate to mutuals: {e}"),
     }
 
-    Ok(Json(UserResponse { user: profile }))
+    Ok(Json(MeResponse { user: profile }))
 }
 
 /// Collect every distinct user_id who shares either a server membership or a

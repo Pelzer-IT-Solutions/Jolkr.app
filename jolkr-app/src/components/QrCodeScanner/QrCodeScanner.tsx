@@ -7,6 +7,7 @@ import * as api from '../../api/client'
 import { useAuthStore } from '../../stores/auth'
 import { invalidateFriendsCache } from '../../services/friendshipCache'
 import { useToast } from '../../stores/toast'
+import { useT } from '../../hooks/useT'
 import Avatar from '../Avatar/Avatar'
 import s from './QrCodeScanner.module.css'
 
@@ -40,6 +41,7 @@ function parseJolkrUserId(text: string): string | null {
 }
 
 export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
+  const { t } = useT()
   const myId = useAuthStore(st => st.user?.id)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const processingRef = useRef(false)
@@ -107,12 +109,12 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
 
             const userId = parseJolkrUserId(decoded)
             if (!userId) {
-              setError('Not a valid Jolkr QR code')
+              setError(t('qrScanner.errorInvalid'))
               processingRef.current = false
               return
             }
             if (userId === myId) {
-              setError("You can't add yourself as a friend")
+              setError(t('qrScanner.errorSelfAdd'))
               processingRef.current = false
               return
             }
@@ -126,7 +128,7 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
               const u = await api.getUser(userId)
               if (!cancelled) setScannedUser(u)
             } catch {
-              if (!cancelled) setError('User not found')
+              if (!cancelled) setError(t('qrScanner.errorUserNotFound'))
               processingRef.current = false
             }
           },
@@ -136,11 +138,11 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
         if (cancelled) return
         const msg = e instanceof Error ? e.message : String(e)
         if (/permission|NotAllowed/i.test(msg)) {
-          setError('Camera access denied. Allow camera permissions and try again.')
+          setError(t('qrScanner.errorCameraDenied'))
         } else if (/NotFound|no camera/i.test(msg)) {
-          setError('No camera found on this device.')
+          setError(t('qrScanner.errorNoCamera'))
         } else {
-          setError(`Could not start camera: ${msg}`)
+          setError(t('qrScanner.errorStartCamera', { msg }))
         }
       }
     }
@@ -151,7 +153,7 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
       cancelled = true
       void stopScanner()
     }
-  }, [open, myId, stopScanner])
+  }, [open, myId, stopScanner, t])
 
   async function handleSendRequest() {
     if (!scannedUser) return
@@ -159,11 +161,11 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
     try {
       await api.sendFriendRequest(scannedUser.id)
       invalidateFriendsCache()
-      useToast.getState().show(`Friend request sent to ${scannedUser.username}`, 'success')
+      useToast.getState().show(t('qrScanner.successSent', { username: scannedUser.username }), 'success')
       onFriendRequestSent?.()
       handleClose()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to send friend request'
+      const msg = e instanceof Error ? e.message : t('friendsPanel.requestFailed')
       setError(msg)
       setSending(false)
     }
@@ -179,8 +181,8 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
     <div className={s.overlay} onClick={handleOverlayClick}>
       <div className={s.modal}>
         <div className={s.header}>
-          <span className={`${s.title} txt-medium`}>Scan QR Code</span>
-          <button className={s.closeBtn} onClick={handleClose} aria-label="Close">
+          <span className={`${s.title} txt-medium`}>{t('qrScanner.title')}</span>
+          <button className={s.closeBtn} onClick={handleClose} aria-label={t('qrScanner.close')}>
             <X size={14} strokeWidth={1.5} />
           </button>
         </div>
@@ -207,7 +209,7 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
                 onClick={handleSendRequest}
                 disabled={sending}
               >
-                {sending ? 'Sending…' : 'Send Friend Request'}
+                {sending ? t('qrScanner.sending') : t('qrScanner.sendBtn')}
               </button>
             </div>
           ) : (
@@ -215,7 +217,7 @@ export function QrCodeScanner({ open, onClose, onFriendRequestSent }: Props) {
               <div id={VIEWFINDER_ID} className={s.viewfinder} />
               <div className={`${s.hint} txt-tiny`}>
                 <Camera size={12} strokeWidth={1.5} />
-                <span>Point your camera at a Jolkr QR code</span>
+                <span>{t('qrScanner.hint')}</span>
               </div>
             </>
           )}

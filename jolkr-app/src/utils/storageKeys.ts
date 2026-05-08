@@ -43,6 +43,7 @@ export const STORAGE_KEYS = {
   // ── Theme & UI (localStorage) ────────────────────────────────────
   COLOR_MODE: 'jolkr_color_mode',                   // migrated from 'jolkr-color-mode'
   CALL_PIP_LAYOUT: 'jolkr_call_pip_layout',         // migrated from 'call.pip.layout'
+  LOCALE: 'jolkr_locale',                           // BCP-47 lite, e.g. 'en-US' / 'fr' / 'zh-CN'
 
   // ── sessionStorage (transient / cross-page) ──────────────────────
   PENDING_INVITE: 'jolkr_pending_invite',

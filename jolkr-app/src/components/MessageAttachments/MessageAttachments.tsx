@@ -4,7 +4,11 @@ import type { Attachment } from '../../api/types'
 import { rewriteStorageUrl } from '../../platform/config'
 import { formatBytes } from '../../utils/format'
 import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
+import { useT } from '../../hooks/useT'
 import ImageLightbox from '../ImageLightbox/ImageLightbox'
+import NMVideoPlayer from '../NMVideoPlayer/NMVideoPlayer'
+import NMMusicPlayer from '../NMMusicPlayer/NMMusicPlayer'
+import CodeBlockTile from '../CodeBlockTile/CodeBlockTile'
 import s from './MessageAttachments.module.css'
 
 interface Props {
@@ -14,8 +18,43 @@ interface Props {
 function isImage(att: Attachment): boolean {
   return att.content_type.startsWith('image/')
 }
+
+// HLS playlists ride on a handful of MIME spellings depending on which
+// tool produced them; older clients also send the audio variant for
+// audio-only streams. The filename probe covers servers that fall back
+// to application/octet-stream for unknown extensions.
+const HLS_MIME_TYPES = new Set([
+  'application/vnd.apple.mpegurl',
+  'application/x-mpegurl',
+  'audio/mpegurl',
+])
 function isVideo(att: Attachment): boolean {
-  return att.content_type.startsWith('video/')
+  if (att.content_type.startsWith('video/')) return true
+  if (HLS_MIME_TYPES.has(att.content_type.toLowerCase())) return true
+  return /\.m3u8(\?.*)?$/i.test(att.filename)
+}
+function isAudio(att: Attachment): boolean {
+  if (att.content_type.startsWith('audio/')) return true
+  // Servers that fall back to application/octet-stream for unfamiliar
+  // codecs still pass through if the filename has a recognised audio
+  // extension. mpegurl is intentionally absent — those are HLS playlists
+  // and routed to the video player instead.
+  return /\.(mp3|flac|ogg|wav|m4a|aac|opus|wma)(\?.*)?$/i.test(att.filename)
+}
+
+// Filename suffixes whose content is human-readable code/text. Anything
+// matched here is rendered with syntax highlighting (CodeBlockTile)
+// instead of a generic file chip. The list is intentionally narrow —
+// random `text/plain` blobs we didn't recognise still fall through to
+// the file chip so users can download them without us trying to parse.
+const CODE_FILE_RE = /\.(js|mjs|cjs|jsx|ts|tsx|py|rb|php|rs|go|java|kt|swift|c|h|cpp|hpp|cs|lua|sh|bash|zsh|ps1|sql|graphql|gql|css|scss|less|json|yaml|yml|toml|md|markdown|xml|svg|html|htm|vue|svelte|ini|conf|cfg|env|diff|patch|dockerfile|makefile|log|txt)(\?.*)?$/i
+
+function isCode(att: Attachment): boolean {
+  if (CODE_FILE_RE.test(att.filename)) return true
+  // text/* types we trust as code-renderable. Text/html is excluded
+  // server-side (forced to attachment download), so this check only sees
+  // things like text/plain, text/css, text/markdown, etc.
+  return att.content_type.toLowerCase().startsWith('text/')
 }
 
 /** Resolve an attachment URL into something the DOM can consume.
@@ -53,6 +92,12 @@ export function MessageAttachments({ attachments }: Props) {
           if (isVideo(att)) {
             return <VideoTile key={att.id} attachment={att} />
           }
+          if (isAudio(att)) {
+            return <AudioTile key={att.id} attachment={att} />
+          }
+          if (isCode(att)) {
+            return <CodeBlockTile key={att.id} attachment={att} src={resolveAttachmentSrc(att.url)} />
+          }
           return <FileTile key={att.id} attachment={att} />
         })}
       </div>
@@ -70,12 +115,13 @@ export function MessageAttachments({ attachments }: Props) {
 // ── Tile components ───────────────────────────────────────────────────
 
 function ImageTile({ attachment, onOpen }: { attachment: Attachment; onOpen: () => void }) {
+  const { t } = useT()
   const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
   return (
     <button
       className={s.media}
       onClick={onOpen}
-      aria-label={`Open ${attachment.filename}`}
+      aria-label={t('attachments.openImage', { filename: attachment.filename })}
       disabled={!blobUrl}
     >
       {blobUrl ? (
@@ -89,10 +135,37 @@ function ImageTile({ attachment, onOpen }: { attachment: Attachment; onOpen: () 
 
 function VideoTile({ attachment }: { attachment: Attachment }) {
   const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
-  if (!blobUrl) return <span className={`${s.media} ${s.loadingTile}`} />
+  // While the authed blob URL resolves we render a dark 16:9 placeholder
+  // matching the player's eventual viewport so the only visible change
+  // when playback is ready is the controls fading in — no grey shimmer
+  // flash, no layout shift.
   return (
-    <video className={s.media} src={blobUrl} controls preload="metadata" />
+    <div className={s.media}>
+      {blobUrl
+        ? <NMVideoPlayer
+            src={blobUrl}
+            title={attachment.filename}
+            downloadUrl={blobUrl}
+            downloadFilename={attachment.filename}
+          />
+        : <div className={s.videoSkeleton} />}
+    </div>
   )
+}
+
+function AudioTile({ attachment }: { attachment: Attachment }) {
+  const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
+  // Same idea as VideoTile: paint the chip's final shape immediately and
+  // let the controls fade in once the URL resolves, instead of showing a
+  // grey shimmer block first.
+  if (!blobUrl) {
+    return (
+      <div className={s.audioSkeleton}>
+        <span className={s.audioSkeletonName}>{attachment.filename}</span>
+      </div>
+    )
+  }
+  return <NMMusicPlayer src={blobUrl} filename={attachment.filename} downloadUrl={blobUrl} />
 }
 
 function FileTile({ attachment }: { attachment: Attachment }) {

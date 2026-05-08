@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   User, Shield, Link, Palette, Accessibility,
   Mic, Bell, Keyboard, Globe, Camera,
@@ -8,8 +8,12 @@ import type { DmFilter } from '../../api/types'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import { Select } from '../ui/Select'
 import { useAuthStore } from '../../stores/auth'
+import { useLocaleStore } from '../../stores/locale'
 import { useToast } from '../../stores/toast'
 import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
+import { useT } from '../../hooks/useT'
+import * as api from '../../api/client'
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type LocaleCode } from '../../i18n/types'
 import { ensureNotificationPermission } from '../../services/notifications'
 import { STORAGE_KEYS } from '../../utils/storageKeys'
 import {
@@ -43,37 +47,38 @@ interface Props {
   onUploadAvatar?:  (file: File) => Promise<string>
 }
 
-const NAV: SettingsNavGroup<Section>[] = [
-  {
-    group: 'User Settings',
-    items: [
-      { id: 'account',     label: 'My Account',       icon: <User       size={15} strokeWidth={1.5} /> },
-      { id: 'privacy',     label: 'Privacy & Safety', icon: <Shield     size={15} strokeWidth={1.5} /> },
-      { id: 'connections', label: 'Connections',      icon: <Link       size={15} strokeWidth={1.5} /> },
-    ],
-  },
-  {
-    group: 'App Settings',
-    items: [
-      { id: 'appearance',    label: 'Appearance',    icon: <Palette       size={15} strokeWidth={1.5} /> },
-      { id: 'accessibility', label: 'Accessibility', icon: <Accessibility size={15} strokeWidth={1.5} /> },
-      { id: 'voice',         label: 'Voice & Video', icon: <Mic           size={15} strokeWidth={1.5} /> },
-      { id: 'notifications', label: 'Notifications', icon: <Bell          size={15} strokeWidth={1.5} /> },
-      { id: 'keybinds',      label: 'Keybinds',      icon: <Keyboard      size={15} strokeWidth={1.5} /> },
-      { id: 'language',      label: 'Language',       icon: <Globe         size={15} strokeWidth={1.5} /> },
-    ],
-  },
-]
-
 export function Settings({ onClose, isDark, colorPref, onSetColorPref, user, onLogout, onUpdateProfile, onUploadAvatar }: Props) {
+  const { t } = useT()
   const [section, setSection] = useState<Section>('account')
+
+  const navGroups = useMemo<SettingsNavGroup<Section>[]>(() => [
+    {
+      group: t('settings.nav.userSettings'),
+      items: [
+        { id: 'account',     label: t('settings.nav.account'),     icon: <User       size={15} strokeWidth={1.5} /> },
+        { id: 'privacy',     label: t('settings.nav.privacy'),     icon: <Shield     size={15} strokeWidth={1.5} /> },
+        { id: 'connections', label: t('settings.nav.connections'), icon: <Link       size={15} strokeWidth={1.5} /> },
+      ],
+    },
+    {
+      group: t('settings.nav.appSettings'),
+      items: [
+        { id: 'appearance',    label: t('settings.nav.appearance'),    icon: <Palette       size={15} strokeWidth={1.5} /> },
+        { id: 'accessibility', label: t('settings.nav.accessibility'), icon: <Accessibility size={15} strokeWidth={1.5} /> },
+        { id: 'voice',         label: t('settings.nav.voice'),         icon: <Mic           size={15} strokeWidth={1.5} /> },
+        { id: 'notifications', label: t('settings.nav.notifications'), icon: <Bell          size={15} strokeWidth={1.5} /> },
+        { id: 'keybinds',      label: t('settings.nav.keybinds'),      icon: <Keyboard      size={15} strokeWidth={1.5} /> },
+        { id: 'language',      label: t('settings.nav.language'),      icon: <Globe         size={15} strokeWidth={1.5} /> },
+      ],
+    },
+  ], [t])
 
   return (
     <SettingsShell
       section={section}
       onSection={setSection}
       onClose={onClose}
-      navGroups={NAV}
+      navGroups={navGroups}
     >
       <SectionContent
         section={section}
@@ -118,14 +123,17 @@ function SectionContent({ section, isDark, colorPref, onSetColorPref, user, onLo
 /* ─────────────────────────────────────────
    SECTION: My Account
 ───────────────────────────────────────── */
+// `nameKey` is the i18n key under `settings.bannerColors.*` so the swatch
+// title attribute renders in the active locale (the OKLCH `value` is the
+// machine-readable colour and stays language-neutral).
 const BANNER_COLORS = [
-  { name: 'Sage', value: 'oklch(60% 0.1 136)' },
-  { name: 'Gold', value: 'oklch(65% 0.12 85)' },
-  { name: 'Ocean', value: 'oklch(60% 0.12 215)' },
-  { name: 'Royal', value: 'oklch(55% 0.18 280)' },
-  { name: 'Berry', value: 'oklch(55% 0.18 340)' },
-  { name: 'Coral', value: 'oklch(60% 0.15 25)' },
-]
+  { nameKey: 'sage',  value: 'oklch(60% 0.1 136)' },
+  { nameKey: 'gold',  value: 'oklch(65% 0.12 85)' },
+  { nameKey: 'ocean', value: 'oklch(60% 0.12 215)' },
+  { nameKey: 'royal', value: 'oklch(55% 0.18 280)' },
+  { nameKey: 'berry', value: 'oklch(55% 0.18 340)' },
+  { nameKey: 'coral', value: 'oklch(60% 0.15 25)' },
+] as const
 
 function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvatar }: {
   user?: UserInfo
@@ -134,6 +142,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   onUpdateProfile?: (data: { display_name?: string; bio?: string; banner_color?: string; avatar_url?: string }) => Promise<void>
   onUploadAvatar?: (file: File) => Promise<string>
 }) {
+  const { t } = useT()
   const [isEditing, setIsEditing] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [editedProfile, setEditedProfile] = useState({
@@ -219,7 +228,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
 
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>My Account</h2>
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.account.title')}</h2>
 
       {/* Enhanced Profile Preview Card */}
       <div className={s.profilePreviewCard}>
@@ -231,7 +240,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
               <button
                 className={`${s.colorPickerBtn} ${showColorPicker ? s.colorPickerActive : ''}`}
                 onClick={() => setShowColorPicker(!showColorPicker)}
-                title="Change banner color"
+                title={t('settings.account.changeBannerColor')}
               >
                 <Palette size={16} strokeWidth={1.5} />
               </button>
@@ -243,7 +252,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                       className={`${s.colorPickerSwatch} ${editedProfile.banner_color === c.value ? s.colorPickerSwatchActive : ''}`}
                       style={{ background: c.value }}
                       onClick={() => handleBannerColorChange(c.value)}
-                      title={c.name}
+                      title={t(`settings.bannerColors.${c.nameKey}`)}
                     />
                   ))}
                 </div>
@@ -254,12 +263,12 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
           {/* Edit Button */}
           {isEditing ? (
             <div className={s.editActions}>
-              <button className={s.cancelEditBtn} onClick={handleCancel}>Cancel</button>
-              <button className={s.saveEditBtn} onClick={handleSave}>Save</button>
+              <button className={s.cancelEditBtn} onClick={handleCancel}>{t('common.cancel')}</button>
+              <button className={s.saveEditBtn} onClick={handleSave}>{t('common.save')}</button>
             </div>
           ) : (
             <button className={s.editProfileBtn} onClick={() => setIsEditing(true)}>
-              Edit Profile
+              {t('settings.account.editProfile')}
             </button>
           )}
         </div>
@@ -280,7 +289,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
             />
             <div className={s.previewAvatar} style={{ background: editedProfile.banner_color }}>
               {editedProfile.avatar_url ? (
-                <img src={editedProfile.avatar_url} alt="Profile" className={s.previewAvatarImg} />
+                <img src={editedProfile.avatar_url} alt={t('settings.account.profileAlt')} className={s.previewAvatarImg} />
               ) : (
                 editedProfile.display_name.charAt(0).toUpperCase()
               )}
@@ -297,17 +306,17 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
             {isEditing ? (
               <>
                 <div className={s.editFieldGroup}>
-                  <label className={s.editLabel}>Display Name</label>
+                  <label className={s.editLabel}>{t('settings.account.displayName')}</label>
                   <input
                     type="text"
                     className={s.editInput}
                     value={editedProfile.display_name}
                     onChange={(e) => setEditedProfile(p => ({ ...p, display_name: e.target.value }))}
-                    placeholder="How others see you"
+                    placeholder={t('settings.account.displayNamePlaceholder')}
                   />
                 </div>
                 <div className={s.editFieldGroup}>
-                  <label className={s.editLabel}>Username</label>
+                  <label className={s.editLabel}>{t('settings.account.username')}</label>
                   <span className={s.editReadonly}>{user?.username}</span>
                 </div>
               </>
@@ -322,50 +331,50 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
 
             {isEditing ? (
               <div className={s.editFieldGroup}>
-                <label className={s.editLabel}>Bio</label>
+                <label className={s.editLabel}>{t('settings.account.bio')}</label>
                 <textarea
                   className={s.editTextarea}
                   value={editedProfile.bio}
                   onChange={(e) => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
-                  placeholder="Tell others about yourself..."
+                  placeholder={t('settings.account.bioPlaceholder')}
                   rows={3}
                   maxLength={500}
                 />
               </div>
             ) : (
-              <p className={s.previewBio}>{editedProfile.bio || 'No bio set'}</p>
+              <p className={s.previewBio}>{editedProfile.bio || t('settings.account.noBio')}</p>
             )}
           </div>
 
         </div>
       </div>
 
-      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Account Information</h3>
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>{t('settings.account.accountInfo')}</h3>
       <div className={s.simpleField}>
-        <span className={s.simpleFieldLabel}>Email</span>
+        <span className={s.simpleFieldLabel}>{t('settings.account.emailLabel')}</span>
         <div className={s.simpleFieldValueWrap}>
-          <span className={s.simpleFieldValue}>••••••••••</span>
-          <button className={s.simpleFieldEdit}>Edit</button>
+          <span className={s.simpleFieldValue}>{t('settings.account.emailMasked')}</span>
+          <button className={s.simpleFieldEdit}>{t('common.edit')}</button>
         </div>
       </div>
 
       <Divider />
-      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Password & Authentication</h3>
-      <p className={`${s.helpText} txt-small`}>Keep your account secure with a strong password and two-factor authentication.</p>
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>{t('settings.account.passwordSection')}</h3>
+      <p className={`${s.helpText} txt-small`}>{t('settings.account.passwordHelp')}</p>
       <div className={s.rowBtns}>
-        <OutlineBtn>Change Password</OutlineBtn>
-        <OutlineBtn>Enable Two-Factor Auth</OutlineBtn>
+        <OutlineBtn>{t('settings.account.changePassword')}</OutlineBtn>
+        <OutlineBtn>{t('settings.account.enable2FA')}</OutlineBtn>
       </div>
 
       <Divider />
       <div className={s.rowBtns}>
-        <OutlineBtn onClick={() => { onLogout?.(); onClose() }}>Log Out</OutlineBtn>
+        <OutlineBtn onClick={() => { onLogout?.(); onClose() }}>{t('settings.account.logOut')}</OutlineBtn>
       </div>
 
       <Divider />
-      <h3 className={`${s.subTitle} ${s.danger} txt-small txt-semibold`}>Danger Zone</h3>
-      <p className={`${s.helpText} txt-small`}>Deleting your account is permanent and cannot be undone.</p>
-      <DangerBtn>Delete Account</DangerBtn>
+      <h3 className={`${s.subTitle} ${s.danger} txt-small txt-semibold`}>{t('settings.account.dangerZone')}</h3>
+      <p className={`${s.helpText} txt-small`}>{t('settings.account.deleteHelp')}</p>
+      <DangerBtn>{t('settings.account.deleteAccount')}</DangerBtn>
     </div>
   )
 }
@@ -374,6 +383,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
    SECTION: Privacy & Safety
 ───────────────────────────────────────── */
 function PrivacySection() {
+  const { t } = useT()
   const user = useAuthStore(s => s.user)
   const updateProfile = useAuthStore(s => s.updateProfile)
 
@@ -395,27 +405,27 @@ function PrivacySection() {
 
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Privacy & Safety</h2>
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.privacy.title')}</h2>
 
-      <SettingBlock title="Safe Direct Messaging" description="Control who can send you direct messages.">
+      <SettingBlock title={t('settings.privacy.dmFilterTitle')} description={t('settings.privacy.dmFilterDesc')}>
         <RadioGroup
           value={dmFilter}
           onChange={setDmFilter}
           options={[
-            { value: 'all',     label: 'Allow all DMs' },
-            { value: 'friends', label: 'Friends only' },
-            { value: 'none',    label: 'No one' },
+            { value: 'all',     label: t('settings.privacy.dmAll') },
+            { value: 'friends', label: t('settings.privacy.dmFriends') },
+            { value: 'none',    label: t('settings.privacy.dmNone') },
           ]}
         />
       </SettingBlock>
 
       <Divider />
-      <ToggleRow label="Allow friend requests" description="Let others send you friend requests." value={friendReqs} onChange={setFriendReqs} />
-      <ToggleRow label="Read receipts"         description="Show when you've read messages in DMs."  value={readReceipts} onChange={setReadReceipts} />
+      <ToggleRow label={t('settings.privacy.allowFriendReqsLabel')} description={t('settings.privacy.allowFriendReqsDesc')} value={friendReqs} onChange={setFriendReqs} />
+      <ToggleRow label={t('settings.privacy.readReceiptsLabel')}    description={t('settings.privacy.readReceiptsDesc')}  value={readReceipts} onChange={setReadReceipts} />
 
       <Divider />
-      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Data & Privacy</h3>
-      <ToggleRow label="Usage analytics" description="Help improve Jolkr by sending anonymous usage data." value={analytics} onChange={setAnalytics} />
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>{t('settings.privacy.dataPrivacy')}</h3>
+      <ToggleRow label={t('settings.privacy.analyticsLabel')} description={t('settings.privacy.analyticsDesc')} value={analytics} onChange={setAnalytics} />
     </div>
   )
 }
@@ -423,25 +433,29 @@ function PrivacySection() {
 /* ─────────────────────────────────────────
    SECTION: Connections
 ───────────────────────────────────────── */
+// Service `name` is a brand and stays untranslated; `descKey` looks up the
+// category label under `settings.connections.*`.
 const SERVICES = [
-  { name: 'Spotify',  icon: '🎵', desc: 'Music' },
-  { name: 'Steam',    icon: '🎮', desc: 'Gaming' },
-  { name: 'GitHub',   icon: '💻', desc: 'Development' },
-  { name: 'Twitch',   icon: '📺', desc: 'Streaming' },
-  { name: 'YouTube',  icon: '▶️', desc: 'Video' },
-  { name: 'Twitter',  icon: '🐦', desc: 'Social' },
-]
+  { name: 'Spotify',  icon: '🎵', descKey: 'music' },
+  { name: 'Steam',    icon: '🎮', descKey: 'gaming' },
+  { name: 'GitHub',   icon: '💻', descKey: 'development' },
+  { name: 'Twitch',   icon: '📺', descKey: 'streaming' },
+  { name: 'YouTube',  icon: '▶️', descKey: 'video' },
+  { name: 'Twitter',  icon: '🐦', descKey: 'social' },
+] as const
+
 function ConnectionsSection() {
+  const { t } = useT()
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Connections</h2>
-      <p className={`${s.helpText} txt-small`}>Connect your accounts to share your activity and unlock integrations.</p>
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.connections.title')}</h2>
+      <p className={`${s.helpText} txt-small`}>{t('settings.connections.intro')}</p>
       <div className={s.connectionGrid}>
         {SERVICES.map(svc => (
           <button key={svc.name} className={s.connectionTile}>
             <span className={s.connectionIcon}>{svc.icon}</span>
             <span className={`${s.connectionName} txt-small txt-medium`}>{svc.name}</span>
-            <span className={`${s.connectionDesc} txt-tiny`}>{svc.desc}</span>
+            <span className={`${s.connectionDesc} txt-tiny`}>{t(`settings.connections.${svc.descKey}`)}</span>
           </button>
         ))}
       </div>
@@ -455,14 +469,20 @@ function ConnectionsSection() {
 function AppearanceSection({ isDark: _isDark, colorPref, onSetColorPref }: {
   isDark: boolean; colorPref: ColorPreference; onSetColorPref: (p: ColorPreference) => void
 }) {
+  const { t } = useT()
   const [display, setDisplay]   = useState<'cozy' | 'compact'>('cozy')
   const [fontSize, setFontSize] = useState(16)
 
+  const colorModeLabel = (p: ColorPreference) =>
+    p === 'light'  ? `☀️  ${t('settings.appearance.colorModeLight')}`
+    : p === 'system' ? `⚙️  ${t('settings.appearance.colorModeSystem')}`
+    : `🌙  ${t('settings.appearance.colorModeDark')}`
+
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Appearance</h2>
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.appearance.title')}</h2>
 
-      <SettingBlock title="Color Mode" description="Choose your preferred theme.">
+      <SettingBlock title={t('settings.appearance.colorModeTitle')} description={t('settings.appearance.colorModeDesc')}>
         <div className={s.segmentControl}>
           {(['light', 'system', 'dark'] as ColorPreference[]).map(p => (
             <button
@@ -470,26 +490,26 @@ function AppearanceSection({ isDark: _isDark, colorPref, onSetColorPref }: {
               className={`${s.segment} ${colorPref === p ? s.segmentActive : ''}`}
               onClick={() => onSetColorPref(p)}
             >
-              {p === 'light' ? '☀️  Light' : p === 'system' ? '⚙️  System' : '🌙  Dark'}
+              {colorModeLabel(p)}
             </button>
           ))}
         </div>
       </SettingBlock>
 
       <Divider />
-      <SettingBlock title="Message Display" description="Compact mode shows more messages at once.">
+      <SettingBlock title={t('settings.appearance.messageDisplayTitle')} description={t('settings.appearance.messageDisplayDesc')}>
         <RadioGroup
           value={display}
           onChange={setDisplay}
           options={[
-            { value: 'cozy',    label: 'Cozy — spacious, comfortable reading' },
-            { value: 'compact', label: 'Compact — more messages visible at once' },
+            { value: 'cozy',    label: t('settings.appearance.displayCozy') },
+            { value: 'compact', label: t('settings.appearance.displayCompact') },
           ]}
         />
       </SettingBlock>
 
       <Divider />
-      <SettingBlock title={`Chat Font Size — ${fontSize}px`} description="Resize the text in chat messages.">
+      <SettingBlock title={t('settings.appearance.fontSizeTitle', { size: fontSize })} description={t('settings.appearance.fontSizeDesc')}>
         <div className={s.sliderRow}>
           <span className={s.sliderLabel}>12</span>
           <input type="range" min={12} max={20} step={1} value={fontSize}
@@ -505,16 +525,17 @@ function AppearanceSection({ isDark: _isDark, colorPref, onSetColorPref }: {
    SECTION: Accessibility
 ───────────────────────────────────────── */
 function AccessibilitySection() {
+  const { t } = useT()
   const [reducedMotion, setReducedMotion] = useState(false)
   const [highContrast,  setHighContrast]  = useState(false)
   const [roleColors,    setRoleColors]    = useState(true)
 
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Accessibility</h2>
-      <ToggleRow label="Reduce motion"    description="Minimise animations and transitions throughout the app." value={reducedMotion} onChange={setReducedMotion} />
-      <ToggleRow label="High contrast"    description="Increase contrast between text and background." value={highContrast} onChange={setHighContrast} />
-      <ToggleRow label="Show role colours" description="Display colour-coded role names in member lists." value={roleColors}    onChange={setRoleColors} />
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.accessibility.title')}</h2>
+      <ToggleRow label={t('settings.accessibility.reducedMotionLabel')} description={t('settings.accessibility.reducedMotionDesc')} value={reducedMotion} onChange={setReducedMotion} />
+      <ToggleRow label={t('settings.accessibility.highContrastLabel')}  description={t('settings.accessibility.highContrastDesc')}  value={highContrast}  onChange={setHighContrast} />
+      <ToggleRow label={t('settings.accessibility.roleColorsLabel')}    description={t('settings.accessibility.roleColorsDesc')}    value={roleColors}    onChange={setRoleColors} />
     </div>
   )
 }
@@ -523,6 +544,7 @@ function AccessibilitySection() {
    SECTION: Voice & Video
 ───────────────────────────────────────── */
 function VoiceSection() {
+  const { t } = useT()
   const { audioInputs, audioOutputs, videoInputs } = useVoiceMediaDevices()
   const sinkSupported = useOutputSinkSupported()
 
@@ -536,23 +558,23 @@ function VoiceSection() {
 
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Voice & Video</h2>
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.voice.title')}</h2>
 
-      <SettingBlock title="Input Device">
+      <SettingBlock title={t('settings.voice.inputDevice')}>
         <Select
           className={s.selectMaxWidth}
           value={prefs.audioInputDeviceId}
           onChange={(e) => set('audioInputDeviceId', e.target.value)}
         >
-          <option value="">System default</option>
+          <option value="">{t('settings.voice.systemDefault')}</option>
           {audioInputs.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || `Microphone (${d.deviceId.slice(0, 6)}…)`}
+              {d.label || t('settings.voice.microphoneFallback', { id: d.deviceId.slice(0, 6) })}
             </option>
           ))}
         </Select>
       </SettingBlock>
-      <SettingBlock title={`Input Volume — ${prefs.inputVolume}%`}>
+      <SettingBlock title={t('settings.voice.inputVolume', { volume: prefs.inputVolume })}>
         <div className={s.sliderRow}>
           <span className={s.sliderLabel}>0</span>
           <input type="range" min={0} max={100} value={prefs.inputVolume}
@@ -563,25 +585,25 @@ function VoiceSection() {
 
       <Divider />
       <SettingBlock
-        title="Output Device"
-        description={sinkSupported ? undefined : 'Output device selection is not supported in this browser.'}
+        title={t('settings.voice.outputDevice')}
+        description={sinkSupported ? undefined : t('settings.voice.outputUnsupported')}
       >
         <Select
           className={s.selectMaxWidth}
           value={prefs.audioOutputDeviceId}
           onChange={(e) => set('audioOutputDeviceId', e.target.value)}
           disabled={!sinkSupported}
-          title={sinkSupported ? undefined : 'Not supported in this browser'}
+          title={sinkSupported ? undefined : t('settings.voice.outputUnsupportedTitle')}
         >
-          <option value="">System default</option>
+          <option value="">{t('settings.voice.systemDefault')}</option>
           {audioOutputs.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || `Speakers (${d.deviceId.slice(0, 6)}…)`}
+              {d.label || t('settings.voice.speakersFallback', { id: d.deviceId.slice(0, 6) })}
             </option>
           ))}
         </Select>
       </SettingBlock>
-      <SettingBlock title={`Output Volume — ${prefs.outputVolume}%`}>
+      <SettingBlock title={t('settings.voice.outputVolume', { volume: prefs.outputVolume })}>
         <div className={s.sliderRow}>
           <span className={s.sliderLabel}>0</span>
           <input type="range" min={0} max={100} value={prefs.outputVolume}
@@ -591,17 +613,17 @@ function VoiceSection() {
       </SettingBlock>
 
       <Divider />
-      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Camera</h3>
-      <SettingBlock title="Camera Device">
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>{t('settings.voice.cameraSection')}</h3>
+      <SettingBlock title={t('settings.voice.cameraDevice')}>
         <Select
           className={s.selectMaxWidth}
           value={prefs.videoInputDeviceId}
           onChange={(e) => set('videoInputDeviceId', e.target.value)}
         >
-          <option value="">System default</option>
+          <option value="">{t('settings.voice.systemDefault')}</option>
           {videoInputs.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || `Camera (${d.deviceId.slice(0, 6)}…)`}
+              {d.label || t('settings.voice.cameraFallback', { id: d.deviceId.slice(0, 6) })}
             </option>
           ))}
         </Select>
@@ -609,10 +631,10 @@ function VoiceSection() {
       </SettingBlock>
 
       <Divider />
-      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Advanced</h3>
-      <ToggleRow label="Noise suppression"      description="Filter out background noise during voice calls." value={prefs.noiseSuppression} onChange={(v) => set('noiseSuppression', v)} />
-      <ToggleRow label="Echo cancellation"      description="Remove echo from microphone input."              value={prefs.echoCancellation} onChange={(v) => set('echoCancellation', v)} />
-      <ToggleRow label="Automatic gain control" description="Automatically adjust microphone sensitivity."     value={prefs.autoGainControl}  onChange={(v) => set('autoGainControl', v)} />
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>{t('settings.voice.advancedSection')}</h3>
+      <ToggleRow label={t('settings.voice.noiseSuppressionLabel')} description={t('settings.voice.noiseSuppressionDesc')} value={prefs.noiseSuppression} onChange={(v) => set('noiseSuppression', v)} />
+      <ToggleRow label={t('settings.voice.echoCancellationLabel')} description={t('settings.voice.echoCancellationDesc')} value={prefs.echoCancellation} onChange={(v) => set('echoCancellation', v)} />
+      <ToggleRow label={t('settings.voice.autoGainLabel')}         description={t('settings.voice.autoGainDesc')}         value={prefs.autoGainControl}  onChange={(v) => set('autoGainControl', v)} />
     </div>
   )
 }
@@ -623,6 +645,7 @@ function VoiceSection() {
  * Settings dialog closes (component unmount).
  */
 function CameraPreview({ deviceId }: { deviceId: string }) {
+  const { t } = useT()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -640,21 +663,21 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
         width:  { ideal: 1280 },
         height: { ideal: 720 },
       },
-    }).then((s) => {
-      if (cancelled) { s.getTracks().forEach((t) => t.stop()); return }
-      stream = s
-      if (node) node.srcObject = s
+    }).then((stm) => {
+      if (cancelled) { stm.getTracks().forEach((t) => t.stop()); return }
+      stream = stm
+      if (node) node.srcObject = stm
       setError(null)
     }).catch((e: Error) => {
-      if (!cancelled) setError(e.message || 'Camera unavailable')
+      if (!cancelled) setError(e.message || t('settings.voice.cameraUnavailable'))
     })
 
     return () => {
       cancelled = true
-      stream?.getTracks().forEach((t) => t.stop())
+      stream?.getTracks().forEach((track) => track.stop())
       if (node) node.srcObject = null
     }
-  }, [deviceId])
+  }, [deviceId, t])
 
   return (
     <div className={s.cameraPreview}>
@@ -670,6 +693,7 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
    SECTION: Notifications
 ───────────────────────────────────────── */
 function NotificationsSection() {
+  const { t } = useT()
   const showToast = useToast(s => s.show)
   const [desktop,  setDesktop]  = useLocalStorageBoolean(STORAGE_KEYS.DESKTOP_NOTIF, true)
   const [sounds,   setSounds]   = useLocalStorageBoolean(STORAGE_KEYS.SOUND_ENABLED, true)
@@ -682,23 +706,23 @@ function NotificationsSection() {
     if (!v) return
     const result = await ensureNotificationPermission()
     if (result === 'denied') {
-      showToast('Notification permission denied — enable it in your browser/OS settings.', 'error', 6000)
+      showToast(t('settings.notifications.permissionDeniedToast'), 'error', 6000)
     } else if (result === 'unsupported') {
-      showToast('Desktop notifications are not supported in this environment.', 'info', 4000)
+      showToast(t('settings.notifications.unsupportedToast'), 'info', 4000)
     }
   }
 
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Notifications</h2>
-      <ToggleRow label="Enable desktop notifications" description="Show notifications when the app is in the background." value={desktop}  onChange={onDesktopChange} />
-      <ToggleRow label="Notification sounds"          description="Play a sound when you receive a notification." value={sounds}   onChange={setSounds} />
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.notifications.title')}</h2>
+      <ToggleRow label={t('settings.notifications.desktopLabel')} description={t('settings.notifications.desktopDesc')} value={desktop}  onChange={onDesktopChange} />
+      <ToggleRow label={t('settings.notifications.soundsLabel')}  description={t('settings.notifications.soundsDesc')}  value={sounds}   onChange={setSounds} />
 
       <Divider />
-      <h3 className={`${s.subTitle} txt-small txt-semibold`}>Notification triggers</h3>
-      <ToggleRow label="@mentions"           description="Notify when someone mentions you in a channel." value={mentions} onChange={setMentions} />
-      <ToggleRow label="Direct messages"     description="Notify for all new direct messages." value={dms}      onChange={setDms} />
-      <ToggleRow label="Unread badge"        description="Show unread count badge on the app icon." value={badge}    onChange={setBadge} />
+      <h3 className={`${s.subTitle} txt-small txt-semibold`}>{t('settings.notifications.triggers')}</h3>
+      <ToggleRow label={t('settings.notifications.mentionsLabel')} description={t('settings.notifications.mentionsDesc')} value={mentions} onChange={setMentions} />
+      <ToggleRow label={t('settings.notifications.dmsLabel')}      description={t('settings.notifications.dmsDesc')}      value={dms}      onChange={setDms} />
+      <ToggleRow label={t('settings.notifications.badgeLabel')}    description={t('settings.notifications.badgeDesc')}    value={badge}    onChange={setBadge} />
     </div>
   )
 }
@@ -706,28 +730,32 @@ function NotificationsSection() {
 /* ─────────────────────────────────────────
    SECTION: Keybinds
 ───────────────────────────────────────── */
+// `actionKey` looks up the localised label under `settings.keybinds.*`; the
+// key glyphs (⌘/Shift/Escape/etc.) are platform-conventional and stay literal.
 const KEYBINDS = [
-  { action: 'Open Quick Switcher',   keys: ['⌘', 'K'] },
-  { action: 'Toggle Mute',           keys: ['⌘', 'Shift', 'M'] },
-  { action: 'Toggle Deafen',         keys: ['⌘', 'Shift', 'D'] },
-  { action: 'Mark Server as Read',   keys: ['Escape'] },
-  { action: 'Jump to Oldest Unread', keys: ['⌘', 'Shift', 'U'] },
-  { action: 'Upload a File',         keys: ['⌘', 'Shift', 'F'] },
-  { action: 'Search',                keys: ['⌘', 'F'] },
-  { action: 'Focus Chat Input',      keys: ['⌘', 'L'] },
-  { action: 'Edit Last Message',     keys: ['↑'] },
-  { action: 'Reply to Message',      keys: ['R'] },
-  { action: 'Toggle Settings',       keys: ['⌘', ','] },
-]
+  { actionKey: 'openSwitcher',   keys: ['⌘', 'K'] },
+  { actionKey: 'toggleMute',     keys: ['⌘', 'Shift', 'M'] },
+  { actionKey: 'toggleDeafen',   keys: ['⌘', 'Shift', 'D'] },
+  { actionKey: 'markRead',       keys: ['Escape'] },
+  { actionKey: 'jumpUnread',     keys: ['⌘', 'Shift', 'U'] },
+  { actionKey: 'uploadFile',     keys: ['⌘', 'Shift', 'F'] },
+  { actionKey: 'search',         keys: ['⌘', 'F'] },
+  { actionKey: 'focusInput',     keys: ['⌘', 'L'] },
+  { actionKey: 'editLast',       keys: ['↑'] },
+  { actionKey: 'replyMessage',   keys: ['R'] },
+  { actionKey: 'toggleSettings', keys: ['⌘', ','] },
+] as const
+
 function KeybindsSection() {
+  const { t } = useT()
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Keybinds</h2>
-      <p className={`${s.helpText} txt-small`}>Default keyboard shortcuts. Custom keybinds coming soon.</p>
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.keybinds.title')}</h2>
+      <p className={`${s.helpText} txt-small`}>{t('settings.keybinds.intro')}</p>
       <div className={s.keybindList}>
         {KEYBINDS.map(kb => (
-          <div key={kb.action} className={s.keybindRow}>
-            <span className={`${s.keybindAction} txt-small`}>{kb.action}</span>
+          <div key={kb.actionKey} className={s.keybindRow}>
+            <span className={`${s.keybindAction} txt-small`}>{t(`settings.keybinds.${kb.actionKey}`)}</span>
             <div className={s.keybindKeys}>
               {/* index keys are safe — KEYBINDS is a compile-time constant. */}
               {kb.keys.map((k, i) => <kbd key={i} className={s.key}>{k}</kbd>)}
@@ -742,15 +770,39 @@ function KeybindsSection() {
 /* ─────────────────────────────────────────
    SECTION: Language
 ───────────────────────────────────────── */
-const LANGUAGES = ['English (US)', 'English (UK)', 'Français', 'Deutsch', 'Español', 'Italiano', '日本語', '한국어', '中文 (简体)']
 function LanguageSection() {
-  const [lang, setLang] = useState('English (US)')
+  const { t } = useT()
+  const code = useLocaleStore(s => s.code)
+  const setLocale = useLocaleStore(s => s.setLocale)
+  const showToast = useToast(s => s.show)
+
+  // Optimistic switch — flip the FE locale immediately, then PATCH /users/@me
+  // so it syncs across devices via the WS UserUpdate fan-out. PATCH errors
+  // surface as a toast but the local choice stays (per design — "rollback
+  // would feel broken"); the next successful save reconciles.
+  const handleChange = async (next: LocaleCode) => {
+    if (next === code) return
+    await setLocale(next)
+    try {
+      await api.updateMe({ preferred_language: next })
+    } catch (e) {
+      console.warn('Failed to persist preferred_language:', e)
+      showToast(t('settings.language.saveError'), 'error')
+    }
+  }
+
   return (
     <div className={s.section}>
-      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>Language</h2>
-      <SettingBlock title="Display Language" description="Choose the language used throughout the app.">
-        <Select className={s.selectMaxWidth} value={lang} onChange={e => setLang(e.target.value)}>
-          {LANGUAGES.map(l => <option key={l}>{l}</option>)}
+      <h2 className={`${s.sectionTitle} txt-body txt-semibold`}>{t('settings.language.title')}</h2>
+      <SettingBlock title={t('settings.language.displayTitle')} description={t('settings.language.displayDesc')}>
+        <Select
+          className={s.selectMaxWidth}
+          value={code}
+          onChange={e => handleChange(e.target.value as LocaleCode)}
+        >
+          {SUPPORTED_LOCALES.map(c => (
+            <option key={c} value={c}>{LOCALE_LABELS[c]}</option>
+          ))}
         </Select>
       </SettingBlock>
     </div>

@@ -161,7 +161,7 @@ pub(crate) async fn send_dm_message(
         }
     });
 
-    Ok(Json(DmMessageResponse { message }))
+    Ok(Json(DmMessageResponse { message: dm_to_message_info(&message) }))
 }
 
 pub(crate) async fn get_dm_messages(
@@ -171,6 +171,7 @@ pub(crate) async fn get_dm_messages(
     Query(query): Query<DmMessageQuery>,
 ) -> Result<Json<DmMessagesResponse>, AppError> {
     let messages = DmService::get_messages(&state.pool, dm_id, auth.user_id, query).await?;
+    let messages = messages.iter().map(dm_to_message_info).collect();
 
     Ok(Json(DmMessagesResponse { messages }))
 }
@@ -210,7 +211,7 @@ pub(crate) async fn edit_dm_message(
     };
     state.nats.publish_to_channel(message.dm_channel_id, &event).await;
 
-    Ok(Json(DmMessageResponse { message }))
+    Ok(Json(DmMessageResponse { message: dm_to_message_info(&message) }))
 }
 
 /// DELETE /api/dms/messages/:id

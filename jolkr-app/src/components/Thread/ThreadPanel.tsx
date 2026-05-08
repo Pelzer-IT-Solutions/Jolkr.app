@@ -9,6 +9,8 @@ import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { getLocalKeys } from '../../services/e2ee'
 import { displayName } from '../../utils/format'
 import { logErr } from '../../utils/logErr'
+import { useT } from '../../hooks/useT'
+import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import s from './ThreadPanel.module.css'
 
 interface Props {
@@ -25,12 +27,14 @@ function ThreadMessage({ msg, channelId, users }: {
   channelId: string
   users?: Map<string, User>
 }) {
+  const { t } = useT()
+  const fmt = useLocaleFormatters()
   const { displayContent, decrypting } = useDecryptedContent(
     msg.content, msg.nonce, false, channelId,
   )
   const author = users?.get(msg.author_id) ?? msg.author ?? null
-  const authorName = author ? displayName(author) : 'Unknown'
-  const time = new Date(msg.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const authorName = author ? displayName(author) : t('thread.panel.unknownAuthor')
+  const time = fmt.formatTime(msg.created_at)
 
   return (
     <div className={s.msg}>
@@ -38,8 +42,8 @@ function ThreadMessage({ msg, channelId, users }: {
         <span className={`${s.msgAuthor} txt-small txt-semibold`}>{authorName}</span>
         <span className={`${s.msgTime} txt-tiny`}>{time}</span>
       </div>
-      <div className={`${s.msgBody} txt-small`}>
-        {decrypting ? '...' : (displayContent || '')}
+      <div className={`${s.msgBody} txt-small`} dir="auto">
+        {decrypting ? t('thread.panel.decryptingShort') : (displayContent || '')}
       </div>
     </div>
   )
@@ -51,6 +55,7 @@ function ThreadMessage({ msg, channelId, users }: {
  * encryption pipeline (the thread shares its parent channel's key).
  */
 export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Props) {
+  const { t } = useT()
   const [thread, setThread] = useState<Thread | null>(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -116,20 +121,20 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
   return (
     <div className={s.panel}>
       <div className={s.header}>
-        <button className={s.backBtn} title="Back to threads" aria-label="Back to threads" onClick={onBack}>
+        <button className={s.backBtn} title={t('thread.panel.back')} aria-label={t('thread.panel.back')} onClick={onBack}>
           <ArrowLeft size={14} strokeWidth={1.5} />
         </button>
-        <span className={`${s.title} txt-small txt-semibold txt-truncate`}>
-          {thread?.name ?? 'Thread'}
+        <span className={`${s.title} txt-small txt-semibold txt-truncate`} dir="auto">
+          {thread?.name ?? t('thread.panel.fallbackTitle')}
         </span>
       </div>
 
       <div ref={listRef} className={`${s.list} scrollbar-thin`}>
         {loading && messages.length === 0 && (
-          <div className={`${s.loading} txt-small`}>Loading...</div>
+          <div className={`${s.loading} txt-small`}>{t('thread.panel.loading')}</div>
         )}
         {!loading && messages.length === 0 && (
-          <div className={`${s.empty} txt-small`}>No replies yet</div>
+          <div className={`${s.empty} txt-small`}>{t('thread.panel.empty')}</div>
         )}
         {messages.map(m => (
           <ThreadMessage key={m.id} msg={m} channelId={channelId} users={users} />
@@ -139,15 +144,16 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
       <div className={s.composer}>
         <textarea
           className={s.input}
-          placeholder="Reply in thread"
+          placeholder={t('thread.panel.replyPlaceholder')}
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={1}
+          dir="auto"
         />
         <button
           className={s.sendBtn}
-          title="Send (Enter)"
+          title={t('thread.panel.send')}
           onClick={handleSend}
           disabled={!draft.trim() || sending}
         >

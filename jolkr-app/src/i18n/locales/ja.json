@@ -1,0 +1,747 @@
+{
+  "common": {
+    "ok": "OK", "cancel": "キャンセル", "save": "保存", "delete": "削除",
+    "edit": "編集", "close": "閉じる", "loading": "読み込み中…",
+    "someone": "誰か", "required": "*", "goHome": "ホームへ",
+    "add": "追加", "saveChanges": "変更を保存",
+    "loadingDots": "読み込み中...", "unknown": "不明", "send": "送信 (Enter)",
+    "dismiss": "閉じる", "expandSidebar": "サイドバーを展開"
+  },
+
+  "time": {
+    "todayAt": "今日 {time}",
+    "yesterdayAt": "昨日 {time}",
+    "dateAt": "{date} {time}"
+  },
+
+  "chat": {
+    "header": {
+      "expandChannels": "チャンネルを展開",
+      "threads": "スレッド", "pinnedMessages": "ピン留めメッセージ",
+      "filesAndPins": "ファイルとピン", "members": "メンバー",
+      "alreadyInCall": "すでに通話中",
+      "startVoiceCall": "音声通話を開始",
+      "startVideoCall": "ビデオ通話を開始",
+      "videoCall1on1Only": "ビデオ通話は 1 対 1 のみです"
+    },
+    "dropZone": {
+      "drop": "ドロップして添付",
+      "limit": "ファイルあたり最大 {limit}",
+      "tooLargeTitle": "ファイルが大きすぎます",
+      "tooLargeAlert": "ファイルが大きすぎます (最大 {limit}): {names}"
+    },
+    "threadPrompt": {
+      "title": "新しいスレッド",
+      "namePlaceholder": "スレッド名 (任意)",
+      "createBtn": "作成"
+    },
+    "composer": {
+      "placeholderChannel": "#{channel} へメッセージ",
+      "placeholderDm": "{target} へメッセージ",
+      "emoji": "絵文字", "attachFile": "ファイルを添付",
+      "gif": "GIF", "createPoll": "投票を作成", "send": "送信 (Enter)",
+      "fmtBold": "太字 (Ctrl+B)", "fmtItalic": "斜体 (Ctrl+I)",
+      "fmtStrike": "取り消し線", "fmtCode": "コード",
+      "renameFile": "ファイル名を変更", "removeFile": "削除",
+      "renameFileTitle": "ファイル名を変更",
+      "renameFilePlaceholder": "ファイル名"
+    },
+    "autocomplete": {
+      "membersHeader": "メンバー",
+      "emojiHeader": ":{query} に一致する絵文字"
+    },
+    "replyCard": {
+      "replyingTo": "{name} に返信",
+      "cancel": "返信をキャンセル"
+    },
+    "empty": {
+      "dmTitle": "{name} とのメッセージはまだありません",
+      "dmFallbackName": "このユーザー",
+      "dmBody": "下にメッセージを送信して会話を始めましょう。",
+      "channelTitle": "#{channel} へようこそ",
+      "channelBody": "最初に何か言ってみましょう — 下にメッセージを入力してチャンネルを盛り上げましょう。"
+    },
+    "readOnly": {
+      "system": "これはシステムチャンネルです",
+      "noPermission": "このチャンネルでメッセージを送信する権限がありません",
+      "generic": "これは読み取り専用のチャンネルです"
+    },
+    "typing": {
+      "one": "{name} が入力中…",
+      "two": "{a} と {b} が入力中…",
+      "many": "複数の人が入力中…"
+    }
+  },
+
+  "message": {
+    "editedTag": "(編集済み)",
+    "unencryptedBadge": "暗号化されていません",
+    "ariaOpenProfile": "{name} のプロフィールを開く",
+    "decrypt": {
+      "decrypting": "復号中…", "decryptingShort": "...",
+      "encryptedMessage": "暗号化されたメッセージ",
+      "failed": "[暗号化されたメッセージ — 鍵が利用できません]"
+    },
+    "actions": {
+      "addReaction": "リアクションを追加", "reply": "返信",
+      "edit": "メッセージを編集", "delete": "メッセージを削除",
+      "deleteShift": "メッセージを削除 (Shift+クリック)", "more": "その他のオプション"
+    },
+    "menu": {
+      "reply": "返信", "editMessage": "メッセージを編集",
+      "copyText": "テキストをコピー", "pinMessage": "メッセージをピン留め",
+      "unpinMessage": "ピン留めを解除", "startThread": "スレッドを開始",
+      "openThread": "スレッドを開く", "deleteMessage": "メッセージを削除",
+      "deleteForMe": "自分用に削除", "reportMessage": "メッセージを報告"
+    },
+    "editHint": {
+      "escapeTo": "Esc で", "cancel": "キャンセル",
+      "enterTo": "Enter で", "save": "保存", "separator": "·"
+    },
+    "thread": {
+      "one": "スレッド内に {count} 件の返信",
+      "other": "スレッド内に {count} 件の返信"
+    },
+    "copyFailed": "コピーに失敗しました"
+  },
+
+  "reactions": {
+    "count": { "one": "{count} 件のリアクション", "other": "{count} 件のリアクション" },
+    "userFallback": "ユーザー {idShort}"
+  },
+
+  "pinned": {
+    "loading": "読み込み中...", "empty": "ピン留めされたメッセージはありません",
+    "decrypting": "復号中...", "unknownAuthor": "不明", "unpin": "ピン留めを解除"
+  },
+
+  "thread": {
+    "list": {
+      "loading": "スレッドを読み込み中...", "empty": "スレッドはまだありません",
+      "untitled": "無題のスレッド",
+      "replies": { "one": "{count} 件の返信", "other": "{count} 件の返信" }
+    },
+    "panel": {
+      "back": "スレッドに戻る", "fallbackTitle": "スレッド",
+      "loading": "読み込み中...", "empty": "返信はまだありません",
+      "replyPlaceholder": "スレッドで返信", "send": "送信 (Enter)",
+      "unknownAuthor": "不明", "decryptingShort": "..."
+    }
+  },
+
+  "poll": {
+    "create": {
+      "title": "投票を作成", "ariaLabel": "投票を作成",
+      "questionLabel": "質問",
+      "questionPlaceholder": "何を質問しますか？",
+      "optionsLabel": "選択肢",
+      "optionPlaceholder": "選択肢 {n}",
+      "removeOption": "選択肢を削除", "addOption": "選択肢を追加",
+      "multiVoteLabel": "複数投票を許可",
+      "multiVoteSub": "投票者は複数の選択肢を選べます",
+      "anonymousLabel": "匿名",
+      "anonymousSub": "誰が何に投票したかを隠す",
+      "cancel": "キャンセル", "submit": "投票を作成",
+      "submitting": "作成中…", "errorGeneric": "投票の作成に失敗しました"
+    },
+    "display": {
+      "closed": "終了",
+      "voteCount": { "one": "{count} 票", "other": "{count} 票" },
+      "multipleChoice": "複数選択", "anonymous": "匿名"
+    }
+  },
+
+  "attachments": {
+    "openImage": "{filename} を開く"
+  },
+
+  "userStatus": {
+    "online": "オンライン", "idle": "離席中", "dnd": "取り込み中",
+    "offline": "オフライン", "invisible": "非表示"
+  },
+
+  "dmSidebar": {
+    "title": "ダイレクトメッセージ", "backToChat": "チャットに戻る",
+    "friends": "フレンド", "newMessage": "新しいメッセージ",
+    "collapseSidebar": "サイドバーを折りたたむ",
+    "emptyTitle": "会話はまだありません",
+    "emptySubtitle": "新しいメッセージを送信してチャットを始めましょう"
+  },
+
+  "dmInfoPanel": {
+    "backToChat": "チャットに戻る", "info": "情報",
+    "unpin": "ピン留めを解除", "pinnedMessages": "ピン留めメッセージ",
+    "noPinned": "ピン留めされたメッセージはまだありません",
+    "sharedFiles": "共有ファイル", "noFiles": "共有ファイルはまだありません",
+    "decrypting": "復号中…"
+  },
+
+  "newDmModal": {
+    "title": "新しいメッセージ", "close": "閉じる", "addMore": "さらに追加...",
+    "searchPlaceholder": "フレンドを検索またはユーザー名を入力...",
+    "loadingFriends": "フレンドを読み込み中...", "searching": "検索中...",
+    "online": "オンライン — {count}", "offline": "オフライン — {count}",
+    "noUsersFound": "ユーザーが見つかりません",
+    "noFriendsYet": "フレンドがまだいません — 上でユーザー名を検索",
+    "createGroup": "グループ DM を作成", "startConversation": "会話を始める"
+  },
+
+  "profileCard": {
+    "ariaProfile": "{name} のプロフィール",
+    "loadError": "ユーザープロフィールを読み込めませんでした",
+    "loading": "読み込み中…", "about": "自己紹介",
+    "memberSince": "登録日", "safetyNumber": "セーフティナンバー",
+    "sendMessage": "メッセージを送信", "addFriend": "フレンドに追加",
+    "requestPending": "フレンドリクエスト保留中", "removeFriend": "フレンドを削除",
+    "userBlocked": "ユーザーをブロックしました", "block": "ブロック",
+    "editProfile": "プロフィールを編集",
+    "errFriendSend": "リクエストの送信に失敗しました",
+    "errFriendRemove": "フレンドの削除に失敗しました",
+    "errBlock": "ユーザーのブロックに失敗しました"
+  },
+
+  "memberPanel": {
+    "backToChat": "チャットに戻る",
+    "online": "オンライン — {count}", "offline": "オフライン — {count}",
+    "members": "メンバー — {count}",
+    "pinnedMessages": "ピン留めメッセージ", "threads": "スレッド"
+  },
+
+  "tabBar": {
+    "yourServers": "あなたのサーバー", "search": "検索 (⌘K)",
+    "directMessages": "ダイレクトメッセージ", "notifications": "通知",
+    "profile": "プロフィール",
+    "onVideoCallOther": "ビデオ通話中（他のデバイス）",
+    "onCallOther": "通話中（他のデバイス）",
+    "joinServer": "サーバーに参加", "createServer": "サーバーを作成",
+    "browserTitle": "あなたのサーバー",
+    "channelsCount": { "one": "{count} チャンネル", "other": "{count} チャンネル" },
+    "open": "開く", "muteServer": "サーバーをミュート", "unmuteServer": "サーバーのミュート解除",
+    "markAsRead": "既読にする", "serverSettings": "サーバー設定",
+    "closeTab": "タブを閉じる", "leaveServer": "サーバーを退出",
+    "setStatus": "ステータスを設定", "settings": "設定", "logOut": "ログアウト",
+    "serverOptions": "サーバーオプション",
+    "onVideoCall": "ビデオ通話中", "onCall": "通話中"
+  },
+
+  "notificationsPanel": { "title": "通知", "empty": "通知はまだありません" },
+
+  "friendsPanel": {
+    "close": "閉じる", "tabAll": "すべて", "tabOnline": "オンライン",
+    "tabPending": "保留中", "tabAdd": "フレンドを追加",
+    "incoming": "受信中 ({count})", "outgoing": "送信済み ({count})",
+    "cancel": "キャンセル", "noPending": "保留中のフレンドリクエストはありません",
+    "addIntro": "ユーザー名、メール、または QR コードでフレンドを追加します。",
+    "myQrCode": "自分の QR コード", "scanQr": "QR をスキャン", "orSearch": "または検索",
+    "searchPlaceholder": "ユーザー名またはメール…", "searching": "検索中…",
+    "noUsersFound": "ユーザーが見つかりません",
+    "sending": "送信中…", "addBtn": "追加", "noFriendsFound": "フレンドが見つかりません",
+    "requestSent": "フレンドリクエストを送信しました",
+    "requestFailed": "フレンドリクエストの送信に失敗しました"
+  },
+
+  "userContextMenu": {
+    "viewProfile": "プロフィールを見る", "addFriend": "フレンドに追加",
+    "removeFriend": "フレンドを削除", "mute": "ミュート", "unmute": "ミュート解除",
+    "block": "ブロック", "unblock": "ブロック解除", "closeDm": "DM を閉じる",
+    "moderation": "モデレーション", "kick": "キック", "ban": "BAN",
+    "assignRole": "ロールを割り当て", "inviteToServer": "サーバーに招待",
+    "reportUser": "ユーザーを報告"
+  },
+
+  "channelSidebar": {
+    "title": "チャンネル", "newChannel": "新しいチャンネル",
+    "backToChat": "チャットに戻る", "collapseSidebar": "サイドバーを折りたたむ",
+    "ariaServerChannels": "サーバーチャンネル",
+    "menuNewFolder": "新しいフォルダ", "menuNewText": "新しいテキストチャンネル",
+    "menuNewVoice": "新しいボイスチャンネル", "menuChannelSettings": "チャンネル設定",
+    "menuRenameChannel": "チャンネル名を変更", "menuArchiveChannel": "チャンネルをアーカイブ",
+    "menuDeleteChannel": "チャンネルを削除",
+    "confirmDeleteChannel": "このチャンネルを削除しますか？元に戻せません。",
+    "menuCreateText": "テキストチャンネルを作成", "menuCreateVoice": "ボイスチャンネルを作成",
+    "menuRenameFolder": "フォルダ名を変更", "menuDeleteFolder": "フォルダを削除",
+    "confirmDeleteFolder": "このフォルダを削除しますか？中のチャンネルは削除されません。",
+    "placeholderFolder": "フォルダ名…", "placeholderVoice": "voice-channel-name…",
+    "placeholderText": "channel-name…", "channelOptions": "チャンネルオプション"
+  },
+
+  "deleteMessageDialog": {
+    "title": "メッセージを削除しますか？",
+    "bodyOwner": "このメッセージは削除されます。自分だけのために削除するか、全員に対して削除するかを選択してください。",
+    "bodyNonOwner": "これはあなたの側でのみメッセージを非表示にします。他のメンバーには引き続き表示されます。",
+    "deleteForEveryone": "全員から削除", "deleteForBoth": "両方から削除",
+    "deleteForMe": "自分から削除", "cancel": "キャンセル"
+  },
+
+  "createServerModal": {
+    "title": "サーバーを作成",
+    "description": "コミュニティに居場所を。自分だけのカスタマイズを。",
+    "iconLabel": "サーバーアイコン",
+    "iconHelper": "タブとサーバーブラウザに表示されます",
+    "nameLabel": "サーバー名", "namePlaceholder": "私の素敵なサーバー",
+    "iconCharLabel": "アイコン文字",
+    "iconCharPlaceholder": "空白の場合、名前の最初の文字を使用",
+    "colorLabel": "カラーテーマ", "privacyLabel": "プライバシー",
+    "publicTitle": "公開", "publicDesc": "サーバー ID で誰でも参加できます",
+    "privateTitle": "非公開", "privateDesc": "メンバーは参加するためにアクセスコードが必要です",
+    "cancel": "キャンセル", "submit": "サーバーを作成",
+    "colors": {
+      "neutral": "ニュートラル", "red": "レッド", "orange": "オレンジ", "yellow": "イエロー",
+      "green": "グリーン", "teal": "ティール", "blue": "ブルー", "indigo": "インディゴ",
+      "purple": "パープル", "pink": "ピンク"
+    }
+  },
+
+  "joinServerModal": {
+    "title": "サーバーに参加",
+    "description": "既存のサーバーに参加するには招待 ID を入力してください。サーバーが非公開の場合はオーナーにアクセスコードを尋ねてください。",
+    "serverIdLabel": "サーバー ID", "serverIdPlaceholder": "例: pixel-workshop",
+    "accessCodeLabel": "アクセスコード",
+    "accessCodePlaceholder": "公開サーバーの場合は空白",
+    "errorEmpty": "サーバー ID を入力してください。",
+    "errorNotFound": "サーバーが見つかりません。ID を確認してもう一度お試しください。",
+    "cancel": "キャンセル", "submit": "サーバーに参加"
+  },
+
+  "reportModal": {
+    "title": "ユーザーを報告",
+    "description": "このユーザーを報告する理由を選択してください。報告は当社のモデレーションチームによって確認されます。",
+    "additionalLabel": "追加情報（任意）",
+    "additionalPlaceholder": "モデレーターの参考になる追加のコンテキストを入力してください...",
+    "charCount": "{used}/{max}", "cancel": "キャンセル",
+    "submitting": "送信中...", "submit": "報告を送信",
+    "successTitle": "報告を送信しました",
+    "successBody": "コミュニティの安全維持にご協力いただきありがとうございます。報告を確認し、適切な措置を講じます。",
+    "close": "閉じる",
+    "reasons": {
+      "harassment": { "label": "嫌がらせまたはいじめ", "desc": "対象を絞った虐待または威圧" },
+      "spam": { "label": "スパム", "desc": "迷惑または繰り返しのメッセージ" },
+      "inappropriate": { "label": "不適切なコンテンツ", "desc": "NSFW または露骨な内容" },
+      "violence": { "label": "脅迫または暴力", "desc": "直接的な脅迫または暴力的なコンテンツ" },
+      "other": { "label": "その他", "desc": "それ以外のもの" }
+    }
+  },
+
+  "imageLightbox": {
+    "ariaPreview": "画像プレビュー", "zoomIn": "ズームイン (+)", "zoomOut": "ズームアウト (-)",
+    "download": "ダウンロード", "openExternal": "新しいタブで開く",
+    "moreOptions": "その他のオプション", "copyImage": "画像をコピー",
+    "copyLink": "リンクをコピー", "viewDetails": "詳細を見る",
+    "close": "閉じる (Esc)", "previous": "前の画像", "next": "次の画像",
+    "filename": "ファイル名", "size": "サイズ"
+  },
+
+  "gifPicker": {
+    "searchPlaceholder": "Tenor を検索", "back": "戻る", "close": "閉じる",
+    "favorites": "お気に入り", "noFavorites": "お気に入りはまだありません",
+    "noResults": "GIF が見つかりません",
+    "removeFav": "お気に入りから削除", "addFav": "お気に入りに追加",
+    "loading": "読み込み中...", "clearSearch": "検索をクリア"
+  },
+
+  "qrScanner": {
+    "title": "QR コードをスキャン", "close": "閉じる",
+    "hint": "Jolkr QR コードにカメラを向けてください",
+    "errorInvalid": "有効な Jolkr QR コードではありません",
+    "errorSelfAdd": "自分自身をフレンドとして追加することはできません",
+    "errorCameraDenied": "カメラへのアクセスが拒否されました。カメラの許可を有効にしてもう一度お試しください。",
+    "errorNoCamera": "このデバイスにはカメラが見つかりません。",
+    "errorStartCamera": "カメラを起動できませんでした: {msg}",
+    "errorUserNotFound": "ユーザーが見つかりません",
+    "successSent": "{username} にフレンドリクエストを送信しました",
+    "sending": "送信中…", "sendBtn": "フレンドリクエストを送信"
+  },
+
+  "qrDisplay": {
+    "title": "あなたの QR コード", "close": "閉じる",
+    "hint": "フレンドはこのコードをスキャンしてあなたを追加できます",
+    "copyLink": "リンクをコピー", "copied": "コピーしました！"
+  },
+
+  "toast": {
+    "friendRequestSent": "フレンドリクエストを送信しました",
+    "friendRequestFailed": "フレンドリクエストの送信に失敗しました",
+    "friendRequestNotSent": "フレンドリクエストを送信できませんでした",
+    "startConversationFailed": "会話を開始できませんでした",
+    "createDmFailed": "DM を作成できませんでした",
+    "reactionFailed": "リアクションに失敗しました",
+    "pinFailed": "ピン留め/解除に失敗しました",
+    "unpinFailed": "ピン留め解除に失敗しました",
+    "deleteChannelFailed": "チャンネルの削除に失敗しました",
+    "leaveServerFailed": "サーバーの退出に失敗しました",
+    "deleteServerFailed": "サーバーの削除に失敗しました",
+    "createThreadFailed": "スレッドを作成できませんでした",
+    "inviteCopied": "招待リンクをコピーしました！",
+    "inviteCopyFailed": "コピーに失敗しました — リンク: {url}",
+    "inviteCreateFailed": "招待を作成できませんでした",
+    "uploadFailed": "アップロード失敗"
+  },
+
+  "call": {
+    "initiateFailed": "通話を開始できませんでした",
+    "acceptFailed": "通話を受けられませんでした",
+    "incoming": {
+      "ariaVideo": "ビデオ通話の着信", "ariaVoice": "着信",
+      "subtitleVideo": "が呼び出し中 — ビデオ", "subtitleVoice": "が呼び出し中…",
+      "decline": "拒否", "accept": "応答"
+    },
+    "outgoing": {
+      "ariaVideo": "ビデオ通話の発信", "ariaVoice": "発信",
+      "subtitleVideo": "発信中 — ビデオ…", "subtitleVoice": "発信中…",
+      "cancel": "キャンセル"
+    },
+    "window": {
+      "ariaVideoCall": "ビデオ通話", "connecting": "接続中…",
+      "youFallback": "あなた",
+      "mute": "ミュート", "unmute": "ミュート解除",
+      "cameraUnavailable": "カメラが利用できません",
+      "cameraOn": "カメラをオン", "cameraOff": "カメラをオフ",
+      "switchCamera": "カメラを切り替え",
+      "minimize": "ピクチャーインピクチャーに最小化",
+      "minimizeAria": "最小化", "endCall": "通話を終了"
+    },
+    "pip": {
+      "aria": "ピクチャーインピクチャー通話",
+      "expand": "拡大", "expandAria": "全画面に拡大",
+      "endCall": "通話を終了"
+    },
+    "bar": {
+      "errorPrefix": "音声エラー: {error}", "dismiss": "閉じる",
+      "connecting": "接続中…", "connected": "音声接続済み",
+      "voiceFallback": "音声",
+      "mute": "ミュート", "unmute": "ミュート解除",
+      "muteAria": "マイクをミュート", "unmuteAria": "マイクのミュートを解除",
+      "deafen": "デフン", "undeafen": "デフン解除",
+      "disconnect": "切断",
+      "disconnectAria": "音声から切断"
+    }
+  },
+
+  "update": {
+    "available": "アップデート {version} が利用可能",
+    "updateNow": "今すぐアップデート",
+    "errorGeneric": "アップデート失敗"
+  },
+
+  "appShell": {
+    "welcomeTitle": "Jolkr へようこそ",
+    "welcomeBody": "サーバーに参加または作成して始めましょう、もしくはダイレクトメッセージを送信してください。"
+  },
+
+  "player": {
+    "play": "再生", "pause": "一時停止",
+    "mute": "ミュート", "unmute": "ミュート解除",
+    "volume": "音量",
+    "skipBack": "{seconds}秒戻る", "skipForward": "{seconds}秒進む",
+    "fullscreen": "全画面", "exitFullscreen": "全画面を終了",
+    "enterPip": "ピクチャーインピクチャー", "exitPip": "ピクチャーインピクチャーを終了",
+    "settings": "設定",
+    "playbackSpeed": "再生速度", "speedNormal": "標準",
+    "download": "ダウンロード"
+  },
+
+  "codeBlock": {
+    "loading": "読み込み中…",
+    "expand": "もっと表示",
+    "collapse": "折りたたむ",
+    "download": "ダウンロード"
+  },
+
+  "themePicker": {
+    "title": "サーバーテーマ",
+    "scrollToResize": "スクロールでサイズ変更",
+    "noneLabel": "なし",
+    "modeLight": "ライト", "modeAuto": "自動", "modeDark": "ダーク",
+    "presets": {
+      "rose": "ローズ", "coral": "コーラル", "orange": "オレンジ", "amber": "アンバー",
+      "lime": "ライム", "jolkr": "Jolkr", "emerald": "エメラルド", "cyan": "シアン",
+      "sky": "スカイ", "indigo": "インディゴ", "purple": "パープル", "fuchsia": "フューシャ"
+    }
+  },
+
+  "auth": {
+    "shared": { "emailLabel": "メールアドレス", "passwordLabel": "パスワード" },
+    "login": {
+      "title": "おかえりなさい！", "subtitle": "またお会いできて嬉しいです！",
+      "submit": "ログイン", "submitting": "ログイン中…",
+      "forgotPassword": "パスワードをお忘れですか？",
+      "needAccount": "アカウントをお持ちでないですか？", "register": "登録"
+    },
+    "register": {
+      "title": "アカウントを作成", "subtitle": "今すぐ Jolkr に参加しよう",
+      "usernameLabel": "ユーザー名", "submit": "次へ", "submitting": "作成中…",
+      "haveAccount": "すでにアカウントをお持ちですか？", "login": "ログイン"
+    },
+    "forgot": {
+      "title": "パスワードをお忘れですか？",
+      "subtitle": "メールアドレスを入力してください。リセットリンクをお送りします。",
+      "emailPlaceholder": "you@example.com", "submit": "リンクを送信", "submitting": "送信中…",
+      "rememberPassword": "パスワードを思い出しましたか？", "login": "ログイン",
+      "checkEmailTitle": "メールをご確認ください",
+      "checkEmailBody": "{email} のアカウントが存在する場合、リセットリンクを送信しました。",
+      "backToLogin": "ログインに戻る", "errorGeneric": "問題が発生しました"
+    },
+    "reset": {
+      "title": "新しいパスワードを設定", "subtitle": "新しいパスワードを以下に入力してください。",
+      "newPasswordLabel": "新しいパスワード",
+      "newPasswordPlaceholder": "最低 {min} 文字", "newPasswordHint": "{min} 文字以上",
+      "confirmPasswordLabel": "パスワードの確認", "confirmPasswordPlaceholder": "新しいパスワードを再入力",
+      "submit": "パスワードをリセット", "submitting": "リセット中…",
+      "passwordsMismatch": "パスワードが一致しません",
+      "passwordTooShort": "パスワードは {min} 文字以上である必要があります",
+      "errorGeneric": "パスワードのリセットに失敗しました",
+      "successTitle": "パスワードのリセット完了",
+      "successBody": "新しいパスワードでログインできます。",
+      "goToLogin": "ログインへ"
+    },
+    "verify": {
+      "verifyingTitle": "メールを確認中…", "verifiedTitle": "メールが確認されました！",
+      "verifiedBody": "メールアドレスが確認されました。Jolkr をご利用いただけます。",
+      "goToApp": "Jolkr へ", "failedTitle": "確認に失敗しました",
+      "failedSubtitle": "リンクの有効期限が切れている可能性があります。新しいリンクをリクエストしてください。",
+      "requestNewLink": "新しいリンクをリクエスト", "errorGeneric": "確認に失敗しました",
+      "pendingTitle": "メールアドレスを確認してください",
+      "pendingBody": "{email} に確認リンクを送信しました。受信トレイを確認し、リンクをクリックして続行してください。",
+      "yourEmailFallback": "メールアドレス",
+      "sentMessage": "確認メールを送信しました！受信トレイをご確認ください。",
+      "resendBtn": "確認メールを再送信", "sendingBtn": "送信中…", "sentBtn": "メールを送信しました",
+      "signOut": "サインアウト", "resendError": "再送信に失敗しました"
+    }
+  },
+
+  "notFound": { "title": "ページが見つかりません", "message": "お探しのページは存在しないか、移動されました。" },
+  "inviteAccept": { "joining": "サーバーに参加中…", "errorGeneric": "無効または期限切れの招待" },
+
+  "settings": {
+    "nav": {
+      "userSettings": "ユーザー設定", "appSettings": "アプリ設定",
+      "account": "マイアカウント", "privacy": "プライバシーと安全性", "connections": "連携",
+      "appearance": "外観", "accessibility": "アクセシビリティ", "voice": "音声とビデオ",
+      "notifications": "通知", "keybinds": "ショートカット", "language": "言語"
+    },
+    "account": {
+      "title": "マイアカウント", "changeBannerColor": "バナー色を変更", "editProfile": "プロフィールを編集",
+      "displayName": "表示名", "displayNamePlaceholder": "他の人にどう見えるか",
+      "username": "ユーザー名", "bio": "自己紹介", "bioPlaceholder": "自分について教えてください…",
+      "noBio": "自己紹介が設定されていません",
+      "profileAlt": "プロフィール", "accountInfo": "アカウント情報",
+      "emailLabel": "メールアドレス", "emailMasked": "••••••••••",
+      "passwordSection": "パスワードと認証",
+      "passwordHelp": "強力なパスワードと二要素認証でアカウントを安全に保ちます。",
+      "changePassword": "パスワードを変更", "enable2FA": "二要素認証を有効化",
+      "logOut": "ログアウト", "dangerZone": "危険ゾーン",
+      "deleteHelp": "アカウントの削除は永続的で元に戻せません。",
+      "deleteAccount": "アカウントを削除"
+    },
+    "bannerColors": { "sage": "セージ", "gold": "ゴールド", "ocean": "オーシャン", "royal": "ロイヤル", "berry": "ベリー", "coral": "コーラル" },
+    "privacy": {
+      "title": "プライバシーと安全性",
+      "dmFilterTitle": "安全なダイレクトメッセージ",
+      "dmFilterDesc": "誰がダイレクトメッセージを送れるかを制御します。",
+      "dmAll": "すべての DM を許可", "dmFriends": "友達のみ", "dmNone": "誰も許可しない",
+      "allowFriendReqsLabel": "友達リクエストを許可",
+      "allowFriendReqsDesc": "他のユーザーから友達リクエストを受け取れるようにします。",
+      "readReceiptsLabel": "既読確認",
+      "readReceiptsDesc": "DM でメッセージを既読にしたタイミングを表示します。",
+      "dataPrivacy": "データとプライバシー",
+      "analyticsLabel": "使用状況分析",
+      "analyticsDesc": "匿名の使用データを送信して Jolkr の改善に協力します。"
+    },
+    "connections": {
+      "title": "連携",
+      "intro": "アカウントを連携してアクティビティを共有し、統合機能を利用できるようにしましょう。",
+      "music": "音楽", "gaming": "ゲーム", "development": "開発", "streaming": "配信", "video": "動画", "social": "ソーシャル"
+    },
+    "appearance": {
+      "title": "外観", "colorModeTitle": "カラーモード", "colorModeDesc": "お好みのテーマを選択してください。",
+      "colorModeLight": "ライト", "colorModeSystem": "システム", "colorModeDark": "ダーク",
+      "messageDisplayTitle": "メッセージ表示",
+      "messageDisplayDesc": "コンパクトモードでは一度により多くのメッセージが表示されます。",
+      "displayCozy": "ゆったり — 広々として読みやすい",
+      "displayCompact": "コンパクト — 一度により多くのメッセージを表示",
+      "fontSizeTitle": "チャットのフォントサイズ — {size}px",
+      "fontSizeDesc": "チャットメッセージのテキストサイズを変更します。"
+    },
+    "accessibility": {
+      "title": "アクセシビリティ",
+      "reducedMotionLabel": "動きを減らす",
+      "reducedMotionDesc": "アプリ全体のアニメーションと遷移を最小限にします。",
+      "highContrastLabel": "ハイコントラスト",
+      "highContrastDesc": "テキストと背景のコントラストを高めます。",
+      "roleColorsLabel": "ロールの色を表示",
+      "roleColorsDesc": "メンバー一覧でロール名を色付きで表示します。"
+    },
+    "voice": {
+      "title": "音声とビデオ",
+      "inputDevice": "入力デバイス", "outputDevice": "出力デバイス",
+      "outputUnsupported": "このブラウザでは出力デバイスの選択はサポートされていません。",
+      "outputUnsupportedTitle": "このブラウザではサポートされていません",
+      "systemDefault": "システムデフォルト",
+      "microphoneFallback": "マイク ({id}…)", "speakersFallback": "スピーカー ({id}…)", "cameraFallback": "カメラ ({id}…)",
+      "inputVolume": "入力音量 — {volume}%", "outputVolume": "出力音量 — {volume}%",
+      "cameraSection": "カメラ", "cameraDevice": "カメラデバイス", "cameraUnavailable": "カメラが利用できません",
+      "advancedSection": "詳細",
+      "noiseSuppressionLabel": "ノイズ抑制",
+      "noiseSuppressionDesc": "音声通話中の背景ノイズをフィルタリングします。",
+      "echoCancellationLabel": "エコーキャンセル",
+      "echoCancellationDesc": "マイク入力からエコーを除去します。",
+      "autoGainLabel": "自動ゲイン制御",
+      "autoGainDesc": "マイクの感度を自動的に調整します。"
+    },
+    "notifications": {
+      "title": "通知",
+      "desktopLabel": "デスクトップ通知を有効化",
+      "desktopDesc": "アプリがバックグラウンドにあるときに通知を表示します。",
+      "soundsLabel": "通知音",
+      "soundsDesc": "通知を受信したときに音を鳴らします。",
+      "permissionDeniedToast": "通知の許可が拒否されました — ブラウザ/OS の設定で有効化してください。",
+      "unsupportedToast": "デスクトップ通知はこの環境ではサポートされていません。",
+      "triggers": "通知トリガー",
+      "mentionsLabel": "@メンション", "mentionsDesc": "チャンネルでメンションされたときに通知します。",
+      "dmsLabel": "ダイレクトメッセージ", "dmsDesc": "すべての新しいダイレクトメッセージを通知します。",
+      "badgeLabel": "未読バッジ", "badgeDesc": "アプリアイコンに未読数バッジを表示します。"
+    },
+    "keybinds": {
+      "title": "ショートカット", "intro": "デフォルトのキーボードショートカット。カスタマイズ可能なキーバインドは近日中に提供されます。",
+      "openSwitcher": "クイック切替を開く", "toggleMute": "ミュート切替", "toggleDeafen": "デフン切替",
+      "markRead": "サーバーを既読にする", "jumpUnread": "最も古い未読へ移動",
+      "uploadFile": "ファイルをアップロード", "search": "検索", "focusInput": "チャット入力にフォーカス",
+      "editLast": "最後のメッセージを編集", "replyMessage": "メッセージに返信", "toggleSettings": "設定を切替"
+    },
+    "language": {
+      "title": "言語", "displayTitle": "表示言語",
+      "displayDesc": "アプリ全体で使用する言語を選択します。",
+      "saveError": "言語設定の保存に失敗しました"
+    }
+  },
+
+  "serverSettings": {
+    "nav": {
+      "serverSettings": "サーバー設定", "moderation": "モデレーション", "dangerZone": "危険ゾーン",
+      "overview": "概要", "roles": "ロール", "invites": "招待", "bans": "BAN",
+      "auditLog": "監査ログ", "deleteServer": "サーバーを削除"
+    },
+    "leaveBtn": "サーバーを退出",
+    "overview": {
+      "bannerTitle": "バナー背景",
+      "bannerSolid": "単色", "bannerGradients": "グラデーション", "bannerImage": "画像",
+      "bannerImageUrl": "画像 URL (https://…)",
+      "bannerUploading": "アップロード中…", "bannerUpload": "アップロード", "bannerRemove": "画像バナーを削除",
+      "iconAlt": "サーバーアイコン",
+      "namePlaceholder": "サーバー名",
+      "descriptionPlaceholder": "サーバーについて教えてください",
+      "discoveryLabel": "サーバー発見",
+      "discoveryDesc": "サーバーブラウザで見つけられるようにする"
+    },
+    "gradients": {
+      "oceanBreeze": "オーシャンブリーズ", "sunsetGlow": "サンセットグロー", "forestMist": "フォレストミスト",
+      "royalVelvet": "ロイヤルベルベット", "berryBurst": "ベリーバースト", "midnight": "ミッドナイト"
+    },
+    "roles": {
+      "allRoles": "すべてのロール", "createRole": "ロールを作成",
+      "permissionsTitle": "権限", "clearPermissions": "権限をクリア",
+      "deleteRole": "ロールを削除", "createError": "ロールの作成に失敗しました"
+    },
+    "invites": {
+      "expireAfter": "有効期限", "maxUses": "最大使用回数",
+      "expireNever": "無期限", "expire30m": "30 分", "expire1h": "1 時間", "expire6h": "6 時間",
+      "expire12h": "12 時間", "expire1d": "1 日", "expire7d": "7 日",
+      "usesUnlimited": "制限なし", "uses1": "1 回", "uses5": "5 回",
+      "uses10": "10 回", "uses25": "25 回", "uses50": "50 回", "uses100": "100 回",
+      "creating": "作成中…", "createBtn": "招待を作成", "createError": "招待の作成に失敗しました",
+      "emptyTitle": "招待がありません",
+      "emptyDesc": "上記から招待を作成して、サーバーに人を招待しましょう。",
+      "allInvites": "すべての招待", "copyTitle": "クリックして招待リンクをコピー",
+      "copiedToast": "招待リンクをコピーしました！", "copyFailedToast": "コピーに失敗しました — リンク: {url}",
+      "usesProgress": "{used} / {max} 回使用", "expiresAt": "{date} に期限切れ", "revoke": "取り消す"
+    },
+    "bans": {
+      "emptyTitle": "BAN されたユーザーはいません",
+      "emptyDesc": "サーバーはクリーンです！BAN されたユーザーはここに表示されます。",
+      "reasonLabel": "理由: {reason}", "noReason": "理由は提供されていません",
+      "bannedAt": "{date} に BAN", "unban": "BAN 解除"
+    },
+    "audit": {
+      "emptyTitle": "アクティビティがありません",
+      "emptyDesc": "サーバーアクションが実行されると、監査ログのエントリがここに表示されます。",
+      "byUser": "{name} による", "onTarget": " {type}: {idShort}… に対して",
+      "reasonLabel": "理由: {reason}",
+      "actions": {
+        "MemberJoin": "メンバー参加", "MemberLeave": "メンバー退出", "MemberUpdate": "メンバー更新",
+        "ChannelCreate": "チャンネル作成", "ChannelUpdate": "チャンネル更新", "ChannelDelete": "チャンネル削除",
+        "RoleCreate": "ロール作成", "RoleUpdate": "ロール更新", "RoleDelete": "ロール削除",
+        "ServerUpdate": "サーバー更新", "ServerDelete": "サーバー削除",
+        "BanCreate": "ユーザー BAN", "BanDelete": "ユーザー BAN 解除", "Kick": "ユーザーキック"
+      }
+    },
+    "delete": {
+      "title": "サーバーを削除",
+      "warning": "この操作は元に戻せません。すべてのチャンネル、メッセージ、データが永久に削除されます。",
+      "btn": "サーバーを削除"
+    },
+    "leaveConfirm": {
+      "title": "サーバーを退出",
+      "body": "本当に {serverName} を退出しますか？招待がない限り、再参加できません。",
+      "confirm": "サーバーを退出"
+    },
+    "deleteConfirm": {
+      "title": "サーバーを削除",
+      "body": "本当に {serverName} を永久に削除しますか？この操作は元に戻せません。",
+      "confirm": "サーバーを削除"
+    }
+  },
+
+  "channelSettings": {
+    "nav": { "channelSettings": "チャンネル設定", "overview": "概要", "permissions": "権限" },
+    "overview": {
+      "title": "チャンネル概要", "nameLabel": "チャンネル名", "topicLabel": "チャンネルトピック",
+      "topicPlaceholder": "このチャンネルが何についてかみんなに知らせましょう",
+      "systemNotice": "これはシステムチャンネルで、変更できません。",
+      "nsfwLabel": "NSFW チャンネル", "nsfwDesc": "年齢制限のあるコンテンツ",
+      "slowmodeLabel": "低速モード（秒）",
+      "slowmodeHint": "ユーザーは間隔ごとに 1 件のメッセージを送信できます。0 = 無効。"
+    },
+    "permissions": {
+      "title": "チャンネル権限", "addOverride": "オーバーライドを追加",
+      "systemNotice": "システムチャンネルの権限は変更できません。",
+      "rolesMembers": "ロール / メンバー", "removeOverride": "オーバーライドを削除",
+      "addModalTitle": "権限のオーバーライドを追加",
+      "typeLabel": "タイプ", "typeRole": "ロール", "typeMember": "メンバー",
+      "selectRole": "ロールを選択…",
+      "memberIdLabel": "メンバー ID", "memberIdPlaceholder": "メンバー ID を入力", "roleLabel": "ロール"
+    }
+  },
+
+  "permissions": {
+    "groupGeneral": "サーバー全般の権限",
+    "groupMember": "メンバー権限",
+    "groupText": "テキストチャンネル権限",
+    "groupVoice": "ボイスチャンネル権限",
+    "ariaEnable": "{label} を有効化", "ariaDisable": "{label} を無効化",
+    "view_channels":   { "label": "チャンネルを見る",       "desc": "デフォルトでチャンネルを見ることを許可します（プライベート以外）。" },
+    "manage_channels": { "label": "チャンネルを管理",       "desc": "チャンネルの作成、編集、削除を許可します。" },
+    "manage_server":   { "label": "サーバーを管理",         "desc": "サーバー名、アイコン、その他の設定の変更を許可します。" },
+    "kick_members":    { "label": "メンバーをキック",       "desc": "サーバーから他のメンバーをキックすることを許可します。" },
+    "ban_members":     { "label": "メンバーを BAN",         "desc": "サーバーから他のメンバーを BAN することを許可します。" },
+    "manage_roles":    { "label": "ロールを管理",           "desc": "新しいロールを作成し、自分の最高位より下のロールを編集/削除できます。" },
+    "create_invite":   { "label": "招待を作成",             "desc": "サーバーへの招待リンクの作成を許可します。" },
+    "send_messages":   { "label": "メッセージを送信",       "desc": "テキストチャンネルでメッセージを送信できます。" },
+    "manage_messages": { "label": "メッセージを管理",       "desc": "メッセージの削除と固定を許可します。" },
+    "embed_links":     { "label": "リンクを埋め込み",       "desc": "メッセージにリンクを埋め込むことを許可します。" },
+    "attach_files":    { "label": "ファイルを添付",         "desc": "メッセージにファイルを添付することを許可します。" },
+    "add_reactions":   { "label": "リアクションを追加",     "desc": "メッセージにリアクションを追加できます。" },
+    "mention_everyone":{ "label": "全員にメンション",       "desc": "@everyone と @here を使用できます。" },
+    "read_message_history": { "label": "メッセージ履歴を読む", "desc": "以前のメッセージを読むことを許可します。" },
+    "use_external_emojis":  { "label": "外部の絵文字を使用",   "desc": "他のサーバーの絵文字を使用できます。" },
+    "send_tts_messages":    { "label": "TTS メッセージを送信", "desc": "テキスト読み上げメッセージを送信できます。" },
+    "connect":         { "label": "接続",                   "desc": "ボイスチャンネルへの接続を許可します。" },
+    "speak":           { "label": "話す",                   "desc": "ボイスチャンネルで話すことを許可します。" },
+    "video":           { "label": "ビデオ",                 "desc": "ボイスチャンネルでビデオを共有できます。" },
+    "mute_members":    { "label": "メンバーをミュート",     "desc": "ボイスチャンネルで他のメンバーをミュートできます。" },
+    "deafen_members":  { "label": "メンバーをデフン",       "desc": "ボイスチャンネルで他のメンバーをデフンにできます。" },
+    "move_members":    { "label": "メンバーを移動",         "desc": "ボイスチャンネル間でメンバーを移動できます。" },
+    "use_voice_activity": { "label": "ボイスアクティビティを使用", "desc": "音声アクティビティ検出を使用できます。" },
+    "priority_speaker":{ "label": "優先スピーカー",         "desc": "話している間、他の人の音量を下げます。" },
+    "administrator":   { "label": "管理者",                 "desc": "すべての権限を付与し、チャンネル権限を回避します。これは危険な権限です！" }
+  }
+}

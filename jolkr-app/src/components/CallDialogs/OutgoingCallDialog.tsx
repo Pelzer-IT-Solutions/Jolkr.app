@@ -2,9 +2,11 @@ import { useEffect, useRef } from 'react';
 import { PhoneOff, Video, User as UserIcon } from 'lucide-react';
 import { useCallStore } from '../../stores/call';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useT } from '../../hooks/useT';
 import s from './CallDialogs.module.css';
 
 export default function OutgoingCallDialog() {
+  const { t } = useT();
   const outgoingCall   = useCallStore((s) => s.outgoingCall);
   const cancelOutgoing = useCallStore((s) => s.cancelOutgoing);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -22,8 +24,8 @@ export default function OutgoingCallDialog() {
   if (!outgoingCall) return null;
 
   const isVideo = outgoingCall.isVideo;
-  const subtitle = isVideo ? 'Calling — video…' : 'Calling…';
-  const ariaLabel = isVideo ? 'Outgoing video call' : 'Outgoing call';
+  const subtitle = isVideo ? t('call.outgoing.subtitleVideo') : t('call.outgoing.subtitleVoice');
+  const ariaLabel = isVideo ? t('call.outgoing.ariaVideo') : t('call.outgoing.ariaVoice');
 
   return (
     <div className={s.overlay}>
@@ -49,7 +51,7 @@ export default function OutgoingCallDialog() {
             onClick={cancelOutgoing}
           >
             <PhoneOff size={16} strokeWidth={2} />
-            Cancel
+            {t('call.outgoing.cancel')}
           </button>
         </div>
       </div>

@@ -11,6 +11,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { invalidateFriendsCache } from '../../services/friendshipCache'
 import { hashColor } from '../../adapters/transforms'
 import { useToast } from '../../stores/toast'
+import { useT } from '../../hooks/useT'
 import Avatar from '../Avatar/Avatar'
 import { QrCodeDisplay } from '../QrCodeDisplay'
 import { QrCodeScanner } from '../QrCodeScanner'
@@ -71,6 +72,7 @@ export function FriendsPanel({
   onCancelRequest,
   onRemoveFriend,
 }: Props) {
+  const { t } = useT()
   const myId = useAuthStore(st => st.user?.id)
   const presence = usePresenceStore(st => st.statuses)
   const [activeTab, setActiveTab] = useState<FriendTab>('all')
@@ -215,10 +217,10 @@ export function FriendsPanel({
     try {
       await api.sendFriendRequest(userId)
       invalidateFriendsCache()
-      useToast.getState().show('Friend request sent', 'success')
+      useToast.getState().show(t('friendsPanel.requestSent'), 'success')
       refresh()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to send friend request'
+      const msg = e instanceof Error ? e.message : t('friendsPanel.requestFailed')
       useToast.getState().show(msg, 'error')
     } finally {
       setPendingAddIds(prev => {
@@ -234,7 +236,7 @@ export function FriendsPanel({
   return createPortal(
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={s.panel}>
-        <button className={s.closeBtnOverlay} onClick={onClose} aria-label="Close">
+        <button className={s.closeBtnOverlay} onClick={onClose} aria-label={t('friendsPanel.close')}>
           <X size={18} strokeWidth={1.5} />
         </button>
         <div className={s.header}>
@@ -243,27 +245,27 @@ export function FriendsPanel({
               className={`${s.tab} ${activeTab === 'all' ? s.active : ''} txt-small`}
               onClick={() => setActiveTab('all')}
             >
-              All
+              {t('friendsPanel.tabAll')}
               <span className={s.badge}>{friends.length}</span>
             </button>
             <button
               className={`${s.tab} ${activeTab === 'online' ? s.active : ''} txt-small`}
               onClick={() => setActiveTab('online')}
             >
-              Online
+              {t('friendsPanel.tabOnline')}
             </button>
             <button
               className={`${s.tab} ${activeTab === 'pending' ? s.active : ''} txt-small`}
               onClick={() => setActiveTab('pending')}
             >
-              Pending
+              {t('friendsPanel.tabPending')}
               {requests.length > 0 && <span className={s.badge}>{requests.length}</span>}
             </button>
             <button
               className={`${s.tab} ${activeTab === 'add' ? s.active : ''} txt-small`}
               onClick={() => setActiveTab('add')}
             >
-              Add Friend
+              {t('friendsPanel.tabAdd')}
             </button>
           </div>
         </div>
@@ -273,7 +275,7 @@ export function FriendsPanel({
             <>
               {incomingRequests.length > 0 && (
                 <div className={s.section}>
-                  <h4 className={`${s.sectionTitle} txt-tiny txt-semibold`}>Incoming ({incomingRequests.length})</h4>
+                  <h4 className={`${s.sectionTitle} txt-tiny txt-semibold`}>{t('friendsPanel.incoming', { count: incomingRequests.length })}</h4>
                   {incomingRequests.map(req => (
                     <div key={req.id} className={s.requestRow}>
                       <div className={s.userInfo}>
@@ -298,7 +300,7 @@ export function FriendsPanel({
 
               {outgoingRequests.length > 0 && (
                 <div className={s.section}>
-                  <h4 className={`${s.sectionTitle} txt-tiny txt-semibold`}>Outgoing ({outgoingRequests.length})</h4>
+                  <h4 className={`${s.sectionTitle} txt-tiny txt-semibold`}>{t('friendsPanel.outgoing', { count: outgoingRequests.length })}</h4>
                   {outgoingRequests.map(req => (
                     <div key={req.id} className={s.requestRow}>
                       <div className={s.userInfo}>
@@ -309,7 +311,7 @@ export function FriendsPanel({
                         </div>
                       </div>
                       <button className={s.cancelBtn} onClick={() => handleCancel(req.id)}>
-                        Cancel
+                        {t('friendsPanel.cancel')}
                       </button>
                     </div>
                   ))}
@@ -319,14 +321,14 @@ export function FriendsPanel({
               {requests.length === 0 && (
                 <div className={s.empty}>
                   <UserPlus size={48} strokeWidth={1} className={s.emptyIcon} />
-                  <p className="txt-small">No pending friend requests</p>
+                  <p className="txt-small">{t('friendsPanel.noPending')}</p>
                 </div>
               )}
             </>
           ) : activeTab === 'add' ? (
             <div className={s.addPane}>
               <p className={`${s.addIntro} txt-small`}>
-                Add friends with their username, email, or QR code.
+                {t('friendsPanel.addIntro')}
               </p>
 
               <div className={s.qrButtons}>
@@ -335,19 +337,19 @@ export function FriendsPanel({
                   onClick={() => setQrDisplayOpen(true)}
                 >
                   <QrCode size={14} strokeWidth={1.5} />
-                  My QR Code
+                  {t('friendsPanel.myQrCode')}
                 </button>
                 <button
                   className={`${s.qrBtn} txt-small txt-medium`}
                   onClick={() => setScannerOpen(true)}
                 >
                   <ScanLine size={14} strokeWidth={1.5} />
-                  Scan QR
+                  {t('friendsPanel.scanQr')}
                 </button>
               </div>
 
               <div className={s.divider}>
-                <span className={`${s.dividerLabel} txt-tiny`}>or search</span>
+                <span className={`${s.dividerLabel} txt-tiny`}>{t('friendsPanel.orSearch')}</span>
               </div>
 
               <div className={s.searchWrap}>
@@ -357,13 +359,13 @@ export function FriendsPanel({
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Username or email…"
+                  placeholder={t('friendsPanel.searchPlaceholder')}
                   autoFocus
                 />
               </div>
 
               {searching && searchQuery.trim().length >= 2 && (
-                <div className={`${s.empty} txt-small`}>Searching…</div>
+                <div className={`${s.empty} txt-small`}>{t('friendsPanel.searching')}</div>
               )}
 
               {!searching && searchResults.map(u => (
@@ -388,14 +390,14 @@ export function FriendsPanel({
                     onClick={() => handleSendRequest(u.id)}
                     disabled={pendingAddIds.has(u.id)}
                   >
-                    {pendingAddIds.has(u.id) ? 'Sending…' : 'Add'}
+                    {pendingAddIds.has(u.id) ? t('friendsPanel.sending') : t('friendsPanel.addBtn')}
                   </button>
                 </div>
               ))}
 
               {!searching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
                 <div className={s.empty}>
-                  <p className="txt-small">No users found</p>
+                  <p className="txt-small">{t('friendsPanel.noUsersFound')}</p>
                 </div>
               )}
             </div>
@@ -412,7 +414,7 @@ export function FriendsPanel({
                     <div className={s.names}>
                       <span className={`${s.displayName} txt-small txt-medium`}>{friend.user.display_name ?? friend.user.username}</span>
                       <span className={`${s.statusText} txt-tiny`}>
-                        {friend.status === 'offline' ? (friend.last_seen ?? 'Offline') : friend.status}
+                        {friend.status === 'offline' ? (friend.last_seen ?? t('userStatus.offline')) : t(`userStatus.${friend.status}`)}
                       </span>
                     </div>
                   </div>
@@ -432,7 +434,7 @@ export function FriendsPanel({
 
               {filteredFriends.length === 0 && (
                 <div className={s.empty}>
-                  <p className="txt-small">No friends found</p>
+                  <p className="txt-small">{t('friendsPanel.noFriendsFound')}</p>
                 </div>
               )}
             </>
