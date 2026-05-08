@@ -24,8 +24,13 @@ use crate::storage::MAX_FILE_SIZE;
 const ALLOWED_MIME_TYPES: &[&str] = &[
     "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
     "image/bmp", "image/tiff", "image/avif",
-    "video/mp4", "video/webm", "video/ogg", "video/quicktime",
+    "video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/x-matroska",
     "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm", "audio/aac", "audio/flac",
+    // HLS playlists. Browsers expose `File.type = ""` for `.m3u8` because
+    // there's no registered extension handler — the FE wraps these into a
+    // fresh File with an explicit MIME before upload, so the server only
+    // ever sees one of the well-formed spellings here.
+    "application/vnd.apple.mpegurl", "application/x-mpegurl", "audio/mpegurl",
     "application/pdf", "text/plain",
     "application/octet-stream", // fallback for unknown types
 ];
