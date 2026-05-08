@@ -37,12 +37,36 @@
   transform: scale(1.04);
 }
 
-.audioLoading {
-  display: inline-block;
+/* Skeleton placeholders for video / audio attachments while the authed
+   blob URL resolves. They render the final tile's geometry (no grey
+   shimmer block flashing first) so the only visible change once the
+   player mounts is the controls coming alive. */
+.videoSkeleton {
   width: 100%;
-  max-width: 28rem;
-  height: 4.5rem;
+  aspect-ratio: 16 / 9;
+  background: black;
+  border-radius: inherit;
+}
+
+.audioSkeleton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 480px;
+  height: 4.75rem;
+  padding: 0.75rem 0.875rem;
   border-radius: 0.625rem;
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+}
+.audioSkeletonName {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Placeholder shown while the authed blob URL is being fetched. Sized as

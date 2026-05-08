@@ -135,20 +135,31 @@ function ImageTile({ attachment, onOpen }: { attachment: Attachment; onOpen: () 
 
 function VideoTile({ attachment }: { attachment: Attachment }) {
   const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
-  if (!blobUrl) return <span className={`${s.media} ${s.loadingTile}`} />
-  // Uploaded videos route through the same NoMercy player as URL-based video
-  // embeds so playback UI (controls, fullscreen, buffering, mute) is identical.
-  // No autoPlay — chat videos shouldn't start until the user clicks.
+  // While the authed blob URL resolves we render a dark 16:9 placeholder
+  // matching the player's eventual viewport so the only visible change
+  // when playback is ready is the controls fading in — no grey shimmer
+  // flash, no layout shift.
   return (
     <div className={s.media}>
-      <NMVideoPlayer src={blobUrl} title={attachment.filename} />
+      {blobUrl
+        ? <NMVideoPlayer src={blobUrl} title={attachment.filename} />
+        : <div className={s.videoSkeleton} />}
     </div>
   )
 }
 
 function AudioTile({ attachment }: { attachment: Attachment }) {
   const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
-  if (!blobUrl) return <span className={`${s.audioLoading} ${s.loadingTile}`} />
+  // Same idea as VideoTile: paint the chip's final shape immediately and
+  // let the controls fade in once the URL resolves, instead of showing a
+  // grey shimmer block first.
+  if (!blobUrl) {
+    return (
+      <div className={s.audioSkeleton}>
+        <span className={s.audioSkeletonName}>{attachment.filename}</span>
+      </div>
+    )
+  }
   return <NMMusicPlayer src={blobUrl} filename={attachment.filename} />
 }
 

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type RefObject } from 'react';
 import type {
   PlayerCore as PlayerCoreType,
   BasePlaylistItem,
   TimeState,
 } from '@nomercy-entertainment/nomercy-music-player';
+import type AudioMotionAnalyzerType from 'audiomotion-analyzer';
 
 interface NMMusicState {
   isPlaying: boolean;
@@ -31,6 +32,13 @@ export interface NMMusicResult extends NMMusicState, NMMusicActions {}
 interface UseNMMusicConfig {
   src: string;
   filename: string;
+  /**
+   * Optional canvas to render the spectrum visualisation into. The
+   * underlying PlayerCore feeds it through audiomotion-analyzer; pass a
+   * canvas ref from the surrounding component to enable, leave undefined
+   * to opt out.
+   */
+  visualizerCanvasRef?: RefObject<HTMLCanvasElement | null>;
 }
 
 /**
@@ -41,8 +49,13 @@ interface UseNMMusicConfig {
  * features (queue, EQ, crossfade) are deliberately untouched — they're not
  * relevant to a chat attachment.
  */
-export function useNMMusic({ src, filename }: UseNMMusicConfig): NMMusicResult {
+export function useNMMusic({ src, filename, visualizerCanvasRef }: UseNMMusicConfig): NMMusicResult {
   const playerRef = useRef<PlayerCoreType<BasePlaylistItem> | null>(null);
+  // Our own AudioMotion instance. Built lazily on the user's first play
+  // because creating a MediaElementSource (which AudioMotion does under
+  // the hood) before the audio element is ready causes errors, and the
+  // AudioContext can't unsuspend without a user gesture anyway.
+  const motionRef = useRef<AudioMotionAnalyzerType | null>(null);
   // Mirror isPlaying into a ref so togglePlay's stable callback can read
   // the current value without re-creating on every render. The library
   // also exposes an `isPlaying()` method, but TS can't disambiguate it
@@ -71,6 +84,16 @@ export function useNMMusic({ src, filename }: UseNMMusicConfig): NMMusicResult {
   useEffect(() => {
     let disposed = false;
 
+    // Bypass the music player's built-in spectrum analyser. The wrapper
+    // ignores our canvas option in some paths and ends up appending its
+    // own analyzer canvas to <body>, hidden via inline opacity:0. We
+    // own the visualisation instead — see the visualizer effect below
+    // — so we tell the engine to skip its own AudioContext setup
+    // entirely. (This also keeps the music player out of the
+    // MediaElementSource business so we can claim the audio element
+    // ourselves without the "already connected" InvalidStateError.)
+    try { localStorage.setItem('nmplayer-music-supports-audio-context', 'false'); } catch { /* ignore */ }
+
     import('@nomercy-entertainment/nomercy-music-player').then((mod) => {
       if (disposed) return;
       try {
@@ -98,9 +121,50 @@ export function useNMMusic({ src, filename }: UseNMMusicConfig): NMMusicResult {
         trackStartedRef.current = false;
         player.setQueue([track]);
 
+        // First user-driven play → spin up our spectrum visualiser. We
+        // grab the actual HTMLAudioElement that PlayerCore is driving and
+        // hand it (with our canvas) to a fresh AudioMotionAnalyzer. The
+        // library creates a MediaElementSource on it, which is fine
+        // because we disabled the music player's own AudioContext path
+        // via the localStorage flag set above — there's no conflict.
+        const setupVisualizer = async () => {
+          if (motionRef.current) return;
+          const canvas = visualizerCanvasRef?.current;
+          if (!canvas) return;
+          const audioEl = (player as unknown as {
+            _currentAudio?: { _audioElement?: HTMLAudioElement };
+          })._currentAudio?._audioElement;
+          if (!audioEl) return;
+          try {
+            const { default: AudioMotionAnalyzer } = await import('audiomotion-analyzer');
+            if (disposed || motionRef.current) return;
+            motionRef.current = new AudioMotionAnalyzer({
+              canvas,
+              source: audioEl,
+              connectSpeakers: true,
+              mode: 2,
+              bgAlpha: 0,
+              showBgColor: false,
+              showScaleX: false,
+              showScaleY: false,
+              showPeaks: false,
+              alphaBars: true,
+              fillAlpha: 0.6,
+              barSpace: 0.4,
+              smoothing: 0.7,
+              reflexRatio: 0.25,
+              reflexAlpha: 0.2,
+              gradient: 'classic',
+            });
+          } catch { /* visualiser is optional — silent fallback */ }
+        };
+
         player.on('play', () => {
           isPlayingRef.current = true;
           setState((s) => ({ ...s, isPlaying: true, isReady: true }));
+          // Lazy-init on the first play so the AudioContext gets the
+          // user gesture it needs to leave the suspended state.
+          void setupVisualizer();
         });
         player.on('pause', () => {
           isPlayingRef.current = false;
@@ -147,9 +211,37 @@ export function useNMMusic({ src, filename }: UseNMMusicConfig): NMMusicResult {
         // Pause first so an in-flight track stops audibly.
         playerRef.current?.pause?.();
       } catch { /* ignore */ }
+      try { motionRef.current?.destroy?.(); } catch { /* ignore */ }
+      motionRef.current = null;
       playerRef.current = null;
     };
-  }, [src, filename]);
+    // visualizerCanvasRef is included for the lint rule; the ref object
+    // itself is stable across renders so this never re-fires on `.current`
+    // updates (which is the desired behaviour — the visualiser binds at
+    // mount time and the canvas element doesn't get swapped underneath).
+  }, [src, filename, visualizerCanvasRef]);
+
+  // Pre-fetch the duration via a throwaway <audio preload="metadata"> so
+  // the chip can show "0:00 / 3:42" before the user clicks play. The
+  // PlayerCore engine doesn't load the source until playTrack() is
+  // called (deliberate — we don't want autoplay), so without this probe
+  // duration would stay at 0:00 / 0:00 until first interaction.
+  useEffect(() => {
+    const probe = new Audio();
+    probe.preload = 'metadata';
+    const onMeta = () => {
+      const d = Number(probe.duration);
+      if (isFinite(d) && d > 0) {
+        setState((s) => (s.duration > 0 ? s : { ...s, duration: d }));
+      }
+    };
+    probe.addEventListener('loadedmetadata', onMeta);
+    probe.src = src;
+    return () => {
+      probe.removeEventListener('loadedmetadata', onMeta);
+      probe.src = '';
+    };
+  }, [src]);
 
   const ensureTrackLoaded = useCallback(() => {
     if (trackStartedRef.current) return;

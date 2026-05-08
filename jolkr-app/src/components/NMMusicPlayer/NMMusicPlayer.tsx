@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Music, Pause, Play, Volume2, VolumeX, Volume1 } from 'lucide-react';
 import { useNMMusic } from '../../hooks/useNMMusic';
 import { useT } from '../../hooks/useT';
@@ -18,11 +19,12 @@ export interface NMMusicPlayerProps {
  */
 export default function NMMusicPlayer({ src, filename }: NMMusicPlayerProps) {
   const { t } = useT();
+  const visualizerRef = useRef<HTMLCanvasElement>(null);
   const {
     isPlaying, currentTime, duration, bufferedAhead,
     volume, isMuted, error,
     togglePlay, seek, setVolume, toggleMute,
-  } = useNMMusic({ src, filename });
+  } = useNMMusic({ src, filename, visualizerCanvasRef: visualizerRef });
 
   if (error) {
     return (
@@ -49,6 +51,7 @@ export default function NMMusicPlayer({ src, filename }: NMMusicPlayerProps) {
 
   return (
     <div className={s.wrap}>
+      <canvas ref={visualizerRef} className={s.visualizer} aria-hidden />
       <div className={s.header}>
         <span className={s.iconWrap}><Music size={16} strokeWidth={1.6} /></span>
         <span className={s.filename} title={filename}>{filename}</span>

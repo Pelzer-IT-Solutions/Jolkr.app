@@ -1,4 +1,5 @@
 .wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -11,6 +12,36 @@
   background: var(--bg-loud);
   border: 1px solid var(--border-muted);
   font-feature-settings: 'tnum' 1;
+  overflow: hidden;
+}
+
+/* Spectrum analyzer canvas. audiomotion-analyzer paints into this when
+   the chip is mounted; we let it span the full chip and sit BEHIND the
+   header / controls so the visualisation is a backdrop, not a fight
+   with the buttons.
+
+   `!important` flags are required: the music-player wrapper deliberately
+   hides its analyzer canvas (`canvas.style.opacity = "0"`, fixed
+   1400×320, position:absolute) ~500 ms after creation because the
+   library expects consumers to read the analyzer's frequency data
+   themselves rather than show its canvas. We DO want to show it, so
+   we override its inline styles via stylesheet importance. */
+.visualizer {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 0;
+  opacity: 0.55 !important;
+}
+
+/* Lift content above the canvas. `position: relative` is enough — no
+   need for explicit z-indexes on every child. */
+.header,
+.controls {
+  position: relative;
+  z-index: 1;
 }
 
 .errorWrap {
