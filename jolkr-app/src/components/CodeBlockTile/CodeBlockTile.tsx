@@ -4,6 +4,7 @@ import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/github-dark.css';
 import type { Attachment } from '../../api/types';
 import { formatBytes } from '../../utils/format';
+import { authedFetch } from '../../api/client';
 import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl';
 import { useT } from '../../hooks/useT';
 import s from './CodeBlockTile.module.css';
@@ -60,12 +61,24 @@ export default function CodeBlockTile({ attachment, src }: CodeBlockTileProps) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  const tooLarge = attachment.size_bytes > MAX_INLINE_CODE_BYTES;
+  const lang = detectLanguage(attachment.filename);
+  const downloadUrl = blobUrl ?? src;
+
+  // Pull the text directly via authedFetch instead of through the blob
+  // URL. fetch(blobUrl) is gated by the page's `connect-src` CSP and our
+  // current policy doesn't list `blob:`, so the blob path produced a
+  // "Failed to fetch" error chip even though the bytes were already in
+  // memory. authedFetch is the same call useAuthedFileUrl makes
+  // internally, just consumed as text. Skipped for too-large files —
+  // those render the download chip without parsing.
   useEffect(() => {
-    if (!blobUrl) return;
+    if (tooLarge) return;
     let cancelled = false;
     (async () => {
       try {
-        const resp = await fetch(blobUrl);
+        const resp = await authedFetch(src);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const body = await resp.text();
         if (!cancelled) setText(body);
       } catch (e) {
@@ -73,11 +86,7 @@ export default function CodeBlockTile({ attachment, src }: CodeBlockTileProps) {
       }
     })();
     return () => { cancelled = true; };
-  }, [blobUrl]);
-
-  const tooLarge = attachment.size_bytes > MAX_INLINE_CODE_BYTES;
-  const lang = detectLanguage(attachment.filename);
-  const downloadUrl = blobUrl ?? src;
+  }, [src, tooLarge]);
 
   // Highlight once we have the body. Empty / errored renders fall through
   // to a placeholder shell so the chip doesn't pop in awkwardly.
