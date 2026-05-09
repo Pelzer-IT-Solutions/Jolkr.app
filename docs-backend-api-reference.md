@@ -1,6 +1,6 @@
 # Jolkr Backend API Reference
 
-> **Version**: 0.10.0
+> **Version**: 0.11.0
 >
 > Complete API reference for building frontend clients. All endpoints, WebSocket events, environment variables, database models, and architectural patterns.
 
@@ -165,16 +165,23 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
   "user": {
     "id": "uuid",
     "email": "user@example.com",
+    "email_verified": true,
     "username": "johndoe",
     "display_name": "John Doe",
     "avatar_url": "https://...",
     "status": "online",
     "bio": "Hello world",
+    "banner_color": "#7c3aed",
     "show_read_receipts": true,
+    "dm_filter": "all",
+    "allow_friend_requests": true,
+    "preferred_language": "en-US",
     "created_at": "2026-01-01T00:00:00Z"
   }
 }
 ```
+
+> Public profile responses (`GET /api/users/:id`, `POST /api/users/batch`) omit the self-only fields `email`, `email_verified`, `dm_filter`, `allow_friend_requests`, and `preferred_language`.
 
 ### PATCH `/api/users/@me`
 ```json
@@ -184,9 +191,17 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
   "avatar_url": "https://...",
   "status": "online",
   "bio": "Updated bio",
-  "show_read_receipts": false
+  "banner_color": "#7c3aed",
+  "show_read_receipts": false,
+  "dm_filter": "friends",
+  "allow_friend_requests": true,
+  "preferred_language": "nl"
 }
 ```
+
+- `dm_filter`: one of `"all"` | `"friends"` | `"none"`. Self-only privacy preference.
+- `allow_friend_requests`: self-only privacy preference. When `false`, only mutual servers/DMs can initiate.
+- `preferred_language`: BCP-47 lite locale (e.g. `"en-US"`, `"nl"`, `"fr"`, `"de"`, `"es"`, `"it"`, `"ja"`, `"ko"`, `"zh-CN"`). Cross-device synced via `UserUpdate` WS event.
 
 ### POST `/api/users/batch`
 ```json
@@ -273,9 +288,12 @@ Failed login attempts: **5 failures → 15 minute lockout** (tracked in Redis).
 | GET | `/api/dms/:dm_id/messages` | JWT | Get DM messages |
 | POST | `/api/dms/:dm_id/messages` | JWT | Send DM message |
 | PATCH | `/api/dms/messages/:id` | JWT | Edit DM message |
-| DELETE | `/api/dms/messages/:id` | JWT | Delete DM message |
+| DELETE | `/api/dms/messages/:id` | JWT | Delete DM message (server-side; visible to all) |
+| POST | `/api/dms/messages/:id/hide` | JWT | Hide DM message for self only ("delete for me") |
 
 **Query params for GET messages**: `limit` (default 50), `before` (ISO 8601 datetime cursor)
+
+> **DELETE vs hide**: `DELETE` removes the message for everyone in the DM (only the author can call it). `POST .../hide` is a soft-delete for the calling user only — emits `DmMessageHide` WS event to the user's other sessions; nobody else sees the change.
 
 ### POST `/api/dms/:dm_id/messages`
 ```json
@@ -323,10 +341,12 @@ Broadcasts `DmMessagesRead` WS event to all DM members.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/dms/:dm_id/call` | JWT | Initiate call |
+| POST | `/api/dms/:dm_id/call?is_video=:bool` | JWT | Initiate call (`is_video=true` for video, default voice) |
 | POST | `/api/dms/:dm_id/call/accept` | JWT | Accept call |
 | POST | `/api/dms/:dm_id/call/reject` | JWT | Reject call |
 | POST | `/api/dms/:dm_id/call/end` | JWT | End call |
+
+> The `is_video` query param is propagated to the recipient via the `DmCallRing` WS event so the incoming-call UI can pick the right ringtone/UI.
 
 ### DM E2EE Key Distribution
 
@@ -353,6 +373,7 @@ Broadcasts `DmMessagesRead` WS event to all DM members.
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/api/dms/:dm_id/messages/:message_id/attachments` | JWT | Upload attachment (multipart) |
+| GET | `/api/dms/:dm_id/attachments` | JWT | List all attachments in a DM (gallery view) |
 
 ---
 
@@ -508,6 +529,12 @@ Must be a future datetime, max 28 days from now.
 ```json
 { "channel_positions": [{ "id": "uuid", "position": 0 }, { "id": "uuid", "position": 1 }] }
 ```
+
+### Channel Members
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/channels/:id/members` | JWT | List members who can view this channel (after permission overwrites) |
 
 ### Channel Read State
 
@@ -1132,12 +1159,18 @@ Used for end-to-end encryption in server channels and group DMs using the Sender
 | GET | `/api/files/:attachment_id` | JWT | Serve file by attachment ID |
 
 ### Constraints
-- **Max file size**: 26 MB
+- **Max file size**: 250 MB (`MAX_FILE_SIZE` in `crates/jolkr-api/src/storage.rs`)
 - **Allowed MIME types**: `image/*`, `video/*`, `audio/*`, `application/pdf`, `text/plain`, `application/octet-stream`
 - **MIME validation**: Magic bytes (not just Content-Type header)
 - **Filename sanitization**: Removes path traversal, null bytes
 - **Storage**: MinIO/S3
 - **Access**: Via presigned URLs (4-hour expiry)
+
+### Cloudflare bypass for >100MB attachment uploads
+
+The two message-attachment endpoints (`POST /api/channels/:id/messages/:mid/attachments` and `POST /api/dms/:id/messages/:mid/attachments`) are **also reachable via the grey-cloud subdomain `https://upload.jolkr.app/api/...`**. Cloudflare imposes a 100 MB request body limit on Free/Pro plans; routing message-attachment uploads through `upload.jolkr.app` (DNS-only A-record, not proxied by CF) bypasses that limit so the full 250 MB `MAX_FILE_SIZE` can be used.
+
+The frontend `getUploadBaseUrl()` helper auto-routes only those two paths to the upload subdomain. All other endpoints (avatars/icons via `/api/upload`, emoji uploads, JSON calls) continue to use the regular CF-proxied `https://jolkr.app/api/...` route. The remote nginx (HestiaCP `jolkr-upload` proxy template) on `upload.jolkr.app` returns 404 for any path that is not one of the two attachment endpoints — strict scope.
 
 ### Attachment Response
 ```json
@@ -1236,16 +1269,27 @@ ws://localhost:8080/ws
 | `ChannelDelete` | `{ channel_id, server_id }` | Channel deleted |
 | `MemberJoin` | `{ server_id, user_id }` | User joined server |
 | `MemberLeave` | `{ server_id, user_id }` | User left/kicked from server |
-| `MemberUpdate` | `{ server_id, user_id, timeout_until? }` | Member updated (timeout changed) |
+| `MemberUpdate` | `{ server_id, user_id, timeout_until?, nickname?, role_ids? }` | Member updated (timeout, nickname, or roles changed). All three optional fields are additive — only the keys that changed are present. `nickname: ""` clears the nickname. |
 | `ServerUpdate` | `{ server: ServerInfo }` | Server settings updated |
 | `ServerDelete` | `{ server_id }` | Server deleted |
+| `RoleCreate` | `{ server_id, role: RoleInfo }` | New role created in a server |
+| `RoleUpdate` | `{ server_id, role: RoleInfo }` | Role updated (name/color/position/permissions). Clients should re-fetch channel permissions for the affected server. |
+| `RoleDelete` | `{ server_id, role_id }` | Role deleted |
+| `ChannelPermissionUpdate` | `{ channel_id, server_id, overwrites: ChannelOverwriteInfo[] }` | Channel permission overwrites changed. Carries the full updated overwrite list. |
 | `ReactionUpdate` | `{ channel_id, message_id, reactions }` | Reactions changed on message |
 | `PollUpdate` | `{ poll, channel_id, message_id }` | Poll state changed |
-| `DmCallRing` | `{ dm_id, caller_id, caller_username }` | Incoming DM call |
+| `DmCallRing` | `{ dm_id, caller_id, caller_username, is_video }` | Incoming DM call (`is_video: bool` indicates voice vs video) |
 | `DmCallAccept` | `{ dm_id, user_id }` | Call accepted |
 | `DmCallReject` | `{ dm_id, user_id }` | Call rejected |
 | `DmCallEnd` | `{ dm_id, user_id }` | Call ended |
-| `UserUpdate` | `{ user_id, status?, display_name?, avatar_url?, bio? }` | User profile updated |
+| `DmClose` | `{ dm_id }` | DM closed/hidden by the receiving user. Sent only to the closer's other sessions. Other DM members get a `DmUpdate` instead. |
+| `DmMessageHide` | `{ dm_id, message_id }` | A single DM message was hidden ("only for me"). Sent only to the hider's own sessions. |
+| `UserUpdate` | `{ user_id, status?, display_name?, avatar_url?, bio?, banner_color?, show_read_receipts?, dm_filter?, allow_friend_requests?, preferred_language? }` | User profile updated. Self-only privacy fields (`show_read_receipts`/`dm_filter`/`allow_friend_requests`/`preferred_language`) are sent only on the user's own user-channel. |
+| `EmailVerified` | `{ user_id }` | User verified their email. Fired to all of the user's sessions. |
+| `FriendshipUpdate` | `{ friendship: FriendshipInfo, kind: "request_sent" \| "request_accepted" \| "removed" \| "blocked" }` | Friendship state changed. Sent to both parties. |
+| `GifFavoriteUpdate` | `{ added?: FavoriteItem, removed_gif_id?: string }` | GIF favorite added/removed in one of the user's sessions. Sent only to the user's own user-channel. |
+| `UserCallPresence` | `{ dm_id?, channel_id?, is_video? }` | Self-only — sync call participation across the user's open sessions. `dm_id` and `channel_id` are mutually exclusive; both `null` means the user left/ended/rejected the call. |
+| `NotificationSettingUpdate` | `{ target_type, target_id, setting?: NotificationSettingPayload }` | Per-target mute/notification preference changed. `setting: null` means defaults restored. Self-only. |
 | `CategoryCreate` | `{ category: CategoryInfo }` | New category created |
 | `CategoryUpdate` | `{ category: CategoryInfo }` | Category updated |
 | `CategoryDelete` | `{ category_id, server_id }` | Category deleted |
@@ -1322,7 +1366,7 @@ ws://localhost:8080/ws
 
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
-| `users` | User accounts | id, email, username, display_name, avatar_url, status, bio, password_hash, show_read_receipts |
+| `users` | User accounts | id, email, username, display_name, avatar_url, status, bio, password_hash, show_read_receipts, banner_color, dm_filter, allow_friend_requests, preferred_language, email_verified |
 | `servers` | Server/guild entities | id, name, description, icon_url, banner_url, owner_id, is_public |
 | `channels` | Server channels | id, server_id, category_id, name, topic, kind, position, is_nsfw, slowmode_seconds, e2ee_key_generation |
 | `categories` | Channel categories | id, server_id, name, position |

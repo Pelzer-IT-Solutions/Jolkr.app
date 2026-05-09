@@ -315,6 +315,7 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
         .route("/api/channels/:id/e2ee/generation", get(channel_encryption::get_key_generation))
         // ── File proxy (replaces presigned S3 URLs) ─────────────────────
         .route("/api/files/:attachment_id", get(files::serve_file))
+        .route("/api/files/:attachment_id/url", get(files::get_file_url))
         // ── E2EE Keys ─────────────────────────────────────────────────
         .route("/api/keys/upload", post(keys::upload_prekeys))
         .route("/api/keys/count/:device_id", get(keys::get_prekey_count))
@@ -410,7 +411,10 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
         .route("/health", get(health::health_check))
         // ── Prometheus metrics ───────────────────────────────────────
         .merge(metrics_route)
-        .layer(DefaultBodyLimit::max(26 * 1024 * 1024)) // 26 MB, matches nginx client_max_body_size
+        // Matches MAX_FILE_SIZE (250 MB) in storage.rs + a generous multipart overhead.
+        // Without this, attachment uploads >26 MB silently fail at `field.bytes().await`
+        // with "Failed to read file" since axum applies this limit per multipart field.
+        .layer(DefaultBodyLimit::max(260 * 1024 * 1024))
         .layer(axum_mw::from_fn(metrics_middleware))
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))

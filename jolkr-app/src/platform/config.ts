@@ -18,6 +18,21 @@ export function getApiBaseUrl(): string {
   return '/api';
 }
 
+/**
+ * Base URL for >100 MB attachment uploads. Routes through the grey-cloud
+ * subdomain `upload.jolkr.app` (DNS-only, no Cloudflare proxy) to bypass
+ * Cloudflare's 100 MB request body limit. Backend MAX_FILE_SIZE = 250 MB.
+ *
+ * Dev with local backend reuses the regular API base — the local nginx
+ * already accepts up to 251 MB so the subdomain isn't needed. In Tauri and
+ * production web builds we always use the upload subdomain.
+ */
+export function getUploadBaseUrl(): string {
+  if (isTauri) return 'https://upload.jolkr.app/api';
+  if (import.meta.env.DEV && import.meta.env.VITE_API_TARGET === 'local') return '/api';
+  return 'https://upload.jolkr.app/api';
+}
+
 export function getWsUrl(): string {
   if (isTauri) {
     const server = getServerUrl();

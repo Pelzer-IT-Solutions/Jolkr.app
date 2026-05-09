@@ -447,7 +447,9 @@
     "loading": "Laden…",
     "expand": "Meer tonen",
     "collapse": "Minder tonen",
-    "download": "Downloaden"
+    "download": "Downloaden",
+    "viewCode": "Code bekijken",
+    "viewPreview": "Voorbeeld bekijken"
   },
 
   "themePicker": {

@@ -2478,7 +2478,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-api"
-version = "0.10.4"
+version = "0.11.1"
 dependencies = [
  "async-nats",
  "async-trait",
@@ -2492,6 +2492,7 @@ dependencies = [
  "jolkr-common",
  "jolkr-core",
  "jolkr-db",
+ "jsonwebtoken",
  "lettre",
  "metrics",
  "metrics-exporter-prometheus",
@@ -2507,6 +2508,7 @@ dependencies = [
  "sha2",
  "sqlx",
  "subtle",
+ "thiserror 1.0.69",
  "tokio",
  "tower-http 0.5.2",
  "tracing",
@@ -2519,7 +2521,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-common"
-version = "0.10.4"
+version = "0.11.1"
 dependencies = [
  "chrono",
  "serde",
@@ -2530,7 +2532,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-core"
-version = "0.10.4"
+version = "0.11.1"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2556,7 +2558,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-db"
-version = "0.10.4"
+version = "0.11.1"
 dependencies = [
  "chrono",
  "jolkr-common",
@@ -2570,7 +2572,7 @@ dependencies = [
 
 [[package]]
 name = "jolkr-media"
-version = "0.10.4"
+version = "0.11.1"
 dependencies = [
  "async-nats",
  "axum",

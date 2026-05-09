@@ -446,7 +446,9 @@
     "loading": "Caricamento…",
     "expand": "Mostra di più",
     "collapse": "Mostra meno",
-    "download": "Scarica"
+    "download": "Scarica",
+    "viewCode": "Visualizza codice",
+    "viewPreview": "Visualizza anteprima"
   },
 
   "themePicker": {

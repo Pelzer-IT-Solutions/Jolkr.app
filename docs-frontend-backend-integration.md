@@ -1,6 +1,6 @@
 # Frontend ↔ Backend Integratie Documentatie
 
-> **Versie**: 0.10.0
+> **Versie**: 0.11.0
 >
 > Volledige mapping van alle koppelingen tussen `jolkr-app` (React/Vite/TypeScript) en `jolkr-server` (Rust/Axum).
 > Doel: nieuwe frontend 1:1 koppelen aan dezelfde backend zonder iets te missen.
@@ -71,9 +71,12 @@
 | Functie | Web | Tauri Desktop | Tauri Dev |
 |---------|-----|---------------|-----------|
 | `getApiBaseUrl()` | `/api` | `https://jolkr.app/api` | `localStorage.jolkr_server_url + /api` |
+| `getUploadBaseUrl()` | `https://upload.jolkr.app/api` | `https://upload.jolkr.app/api` | `/api` (Vite proxy als `VITE_API_TARGET=local`) |
 | `getWsUrl()` | `/ws` | `wss://jolkr.app/ws` | custom server URL |
 | `getMediaWsUrl()` | `/media/ws/voice` | `wss://jolkr.app/media/ws/voice` | custom |
 | `rewriteStorageUrl(url)` | Herschrijft `minio:9000` → `/s3/` | Herschrijft naar `https://jolkr.app/s3/` | — |
+
+> **`upload.jolkr.app` (grey-cloud subdomain)**: A-record `upload` is in Cloudflare gezet als **DNS only** (proxied=false), zodat upload-traffic NIET door Cloudflare gaat. CF heeft een 100MB request body limit (Free/Pro plan); door eromheen te routen kunnen we de volle backend `MAX_FILE_SIZE = 250MB` benutten. Op de remote nginx (HestiaCP) draait een aparte `jolkr-upload` proxy template die ALLEEN de twee message-attachment endpoints proxiet — al het andere → 404.
 
 ### Vite Dev Proxy (`vite.config.ts`)
 
@@ -200,10 +203,10 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
-| `getMe` | GET | `/users/@me` | — | `{user: User}` |
-| `updateMe` | PATCH | `/users/@me` | `{display_name?, bio?, avatar_url?, status?, show_read_receipts?}` | `{user: User}` |
+| `getMe` | GET | `/users/@me` | — | `{user: MeProfile}` |
+| `updateMe` | PATCH | `/users/@me` | `{display_name?, bio?, avatar_url?, status?, banner_color?, show_read_receipts?, dm_filter?, allow_friend_requests?, preferred_language?}` | `{user: MeProfile}` |
 | `getUser` | GET | `/users/{id}` | — | `{user: User}` |
-| `getUsersBatch` | GET×N | `/users/{id}` (parallel `Promise.all`) | — | `User[]` |
+| `getUsersBatch` | POST | `/users/batch` | `{ids: string[]}` (client chunked op 100) | `{users: User[]}` |
 | `searchUsers` | GET | `/users/search?q={q}` | — | `{users: User[]}` |
 
 ---
@@ -263,6 +266,7 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `deleteRole` | DELETE | `/roles/{id}` | — | void |
 | `assignRole` | PUT | `/servers/{id}/roles/{roleId}/members` | `{user_id}` | void |
 | `removeRole` | DELETE | `/servers/{id}/roles/{roleId}/members/{userId}` | — | void |
+| `getChannelMembers` | GET | `/channels/{id}/members` | — | `{members: Member[]}` (filtert op VIEW_CHANNEL) |
 
 ---
 
@@ -305,10 +309,12 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
 | `getMessageAttachments` | GET | `/messages/{id}/attachments` | — | `{attachments: Attachment[]}` |
-| `uploadAttachment` | POST | `/channels/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
-| `uploadDmAttachment` | POST | `/dms/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
+| `uploadAttachment` *(via `getUploadBaseUrl()`)* | POST | `/channels/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
+| `uploadDmAttachment` *(via `getUploadBaseUrl()`)* | POST | `/dms/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
 | `uploadFile` | POST | `/upload?purpose={avatar\|icon}` | `FormData {file}` | `{key: string, url: string}` |
 | `getFileUrl` | GET | `/files/{attachmentId}` | — | Binary file (streamed) |
+
+> De twee message-attachment uploads gaan via `https://upload.jolkr.app/api/...` (Cloudflare grey-cloud) i.p.v. `https://jolkr.app/api/...` om de Cloudflare 100MB body-size limiet te omzeilen. Avatars/server icons (`uploadFile`) en emojis (`uploadEmoji`) blijven via de normale CF-proxied route — die zijn altijd klein (<5MB).
 
 ---
 
@@ -323,6 +329,8 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | `sendDmMessage` | POST | `/dms/{id}/messages` | `{content, nonce?, reply_to_id?}` | `{message: Message}` |
 | `editDmMessage` | PATCH | `/dms/messages/{id}` | `{content, nonce?}` | `{message: Message}` |
 | `deleteDmMessage` | DELETE | `/dms/messages/{id}` | — | void |
+| `hideDmMessage` | POST | `/dms/messages/{id}/hide` | — | void |
+| `getDmAttachments` | GET | `/dms/{id}/attachments` | — | `{attachments: Attachment[]}` |
 | `pinDmMessage` | POST | `/dms/{id}/pins/{messageId}` | — | `{message: Message}` |
 | `unpinDmMessage` | DELETE | `/dms/{id}/pins/{messageId}` | — | `{message: Message}` |
 | `getDmPinnedMessages` | GET | `/dms/{id}/pins` | — | `{messages: Message[]}` |
@@ -338,10 +346,12 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
-| `initiateCall` | POST | `/dms/{id}/call` | — | void |
+| `initiateCall` | POST | `/dms/{id}/call?is_video={bool?}` | — | void |
 | `acceptCall` | POST | `/dms/{id}/call/accept` | — | void |
 | `rejectCall` | POST | `/dms/{id}/call/reject` | — | void |
 | `endCall` | POST | `/dms/{id}/call/end` | — | void |
+
+> `is_video` query param wordt door de backend doorgegeven aan de ontvanger via het `DmCallRing` WS event (`is_video: bool`).
 
 ---
 
@@ -476,37 +486,38 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 
 ---
 
-### 4.23 Backend routes zonder client.ts functie
+### 4.23 GIFs & oEmbed
 
-De volgende backend routes bestaan maar hebben geen dedicated wrapper in `src/api/client.ts`:
+| Functie | Method | Path | Body | Response |
+|---------|--------|------|------|----------|
+| `searchGifs` | GET | `/gifs/search?q={q}&limit?&pos?` | — | `TenorSearchResponse` |
+| `getFeaturedGifs` | GET | `/gifs/featured?limit?&pos?` | — | `TenorSearchResponse` |
+| `getGifCategories` | GET | `/gifs/categories` | — | `{tags: TenorCategory[]}` (30min cache) |
+| `getGifFavorites` | GET | `/gifs/favorites` | — | `{favorites: GifFavorite[]}` |
+| `addGifFavorite` | POST | `/gifs/favorites` | `{gif_id, gif_url, preview_url, title?}` | void |
+| `removeGifFavorite` | DELETE | `/gifs/favorites/{gifId}` | — | void |
+| `getOembed` | GET | `/oembed?url={url}` | — | `OembedResponse` |
+
+> **Backend providers**: GIPHY proxy voor `/search`/`/featured`/`/categories`/`/i/`/`/media`. Frontend types heten "Tenor" om historische redenen — de schema's zijn compatibel.
+>
+> **GIF favorite sync**: backend emit `GifFavoriteUpdate` WS event op de user-channel zodat sibling sessies de favorites lijst mee updaten zonder polling.
+
+---
+
+### 4.24 Backend routes zonder dedicated client.ts wrapper
+
+De volgende backend routes bestaan maar hebben geen aparte functie in `src/api/client.ts` (ze worden indirect gebruikt of zijn intern):
 
 | Method | Path | Omschrijving |
 |--------|------|-------------|
-| GET | `/avatars/{userId}` | Publiek avatar endpoint (geen auth, direct via URL) |
-| GET | `/icons/{serverId}` | Publiek server icon endpoint (geen auth, direct via URL) |
-| GET | `/channels/{id}/messages` | Berichten ophalen (client gebruikt query params via `getMessages`) |
-| GET | `/channels/{id}/e2ee/my-key` | E2EE key ophalen (client gebruikt `getMyChannelKey` helper) |
-| GET | `/dms/{id}/messages` | DM berichten ophalen (client gebruikt `getDmMessages`) |
-| GET | `/dms/{id}/e2ee/my-key` | DM E2EE key ophalen (client gebruikt `getMyChannelKey` helper) |
-| GET | `/devices` | Apparaten ophalen (client gebruikt `getDevices`) |
-| GET | `/keys/{userId}/{deviceId}` | PreKey bundle ophalen (client gebruikt `getPreKeyBundle`) |
-| GET | `/keys/count/{deviceId}` | One-time prekey count (client controleert niet actief) |
-| GET | `/threads/{id}/messages` | Thread berichten ophalen (client gebruikt `getThreadMessages`) |
-| POST | `/auth/logout` | Sessie invalideren (client roept via `clearTokens` flow) |
-| POST | `/auth/logout-all` | Alle sessies invalideren (geen directe client wrapper) |
-| POST | `/auth/refresh` | Token refresh (client gebruikt `refreshAccessToken` intern) |
-| POST | `/channels/{id}/e2ee/distribute` | E2EE keys distribueren (client gebruikt `distributeChannelKeys`) |
-| POST | `/dms/{id}/e2ee/distribute` | DM E2EE keys distribueren (client gebruikt `distributeChannelKeys`) |
-| POST | `/presence/query` | Presence opvragen (client gebruikt `queryPresence`) |
-| POST | `/users/batch` | Meerdere users ophalen (client gebruikt parallel `getUser` calls) |
-| POST | `/webhooks/{id}/{token}` | Webhook uitvoeren (geen auth, extern aangeroepen) |
-| GET | `/files/{attachmentId}` | File serving by attachment ID (client gebruikt `getFileUrl`) |
-| GET | `/gifs/search` | GIF zoeken (geen dedicated client wrapper, direct URL) |
-| GET | `/gifs/featured` | Trending GIFs (geen dedicated client wrapper, direct URL) |
-| GET | `/gifs/categories` | GIF categorieën (geen dedicated client wrapper, direct URL) |
-| GET | `/gifs/i/{gifId}/{size}` | GIF image proxy (geen dedicated client wrapper, direct URL) |
-| GET | `/gifs/media` | GIF media proxy (geen dedicated client wrapper, direct URL) |
-| GET | `/oembed` | oEmbed proxy (geen dedicated client wrapper, direct URL) |
+| GET | `/avatars/{userId}` | Publiek avatar endpoint (geen auth, direct via `<img src=...>`) |
+| GET | `/icons/{serverId}` | Publiek server icon endpoint (geen auth, direct via `<img src=...>`) |
+| GET | `/keys/count/{deviceId}` | One-time prekey count (FE controleert niet actief, backend monitort zelf) |
+| GET | `/keys/{userId}/{deviceId}` | PreKey bundle voor specifiek device (FE gebruikt `getPreKeyBundle` op `/keys/{userId}` voor alle devices) |
+| POST | `/auth/logout` | Sessie invalideren (client roept dit niet expliciet aan; tokens worden lokaal gewist via `clearTokens`) |
+| POST | `/auth/logout-all` | Alle sessies invalideren (geen directe wrapper — alleen via Settings UI flow) |
+| POST | `/auth/refresh` | Token refresh — intern via `refreshAccessToken()` private functie, geen public wrapper |
+| POST | `/webhooks/{id}/{token}` | Webhook uitvoeren (geen auth, extern aangeroepen door bots) |
 
 ---
 
@@ -560,22 +571,33 @@ De volgende backend routes bestaan maar hebben geen dedicated wrapper in `src/ap
 | `ChannelDelete` | `{ channel_id, server_id }` | `stores/servers.ts` |
 | `MemberJoin` | `{ server_id, user_id }` | `stores/servers.ts` |
 | `MemberLeave` | `{ server_id, user_id }` | `stores/servers.ts` |
-| `MemberUpdate` | `{ server_id, user_id, timeout_until? }` | `stores/servers.ts` (+ permission cache invalidatie) |
+| `MemberUpdate` | `{ server_id, user_id, timeout_until?, nickname?, role_ids? }` | `stores/servers.ts` (+ permission cache invalidatie) |
 | `ServerUpdate` | `{ server: Server }` | `stores/servers.ts` |
 | `ServerDelete` | `{ server_id }` | `stores/servers.ts` |
-| `UserUpdate` | `{ status?, display_name?, avatar_url?, bio? }` | `stores/auth.ts` |
+| `RoleCreate` | `{ server_id, role: Role }` | `stores/servers.ts` |
+| `RoleUpdate` | `{ server_id, role: Role }` | `stores/servers.ts` (+ permission cache invalidatie) |
+| `RoleDelete` | `{ server_id, role_id }` | `stores/servers.ts` |
+| `ChannelPermissionUpdate` | `{ channel_id, server_id, overwrites: ChannelOverwrite[] }` | `stores/servers.ts` |
+| `UserUpdate` | `{ status?, display_name?, avatar_url?, bio?, banner_color?, show_read_receipts?, dm_filter?, allow_friend_requests?, preferred_language? }` | `stores/auth.ts`, `stores/locale.ts` (preferred_language) |
+| `EmailVerified` | `{ user_id }` | `stores/auth.ts` |
+| `FriendshipUpdate` | `{ friendship, kind }` | `stores/friends.ts` |
 | `DmMessagesRead` | `{ dm_id, user_id, message_id }` | `stores/unread.ts`, `stores/dm-reads.ts` |
-| `DmCreate` | `{ channel?: DmChannel }` | `DmList.tsx` |
+| `DmCreate` | `{ channel: DmChannel }` | `DmList.tsx` |
 | `DmUpdate` | `{ channel: DmChannel }` | `DmList.tsx`, `DmChat.tsx` |
+| `DmClose` | `{ dm_id }` | `stores/dms.ts` (sibling-session sync) |
+| `DmMessageHide` | `{ dm_id, message_id }` | `stores/messages.ts` (sibling-session sync) |
 | `CategoryCreate` | `{ category: Category }` | `stores/servers.ts` |
 | `CategoryUpdate` | `{ category: Category }` | `stores/servers.ts` |
 | `CategoryDelete` | `{ category_id, server_id }` | `stores/servers.ts` |
 | `ChannelMessagesRead` | `{ channel_id, user_id, message_id }` | `stores/unread.ts` |
 | `ServerMessagesRead` | `{ server_id, user_id }` | `stores/unread.ts` |
-| `DmCallRing` | `{ dm_id, caller_id, caller_username }` | `hooks/useCallEvents.ts` |
-| `DmCallAccept` | `{ dm_id }` | `hooks/useCallEvents.ts` |
-| `DmCallReject` | `{ dm_id }` | `hooks/useCallEvents.ts` |
-| `DmCallEnd` | `{ dm_id }` | `hooks/useCallEvents.ts` |
+| `DmCallRing` | `{ dm_id, caller_id, caller_username, is_video }` | `hooks/useCallEvents.ts` |
+| `DmCallAccept` | `{ dm_id, user_id }` | `hooks/useCallEvents.ts` |
+| `DmCallReject` | `{ dm_id, user_id }` | `hooks/useCallEvents.ts` |
+| `DmCallEnd` | `{ dm_id, user_id }` | `hooks/useCallEvents.ts` |
+| `UserCallPresence` | `{ dm_id?, channel_id?, is_video? }` | `stores/call.ts` (sibling-session "On a call" indicator) |
+| `GifFavoriteUpdate` | `{ added?, removed_gif_id? }` | `stores/gifFavorites.ts` |
+| `NotificationSettingUpdate` | `{ target_type, target_id, setting? }` | `stores/notifications.ts` |
 
 ### Channel Subscription (refcount systeem)
 
@@ -1007,6 +1029,13 @@ interface User {
   created_at?: string | null;
 }
 
+// MeProfile = User + self-only privacy preferences (only present on /users/@me)
+interface MeProfile extends User {
+  dm_filter?: 'all' | 'friends' | 'none';
+  allow_friend_requests?: boolean;
+  preferred_language?: string | null;   // BCP-47 lite, e.g. "en-US", "nl"
+}
+
 interface Server {
   id: string; name: string; description?: string | null;
   icon_url?: string | null; banner_url?: string | null;
@@ -1285,4 +1314,4 @@ Deze bestanden zijn framework-onafhankelijk en kunnen (bijna) letterlijk gekopie
 
 ---
 
-> **Bijgewerkt op 2026-04-08** — versie 0.10.0, gebaseerd op de huidige staat van `jolkr-app/src/` en `jolkr-server/` (inclusief migraties t/m 033).
+> **Bijgewerkt op 2026-05-08** — versie 0.11.0, gebaseerd op de huidige staat van `jolkr-app/src/` en `jolkr-server/`. Belangrijkste wijzigingen sinds v0.10.0: i18n (9 talen, `preferred_language` veld + cross-device WS sync), NoMercy player, HLS support, any-file uploads, DM message hide ("delete for me"), DM attachments gallery, channel members listing, role/channel-permission WS events, GIF favorites WS sync, video call signaling (`is_video` query param + WS field), email-verified WS event.

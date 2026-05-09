@@ -90,20 +90,25 @@
   100% { background-position: -100% 0; }
 }
 
-/* ── Generic file chip (non-media) ── */
+/* ── Generic file chip (non-media) ──
+   Sized to ~488 × 52px to match the chat-column reference: same width as the
+   480px media tiles plus a sliver of border, height tuned via padding so the
+   chip sits flush with composer button rows above/below. */
 .file {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 0.625rem 0.875rem;
+  padding: 0.5rem 0.75rem;
   background: var(--bg-loud);
   border: 1px solid var(--border-muted);
   border-radius: 0.625rem;
   text-decoration: none;
   color: inherit;
   transition: background-color var(--transition), border-color var(--transition);
-  min-width: 16rem;
-  max-width: 24rem;
+  width: 100%;
+  max-width: 488px;
+  height: 52px;
+  box-sizing: border-box;
 }
 .file:hover {
   background: var(--bg-dark-muted);

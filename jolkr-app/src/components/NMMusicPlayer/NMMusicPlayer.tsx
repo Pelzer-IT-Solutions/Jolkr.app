@@ -57,7 +57,6 @@ export default function NMMusicPlayer({ src, filename, downloadUrl }: NMMusicPla
 
   return (
     <div className={s.wrap}>
-      <canvas ref={visualizerRef} className={s.visualizer} aria-hidden />
       <div className={s.header}>
         <span className={s.iconWrap}><Music size={16} strokeWidth={1.6} /></span>
         <span className={s.filename} title={filename}>{filename}</span>
@@ -87,6 +86,7 @@ export default function NMMusicPlayer({ src, filename, downloadUrl }: NMMusicPla
         </button>
 
         <div className={s.progressBar} onClick={handleSeekClick}>
+          <canvas ref={visualizerRef} className={s.visualizer} aria-hidden />
           <div className={s.progressTrack}>
             <div className={s.progressBuffered} style={{ width: `${bufferedPct}%` }} />
             <div className={s.progressPlayed} style={{ width: `${progressPct}%` }} />

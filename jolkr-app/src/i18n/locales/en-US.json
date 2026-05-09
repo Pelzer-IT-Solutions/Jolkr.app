@@ -616,7 +616,9 @@
     "loading": "Loading…",
     "expand": "Show more",
     "collapse": "Show less",
-    "download": "Download"
+    "download": "Download",
+    "viewCode": "View code",
+    "viewPreview": "View preview"
   },
 
   "themePicker": {

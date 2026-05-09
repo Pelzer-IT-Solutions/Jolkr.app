@@ -38,6 +38,8 @@ lettre = { version = "0.11", default-features = false, features = [
 subtle = "2"
 sha2 = "0.10"
 hmac = "0.12"
+jsonwebtoken = { workspace = true }
+thiserror = { workspace = true }
 reqwest = { workspace = true }
 urlencoding = { workspace = true }
 scraper = { workspace = true }
