@@ -102,6 +102,11 @@ function AppInit({ children }: { children: React.ReactNode }) {
         if (deviceId) {
           initE2EE(deviceId).catch(console.warn);
         }
+        // Warm the video-player chunk so the first time the user opens
+        // a video/audio attachment the bundle is already in cache.
+        // Fire-and-forget; failure (offline at boot) just delays the
+        // first playback by a fraction of a second.
+        void import('@nomercy-entertainment/nomercy-video-player').catch(() => {});
       }
 
       // Check for updates after 5s delay (Tauri only)

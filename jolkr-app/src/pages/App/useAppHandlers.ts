@@ -12,6 +12,7 @@ import { useMessagesStore } from '../../stores/messages'
 import { useVoiceStore } from '../../stores/voice'
 import { useToast } from '../../stores/toast'
 import { useUsersStore } from '../../stores/users'
+import { useUploadProgressStore } from '../../stores/uploadProgress'
 import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
 import { logErr } from '../../utils/logErr'
 import { tStatic } from '../../hooks/useT'
@@ -225,17 +226,29 @@ export function useAppHandlers(
     // toast — silent rejections (e.g. server MIME whitelist) used to leave
     // the user with an empty message and no clue why.
     if (files?.length && msg?.id) {
+      const messageId = msg.id
+      const progress = useUploadProgressStore.getState()
       for (const file of files) {
+        progress.startUpload(messageId, file.name, file.size)
+        const onProgress = ({ loaded }: { loaded: number; total: number }) =>
+          useUploadProgressStore.getState().updateProgress(messageId, file.name, loaded)
         try {
           if (isDm) {
-            await api.uploadDmAttachment(channelId, msg.id, file)
+            await api.uploadDmAttachmentWithProgress(channelId, messageId, file, onProgress)
           } else {
-            await api.uploadAttachment(channelId, msg.id, file)
+            await api.uploadAttachmentWithProgress(channelId, messageId, file, onProgress)
           }
+          // Success — clear the in-flight row immediately. The real
+          // attachment will arrive via the WS MessageUpdate event.
+          useUploadProgressStore.getState().finishUpload(messageId, file.name)
         } catch (err) {
           console.error('Attachment upload failed:', err)
           const reason = err instanceof Error ? err.message : tStatic('toast.uploadFailed')
           useToast.getState().show(`${file.name}: ${reason}`, 'error', 6000)
+          useUploadProgressStore.getState().failUpload(messageId, file.name, reason)
+          // Auto-clear failed row after the toast fades so the message stops
+          // showing the stale red error indefinitely.
+          setTimeout(() => useUploadProgressStore.getState().finishUpload(messageId, file.name), 6500)
         }
       }
     }

@@ -21,6 +21,7 @@ import VideoEmbed from '../VideoEmbed/VideoEmbed'
 import LinkEmbed from '../LinkEmbed/LinkEmbed'
 import Avatar from '../Avatar/Avatar'
 import { MessageAttachments } from '../MessageAttachments/MessageAttachments'
+import { MessageUploadProgress } from '../MessageUploadProgress/MessageUploadProgress'
 import { PollDisplay } from '../Poll/PollDisplay'
 import { ReactionTooltip } from './ReactionTooltip'
 import { DeleteMessageDialog } from '../DeleteMessageDialog/DeleteMessageDialog'
@@ -304,6 +305,11 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     <MessageAttachments attachments={message.attachments!} />
   ) : null
 
+  // In-flight uploads on this message — bound to `useUploadProgressStore`.
+  // Renders nothing when no uploads are pending so it costs ~zero on
+  // already-sent messages.
+  const uploadProgressBlock = <MessageUploadProgress messageId={message.id} />
+
   // Inline poll renderer. The store updates `message.poll` live via PollUpdate
   // WS events, so this just re-renders when the prop changes.
   const pollBlock = message.poll ? <PollDisplay poll={message.poll} /> : null
@@ -330,6 +336,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
       {replyBlock}
       {textContent}
       {attachmentsBlock}
+      {uploadProgressBlock}
       {embedsBlock}
       {pollBlock}
       {reactionsBlock}
@@ -609,6 +616,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
               </div>
             )}
             {attachmentsBlock}
+            {uploadProgressBlock}
             {embedsBlock}
             {pollBlock}
           </div>
