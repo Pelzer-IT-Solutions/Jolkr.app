@@ -71,9 +71,12 @@
 | Functie | Web | Tauri Desktop | Tauri Dev |
 |---------|-----|---------------|-----------|
 | `getApiBaseUrl()` | `/api` | `https://jolkr.app/api` | `localStorage.jolkr_server_url + /api` |
+| `getUploadBaseUrl()` | `https://upload.jolkr.app/api` | `https://upload.jolkr.app/api` | `/api` (Vite proxy als `VITE_API_TARGET=local`) |
 | `getWsUrl()` | `/ws` | `wss://jolkr.app/ws` | custom server URL |
 | `getMediaWsUrl()` | `/media/ws/voice` | `wss://jolkr.app/media/ws/voice` | custom |
 | `rewriteStorageUrl(url)` | Herschrijft `minio:9000` → `/s3/` | Herschrijft naar `https://jolkr.app/s3/` | — |
+
+> **`upload.jolkr.app` (grey-cloud subdomain)**: A-record `upload` is in Cloudflare gezet als **DNS only** (proxied=false), zodat upload-traffic NIET door Cloudflare gaat. CF heeft een 100MB request body limit (Free/Pro plan); door eromheen te routen kunnen we de volle backend `MAX_FILE_SIZE = 250MB` benutten. Op de remote nginx (HestiaCP) draait een aparte `jolkr-upload` proxy template die ALLEEN de twee message-attachment endpoints proxiet — al het andere → 404.
 
 ### Vite Dev Proxy (`vite.config.ts`)
 
@@ -306,10 +309,12 @@ Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
 | Functie | Method | Path | Body | Response |
 |---------|--------|------|------|----------|
 | `getMessageAttachments` | GET | `/messages/{id}/attachments` | — | `{attachments: Attachment[]}` |
-| `uploadAttachment` | POST | `/channels/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
-| `uploadDmAttachment` | POST | `/dms/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
+| `uploadAttachment` *(via `getUploadBaseUrl()`)* | POST | `/channels/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
+| `uploadDmAttachment` *(via `getUploadBaseUrl()`)* | POST | `/dms/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
 | `uploadFile` | POST | `/upload?purpose={avatar\|icon}` | `FormData {file}` | `{key: string, url: string}` |
 | `getFileUrl` | GET | `/files/{attachmentId}` | — | Binary file (streamed) |
+
+> De twee message-attachment uploads gaan via `https://upload.jolkr.app/api/...` (Cloudflare grey-cloud) i.p.v. `https://jolkr.app/api/...` om de Cloudflare 100MB body-size limiet te omzeilen. Avatars/server icons (`uploadFile`) en emojis (`uploadEmoji`) blijven via de normale CF-proxied route — die zijn altijd klein (<5MB).
 
 ---
 

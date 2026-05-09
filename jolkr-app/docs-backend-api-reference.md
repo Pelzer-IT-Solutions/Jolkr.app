@@ -1159,12 +1159,18 @@ Used for end-to-end encryption in server channels and group DMs using the Sender
 | GET | `/api/files/:attachment_id` | JWT | Serve file by attachment ID |
 
 ### Constraints
-- **Max file size**: 26 MB
+- **Max file size**: 250 MB (`MAX_FILE_SIZE` in `crates/jolkr-api/src/storage.rs`)
 - **Allowed MIME types**: `image/*`, `video/*`, `audio/*`, `application/pdf`, `text/plain`, `application/octet-stream`
 - **MIME validation**: Magic bytes (not just Content-Type header)
 - **Filename sanitization**: Removes path traversal, null bytes
 - **Storage**: MinIO/S3
 - **Access**: Via presigned URLs (4-hour expiry)
+
+### Cloudflare bypass for >100MB attachment uploads
+
+The two message-attachment endpoints (`POST /api/channels/:id/messages/:mid/attachments` and `POST /api/dms/:id/messages/:mid/attachments`) are **also reachable via the grey-cloud subdomain `https://upload.jolkr.app/api/...`**. Cloudflare imposes a 100 MB request body limit on Free/Pro plans; routing message-attachment uploads through `upload.jolkr.app` (DNS-only A-record, not proxied by CF) bypasses that limit so the full 250 MB `MAX_FILE_SIZE` can be used.
+
+The frontend `getUploadBaseUrl()` helper auto-routes only those two paths to the upload subdomain. All other endpoints (avatars/icons via `/api/upload`, emoji uploads, JSON calls) continue to use the regular CF-proxied `https://jolkr.app/api/...` route. The remote nginx (HestiaCP `jolkr-upload` proxy template) on `upload.jolkr.app` returns 404 for any path that is not one of the two attachment endpoints — strict scope.
 
 ### Attachment Response
 ```json
