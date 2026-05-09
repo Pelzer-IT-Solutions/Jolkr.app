@@ -444,7 +444,9 @@
     "loading": "로딩 중…",
     "expand": "더 보기",
     "collapse": "접기",
-    "download": "다운로드"
+    "download": "다운로드",
+    "viewCode": "코드 보기",
+    "viewPreview": "미리보기 보기"
   },
 
   "themePicker": {

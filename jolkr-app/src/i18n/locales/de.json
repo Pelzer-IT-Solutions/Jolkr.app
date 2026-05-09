@@ -446,7 +446,9 @@
     "loading": "Lädt…",
     "expand": "Mehr anzeigen",
     "collapse": "Weniger anzeigen",
-    "download": "Herunterladen"
+    "download": "Herunterladen",
+    "viewCode": "Code anzeigen",
+    "viewPreview": "Vorschau anzeigen"
   },
 
   "themePicker": {

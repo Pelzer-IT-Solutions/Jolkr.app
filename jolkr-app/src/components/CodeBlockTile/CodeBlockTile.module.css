@@ -143,3 +143,24 @@
   color: oklch(70% 0.18 25);
   font-size: 0.8125rem;
 }
+
+/* SVG preview surface. Black-ish backdrop matches the .body code area, sized
+   so wide / tall designs are constrained but small icon-style SVGs don't
+   stretch absurdly. The inline `<svg>` itself is auto-fitted via width:100%
+   + height:auto so its intrinsic ratio carries through. */
+.svgPreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  min-height: 8rem;
+  max-height: 22rem;
+  background: oklch(15% 0 0);
+}
+.svgPreview svg {
+  display: block;
+  max-width: 100%;
+  max-height: 20rem;
+  width: auto;
+  height: auto;
+}

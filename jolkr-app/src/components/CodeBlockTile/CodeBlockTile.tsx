@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, Download, FileCode } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Eye, FileCode } from 'lucide-react';
 import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/github-dark.css';
+import DOMPurify from 'dompurify';
 import type { Attachment } from '../../api/types';
 import { formatBytes } from '../../utils/format';
-import { authedFetch } from '../../api/client';
-import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl';
+import { useAuthedRedirectUrl } from '../../hooks/useAuthedRedirectUrl';
 import { useT } from '../../hooks/useT';
 import s from './CodeBlockTile.module.css';
 
@@ -47,6 +47,40 @@ function detectLanguage(filename: string): string | null {
   return EXT_TO_LANG[ext] ?? null;
 }
 
+/** Whether this attachment is an SVG — gets the toggle between code and a
+ *  sanitised inline preview. Both extension and MIME are accepted because
+ *  servers occasionally type SVGs as `text/xml` or `application/octet-stream`. */
+function isSvg(att: Attachment): boolean {
+  return att.content_type.toLowerCase() === 'image/svg+xml'
+    || /\.svg(\?.*)?$/i.test(att.filename);
+}
+
+/** Run an SVG body through DOMPurify with the SVG profile enabled.
+ *
+ *  The SVG profile keeps the tags + attributes that make a normal SVG render
+ *  correctly (transforms, fills, strokes, gradients, filters, <use>, <defs>,
+ *  paths, polygons, masks, animations) and strips the dangerous surface:
+ *  `<script>`, `<foreignObject>`, `on*` event handlers, `javascript:` URLs,
+ *  external resource loading via `xlink:href` to non-fragment targets, etc.
+ *  We do not need to maintain that whitelist ourselves — DOMPurify already
+ *  publishes one and keeps it current.
+ *
+ *  ADD_TAGS for `style` is intentional: a lot of designer-exported SVGs ship
+ *  inline `<style>` blocks for class-based fills. The SVG profile already
+ *  permits the `class` attribute, so allowing `<style>` lets those render
+ *  faithfully without opening the door to script (DOMPurify still strips
+ *  script content even inside `<style>` via its CSS parser). */
+function sanitiseSvg(raw: string): string {
+  return DOMPurify.sanitize(raw, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    ADD_TAGS: ['style'],
+    // Force fragments so any standalone <?xml … ?> / <!DOCTYPE> headers
+    // get stripped — only the `<svg>` element survives, which is the only
+    // thing we want to inject into our document.
+    WHOLE_DOCUMENT: false,
+  });
+}
+
 /**
  * Inline code-snippet preview for text-based attachments. Fetches the
  * authed blob, runs it through highlight.js (with a filename → language
@@ -56,28 +90,34 @@ function detectLanguage(filename: string): string | null {
  */
 export default function CodeBlockTile({ attachment, src }: CodeBlockTileProps) {
   const { t } = useT();
-  const blobUrl = useAuthedFileUrl(src);
+  // Single round-trip: the signed stream-token URL is fetchable without a
+  // Bearer header (Range-aware, scoped to caller), so the same URL backs
+  // both the inline body fetch AND the download anchor. Previous version
+  // paid for two byte-streams: an `authedFetch` for the text plus a
+  // separate full-body blob via `useAuthedFileUrl` for the download.
+  const streamUrl = useAuthedRedirectUrl(src);
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  // SVG attachments default to the visual preview (most useful first) and
+  // can be flipped to the code view on demand. Non-SVG content has no
+  // toggle and renders code only. Lifted state so the toggle button can
+  // re-render the body block.
+  const svg = isSvg(attachment);
+  const [viewMode, setViewMode] = useState<'preview' | 'code'>(svg ? 'preview' : 'code');
 
   const tooLarge = attachment.size_bytes > MAX_INLINE_CODE_BYTES;
   const lang = detectLanguage(attachment.filename);
-  const downloadUrl = blobUrl ?? src;
+  const downloadUrl = streamUrl ?? src;
 
-  // Pull the text directly via authedFetch instead of through the blob
-  // URL. fetch(blobUrl) is gated by the page's `connect-src` CSP and our
-  // current policy doesn't list `blob:`, so the blob path produced a
-  // "Failed to fetch" error chip even though the bytes were already in
-  // memory. authedFetch is the same call useAuthedFileUrl makes
-  // internally, just consumed as text. Skipped for too-large files —
-  // those render the download chip without parsing.
+  // Skipped for too-large files — those render the download chip without
+  // parsing the body (loading MB-sized text into hljs freezes the renderer).
   useEffect(() => {
-    if (tooLarge) return;
+    if (tooLarge || !streamUrl) return;
     let cancelled = false;
     (async () => {
       try {
-        const resp = await authedFetch(src);
+        const resp = await fetch(streamUrl);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const body = await resp.text();
         if (!cancelled) setText(body);
@@ -86,7 +126,7 @@ export default function CodeBlockTile({ attachment, src }: CodeBlockTileProps) {
       }
     })();
     return () => { cancelled = true; };
-  }, [src, tooLarge]);
+  }, [streamUrl, tooLarge]);
 
   // Highlight once we have the body. Empty / errored renders fall through
   // to a placeholder shell so the chip doesn't pop in awkwardly.
@@ -144,6 +184,19 @@ export default function CodeBlockTile({ attachment, src }: CodeBlockTileProps) {
             {resolvedLang && <span className={s.lang}>· {resolvedLang}</span>}
           </span>
         </div>
+        {svg && text != null && !error && (
+          <button
+            type="button"
+            className={s.actionBtn}
+            onClick={() => setViewMode((m) => (m === 'preview' ? 'code' : 'preview'))}
+            title={viewMode === 'preview' ? t('codeBlock.viewCode') : t('codeBlock.viewPreview')}
+            aria-label={viewMode === 'preview' ? t('codeBlock.viewCode') : t('codeBlock.viewPreview')}
+          >
+            {viewMode === 'preview'
+              ? <FileCode size={15} strokeWidth={1.6} />
+              : <Eye size={15} strokeWidth={1.6} />}
+          </button>
+        )}
         <a
           className={s.actionBtn}
           href={downloadUrl}
@@ -160,13 +213,22 @@ export default function CodeBlockTile({ attachment, src }: CodeBlockTileProps) {
           <div className={s.errorBody}>{error}</div>
         ) : text == null ? (
           <pre><code className="hljs">{t('codeBlock.loading')}</code></pre>
+        ) : svg && viewMode === 'preview' ? (
+          // SVG preview: DOMPurify scrubs script / event handlers / external
+          // refs but keeps transforms / fills / gradients / animations so
+          // designer-exported SVGs render faithfully. The body container's
+          // own scroll + max-height is reused; the inline SVG fills width.
+          <div
+            className={s.svgPreview}
+            dangerouslySetInnerHTML={{ __html: sanitiseSvg(text) }}
+          />
         ) : (
           <pre><code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted }} /></pre>
         )}
-        {!expanded && text != null && text.split('\n').length > 12 && <div className={s.fade} />}
+        {!expanded && text != null && viewMode === 'code' && text.split('\n').length > 12 && <div className={s.fade} />}
       </div>
 
-      {text != null && text.split('\n').length > 12 && (
+      {text != null && viewMode === 'code' && text.split('\n').length > 12 && (
         <button type="button" className={s.expandBar} onClick={() => setExpanded(v => !v)}>
           {expanded ? (
             <><ChevronUp size={13} style={{ marginRight: 4 }} />{t('codeBlock.collapse')}</>
