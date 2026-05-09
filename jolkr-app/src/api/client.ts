@@ -5,7 +5,7 @@ import type {
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
   GifFavorite, ChannelKind, UpdateMeBody,
 } from './types';
-import { getApiBaseUrl } from '../platform/config';
+import { getApiBaseUrl, getUploadBaseUrl } from '../platform/config';
 import { storage } from '../platform/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
@@ -194,6 +194,7 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
   unwrapKey?: string,
+  baseOverride?: string,
 ): Promise<T> {
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> || {}),
@@ -205,7 +206,8 @@ async function request<T>(
     headers['Content-Type'] = 'application/json';
   }
 
-  let res = await fetch(`${apiBase}${path}`, { ...options, headers });
+  const base = baseOverride ?? apiBase;
+  let res = await fetch(`${base}${path}`, { ...options, headers });
 
   if (res.status === 401 && refreshToken && !loggedOut) {
     const now = Date.now();
@@ -228,7 +230,7 @@ async function request<T>(
         refreshQueue.forEach((cb) => cb());
         refreshQueue = [];
         headers['Authorization'] = `Bearer ${accessToken}`;
-        res = await fetch(`${apiBase}${path}`, { ...options, headers });
+        res = await fetch(`${base}${path}`, { ...options, headers });
       } else {
         refreshQueue.forEach((cb) => cb());
         refreshQueue = [];
@@ -240,7 +242,7 @@ async function request<T>(
       await new Promise<void>((resolve) => refreshQueue.push(resolve));
       if (!accessToken) throw new ApiError(401, 'Session expired');
       headers['Authorization'] = `Bearer ${accessToken}`;
-      res = await fetch(`${apiBase}${path}`, { ...options, headers });
+      res = await fetch(`${base}${path}`, { ...options, headers });
     }
   }
 
@@ -533,6 +535,7 @@ export const uploadAttachment = async (channelId: string, messageId: string, fil
     `/channels/${channelId}/messages/${messageId}/attachments`,
     { method: 'POST', body: form },
     'attachment',
+    getUploadBaseUrl(),
   );
 };
 
@@ -648,8 +651,80 @@ export const uploadDmAttachment = async (dmId: string, messageId: string, file: 
     `/dms/${dmId}/messages/${messageId}/attachments`,
     { method: 'POST', body: form },
     'attachment',
+    getUploadBaseUrl(),
   );
 };
+
+/** Streaming upload with progress events. Used by message-attachment uploads
+ *  so the UI can show a per-file progress bar. We can't use `fetch()` here —
+ *  the WHATWG fetch spec has no upload-progress event. XHR is the only
+ *  option short of a non-portable ReadableStream wrapper. */
+export interface UploadProgressEvent {
+  loaded: number;
+  total: number;
+}
+
+async function uploadWithProgress(
+  fullUrl: string,
+  file: File,
+  onProgress: (event: UploadProgressEvent) => void,
+): Promise<Attachment> {
+  const form = new FormData();
+  form.append('file', file);
+  return new Promise<Attachment>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', fullUrl);
+    if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress({ loaded: e.loaded, total: e.total });
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const json = JSON.parse(xhr.responseText) as { attachment?: Attachment } & Attachment;
+          // Backend wraps the resource in `attachment`; some surfaces unwrap.
+          resolve((json.attachment as Attachment) ?? (json as Attachment));
+        } catch {
+          reject(new ApiError(xhr.status, 'Invalid upload response'));
+        }
+      } else {
+        let msg = `Upload failed (${xhr.status})`;
+        try {
+          const err = JSON.parse(xhr.responseText);
+          msg = err?.error?.message ?? err?.message ?? msg;
+        } catch { /* keep default */ }
+        reject(new ApiError(xhr.status, msg));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError(0, 'Network error during upload'));
+    xhr.onabort = () => reject(new ApiError(0, 'Upload aborted'));
+    xhr.send(form);
+  });
+}
+
+export const uploadAttachmentWithProgress = (
+  channelId: string,
+  messageId: string,
+  file: File,
+  onProgress: (event: UploadProgressEvent) => void,
+): Promise<Attachment> =>
+  uploadWithProgress(
+    `${getUploadBaseUrl()}/channels/${channelId}/messages/${messageId}/attachments`,
+    file,
+    onProgress,
+  );
+
+export const uploadDmAttachmentWithProgress = (
+  dmId: string,
+  messageId: string,
+  file: File,
+  onProgress: (event: UploadProgressEvent) => void,
+): Promise<Attachment> =>
+  uploadWithProgress(
+    `${getUploadBaseUrl()}/dms/${dmId}/messages/${messageId}/attachments`,
+    file,
+    onProgress,
+  );
 
 // Reactions
 export const addReaction = (messageId: string, emoji: string) =>
