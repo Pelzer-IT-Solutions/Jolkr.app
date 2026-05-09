@@ -4,6 +4,7 @@ import type { Attachment } from '../../api/types'
 import { rewriteStorageUrl } from '../../platform/config'
 import { formatBytes } from '../../utils/format'
 import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
+import { useAuthedRedirectUrl } from '../../hooks/useAuthedRedirectUrl'
 import { useT } from '../../hooks/useT'
 import ImageLightbox from '../ImageLightbox/ImageLightbox'
 import NMVideoPlayer from '../NMVideoPlayer/NMVideoPlayer'
@@ -15,46 +16,54 @@ interface Props {
   attachments: Attachment[]
 }
 
-function isImage(att: Attachment): boolean {
-  return att.content_type.startsWith('image/')
-}
+// ── Classifier ────────────────────────────────────────────────────────
 
-// HLS playlists ride on a handful of MIME spellings depending on which
-// tool produced them; older clients also send the audio variant for
-// audio-only streams. The filename probe covers servers that fall back
-// to application/octet-stream for unknown extensions.
+type AttachmentKind = 'image' | 'video' | 'audio' | 'code' | 'file'
+
+// HLS playlists ride on a handful of MIME spellings; the filename probe covers
+// servers that fall back to application/octet-stream for unknown extensions.
 const HLS_MIME_TYPES = new Set([
   'application/vnd.apple.mpegurl',
   'application/x-mpegurl',
   'audio/mpegurl',
 ])
-function isVideo(att: Attachment): boolean {
-  if (att.content_type.startsWith('video/')) return true
-  if (HLS_MIME_TYPES.has(att.content_type.toLowerCase())) return true
-  return /\.m3u8(\?.*)?$/i.test(att.filename)
-}
-function isAudio(att: Attachment): boolean {
-  if (att.content_type.startsWith('audio/')) return true
-  // Servers that fall back to application/octet-stream for unfamiliar
-  // codecs still pass through if the filename has a recognised audio
-  // extension. mpegurl is intentionally absent — those are HLS playlists
-  // and routed to the video player instead.
-  return /\.(mp3|flac|ogg|wav|m4a|aac|opus|wma)(\?.*)?$/i.test(att.filename)
-}
+const HLS_EXT_RE = /\.m3u8(\?.*)?$/i
 
-// Filename suffixes whose content is human-readable code/text. Anything
-// matched here is rendered with syntax highlighting (CodeBlockTile)
-// instead of a generic file chip. The list is intentionally narrow —
-// random `text/plain` blobs we didn't recognise still fall through to
-// the file chip so users can download them without us trying to parse.
+const AUDIO_EXT_RE = /\.(mp3|flac|ogg|wav|m4a|aac|opus|wma)(\?.*)?$/i
+
+// Filename suffixes whose content is human-readable code/text. Anything matched
+// here is rendered with syntax highlighting (CodeBlockTile) instead of a generic
+// file chip. Intentionally narrow — random `text/plain` blobs without a known
+// suffix still fall through to the file chip so users can download them
+// without us trying to parse mis-typed binaries as source.
 const CODE_FILE_RE = /\.(js|mjs|cjs|jsx|ts|tsx|py|rb|php|rs|go|java|kt|swift|c|h|cpp|hpp|cs|lua|sh|bash|zsh|ps1|sql|graphql|gql|css|scss|less|json|yaml|yml|toml|md|markdown|xml|svg|html|htm|vue|svelte|ini|conf|cfg|env|diff|patch|dockerfile|makefile|log|txt)(\?.*)?$/i
 
-function isCode(att: Attachment): boolean {
-  if (CODE_FILE_RE.test(att.filename)) return true
-  // text/* types we trust as code-renderable. Text/html is excluded
-  // server-side (forced to attachment download), so this check only sees
-  // things like text/plain, text/css, text/markdown, etc.
-  return att.content_type.toLowerCase().startsWith('text/')
+/** Single source of truth for which tile renders an attachment. Order matters:
+ *  SVG matches both image/* and CODE_FILE_RE, but the user wants it rendered
+ *  as XML source (safer too — no inline-SVG XSS surface), so we check code
+ *  before image. HLS is checked before generic audio so audio-only HLS
+ *  playlists ride the video player path. */
+function classifyAttachment(att: Attachment): AttachmentKind {
+  const ct = att.content_type.toLowerCase()
+  const name = att.filename
+
+  // SVG → code (XML), explicitly before the image branch.
+  if (ct === 'image/svg+xml' || /\.svg(\?.*)?$/i.test(name)) return 'code'
+
+  if (ct.startsWith('image/')) return 'image'
+
+  // HLS — playlist or audio-only ext-flagged HLS goes to the video player.
+  if (HLS_MIME_TYPES.has(ct) || HLS_EXT_RE.test(name)) return 'video'
+
+  if (ct.startsWith('video/')) return 'video'
+  if (ct.startsWith('audio/') || AUDIO_EXT_RE.test(name)) return 'audio'
+
+  // Code: anchor on either text/* MIME or our explicit ext whitelist. Stops
+  // application/octet-stream blobs (extension-less downloads) from rendering
+  // as garbage text.
+  if (ct.startsWith('text/') || CODE_FILE_RE.test(name)) return 'code'
+
+  return 'file'
 }
 
 /** Resolve an attachment URL into something the DOM can consume.
@@ -71,34 +80,35 @@ export function MessageAttachments({ attachments }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   if (attachments.length === 0) return null
 
-  // Filter to image attachments for the lightbox set; clicking any image tile
-  // jumps the lightbox to that image's index in the filtered list.
-  const imageAttachments = attachments.filter(isImage)
+  // Tag each attachment with its classification once so the classifier doesn't
+  // re-run inside both the lightbox-index pass and the render loop.
+  const classified = attachments.map((att) => ({ att, kind: classifyAttachment(att) }))
+  const imageAttachments = classified.filter((c) => c.kind === 'image').map((c) => c.att)
 
   return (
     <>
       <div className={s.list}>
-        {attachments.map((att) => {
-          if (isImage(att)) {
-            const idx = imageAttachments.findIndex((a) => a.id === att.id)
-            return (
-              <ImageTile
-                key={att.id}
-                attachment={att}
-                onOpen={() => setLightboxIndex(idx >= 0 ? idx : 0)}
-              />
-            )
+        {classified.map(({ att, kind }) => {
+          switch (kind) {
+            case 'image': {
+              const idx = imageAttachments.findIndex((a) => a.id === att.id)
+              return (
+                <ImageTile
+                  key={att.id}
+                  attachment={att}
+                  onOpen={() => setLightboxIndex(idx >= 0 ? idx : 0)}
+                />
+              )
+            }
+            case 'video':
+              return <VideoTile key={att.id} attachment={att} />
+            case 'audio':
+              return <AudioTile key={att.id} attachment={att} />
+            case 'code':
+              return <CodeBlockTile key={att.id} attachment={att} src={resolveAttachmentSrc(att.url)} />
+            case 'file':
+              return <FileTile key={att.id} attachment={att} />
           }
-          if (isVideo(att)) {
-            return <VideoTile key={att.id} attachment={att} />
-          }
-          if (isAudio(att)) {
-            return <AudioTile key={att.id} attachment={att} />
-          }
-          if (isCode(att)) {
-            return <CodeBlockTile key={att.id} attachment={att} src={resolveAttachmentSrc(att.url)} />
-          }
-          return <FileTile key={att.id} attachment={att} />
         })}
       </div>
       {lightboxIndex !== null && imageAttachments.length > 0 && (
@@ -134,18 +144,17 @@ function ImageTile({ attachment, onOpen }: { attachment: Attachment; onOpen: () 
 }
 
 function VideoTile({ attachment }: { attachment: Attachment }) {
-  const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
-  // While the authed blob URL resolves we render a dark 16:9 placeholder
-  // matching the player's eventual viewport so the only visible change
-  // when playback is ready is the controls fading in — no grey shimmer
-  // flash, no layout shift.
+  // Resolve the auth-protected `/api/files/:id` URL to a stream-token URL the
+  // browser can hit directly with Range requests (progressive playback + seek)
+  // instead of buffering the whole file as a blob first.
+  const streamUrl = useAuthedRedirectUrl(resolveAttachmentSrc(attachment.url))
   return (
     <div className={s.media}>
-      {blobUrl
+      {streamUrl
         ? <NMVideoPlayer
-            src={blobUrl}
+            src={streamUrl}
             title={attachment.filename}
-            downloadUrl={blobUrl}
+            downloadUrl={streamUrl}
             downloadFilename={attachment.filename}
           />
         : <div className={s.videoSkeleton} />}
@@ -154,30 +163,29 @@ function VideoTile({ attachment }: { attachment: Attachment }) {
 }
 
 function AudioTile({ attachment }: { attachment: Attachment }) {
-  const blobUrl = useAuthedFileUrl(resolveAttachmentSrc(attachment.url))
-  // Same idea as VideoTile: paint the chip's final shape immediately and
-  // let the controls fade in once the URL resolves, instead of showing a
-  // grey shimmer block first.
-  if (!blobUrl) {
+  const streamUrl = useAuthedRedirectUrl(resolveAttachmentSrc(attachment.url))
+  if (!streamUrl) {
     return (
       <div className={s.audioSkeleton}>
         <span className={s.audioSkeletonName}>{attachment.filename}</span>
       </div>
     )
   }
-  return <NMMusicPlayer src={blobUrl} filename={attachment.filename} downloadUrl={blobUrl} />
+  return <NMMusicPlayer src={streamUrl} filename={attachment.filename} downloadUrl={streamUrl} />
 }
 
 function FileTile({ attachment }: { attachment: Attachment }) {
-  const url = resolveAttachmentSrc(attachment.url)
-  const blobUrl = useAuthedFileUrl(url)
-  // Anchor click downloads the blob with the original filename. Falls back to
-  // a plain link to the proxy URL if the blob fetch is still pending — the
-  // browser will trigger the auth challenge in that case.
+  // Stream-token URL for the download anchor — clicking triggers a streamed
+  // browser download with no client-side memory cost (avoids buffering a
+  // 250 MB file into a blob just to allow `download=`). Falls back to the
+  // raw proxy URL while the token resolves; the browser will negotiate auth
+  // through the normal Bearer challenge in that brief window.
+  const rawUrl = resolveAttachmentSrc(attachment.url)
+  const streamUrl = useAuthedRedirectUrl(rawUrl)
   return (
     <a
       className={s.file}
-      href={blobUrl ?? url}
+      href={streamUrl ?? rawUrl}
       download={attachment.filename}
       target="_blank"
       rel="noreferrer noopener"
