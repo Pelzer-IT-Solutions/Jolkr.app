@@ -138,6 +138,45 @@ impl Storage {
             .map_err(|e: S3Error| e.to_string())
     }
 
+    /// Fetch the total size + content-type of an object via HEAD. Used by
+    /// the Range-aware streaming endpoint to bound client requests against
+    /// the actual object length without reading the body.
+    pub async fn head_object_meta(&self, key: &str) -> Result<(u64, String), String> {
+        let (info, status) = self.bucket
+            .head_object(key)
+            .await
+            .map_err(|e| format!("S3 head failed: {e}"))?;
+        if status == 404 { return Err("not_found".to_string()); }
+        if !(200..300).contains(&status) {
+            return Err(format!("S3 head failed with status {status}"));
+        }
+        let size = info.content_length.unwrap_or(0).max(0) as u64;
+        let ct = info.content_type.unwrap_or_else(|| "application/octet-stream".to_string());
+        Ok((size, ct))
+    }
+
+    /// Fetch a byte range of an object. `end` is inclusive; `None` means
+    /// "until end of file" (the underlying S3 SDK translates that to an
+    /// open-ended Range header). Returns the raw bytes — the caller is
+    /// responsible for setting Content-Range/Content-Length on the response.
+    pub async fn get_object_range(
+        &self,
+        key: &str,
+        start: u64,
+        end: Option<u64>,
+    ) -> Result<Vec<u8>, String> {
+        let response = self.bucket
+            .get_object_range(key, start, end)
+            .await
+            .map_err(|e| format!("S3 range fetch failed: {e}"))?;
+        let status = response.status_code();
+        if status == 404 { return Err("not_found".to_string()); }
+        if !(200..300).contains(&status) {
+            return Err(format!("S3 range fetch failed with status {status}"));
+        }
+        Ok(response.to_vec())
+    }
+
     /// Delete an object by key.
     pub async fn delete(&self, key: &str) -> Result<(), String> {
         match self.bucket.delete_object(key).await {

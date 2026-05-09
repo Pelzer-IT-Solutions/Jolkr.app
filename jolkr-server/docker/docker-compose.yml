@@ -45,6 +45,10 @@ services:
       # accounts) — production must always be https://jolkr.app/app.
       APP_URL: "${APP_URL:-https://jolkr.app/app}"
       CORS_ORIGINS: "${CORS_ORIGINS:-https://jolkr.app,https://tauri.localhost,http://localhost,http://localhost:1420}"
+      # Public URL prefix used by /api/files/:id/url to hand out a presigned
+      # MinIO link the browser can hit directly (progressive video/audio
+      # streaming via Range requests). Defaults to the prod jolkr.app /s3 proxy.
+      MINIO_PUBLIC_URL: "${MINIO_PUBLIC_URL:-https://jolkr.app/s3}"
       GIPHY_API_KEY: "${GIPHY_API_KEY:-}"
       RUST_LOG: "${RUST_LOG:-info}"
     networks:
