@@ -38,7 +38,7 @@ export default function NMVideoPlayer({ src, title = '', image = '', autoPlay = 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {
     containerRef,
-    isPlaying, currentTime, duration, volume, isMuted, isReady, isBuffering,
+    isPlaying, currentTime, duration, volume, isMuted, isBuffering,
     bufferedAhead, playbackRate, isPip, error,
     togglePlay, toggleMute, setVolume, seek, skip, setPlaybackRate, togglePip, requestFullscreen,
   } = useNMPlayer({ src, title, image, autoPlay });
@@ -125,9 +125,15 @@ export default function NMVideoPlayer({ src, title = '', image = '', autoPlay = 
 
   if (error) return <div className={s.errorMsg}>{error}</div>;
 
-  // Live streams: no duration → no progress bar, show LIVE badge.
-  const isLive = duration > 0 ? false : isReady;
-  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // Live = duration is Infinity. This is the canonical, browser-native HLS
+  // live signal — works for master playlists (which never carry
+  // `#EXT-X-ENDLIST`), variant playlists, and non-HLS sources alike. mp4
+  // and finite-duration HLS report a real number → `Number.isFinite()`
+  // → not live. True live (rolling playlist, no ENDLIST) → Infinity →
+  // live. Initial duration = 0 also reads as not-live, so the LIVE badge
+  // doesn't flash before the engine has parsed anything.
+  const isLive = duration > 0 && !Number.isFinite(duration);
+  const progressPct = duration > 0 && Number.isFinite(duration) ? (currentTime / duration) * 100 : 0;
   const bufferedPct = bufferedAhead * 100;
 
   // Pick the volume icon by current loudness so the muted state isn't the
@@ -144,6 +150,17 @@ export default function NMVideoPlayer({ src, title = '', image = '', autoPlay = 
       data-state={isPlaying ? 'playing' : 'paused'}
     >
       <div ref={containerRef} className={s.container} onClick={togglePlay} />
+
+      {/* Filename title bar — fades in/out with the rest of the controls.
+         Only renders when the host passed a title (chat attachments do;
+         oEmbed video embeds usually don't). Uses `pointer-events: none`
+         so the click-anywhere-to-toggle on the container surface still
+         reaches through. */}
+      {title && (
+        <div className={s.titleBar} data-hidden={!showControls} title={title}>
+          {title}
+        </div>
+      )}
 
       {isBuffering && <div className={s.bufferOverlay}><Spinner size="lg" /></div>}
 
