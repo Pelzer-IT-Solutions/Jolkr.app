@@ -93,8 +93,13 @@ pub(crate) async fn serve_file(
                 };
             // Re-use cached size if present (auth was Bearer and the
             // record predates this request); otherwise HEAD MinIO once.
-            let total = if let Some(m) = cache.get(&attachment_id) {
-                m.total
+            // Extract `total` as a Copy `u64` so the read-guard from
+            // `cache.get` doesn't outlive its expression — the awaited
+            // `head_object_meta` below would otherwise hold a lock under
+            // edition-2024 drop semantics (`if_let_rescope`).
+            let cached_total = cache.get(&attachment_id).map(|m| m.total);
+            let total = if let Some(t) = cached_total {
+                t
             } else {
                 let (t, _) = state.storage.head_object_meta(&s3_key).await.map_err(|e| {
                     if e == "not_found" {

@@ -402,7 +402,7 @@ pub(crate) async fn resend_verification(
     auth: AuthUser,
     State(state): State<AppState>,
 ) -> Result<StatusCode, AppError> {
-    let user = jolkr_db::repo::UserRepo::get_by_id(&state.pool, auth.user_id).await
+    let user = UserRepo::get_by_id(&state.pool, auth.user_id).await
         .map_err(AppError)?;
 
     if user.email_verified {

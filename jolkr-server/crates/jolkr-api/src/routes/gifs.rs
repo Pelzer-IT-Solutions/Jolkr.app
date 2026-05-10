@@ -457,18 +457,9 @@ pub(crate) struct FavoritesResponse {
     pub favorites: Vec<FavoriteItem>,
 }
 
-/// A favorite GIF as exposed over HTTP and the WebSocket. URLs are clean
-/// `/api/gifs/i/{id}/...` proxy paths (the GIPHY CDN is never seen by the
-/// frontend). `Deserialize` is required because `GatewayEvent` derives it
-/// (the WS bus only serializes, but the derive bound is unconditional).
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub(crate) struct FavoriteItem {
-    pub gif_id: String,
-    pub gif_url: String,
-    pub preview_url: String,
-    pub title: String,
-    pub added_at: String,
-}
+// `FavoriteItem` lives in `ws::events` so the GatewayEvent variant that carries
+// it shares its declared visibility (matching the surrounding pub event API).
+pub(crate) use crate::ws::events::FavoriteItem;
 
 /// GET /api/gifs/favorites — returns clean proxy URLs
 pub(crate) async fn list_favorites(

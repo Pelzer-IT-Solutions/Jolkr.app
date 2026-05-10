@@ -178,7 +178,7 @@ impl UserService {
         user_id: Uuid,
         req: UpdateProfileRequest,
     ) -> Result<MeProfile, JolkrError> {
-        let _ = Self::update_profile(pool, user_id, req).await?;
+        Self::update_profile(pool, user_id, req).await?;
         Self::get_me(pool, user_id).await
     }
 

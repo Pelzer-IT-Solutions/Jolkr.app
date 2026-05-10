@@ -10,7 +10,19 @@ use jolkr_core::services::role::RoleInfo;
 use jolkr_core::services::server::ServerInfo;
 use jolkr_core::services::thread::ThreadInfo;
 
-use crate::routes::gifs::FavoriteItem;
+/// A favorite GIF as exposed over both HTTP (`GET /api/gifs/favorites`) and the
+/// WebSocket (`GifFavoriteUpdate.added`). URLs are clean `/api/gifs/i/{id}/...`
+/// proxy paths so the GIPHY CDN is never seen by the frontend. `Deserialize`
+/// is required because `GatewayEvent` derives it (the WS bus only serializes,
+/// but the derive bound is unconditional).
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FavoriteItem {
+    pub gif_id: String,
+    pub gif_url: String,
+    pub preview_url: String,
+    pub title: String,
+    pub added_at: String,
+}
 
 /// Type of friendship state change carried by `GatewayEvent::FriendshipUpdate`.
 /// Lets clients decide which list (incoming/outgoing/friends) the update

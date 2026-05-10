@@ -112,7 +112,7 @@ pub(crate) async fn delete_role(
 ) -> Result<axum::http::StatusCode, AppError> {
     // Look up the role's server_id BEFORE deletion so the WS event can route
     // to the correct server channel.
-    let role = jolkr_db::repo::RoleRepo::get_by_id(&state.pool, id).await?;
+    let role = RoleRepo::get_by_id(&state.pool, id).await?;
     let server_id = role.server_id;
 
     RoleService::delete_role(&state.pool, id, auth.user_id).await?;

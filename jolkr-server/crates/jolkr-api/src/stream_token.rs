@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 /// Default lifetime of a stream token. Matches the existing presign expiry
 /// so a single page-load round-trip covers the whole playback window.
-pub const STREAM_TOKEN_TTL_SECS: u64 = 4 * 3600;
+pub(crate) const STREAM_TOKEN_TTL_SECS: u64 = 4 * 3600;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StreamClaims {
@@ -32,7 +32,7 @@ struct StreamClaims {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum StreamTokenError {
+pub(crate) enum StreamTokenError {
     #[error("invalid signature or malformed token")]
     Invalid,
     #[error("token expired")]
@@ -46,7 +46,7 @@ pub enum StreamTokenError {
 }
 
 /// Sign a stream token for `(attachment_id, user_id)` valid for `ttl_secs`.
-pub fn sign(secret: &str, attachment_id: Uuid, user_id: Uuid, ttl_secs: u64) -> Result<String, jsonwebtoken::errors::Error> {
+pub(crate) fn sign(secret: &str, attachment_id: Uuid, user_id: Uuid, ttl_secs: u64) -> Result<String, jsonwebtoken::errors::Error> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let claims = StreamClaims {
         aid: attachment_id.to_string(),
@@ -60,7 +60,7 @@ pub fn sign(secret: &str, attachment_id: Uuid, user_id: Uuid, ttl_secs: u64) -> 
 /// Verify a stream token. Returns the user_id on success — caller can use
 /// it to enforce per-user access controls (e.g. friend revoked → token
 /// becomes useless for that pair on the next access check).
-pub fn verify(secret: &str, token: &str, expected_attachment: Uuid) -> Result<Uuid, StreamTokenError> {
+pub(crate) fn verify(secret: &str, token: &str, expected_attachment: Uuid) -> Result<Uuid, StreamTokenError> {
     let mut validation = Validation::new(Algorithm::HS256);
     validation.set_required_spec_claims(&["exp"]);
     let data = decode::<StreamClaims>(
