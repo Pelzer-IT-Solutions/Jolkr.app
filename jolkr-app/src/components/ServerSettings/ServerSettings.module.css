@@ -1698,3 +1698,26 @@
 .toggleDesc {
   color: var(--text-faint);
 }
+
+/* ── Mobile: stack the Roles two-column layout ──
+   The Roles section uses a 14rem fixed left rail + flexible right editor,
+   which leaves no usable width on a 360–400px screen. Stack them vertically
+   and cap the role list height so the editor stays reachable. */
+@media (max-width: 600px) {
+  .rolesLayout { flex-direction: column; }
+
+  .rolesLeftPanel {
+    width: 100%;
+    max-height: 12rem;
+    border-right: none;
+    border-bottom: 1px solid var(--border-muted);
+    padding: 0.5rem 0.75rem;
+  }
+
+  .rolesRightPanel { padding: 0.75rem; }
+
+  .roleInfoHeader {
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+}
