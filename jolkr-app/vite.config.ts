@@ -54,22 +54,21 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   build: {
+    // hls.js itself is ~520 KB and not further splittable; main bundle is sensibly split via manualChunks below.
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Heavy crypto libs — not needed for first paint
             if (id.includes('@noble/')) return 'crypto'
-            // React core — cached long-term
             if (id.includes('react-dom') || id.includes('react-router')) return 'react'
-            // DnD kit
             if (id.includes('@dnd-kit/')) return 'dnd'
-            // Emoji picker
             if (id.includes('emoji-picker')) return 'emoji'
-            // Highlight.js
             if (id.includes('highlight.js')) return 'hljs'
-            // QR code libs
             if (id.includes('qrcode') || id.includes('html5-qrcode')) return 'qr'
+            if (id.includes('lucide-react')) return 'icons'
+            if (id.includes('dompurify')) return 'sanitize'
+            if (id.includes('zustand')) return 'state'
           }
         },
       },
