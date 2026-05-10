@@ -557,7 +557,7 @@ export function TabBar({
           </div>
           <span className={`${s.userName} txt-small txt-medium`}>{displayName}</span>
           {showRemoteCallPill && (
-            // TODO: server-side call-kind tracking required for "On video call" to render — currently always shows "On a call"
+            // Always shows "On a call" today — server doesn't track call-kind, so isVideo is never true here.
             <span className={s.callPill} aria-label={remoteSessionCall!.isVideo ? t('tabBar.onVideoCall') : t('tabBar.onCall')}>
               {remoteSessionCall!.isVideo ? t('tabBar.onVideoCall') : t('tabBar.onCall')}
             </span>

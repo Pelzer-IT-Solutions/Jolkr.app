@@ -459,10 +459,7 @@ export const getChannels = (serverId: string) =>
 export const createChannel = (serverId: string, body: { name: string; kind: ChannelKind; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
 export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
-// TODO(BE): `is_system` is silently dropped by the backend `UpdateChannelRequest`.
-// The "Archive Channel" UI in ChannelSidebar wires through here but currently
-// has no effect server-side. Either add the field to UpdateChannelRequest or
-// remove the FE feature.
+// `is_system` is accepted by the FE call signature but not persisted — backend `UpdateChannelRequest` doesn't read it (Archive Channel UI is currently a no-op).
 export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
 export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>

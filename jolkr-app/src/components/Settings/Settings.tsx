@@ -388,7 +388,7 @@ function PrivacySection() {
   const dmFilter: DmFilter = user?.dm_filter ?? 'all'
   const friendReqs = user?.allow_friend_requests ?? true
   const readReceipts = user?.show_read_receipts ?? true
-  // TODO: wire up analytics opt-in (telemetry SDK + persistence)
+  // Local-only until a telemetry SDK ships; toggle is wired but persists nothing.
   const [analytics, setAnalytics] = useState(false)
 
   const setDmFilter = (v: DmFilter) =>
