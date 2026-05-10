@@ -193,7 +193,7 @@ export default function AppShell() {
     handlePinMessage, handleUnpinMessage, handleThemeChange,
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleRenameChannel, handleRenameCategory, handleArchiveChannel,
-    handleReorderChannels,
+    handleReorderChannels, handleReorderCategories,
     handleJoinServer, handleCreateServer, handleCreateDm,
   } = handlers
 
@@ -261,7 +261,7 @@ export default function AppShell() {
           ownerServerIds={ownerServerIds}
           onSwitch={id => { setDmActive(false); handleSwitchServer(id) }}
           onClose={handleCloseTab}
-          onReorder={setTabbedIds}
+          onReorder={ids => { setTabbedIds(ids); useServersStore.getState().reorderServers(ids) }}
           onOpenServer={id => { setDmActive(false); handleOpenServer(id) }}
           onDmClick={() => {
             setDmActive(v => {
@@ -365,6 +365,7 @@ export default function AppShell() {
                       onArchiveChannel={canManageChannels ? handleArchiveChannel : undefined}
                       onOpenChannelSettings={canManageChannels ? (channelId) => { setActiveChannelId(channelId); setChannelSettingsOpen(true) } : undefined}
                       onReorderChannels={canManageChannels ? handleReorderChannels : undefined}
+                      onReorderCategories={canManageChannels ? handleReorderCategories : undefined}
                     />
                   ) : null)}
 

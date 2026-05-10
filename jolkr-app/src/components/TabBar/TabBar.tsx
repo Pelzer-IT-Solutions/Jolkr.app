@@ -23,12 +23,15 @@ import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
 import { isTauri, isMobile } from '../../platform/detect'
 import { useCallStore } from '../../stores/call'
 import { useT } from '../../hooks/useT'
+import { useViewport } from '../../hooks/useViewport'
 import s from './TabBar.module.css'
 
-// Tauri Android/iOS: disable drag-to-reorder so finger scrolling along the
-// tab strip never accidentally moves a server. Reordering on those platforms
-// can be added later via a long-press menu if needed.
-const dragDisabled = isTauri && isMobile()
+// Touch platforms + small viewports: disable drag-to-reorder so finger
+// scrolling along the tab strip never accidentally moves a server. Covers
+// Tauri Android/iOS (any orientation) plus narrow web/desktop windows where
+// horizontal scroll matters more than reordering. Reordering on those
+// platforms can be added later via a long-press menu if needed.
+const isTouchPlatform = isTauri && isMobile()
 
 /** Max width of each edge fade (matches ~2.5rem) */
 const TAB_MASK_FADE_PX = 40
@@ -157,6 +160,8 @@ export function TabBar({
   onLogout, onStatusChange, onOpenServerSettings, onToggleMuteServer, onMarkAllRead, onLeaveServer,
 }: Props) {
   const { t } = useT()
+  const { isMobile: isMobileViewport } = useViewport()
+  const dragDisabled = isTouchPlatform || isMobileViewport
   const [browserOpen,  setBrowserOpen]  = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [menuOpen,     setMenuOpen]     = useState(false)
@@ -432,6 +437,7 @@ export function TabBar({
                 isDragging={activeDragId === server.id}
                 isMuted={(mutedServerIds ?? []).includes(server.id)}
                 isMenuOpen={serverTabMenuOpen === server.id}
+                dragDisabled={dragDisabled}
                 onSwitch={onSwitch}
                 onClose={onClose}
                 onOpenMenu={openServerTabMenu}
@@ -641,12 +647,13 @@ export function TabBar({
 }
 
 /* ── Sortable tab wrapper ── */
-function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, onSwitch, onClose, onOpenMenu, menuBtnRefSetter }: {
+function SortableTab({ server, isActive, isDragging, isMuted, isMenuOpen, dragDisabled, onSwitch, onClose, onOpenMenu, menuBtnRefSetter }: {
   server:           ServerDisplay
   isActive:         boolean
   isDragging:       boolean
   isMuted:          boolean
   isMenuOpen:       boolean
+  dragDisabled:     boolean
   onSwitch:         (id: string) => void
   onClose:          (id: string) => void
   onOpenMenu:       (id: string) => void

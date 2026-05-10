@@ -13,6 +13,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, FolderPlus, Hash, Volume2, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
 import type { ServerDisplay, ChannelDisplay, CategoryDisplay, ServerTheme } from '../../types'
+import type { ChannelMoveItem } from '../../api/client'
 import type { ColorPreference } from '../../utils/colorMode'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import { Menu, MenuItem, MenuDivider } from '../Menu'
@@ -22,54 +23,43 @@ import { useT } from '../../hooks/useT'
 import s from './ChannelSidebar.module.css'
 
 // Diff the layout before vs. after a drag and produce the API payloads:
-// - `positions`: new global ordering across categories + uncategorized
-// - `moves`: channels whose category_id changed (cross-category drag)
-async function persistLayout(
+function buildChannelMoveItems(
   prevCats: CategoryDisplay[],
+  prevUncat: string[],
   nextCats: CategoryDisplay[],
-  allChannelIds: string[],
-  persist: (
-    positions: Array<{ id: string; position: number }>,
-    moves: Array<{ id: string; categoryId: string | null }>,
-  ) => Promise<void>,
-) {
+  nextUncat: string[],
+): ChannelMoveItem[] {
   const prevCatById = new Map<string, string | null>()
   for (const c of prevCats) for (const id of c.channels) prevCatById.set(id, c.id)
+  for (const id of prevUncat) prevCatById.set(id, null)
 
-  const positions: Array<{ id: string; position: number }> = []
-  const moves: Array<{ id: string; categoryId: string | null }> = []
+  const items: ChannelMoveItem[] = []
   let pos = 0
-  const seen = new Set<string>()
 
+  for (const id of nextUncat) {
+    const prev = prevCatById.get(id) ?? null
+    const item: ChannelMoveItem = { id, position: pos++ }
+    if (prev !== null) item.category_id = null
+    items.push(item)
+  }
   for (const c of nextCats) {
-    for (const chId of c.channels) {
-      positions.push({ id: chId, position: pos++ })
-      seen.add(chId)
-      const prevCatId = prevCatById.get(chId) ?? null
-      if (prevCatId !== c.id) moves.push({ id: chId, categoryId: c.id })
+    for (const id of c.channels) {
+      const prev = prevCatById.get(id) ?? null
+      const item: ChannelMoveItem = { id, position: pos++ }
+      if (prev !== c.id) item.category_id = c.id
+      items.push(item)
     }
   }
-  // Anything not in any category is uncategorized (category_id = null)
-  for (const chId of allChannelIds) {
-    if (seen.has(chId)) continue
-    positions.push({ id: chId, position: pos++ })
-    const prevCatId = prevCatById.has(chId) ? prevCatById.get(chId) ?? null : null
-    if (prevCatId !== null) moves.push({ id: chId, categoryId: null })
-  }
 
-  // Skip the call if nothing actually changed — when the user starts a drag and
-  // drops back in place, both flat orderings are identical and no category moves.
-  const prevFlat = [
-    ...prevCats.flatMap(c => c.channels),
-    ...allChannelIds.filter(id => !prevCats.some(c => c.channels.includes(id))),
-  ]
-  const nextFlat = positions.map(p => p.id)
+  const prevFlat = [...prevUncat, ...prevCats.flatMap(c => c.channels)]
+  const nextFlat = items.map(i => i.id)
   const samePositions =
     prevFlat.length === nextFlat.length &&
     prevFlat.every((id, i) => id === nextFlat[i])
-  if (samePositions && moves.length === 0) return
+  const anyCategoryChange = items.some(i => 'category_id' in i)
+  if (samePositions && !anyCategoryChange) return []
 
-  await persist(positions, moves)
+  return items
 }
 
 // When dragging a category, only collide with other categories — never with channels inside them
@@ -109,16 +99,19 @@ interface Props {
   onRenameCategory?:  (categoryId: string, newName: string) => Promise<void>
   onArchiveChannel?:  (channelId: string) => Promise<void>
   onOpenChannelSettings?: (channelId: string) => void
-  onReorderChannels?: (
-    positions: Array<{ id: string; position: number }>,
-    moves: Array<{ id: string; categoryId: string | null }>,
-  ) => Promise<void>
+  onReorderCategories?: (positions: Array<{ id: string; position: number }>) => Promise<void>
+  onReorderChannels?: (items: ChannelMoveItem[]) => Promise<void>
 }
 
-export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, isMobile = false, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, canEditTheme, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings, onReorderChannels }: Props) {
+export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, isMobile = false, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, canEditTheme, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings, onReorderChannels, onReorderCategories }: Props) {
   const { t } = useT()
+  const initialUncategorized = useMemo(() => {
+    const inCat = new Set(server.categories.flatMap(c => c.channels))
+    return server.channels.map(c => c.id).filter(id => !inCat.has(id))
+  }, [server.categories, server.channels])
   const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
   const [localCats,          setLocalCats]           = useState<CategoryDisplay[]>(server.categories)
+  const [localUncategorized, setLocalUncategorized]  = useState<string[]>(initialUncategorized)
   const [localExtraChannels, setLocalExtraChannels]  = useState<ChannelDisplay[]>([])
   const [activeDragId,       setActiveDragId]        = useState<string | null>(null)
   const [isRevealing,        setIsRevealing]         = useState(false)
@@ -151,32 +144,28 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [editingCatName, setEditingCatName] = useState('')
   const catRenameInputRef = useRef<HTMLInputElement>(null)
 
-  // Reset all server-specific state synchronously before paint so there is
-  // no flash of the previous server's content, and simultaneously kick off
-  // the staggered reveal animation for the incoming server's channels.
-  // Use JSON key to avoid resetting on presence-only changes (categories reference changes)
-  const categoriesKey = useMemo(
-    () => server.categories.map(c => `${c.name}:${c.channels.join(',')}`).join('|'),
-    [server.categories],
-  )
+  const layoutKey = useMemo(() => {
+    const cats = server.categories.map(c => `${c.id}:${c.channels.join(',')}`).join('|')
+    const uncat = initialUncategorized.join(',')
+    return `${cats}::${uncat}`
+  }, [server.categories, initialUncategorized])
   const prevServerRef = useRef(server.id)
   useLayoutEffect(() => {
     setLocalCats(server.categories)
+    setLocalUncategorized(initialUncategorized)
     setLocalExtraChannels([])
-    // Only reset collapsed + reveal animation when switching servers — the
-    // categoriesKey-driven re-runs hit setLocalCats above, but the prevServerRef
-    // guard keeps the reveal animation tied strictly to server-switch events.
     if (prevServerRef.current !== server.id) {
       setCollapsedCats(new Set())
       setIsRevealing(true)
       const totalItems =
         server.categories.length +
-        server.categories.reduce((sum, c) => sum + c.channels.length, 0)
+        server.categories.reduce((sum, c) => sum + c.channels.length, 0) +
+        initialUncategorized.length
       const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
       prevServerRef.current = server.id
       return () => clearTimeout(timer)
     }
-  }, [server.id, server.categories, categoriesKey])
+  }, [server.id, server.categories, initialUncategorized, layoutKey])
 
   useEffect(() => {
     if (creating) setTimeout(() => inputRef.current?.focus(), 0)
@@ -199,12 +188,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   )
 
-  const categorizedSet   = new Set(localCats.flatMap(c => c.channels))
-  const allChannelIds    = [
-    ...server.channels.map(c => c.id),
-    ...localExtraChannels.map(c => c.id),
-  ]
-  const uncategorizedIds = allChannelIds.filter(id => !categorizedSet.has(id))
+  const categorizedSet = new Set(localCats.flatMap(c => c.channels))
+  const uncategorizedIds = localUncategorized.filter(id => !categorizedSet.has(id))
 
   function findCatFor(channelId: string, cats: CategoryDisplay[]): string | null {
     return cats.find(c => c.channels.includes(channelId))?.name ?? null
@@ -356,12 +341,12 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       const tempId = `ch-${Date.now()}`
       const tempIcon = intent.kind === 'voice' ? '🔊' : '#'
       setLocalExtraChannels(prev => [...prev, { id: tempId, name, icon: tempIcon, desc: '', unread: 0, kind: intent.kind }])
-      // For channels created inside a folder, also slot them into that folder
-      // locally so they don't briefly flash in the uncategorized list.
       if (intent.categoryId) {
         setLocalCats(prev => prev.map(c =>
           c.id === intent.categoryId ? { ...c, channels: [...c.channels, tempId] } : c
         ))
+      } else {
+        setLocalUncategorized(prev => [...prev, tempId])
       }
     }
 
@@ -377,13 +362,10 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     }
   }
 
-  // ── DnD handlers (require MANAGE_CHANNELS) ──
-  // Snapshot the categories at drag start so we can diff (move-between-categories)
-  // against the post-drag layout when persisting.
-  const dragStartCatsRef = useRef<CategoryDisplay[] | null>(null)
+  const dragStartLayoutRef = useRef<{ cats: CategoryDisplay[]; uncat: string[] } | null>(null)
   function handleDragStart({ active }: DragStartEvent) {
     if (!canManageChannels) return
-    dragStartCatsRef.current = localCats
+    dragStartLayoutRef.current = { cats: localCats, uncat: localUncategorized }
     setActiveDragId(active.id as string)
   }
 
@@ -400,9 +382,22 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     else                                 overCat = findCatFor(overId, localCats)
     if (activeCat === overCat) return
 
+    if (overCat === null) {
+      setLocalCats(prev => prev.map(c => ({ ...c, channels: c.channels.filter(id => id !== activeId) })))
+      setLocalUncategorized(prev => {
+        if (prev.includes(activeId)) return prev
+        const overIdx = overId === 'uncategorized' ? prev.length : prev.indexOf(overId)
+        const insertAt = overIdx >= 0 ? overIdx : prev.length
+        const next = [...prev]
+        next.splice(insertAt, 0, activeId)
+        return next
+      })
+      return
+    }
+
+    setLocalUncategorized(prev => prev.filter(id => id !== activeId))
     setLocalCats(prev => {
       const without = prev.map(c => ({ ...c, channels: c.channels.filter(id => id !== activeId) }))
-      if (overCat === null) return without
       const toCat = without.find(c => c.name === overCat)
       if (!toCat) return without
       const overIdx = overId.startsWith('cat:') ? toCat.channels.length : toCat.channels.indexOf(overId)
@@ -418,48 +413,61 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     setActiveDragId(null)
-    const startCats = dragStartCatsRef.current
-    dragStartCatsRef.current = null
+    const startLayout = dragStartLayoutRef.current
+    dragStartLayoutRef.current = null
     if (!canManageChannels || !over || active.id === over.id) return
     const activeId = active.id as string
     const overId   = over.id   as string
 
     if (activeId.startsWith('cat:') && overId.startsWith('cat:')) {
-      // Category reorder is local-only — backend has no category-reorder endpoint yet.
       setLocalCats(prev => {
         const from = prev.findIndex(c => `cat:${c.name}` === activeId)
         const to   = prev.findIndex(c => `cat:${c.name}` === overId)
-        return from >= 0 && to >= 0 ? arrayMove(prev, from, to) : prev
+        if (from < 0 || to < 0) return prev
+        const next = arrayMove(prev, from, to)
+        if (onReorderCategories) {
+          const positions = next.map((c, i) => ({ id: c.id, position: i }))
+          void onReorderCategories(positions)
+        }
+        return next
       })
       return
     }
 
-    // Channel drag — finalize same-category sort (cross-category was already
-    // applied in handleDragOver), then derive the diff against the drag-start
-    // snapshot and persist.
-    setLocalCats(prev => {
-      const activeCat = prev.find(c => c.channels.includes(activeId))
-      const overCat   = prev.find(c => c.channels.includes(overId))
-      let next = prev
+    let nextCats = localCats
+    let nextUncat = localUncategorized
+
+    const activeInUncat = nextUncat.includes(activeId)
+    const overInUncat = overId === 'uncategorized' || nextUncat.includes(overId)
+    if (activeInUncat && overInUncat && overId !== 'uncategorized' && activeId !== overId) {
+      const from = nextUncat.indexOf(activeId)
+      const to   = nextUncat.indexOf(overId)
+      if (from >= 0 && to >= 0) {
+        nextUncat = arrayMove(nextUncat, from, to)
+        setLocalUncategorized(nextUncat)
+      }
+    } else {
+      const activeCat = nextCats.find(c => c.channels.includes(activeId))
+      const overCat   = nextCats.find(c => c.channels.includes(overId))
       if (activeCat && overCat && activeCat.name === overCat.name) {
         const from = activeCat.channels.indexOf(activeId)
         const to   = activeCat.channels.indexOf(overId)
-        next = prev.map(c =>
+        nextCats = nextCats.map(c =>
           c.name === activeCat.name ? { ...c, channels: arrayMove(c.channels, from, to) } : c
         )
+        setLocalCats(nextCats)
       }
-      // Persist whatever the new layout is. Compare against the pre-drag snapshot
-      // so we send both reorders and category moves in one shot.
-      if (startCats && onReorderChannels) {
-        void persistLayout(startCats, next, uncategorizedIds, onReorderChannels)
-      }
-      return next
-    })
+    }
+
+    if (startLayout && onReorderChannels) {
+      const items = buildChannelMoveItems(startLayout.cats, startLayout.uncat, nextCats, nextUncat)
+      if (items.length > 0) void onReorderChannels(items)
+    }
   }
 
   function handleDragCancel() {
     setActiveDragId(null)
-    dragStartCatsRef.current = null
+    dragStartLayoutRef.current = null
   }
 
   const activeChannel = activeDragId && !activeDragId.startsWith('cat:') ? channelMap[activeDragId] : null

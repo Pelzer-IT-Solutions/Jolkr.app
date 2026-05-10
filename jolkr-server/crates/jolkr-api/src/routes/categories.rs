@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, State},
     Json,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use jolkr_core::CategoryService;
@@ -23,6 +23,17 @@ pub(crate) struct CategoryResponse {
 #[derive(Debug, Serialize)]
 pub(crate) struct CategoriesResponse {
     pub categories: Vec<CategoryInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct ReorderCategoriesRequest {
+    pub category_positions: Vec<CategoryPositionEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct CategoryPositionEntry {
+    pub id: Uuid,
+    pub position: i32,
 }
 
 // ── Handlers ───────────────────────────────────────────────────────────
@@ -53,6 +64,39 @@ pub(crate) async fn list_categories(
         .await
         .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
     let categories = CategoryService::list_categories(&state.pool, server_id).await?;
+    Ok(Json(CategoriesResponse { categories }))
+}
+
+/// PUT /api/servers/:server_id/categories/reorder
+pub(crate) async fn reorder_categories(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(server_id): Path<Uuid>,
+    Json(body): Json<ReorderCategoriesRequest>,
+) -> Result<Json<CategoriesResponse>, AppError> {
+    let positions: Vec<(Uuid, i32)> = body
+        .category_positions
+        .iter()
+        .map(|e| (e.id, e.position))
+        .collect();
+
+    let categories = CategoryService::reorder_categories(
+        &state.pool,
+        server_id,
+        auth.user_id,
+        &positions,
+    )
+    .await?;
+
+    // Broadcast each category update to server members via WS so collaborators
+    // see the new order without a manual refetch — same pattern as channel reorder.
+    for category in &categories {
+        let event = crate::ws::events::GatewayEvent::CategoryUpdate {
+            category: category.clone(),
+        };
+        state.nats.publish_to_server(server_id, &event).await;
+    }
+
     Ok(Json(CategoriesResponse { categories }))
 }
 

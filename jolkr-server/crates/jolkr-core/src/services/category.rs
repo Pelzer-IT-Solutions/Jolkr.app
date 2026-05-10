@@ -117,6 +117,43 @@ impl CategoryService {
         Ok(CategoryInfo::from(row))
     }
 
+    /// Reorder categories in a server. Requires `MANAGE_CHANNELS` or server owner.
+    pub async fn reorder_categories(
+        pool: &PgPool,
+        server_id: Uuid,
+        caller_id: Uuid,
+        category_positions: &[(Uuid, i32)],
+    ) -> Result<Vec<CategoryInfo>, JolkrError> {
+        let server = ServerRepo::get_by_id(pool, server_id).await?;
+        if server.owner_id != caller_id {
+            Self::check_permission(pool, server_id, caller_id, jolkr_common::Permissions::MANAGE_CHANNELS).await?;
+        }
+
+        for (_, position) in category_positions {
+            if *position < 0 || *position > 1000 {
+                return Err(JolkrError::Validation(
+                    "Category position must be between 0 and 1000".into(),
+                ));
+            }
+        }
+
+        // Validate all category IDs belong to this server
+        let existing = CategoryRepo::list_for_server(pool, server_id).await?;
+        let existing_ids: std::collections::HashSet<Uuid> = existing.iter().map(|c| c.id).collect();
+        for (category_id, _) in category_positions {
+            if !existing_ids.contains(category_id) {
+                return Err(JolkrError::Validation(
+                    format!("Category {category_id} does not belong to server {server_id}"),
+                ));
+            }
+        }
+
+        CategoryRepo::bulk_update_positions(pool, category_positions).await?;
+
+        let updated = CategoryRepo::list_for_server(pool, server_id).await?;
+        Ok(updated.into_iter().map(CategoryInfo::from).collect())
+    }
+
     /// Delete a category. Channels in it get moved to uncategorized.
     pub async fn delete_category(
         pool: &PgPool,

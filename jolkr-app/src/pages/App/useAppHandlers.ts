@@ -429,29 +429,29 @@ export function useAppHandlers(
     await fetchCategories(activeServerId)
   }, [activeServerId, fetchCategories])
 
-  // ── Channel reorder (drag & drop persist) ──
-  // `positions` is the new global ordering across all categories + uncategorized.
-  // `moves` is the subset of channels whose category_id changed (cross-category drag).
-  const handleReorderChannels = useCallback(async (
-    positions: Array<{ id: string; position: number }>,
-    moves: Array<{ id: string; categoryId: string | null }>,
-  ) => {
-    if (!activeServerId) return
+  const handleReorderChannels = useCallback(async (items: api.ChannelMoveItem[]) => {
+    if (!activeServerId || items.length === 0) return
     try {
-      // Apply category moves first so the reorder applies on top of the new layout
-      for (const m of moves) {
-        await api.updateChannel(m.id, { category_id: m.categoryId })
-      }
-      if (positions.length > 0) {
-        await api.reorderChannels(activeServerId, positions)
-      }
+      await api.moveChannels(activeServerId, items)
       await fetchChannels(activeServerId)
     } catch (e) {
       console.warn('Channel reorder failed, refetching to recover:', e)
-      // On error, force a refetch so the UI snaps back to the server's truth
       await fetchChannels(activeServerId).catch((e2) => logErr('useAppHandlers.reorderChannels.recover', e2))
     }
   }, [activeServerId, fetchChannels])
+
+  const handleReorderCategories = useCallback(async (
+    positions: Array<{ id: string; position: number }>,
+  ) => {
+    if (!activeServerId) return
+    try {
+      await api.reorderCategories(activeServerId, positions)
+      await fetchCategories(activeServerId)
+    } catch (e) {
+      console.warn('Category reorder failed, refetching to recover:', e)
+      await fetchCategories(activeServerId).catch((e2) => logErr('useAppHandlers.reorderCategories.recover', e2))
+    }
+  }, [activeServerId, fetchCategories])
 
   // ── Server management ──
   async function handleJoinServer(serverId: string, accessCode: string): Promise<boolean> {
@@ -564,7 +564,7 @@ export function useAppHandlers(
     handleCreateChannel, handleCreateCategory, handleDeleteChannel,
     handleDeleteCategory, handleArchiveChannel,
     handleRenameChannel, handleRenameCategory,
-    handleReorderChannels,
+    handleReorderChannels, handleReorderCategories,
     handleJoinServer, handleCreateServer, handleCreateDm,
   }
 }

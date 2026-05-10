@@ -204,3 +204,79 @@
   padding: 0;
   scroll-padding-bottom: 0;
 }
+
+/* ── Mobile: full-viewport with horizontal tab-strip nav ──
+   Below 600px the shell can't fit its 56rem × 36rem desktop card, so we go
+   full-screen and turn the left nav into a single horizontally scrollable
+   tab strip — all groups (Server Settings + Moderation + Danger Zone) merge
+   into one row of pills. Group labels, the optional nav header, footer,
+   chevron, and spacer collapse so only the actionable items stay visible.
+   The floating close button moves inside the modal corner so it isn't
+   clipped by the viewport edge. */
+@media (max-width: 600px) {
+  .modal {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+    flex-direction: column;
+    box-shadow: none;
+  }
+
+  .closeBtnOverlay {
+    top: 0.5rem;
+    right: 0.5rem;
+    background: var(--bg-shout);
+  }
+
+  .nav {
+    width: 100%;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-muted);
+    border-radius: 0;
+  }
+
+  .navHeader,
+  .navDivider,
+  .navFooter,
+  .navGroupLabel,
+  .navSpacer,
+  .navChevron {
+    display: none;
+  }
+
+  .navScroll {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.5rem;
+    gap: 0.25rem;
+  }
+
+  /* Flatten group wrappers so all items become direct flex children of the
+     scroll strip — works in every modern browser (display:contents is widely
+     supported in Chromium-based Tauri WebViews and current desktop/mobile
+     browsers). */
+  .navGroup {
+    display: contents;
+  }
+
+  .navItem {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .content {
+    flex: 1;
+    min-height: 0;
+    border-radius: 0;
+  }
+
+  .scroll { padding: 1rem; }
+}

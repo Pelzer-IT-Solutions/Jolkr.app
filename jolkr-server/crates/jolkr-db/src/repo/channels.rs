@@ -161,6 +161,53 @@ impl ChannelRepo {
         Ok(())
     }
 
+    /// Bulk update both `position` and (optionally) `category_id` for a set of
+    /// channels in a single transaction. The outer `Option` of `category_id`
+    /// distinguishes "leave category unchanged" (`None`) from "set to value or
+    /// `NULL`" (`Some`).
+    pub async fn bulk_apply_layout(
+        pool: &PgPool,
+        items: &[(Uuid, i32, Option<Option<Uuid>>)],
+    ) -> Result<(), JolkrError> {
+        let mut tx = pool.begin().await?;
+        let now = Utc::now();
+        for (channel_id, position, category_id) in items {
+            match category_id {
+                Some(new_cat) => {
+                    sqlx::query(
+                        "
+                        UPDATE channels
+                        SET position = $2, category_id = $3, updated_at = $4
+                        WHERE id = $1
+                        ",
+                    )
+                    .bind(channel_id)
+                    .bind(position)
+                    .bind(new_cat)
+                    .bind(now)
+                    .execute(&mut *tx)
+                    .await?;
+                }
+                None => {
+                    sqlx::query(
+                        "
+                        UPDATE channels
+                        SET position = $2, updated_at = $3
+                        WHERE id = $1
+                        ",
+                    )
+                    .bind(channel_id)
+                    .bind(position)
+                    .bind(now)
+                    .execute(&mut *tx)
+                    .await?;
+                }
+            }
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Delete a channel.
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), JolkrError> {
         let result = sqlx::query("DELETE FROM channels WHERE id = $1")

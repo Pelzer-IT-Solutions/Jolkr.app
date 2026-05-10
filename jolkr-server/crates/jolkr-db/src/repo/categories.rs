@@ -68,6 +68,29 @@ impl CategoryRepo {
         Ok(rows)
     }
 
+    /// Bulk update category positions in a single transaction.
+    pub async fn bulk_update_positions(
+        pool: &PgPool,
+        positions: &[(Uuid, i32)],
+    ) -> Result<(), JolkrError> {
+        let mut tx = pool.begin().await?;
+        for (category_id, position) in positions {
+            sqlx::query(
+                "
+                UPDATE categories
+                SET position = $2
+                WHERE id = $1
+                ",
+            )
+            .bind(category_id)
+            .bind(position)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Update a category's name and/or position.
     pub async fn update(
         pool: &PgPool,
