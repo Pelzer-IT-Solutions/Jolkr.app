@@ -112,8 +112,6 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   fetchChannels: async (serverId) => {
-    // Skip if already cached — WS events keep this updated
-    if (get().channels[serverId]?.length) return;
     try {
       const channels = await api.getChannels(serverId);
       set({ channels: { ...get().channels, [serverId]: channels } });
@@ -123,8 +121,6 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   fetchMembers: async (serverId) => {
-    // Skip if already cached — WS events keep this updated
-    if (get().members[serverId]?.length) return;
     try {
       // Use enriched endpoint — includes full User objects with avatar_url
       const members = await api.getMembersWithRoles(serverId);

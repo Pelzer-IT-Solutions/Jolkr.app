@@ -216,10 +216,8 @@ export function transformServer(
   unreadCount: number,
   channelUnreads?: Record<string, number>,
 ): ServerDisplay {
-  // Sort categories by position
   const sortedCats = [...categories].sort((a, b) => a.position - b.position)
 
-  // Build UI categories (name + channel ID list)
   const uiCategories: CategoryDisplay[] = sortedCats.map(cat => ({
     id: cat.id,
     name: cat.name,
@@ -229,19 +227,8 @@ export function transformServer(
       .map(ch => ch.id),
   }))
 
-  // Add uncategorized channels
-  const categorizedIds = new Set(channels.filter(ch => ch.category_id).map(ch => ch.id))
-  const uncategorized = channels.filter(ch => !categorizedIds.has(ch.id))
-  if (uncategorized.length > 0) {
-    uiCategories.unshift({
-      id: '__uncategorized__',
-      name: 'Channels',
-      channels: uncategorized.sort((a, b) => a.position - b.position).map(ch => ch.id),
-    })
-  }
-
-  // Build UI channels
   const uiChannels: ChannelDisplay[] = channels
+    .slice()
     .sort((a, b) => a.position - b.position)
     .map(ch => ({
       id: ch.id,

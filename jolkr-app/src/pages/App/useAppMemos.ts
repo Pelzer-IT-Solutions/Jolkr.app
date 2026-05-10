@@ -97,14 +97,9 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
       const chs = channelsByServer[srv.id] ?? []
       const cats = categoriesByServer[srv.id] ?? []
       const mems = membersByServer[srv.id] ?? []
-      // Hide categories whose channels are all gated away by role/overwrite —
-      // empty folders just look broken in the sidebar. Channels are already
-      // filtered server-side via VIEW_CHANNELS, so a category with zero
-      // entries in `chs` is one the caller can't see into.
-      const visibleCats = cats.filter(cat => chs.some(ch => ch.category_id === cat.id))
       const memberGroup = transformMemberGroup(mems, userMap, presenceMap)
       const totalUnread = chs.reduce((sum, ch) => sum + (unreadCounts[ch.id] ?? 0), 0)
-      return transformServer(srv, chs, visibleCats, memberGroup, totalUnread, unreadCounts)
+      return transformServer(srv, chs, cats, memberGroup, totalUnread, unreadCounts)
     })
   }, [servers, channelsByServer, categoriesByServer, membersByServer, userMap, presenceMap, unreadCounts])
 

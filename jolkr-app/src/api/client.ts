@@ -419,6 +419,11 @@ export const createCategory = (serverId: string, body: { name: string }) =>
   request<Category>(`/servers/${serverId}/categories`, { method: 'POST', body: JSON.stringify(body) }, 'category');
 export const updateCategory = (id: string, body: { name?: string; position?: number }) =>
   request<Category>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'category');
+export const reorderCategories = (serverId: string, positions: Array<{ id: string; position: number }>) =>
+  request<Category[]>(`/servers/${serverId}/categories/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ category_positions: positions }),
+  }, 'categories');
 export const deleteCategory = (id: string) =>
   request<void>(`/categories/${id}`, { method: 'DELETE' });
 
@@ -464,6 +469,16 @@ export const reorderChannels = (serverId: string, positions: Array<{ id: string;
   request<Channel[]>(`/servers/${serverId}/channels/reorder`, {
     method: 'PUT',
     body: JSON.stringify({ channel_positions: positions }),
+  }, 'channels');
+export type ChannelMoveItem = {
+  id: string;
+  position: number;
+  category_id?: string | null;
+};
+export const moveChannels = (serverId: string, items: ChannelMoveItem[]) =>
+  request<Channel[]>(`/servers/${serverId}/channels/move`, {
+    method: 'PUT',
+    body: JSON.stringify({ items }),
   }, 'channels');
 export const deleteChannel = (id: string) =>
   request<void>(`/channels/${id}`, { method: 'DELETE' });
