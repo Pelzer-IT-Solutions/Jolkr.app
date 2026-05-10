@@ -51,9 +51,7 @@ const statusColorClass: Record<string, string> = {
 }
 
 export default function Avatar({ url, name, size = 'lg', status, userId, className, color }: AvatarProps) {
-  // For the current user, always use the auth store's avatar_url as version
-  // hint so ALL Avatar instances refresh immediately after an avatar change,
-  // regardless of whether the caller's data (member list, DM list, etc.) is stale.
+  // For the current user, version-hint via the auth store so every Avatar refreshes after an upload even if the caller's data is stale.
   const currentUser = useAuthStore(s => s.user)
   const versionHint = (userId && currentUser && userId === currentUser.id)
     ? currentUser.avatar_url
