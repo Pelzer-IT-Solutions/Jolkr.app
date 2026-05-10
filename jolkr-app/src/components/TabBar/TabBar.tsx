@@ -168,19 +168,7 @@ export function TabBar({
   const status: MemberStatus = statusProp ?? 'online'
   const [menuPos,      setMenuPos]      = useState({ top: 0, right: 0 })
 
-  // Cross-session call presence: set when ANOTHER session of this user is on a
-  // DM call OR in a server voice channel. The local session uses its own
-  // activeCallDmId / VoiceConnectionBar for in-call UI, so we deliberately
-  // only show the pill for SIBLING sessions.
-  //
-  // DM-call suppression: if the remote presence event is for the SAME DM the
-  // local session is currently in, hide the pill (we're already showing the
-  // in-call bar).
-  //
-  // TODO: voice-channel suppression follow-up — the call store doesn't yet
-  // track the local voice channel id, so when a sibling joins the SAME voice
-  // channel we're already in we'll briefly show the pill. Wire local
-  // channelId through the call store to suppress that case.
+  // Pill is for SIBLING sessions only — local in-call UI lives in VoiceConnectionBar. Suppressed when the remote DM-call matches the local one.
   const remoteSessionCall = useCallStore(st => st.remoteSessionCall)
   const localActiveCallDmId = useCallStore(st => st.activeCallDmId)
   const showRemoteCallPill = !!remoteSessionCall

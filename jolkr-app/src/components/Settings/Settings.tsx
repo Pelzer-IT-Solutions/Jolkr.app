@@ -120,12 +120,7 @@ function SectionContent({ section, isDark, colorPref, onSetColorPref, user, onLo
   }
 }
 
-/* ─────────────────────────────────────────
-   SECTION: My Account
-───────────────────────────────────────── */
-// `nameKey` is the i18n key under `settings.bannerColors.*` so the swatch
-// title attribute renders in the active locale (the OKLCH `value` is the
-// machine-readable colour and stays language-neutral).
+// `nameKey` resolves through `settings.bannerColors.*` so the swatch tooltip is locale-aware; `value` is OKLCH and stays language-neutral.
 const BANNER_COLORS = [
   { nameKey: 'sage',  value: 'oklch(60% 0.1 136)' },
   { nameKey: 'gold',  value: 'oklch(65% 0.12 85)' },

@@ -25,26 +25,15 @@ import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
 import PromptDialog from '../ui/PromptDialog/PromptDialog'
 import s from './ChatArea.module.css'
 
-// Attachment size cap (mirrors backend MAX_ATTACHMENT_SIZE).
-// MB literal drives both the byte cap and the human-readable label so they can't drift.
+// Mirrors backend MAX_ATTACHMENT_SIZE.
 const MAX_FILE_SIZE_MB = 250
 const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
 const MAX_FILE_SIZE_LABEL = `${MAX_FILE_SIZE_MB} MB`
 
-// Mirrors Discord's "long message" cutover: anything longer than this is
-// promoted to a message.txt attachment so the inline encrypted message body
-// stays small and readable. Tune in concert with the server's per-message
-// content cap (currently effectively unbounded in our schema, so this is
-// purely a UX choice).
+// Above this, message body is promoted to a message.txt attachment.
 const MAX_INLINE_TEXT_LENGTH = 5000
 
-// Browsers leave `File.type` empty for extensions they don't recognise
-// (notably .m3u8, .mkv, and most code/source files). We fill it in from
-// the filename so the server stores a useful content-type and our renderer
-// can route the attachment to the right tile (video player, music player,
-// code block, etc). Mappings stay deliberately conservative — anything
-// not listed keeps the browser's empty type and lands in the generic
-// file chip.
+// Fallback for extensions the browser doesn't recognise (e.g. .m3u8, .mkv) so the renderer can route to the right tile.
 const EXT_TO_MIME: Record<string, string> = {
   // Streaming + extra video container
   m3u8: 'application/vnd.apple.mpegurl',
