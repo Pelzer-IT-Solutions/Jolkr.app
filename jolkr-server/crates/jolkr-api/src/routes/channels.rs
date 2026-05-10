@@ -5,7 +5,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use jolkr_common::{JolkrError, Permissions};
+use jolkr_common::{serde_helpers::double_option, JolkrError, Permissions};
 use jolkr_core::ChannelService;
 use jolkr_core::services::channel::{ChannelInfo, ChannelOverwriteInfo, CreateChannelRequest, UpdateChannelRequest, UpsertOverwriteRequest};
 use jolkr_db::repo::{ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
@@ -70,7 +70,51 @@ pub(crate) struct ChannelPositionEntry {
     pub position: i32,
 }
 
+#[derive(Debug, Deserialize)]
+pub(crate) struct MoveChannelsRequest {
+    pub items: Vec<MoveChannelEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct MoveChannelEntry {
+    pub id: Uuid,
+    pub position: i32,
+    #[serde(default, deserialize_with = "double_option::deserialize")]
+    pub category_id: Option<Option<Uuid>>,
+}
+
 // ── Handlers ───────────────────────────────────────────────────────────
+
+/// PUT /api/servers/:server_id/channels/move
+pub(crate) async fn move_channels(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(server_id): Path<Uuid>,
+    Json(body): Json<MoveChannelsRequest>,
+) -> Result<Json<ChannelsResponse>, AppError> {
+    let items: Vec<(Uuid, i32, Option<Option<Uuid>>)> = body
+        .items
+        .into_iter()
+        .map(|e| (e.id, e.position, e.category_id))
+        .collect();
+
+    let channels = ChannelService::move_channels(
+        &state.pool,
+        server_id,
+        auth.user_id,
+        &items,
+    )
+    .await?;
+
+    for channel in &channels {
+        let event = crate::ws::events::GatewayEvent::ChannelUpdate {
+            channel: channel.clone(),
+        };
+        state.nats.publish_to_server(server_id, &event).await;
+    }
+
+    Ok(Json(ChannelsResponse { channels }))
+}
 
 /// PUT /api/servers/:server_id/channels/reorder
 pub(crate) async fn reorder_channels(

@@ -3,6 +3,8 @@
 pub mod errors;
 /// Permissions module.
 pub mod permissions;
+/// Serde helpers shared across crates.
+pub mod serde_helpers;
 /// Types module.
 pub mod types;
 

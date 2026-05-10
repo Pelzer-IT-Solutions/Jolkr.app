@@ -224,6 +224,7 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
             "/api/servers/:server_id/categories",
             get(categories::list_categories).post(categories::create_category),
         )
+        .route("/api/servers/:server_id/categories/reorder", put(categories::reorder_categories))
         .route(
             "/api/categories/:id",
             patch(categories::update_category).delete(categories::delete_category),
@@ -265,6 +266,7 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
             post(channels::create_channel),
         )
         .route("/api/servers/:server_id/channels/list", get(channels::list_channels))
+        .route("/api/servers/:server_id/channels/move", put(channels::move_channels))
         .route("/api/servers/:server_id/channels/reorder", put(channels::reorder_channels))
         .route(
             "/api/channels/:id",

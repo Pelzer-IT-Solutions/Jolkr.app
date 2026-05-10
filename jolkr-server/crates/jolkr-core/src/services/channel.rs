@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use tracing::info;
 use uuid::Uuid;
 
-use jolkr_common::{JolkrError, Permissions};
+use jolkr_common::{serde_helpers::double_option, JolkrError, Permissions};
 use jolkr_db::models::ChannelRow;
 use jolkr_db::repo::{ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
@@ -73,8 +73,11 @@ pub struct UpdateChannelRequest {
     pub is_nsfw: Option<bool>,
     /// Slowmode seconds.
     pub slowmode_seconds: Option<i32>,
-    /// Owning category identifier.
-    pub category_id: Option<Uuid>,
+    /// Owning category identifier. Use `Option<Option<Uuid>>` so the request
+    /// can express three states: field absent (no change), explicit `null`
+    /// (move to uncategorized), or a UUID (move into that category).
+    #[serde(default, deserialize_with = "double_option::deserialize")]
+    pub category_id: Option<Option<Uuid>>,
 }
 
 /// Channel overwrite DTO.
@@ -289,9 +292,11 @@ impl ChannelService {
         )
         .await?;
 
-        // Update category_id if provided (use set_category for explicit NULL support)
-        if req.category_id.is_some() {
-            updated = ChannelRepo::set_category(pool, channel_id, req.category_id).await?;
+        // Update category_id if the field was present in the request. The
+        // outer `Some` distinguishes "field present" from "field absent"; the
+        // inner option is the desired value (`None` clears the category).
+        if let Some(category_id) = req.category_id {
+            updated = ChannelRepo::set_category(pool, channel_id, category_id).await?;
         }
 
         Ok(ChannelInfo::from(updated))
@@ -445,6 +450,59 @@ impl ChannelService {
         ChannelOverwriteRepo::delete(pool, channel_id, target_type, target_id).await?;
         info!(channel_id = %channel_id, target_type = %target_type, target_id = %target_id, "Channel overwrite deleted");
         Ok(())
+    }
+
+    /// Bulk apply position + (optional) category_id changes to a list of
+    /// channels in a single transaction. Used by the FE drag-and-drop layer
+    /// so a single API call covers reorders, cross-folder moves, and
+    /// folder ↔ uncategorized moves atomically.
+    pub async fn move_channels(
+        pool: &PgPool,
+        server_id: Uuid,
+        caller_id: Uuid,
+        items: &[(Uuid, i32, Option<Option<Uuid>>)],
+    ) -> Result<Vec<ChannelInfo>, JolkrError> {
+        let server = ServerRepo::get_by_id(pool, server_id).await?;
+        if server.owner_id != caller_id {
+            Self::check_permission(pool, server_id, caller_id, Permissions::MANAGE_CHANNELS).await?;
+        }
+
+        for (_, position, _) in items {
+            if *position < 0 || *position > 1000 {
+                return Err(JolkrError::Validation(
+                    "Channel position must be between 0 and 1000".into(),
+                ));
+            }
+        }
+
+        let existing_channels = ChannelRepo::list_for_server(pool, server_id).await?;
+        let existing_channel_ids: std::collections::HashSet<Uuid> =
+            existing_channels.iter().map(|c| c.id).collect();
+        for (channel_id, _, _) in items {
+            if !existing_channel_ids.contains(channel_id) {
+                return Err(JolkrError::Validation(
+                    format!("Channel {channel_id} does not belong to server {server_id}"),
+                ));
+            }
+        }
+
+        let existing_categories = jolkr_db::repo::CategoryRepo::list_for_server(pool, server_id).await?;
+        let existing_category_ids: std::collections::HashSet<Uuid> =
+            existing_categories.iter().map(|c| c.id).collect();
+        for (_, _, category_id) in items {
+            if let Some(Some(cat_id)) = category_id {
+                if !existing_category_ids.contains(cat_id) {
+                    return Err(JolkrError::Validation(
+                        format!("Category {cat_id} does not belong to server {server_id}"),
+                    ));
+                }
+            }
+        }
+
+        ChannelRepo::bulk_apply_layout(pool, items).await?;
+
+        let updated = ChannelRepo::list_for_server(pool, server_id).await?;
+        Ok(updated.into_iter().map(ChannelInfo::from).collect())
     }
 
     /// Reorder channels in a server. Requires `MANAGE_CHANNELS` or server owner.
