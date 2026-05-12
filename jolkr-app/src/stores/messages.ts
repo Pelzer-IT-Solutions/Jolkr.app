@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
+import { useThreadsStore } from './threads';
 import type { Message, Reaction } from '../api/types';
 
 /** Transform backend reaction format (user_ids) to frontend format (me boolean + user_ids) */
@@ -27,15 +28,6 @@ interface MessagesState {
   loadingOlder: Record<string, boolean>;
   hasMore: Record<string, boolean>;
 
-  // Thread messages keyed by threadId
-  threadMessages: Record<string, Message[]>;
-  threadLoading: Record<string, boolean>;
-  threadLoadingOlder: Record<string, boolean>;
-  threadHasMore: Record<string, boolean>;
-
-  // Counter incremented on ThreadCreate/ThreadUpdate WS events — watchers re-fetch thread lists
-  threadListVersion: number;
-
   fetchMessages: (channelId: string, isDm?: boolean) => Promise<void>;
   fetchOlder: (channelId: string, isDm?: boolean) => Promise<void>;
   sendMessage: (channelId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
@@ -46,15 +38,6 @@ interface MessagesState {
   updateMessage: (channelId: string, message: Message) => void;
   removeMessage: (channelId: string, messageId: string) => void;
   updateReactions: (channelId: string, messageId: string, reactions: Reaction[]) => void;
-
-  // Thread actions
-  fetchThreadMessages: (threadId: string) => Promise<void>;
-  fetchOlderThreadMessages: (threadId: string) => Promise<void>;
-  sendThreadMessage: (threadId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
-  addThreadMessage: (threadId: string, message: Message) => void;
-  updateThreadMessage: (threadId: string, message: Message) => void;
-  removeThreadMessage: (threadId: string, messageId: string) => void;
-  clearThreadMessages: (threadId: string) => void;
   reset: () => void;
 }
 
@@ -76,11 +59,6 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   loading: {},
   loadingOlder: {},
   hasMore: {},
-  threadMessages: {},
-  threadLoading: {},
-  threadLoadingOlder: {},
-  threadHasMore: {},
-  threadListVersion: 0,
 
   fetchMessages: async (channelId, isDm) => {
     const hasCached = (get().messages[channelId]?.length ?? 0) > 0;
@@ -186,115 +164,18 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   updateReactions: (channelId, messageId, reactions) => {
     const current = get().messages[channelId] ?? [];
-    const updatedMessages = {
-      ...get().messages,
-      [channelId]: current.map((m) =>
-        m.id === messageId ? { ...m, reactions } : m,
-      ),
-    };
-
-    // Also update reactions in threadMessages
-    const threadMsgs = { ...get().threadMessages };
-    for (const threadId of Object.keys(threadMsgs)) {
-      const threadArr = threadMsgs[threadId];
-      if (threadArr.some((m) => m.id === messageId)) {
-        threadMsgs[threadId] = threadArr.map((m) =>
-          m.id === messageId ? { ...m, reactions } : m,
-        );
-        break;
-      }
-    }
-
-    set({ messages: updatedMessages, threadMessages: threadMsgs });
-  },
-
-  // ── Thread actions ────────────────────────────────────────────────
-
-  fetchThreadMessages: async (threadId) => {
-    if (get().threadLoading[threadId]) return;
-    set({ threadLoading: { ...get().threadLoading, [threadId]: true } });
-    try {
-      const msgs = await api.getThreadMessages(threadId);
-      const reversed = transformReactions([...msgs].reverse());
-      set({
-        threadMessages: { ...get().threadMessages, [threadId]: reversed },
-        threadLoading: { ...get().threadLoading, [threadId]: false },
-        threadHasMore: { ...get().threadHasMore, [threadId]: msgs.length >= 50 },
-      });
-    } catch {
-      set({ threadLoading: { ...get().threadLoading, [threadId]: false } });
-    }
-  },
-
-  fetchOlderThreadMessages: async (threadId) => {
-    if (get().threadLoadingOlder[threadId]) return;
-    const current = get().threadMessages[threadId] ?? [];
-    if (current.length === 0) return;
-    set({ threadLoadingOlder: { ...get().threadLoadingOlder, [threadId]: true } });
-    try {
-      const oldest = current[0];
-      const msgs = await api.getThreadMessages(threadId, 50, oldest.created_at);
-      const reversed = transformReactions([...msgs].reverse());
-      const fresh = get().threadMessages[threadId] ?? [];
-      set({
-        threadMessages: { ...get().threadMessages, [threadId]: [...reversed, ...fresh] },
-        threadHasMore: { ...get().threadHasMore, [threadId]: msgs.length >= 50 },
-        threadLoadingOlder: { ...get().threadLoadingOlder, [threadId]: false },
-      });
-    } catch {
-      set({ threadLoadingOlder: { ...get().threadLoadingOlder, [threadId]: false } });
-    }
-  },
-
-  sendThreadMessage: async (threadId, content, replyToId, nonce) => {
-    return api.sendThreadMessage(threadId, content, nonce, replyToId);
-  },
-
-  addThreadMessage: (threadId, message) => {
-    const current = get().threadMessages[threadId] ?? [];
-    if (current.some((m) => m.id === message.id)) return;
-    set({ threadMessages: { ...get().threadMessages, [threadId]: [...current, message] } });
-  },
-
-  updateThreadMessage: (threadId, message) => {
-    const current = get().threadMessages[threadId] ?? [];
     set({
-      threadMessages: {
-        ...get().threadMessages,
-        [threadId]: current.map((m) =>
-          m.id === message.id
-            ? { ...m, ...message, reactions: message.reactions !== undefined ? message.reactions : m.reactions }
-            : m,
+      messages: {
+        ...get().messages,
+        [channelId]: current.map((m) =>
+          m.id === messageId ? { ...m, reactions } : m,
         ),
       },
     });
   },
 
-  removeThreadMessage: (threadId, messageId) => {
-    const current = get().threadMessages[threadId] ?? [];
-    set({
-      threadMessages: {
-        ...get().threadMessages,
-        [threadId]: current.filter((m) => m.id !== messageId),
-      },
-    });
-  },
-
-  clearThreadMessages: (threadId) => {
-    const { [threadId]: _, ...restMsgs } = get().threadMessages;
-    const { [threadId]: _l, ...restLoading } = get().threadLoading;
-    const { [threadId]: _lo, ...restLoadingOlder } = get().threadLoadingOlder;
-    const { [threadId]: _h, ...restHasMore } = get().threadHasMore;
-    set({
-      threadMessages: restMsgs,
-      threadLoading: restLoading,
-      threadLoadingOlder: restLoadingOlder,
-      threadHasMore: restHasMore,
-    });
-  },
-
   reset: () => {
-    set({ messages: {}, loading: {}, loadingOlder: {}, hasMore: {}, threadMessages: {}, threadLoading: {}, threadLoadingOlder: {}, threadHasMore: {}, threadListVersion: 0 });
+    set({ messages: {}, loading: {}, loadingOlder: {}, hasMore: {} });
   },
 }));
 
@@ -343,13 +224,14 @@ function normalizeWsMessage(raw: Message): Message | null {
 //   MessageDelete        → d = { message_id, channel_id }
 wsClient.on((event) => {
   const store = useMessagesStore.getState();
+  const threads = useThreadsStore.getState();
   switch (event.op) {
     case 'MessageCreate': {
       const msg = normalizeWsMessage(event.d.message);
       if (!msg) break;
       if (msg.thread_id) {
-        // Thread message → add to thread store + increment parent's thread_reply_count
-        store.addThreadMessage(msg.thread_id, msg);
+        // Thread message → add to threads store + increment parent's thread_reply_count
+        threads.addThreadMessage(msg.thread_id, msg);
         // Find the starter message in channel messages (the only channel msg with this thread_id)
         const channelMsgs = store.messages[msg.channel_id] ?? [];
         const starter = channelMsgs.find((m) => m.thread_id === msg.thread_id);
@@ -368,8 +250,7 @@ wsClient.on((event) => {
       const msg = normalizeWsMessage(event.d.message);
       if (!msg) break;
       if (msg.thread_id) {
-        // Update in thread store
-        store.updateThreadMessage(msg.thread_id, msg);
+        threads.updateThreadMessage(msg.thread_id, msg);
       }
       // Also update in channel store (starter messages live there)
       store.updateMessage(msg.channel_id, msg);
@@ -378,13 +259,12 @@ wsClient.on((event) => {
     case 'MessageDelete': {
       const { channel_id: channelId, message_id: messageId } = event.d;
       if (!channelId || !messageId) break;
-      // Remove from channel messages
       store.removeMessage(channelId, messageId);
-      // Also check thread stores and remove from any matching thread
-      const threadMsgs = store.threadMessages;
+      // Also check threads store and remove from any matching thread
+      const threadMsgs = threads.threadMessages;
       for (const threadId of Object.keys(threadMsgs)) {
         if (threadMsgs[threadId].some((m) => m.id === messageId)) {
-          store.removeThreadMessage(threadId, messageId);
+          threads.removeThreadMessage(threadId, messageId);
           // Decrement the starter message's thread_reply_count in channel store
           const channelMsgs = store.messages[channelId] ?? [];
           const starter = channelMsgs.find((m) => m.thread_id === threadId);
@@ -401,8 +281,7 @@ wsClient.on((event) => {
     }
     case 'ThreadCreate':
     case 'ThreadUpdate': {
-      // Increment version counter so ThreadListPanel re-fetches
-      useMessagesStore.setState({ threadListVersion: store.threadListVersion + 1 });
+      threads.bumpThreadListVersion();
       break;
     }
     case 'ReactionUpdate': {
@@ -416,6 +295,7 @@ wsClient.on((event) => {
         user_ids: r.user_ids ?? [],
       }));
       store.updateReactions(channel_id, message_id, reactions);
+      threads.updateThreadReactionsForMessage(message_id, reactions);
       break;
     }
     case 'PollUpdate': {

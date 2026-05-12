@@ -8,6 +8,7 @@ import { useGifFavoritesStore } from './gif-favorites';
 import { useMessagesStore } from './messages';
 import { usePresenceStore } from './presence';
 import { useServersStore } from './servers';
+import { useThreadsStore } from './threads';
 import { useToast } from './toast';
 import { useTypingStore } from './typing';
 import { useUnreadStore } from './unread';
@@ -20,6 +21,7 @@ export function resetAllStores() {
   usePresenceStore.getState().clearAll();
   useServersStore.getState().reset();
   useMessagesStore.getState().reset();
+  useThreadsStore.getState().reset();
   useUnreadStore.getState().reset();
   useCallStore.getState().reset();
   useDmReadsStore.getState().reset();

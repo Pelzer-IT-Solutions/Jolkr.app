@@ -10,6 +10,7 @@ import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useMessagesStore } from '../../stores/messages'
 import { usePresenceStore } from '../../stores/presence'
 import { useServersStore } from '../../stores/servers'
+import { useThreadsStore } from '../../stores/threads'
 import { useUnreadStore } from '../../stores/unread'
 import { useUsersStore } from '../../stores/users'
 import { makeDraftDmId } from '../../utils/draftDm'
@@ -31,7 +32,7 @@ export function useAppInit() {
   const channelMembersByChannel = useServersStore(s => s.channelMembers)
   const categoriesByServer = useServersStore(s => s.categories)
   const storeMessages = useMessagesStore(s => s.messages)
-  const threadListVersion = useMessagesStore(s => s.threadListVersion)
+  const threadListVersion = useThreadsStore(s => s.threadListVersion)
   const presences = usePresenceStore(s => s.statuses)
   const unreadCounts = useUnreadStore(s => s.counts)
   const serverPermissions = useServersStore(s => s.permissions)

@@ -6,8 +6,8 @@ import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import { useT } from '../../hooks/useT'
 import { getLocalKeys } from '../../services/e2ee'
-import { useMessagesStore } from '../../stores/messages'
 import { useServersStore } from '../../stores/servers'
+import { useThreadsStore } from '../../stores/threads'
 import { displayName } from '../../utils/format'
 import { logErr } from '../../utils/logErr'
 import s from './ThreadPanel.module.css'
@@ -61,9 +61,9 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
   const [sending, setSending] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const messages = useMessagesStore(s => s.threadMessages[threadId] ?? [])
-  const loading = useMessagesStore(s => s.threadLoading[threadId] ?? false)
-  const fetchThreadMessages = useMessagesStore(s => s.fetchThreadMessages)
+  const messages = useThreadsStore(s => s.threadMessages[threadId] ?? [])
+  const loading = useThreadsStore(s => s.threadLoading[threadId] ?? false)
+  const fetchThreadMessages = useThreadsStore(s => s.fetchThreadMessages)
   const membersByServer = useServersStore(s => s.members)
 
   // Fetch thread metadata + messages on mount / threadId change

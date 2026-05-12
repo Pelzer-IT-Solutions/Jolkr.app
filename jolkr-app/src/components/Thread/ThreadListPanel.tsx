@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as api from '../../api/client'
 import { useT } from '../../hooks/useT'
-import { useMessagesStore } from '../../stores/messages'
+import { useThreadsStore } from '../../stores/threads'
 import s from './ThreadListPanel.module.css'
 import type { Thread } from '../../api/types'
 
@@ -16,13 +16,13 @@ interface Props {
  * Re-fetches when:
  *   - the channel changes (different channelId)
  *   - any ThreadCreate / ThreadUpdate WS event lands (bumps `threadListVersion`
- *     in the messages store — see stores/messages.ts WS handler).
+ *     in the threads store — see stores/messages.ts WS handler).
  */
 export function ThreadListPanel({ channelId, onOpenThread }: Props) {
   const { t, tn } = useT()
   const [threads, setThreads] = useState<Thread[]>([])
   const [loading, setLoading] = useState(true)
-  const threadListVersion = useMessagesStore(s => s.threadListVersion)
+  const threadListVersion = useThreadsStore(s => s.threadListVersion)
 
   // Flip to loading whenever the fetch key changes — state-during-render
   // pattern avoids set-state-in-effect on the synchronous setLoading.
