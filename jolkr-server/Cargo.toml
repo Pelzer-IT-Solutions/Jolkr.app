@@ -79,6 +79,10 @@ urlencoding = "2"
 # HTML parsing (for OG meta tags)
 scraper = "0.22"
 
+# FE codegen — Rust DTOs are source-of-truth; `cargo test` writes TS files
+# to `jolkr-app/src/api/generated/` (via TS_RS_EXPORT_DIR env var).
+ts-rs = { version = "11", features = ["chrono-impl", "uuid-impl", "serde-json-impl"] }
+
 [workspace.lints.rust]
 # Bug-catching rustc lints. Pedantic/style-noise lints (pedantic, nursery) are
 # omitted by design — they produced thousands of low-value warnings on stable code.

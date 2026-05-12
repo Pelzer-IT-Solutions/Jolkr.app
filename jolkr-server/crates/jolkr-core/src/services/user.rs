@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::JolkrError;
@@ -9,7 +10,9 @@ use jolkr_db::repo::UserRepo;
 
 /// Public user profile DTO (hides `password_hash`, `email` and other
 /// internals). Returned by `/users/:id`, `/users/search`, `/users/batch`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "User")]
 pub struct UserProfile {
     /// Unique identifier.
     pub id: Uuid,
