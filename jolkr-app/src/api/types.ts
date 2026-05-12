@@ -8,6 +8,12 @@ import type { User as GeneratedUser } from './generated/User';
 
 export type { Attachment } from './generated/Attachment';
 export type { Category } from './generated/Category';
+export type { ChannelOverwrite } from './generated/ChannelOverwrite';
+export type { DmChannel } from './generated/DmChannel';
+export type { DmLastMessage } from './generated/DmLastMessage';
+export type { Friendship } from './generated/Friendship';
+export type { FriendshipUser } from './generated/FriendshipUser';
+export type { GifFavorite } from './generated/GifFavorite';
 export type { MessageEmbed } from './generated/MessageEmbed';
 export type { Poll } from './generated/Poll';
 export type { PollOption } from './generated/PollOption';
@@ -97,53 +103,6 @@ export interface Webhook {
   token?: string;
 }
 
-export interface ChannelOverwrite {
-  id: string;
-  channel_id: string;
-  target_type: 'role' | 'member';
-  target_id: string;
-  allow: number;
-  deny: number;
-}
-
-export interface DmLastMessage {
-  id: string;
-  author_id: string;
-  content?: string | null;
-  nonce?: string | null;
-  created_at: string;
-}
-
-export interface DmChannel {
-  id: string;
-  is_group: boolean;
-  name?: string | null;
-  members: string[];
-  created_at: string;
-  last_message?: DmLastMessage | null;
-}
-
-/**
- * Lightweight user shape embedded in `Friendship.requester` / `addressee` —
- * the backend only joins these four fields to power the friends panel
- * without an extra round-trip. This is intentionally narrower than `User`.
- */
-export interface FriendshipUser {
-  id: string;
-  username: string;
-  display_name?: string | null;
-  avatar_url?: string | null;
-}
-
-export interface Friendship {
-  id: string;
-  requester_id: string;
-  addressee_id: string;
-  status: 'pending' | 'accepted' | 'blocked';
-  requester?: FriendshipUser;
-  addressee?: FriendshipUser;
-}
-
 export interface Ban {
   id: string;
   server_id: string;
@@ -209,10 +168,3 @@ export interface PreKeyBundleResponse {
   pq_signed_prekey_signature?: string | null;
 }
 
-export interface GifFavorite {
-  gif_id: string
-  gif_url: string
-  preview_url: string
-  title: string
-  added_at: string
-}

@@ -85,19 +85,24 @@ pub struct UpdateChannelRequest {
 }
 
 /// Channel overwrite DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "ChannelOverwrite")]
 pub struct ChannelOverwriteInfo {
     /// Unique identifier.
     pub id: Uuid,
     /// Owning channel identifier.
     pub channel_id: Uuid,
     /// Target type.
+    #[ts(type = "\"role\" | \"member\"")]
     pub target_type: String,
     /// Target identifier.
     pub target_id: Uuid,
     /// Allow.
+    #[ts(type = "number")]
     pub allow: i64,
     /// Deny.
+    #[ts(type = "number")]
     pub deny: i64,
 }
 

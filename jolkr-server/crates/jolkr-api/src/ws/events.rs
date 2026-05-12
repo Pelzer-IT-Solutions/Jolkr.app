@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_core::services::category::CategoryInfo;
@@ -15,7 +16,9 @@ use jolkr_core::services::thread::ThreadInfo;
 /// proxy paths so the GIPHY CDN is never seen by the frontend. `Deserialize`
 /// is required because `GatewayEvent` derives it (the WS bus only serializes,
 /// but the derive bound is unconditional).
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "GifFavorite")]
 pub struct FavoriteItem {
     pub gif_id: String,
     pub gif_url: String,

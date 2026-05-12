@@ -34,7 +34,6 @@ export function buildDraftDm(memberIds: string[], name?: string | null): DmChann
     name: name ?? null,
     members: sorted,
     created_at: new Date().toISOString(),
-    last_message: null,
   }
 }
 

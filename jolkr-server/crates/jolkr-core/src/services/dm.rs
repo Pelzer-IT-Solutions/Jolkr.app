@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use tracing::warn;
@@ -12,7 +13,9 @@ use jolkr_db::repo::{DmRepo, FriendshipRepo, UserRepo};
 use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, ReactionAggregateByMsg, attachment_proxy_url};
 
 /// Lightweight last-message preview included in the DM channel list.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub struct DmLastMessage {
     /// Unique identifier.
     pub id: Uuid,
@@ -27,7 +30,9 @@ pub struct DmLastMessage {
 }
 
 /// Public information about `dmchannel`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "DmChannel")]
 pub struct DmChannelInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -41,6 +46,7 @@ pub struct DmChannelInfo {
     pub created_at: DateTime<Utc>,
     /// Last message.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub last_message: Option<DmLastMessage>,
 }
 
