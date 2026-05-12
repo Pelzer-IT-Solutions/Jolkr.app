@@ -67,7 +67,10 @@ pub(crate) async fn list_categories(
 ) -> Result<Json<CategoriesResponse>, AppError> {
     MemberRepo::get_member(&state.pool, server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list categories: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     let categories = CategoryService::list_categories(&state.pool, server_id).await?;
     Ok(Json(CategoriesResponse { categories }))
 }

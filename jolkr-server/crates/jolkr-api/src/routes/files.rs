@@ -270,7 +270,10 @@ async fn find_channel_attachment(
 
     jolkr_db::repo::MemberRepo::get_member(&state.pool, channel.server_id, user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "channel attachment access: caller is not a member of channel's server → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
 
     Ok((att.url, att.content_type, att.filename))
 }

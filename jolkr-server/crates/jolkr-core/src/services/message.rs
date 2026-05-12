@@ -394,7 +394,8 @@ impl MessageService {
 
         // Verify the channel exists and the user is a member of its server
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
-        let member = MemberRepo::get_member(pool, channel.server_id, author_id).await.map_err(|_| {
+        let member = MemberRepo::get_member(pool, channel.server_id, author_id).await.map_err(|e| {
+            tracing::warn!(?e, server_id = %channel.server_id, author_id = %author_id, "member lookup failed while sending message");
             JolkrError::Forbidden
         })?;
 
@@ -449,7 +450,10 @@ impl MessageService {
         let nonce_bytes = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+            .map_err(|e| {
+                tracing::warn!(?e, "base64 decode of message nonce failed");
+                JolkrError::Validation("Invalid base64 for nonce".into())
+            })?;
 
         let row = if let Some(tid) = thread_id {
             MessageRepo::create_message_in_thread(
@@ -614,7 +618,10 @@ impl MessageService {
         let nonce_bytes = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+            .map_err(|e| {
+                tracing::warn!(?e, "base64 decode of message edit nonce failed");
+                JolkrError::Validation("Invalid base64 for nonce".into())
+            })?;
 
         let _updated = MessageRepo::update(pool, message_id, &content, nonce_bytes.as_deref()).await?;
         // Return the full enriched message (with attachments, reactions, thread info)
@@ -639,7 +646,10 @@ impl MessageService {
             if server.owner_id != caller_id {
                 let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
                     .await
-                    .map_err(|_| JolkrError::Forbidden)?;
+                    .map_err(|e| {
+                        tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while deleting message");
+                        JolkrError::Forbidden
+                    })?;
                 let ch_perms = RoleRepo::compute_channel_permissions(
                     pool, channel.server_id, msg.channel_id, member.id,
                 ).await?;
@@ -665,7 +675,10 @@ impl MessageService {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while pinning message");
+                JolkrError::Forbidden
+            })?;
         // Check MANAGE_MESSAGES (owner bypasses)
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
         if server.owner_id != caller_id {
@@ -704,7 +717,10 @@ impl MessageService {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while unpinning message");
+                JolkrError::Forbidden
+            })?;
         // Check MANAGE_MESSAGES (owner bypasses)
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
         if server.owner_id != caller_id {
@@ -742,7 +758,10 @@ impl MessageService {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while listing pinned messages");
+                JolkrError::Forbidden
+            })?;
         // Check VIEW_CHANNELS (owner bypasses)
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
         if server.owner_id != caller_id {

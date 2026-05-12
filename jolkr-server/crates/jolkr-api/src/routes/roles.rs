@@ -87,7 +87,10 @@ pub(crate) async fn list_roles(
 ) -> Result<Json<RolesResponse>, AppError> {
     MemberRepo::get_member(&state.pool, server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list roles: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     let roles = RoleService::list_roles(&state.pool, server_id).await?;
     Ok(Json(RolesResponse { roles }))
 }
@@ -197,7 +200,10 @@ pub(crate) async fn list_members_with_roles(
 ) -> Result<Json<MembersWithRolesResponse>, AppError> {
     MemberRepo::get_member(&state.pool, server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list members-with-roles: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
 
     let members = MemberRepo::list_for_server(&state.pool, server_id).await?;
     let role_assignments = RoleRepo::list_roles_for_server_members(&state.pool, server_id).await?;

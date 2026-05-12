@@ -94,7 +94,10 @@ async fn check_view_permission(
     let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
     let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
         .await
-        .map_err(|_| JolkrError::Forbidden)?;
+        .map_err(|e| {
+            tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed during thread view-permission check");
+            JolkrError::Forbidden
+        })?;
     let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
     if server.owner_id != caller_id {
         let ch_perms = RoleRepo::compute_channel_permissions(
@@ -138,7 +141,10 @@ impl ThreadService {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while creating thread");
+                JolkrError::Forbidden
+            })?;
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
         if server.owner_id != caller_id {
             let ch_perms = RoleRepo::compute_channel_permissions(
@@ -261,7 +267,10 @@ impl ThreadService {
         let channel = ChannelRepo::get_by_id(pool, thread.channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while updating thread");
+                JolkrError::Forbidden
+            })?;
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
 
         // Permission check: owner bypasses, else check VIEW_CHANNELS + (MANAGE_MESSAGES or starter author)

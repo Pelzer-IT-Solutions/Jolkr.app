@@ -62,7 +62,8 @@ pub(crate) async fn upload_dm_attachment(
         return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
 
-    if let Some(field) = multipart.next_field().await.map_err(|_| {
+    if let Some(field) = multipart.next_field().await.map_err(|e| {
+        tracing::warn!(?e, "dm attachment upload: multipart next_field failed");
         AppError(jolkr_common::JolkrError::BadRequest("Invalid multipart".into()))
     })? {
         let filename = crate::routes::attachments::sanitize_filename(
@@ -79,7 +80,8 @@ pub(crate) async fn upload_dm_attachment(
             )));
         }
 
-        let data = field.bytes().await.map_err(|_| {
+        let data = field.bytes().await.map_err(|e| {
+            tracing::warn!(?e, "dm attachment upload: reading file bytes failed");
             AppError(jolkr_common::JolkrError::BadRequest("Failed to read file".into()))
         })?;
 

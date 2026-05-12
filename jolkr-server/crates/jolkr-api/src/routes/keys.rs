@@ -85,19 +85,31 @@ pub(crate) async fn upload_prekeys(
 
     let identity_key = engine
         .decode(&body.identity_key)
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for identity_key".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of identity_key failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for identity_key".into()))
+        })?;
     let signed_prekey = engine
         .decode(&body.signed_prekey)
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for signed_prekey".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of signed_prekey failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for signed_prekey".into()))
+        })?;
     let signed_prekey_signature = engine
         .decode(&body.signed_prekey_signature)
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for signed_prekey_signature".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of signed_prekey_signature failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for signed_prekey_signature".into()))
+        })?;
 
     let mut one_time_prekeys = Vec::with_capacity(body.one_time_prekeys.len());
     for (i, otpk_b64) in body.one_time_prekeys.iter().enumerate() {
         let otpk = engine
             .decode(otpk_b64)
-            .map_err(|_| AppError(jolkr_common::JolkrError::Validation(format!("Invalid base64 for one_time_prekey[{i}]"))))?;
+            .map_err(|e| {
+                tracing::warn!(?e, index = i, "base64 decode of one_time_prekey failed");
+                AppError(jolkr_common::JolkrError::Validation(format!("Invalid base64 for one_time_prekey[{i}]")))
+            })?;
         one_time_prekeys.push(otpk);
     }
 
@@ -105,13 +117,19 @@ pub(crate) async fn upload_prekeys(
         .as_ref()
         .map(|b64| engine.decode(b64))
         .transpose()
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of pq_signed_prekey failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey".into()))
+        })?;
 
     let pq_signed_prekey_signature = body.pq_signed_prekey_signature
         .as_ref()
         .map(|b64| engine.decode(b64))
         .transpose()
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey_signature".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of pq_signed_prekey_signature failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey_signature".into()))
+        })?;
 
     let count = one_time_prekeys.len();
 

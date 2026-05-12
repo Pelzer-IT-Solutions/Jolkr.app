@@ -188,7 +188,10 @@ impl CategoryService {
 
         let member = MemberRepo::get_member(pool, server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed for category permission check");
+                JolkrError::Forbidden
+            })?;
         let perms_bits = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
         let perms = Permissions::from(perms_bits);
         if !perms.has(permission) {

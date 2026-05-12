@@ -245,9 +245,15 @@ pub(crate) async fn search_gifs(
     }
 
     let resp = req.send().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Failed to reach GIF service"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY search upstream call failed");
+            (StatusCode::BAD_GATEWAY, "Failed to reach GIF service")
+        })?;
     let giphy: GiphyResponse = resp.json().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Invalid GIF service response"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY search: failed to deserialize response");
+            (StatusCode::BAD_GATEWAY, "Invalid GIF service response")
+        })?;
 
     Ok(Json(giphy_to_tenor(giphy)))
 }
@@ -273,9 +279,15 @@ pub(crate) async fn featured_gifs(
     }
 
     let resp = req.send().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Failed to reach GIF service"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY trending upstream call failed");
+            (StatusCode::BAD_GATEWAY, "Failed to reach GIF service")
+        })?;
     let giphy: GiphyResponse = resp.json().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Invalid GIF service response"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY trending: failed to deserialize response");
+            (StatusCode::BAD_GATEWAY, "Invalid GIF service response")
+        })?;
 
     Ok(Json(giphy_to_tenor(giphy)))
 }
@@ -371,10 +383,16 @@ async fn stream_giphy_url(url: &str) -> Result<Response, (StatusCode, &'static s
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Client error"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY proxy: reqwest client build failed");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Client error")
+        })?;
 
     let resp = client.get(url).send().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Failed to fetch media"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY proxy: fetching media from CDN failed");
+            (StatusCode::BAD_GATEWAY, "Failed to fetch media")
+        })?;
 
     if !resp.status().is_success() {
         return Err((StatusCode::BAD_GATEWAY, "Upstream error"));
@@ -388,7 +406,10 @@ async fn stream_giphy_url(url: &str) -> Result<Response, (StatusCode, &'static s
         .to_string();
 
     let bytes = resp.bytes().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Failed to read media"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY proxy: reading media body failed");
+            (StatusCode::BAD_GATEWAY, "Failed to read media")
+        })?;
 
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -461,12 +482,18 @@ async fn fetch_giphy_gif(api_key: &str, gif_id: &str) -> Result<GiphyGif, (Statu
         .query(&[("api_key", api_key)])
         .send()
         .await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Failed to reach GIF service"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY single-gif fetch upstream call failed");
+            (StatusCode::BAD_GATEWAY, "Failed to reach GIF service")
+        })?;
     if !resp.status().is_success() {
         return Err((StatusCode::BAD_GATEWAY, "GIF not found"));
     }
     let single: GiphySingleResponse = resp.json().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Invalid GIF service response"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "GIPHY single-gif fetch: failed to deserialize response");
+            (StatusCode::BAD_GATEWAY, "Invalid GIF service response")
+        })?;
     Ok(single.data)
 }
 
@@ -601,7 +628,10 @@ pub(crate) async fn oembed_proxy(
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Client error"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "oEmbed proxy: reqwest client build failed");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Client error")
+        })?;
 
     // 1. Try the provider's own oEmbed endpoint (extract host, try /oembed?url=...)
     if let Ok(parsed) = reqwest::Url::parse(url) {
@@ -625,14 +655,20 @@ pub(crate) async fn oembed_proxy(
     // 2. Fallback: noembed.com (supports 100+ providers)
     let noembed_url = format!("https://noembed.com/embed?url={}", urlencoding::encode(url));
     let resp = client.get(&noembed_url).send().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Failed to fetch oEmbed"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "oEmbed proxy: noembed.com fetch failed");
+            (StatusCode::BAD_GATEWAY, "Failed to fetch oEmbed")
+        })?;
 
     if !resp.status().is_success() {
         return Err((StatusCode::BAD_GATEWAY, "oEmbed service error"));
     }
 
     let data: serde_json::Value = resp.json().await
-        .map_err(|_| (StatusCode::BAD_GATEWAY, "Invalid oEmbed response"))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "oEmbed proxy: failed to deserialize noembed response");
+            (StatusCode::BAD_GATEWAY, "Invalid oEmbed response")
+        })?;
 
     if data.get("error").is_some() {
         return Err((StatusCode::NOT_FOUND, "No oEmbed data found"));

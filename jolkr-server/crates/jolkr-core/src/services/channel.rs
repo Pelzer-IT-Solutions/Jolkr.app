@@ -204,7 +204,10 @@ impl ChannelService {
         // Get member and compute base permissions
         let member = MemberRepo::get_member(pool, server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, caller_id = %caller_id, "member lookup failed while listing channels");
+                JolkrError::Forbidden
+            })?;
         let base_perms = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
 
         // ADMINISTRATOR sees everything
@@ -341,7 +344,10 @@ impl ChannelService {
 
         let member = MemberRepo::get_member(pool, channel.server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, user_id = %user_id, "member lookup failed for channel permission query");
+                JolkrError::Forbidden
+            })?;
         RoleRepo::compute_channel_permissions(pool, channel.server_id, channel_id, member.id).await
     }
 
@@ -401,7 +407,10 @@ impl ChannelService {
         if req.target_type == "role" {
             let role = RoleRepo::get_by_id(pool, req.target_id)
                 .await
-                .map_err(|_| JolkrError::Validation("Role not found".into()))?;
+                .map_err(|e| {
+                    tracing::warn!(?e, role_id = %req.target_id, "role lookup failed while upserting channel overwrite");
+                    JolkrError::Validation("Role not found".into())
+                })?;
             if role.server_id != channel.server_id {
                 return Err(JolkrError::Validation("Role does not belong to this server".into()));
             }
@@ -564,7 +573,10 @@ impl ChannelService {
     ) -> Result<(), JolkrError> {
         let member = MemberRepo::get_member(pool, server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed for channel permission check");
+                JolkrError::Forbidden
+            })?;
         let perms_bits = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
         let perms = Permissions::from(perms_bits);
         if !perms.has(permission) {

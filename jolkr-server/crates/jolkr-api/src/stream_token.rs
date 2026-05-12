@@ -81,5 +81,8 @@ pub(crate) fn verify(secret: &str, token: &str, expected_attachment: Uuid) -> Re
     if data.claims.aid != expected_attachment.to_string() {
         return Err(StreamTokenError::WrongAttachment);
     }
-    Uuid::parse_str(&data.claims.sub).map_err(|_| StreamTokenError::InvalidSubject)
+    Uuid::parse_str(&data.claims.sub).map_err(|e| {
+        tracing::warn!(?e, "stream token sub claim is not a valid UUID");
+        StreamTokenError::InvalidSubject
+    })
 }

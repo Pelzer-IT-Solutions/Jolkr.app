@@ -221,7 +221,10 @@ impl RoleService {
 
         let member = MemberRepo::get_member(pool, server_id, target_user_id)
             .await
-            .map_err(|_| JolkrError::NotFound)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, target_user_id = %target_user_id, "member lookup failed while assigning role");
+                JolkrError::NotFound
+            })?;
 
         RoleRepo::assign_role(pool, member.id, role_id).await?;
         info!(role_id = %role_id, user_id = %target_user_id, "Role assigned");
@@ -244,7 +247,10 @@ impl RoleService {
 
         let member = MemberRepo::get_member(pool, server_id, target_user_id)
             .await
-            .map_err(|_| JolkrError::NotFound)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, target_user_id = %target_user_id, "member lookup failed while removing role");
+                JolkrError::NotFound
+            })?;
 
         RoleRepo::remove_role(pool, member.id, role_id).await?;
         info!(role_id = %role_id, user_id = %target_user_id, "Role removed");
@@ -266,7 +272,10 @@ impl RoleService {
 
         let member = MemberRepo::get_member(pool, server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed while computing user permissions");
+                JolkrError::Forbidden
+            })?;
 
         RoleRepo::compute_permissions(pool, server_id, member.id).await
     }
@@ -282,7 +291,10 @@ pub async fn check_permission(
 ) -> Result<(), JolkrError> {
     let member = MemberRepo::get_member(pool, server_id, user_id)
         .await
-        .map_err(|_| JolkrError::Forbidden)?;
+        .map_err(|e| {
+            tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed for role permission check");
+            JolkrError::Forbidden
+        })?;
     let perms_bits = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
     let perms = Permissions::from(perms_bits);
     if !perms.has(permission) {

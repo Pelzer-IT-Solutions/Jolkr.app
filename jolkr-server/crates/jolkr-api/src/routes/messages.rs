@@ -156,7 +156,10 @@ pub(crate) async fn list_messages(
     let channel = ChannelRepo::get_by_id(&state.pool, channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list messages: caller is not a member of channel's server → 403");
+            AppError(JolkrError::Forbidden)
+        })?;
     let server = ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
         let perms = RoleRepo::compute_channel_permissions(
@@ -237,7 +240,10 @@ pub(crate) async fn search_messages(
     let channel = ChannelRepo::get_by_id(&state.pool, channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "search messages: caller is not a member of channel's server → 403");
+            AppError(JolkrError::Forbidden)
+        })?;
     let server = ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
         let perms = RoleRepo::compute_channel_permissions(

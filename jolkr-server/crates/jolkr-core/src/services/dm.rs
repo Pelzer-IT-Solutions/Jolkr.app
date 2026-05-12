@@ -554,7 +554,10 @@ impl DmService {
         let nonce = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+            .map_err(|e| {
+                warn!(?e, "base64 decode of DM message nonce failed");
+                JolkrError::Validation("Invalid base64 for nonce".into())
+            })?;
 
         let msg_id = Uuid::new_v4();
         let row = DmRepo::send_message(
@@ -603,7 +606,10 @@ impl DmService {
         let nonce_bytes = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+            .map_err(|e| {
+                warn!(?e, "base64 decode of DM edit nonce failed");
+                JolkrError::Validation("Invalid base64 for nonce".into())
+            })?;
 
         let row = DmRepo::update_message(pool, message_id, &content, nonce_bytes.as_deref()).await?;
         Ok(DmMessageInfo::from(row))

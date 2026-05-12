@@ -102,7 +102,10 @@ impl WebhookService {
         // Check permission
         if server.owner_id != caller_id {
             let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
-                .await.map_err(|_| JolkrError::Forbidden)?;
+                .await.map_err(|e| {
+                    tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while creating webhook");
+                    JolkrError::Forbidden
+                })?;
             let perms = RoleRepo::compute_channel_permissions(
                 pool, channel.server_id, channel_id, member.id,
             ).await?;
@@ -137,7 +140,10 @@ impl WebhookService {
     ) -> Result<Vec<WebhookInfo>, JolkrError> {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         MemberRepo::get_member(pool, channel.server_id, caller_id)
-            .await.map_err(|_| JolkrError::Forbidden)?;
+            .await.map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while listing webhooks");
+                JolkrError::Forbidden
+            })?;
 
         let rows = WebhookRepo::list_for_channel(pool, channel_id).await?;
         Ok(rows.into_iter().map(|r| WebhookInfo::from_row(r, None)).collect())
@@ -156,7 +162,10 @@ impl WebhookService {
 
         if server.owner_id != caller_id {
             let member = MemberRepo::get_member(pool, webhook.server_id, caller_id)
-                .await.map_err(|_| JolkrError::Forbidden)?;
+                .await.map_err(|e| {
+                    tracing::warn!(?e, server_id = %webhook.server_id, caller_id = %caller_id, "member lookup failed while updating webhook");
+                    JolkrError::Forbidden
+                })?;
             let perms = RoleRepo::compute_channel_permissions(
                 pool, webhook.server_id, webhook.channel_id, member.id,
             ).await?;
@@ -188,7 +197,10 @@ impl WebhookService {
 
         if server.owner_id != caller_id {
             let member = MemberRepo::get_member(pool, webhook.server_id, caller_id)
-                .await.map_err(|_| JolkrError::Forbidden)?;
+                .await.map_err(|e| {
+                    tracing::warn!(?e, server_id = %webhook.server_id, caller_id = %caller_id, "member lookup failed while deleting webhook");
+                    JolkrError::Forbidden
+                })?;
             let perms = RoleRepo::compute_channel_permissions(
                 pool, webhook.server_id, webhook.channel_id, member.id,
             ).await?;
@@ -214,7 +226,10 @@ impl WebhookService {
 
         if server.owner_id != caller_id {
             let member = MemberRepo::get_member(pool, webhook.server_id, caller_id)
-                .await.map_err(|_| JolkrError::Forbidden)?;
+                .await.map_err(|e| {
+                    tracing::warn!(?e, server_id = %webhook.server_id, caller_id = %caller_id, "member lookup failed while regenerating webhook token");
+                    JolkrError::Forbidden
+                })?;
             let perms = RoleRepo::compute_channel_permissions(
                 pool, webhook.server_id, webhook.channel_id, member.id,
             ).await?;

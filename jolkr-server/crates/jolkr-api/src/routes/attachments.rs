@@ -144,7 +144,10 @@ pub(crate) async fn upload_attachment(
     let channel = ChannelRepo::get_by_id(&state.pool, channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "attachment upload: caller is not a member of channel's server → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     // Check ATTACH_FILES permission (owner bypasses)
     let server = jolkr_db::repo::ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
@@ -270,7 +273,10 @@ pub(crate) async fn list_attachments(
     let channel = ChannelRepo::get_by_id(&state.pool, msg.channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list attachments: caller is not a member of channel's server → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     // H4: Check VIEW_CHANNELS permission (owner bypasses)
     let server = jolkr_db::repo::ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {

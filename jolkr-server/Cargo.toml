@@ -131,6 +131,6 @@ indexing_slicing = "allow"
 # WHY: axum handlers take many extractors by design (State, Auth, Path, Query, Json).
 # The "too many arguments" threshold of 7 is too low for this framework.
 too_many_arguments = "allow"
-# WHY: fase 4 (M4) lands `tracing::warn!(?err, ...)` + `#[from]` chains across the
-# 83 sites currently dropping upstream error context. Turn back to "warn" after that.
-map_err_ignore = "allow"
+# WHY: catches `.map_err(|_| ...)` that silently swallows the upstream error. Use
+# `.map_err(|e| { tracing::warn!(?e, "..."); ... })` (or thiserror `#[from]`) instead.
+map_err_ignore = "warn"

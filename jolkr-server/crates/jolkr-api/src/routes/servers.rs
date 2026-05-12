@@ -108,7 +108,10 @@ pub(crate) async fn get_server(
     // Verify caller is a member
     MemberRepo::get_member(&state.pool, id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "get server: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     let mut server = ServerService::get_server(&state.pool, id).await?;
     presign_server_urls(&state, &mut server).await;
     Ok(Json(ServerResponse { server }))
@@ -156,7 +159,10 @@ pub(crate) async fn list_members(
     // Verify caller is a member
     MemberRepo::get_member(&state.pool, id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list server members: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     let members = MemberRepo::list_for_server(&state.pool, id).await?;
     Ok(Json(MembersResponse { members }))
 }

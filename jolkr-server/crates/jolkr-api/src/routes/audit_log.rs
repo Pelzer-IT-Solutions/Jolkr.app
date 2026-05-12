@@ -63,7 +63,10 @@ pub(crate) async fn get_audit_log(
     if server.owner_id != auth.user_id {
         let member = MemberRepo::get_member(&state.pool, server_id, auth.user_id)
             .await
-            .map_err(|_| AppError(JolkrError::Forbidden))?;
+            .map_err(|e| {
+                tracing::warn!(?e, "audit-log: caller is not a server member → 403");
+                AppError(JolkrError::Forbidden)
+            })?;
         let perms = RoleRepo::compute_permissions(&state.pool, server_id, member.id).await?;
         if !Permissions::from(perms).has(Permissions::MANAGE_SERVER) {
             return Err(AppError(JolkrError::Forbidden));

@@ -215,7 +215,10 @@ pub(crate) async fn get_channel(
     let channel = ChannelService::get_channel(&state.pool, id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "get channel: caller is not a member of channel's server → 403");
+            AppError(JolkrError::Forbidden)
+        })?;
     // Check VIEW_CHANNELS (owner bypasses)
     let server = ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
@@ -311,7 +314,10 @@ pub(crate) async fn list_channel_members(
     } else {
         let caller_member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
             .await
-            .map_err(|_| AppError(JolkrError::Forbidden))?;
+            .map_err(|e| {
+                tracing::warn!(?e, "list channel members: caller is not a member of channel's server → 403");
+                AppError(JolkrError::Forbidden)
+            })?;
         let perms = RoleRepo::compute_channel_permissions(
             &state.pool,
             channel.server_id,

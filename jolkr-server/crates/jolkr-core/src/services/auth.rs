@@ -145,8 +145,8 @@ impl AuthService {
         password: &str,
     ) -> Result<(AuthUser, TokenPair), JolkrError> {
         // -- Find user by email ------------------------------------------------
-        let user_row = UserRepo::get_by_email(pool, email).await.map_err(|_| {
-            warn!(email = %email, "Login attempt for unknown email");
+        let user_row = UserRepo::get_by_email(pool, email).await.map_err(|e| {
+            warn!(?e, email = %email, "Login attempt for unknown email");
             JolkrError::Unauthorized
         })?;
 
@@ -271,8 +271,8 @@ impl AuthService {
         Self::validate_password(new_password)?;
 
         let token_hash = Self::hash_reset_token(token);
-        let reset_row = PasswordResetRepo::get_by_token_hash(pool, &token_hash).await.map_err(|_| {
-            warn!("Invalid or expired password reset token used");
+        let reset_row = PasswordResetRepo::get_by_token_hash(pool, &token_hash).await.map_err(|e| {
+            warn!(?e, "Invalid or expired password reset token used");
             JolkrError::Validation("Invalid or expired reset link".into())
         })?;
 
@@ -326,8 +326,8 @@ impl AuthService {
         token: &str,
     ) -> Result<Uuid, JolkrError> {
         let token_hash = Self::hash_reset_token(token);
-        let row = EmailVerificationRepo::get_by_token_hash(pool, &token_hash).await.map_err(|_| {
-            warn!("Invalid or expired email verification token used");
+        let row = EmailVerificationRepo::get_by_token_hash(pool, &token_hash).await.map_err(|e| {
+            warn!(?e, "Invalid or expired email verification token used");
             JolkrError::Validation("Invalid or expired verification link".into())
         })?;
 
@@ -376,8 +376,8 @@ impl AuthService {
             .map_err(|e| JolkrError::Internal(format!("Invalid stored hash: {e}")))?;
         Argon2::default()
             .verify_password(password.as_bytes(), &parsed)
-            .map_err(|_| {
-                warn!("Password verification failed");
+            .map_err(|e| {
+                warn!(?e, "Password verification failed");
                 JolkrError::Unauthorized
             })
     }
