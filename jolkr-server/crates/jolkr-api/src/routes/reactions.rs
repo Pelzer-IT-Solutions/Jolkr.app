@@ -14,13 +14,16 @@ use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
+/// Response payload for GET /api/messages/:id/reactions — raw, ungrouped rows.
 #[derive(Serialize)]
 pub(crate) struct ReactionsResponse {
     pub reactions: Vec<ReactionRow>,
 }
 
+/// Request body for POST /api/messages/:id/reactions.
 #[derive(Deserialize)]
 pub(crate) struct AddReactionRequest {
+    /// Unicode emoji or `:name:` shortcode (max 100 chars).
     pub emoji: String,
 }
 

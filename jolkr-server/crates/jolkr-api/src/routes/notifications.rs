@@ -13,25 +13,33 @@ use crate::middleware::AuthUser;
 use crate::routes::AppState;
 use crate::ws::events::{GatewayEvent, NotificationSettingPayload};
 
+/// Response payload describing a single notification setting for the caller.
 #[derive(Debug, Serialize)]
 pub(crate) struct NotificationSettingResponse {
+    /// Discriminator: `"server"` or `"channel"`.
     pub target_type: String,
     pub target_id: Uuid,
     pub muted: bool,
+    /// Optional timestamp when the mute auto-expires; `None` means indefinite.
     pub mute_until: Option<DateTime<Utc>>,
+    /// If true, `@everyone`/`@here` mentions do not raise a notification.
     pub suppress_everyone: bool,
 }
 
+/// Response payload for GET /api/users/me/notifications.
 #[derive(Debug, Serialize)]
 pub(crate) struct NotificationSettingsListResponse {
     pub settings: Vec<NotificationSettingResponse>,
 }
 
+/// Request body for PUT /api/users/me/notifications/:target_type/:target_id.
 #[derive(Debug, Deserialize)]
 pub(crate) struct UpdateNotificationSettingRequest {
     pub muted: bool,
+    /// Optional timestamp when the mute auto-expires; omit for indefinite.
     #[serde(default)]
     pub mute_until: Option<DateTime<Utc>>,
+    /// If true, `@everyone`/`@here` mentions do not raise a notification.
     #[serde(default)]
     pub suppress_everyone: bool,
 }

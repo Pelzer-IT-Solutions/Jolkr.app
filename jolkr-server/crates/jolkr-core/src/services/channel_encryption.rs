@@ -22,6 +22,7 @@ pub struct RecipientKey {
 impl ChannelEncryptionService {
     /// Distribute encrypted channel keys to members.
     /// The distributor must be a member of the channel's server.
+    #[tracing::instrument(skip(pool, recipients), fields(count = recipients.len()))]
     pub async fn distribute_keys(
         pool: &PgPool,
         channel_id: Uuid,
@@ -78,6 +79,7 @@ impl ChannelEncryptionService {
     }
 
     /// Get the encrypted channel key for the requesting user.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_my_key(
         pool: &PgPool,
         channel_id: Uuid,
@@ -88,6 +90,7 @@ impl ChannelEncryptionService {
 
     /// Trigger a rekey: increment key generation.
     /// Called when a member is removed from the server.
+    #[tracing::instrument(skip(pool))]
     pub async fn trigger_rekey(
         pool: &PgPool,
         channel_id: Uuid,
@@ -96,6 +99,7 @@ impl ChannelEncryptionService {
     }
 
     /// Get current key generation.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_key_generation(
         pool: &PgPool,
         channel_id: Uuid,
@@ -104,6 +108,7 @@ impl ChannelEncryptionService {
     }
 
     /// Check if user is a member of the channel's server.
+    #[tracing::instrument(skip(pool))]
     pub async fn verify_channel_membership(
         pool: &PgPool,
         channel_id: Uuid,
@@ -123,6 +128,7 @@ impl ChannelEncryptionService {
     }
 
     /// Check if user is a member of a DM channel.
+    #[tracing::instrument(skip(pool))]
     pub async fn verify_dm_membership(
         pool: &PgPool,
         dm_id: Uuid,

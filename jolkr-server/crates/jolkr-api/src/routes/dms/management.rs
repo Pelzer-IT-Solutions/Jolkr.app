@@ -133,8 +133,10 @@ pub(crate) async fn close_dm(
 
 // ── Read Receipts ────────────────────────────────────────────────────
 
+/// Request body for POST /api/dms/:dm_id/read — advances the caller's read marker in a DM.
 #[derive(Deserialize)]
 pub(crate) struct MarkAsReadRequest {
+    /// Most-recent DM message id the caller has seen; clears the unread counter up to and including this id.
     pub message_id: Uuid,
 }
 

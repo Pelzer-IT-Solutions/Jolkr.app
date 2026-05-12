@@ -49,6 +49,7 @@ fn meta_cache() -> &'static DashMap<Uuid, AttachmentMeta> {
 /// enough that we never load >8 MB into the API process at once.
 const RANGE_CHUNK_CAP: u64 = 8 * 1024 * 1024;
 
+/// Query parameters for GET /api/files/:attachment_id.
 #[derive(Deserialize)]
 pub(crate) struct FileQuery {
     /// Optional stream token; required for unauthenticated callers (i.e.
@@ -167,8 +168,10 @@ pub(crate) async fn serve_file(
     Ok((StatusCode::OK, full_headers(safe_ct, data.len() as u64), data).into_response())
 }
 
+/// Response payload for GET /api/files/:attachment_id/url.
 #[derive(Serialize)]
 pub(crate) struct StreamUrlResponse {
+    /// Short-lived signed URL pointing back at `/api/files/:id?t=<token>`.
     pub url: String,
 }
 

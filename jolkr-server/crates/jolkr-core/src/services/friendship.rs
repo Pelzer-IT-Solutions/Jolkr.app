@@ -84,6 +84,7 @@ pub struct FriendshipService;
 
 impl FriendshipService {
     /// Sends request.
+    #[tracing::instrument(skip(pool))]
     pub async fn send_request(
         pool: &PgPool,
         requester_id: Uuid,
@@ -110,6 +111,7 @@ impl FriendshipService {
     }
 
     /// Accept request.
+    #[tracing::instrument(skip(pool))]
     pub async fn accept_request(
         pool: &PgPool,
         friendship_id: Uuid,
@@ -121,6 +123,7 @@ impl FriendshipService {
 
     /// Decline or remove. Returns the deleted friendship so the caller can
     /// publish a WS event to both participants before forgetting about it.
+    #[tracing::instrument(skip(pool))]
     pub async fn decline_or_remove(
         pool: &PgPool,
         friendship_id: Uuid,
@@ -131,6 +134,7 @@ impl FriendshipService {
     }
 
     /// Block user.
+    #[tracing::instrument(skip(pool))]
     pub async fn block_user(
         pool: &PgPool,
         blocker_id: Uuid,
@@ -144,6 +148,7 @@ impl FriendshipService {
     }
 
     /// Lists friends.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_friends(
         pool: &PgPool,
         user_id: Uuid,
@@ -153,6 +158,7 @@ impl FriendshipService {
     }
 
     /// Lists pending.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_pending(
         pool: &PgPool,
         user_id: Uuid,

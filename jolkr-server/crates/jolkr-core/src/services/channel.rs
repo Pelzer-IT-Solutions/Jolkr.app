@@ -124,6 +124,7 @@ pub struct ChannelService;
 
 impl ChannelService {
     /// Create a new channel in a server. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_channel(
         pool: &PgPool,
         server_id: Uuid,
@@ -178,6 +179,7 @@ impl ChannelService {
     }
 
     /// Get channel info by ID.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_channel(pool: &PgPool, channel_id: Uuid) -> Result<ChannelInfo, JolkrError> {
         let row = ChannelRepo::get_by_id(pool, channel_id).await?;
         Ok(ChannelInfo::from(row))
@@ -185,6 +187,7 @@ impl ChannelService {
 
     /// List all channels in a server, filtered by `VIEW_CHANNELS` permission.
     /// Server owner always sees all channels.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_channels(
         pool: &PgPool,
         server_id: Uuid,
@@ -236,6 +239,7 @@ impl ChannelService {
     }
 
     /// Update channel metadata. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_channel(
         pool: &PgPool,
         channel_id: Uuid,
@@ -303,6 +307,7 @@ impl ChannelService {
     }
 
     /// Delete a channel. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_channel(
         pool: &PgPool,
         channel_id: Uuid,
@@ -320,6 +325,7 @@ impl ChannelService {
     }
 
     /// Get computed channel permissions for a user.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_channel_permissions(
         pool: &PgPool,
         channel_id: Uuid,
@@ -340,6 +346,7 @@ impl ChannelService {
     }
 
     /// List all overwrites for a channel. Requires `MANAGE_CHANNELS`.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_overwrites(
         pool: &PgPool,
         channel_id: Uuid,
@@ -363,6 +370,7 @@ impl ChannelService {
     }
 
     /// Upsert a channel overwrite. Requires `MANAGE_ROLES`.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn upsert_overwrite(
         pool: &PgPool,
         channel_id: Uuid,
@@ -427,6 +435,7 @@ impl ChannelService {
     }
 
     /// Delete a channel overwrite. Requires `MANAGE_ROLES`.
+    #[tracing::instrument(skip(pool, target_type))]
     pub async fn delete_overwrite(
         pool: &PgPool,
         channel_id: Uuid,
@@ -456,6 +465,7 @@ impl ChannelService {
     /// channels in a single transaction. Used by the FE drag-and-drop layer
     /// so a single API call covers reorders, cross-folder moves, and
     /// folder ↔ uncategorized moves atomically.
+    #[tracing::instrument(skip(pool, items), fields(count = items.len()))]
     pub async fn move_channels(
         pool: &PgPool,
         server_id: Uuid,
@@ -506,6 +516,7 @@ impl ChannelService {
     }
 
     /// Reorder channels in a server. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, channel_positions), fields(count = channel_positions.len()))]
     pub async fn reorder_channels(
         pool: &PgPool,
         server_id: Uuid,

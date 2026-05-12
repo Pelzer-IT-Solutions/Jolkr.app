@@ -65,28 +65,34 @@ pub(crate) struct AppState {
     pub email: EmailService,
     pub embed: LinkEmbedService,
     pub app_url: String,
+    /// Admin secret (None = admin endpoints reject all traffic).
+    pub admin_secret: Option<String>,
+    /// GIPHY API key (None = `/api/gifs/*` returns 503).
+    pub giphy_api_key: Option<String>,
+    /// SFU media server base URL, polled by `/health`.
+    pub media_server_url: String,
 }
 
 /// Build the complete Axum router with all route groups.
-pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle) -> Router {
+pub(crate) fn create_router(
+    state: AppState,
+    cors_origins: Vec<String>,
+    prometheus_handle: PrometheusHandle,
+) -> Router {
     let redis = Some(state.redis.clone());
-    // Read CORS origins from env var (comma-separated). Fall back to localhost for dev.
-    let cors_origin = match std::env::var("CORS_ORIGINS") {
-        Ok(origins) if !origins.is_empty() => {
-            let parsed: Vec<axum::http::HeaderValue> = origins
-                .split(',')
-                .filter_map(|s| s.trim().parse().ok())
-                .collect();
-            AllowOrigin::list(parsed)
-        }
-        _ => {
-            tracing::warn!("CORS_ORIGINS not set — defaulting to localhost dev origins");
-            AllowOrigin::list(vec![
-                "http://localhost:1420".parse().unwrap(),
-                "http://localhost".parse().unwrap(),
-                "https://tauri.localhost".parse().unwrap(),
-            ])
-        }
+    let cors_origin = if cors_origins.is_empty() {
+        tracing::warn!("CORS_ORIGINS not set — defaulting to localhost dev origins");
+        AllowOrigin::list(vec![
+            "http://localhost:1420".parse().unwrap(),
+            "http://localhost".parse().unwrap(),
+            "https://tauri.localhost".parse().unwrap(),
+        ])
+    } else {
+        let parsed: Vec<axum::http::HeaderValue> = cors_origins
+            .iter()
+            .filter_map(|s| s.parse().ok())
+            .collect();
+        AllowOrigin::list(parsed)
     };
     let cors = CorsLayer::new()
         .allow_origin(cors_origin)

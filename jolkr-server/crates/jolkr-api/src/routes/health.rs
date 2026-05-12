@@ -103,9 +103,7 @@ async fn check_minio(state: &AppState) -> ServiceStatus {
     }
 }
 
-async fn check_relay() -> ServiceStatus {
-    let url = std::env::var("MEDIA_SERVER_URL")
-        .unwrap_or_else(|_| "http://jolkr-media:8081".to_string());
+async fn check_relay(url: &str) -> ServiceStatus {
     let start = Instant::now();
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
@@ -139,7 +137,7 @@ pub(crate) async fn health_check(
         check_postgres(&state),
         check_redis(&state),
         check_minio(&state),
-        check_relay(),
+        check_relay(&state.media_server_url),
     );
     let events = check_nats(&state);
 

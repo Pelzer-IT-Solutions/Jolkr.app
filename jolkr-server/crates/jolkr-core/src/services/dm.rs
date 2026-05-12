@@ -165,6 +165,7 @@ pub struct DmService;
 
 impl DmService {
     /// Open (or get existing) DM with another user.
+    #[tracing::instrument(skip(pool))]
     pub async fn open_dm(
         pool: &PgPool,
         caller_id: Uuid,
@@ -217,6 +218,7 @@ impl DmService {
     }
 
     /// List all DM channels for the caller (batch loads members).
+    #[tracing::instrument(skip(pool))]
     pub async fn list_dms(
         pool: &PgPool,
         user_id: Uuid,
@@ -266,6 +268,7 @@ impl DmService {
     }
 
     /// Create a group DM with multiple users.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_group_dm(
         pool: &PgPool,
         caller_id: Uuid,
@@ -337,6 +340,7 @@ impl DmService {
     }
 
     /// Add a member to a group DM.
+    #[tracing::instrument(skip(pool))]
     pub async fn add_member(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -377,6 +381,7 @@ impl DmService {
     }
 
     /// Leave a group DM.
+    #[tracing::instrument(skip(pool))]
     pub async fn leave_group(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -406,6 +411,7 @@ impl DmService {
     }
 
     /// Update a group DM (name).
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_group(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -446,6 +452,7 @@ impl DmService {
     }
 
     /// Close (hide) a DM channel for the caller.
+    #[tracing::instrument(skip(pool))]
     pub async fn close_dm(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -460,6 +467,7 @@ impl DmService {
 
     /// Mark messages as read up to a given message ID.
     /// Returns `true` if the read receipt should be broadcast (user has `show_read_receipts` enabled).
+    #[tracing::instrument(skip(pool))]
     pub async fn mark_as_read(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -486,6 +494,7 @@ impl DmService {
     }
 
     /// Send a message in a DM channel.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn send_message(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -566,6 +575,7 @@ impl DmService {
     }
 
     /// Edit a DM message.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn edit_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -600,6 +610,7 @@ impl DmService {
     }
 
     /// Delete a DM message (only author can delete).
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -619,6 +630,7 @@ impl DmService {
     /// me" delete option and for shift-deleting messages from other users.
     /// Returns the DM channel id so the route can broadcast to the user's
     /// other sessions.
+    #[tracing::instrument(skip(pool))]
     pub async fn hide_message_for_me(
         pool: &PgPool,
         message_id: Uuid,
@@ -636,6 +648,7 @@ impl DmService {
     /// side panel. Membership is enforced and per-user hidden messages are
     /// excluded so the caller never sees an attachment from a message they
     /// removed from their view.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_attachments(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -665,6 +678,7 @@ impl DmService {
     }
 
     /// List messages in a DM channel with cursor pagination (batch loads attachments).
+    #[tracing::instrument(skip(pool, query))]
     pub async fn list_messages(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -838,6 +852,7 @@ impl DmService {
     // ── Pins ─────────────────────────────────────────────────────────
 
     /// Pin a message in a DM channel.
+    #[tracing::instrument(skip(pool))]
     pub async fn pin_message(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -862,6 +877,7 @@ impl DmService {
     }
 
     /// Unpin a message in a DM channel.
+    #[tracing::instrument(skip(pool))]
     pub async fn unpin_message(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -882,6 +898,7 @@ impl DmService {
     }
 
     /// List pinned messages in a DM channel (enriched with attachments, reactions, embeds).
+    #[tracing::instrument(skip(pool))]
     pub async fn list_pinned(
         pool: &PgPool,
         dm_channel_id: Uuid,

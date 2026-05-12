@@ -53,20 +53,9 @@ async fn clear_login_lockout(state: &AppState, email: &str) {
     drop(conn.del::<_, ()>(&key).await);
 }
 
-// Admin secret for password reset (cached via OnceLock, read from env once)
-fn admin_secret() -> Option<&'static String> {
-    static ADMIN_SECRET: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
-    ADMIN_SECRET.get_or_init(|| {
-        std::env::var("ADMIN_SECRET").ok().inspect(|s| {
-            if s.len() < 32 {
-                tracing::error!("ADMIN_SECRET is too short ({} chars). Minimum 32 required for security.", s.len());
-            }
-        })
-    }).as_ref()
-}
-
 // ── Request / Response types ───────────────────────────────────────────
 
+/// Request body for POST /api/auth/register.
 #[derive(Debug, Deserialize)]
 pub(crate) struct RegisterRequest {
     pub email: String,
@@ -74,50 +63,63 @@ pub(crate) struct RegisterRequest {
     pub password: String,
 }
 
+/// Request body for POST /api/auth/login.
 #[derive(Debug, Deserialize)]
 pub(crate) struct LoginRequest {
     pub email: String,
     pub password: String,
 }
 
+/// Request body for POST /api/auth/refresh.
 #[derive(Debug, Deserialize)]
 pub(crate) struct RefreshRequest {
+    /// Plaintext refresh token previously issued by login/register/refresh (matched server-side by SHA-256 hash).
     pub refresh_token: String,
 }
 
+/// Request body for POST /api/auth/reset-password — admin-only password override.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ResetPasswordRequest {
     pub email: String,
     pub new_password: String,
 }
 
+/// Request body for POST /api/auth/forgot-password — initiates the email-based reset flow.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ForgotPasswordRequest {
     pub email: String,
 }
 
+/// Request body for POST /api/auth/reset-password-confirm — completes a forgotten-password flow.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ResetPasswordConfirmRequest {
+    /// Single-use plaintext token issued by the prior `forgot-password` request (matched server-side by SHA-256 hash).
     pub token: String,
     pub new_password: String,
 }
 
+/// Request body for POST /api/auth/change-password — authenticated self-service password change.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ChangePasswordRequest {
     pub current_password: String,
     pub new_password: String,
 }
 
+/// Request body for POST /api/auth/logout — revokes the supplied refresh token's session.
 #[derive(Debug, Deserialize)]
 pub(crate) struct LogoutRequest {
+    /// Plaintext refresh token whose session should be revoked (matched server-side by SHA-256 hash).
     pub refresh_token: String,
 }
 
+/// Request body for POST /api/auth/verify-email.
 #[derive(Debug, Deserialize)]
 pub(crate) struct VerifyEmailRequest {
+    /// Single-use plaintext token from the verification email.
     pub token: String,
 }
 
+/// Response body for register/login — pairs the user's self-profile with a fresh token pair.
 #[derive(Debug, Serialize)]
 pub(crate) struct AuthResponse {
     /// Self-profile of the authenticated user. Same shape as `/users/@me`,
@@ -126,6 +128,7 @@ pub(crate) struct AuthResponse {
     pub tokens: TokenPair,
 }
 
+/// Response body for POST /api/auth/refresh.
 #[derive(Debug, Serialize)]
 pub(crate) struct TokenResponse {
     pub tokens: TokenPair,
@@ -228,7 +231,7 @@ pub(crate) async fn reset_password(
     headers: HeaderMap,
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<StatusCode, AppError> {
-    let secret = admin_secret().ok_or_else(|| {
+    let secret = state.admin_secret.as_ref().ok_or_else(|| {
         AppError(jolkr_common::JolkrError::Unauthorized)
     })?;
     let provided = headers.get("x-admin-secret")

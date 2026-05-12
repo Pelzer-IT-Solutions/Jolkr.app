@@ -15,6 +15,7 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload for GET /api/users/:id — public user profile.
 #[derive(Debug, Serialize)]
 pub(crate) struct UserResponse {
     pub user: UserProfile,
@@ -26,16 +27,22 @@ pub(crate) struct MeResponse {
     pub user: MeProfile,
 }
 
+/// Request body for PATCH /api/users/@me — every field is optional; `None`
+/// (or omitted) leaves the existing value untouched.
 #[derive(Debug, Deserialize)]
 pub(crate) struct UpdateMeRequest {
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
+    /// Free-form status text (max 128 chars).
     pub status: Option<String>,
     pub bio: Option<String>,
     pub show_read_receipts: Option<bool>,
+    /// Hex color string (`#RRGGBB`) for the profile banner.
     pub banner_color: Option<String>,
+    /// DM filter mode: one of `"all"`, `"friends"`, `"none"`.
     pub dm_filter: Option<String>,
     pub allow_friend_requests: Option<bool>,
+    /// BCP-47 locale code; must be in [`SUPPORTED_LOCALES`].
     pub preferred_language: Option<String>,
 }
 
@@ -46,16 +53,21 @@ pub(crate) const SUPPORTED_LOCALES: &[&str] = &[
     "en-US", "nl", "fr", "de", "es", "it", "ja", "ko", "zh-CN",
 ];
 
+/// Query parameters for GET /api/users/search.
 #[derive(Debug, Deserialize)]
 pub(crate) struct SearchQuery {
+    /// Search term — matches against username and display_name (case-insensitive).
     pub q: String,
 }
 
+/// Request body for POST /api/users/batch.
 #[derive(Debug, Deserialize)]
 pub(crate) struct BatchUsersRequest {
+    /// User IDs to fetch — capped at 100 per request.
     pub ids: Vec<Uuid>,
 }
 
+/// Response payload for endpoints returning a list of public user profiles.
 #[derive(Debug, Serialize)]
 pub(crate) struct UsersResponse {
     pub users: Vec<UserProfile>,

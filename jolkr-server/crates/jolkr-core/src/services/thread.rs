@@ -117,6 +117,7 @@ impl ThreadService {
     /// Create a thread from an existing message.
     /// Requires `VIEW_CHANNELS` + `SEND_MESSAGES` on the parent channel.
     /// Uses a transaction to ensure atomicity and prevent race conditions.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_thread(
         pool: &PgPool,
         channel_id: Uuid,
@@ -199,6 +200,7 @@ impl ThreadService {
     }
 
     /// Get a single thread with message count. Requires `VIEW_CHANNELS`.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_thread(
         pool: &PgPool,
         thread_id: Uuid,
@@ -211,6 +213,7 @@ impl ThreadService {
     }
 
     /// List threads for a channel. Requires `VIEW_CHANNELS`.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_threads(
         pool: &PgPool,
         channel_id: Uuid,
@@ -240,6 +243,7 @@ impl ThreadService {
     /// Update thread name or archive status.
     /// Allowed by: thread starter message author, `MANAGE_MESSAGES` holders, server owner.
     /// Requires `VIEW_CHANNELS` on the parent channel.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_thread(
         pool: &PgPool,
         thread_id: Uuid,
@@ -310,6 +314,7 @@ impl ThreadService {
     }
 
     /// Send a message to a thread. Requires `SEND_MESSAGES` on parent channel.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn send_thread_message(
         pool: &PgPool,
         thread_id: Uuid,
@@ -352,6 +357,7 @@ impl ThreadService {
     }
 
     /// List paginated messages for a thread. Requires `VIEW_CHANNELS` on parent channel.
+    #[tracing::instrument(skip(pool, query))]
     pub async fn list_thread_messages(
         pool: &PgPool,
         thread_id: Uuid,

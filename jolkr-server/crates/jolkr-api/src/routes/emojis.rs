@@ -16,11 +16,13 @@ use crate::storage::MAX_FILE_SIZE;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload for POST /api/servers/:server_id/emojis.
 #[derive(Debug, Serialize)]
 pub(crate) struct EmojiResponse {
     pub emoji: EmojiInfo,
 }
 
+/// Response payload for GET /api/servers/:server_id/emojis.
 #[derive(Debug, Serialize)]
 pub(crate) struct EmojisResponse {
     pub emojis: Vec<EmojiInfo>,

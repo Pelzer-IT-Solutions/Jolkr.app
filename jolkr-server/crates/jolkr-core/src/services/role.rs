@@ -69,6 +69,7 @@ pub struct RoleService;
 
 impl RoleService {
     /// Create the default @everyone role for a newly created server.
+    #[tracing::instrument(skip(pool))]
     pub async fn create_default_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -90,6 +91,7 @@ impl RoleService {
     }
 
     /// Create a new custom role. Requires `MANAGE_ROLES` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -129,6 +131,7 @@ impl RoleService {
     }
 
     /// List all roles in a server.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_roles(
         pool: &PgPool,
         server_id: Uuid,
@@ -138,6 +141,7 @@ impl RoleService {
     }
 
     /// Update a role. Cannot change @everyone's `is_default` status.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_role(
         pool: &PgPool,
         role_id: Uuid,
@@ -173,6 +177,7 @@ impl RoleService {
     }
 
     /// Delete a role. Cannot delete the @everyone role.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_role(
         pool: &PgPool,
         role_id: Uuid,
@@ -195,6 +200,7 @@ impl RoleService {
     }
 
     /// Assign a role to a member.
+    #[tracing::instrument(skip(pool))]
     pub async fn assign_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -223,6 +229,7 @@ impl RoleService {
     }
 
     /// Remove a role from a member.
+    #[tracing::instrument(skip(pool))]
     pub async fn remove_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -245,6 +252,7 @@ impl RoleService {
     }
 
     /// Get computed permissions for a user in a server.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_permissions(
         pool: &PgPool,
         server_id: Uuid,
@@ -265,6 +273,7 @@ impl RoleService {
 }
 
 /// Helper: check if a user has a specific permission in a server.
+#[tracing::instrument(skip(pool))]
 pub async fn check_permission(
     pool: &PgPool,
     server_id: Uuid,

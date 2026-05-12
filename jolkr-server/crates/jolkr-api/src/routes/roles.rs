@@ -15,38 +15,46 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload for single-role endpoints (create/update/get).
 #[derive(Debug, Serialize)]
 pub(crate) struct RoleResponse {
     pub role: RoleInfo,
 }
 
+/// Response payload for GET /api/servers/:server_id/roles.
 #[derive(Debug, Serialize)]
 pub(crate) struct RolesResponse {
     pub roles: Vec<RoleInfo>,
 }
 
+/// A single member joined with their currently-assigned role IDs.
 #[derive(Debug, Serialize)]
 pub(crate) struct MemberWithRoles {
     pub id: Uuid,
     pub server_id: Uuid,
     pub user_id: Uuid,
     pub nickname: Option<String>,
+    /// RFC3339 timestamp of when the user joined the server.
     pub joined_at: String,
     pub role_ids: Vec<Uuid>,
 }
 
+/// Response payload for GET /api/servers/:server_id/members-with-roles.
 #[derive(Debug, Serialize)]
 pub(crate) struct MembersWithRolesResponse {
     pub members: Vec<MemberWithRoles>,
 }
 
+/// Request body for PUT /api/servers/:server_id/roles/:role_id/members.
 #[derive(Debug, Deserialize)]
 pub(crate) struct AssignRoleBody {
     pub user_id: Uuid,
 }
 
+/// Response payload for GET /api/servers/:server_id/permissions/@me.
 #[derive(Debug, Serialize)]
 pub(crate) struct PermissionsResponse {
+    /// Effective permission bitmask (see `jolkr_common::Permissions` for flags).
     pub permissions: i64,
 }
 

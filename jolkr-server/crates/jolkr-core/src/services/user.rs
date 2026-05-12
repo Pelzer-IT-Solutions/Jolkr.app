@@ -160,12 +160,14 @@ pub struct UserService;
 
 impl UserService {
     /// Fetch the full profile for the given user ID.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_profile(pool: &PgPool, user_id: Uuid) -> Result<UserProfile, JolkrError> {
         let row = UserRepo::get_by_id(pool, user_id).await?;
         Ok(UserProfile::from(row))
     }
 
     /// Fetch the self-profile (includes `email`) for the authenticated user.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_me(pool: &PgPool, user_id: Uuid) -> Result<MeProfile, JolkrError> {
         let row = UserRepo::get_by_id(pool, user_id).await?;
         Ok(MeProfile::from(row))
@@ -173,6 +175,7 @@ impl UserService {
 
     /// Update mutable profile fields and return the self-profile shape so the
     /// caller can refresh its own auth state without a follow-up `get_me`.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_me(
         pool: &PgPool,
         user_id: Uuid,
@@ -183,6 +186,7 @@ impl UserService {
     }
 
     /// Update mutable profile fields for the calling user.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_profile(
         pool: &PgPool,
         user_id: Uuid,
@@ -228,6 +232,7 @@ impl UserService {
     }
 
     /// Fetch profiles for multiple user IDs in a single query (batch).
+    #[tracing::instrument(skip(pool, user_ids), fields(count = user_ids.len()))]
     pub async fn get_profiles_batch(
         pool: &PgPool,
         user_ids: &[Uuid],
@@ -242,6 +247,7 @@ impl UserService {
     }
 
     /// Search users by exact username or email match.
+    #[tracing::instrument(skip(pool, query))]
     pub async fn search_users(
         pool: &PgPool,
         query: &str,

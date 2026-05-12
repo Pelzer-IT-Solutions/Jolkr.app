@@ -88,6 +88,7 @@ impl AuthService {
     /// 2. Hashes the password with Argon2id.
     /// 3. Persists the user row.
     /// 4. Issues a JWT token pair.
+    #[tracing::instrument(skip(pool, jwt_secret, password))]
     pub async fn register(
         pool: &PgPool,
         jwt_secret: &str,
@@ -136,6 +137,7 @@ impl AuthService {
     // ── Login ──────────────────────────────────────────────────────────
 
     /// Authenticate with email + password and receive a JWT pair.
+    #[tracing::instrument(skip(pool, jwt_secret, password))]
     pub async fn login(
         pool: &PgPool,
         jwt_secret: &str,
@@ -161,6 +163,7 @@ impl AuthService {
     // ── Refresh ────────────────────────────────────────────────────────
 
     /// Exchange a valid refresh token for a new token pair.
+    #[tracing::instrument(skip(pool, jwt_secret, refresh_token))]
     pub async fn refresh_token(
         pool: &PgPool,
         jwt_secret: &str,
@@ -189,6 +192,7 @@ impl AuthService {
     // ── Password reset ────────────────────────────────────────────────
 
     /// Admin-only password reset: look up user by email and set a new password.
+    #[tracing::instrument(skip(pool, new_password))]
     pub async fn reset_password(
         pool: &PgPool,
         email: &str,
@@ -205,6 +209,7 @@ impl AuthService {
     // ── Authenticated password change ─────────────────────────────────
 
     /// Change password for an authenticated user: verify current, set new.
+    #[tracing::instrument(skip(pool, current_password, new_password))]
     pub async fn change_password(
         pool: &PgPool,
         user_id: Uuid,
@@ -228,6 +233,7 @@ impl AuthService {
     /// Returns `Some((token, username))` if a user with that email exists,
     /// `None` otherwise. The caller should always return a success response
     /// regardless (no email enumeration).
+    #[tracing::instrument(skip(pool))]
     pub async fn request_password_reset(
         pool: &PgPool,
         email: &str,
@@ -256,6 +262,7 @@ impl AuthService {
     }
 
     /// Confirm a password reset: validate token, update password, invalidate sessions.
+    #[tracing::instrument(skip(pool, token, new_password))]
     pub async fn confirm_password_reset(
         pool: &PgPool,
         token: &str,
@@ -292,6 +299,7 @@ impl AuthService {
 
     /// Generate an email verification token for a user.
     /// Returns the plaintext token to include in the verification URL.
+    #[tracing::instrument(skip(pool))]
     pub async fn request_email_verification(
         pool: &PgPool,
         user_id: Uuid,
@@ -312,6 +320,7 @@ impl AuthService {
     }
 
     /// Confirm email verification: validate token, mark user as verified.
+    #[tracing::instrument(skip(pool, token))]
     pub async fn confirm_email_verification(
         pool: &PgPool,
         token: &str,

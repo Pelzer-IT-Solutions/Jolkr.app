@@ -15,24 +15,29 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response body for endpoints returning a single category (create/update).
 #[derive(Debug, Serialize)]
 pub(crate) struct CategoryResponse {
     pub category: CategoryInfo,
 }
 
+/// Response body for endpoints returning the full category list of a server.
 #[derive(Debug, Serialize)]
 pub(crate) struct CategoriesResponse {
     pub categories: Vec<CategoryInfo>,
 }
 
+/// Request body for PUT /api/servers/:server_id/categories/reorder.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ReorderCategoriesRequest {
     pub category_positions: Vec<CategoryPositionEntry>,
 }
 
+/// New position for a single category in a reorder request.
 #[derive(Debug, Deserialize)]
 pub(crate) struct CategoryPositionEntry {
     pub id: Uuid,
+    /// Zero-based sort index within the server's category list.
     pub position: i32,
 }
 

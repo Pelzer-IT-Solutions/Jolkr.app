@@ -4,8 +4,10 @@ use serde::Serialize;
 use crate::errors::AppError;
 use crate::routes::AppState;
 
+/// Response payload for GET /api/push/vapid-key.
 #[derive(Serialize)]
 pub(crate) struct VapidKeyResponse {
+    /// VAPID public key in URL-safe base64 (uncompressed P-256 point).
     pub public_key: String,
 }
 

@@ -13,12 +13,15 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
+/// Response payload for POST /api/channels/:id/polls — returns both the new
+/// poll and the host message that anchors it in the channel timeline.
 #[derive(Debug, Serialize)]
 pub(crate) struct CreatePollResponse {
     pub poll: PollInfo,
     pub message: MessageInfo,
 }
 
+/// Response payload for poll vote/unvote/get endpoints.
 #[derive(Debug, Serialize)]
 pub(crate) struct PollResponse {
     pub poll: PollInfo,

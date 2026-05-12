@@ -480,6 +480,7 @@ impl MessageService {
 
     /// Send a message to a channel.
     /// The caller must be a member of the server that owns the channel.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn send_message(
         pool: &PgPool,
         channel_id: Uuid,
@@ -491,6 +492,7 @@ impl MessageService {
 
     /// Get a single message by ID with attachments and reactions.
     /// Internal use only — callers must verify authorization before calling.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_message_by_id(
         pool: &PgPool,
         message_id: Uuid,
@@ -521,6 +523,7 @@ impl MessageService {
     }
 
     /// List paginated messages for a channel, including attachments (batch loaded).
+    #[tracing::instrument(skip(pool, query))]
     pub async fn list_messages(
         pool: &PgPool,
         channel_id: Uuid,
@@ -541,6 +544,7 @@ impl MessageService {
     }
 
     /// Search messages in a channel by content.
+    #[tracing::instrument(skip(pool, query))]
     pub async fn search_messages(
         pool: &PgPool,
         channel_id: Uuid,
@@ -565,6 +569,7 @@ impl MessageService {
     }
 
     /// Enrich raw `MessageRows` with attachments, reactions, threads, embeds.
+    #[tracing::instrument(skip(pool, rows))]
     pub async fn enrich_messages(
         pool: &PgPool,
         rows: Vec<MessageRow>,
@@ -581,6 +586,7 @@ impl MessageService {
     }
 
     /// Edit a message. Only the original author may edit.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn edit_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -617,6 +623,7 @@ impl MessageService {
     }
 
     /// Delete a message. The author, server owner, or users with `MANAGE_MESSAGES` may delete.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -648,6 +655,7 @@ impl MessageService {
     }
 
     /// Pin a message. Requires `MANAGE_MESSAGES` channel permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn pin_message(
         pool: &PgPool,
         channel_id: Uuid,
@@ -686,6 +694,7 @@ impl MessageService {
     }
 
     /// Unpin a message. Requires `MANAGE_MESSAGES` channel permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn unpin_message(
         pool: &PgPool,
         channel_id: Uuid,
@@ -724,6 +733,7 @@ impl MessageService {
     }
 
     /// List pinned messages for a channel. Requires `VIEW_CHANNELS`.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_pinned(
         pool: &PgPool,
         channel_id: Uuid,

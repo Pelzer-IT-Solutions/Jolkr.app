@@ -16,26 +16,32 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response body for endpoints returning a single channel.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelResponse {
     pub channel: ChannelInfo,
 }
 
+/// Response body for endpoints returning a list of channels.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelsResponse {
     pub channels: Vec<ChannelInfo>,
 }
 
+/// Response body for GET /api/channels/:id/permissions/@me — the caller's effective channel permissions.
 #[derive(Debug, Serialize)]
 pub(crate) struct PermissionsResponse {
+    /// Bitmask of `Permissions` flags after role + overwrite layering for this channel.
     pub permissions: i64,
 }
 
+/// Response body for GET /api/channels/:id/overwrites.
 #[derive(Debug, Serialize)]
 pub(crate) struct OverwritesResponse {
     pub overwrites: Vec<ChannelOverwriteInfo>,
 }
 
+/// Response body for PUT /api/channels/:id/overwrites.
 #[derive(Debug, Serialize)]
 pub(crate) struct OverwriteResponse {
     pub overwrite: ChannelOverwriteInfo,
@@ -46,39 +52,49 @@ pub(crate) struct OverwriteResponse {
 /// existing `Member` type without a new shape.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelMemberEntry {
+    /// Member row id (server-membership identifier, NOT the user id).
     pub id: Uuid,
     pub server_id: Uuid,
     pub user_id: Uuid,
     pub nickname: Option<String>,
+    /// RFC3339-formatted timestamp of when the user joined the server.
     pub joined_at: String,
     pub role_ids: Vec<Uuid>,
 }
 
+/// Response body for GET /api/channels/:id/members.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelMembersResponse {
     pub members: Vec<ChannelMemberEntry>,
 }
 
+/// Request body for PUT /api/servers/:server_id/channels/reorder — reorder within current categories.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ReorderChannelsRequest {
     pub channel_positions: Vec<ChannelPositionEntry>,
 }
 
+/// New position for a single channel in a reorder request.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ChannelPositionEntry {
     pub id: Uuid,
+    /// Zero-based sort index within the channel's current category.
     pub position: i32,
 }
 
+/// Request body for PUT /api/servers/:server_id/channels/move — reorder AND optionally re-parent.
 #[derive(Debug, Deserialize)]
 pub(crate) struct MoveChannelsRequest {
     pub items: Vec<MoveChannelEntry>,
 }
 
+/// New position (and optional new category) for a single channel in a move request.
 #[derive(Debug, Deserialize)]
 pub(crate) struct MoveChannelEntry {
     pub id: Uuid,
+    /// Zero-based sort index within the target category.
     pub position: i32,
+    /// Three-state field via double-Option: absent = keep current category, `null` = uncategorized, `Some(uuid)` = move to that category.
     #[serde(default, deserialize_with = "double_option::deserialize")]
     pub category_id: Option<Option<Uuid>>,
 }
@@ -375,11 +391,14 @@ pub(crate) async fn upsert_overwrite(
     Ok(Json(OverwriteResponse { overwrite }))
 }
 
-/// DELETE /api/channels/:id/overwrites/:target_type/:target_id
+/// Path parameters for DELETE /api/channels/:id/overwrites/:target_type/:target_id.
 #[derive(Deserialize)]
 pub(crate) struct OverwritePathParams {
+    /// Channel id.
     pub id: Uuid,
+    /// Overwrite scope — `"role"` or `"member"`.
     pub target_type: String,
+    /// Id of the role or member the overwrite applies to (matches `target_type`).
     pub target_id: Uuid,
 }
 
@@ -440,8 +459,10 @@ async fn broadcast_channel_overwrites(state: &AppState, channel_id: Uuid) {
 
 // ── Mark channel as read ────────────────────────────────────────────
 
+/// Request body for POST /api/channels/:channel_id/read — advances the caller's read marker.
 #[derive(Debug, Deserialize)]
 pub(crate) struct MarkChannelReadRequest {
+    /// Most-recent message id the caller has seen; the unread counter clears up to and including this id.
     pub message_id: Uuid,
 }
 

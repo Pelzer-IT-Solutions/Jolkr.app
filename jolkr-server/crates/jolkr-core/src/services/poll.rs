@@ -74,6 +74,7 @@ pub struct PollService;
 
 impl PollService {
     /// Create a poll — also creates a message in the channel to attach it to.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_poll(
         pool: &PgPool,
         channel_id: Uuid,
@@ -145,6 +146,7 @@ impl PollService {
     }
 
     /// Vote on a poll.
+    #[tracing::instrument(skip(pool))]
     pub async fn vote(
         pool: &PgPool,
         poll_id: Uuid,
@@ -181,6 +183,7 @@ impl PollService {
     }
 
     /// Remove a vote.
+    #[tracing::instrument(skip(pool))]
     pub async fn unvote(
         pool: &PgPool,
         poll_id: Uuid,
@@ -205,6 +208,7 @@ impl PollService {
     }
 
     /// Get full poll info with vote counts.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_poll(
         pool: &PgPool,
         poll_id: Uuid,

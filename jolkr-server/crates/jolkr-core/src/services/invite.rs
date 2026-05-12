@@ -63,6 +63,7 @@ pub struct InviteService;
 
 impl InviteService {
     /// Creates invite.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_invite(
         pool: &PgPool,
         server_id: Uuid,
@@ -111,6 +112,7 @@ impl InviteService {
     /// invite is returned without consuming a use slot — so following an invite
     /// link to a server you've already joined just navigates you there instead
     /// of returning an error.
+    #[tracing::instrument(skip(pool, code))]
     pub async fn use_invite(
         pool: &PgPool,
         code: &str,
@@ -187,6 +189,7 @@ impl InviteService {
     }
 
     /// Lists invites.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_invites(
         pool: &PgPool,
         server_id: Uuid,
@@ -200,6 +203,7 @@ impl InviteService {
     }
 
     /// Deletes invite.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_invite(
         pool: &PgPool,
         invite_id: Uuid,

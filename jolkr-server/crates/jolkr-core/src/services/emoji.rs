@@ -54,6 +54,7 @@ pub struct EmojiService;
 
 impl EmojiService {
     /// Upload a new custom emoji. Requires `MANAGE_SERVER` permission.
+    #[tracing::instrument(skip(pool, name, image_key))]
     pub async fn create_emoji(
         pool: &PgPool,
         server_id: Uuid,
@@ -97,6 +98,7 @@ impl EmojiService {
     }
 
     /// List all emojis for a server. Requires membership.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_emojis(
         pool: &PgPool,
         server_id: Uuid,
@@ -111,6 +113,7 @@ impl EmojiService {
     }
 
     /// Delete a custom emoji. Requires `MANAGE_SERVER` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_emoji(
         pool: &PgPool,
         emoji_id: Uuid,

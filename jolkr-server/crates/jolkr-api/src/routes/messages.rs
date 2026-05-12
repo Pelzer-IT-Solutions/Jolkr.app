@@ -18,11 +18,13 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload carrying a single channel message.
 #[derive(Debug, Serialize)]
 pub(crate) struct MessageResponse {
     pub message: MessageInfo,
 }
 
+/// Response payload for list/search/pins endpoints.
 #[derive(Debug, Serialize)]
 pub(crate) struct MessagesResponse {
     pub messages: Vec<MessageInfo>,
@@ -207,13 +209,20 @@ pub(crate) async fn delete_message(
 
 // ── Search ────────────────────────────────────────────────────────────
 
+/// Query parameters for GET /api/channels/:id/messages/search.
 #[derive(Debug, Deserialize)]
 pub(crate) struct SearchMessagesQuery {
+    /// Full-text query. Required when no advanced filter is supplied.
     pub q: Option<String>,
+    /// Filter by author username (exact match).
     pub from: Option<String>,
+    /// Attachment-type filter: `image`, `video`, `file`, etc.
     pub has: Option<String>,
+    /// RFC3339 upper bound on `created_at`.
     pub before: Option<String>,
+    /// RFC3339 lower bound on `created_at`.
     pub after: Option<String>,
+    /// Result cap. Defaults to 50, clamped to [1, 100].
     pub limit: Option<i64>,
 }
 

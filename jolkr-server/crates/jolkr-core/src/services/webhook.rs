@@ -89,6 +89,7 @@ impl WebhookService {
     }
 
     /// Create a webhook. Requires `MANAGE_WEBHOOKS` permission.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_webhook(
         pool: &PgPool,
         channel_id: Uuid,
@@ -128,6 +129,7 @@ impl WebhookService {
     }
 
     /// List webhooks for a channel.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_webhooks(
         pool: &PgPool,
         channel_id: Uuid,
@@ -142,6 +144,7 @@ impl WebhookService {
     }
 
     /// Update a webhook.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_webhook(
         pool: &PgPool,
         webhook_id: Uuid,
@@ -174,6 +177,7 @@ impl WebhookService {
     }
 
     /// Delete a webhook.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_webhook(
         pool: &PgPool,
         webhook_id: Uuid,
@@ -199,6 +203,7 @@ impl WebhookService {
     }
 
     /// Regenerate a webhook's token.
+    #[tracing::instrument(skip(pool))]
     pub async fn regenerate_token(
         pool: &PgPool,
         webhook_id: Uuid,
@@ -225,6 +230,7 @@ impl WebhookService {
 
     /// Execute a webhook — create a message as the webhook identity.
     /// This is unauthenticated; the token proves authorization.
+    #[tracing::instrument(skip(pool, token, req))]
     pub async fn execute_webhook(
         pool: &PgPool,
         webhook_id: Uuid,

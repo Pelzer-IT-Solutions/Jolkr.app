@@ -127,6 +127,7 @@ pub struct ServerService;
 impl ServerService {
     /// Create a new server. The caller becomes the owner and first member.
     /// A default "general" text channel is auto-created.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_server(
         pool: &PgPool,
         owner_id: Uuid,
@@ -165,12 +166,14 @@ impl ServerService {
     }
 
     /// Get server info by ID. Only members should be able to call this (checked at API layer).
+    #[tracing::instrument(skip(pool))]
     pub async fn get_server(pool: &PgPool, server_id: Uuid) -> Result<ServerInfo, JolkrError> {
         let row = ServerRepo::get_by_id(pool, server_id).await?;
         Ok(ServerInfo::from(row))
     }
 
     /// List all servers the given user is a member of.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_servers(
         pool: &PgPool,
         user_id: Uuid,
@@ -180,6 +183,7 @@ impl ServerService {
     }
 
     /// Update server metadata. Only the owner may do this.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -226,6 +230,7 @@ impl ServerService {
     }
 
     /// Delete a server. Only the owner may do this.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -241,6 +246,7 @@ impl ServerService {
     }
 
     /// Join a server (add member). Banned users cannot join.
+    #[tracing::instrument(skip(pool))]
     pub async fn join_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -258,6 +264,7 @@ impl ServerService {
     }
 
     /// Leave a server. The owner cannot leave their own server.
+    #[tracing::instrument(skip(pool))]
     pub async fn leave_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -281,6 +288,7 @@ impl ServerService {
     // ── Moderation ─────────────────────────────────────────────────────
 
     /// Kick a member from the server. Requires `KICK_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn kick_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -314,6 +322,7 @@ impl ServerService {
 
     /// Ban a member from the server. Requires `BAN_MEMBERS` permission.
     /// Creates a ban record and removes the member.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn ban_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -367,6 +376,7 @@ impl ServerService {
     }
 
     /// Unban a user from the server. Requires `BAN_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn unban_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -385,6 +395,7 @@ impl ServerService {
     }
 
     /// List all bans for a server. Requires `BAN_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_bans(
         pool: &PgPool,
         server_id: Uuid,
@@ -404,6 +415,7 @@ impl ServerService {
     /// Set or clear a member's nickname. Returns the canonical (trimmed,
     /// empty→None) nickname that was actually persisted so callers can emit
     /// a `MemberUpdate` WS event with the correct value.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn set_nickname(
         pool: &PgPool,
         server_id: Uuid,
@@ -439,6 +451,7 @@ impl ServerService {
     }
 
     /// Timeout a member. Requires `MODERATE_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn timeout_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -465,6 +478,7 @@ impl ServerService {
     }
 
     /// Remove timeout from a member. Requires `MODERATE_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn remove_timeout(
         pool: &PgPool,
         server_id: Uuid,
@@ -483,6 +497,7 @@ impl ServerService {
     }
 
     /// Discover public servers. Returns servers with member counts.
+    #[tracing::instrument(skip(pool))]
     pub async fn discover_servers(
         pool: &PgPool,
         limit: i64,
@@ -506,6 +521,7 @@ impl ServerService {
     }
 
     /// Join a public server. Banned users cannot join.
+    #[tracing::instrument(skip(pool))]
     pub async fn join_public_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -525,6 +541,7 @@ impl ServerService {
     }
 
     /// Reorder servers for a user. Accepts an ordered list of `server_ids`.
+    #[tracing::instrument(skip(pool, server_ids))]
     pub async fn reorder_servers(
         pool: &PgPool,
         user_id: Uuid,

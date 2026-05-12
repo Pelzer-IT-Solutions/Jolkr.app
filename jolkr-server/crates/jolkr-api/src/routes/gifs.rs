@@ -19,9 +19,11 @@ use super::AppState;
 
 const GIPHY_BASE: &str = "https://api.giphy.com/v1/gifs";
 
-fn giphy_api_key() -> Result<String, (StatusCode, &'static str)> {
-    std::env::var("GIPHY_API_KEY")
-        .map_err(|_| (StatusCode::SERVICE_UNAVAILABLE, "GIF service not configured"))
+fn require_giphy_key(state: &AppState) -> Result<&str, (StatusCode, &'static str)> {
+    state
+        .giphy_api_key
+        .as_deref()
+        .ok_or((StatusCode::SERVICE_UNAVAILABLE, "GIF service not configured"))
 }
 
 // ── URL cache: gif_id → (original_url, small_url) ──────────────
@@ -52,44 +54,58 @@ fn proxy_url(gif_id: &str, size: &str) -> String {
 
 // ── Tenor v2-compatible response types ──────────────────────────
 
+/// A single media variant inside a Tenor-shaped GIF result.
 #[derive(Serialize)]
 pub(crate) struct TenorMedia {
+    /// Clean `/api/gifs/i/:id/:size` proxy URL (never a raw CDN URL).
     url: String,
+    /// `[width, height]` in pixels.
     dims: [u32; 2],
+    /// File size in bytes.
     size: u32,
 }
 
+/// Available formats for a single Tenor result (gif + small preview).
 #[derive(Serialize)]
 pub(crate) struct TenorMediaFormats {
     gif: TenorMedia,
     tinygif: TenorMedia,
 }
 
+/// One result row in a Tenor-shaped GIF search/trending response.
 #[derive(Serialize)]
 pub(crate) struct TenorResult {
     id: String,
     title: String,
     media_formats: TenorMediaFormats,
+    /// Creation timestamp (Tenor compat — always 0.0 from GIPHY).
     created: f64,
     #[serde(rename = "content_description")]
     content_description: String,
+    /// Clean proxy URL for the original size (used when picking a GIF to send).
     url: String,
 }
 
+/// Tenor v2-compatible response for GET /api/gifs/search and /api/gifs/featured.
 #[derive(Serialize)]
 pub(crate) struct TenorSearchResponse {
     results: Vec<TenorResult>,
+    /// Pagination cursor (offset, as a stringified integer).
     next: String,
 }
 
+/// One category tag in the categories response.
 #[derive(Serialize, Clone)]
 pub(crate) struct TenorCategory {
+    /// Query term to feed back into /api/gifs/search.
     searchterm: String,
     path: String,
+    /// Clean proxy URL for the category's preview image.
     image: String,
     name: String,
 }
 
+/// Response payload for GET /api/gifs/categories.
 #[derive(Serialize, Clone)]
 pub(crate) struct TenorCategoriesResponse {
     tags: Vec<TenorCategory>,
@@ -185,34 +201,41 @@ fn giphy_to_tenor(giphy: GiphyResponse) -> TenorSearchResponse {
 
 // ── Search / Featured / Categories handlers ─────────────────────
 
+/// Query parameters for GET /api/gifs/search.
 #[derive(Deserialize)]
 pub(crate) struct SearchParams {
+    /// Search query string.
     q: Option<String>,
+    /// Max results to return. Defaults to 30, capped at 50.
     #[serde(default)]
     limit: Option<u8>,
+    /// Pagination cursor (stringified offset).
     pos: Option<String>,
 }
 
+/// Query parameters for GET /api/gifs/featured.
 #[derive(Deserialize)]
 pub(crate) struct TrendingParams {
+    /// Max results to return. Defaults to 30, capped at 50.
     #[serde(default)]
     limit: Option<u8>,
+    /// Pagination cursor (stringified offset).
     pos: Option<String>,
 }
 
 /// GET /api/gifs/search
 pub(crate) async fn search_gifs(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Query(params): Query<SearchParams>,
 ) -> Result<Json<TenorSearchResponse>, (StatusCode, &'static str)> {
-    let key = giphy_api_key()?;
+    let key = require_giphy_key(&state)?;
     let limit = params.limit.unwrap_or(30).min(50);
     let q = params.q.unwrap_or_default();
 
     let client = reqwest::Client::new();
     let mut req = client
         .get(format!("{GIPHY_BASE}/search"))
-        .query(&[("api_key", key.as_str()), ("q", q.as_str()), ("rating", "g")])
+        .query(&[("api_key", key), ("q", q.as_str()), ("rating", "g")])
         .query(&[("limit", limit)]);
 
     if let Some(pos) = &params.pos {
@@ -231,16 +254,16 @@ pub(crate) async fn search_gifs(
 
 /// GET /api/gifs/featured
 pub(crate) async fn featured_gifs(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Query(params): Query<TrendingParams>,
 ) -> Result<Json<TenorSearchResponse>, (StatusCode, &'static str)> {
-    let key = giphy_api_key()?;
+    let key = require_giphy_key(&state)?;
     let limit = params.limit.unwrap_or(30).min(50);
 
     let client = reqwest::Client::new();
     let mut req = client
         .get(format!("{GIPHY_BASE}/trending"))
-        .query(&[("api_key", key.as_str()), ("rating", "g")])
+        .query(&[("api_key", key), ("rating", "g")])
         .query(&[("limit", limit)]);
 
     if let Some(pos) = &params.pos {
@@ -259,7 +282,7 @@ pub(crate) async fn featured_gifs(
 
 /// GET /api/gifs/categories — cached for 30 minutes to avoid rate limits
 pub(crate) async fn categories(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<TenorCategoriesResponse>, (StatusCode, &'static str)> {
     // Return cached response if fresh (< 30 minutes old)
     if let Ok(guard) = CATEGORIES_CACHE.read() {
@@ -270,7 +293,7 @@ pub(crate) async fn categories(
         }
     }
 
-    let key = giphy_api_key()?;
+    let key = require_giphy_key(&state)?.to_string();
     let terms: Vec<(&str, &str)> = vec![
         ("Trending GIFs", "trending"),
         ("Reactions", "reactions"),
@@ -405,7 +428,8 @@ async fn resolve_gif_url(
     }
 
     // 3. Fallback: fetch from GIPHY API
-    let gif = fetch_giphy_gif(gif_id).await?;
+    let key = require_giphy_key(state)?;
+    let gif = fetch_giphy_gif(key, gif_id).await?;
     cache_gif(&gif.id, &gif.images.original.url, &gif.images.fixed_width_small.url);
     Ok(if size == "small" {
         gif.images.fixed_width_small.url
@@ -415,8 +439,10 @@ async fn resolve_gif_url(
 }
 
 /// GET /api/gifs/media?url=<encoded_giphy_url> — Legacy image proxy (for old messages).
+/// Query parameters for GET /api/gifs/media.
 #[derive(Deserialize)]
 pub(crate) struct MediaParams {
+    /// Raw GIPHY CDN URL (allowlisted to media*.giphy.com hosts).
     url: String,
 }
 
@@ -428,12 +454,11 @@ pub(crate) async fn proxy_media(
 }
 
 /// Fetch a single GIF from GIPHY by ID (API fallback, used rarely).
-async fn fetch_giphy_gif(gif_id: &str) -> Result<GiphyGif, (StatusCode, &'static str)> {
-    let key = giphy_api_key()?;
+async fn fetch_giphy_gif(api_key: &str, gif_id: &str) -> Result<GiphyGif, (StatusCode, &'static str)> {
     let client = reqwest::Client::new();
     let resp = client
         .get(format!("{GIPHY_BASE}/{gif_id}"))
-        .query(&[("api_key", key.as_str())])
+        .query(&[("api_key", api_key)])
         .send()
         .await
         .map_err(|_| (StatusCode::BAD_GATEWAY, "Failed to reach GIF service"))?;
@@ -447,11 +472,14 @@ async fn fetch_giphy_gif(gif_id: &str) -> Result<GiphyGif, (StatusCode, &'static
 
 // ── Favorites ──────────────────────────────────────────────────
 
+/// Request body for POST /api/gifs/favorites.
 #[derive(Deserialize)]
 pub(crate) struct AddFavoriteRequest {
+    /// GIPHY GIF ID; raw URLs are resolved server-side from cache/DB/GIPHY.
     pub gif_id: String,
 }
 
+/// Response payload for GET /api/gifs/favorites.
 #[derive(Serialize)]
 pub(crate) struct FavoritesResponse {
     pub favorites: Vec<FavoriteItem>,
@@ -494,7 +522,9 @@ pub(crate) async fn add_favorite(
     let (gif_url, preview_url, title) = match get_cached(&body.gif_id) {
         Some((original, small)) => (original, small, String::new()),
         None => {
-            let gif = fetch_giphy_gif(&body.gif_id)
+            let key = require_giphy_key(&state)
+                .map_err(|(_s, msg)| AppError(jolkr_common::JolkrError::BadRequest(msg.to_string())))?;
+            let gif = fetch_giphy_gif(key, &body.gif_id)
                 .await
                 .map_err(|(_s, msg)| AppError(jolkr_common::JolkrError::BadRequest(msg.to_string())))?;
             cache_gif(&gif.id, &gif.images.original.url, &gif.images.fixed_width_small.url);
@@ -542,11 +572,14 @@ pub(crate) async fn remove_favorite(
 
 // ── oEmbed proxy ────────────────────────────────────────────────
 
+/// Query parameters for GET /api/oembed.
 #[derive(Deserialize)]
 pub(crate) struct OembedParams {
+    /// Target URL to fetch oEmbed metadata for.
     url: String,
 }
 
+/// Response payload for GET /api/oembed (subset of the oEmbed spec we expose).
 #[derive(Serialize)]
 pub(crate) struct OembedResponse {
     pub title: Option<String>,

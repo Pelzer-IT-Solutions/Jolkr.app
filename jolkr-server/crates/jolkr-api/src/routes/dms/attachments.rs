@@ -17,11 +17,13 @@ use crate::storage::MAX_FILE_SIZE;
 
 use super::types::dm_to_message_info;
 
+/// Response body for POST /api/dms/:dm_id/messages/:message_id/attachments.
 #[derive(Serialize)]
 pub(crate) struct DmAttachmentResponse {
     pub attachment: AttachmentInfo,
 }
 
+/// Response body for GET /api/dms/:dm_id/attachments.
 #[derive(Serialize)]
 pub(crate) struct DmAttachmentsResponse {
     pub attachments: Vec<AttachmentInfo>,

@@ -22,6 +22,16 @@ pub(crate) struct Config {
     pub mail_username: Option<String>,
     pub mail_password: Option<String>,
     pub app_url: String,
+    /// Shared secret guarding admin-only endpoints (password reset). Optional;
+    /// when absent, those endpoints reject all requests with 401.
+    pub admin_secret: Option<String>,
+    /// GIPHY API key for the `/api/gifs/*` proxy. Optional; absence causes
+    /// the proxy to return 503 instead of pretending to work.
+    pub giphy_api_key: Option<String>,
+    /// Base URL of the SFU media server (used by `/health` to ping it).
+    pub media_server_url: String,
+    /// Comma-separated CORS origins. Empty falls back to localhost dev origins.
+    pub cors_origins: Vec<String>,
 }
 
 impl Config {
@@ -66,6 +76,29 @@ impl Config {
             mail_username: std::env::var("MAIL_USERNAME").ok(),
             mail_password: std::env::var("MAIL_PASSWORD").ok(),
             app_url: env_or("APP_URL", "http://localhost/app"),
+            admin_secret: {
+                let secret = std::env::var("ADMIN_SECRET").ok();
+                if let Some(ref v) = secret {
+                    if v.len() < 32 {
+                        tracing::error!(
+                            "ADMIN_SECRET is too short ({} chars). Minimum 32 required for security.",
+                            v.len()
+                        );
+                    }
+                }
+                secret
+            },
+            giphy_api_key: std::env::var("GIPHY_API_KEY").ok(),
+            media_server_url: env_or("MEDIA_SERVER_URL", "http://jolkr-media:8081"),
+            cors_origins: std::env::var("CORS_ORIGINS")
+                .ok()
+                .map(|s| {
+                    s.split(',')
+                        .map(|t| t.trim().to_string())
+                        .filter(|t| !t.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default(),
         }
     }
 }

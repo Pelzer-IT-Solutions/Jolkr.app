@@ -102,22 +102,28 @@ pub(crate) fn sanitize_filename(raw: &str) -> String {
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Metadata for a single message attachment, returned by the upload and list endpoints.
 #[derive(Debug, Serialize)]
 pub(crate) struct AttachmentInfo {
     pub id: Uuid,
     pub message_id: Uuid,
     pub filename: String,
+    /// MIME type as stored server-side (after magic-byte validation; may differ from the client-claimed type).
     pub content_type: String,
+    /// File size in bytes.
     pub size_bytes: i64,
+    /// Internal attachment-proxy URL (`/api/attachments/:id`), not a direct S3 link.
     pub url: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// Response body for POST /api/channels/:channel_id/messages/:message_id/attachments.
 #[derive(Debug, Serialize)]
 pub(crate) struct UploadResponse {
     pub attachment: AttachmentInfo,
 }
 
+/// Response body for GET /api/messages/:message_id/attachments.
 #[derive(Debug, Serialize)]
 pub(crate) struct AttachmentsResponse {
     pub attachments: Vec<AttachmentInfo>,

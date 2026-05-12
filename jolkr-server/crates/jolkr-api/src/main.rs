@@ -123,6 +123,9 @@ async fn main() {
         email,
         embed,
         app_url: config.app_url.clone(),
+        admin_secret: config.admin_secret.clone(),
+        giphy_api_key: config.giphy_api_key.clone(),
+        media_server_url: config.media_server_url.clone(),
     };
 
     // Install Prometheus metrics exporter (recorder must be installed before router)
@@ -131,7 +134,7 @@ async fn main() {
         .expect("Failed to install Prometheus metrics recorder");
 
     // Build the Axum router
-    let app = routes::create_router(app_state, prometheus_handle);
+    let app = routes::create_router(app_state, config.cors_origins.clone(), prometheus_handle);
 
     // Start listening
     let addr = SocketAddr::from(([0, 0, 0, 0], config.server_port));

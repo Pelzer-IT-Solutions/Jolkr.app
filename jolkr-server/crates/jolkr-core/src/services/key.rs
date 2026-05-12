@@ -31,6 +31,7 @@ pub struct UploadPreKeysRequest {
 
 impl KeyService {
     /// Validate and store a prekey bundle uploaded by a client.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn upload_prekeys(
         pool: &PgPool,
         user_id: Uuid,
@@ -114,6 +115,7 @@ impl KeyService {
     }
 
     /// Fetch a prekey bundle for initiating an E2EE session with a target device.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_prekey_bundle(
         pool: &PgPool,
         target_user_id: Uuid,
@@ -123,6 +125,7 @@ impl KeyService {
     }
 
     /// Fetch a prekey bundle by `user_id` only (auto-selects most recent device).
+    #[tracing::instrument(skip(pool))]
     pub async fn get_prekey_bundle_for_user(
         pool: &PgPool,
         target_user_id: Uuid,
@@ -131,6 +134,7 @@ impl KeyService {
     }
 
     /// Check how many unused one-time prekeys remain for a device.
+    #[tracing::instrument(skip(pool))]
     pub async fn count_remaining_prekeys(
         pool: &PgPool,
         user_id: Uuid,
@@ -140,6 +144,7 @@ impl KeyService {
     }
 
     /// Cleanup: delete all consumed one-time prekeys.
+    #[tracing::instrument(skip(pool))]
     pub async fn cleanup_used_prekeys(pool: &PgPool) -> Result<u64, JolkrError> {
         KeyRepo::delete_used_prekeys(pool).await
     }

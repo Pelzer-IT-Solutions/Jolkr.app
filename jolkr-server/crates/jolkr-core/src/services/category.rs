@@ -52,6 +52,7 @@ pub struct CategoryService;
 
 impl CategoryService {
     /// Create a new category. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_category(
         pool: &PgPool,
         server_id: Uuid,
@@ -83,6 +84,7 @@ impl CategoryService {
     }
 
     /// List all categories in a server.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_categories(
         pool: &PgPool,
         server_id: Uuid,
@@ -92,6 +94,7 @@ impl CategoryService {
     }
 
     /// Update a category. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_category(
         pool: &PgPool,
         category_id: Uuid,
@@ -118,6 +121,7 @@ impl CategoryService {
     }
 
     /// Reorder categories in a server. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, category_positions), fields(count = category_positions.len()))]
     pub async fn reorder_categories(
         pool: &PgPool,
         server_id: Uuid,
@@ -155,6 +159,7 @@ impl CategoryService {
     }
 
     /// Delete a category. Channels in it get moved to uncategorized.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_category(
         pool: &PgPool,
         category_id: Uuid,
