@@ -455,8 +455,11 @@ wsClient.on((event) => {
     case 'ServerUpdate': {
       const { server } = event.d;
       if (!server?.id) break;
+      // Generated `Server.theme` is `JsonValue` (wire-level); FE overlay
+      // carries the typed `ServerThemeData`. Cast on this boundary.
+      const overlay = server as Server;
       useServersStore.setState({
-        servers: store.servers.map((s) => (s.id === server.id ? server : s)),
+        servers: store.servers.map((s) => (s.id === overlay.id ? overlay : s)),
       });
       break;
     }

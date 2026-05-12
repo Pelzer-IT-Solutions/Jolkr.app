@@ -137,7 +137,9 @@ wsClient.on((event) => {
     // and we must NOT overwrite the local user with a different user's data.
     const me = useAuthStore.getState().user;
     if (me && event.d.user_id === me.id) {
-      useAuthStore.getState().applyUserUpdate(event.d);
+      // BE wires `dm_filter` as a plain string; the FE union narrows it.
+      // Cast on this boundary — runtime values are validated upstream.
+      useAuthStore.getState().applyUserUpdate(event.d as UserPatch);
       // Mirror the cross-device locale sync — when another session of the
       // same user changes language, this one flips too. Self-only field
       // (peer events strip it), so this never fires for other users.

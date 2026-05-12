@@ -30,8 +30,9 @@ pub struct FavoriteItem {
 /// Type of friendship state change carried by `GatewayEvent::FriendshipUpdate`.
 /// Lets clients decide which list (incoming/outgoing/friends) the update
 /// belongs in without re-deriving it from the friendship status.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, TS)]
 #[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub enum FriendshipUpdateKind {
     Created,
     Accepted,
@@ -76,8 +77,9 @@ pub(crate) enum ClientEvent {
 }
 
 /// Events sent FROM the server TO the client over the WebSocket.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "op", content = "d")]
+#[ts(export, rename = "WsEvent")]
 pub enum GatewayEvent {
     /// Sent after a successful Identify; confirms the session is ready.
     Ready {
@@ -87,6 +89,7 @@ pub enum GatewayEvent {
 
     /// Heartbeat acknowledgment.
     HeartbeatAck {
+        #[ts(type = "number")]
         seq: u64,
     },
 
@@ -110,6 +113,7 @@ pub enum GatewayEvent {
     TypingStart {
         channel_id: Uuid,
         user_id: Uuid,
+        #[ts(type = "number")]
         timestamp: i64,
     },
 
@@ -228,12 +232,15 @@ pub enum GatewayEvent {
         user_id: Uuid,
         /// New timeout expiry (RFC3339); `None` is omitted on the wire.
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
         timeout_until: Option<String>,
         /// New nickname; `None` is omitted, empty string clears.
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
         nickname: Option<String>,
         /// New full set of role IDs the member holds.
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
         role_ids: Option<Vec<Uuid>>,
     },
 
@@ -284,6 +291,7 @@ pub enum GatewayEvent {
 
     /// A poll was updated (new vote).
     PollUpdate {
+        #[ts(type = "import(\"./Poll\").Poll")]
         poll: serde_json::Value,
         channel_id: Uuid,
         message_id: Uuid,
@@ -346,23 +354,28 @@ pub enum GatewayEvent {
         /// Profile banner / accent color. Visible to peers in profile cards
         /// and member rows, so it must be broadcast on change too.
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
         banner_color: Option<String>,
         /// Self-only privacy preference — included so the user's other tabs
         /// reflect a settings toggle without a refresh. Other users ignore it.
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
         show_read_receipts: Option<bool>,
         /// Self-only privacy preference — DM filter (`all` | `friends` | `none`).
         /// Sent only on the user's own user-channel, so other peers ignore it.
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
         dm_filter: Option<String>,
         /// Self-only privacy preference — whether others can send friend requests.
         /// Sent only on the user's own user-channel, so other peers ignore it.
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
         allow_friend_requests: Option<bool>,
         /// Self-only preference — UI language (BCP-47 lite). Sent only on the
         /// user's own user-channel so all their sessions converge on the same
         /// locale after a Settings change.
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
         preferred_language: Option<String>,
     },
 
@@ -377,8 +390,10 @@ pub enum GatewayEvent {
     /// Sent only to the user's own user-channel so all their sessions sync.
     GifFavoriteUpdate {
         /// Populated when the change is an add. None means a remove.
+        #[ts(optional)]
         added: Option<FavoriteItem>,
         /// Populated when the change is a remove. None means an add.
+        #[ts(optional)]
         removed_gif_id: Option<String>,
     },
 
@@ -411,6 +426,7 @@ pub enum GatewayEvent {
     NotificationSettingUpdate {
         target_type: String,
         target_id: Uuid,
+        #[ts(optional)]
         setting: Option<NotificationSettingPayload>,
     },
 
@@ -422,7 +438,9 @@ pub enum GatewayEvent {
 
 /// Payload mirror of `NotificationSettingResponse` from the REST API,
 /// inlined here so the WS layer doesn't depend on the routes module.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub struct NotificationSettingPayload {
     pub muted: bool,
     pub mute_until: Option<chrono::DateTime<chrono::Utc>>,

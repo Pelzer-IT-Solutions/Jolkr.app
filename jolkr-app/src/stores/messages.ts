@@ -3,7 +3,8 @@ import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
 import { useThreadsStore } from './threads';
-import type { Message, Reaction } from '../api/types';
+import type { Message as GeneratedMessage } from '../api/generated/Message';
+import type { Message, Poll, Reaction } from '../api/types';
 
 /** Transform backend reaction format (user_ids) to frontend format (me boolean + user_ids) */
 function transformReactions(msgs: Message[]): Message[] {
@@ -189,7 +190,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
  * Runtime "is this actually a Message?" validation lives where the JSON
  * is parsed (api/ws.ts) — that's the real trust boundary.
  */
-function normalizeWsMessage(raw: Message): Message | null {
+function normalizeWsMessage(raw: GeneratedMessage): Message | null {
   if (!raw.channel_id || !raw.id) return null;
   const currentUserId = useAuthStore.getState().user?.id;
   return {
@@ -208,12 +209,13 @@ function normalizeWsMessage(raw: Message): Message | null {
     webhook_id: raw.webhook_id ?? null,
     webhook_name: raw.webhook_name ?? null,
     webhook_avatar: raw.webhook_avatar ?? null,
+    poll: raw.poll as Poll | undefined,
     reactions: (raw.reactions ?? []).map((r) => ({
       ...r,
       emoji: r.emoji ?? '',
       count: r.count ?? 0,
       user_ids: r.user_ids ?? [],
-      me: currentUserId ? (r.user_ids ?? []).includes(currentUserId) : (r.me ?? false),
+      me: currentUserId ? (r.user_ids ?? []).includes(currentUserId) : false,
     })),
   };
 }
