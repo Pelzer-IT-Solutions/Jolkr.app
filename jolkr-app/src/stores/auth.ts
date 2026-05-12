@@ -9,10 +9,12 @@ import { useVoiceStore } from './voice';
 import type { MeProfile, User, UpdateMeBody } from '../api/types';
 
 /**
- * Subset of `User` carried by `UserUpdate` WS events. Each field is optional;
- * the backend omits fields it didn't touch via `skip_serializing_if`.
+ * Subset of `User` carried by `UserUpdate` WS events. Each field is both
+ * optional (BE omits untouched fields via `skip_serializing_if`) AND nullable
+ * (BE may explicitly null out fields like `status`).
  */
-type UserPatch = Partial<Pick<User,
+type Nullable<T> = { [K in keyof T]?: T[K] | null };
+type UserPatch = Nullable<Pick<User,
   'status' | 'display_name' | 'avatar_url' | 'bio' | 'banner_color'
   | 'show_read_receipts' | 'dm_filter' | 'allow_friend_requests' | 'preferred_language'
 >>;
@@ -96,8 +98,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   applyUserUpdate: (data) => {
     set((state) => {
       if (!state.user) return state;
-      // Each field is spread only when present so we don't overwrite existing
-      // values with `undefined` for fields the server omitted from this patch.
+      // Spread only when present; boolean fields drop `null` (BE never sends
+      // null for those) so the merged user keeps non-nullable booleans.
       return {
         user: {
           ...state.user,
@@ -106,9 +108,9 @@ export const useAuthStore = create<AuthState>((set) => ({
           ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url }),
           ...(data.bio !== undefined && { bio: data.bio }),
           ...(data.banner_color !== undefined && { banner_color: data.banner_color }),
-          ...(data.show_read_receipts !== undefined && { show_read_receipts: data.show_read_receipts }),
+          ...(data.show_read_receipts != null && { show_read_receipts: data.show_read_receipts }),
           ...(data.dm_filter !== undefined && { dm_filter: data.dm_filter }),
-          ...(data.allow_friend_requests !== undefined && { allow_friend_requests: data.allow_friend_requests }),
+          ...(data.allow_friend_requests != null && { allow_friend_requests: data.allow_friend_requests }),
           ...(data.preferred_language !== undefined && { preferred_language: data.preferred_language }),
         },
       };

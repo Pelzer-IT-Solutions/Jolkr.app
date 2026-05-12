@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{serde_helpers::double_option, JolkrError, Permissions};
@@ -8,7 +9,9 @@ use jolkr_db::models::ChannelRow;
 use jolkr_db::repo::{ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
 /// Public channel DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Channel")]
 pub struct ChannelInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -21,6 +24,7 @@ pub struct ChannelInfo {
     /// Topic.
     pub topic: Option<String>,
     /// Discriminator describing the variant.
+    #[ts(type = "\"text\" | \"voice\" | \"category\"")]
     pub kind: String,
     /// Sort position.
     pub position: i32,

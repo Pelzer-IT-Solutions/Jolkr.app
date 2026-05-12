@@ -45,7 +45,7 @@ export function hashColor(input: string): string {
 }
 
 /** First letter of display name or username, uppercased. */
-export function avatarLetter(user: User): string {
+export function avatarLetter(user: { display_name?: string | null; username: string }): string {
   return (displayName(user)?.[0] ?? '?').toUpperCase()
 }
 

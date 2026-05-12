@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::JolkrError;
@@ -8,7 +9,9 @@ use jolkr_db::models::CategoryRow;
 use jolkr_db::repo::{CategoryRepo, ServerRepo};
 
 /// Public category DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Category")]
 pub struct CategoryInfo {
     /// Unique identifier.
     pub id: Uuid,

@@ -10,7 +10,7 @@ import { useAuthStore } from '../../stores/auth'
 import { displayName } from '../../utils/format'
 import { Avatar } from '../Avatar/Avatar'
 import s from './NewDMModal.module.css'
-import type { User, Friendship } from '../../api/types'
+import type { Friendship, FriendshipUser, User } from '../../api/types'
 import type { DMConversation } from '../../types'
 
 interface Props {
@@ -31,17 +31,17 @@ interface DisplayUser {
   source:    'friend' | 'search'
 }
 
-function friendToUser(f: Friendship, myId: string): User | null {
+function friendToUser(f: Friendship, myId: string): FriendshipUser | null {
   if (f.status !== 'accepted') return null
   return f.requester_id === myId ? (f.addressee ?? null) : (f.requester ?? null)
 }
 
-function toDisplayUser(u: User, source: 'friend' | 'search'): DisplayUser {
+function toDisplayUser(u: FriendshipUser | User, source: 'friend' | 'search'): DisplayUser {
   return {
     id:        u.id,
     name:      displayName(u),
     username:  u.username,
-    status:    u.is_online ? 'online' : 'offline',
+    status:    'is_online' in u && u.is_online ? 'online' : 'offline',
     color:     hashColor(u.id),
     letter:    avatarLetter(u),
     avatarUrl: u.avatar_url ? (rewriteStorageUrl(u.avatar_url) ?? null) : null,

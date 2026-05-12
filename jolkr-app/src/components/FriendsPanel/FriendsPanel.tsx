@@ -14,7 +14,7 @@ import { Avatar } from '../Avatar/Avatar'
 import { QrCodeDisplay } from '../QrCodeDisplay'
 import { QrCodeScanner } from '../QrCodeScanner'
 import s from './FriendsPanel.module.css'
-import type { Friendship, User } from '../../api/types'
+import type { Friendship, FriendshipUser, User } from '../../api/types'
 import type { MemberDisplay, MemberStatus } from '../../types'
 
 type FriendTab = 'all' | 'online' | 'pending' | 'add'
@@ -44,7 +44,7 @@ interface Props {
 }
 
 // Backend Friendship → MemberDisplay for the OTHER party (not the current user).
-function toDisplay(otherUser: User | undefined, fallbackUserId: string): MemberDisplay {
+function toDisplay(otherUser: FriendshipUser | undefined, fallbackUserId: string): MemberDisplay {
   const username = otherUser?.username ?? fallbackUserId.slice(0, 8)
   const displayName = otherUser?.display_name ?? null
   return {

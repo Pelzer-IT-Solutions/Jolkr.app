@@ -74,7 +74,9 @@ impl From<UserRow> for UserProfile {
 /// Self-profile DTO returned exclusively by `/users/@me` (GET + PATCH). Adds
 /// the privacy-sensitive `email` on top of the public `UserProfile` so it
 /// never leaks via lookups for other users.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub struct MeProfile {
     /// Unique identifier.
     pub id: Uuid,

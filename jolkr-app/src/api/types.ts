@@ -1,103 +1,39 @@
+import type { Channel as GeneratedChannel } from './generated/Channel';
+import type { MeProfile as GeneratedMeProfile } from './generated/MeProfile';
+import type { Server as GeneratedServer } from './generated/Server';
+import type { User as GeneratedUser } from './generated/User';
+
+export type { Category } from './generated/Category';
+export type { UpdateMeBody } from './generated/UpdateMeBody';
+
 /** Who is allowed to start a new DM with the user. */
 export type DmFilter = 'all' | 'friends' | 'none';
 
-/**
- * Public user profile, returned by `/users/:id`, `/users/search`,
- * `/users/batch`, and embedded in members / friendships / messages. Privacy-
- * sensitive fields (`email`) are stripped — only the self-profile
- * (`MeProfile`) carries them.
- */
-export interface User {
-  id: string;
-  username: string;
-  display_name?: string | null;
-  avatar_url?: string | null;
-  status?: string | null;
-  bio?: string | null;
-  is_online?: boolean;
-  show_read_receipts?: boolean | null;
-  is_system?: boolean;
-  email_verified?: boolean;
-  banner_color?: string | null;
-  /** Privacy: who can start a new DM with this user. */
-  dm_filter?: DmFilter | null;
-  /** Privacy: whether others can send friend requests to this user. */
-  allow_friend_requests?: boolean | null;
-  /** Preferred UI language (BCP-47 lite — e.g. `en-US`, `fr`, `zh-CN`).
-   *  Authoritative for the self-profile only; other surfaces ignore it. */
-  preferred_language?: string | null;
-  created_at?: string | null;
-}
-
-/**
- * Self-profile returned by `/users/@me` (GET + PATCH). Adds the
- * privacy-sensitive `email` on top of the public `User` shape so callers can
- * distinguish "this is me" from "this is some other user" at the type level.
- */
-export interface MeProfile extends User {
-  email: string;
-}
-
-/**
- * Body accepted by `PATCH /users/@me`. Mirrors the server `UpdateMeRequest`.
- * Used by both `api.updateMe` and `useAuthStore.updateProfile` so the shape
- * stays in one place. Username is intentionally NOT included — the backend
- * route does not accept it; rename has to go through a dedicated flow if it
- * ever ships.
- */
-export interface UpdateMeBody {
-  display_name?: string;
-  bio?: string;
-  avatar_url?: string;
-  status?: string | null;
-  show_read_receipts?: boolean;
-  banner_color?: string;
-  dm_filter?: DmFilter;
-  allow_friend_requests?: boolean;
-  /** BCP-47 lite — must be one of the 9 supported codes; the backend
-   *  rejects anything else with HTTP 400 ("Unsupported language code"). */
-  preferred_language?: string;
-}
+export type ChannelKind = 'text' | 'voice' | 'category';
 
 /**
  * Theme blob attached to a server. Backend stores it as untyped JSON, so
- * `theme` arrives as `null` (no theme set) or matches this shape — defined
- * once here so callers don't repeat the literal anonymous type.
+ * the typed shape is layered on top of the generated `Server` here.
  */
 export interface ServerThemeData {
   hue: number | null;
   orbs: { id: string; x: number; y: number; hue: number; scale?: number }[];
 }
 
-export interface Server {
-  id: string;
-  name: string;
-  icon_url?: string | null;
-  banner_url?: string | null;
-  owner_id: string;
-  description?: string | null;
-  is_public?: boolean;
-  member_count?: number;
-  theme?: ServerThemeData | null;
-  created_at?: string | null;
-}
+/** Wire user profile from BE. Narrows `dm_filter` to the typed union. */
+export type User = Omit<GeneratedUser, 'dm_filter'> & { dm_filter: DmFilter | null };
 
-export type ChannelKind = 'text' | 'voice' | 'category';
+/** Self-profile from `/users/@me`. Narrows `dm_filter` to the typed union. */
+export type MeProfile = Omit<GeneratedMeProfile, 'dm_filter'> & { dm_filter: DmFilter | null };
 
-export interface Channel {
-  id: string;
-  server_id: string;
-  name: string;
-  kind: ChannelKind;
-  topic?: string | null;
-  position: number;
-  category_id?: string | null;
-  is_nsfw?: boolean;
-  is_system?: boolean;
-  slowmode_seconds?: number;
-  e2ee_key_generation?: number;
-  created_at?: string | null;
-}
+/** Wire server shape with a typed `theme` overlay (BE keeps it as JSON). */
+export type Server = Omit<GeneratedServer, 'theme'> & { theme?: ServerThemeData | null };
+
+/**
+ * Wire channel shape with FE-only `is_system` overlay. BE `ChannelInfo` does
+ * not expose this field yet — see `todos.md` ("is_system BE acceptance").
+ */
+export type Channel = GeneratedChannel & { is_system?: boolean };
 
 export interface Reaction {
   emoji: string;
@@ -216,13 +152,6 @@ export interface Role {
   position: number;
   permissions: number;
   is_default: boolean;
-}
-
-export interface Category {
-  id: string;
-  server_id: string;
-  name: string;
-  position: number;
 }
 
 export interface ChannelOverwrite {

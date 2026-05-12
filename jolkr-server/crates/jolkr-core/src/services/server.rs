@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -9,7 +10,9 @@ use jolkr_db::models::BanRow;
 use jolkr_db::repo::{BanRepo, ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
 /// Public server DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Server")]
 pub struct ServerInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -27,9 +30,11 @@ pub struct ServerInfo {
     pub is_public: bool,
     /// Cached member count.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "number | null")]
     pub member_count: Option<i64>,
     /// Theme.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub theme: Option<serde_json::Value>,
 }
 
