@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getTauriOsDark } from '../platform/tauriGlobals'
 import { STORAGE_KEYS } from './storageKeys'
 
 export type ColorPreference = 'light' | 'dark' | 'system'
@@ -7,7 +8,7 @@ const LS_KEY   = STORAGE_KEYS.COLOR_MODE
 const TRANS_MS = 300
 
 function getSystemDark() {
-  const tauri = (window as unknown as { __TAURI_OS_DARK?: boolean }).__TAURI_OS_DARK
+  const tauri = getTauriOsDark()
   if (typeof tauri === 'boolean') return tauri
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
