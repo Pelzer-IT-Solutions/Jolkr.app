@@ -1,9 +1,13 @@
 import type { Channel as GeneratedChannel } from './generated/Channel';
 import type { MeProfile as GeneratedMeProfile } from './generated/MeProfile';
+import type { Message as GeneratedMessage } from './generated/Message';
+import type { Reaction as GeneratedReaction } from './generated/Reaction';
 import type { Server as GeneratedServer } from './generated/Server';
 import type { User as GeneratedUser } from './generated/User';
 
+export type { Attachment } from './generated/Attachment';
 export type { Category } from './generated/Category';
+export type { MessageEmbed } from './generated/MessageEmbed';
 export type { UpdateMeBody } from './generated/UpdateMeBody';
 
 /** Who is allowed to start a new DM with the user. */
@@ -35,44 +39,37 @@ export type Server = Omit<GeneratedServer, 'theme'> & { theme?: ServerThemeData 
  */
 export type Channel = GeneratedChannel & { is_system?: boolean };
 
-export interface Reaction {
-  emoji: string;
-  count: number;
-  me: boolean;
-  user_ids?: string[]; // Backend sends user IDs who reacted (for tooltip)
-}
+/**
+ * Wire reaction shape with FE-only `me` flag (derived from `user_ids` on the
+ * FE side — BE does not send it because the wire shape is per-message, not
+ * per-viewer).
+ */
+export type Reaction = GeneratedReaction & { me?: boolean };
 
-export interface Message {
-  id: string;
-  /**
-   * Carries the channel id for server-channel messages and the DM channel id
-   * for DM messages — backend `dm_to_message_info` unifies the two on both
-   * HTTP and WS, so consumers don't need a separate `dm_channel_id` branch.
-   */
-  channel_id: string;
-  author_id: string;
-  /**
-   * Plaintext message content. `null` when the message is end-to-end
-   * encrypted — in that case `nonce` is set and the renderer must decrypt.
-   */
-  content: string | null;
-  nonce?: string | null;
-  created_at: string;
-  updated_at?: string | null;
-  is_edited: boolean;
-  is_pinned: boolean;
-  reply_to_id?: string | null;
+/**
+ * Wire message shape with several FE-side overlays:
+ * - `author` is resolved via the users store (not on the wire).
+ * - `poll` is typed (BE keeps it as JSON for forward-compat).
+ * - `reactions` overrides the generated `Array<Reaction>` so the FE-only
+ *   `me` flag and pre-existing optional shape are preserved.
+ * - Several optional fields keep their legacy `| null` form to match the
+ *   pervasive `?? null` normalization in stores/messages.ts.
+ */
+export type Message = Omit<
+  GeneratedMessage,
+  'poll' | 'reactions' | 'thread_id' | 'thread_reply_count'
+  | 'webhook_id' | 'webhook_name' | 'webhook_avatar' | 'updated_at'
+> & {
+  author?: User | null;
+  poll?: Poll;
+  reactions?: Reaction[];
   thread_id?: string | null;
   thread_reply_count?: number | null;
-  author?: User | null;
-  attachments: Attachment[];
-  reactions?: Reaction[];
-  embeds?: MessageEmbed[];
-  poll?: Poll;
   webhook_id?: string | null;
   webhook_name?: string | null;
   webhook_avatar?: string | null;
-}
+  updated_at?: string | null;
+};
 
 export interface Thread {
   id: string;
@@ -83,23 +80,6 @@ export interface Thread {
   message_count: number;
   created_at: string;
   updated_at: string;
-}
-
-export interface Attachment {
-  id: string;
-  filename: string;
-  content_type: string;
-  size_bytes: number;
-  url: string;
-}
-
-export interface MessageEmbed {
-  url: string;
-  title?: string | null;
-  description?: string | null;
-  image_url?: string | null;
-  site_name?: string | null;
-  color?: string | null;
 }
 
 export interface Member {

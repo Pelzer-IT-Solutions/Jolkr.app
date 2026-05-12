@@ -7,6 +7,7 @@ pub(crate) type ReactionAggregateByMsg = HashMap<Uuid, (Vec<String>, HashMap<Str
 use serde::{Deserialize, Serialize};
 use sqlx::{self, PgPool};
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -15,7 +16,9 @@ use jolkr_db::repo::{AttachmentRepo, EmbedRepo, MemberRepo, MessageRepo, PinRepo
 use jolkr_db::repo::{ChannelRepo, RoleRepo, ServerRepo};
 
 /// Attachment info included in message responses.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Attachment")]
 pub struct AttachmentInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -24,6 +27,7 @@ pub struct AttachmentInfo {
     /// Content type.
     pub content_type: String,
     /// Size in bytes.
+    #[ts(type = "number")]
     pub size_bytes: i64,
     /// Resource URL.
     pub url: String,
@@ -36,18 +40,23 @@ pub fn attachment_proxy_url(id: Uuid) -> String {
 }
 
 /// Reaction info included in message responses.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Reaction")]
 pub struct ReactionInfo {
     /// Emoji.
     pub emoji: String,
     /// Count.
+    #[ts(type = "number")]
     pub count: i64,
     /// User ids.
     pub user_ids: Vec<Uuid>,
 }
 
 /// Embed info included in message responses.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "MessageEmbed")]
 pub struct EmbedInfo {
     /// Resource URL.
     pub url: String,
@@ -64,7 +73,9 @@ pub struct EmbedInfo {
 }
 
 /// Public message DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Message")]
 pub struct MessageInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -84,9 +95,11 @@ pub struct MessageInfo {
     pub reply_to_id: Option<Uuid>,
     /// Owning thread identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub thread_id: Option<Uuid>,
     /// Number of replies in this thread.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "number | null")]
     pub thread_reply_count: Option<i64>,
     /// Attached files.
     #[serde(default)]
@@ -99,15 +112,19 @@ pub struct MessageInfo {
     pub embeds: Vec<EmbedInfo>,
     /// Attached poll, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub poll: Option<serde_json::Value>,
     /// Webhook identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub webhook_id: Option<Uuid>,
     /// Webhook name.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub webhook_name: Option<String>,
     /// Webhook avatar.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub webhook_avatar: Option<String>,
     /// Creation timestamp.
     pub created_at: DateTime<Utc>,

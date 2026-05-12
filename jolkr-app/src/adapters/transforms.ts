@@ -155,7 +155,7 @@ export function transformMessage(
   const reactions: ReactionDisplay[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
-    me: r.me,
+    me: r.me ?? false,
     userIds: r.user_ids ?? [],
   }))
 
