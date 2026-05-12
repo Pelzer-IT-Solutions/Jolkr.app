@@ -1,4 +1,3 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import {
   DndContext, DragOverlay, closestCenter,
   PointerSensor, useSensor, useSensors,
@@ -12,15 +11,16 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, FolderPlus, Hash, Volume2, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
-import type { ServerDisplay, ChannelDisplay, CategoryDisplay, ServerTheme } from '../../types'
-import type { ChannelMoveItem } from '../../api/client'
-import type { ColorPreference } from '../../utils/colorMode'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
+import { useT } from '../../hooks/useT'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import { Menu, MenuItem, MenuDivider } from '../Menu'
 import { ThemePicker } from '../ThemePicker/ThemePicker'
-import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
-import { useT } from '../../hooks/useT'
+import { ConfirmDialog } from '../ui/ConfirmDialog/ConfirmDialog'
 import s from './ChannelSidebar.module.css'
+import type { ChannelMoveItem } from '../../api/client'
+import type { ServerDisplay, ChannelDisplay, CategoryDisplay, ServerTheme } from '../../types'
+import type { ColorPreference } from '../../utils/colorMode'
 
 // Diff the layout before vs. after a drag and produce the API payloads:
 function buildChannelMoveItems(

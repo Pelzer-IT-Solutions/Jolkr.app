@@ -1,13 +1,13 @@
-import { useMemo, useRef, useEffect, useCallback, memo } from 'react';
-import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js/lib/common';
+import { marked } from 'marked';
+import { useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import 'highlight.js/styles/github-dark.css';
-import { useServersStore } from '../stores/servers';
-import { useGifFavoritesStore, extractGiphyId } from '../stores/gif-favorites';
-import { renderUnicodeEmojis, isEmojiOnly } from '../utils/emoji';
 import { getApiBaseUrl } from '../platform/config';
 import { isTauri } from '../platform/detect';
+import { useGifFavoritesStore, extractGiphyId } from '../stores/gif-favorites';
+import { useServersStore } from '../stores/servers';
+import { renderUnicodeEmojis, isEmojiOnly } from '../utils/emoji';
 import s from './MessageContent.module.css';
 
 // Tauri's webview origin is `tauri.localhost`, so a relative `/api/...` URL
@@ -188,7 +188,7 @@ const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', '
 // use them.
 const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin', 'data-gif-id', 'width', 'height'];
 
-export default memo(function MessageContent({ content, className, emojiMap, serverId }: MessageContentProps) {
+export const MessageContent = memo(function MessageContent({ content, className, emojiMap, serverId }: MessageContentProps) {
   // Build emoji map from store if serverId is provided and no explicit emojiMap
   const storeEmojis = useServersStore((s) => serverId ? s.emojis[serverId] : undefined);
   const resolvedEmojiMap = useMemo(() => {

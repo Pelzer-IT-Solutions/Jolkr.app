@@ -1,8 +1,8 @@
 import { create } from 'zustand';
+import { getAccessToken } from '../api/client';
+import { getMediaWsUrl } from '../platform/config';
 import { VoiceService } from '../voice/voiceService';
 import type { VoiceParticipant, VoiceConnectionState } from '../voice/voiceService';
-import { getMediaWsUrl } from '../platform/config';
-import { getAccessToken } from '../api/client';
 
 interface VoiceState {
   connectionState: VoiceConnectionState;

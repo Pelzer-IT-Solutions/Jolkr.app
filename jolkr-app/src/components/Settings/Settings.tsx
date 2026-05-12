@@ -1,25 +1,25 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   User, Shield, Link, Palette, Accessibility,
   Mic, Bell, Keyboard, Globe, Camera,
 } from 'lucide-react'
-import type { ColorPreference } from '../../utils/colorMode'
-import type { DmFilter } from '../../api/types'
-import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
-import { Select } from '../ui/Select'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import * as api from '../../api/client'
+import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
+import { useT } from '../../hooks/useT'
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type LocaleCode } from '../../i18n/types'
+import { ensureNotificationPermission } from '../../services/notifications'
 import { useAuthStore } from '../../stores/auth'
 import { useLocaleStore } from '../../stores/locale'
 import { useToast } from '../../stores/toast'
-import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
-import { useT } from '../../hooks/useT'
-import * as api from '../../api/client'
-import { LOCALE_LABELS, SUPPORTED_LOCALES, type LocaleCode } from '../../i18n/types'
-import { ensureNotificationPermission } from '../../services/notifications'
 import { STORAGE_KEYS } from '../../utils/storageKeys'
 import {
   voicePrefs, useVoiceMediaDevices, useOutputSinkSupported,
 } from '../../voice/voicePrefs'
+import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
+import { Select } from '../ui/Select'
 import s from './Settings.module.css'
+import type { DmFilter } from '../../api/types'
+import type { ColorPreference } from '../../utils/colorMode'
 
 type Section =
   | 'account' | 'privacy' | 'connections'

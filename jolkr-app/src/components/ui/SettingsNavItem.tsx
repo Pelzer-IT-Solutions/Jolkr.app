@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
 import s from './SettingsNavItem.module.css';
+import type { ReactNode } from 'react';
 
 interface SettingsNavItemProps {
   label: string;
@@ -9,7 +9,7 @@ interface SettingsNavItemProps {
   danger?: boolean;
 }
 
-export default function SettingsNavItem({ label, icon, active, onClick, danger }: SettingsNavItemProps) {
+export function SettingsNavItem({ label, icon, active, onClick, danger }: SettingsNavItemProps) {
   const composed = [
     s.item,
     danger ? s.danger : '',

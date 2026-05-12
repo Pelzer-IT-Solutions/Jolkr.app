@@ -1,6 +1,6 @@
 import { storage } from '../platform/storage';
-import type { LocalKeySet } from './keys';
 import { toBase64, fromBase64 } from './keys';
+import type { LocalKeySet } from './keys';
 
 const KEYS = {
   identityPub: 'e2ee_identity_pub',

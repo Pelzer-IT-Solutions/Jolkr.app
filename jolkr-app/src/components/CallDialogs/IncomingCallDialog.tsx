@@ -1,12 +1,12 @@
-import { useEffect, useRef } from 'react';
 import { Phone, PhoneOff, Video, User as UserIcon } from 'lucide-react';
-import { useCallStore } from '../../stores/call';
+import { useEffect, useRef } from 'react';
 import { stopRingSound } from '../../hooks/useCallEvents';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useT } from '../../hooks/useT';
+import { useCallStore } from '../../stores/call';
 import s from './CallDialogs.module.css';
 
-export default function IncomingCallDialog() {
+export function IncomingCallDialog() {
   const { t } = useT();
   const incomingCall   = useCallStore((s) => s.incomingCall);
   const acceptIncoming = useCallStore((s) => s.acceptIncoming);

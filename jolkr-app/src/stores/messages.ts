@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import type { Message, Reaction } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
+import type { Message, Reaction } from '../api/types';
 
 /** Transform backend reaction format (user_ids) to frontend format (me boolean + user_ids) */
 function transformReactions(msgs: Message[]): Message[] {

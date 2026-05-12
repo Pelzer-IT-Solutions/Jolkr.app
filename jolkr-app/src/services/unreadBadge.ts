@@ -1,8 +1,8 @@
-import { useUnreadStore } from '../stores/unread';
-import { useAuthStore } from '../stores/auth';
-import { STORAGE_KEYS } from '../utils/storageKeys';
 import { LOCAL_PREF_EVENT } from '../hooks/useLocalStorageBoolean';
 import { isTauri } from '../platform/detect';
+import { useAuthStore } from '../stores/auth';
+import { useUnreadStore } from '../stores/unread';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 /**
  * Reflect total unread count on the OS app icon (dock badge / tray overlay /

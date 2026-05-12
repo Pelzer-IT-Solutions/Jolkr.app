@@ -1,6 +1,6 @@
+import { Undo2, Redo2, Scissors, Copy, ClipboardPaste, Trash2, TextSelect } from 'lucide-react';
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Undo2, Redo2, Scissors, Copy, ClipboardPaste, Trash2, TextSelect } from 'lucide-react';
 import s from './TextContextMenu.module.css';
 
 interface MenuPosition {
@@ -19,7 +19,7 @@ const icons = {
   selectAll: <TextSelect className={s.icon} />,
 };
 
-export default function TextContextMenu() {
+export function TextContextMenu() {
   const [menu, setMenu] = useState<MenuPosition | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 

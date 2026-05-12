@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { isE2EEReady, getLocalKeys } from '../services/e2ee';
 import { decryptChannelMessage } from '../crypto/channelKeys';
+import { isE2EEReady, getLocalKeys } from '../services/e2ee';
 import { tStatic } from './useT';
 
 interface DecryptedState {

@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
 import { X, ArrowLeft, FileText, Download } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import * as api from '../../api/client'
-import type { Message, User, Attachment } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import { useT } from '../../hooks/useT'
 import { rewriteStorageUrl } from '../../platform/config'
 import s from './DMInfoPanel.module.css'
+import type { Message, User, Attachment } from '../../api/types'
 
 interface Props {
   open: boolean

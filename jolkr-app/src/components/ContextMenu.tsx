@@ -1,7 +1,7 @@
+import * as Icons from 'lucide-react';
 import { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useContextMenuStore, type ContextMenuEntry } from '../stores/context-menu';
-import * as Icons from 'lucide-react';
 import s from './ContextMenu.module.css';
 
 const MENU_PADDING = 8;
@@ -22,7 +22,7 @@ function getIcon(name: string): React.ComponentType<{ className?: string }> | nu
   return typeof icon === 'function' ? icon as React.ComponentType<{ className?: string }> : null;
 }
 
-export default function ContextMenu() {
+export function ContextMenu() {
   const isOpen = useContextMenuStore((s) => s.isOpen);
   const x = useContextMenuStore((s) => s.x);
   const y = useContextMenuStore((s) => s.y);

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './styles/tokens.css'
 import './styles/globals.css'
 import './styles/scroll-fade.css'
-import App from './App'
+import { App } from './App'
 import { isTauri, isMobile } from './platform/detect'
 import { migrateLegacyStorageKeys } from './utils/storageKeys'
 

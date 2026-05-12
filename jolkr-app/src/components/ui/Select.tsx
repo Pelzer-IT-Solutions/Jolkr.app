@@ -24,4 +24,3 @@ export function Select({ className, ref, ...rest }: SelectProps) {
   )
 }
 
-export default Select

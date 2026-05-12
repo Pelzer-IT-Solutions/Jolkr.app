@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import type { Server, Channel, ChannelKind, Member, Role, Category, ServerEmoji } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
 import { useUsersStore } from './users';
+import type { Server, Channel, ChannelKind, Member, Role, Category, ServerEmoji } from '../api/types';
 
 /** Push embedded user objects from a member list into the global users cache
  *  so non-server surfaces (typing indicator, profile cards in DMs) can resolve

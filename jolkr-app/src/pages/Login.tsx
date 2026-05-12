@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import * as api from '../api/client';
+import { deriveE2EESeed } from '../crypto/e2ee';
+import { useT } from '../hooks/useT';
+import { initE2EE } from '../services/e2ee';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
 import { useToast } from '../stores/toast';
-import * as api from '../api/client';
-import { deriveE2EESeed } from '../crypto/e2ee';
-import { initE2EE } from '../services/e2ee';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
-import { useT } from '../hooks/useT';
 
-export default function Login() {
+export function Login() {
   useEffect(resetAuthTheme, []);
   const { t } = useT();
   const [email, setEmail] = useState('');

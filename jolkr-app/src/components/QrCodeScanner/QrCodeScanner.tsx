@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Html5Qrcode } from 'html5-qrcode'
 import { X, Camera, AlertCircle } from 'lucide-react'
-import type { User } from '../../api/types'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as api from '../../api/client'
-import { useAuthStore } from '../../stores/auth'
-import { invalidateFriendsCache } from '../../services/friendshipCache'
-import { useToast } from '../../stores/toast'
 import { useT } from '../../hooks/useT'
-import Avatar from '../Avatar/Avatar'
+import { invalidateFriendsCache } from '../../services/friendshipCache'
+import { useAuthStore } from '../../stores/auth'
+import { useToast } from '../../stores/toast'
+import { Avatar } from '../Avatar/Avatar'
 import s from './QrCodeScanner.module.css'
+import type { User } from '../../api/types'
 
 interface Props {
   open: boolean

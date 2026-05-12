@@ -1,5 +1,5 @@
-import { isTauri } from './detect';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import { isTauri } from './detect';
 
 export interface SecureStorage {
   get(key: string): Promise<string | null>;

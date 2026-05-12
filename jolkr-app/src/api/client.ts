@@ -1,3 +1,6 @@
+import { getApiBaseUrl, getUploadBaseUrl } from '../platform/config';
+import { storage } from '../platform/storage';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 import type {
   User, MeProfile, Server, ServerThemeData, Channel, Message, Member, Ban,
   DmChannel, Friendship, Invite, TokenPair, Attachment,
@@ -5,9 +8,6 @@ import type {
   ServerEmoji, NotificationSetting, AuditLogEntry, Webhook, Poll,
   GifFavorite, ChannelKind, UpdateMeBody,
 } from './types';
-import { getApiBaseUrl, getUploadBaseUrl } from '../platform/config';
-import { storage } from '../platform/storage';
-import { STORAGE_KEYS } from '../utils/storageKeys';
 
 let apiBase = '/api';
 let accessToken: string | null = null;
@@ -467,11 +467,11 @@ export const reorderChannels = (serverId: string, positions: Array<{ id: string;
     method: 'PUT',
     body: JSON.stringify({ channel_positions: positions }),
   }, 'channels');
-export type ChannelMoveItem = {
+export interface ChannelMoveItem {
   id: string;
   position: number;
   category_id?: string | null;
-};
+}
 export const moveChannels = (serverId: string, items: ChannelMoveItem[]) =>
   request<Channel[]>(`/servers/${serverId}/channels/move`, {
     method: 'PUT',

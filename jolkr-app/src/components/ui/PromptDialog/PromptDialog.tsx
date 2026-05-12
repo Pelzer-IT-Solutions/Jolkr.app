@@ -26,7 +26,7 @@ export interface PromptDialogProps {
  * delivering the value — pass through `value || undefined` if your call-site
  * treats empty string as absent.
  */
-export default function PromptDialog({
+export function PromptDialog({
   open, title, body, placeholder, defaultValue = '', submitLabel, cancelLabel, allowEmpty = false, onSubmit, onCancel,
 }: PromptDialogProps) {
   const cardRef = useRef<HTMLDivElement>(null);

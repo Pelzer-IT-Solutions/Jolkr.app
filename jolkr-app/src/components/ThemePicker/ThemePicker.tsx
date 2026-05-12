@@ -1,12 +1,12 @@
+import { Sun, Moon, Monitor } from 'lucide-react'
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Sun, Moon, Monitor } from 'lucide-react'
+import { useT } from '../../hooks/useT'
+import { useMenuPosition } from '../../utils/position'
+import { buildBackground, orbsForHue } from '../../utils/theme'
+import s from './ThemePicker.module.css'
 import type { ServerTheme } from '../../types'
 import type { ColorPreference } from '../../utils/colorMode'
-import { buildBackground, orbsForHue } from '../../utils/theme'
-import { useMenuPosition } from '../../utils/position'
-import { useT } from '../../hooks/useT'
-import s from './ThemePicker.module.css'
 
 const BASE_ORB_SIZE = 32 // px diameter for all orbs (before scale)
 const MIN_SCALE = 0.5

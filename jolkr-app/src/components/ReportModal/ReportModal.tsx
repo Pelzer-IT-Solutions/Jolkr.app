@@ -1,9 +1,9 @@
+import { Flag, AlertCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Flag, AlertCircle } from 'lucide-react'
-import type { MemberDisplay } from '../../types'
 import { useT } from '../../hooks/useT'
 import s from './ReportModal.module.css'
+import type { MemberDisplay } from '../../types'
 
 type ReportReason = 'harassment' | 'spam' | 'inappropriate' | 'violence' | 'other'
 

@@ -1,25 +1,23 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
-import type { Dispatch, SetStateAction } from 'react'
-import { createPortal } from 'react-dom'
 import {
   X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, Plus, Check, Camera, Palette, Upload, Copy
 } from 'lucide-react'
-import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
-import type { Server as ApiServer, Member } from '../../api/types'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import * as api from '../../api/client'
-import * as P from '../../utils/permissions'
-import { useAuthStore } from '../../stores/auth'
-import { buildInviteUrl } from '../../platform/config'
-import { useToast } from '../../stores/toast'
-import { useT, type T } from '../../hooks/useT'
 import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
-import ServerIcon from '../ServerIcon/ServerIcon'
-import { Select } from '../ui/Select'
+import { useT, type T } from '../../hooks/useT'
+import { buildInviteUrl } from '../../platform/config'
+import { useAuthStore } from '../../stores/auth'
+import { useToast } from '../../stores/toast'
+import * as P from '../../utils/permissions'
+import { ServerIcon } from '../ServerIcon/ServerIcon'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
-
-// Extend API Server with frontend-only display fields
-type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
+import { Select } from '../ui/Select'
 import s from './ServerSettings.module.css'
+import type { Invite, Role, Ban, AuditLogEntry, Server as ApiServer, Member } from '../../api/types'
+import type { Dispatch, SetStateAction } from 'react'
+
+type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
 
 type Section = 'overview' | 'roles' | 'invites' | 'bans' | 'audit' | 'delete'
 

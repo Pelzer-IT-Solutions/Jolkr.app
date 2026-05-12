@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth';
 import { deriveE2EESeed } from '../crypto/e2ee';
+import { useT } from '../hooks/useT';
 import { initE2EE } from '../services/e2ee';
+import { useAuthStore } from '../stores/auth';
+import { MIN_PASSWORD_LENGTH } from '../utils/constants';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
-import { MIN_PASSWORD_LENGTH } from '../utils/constants';
-import { useT } from '../hooks/useT';
 
-export default function Register() {
+export function Register() {
   useEffect(resetAuthTheme, []);
   const { t } = useT();
   const [email, setEmail] = useState('');

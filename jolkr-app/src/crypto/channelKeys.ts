@@ -11,10 +11,10 @@
  */
 
 import * as api from '../api/client';
+import { getRecipientBundle, isE2EEReady } from '../services/e2ee';
 import { encryptForRecipient, decryptFromSender } from './e2ee';
 import { encryptMessage, decryptMessage, toBase64, fromBase64 } from './keys';
 import type { LocalKeySet } from './keys';
-import { getRecipientBundle, isE2EEReady } from '../services/e2ee';
 
 /** Create a clean ArrayBuffer copy (TS strict ArrayBufferLike compat). */
 function toArrayBuffer(data: Uint8Array): ArrayBuffer {

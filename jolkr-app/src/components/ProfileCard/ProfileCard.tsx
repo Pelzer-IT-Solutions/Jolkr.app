@@ -1,21 +1,21 @@
+import { ShieldCheck, ChevronDown, MessageCircle, UserPlus, UserMinus, Ban, Pencil } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, ChevronDown, MessageCircle, UserPlus, UserMinus, Ban, Pencil } from 'lucide-react';
-import type { User } from '../../api/types';
-import { useAuthStore } from '../../stores/auth';
-import { usePresenceStore } from '../../stores/presence';
-import * as api from '../../api/client';
-import Avatar from '../Avatar/Avatar';
 import { hashColor } from '../../adapters/transforms';
-import { useT } from '../../hooks/useT';
+import * as api from '../../api/client';
 import { useLocaleFormatters } from '../../hooks/useLocaleFormatters';
+import { useT } from '../../hooks/useT';
 import {
   lookupFriendship,
   invalidateFriendsCache,
   type FriendshipState,
 } from '../../services/friendshipCache';
+import { useAuthStore } from '../../stores/auth';
+import { usePresenceStore } from '../../stores/presence';
+import { Avatar } from '../Avatar/Avatar';
 import s from './ProfileCard.module.css';
+import type { User } from '../../api/types';
 
 type FriendStatus = FriendshipState | 'loading';
 

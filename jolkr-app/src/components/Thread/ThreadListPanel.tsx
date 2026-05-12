@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import * as api from '../../api/client'
-import type { Thread } from '../../api/types'
-import { useMessagesStore } from '../../stores/messages'
 import { useT } from '../../hooks/useT'
+import { useMessagesStore } from '../../stores/messages'
 import s from './ThreadListPanel.module.css'
+import type { Thread } from '../../api/types'
 
 interface Props {
   channelId: string

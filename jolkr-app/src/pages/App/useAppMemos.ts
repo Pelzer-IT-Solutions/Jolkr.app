@@ -1,7 +1,4 @@
 import { useMemo } from 'react'
-import type { ChannelDisplay, DMConversation } from '../../types/ui'
-import { useTypingUsers } from '../../stores/typing'
-import { getApiBaseUrl } from '../../platform/config'
 import {
   transformServer,
   transformMessages,
@@ -10,16 +7,18 @@ import {
   hashColor,
   avatarLetter,
 } from '../../adapters/transforms'
-import { displayName } from '../../utils/format'
-import { useAnimatedTheme } from '../../utils/useAnimatedTheme'
+import { getApiBaseUrl } from '../../platform/config'
+import { useTypingUsers } from '../../stores/typing'
 import { useColorMode } from '../../utils/colorMode'
+import { displayName } from '../../utils/format'
 import {
   hasPermission, MANAGE_CHANNELS, MANAGE_ROLES, MANAGE_SERVER,
   MANAGE_MESSAGES, ADD_REACTIONS, SEND_MESSAGES, ATTACH_FILES, CREATE_INVITE,
 } from '../../utils/permissions'
-
-import type { User, Message as ApiMessage } from '../../api/types'
+import { useAnimatedTheme } from '../../utils/useAnimatedTheme'
 import type { useAppInit } from './useAppInit'
+import type { User, Message as ApiMessage } from '../../api/types'
+import type { ChannelDisplay, DMConversation } from '../../types/ui'
 
 export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const { isDark, pref: colorPref, setPreference: setColorPref } = useColorMode()

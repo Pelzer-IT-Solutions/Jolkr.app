@@ -30,7 +30,7 @@ export interface ConfirmDialogProps {
  * `cancelLabel` to get a confirm/cancel pair, or `cancelLabel={null}` to
  * render only the confirm button (alert mode — confirm doubles as dismiss).
  */
-export default function ConfirmDialog({
+export function ConfirmDialog({
   open, title, body, confirmLabel, cancelLabel = null, danger = false, onConfirm, onCancel,
 }: ConfirmDialogProps) {
   const cardRef = useRef<HTMLDivElement>(null);

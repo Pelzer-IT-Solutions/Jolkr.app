@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
 import { Maximize2, PhoneOff } from 'lucide-react';
-import { VideoTile } from '../VideoTile/VideoTile';
-import { STORAGE_KEYS } from '../../utils/storageKeys';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '../../hooks/useT';
+import { STORAGE_KEYS } from '../../utils/storageKeys';
+import { VideoTile } from '../VideoTile/VideoTile';
 import s from './CallPipWindow.module.css';
 
 const STORAGE_KEY = STORAGE_KEYS.CALL_PIP_LAYOUT;

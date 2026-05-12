@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef, useCallback } from 'react'
+import s from './RichInput.module.css'
 import {
   getPlainText,
   getTextBeforeCursor,
@@ -7,7 +8,6 @@ import {
   getPlainTextOffset,
   setCursorToOffset,
 } from './richInputHelpers'
-import s from './RichInput.module.css'
 
 export interface RichInputHandle {
   focus: () => void

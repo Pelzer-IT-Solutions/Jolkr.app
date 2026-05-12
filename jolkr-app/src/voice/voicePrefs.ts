@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { STORAGE_KEYS } from '../utils/storageKeys';
 import { LOCAL_PREF_EVENT, notifyLocalPrefChange } from '../hooks/useLocalStorageBoolean';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 /**
  * Persisted voice/video preferences. Stored in `localStorage` because device

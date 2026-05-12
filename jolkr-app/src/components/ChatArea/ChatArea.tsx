@@ -1,4 +1,3 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Phone, Video, Files, CornerUpLeft, X,
   PanelLeftOpen, AlignLeft, Users, Smile,
@@ -6,24 +5,25 @@ import {
   Bold, Italic, Strikethrough, Code, Pin, BarChart3,
   Pencil,
 } from 'lucide-react'
-import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
-import type { User } from '../../api/types'
-import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
-import { Message } from '../Message/Message'
-import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
-import GifPickerPopup from '../GifPickerPopup'
-import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
-import { RichInput, type RichInputHandle } from './RichInput'
-import { createEmojiImg } from './richInputHelpers'
-import { PollCreator } from '../Poll/PollCreator'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
+import { useT } from '../../hooks/useT'
 import { useCallStore } from '../../stores/call'
 import { useVoiceStore } from '../../stores/voice'
-import { useDecryptedContent } from '../../hooks/useDecryptedContent'
-import { useT } from '../../hooks/useT'
-import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
-import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
-import PromptDialog from '../ui/PromptDialog/PromptDialog'
+import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
+import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
+import { EmojiPickerPopup } from '../EmojiPickerPopup/EmojiPickerPopup'
+import { GifPickerPopup } from '../GifPickerPopup'
+import { Message } from '../Message/Message'
+import { PollCreator } from '../Poll/PollCreator'
+import { ConfirmDialog } from '../ui/ConfirmDialog/ConfirmDialog'
+import { PromptDialog } from '../ui/PromptDialog/PromptDialog'
 import s from './ChatArea.module.css'
+import { RichInput, type RichInputHandle } from './RichInput'
+import { createEmojiImg } from './richInputHelpers'
+import type { User } from '../../api/types'
+import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 
 // Mirrors backend MAX_ATTACHMENT_SIZE.
 const MAX_FILE_SIZE_MB = 250

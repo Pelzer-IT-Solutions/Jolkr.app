@@ -1,7 +1,7 @@
 import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, X } from 'lucide-react';
-import { useVoiceStore } from '../../stores/voice';
-import { useCallStore } from '../../stores/call';
 import { useT } from '../../hooks/useT';
+import { useCallStore } from '../../stores/call';
+import { useVoiceStore } from '../../stores/voice';
 import s from './VoiceConnectionBar.module.css';
 
 export function VoiceConnectionBar() {

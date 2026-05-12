@@ -1,5 +1,5 @@
-import { isTauri } from '../platform/detect';
 import * as api from '../api/client';
+import { isTauri } from '../platform/detect';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
 // Module-scoped guards make registerPush idempotent: even if it's called

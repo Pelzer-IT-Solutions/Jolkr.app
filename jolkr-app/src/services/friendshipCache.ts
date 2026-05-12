@@ -9,9 +9,9 @@
  * next read reflects the new state.
  */
 
-import type { Friendship } from '../api/types';
 import * as api from '../api/client';
 import { createTtlCache } from '../utils/cache';
+import type { Friendship } from '../api/types';
 
 interface FriendshipBundle {
   friends: Friendship[];

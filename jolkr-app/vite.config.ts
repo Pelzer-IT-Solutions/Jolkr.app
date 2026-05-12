@@ -1,5 +1,5 @@
-import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { defineConfig, type Plugin } from 'vite'
 import pkg from './package.json' with { type: 'json' }
 
 const isTauri = !!process.env.TAURI_ENV_PLATFORM;

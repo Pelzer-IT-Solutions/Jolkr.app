@@ -12,8 +12,8 @@
  */
 
 import { useMemo, type ReactNode } from 'react';
-import { useLocaleStore } from '../stores/locale';
 import { translate, translateJsx, translatePlural } from '../i18n/t';
+import { useLocaleStore } from '../stores/locale';
 
 export interface T {
   /** String-context translate. Use for placeholders, aria-labels, alt, title. */

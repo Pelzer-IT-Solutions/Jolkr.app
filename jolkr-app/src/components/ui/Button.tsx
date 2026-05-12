@@ -13,7 +13,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   ref?: Ref<HTMLButtonElement>;
 }
 
-export default function Button({
+export function Button({
   variant = 'primary',
   size = 'md',
   fullWidth,

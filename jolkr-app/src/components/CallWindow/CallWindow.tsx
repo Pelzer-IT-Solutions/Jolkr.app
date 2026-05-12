@@ -1,12 +1,12 @@
-import { useState } from 'react';
 import { Mic, MicOff, Video, VideoOff, RefreshCw, PhoneOff, Minimize2 } from 'lucide-react';
-import { useVoiceStore } from '../../stores/voice';
-import { useCallStore } from '../../stores/call';
-import { useAuthStore } from '../../stores/auth';
-import { useViewport } from '../../hooks/useViewport';
+import { useState } from 'react';
 import { useT } from '../../hooks/useT';
-import { VideoTile } from '../VideoTile/VideoTile';
+import { useViewport } from '../../hooks/useViewport';
+import { useAuthStore } from '../../stores/auth';
+import { useCallStore } from '../../stores/call';
+import { useVoiceStore } from '../../stores/voice';
 import { CallPipWindow } from '../CallPipWindow/CallPipWindow';
+import { VideoTile } from '../VideoTile/VideoTile';
 import s from './CallWindow.module.css';
 
 export function CallWindow() {

@@ -1,4 +1,4 @@
-import type { LocalKeySet, PreKeyBundle, EncryptedPayload } from '../crypto';
+import * as api from '../api/client';
 import {
   generateKeySetFromSeed,
   encryptForRecipient,
@@ -8,10 +8,10 @@ import {
 } from '../crypto';
 import { clearKeySet } from '../crypto/keyStore';
 import { storage } from '../platform/storage';
-import * as api from '../api/client';
-import type { PreKeyBundleResponse } from '../api/types';
-import { STORAGE_KEYS } from '../utils/storageKeys';
 import { createTtlCache } from '../utils/cache';
+import { STORAGE_KEYS } from '../utils/storageKeys';
+import type { PreKeyBundleResponse } from '../api/types';
+import type { LocalKeySet, PreKeyBundle, EncryptedPayload } from '../crypto';
 
 // ── Seed storage ─────────────────────────────────────────────────
 // Goes through `storage` so on Tauri desktop the seed lives in the

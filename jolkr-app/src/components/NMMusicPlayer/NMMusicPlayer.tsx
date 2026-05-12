@@ -1,5 +1,5 @@
-import { useRef } from 'react';
 import { Download, Music, Pause, Play, Volume2, VolumeX, Volume1 } from 'lucide-react';
+import { useRef } from 'react';
 import { useNMMusic } from '../../hooks/useNMMusic';
 import { useT } from '../../hooks/useT';
 import s from './NMMusicPlayer.module.css';
@@ -23,7 +23,7 @@ export interface NMMusicPlayerProps {
  * usage where simultaneous tracks are rare and the queue features of the
  * full music player aren't needed.
  */
-export default function NMMusicPlayer({ src, filename, downloadUrl }: NMMusicPlayerProps) {
+export function NMMusicPlayer({ src, filename, downloadUrl }: NMMusicPlayerProps) {
   const { t } = useT();
   const visualizerRef = useRef<HTMLCanvasElement>(null);
   const {

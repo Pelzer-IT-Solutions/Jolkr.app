@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { wsClient } from '../api/ws';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 import { useAuthStore } from './auth';
 import { useMessagesStore } from './messages';
-import { STORAGE_KEYS } from '../utils/storageKeys';
 
 function persistLastSeen(data: Record<string, string>) {
   try { localStorage.setItem(STORAGE_KEYS.LAST_SEEN, JSON.stringify(data)); }

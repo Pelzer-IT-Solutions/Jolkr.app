@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import * as api from '../../api/client'
-import type { Poll } from '../../api/types'
 import { useT } from '../../hooks/useT'
 import s from './PollDisplay.module.css'
+import type { Poll } from '../../api/types'
 
 interface Props {
   poll: Poll

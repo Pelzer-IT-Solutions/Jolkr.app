@@ -1,5 +1,5 @@
-import { getAccessToken, refreshAccessTokenIfNeeded } from './client';
 import { getWsUrl } from '../platform/config';
+import { getAccessToken, refreshAccessTokenIfNeeded } from './client';
 import type { WsListenerEvent } from './ws-events';
 
 type WsListener = (event: WsListenerEvent) => void;

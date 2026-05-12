@@ -1,6 +1,5 @@
 import { ed25519, x25519 } from '@noble/curves/ed25519.js';
 import { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
-import type { LocalKeySet, PreKeyBundle } from './keys';
 import {
   verifySignedPreKey,
   verifyPQSignedPreKey,
@@ -16,6 +15,7 @@ import {
   generateSignedPreKey,
   generatePQSignedPreKey,
 } from './keys';
+import type { LocalKeySet, PreKeyBundle } from './keys';
 
 // ── Encrypt ────────────────────────────────────────────────────────
 

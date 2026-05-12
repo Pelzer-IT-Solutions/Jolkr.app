@@ -1,6 +1,3 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { Plus, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon, MoreHorizontal, VolumeX, CheckCheck, X } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -9,7 +6,6 @@ import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core'
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 import {
   SortableContext,
@@ -18,13 +14,17 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { ServerDisplay, MemberStatus } from '../../types'
-import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
-import { isTauri, isMobile } from '../../platform/detect'
-import { useCallStore } from '../../stores/call'
+import { Plus, MessagesSquare, Search, Bell, Settings, LogOut, LogIn, Server as ServerIcon, MoreHorizontal, VolumeX, CheckCheck, X } from 'lucide-react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useT } from '../../hooks/useT'
 import { useViewport } from '../../hooks/useViewport'
+import { isTauri, isMobile } from '../../platform/detect'
+import { useCallStore } from '../../stores/call'
+import { Menu, MenuItem, MenuSection, MenuDivider } from '../Menu'
 import s from './TabBar.module.css'
+import type { ServerDisplay, MemberStatus } from '../../types'
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 
 // Touch platforms + small viewports: disable drag-to-reorder so finger
 // scrolling along the tab strip never accidentally moves a server. Covers

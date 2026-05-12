@@ -1,15 +1,15 @@
-import { useMemo, useState, useEffect } from 'react'
 import {
   Hash, Lock, Shield, Save, Plus, Trash2, Check, XCircle
 } from 'lucide-react'
-import type { Channel as ApiChannel, Role, ChannelOverwrite } from '../../api/types'
+import { useMemo, useState, useEffect } from 'react'
 import * as api from '../../api/client'
-import * as P from '../../utils/permissions'
-import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import { useT } from '../../hooks/useT'
+import { revealDelay } from '../../utils/animations'
+import * as P from '../../utils/permissions'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import s from './ChannelSettings.module.css'
+import type { Channel as ApiChannel, Role, ChannelOverwrite } from '../../api/types'
 
 type Section = 'overview' | 'permissions'
 

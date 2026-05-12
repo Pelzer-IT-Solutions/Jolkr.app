@@ -10,7 +10,7 @@ interface ModalProps {
   overlayClassName?: string;
 }
 
-export default function Modal({ open, onClose, children, className, overlayClassName }: ModalProps) {
+export function Modal({ open, onClose, children, className, overlayClassName }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   useFocusTrap(contentRef);

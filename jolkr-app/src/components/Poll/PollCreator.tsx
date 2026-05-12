@@ -1,6 +1,6 @@
+import { X, Plus, Trash2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Plus, Trash2 } from 'lucide-react'
 import * as api from '../../api/client'
 import { useT } from '../../hooks/useT'
 import s from './PollCreator.module.css'

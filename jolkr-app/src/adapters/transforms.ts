@@ -4,10 +4,11 @@
  * This adapter layer bridges the two type systems.
  */
 
-import { displayName } from '../utils/format'
 import { tStatic } from '../hooks/useT'
-import { getLocaleCode } from '../stores/locale'
 import { formatDate, formatTime } from '../i18n/formatters'
+import { getApiBaseUrl } from '../platform/config'
+import { getLocaleCode } from '../stores/locale'
+import { displayName } from '../utils/format'
 import type {
   User,
   Server as ApiServer,
@@ -17,8 +18,6 @@ import type {
   Message as ApiMessage,
   DmChannel,
 } from '../api/types'
-import { getApiBaseUrl } from '../platform/config'
-
 import type {
   ServerDisplay,
   ChannelDisplay,

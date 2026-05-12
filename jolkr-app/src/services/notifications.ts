@@ -1,10 +1,10 @@
 import { wsClient } from '../api/ws';
-import { useUnreadStore } from '../stores/unread';
-import { useAuthStore } from '../stores/auth';
-import type { Message } from '../api/types';
-import { STORAGE_KEYS } from '../utils/storageKeys';
 import { decryptChannelMessage } from '../crypto/channelKeys';
+import { useAuthStore } from '../stores/auth';
+import { useUnreadStore } from '../stores/unread';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 import { isE2EEReady, getLocalKeys } from './e2ee';
+import type { Message } from '../api/types';
 
 // Simple notification sound using Web Audio API (no external file needed)
 let audioCtx: AudioContext | null = null;

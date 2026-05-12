@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import type { MeProfile, User, UpdateMeBody } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { resetE2EE } from '../services/e2ee';
-import { useVoiceStore } from './voice';
-import { useUsersStore } from './users';
 import { useLocaleStore } from './locale';
 import { resetAllStores } from './reset';
+import { useUsersStore } from './users';
+import { useVoiceStore } from './voice';
+import type { MeProfile, User, UpdateMeBody } from '../api/types';
 
 /**
  * Subset of `User` carried by `UserUpdate` WS events. Each field is optional;

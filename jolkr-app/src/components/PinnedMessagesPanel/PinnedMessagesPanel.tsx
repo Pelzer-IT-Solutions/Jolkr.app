@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import * as api from '../../api/client'
-import type { Message } from '../../api/types'
-import type { User } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useT } from '../../hooks/useT'
 import s from './PinnedMessagesPanel.module.css'
+import type { User } from '../../api/types'
+import type { Message } from '../../api/types'
 
 // Module-level cache so toggling the panel off and back on doesn't trigger a
 // "Loading..." flash. Keyed by `${isDm ? 'dm' : 'ch'}:${channelId}:${pinnedVersion}`

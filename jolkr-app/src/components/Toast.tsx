@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
-import { useToast } from '../stores/toast';
+import { useEffect, useState } from 'react';
 import { useT } from '../hooks/useT';
+import { useToast } from '../stores/toast';
 import s from './Toast.module.css';
 
-export default function Toast() {
+export function Toast() {
   const { t } = useT();
   const message = useToast((s) => s.message);
   const kind = useToast((s) => s.kind);

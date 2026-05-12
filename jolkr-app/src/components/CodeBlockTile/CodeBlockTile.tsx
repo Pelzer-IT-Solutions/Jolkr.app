@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, Download, Eye, FileCode } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/github-dark.css';
-import DOMPurify from 'dompurify';
-import type { Attachment } from '../../api/types';
-import { formatBytes } from '../../utils/format';
+import { ChevronDown, ChevronUp, Download, Eye, FileCode } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useAuthedRedirectUrl } from '../../hooks/useAuthedRedirectUrl';
 import { useT } from '../../hooks/useT';
+import { formatBytes } from '../../utils/format';
 import s from './CodeBlockTile.module.css';
+import type { Attachment } from '../../api/types';
 
 export interface CodeBlockTileProps {
   attachment: Attachment;
@@ -88,7 +88,7 @@ function sanitiseSvg(raw: string): string {
  * scrollable Jolkr-styled block. Falls back to a generic file chip when
  * the blob is too large to highlight comfortably.
  */
-export default function CodeBlockTile({ attachment, src }: CodeBlockTileProps) {
+export function CodeBlockTile({ attachment, src }: CodeBlockTileProps) {
   const { t } = useT();
   // Single round-trip: the signed stream-token URL is fetchable without a
   // Bearer header (Range-aware, scoped to caller), so the same URL backs

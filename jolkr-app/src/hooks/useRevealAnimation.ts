@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { DependencyList } from 'react'
 import { revealWindowMs } from '../utils/animations'
+import type { DependencyList } from 'react'
 
 /**
  * Manages the reveal-animation flag for staggered entrance animations.

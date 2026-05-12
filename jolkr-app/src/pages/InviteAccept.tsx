@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import * as api from '../api/client';
+import { Button } from '../components/ui/Button';
+import { useT } from '../hooks/useT';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
-import * as api from '../api/client';
-import Button from '../components/ui/Button';
-import { useT } from '../hooks/useT';
-import s from './InviteAccept.module.css';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import s from './InviteAccept.module.css';
 
-export default function InviteAccept() {
+export function InviteAccept() {
   const { t } = useT();
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
