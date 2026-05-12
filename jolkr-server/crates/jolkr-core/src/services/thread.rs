@@ -351,8 +351,8 @@ impl ThreadService {
         Ok(msg)
     }
 
-    /// Get paginated messages for a thread. Requires `VIEW_CHANNELS` on parent channel.
-    pub async fn get_thread_messages(
+    /// List paginated messages for a thread. Requires `VIEW_CHANNELS` on parent channel.
+    pub async fn list_thread_messages(
         pool: &PgPool,
         thread_id: Uuid,
         caller_id: Uuid,

@@ -312,8 +312,8 @@ pub(crate) async fn list_channel_members(
     // N+1 queries: members list, role assignments+permissions, channel
     // overwrites, the @everyone role.
     let members = MemberRepo::list_for_server(&state.pool, channel.server_id).await?;
-    let role_assignments = RoleRepo::get_roles_for_server_members(&state.pool, channel.server_id).await?;
-    let role_perms_batch = RoleRepo::get_member_roles_batch(&state.pool, channel.server_id).await?;
+    let role_assignments = RoleRepo::list_roles_for_server_members(&state.pool, channel.server_id).await?;
+    let role_perms_batch = RoleRepo::list_member_roles_batch(&state.pool, channel.server_id).await?;
     let overwrites = ChannelOverwriteRepo::list_for_channel(&state.pool, channel_id).await?;
     let everyone = RoleRepo::get_default(&state.pool, channel.server_id).await.ok();
 

@@ -119,14 +119,14 @@ pub(crate) async fn update_thread(
 }
 
 /// GET /api/threads/:thread_id/messages
-pub(crate) async fn get_thread_messages(
+pub(crate) async fn list_thread_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,
     Query(query): Query<ThreadMessageQuery>,
 ) -> Result<Json<MessagesResponse>, AppError> {
     let messages =
-        ThreadService::get_thread_messages(&state.pool, thread_id, auth.user_id, query).await?;
+        ThreadService::list_thread_messages(&state.pool, thread_id, auth.user_id, query).await?;
 
     Ok(Json(MessagesResponse { messages }))
 }

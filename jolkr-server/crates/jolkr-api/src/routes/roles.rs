@@ -162,7 +162,7 @@ async fn broadcast_member_role_update(state: &AppState, server_id: Uuid, target_
             return;
         }
     };
-    let role_ids = match RoleRepo::get_member_role_ids(&state.pool, member.id).await {
+    let role_ids = match RoleRepo::list_member_role_ids(&state.pool, member.id).await {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("MemberUpdate broadcast skipped — role lookup failed: {e}");
@@ -192,7 +192,7 @@ pub(crate) async fn list_members_with_roles(
         .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
 
     let members = MemberRepo::list_for_server(&state.pool, server_id).await?;
-    let role_assignments = RoleRepo::get_roles_for_server_members(&state.pool, server_id).await?;
+    let role_assignments = RoleRepo::list_roles_for_server_members(&state.pool, server_id).await?;
 
     // Build member_id -> Vec<role_id> map
     let mut role_map: std::collections::HashMap<Uuid, Vec<Uuid>> = std::collections::HashMap::new();

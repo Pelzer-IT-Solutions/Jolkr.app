@@ -80,8 +80,8 @@ impl DeviceRepo {
         Ok(rows)
     }
 
-    /// Get devices with push tokens for a user (for sending notifications).
-    pub async fn get_pushable_devices(
+    /// List devices with push tokens for a user (for sending notifications).
+    pub async fn list_pushable_devices(
         pool: &PgPool,
         user_id: Uuid,
     ) -> Result<Vec<DeviceRow>, JolkrError> {
@@ -95,8 +95,8 @@ impl DeviceRepo {
         Ok(rows)
     }
 
-    /// Get devices with push tokens for multiple users at once (batch query for push notifications).
-    pub async fn get_pushable_devices_batch(
+    /// List devices with push tokens for multiple users at once (batch query for push notifications).
+    pub async fn list_pushable_devices_batch(
         pool: &PgPool,
         user_ids: &[Uuid],
     ) -> Result<Vec<DeviceRow>, JolkrError> {

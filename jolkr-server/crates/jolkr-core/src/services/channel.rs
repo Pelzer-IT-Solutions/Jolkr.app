@@ -211,7 +211,7 @@ impl ChannelService {
 
         // Batch-fetch all overwrites for this server
         let overwrites = ChannelOverwriteRepo::list_for_server(pool, server_id).await?;
-        let member_role_ids = RoleRepo::get_member_role_ids(pool, member.id).await?;
+        let member_role_ids = RoleRepo::list_member_role_ids(pool, member.id).await?;
         let everyone = RoleRepo::get_default(pool, server_id).await.ok();
         let everyone_role_id = everyone.as_ref().map(|r| r.id);
 

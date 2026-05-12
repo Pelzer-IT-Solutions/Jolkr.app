@@ -158,7 +158,7 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
         .route("/api/dms/:dm_id/close", post(dms::close_dm))
         .route(
             "/api/dms/:dm_id/messages",
-            get(dms::get_dm_messages).post(dms::send_dm_message),
+            get(dms::list_dm_messages).post(dms::send_dm_message),
         )
         .route(
             "/api/dms/messages/:id",
@@ -287,12 +287,12 @@ pub(crate) fn create_router(state: AppState, prometheus_handle: PrometheusHandle
         .route("/api/threads/:thread_id", get(threads::get_thread).patch(threads::update_thread))
         .route(
             "/api/threads/:thread_id/messages",
-            get(threads::get_thread_messages).post(threads::send_thread_message),
+            get(threads::list_thread_messages).post(threads::send_thread_message),
         )
         // ── Messages ────────────────────────────────────────────────
         .route(
             "/api/channels/:id/messages",
-            get(messages::get_messages).post(messages::send_message),
+            get(messages::list_messages).post(messages::send_message),
         )
         .route(
             "/api/channels/:id/messages/search",

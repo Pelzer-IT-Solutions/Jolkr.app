@@ -398,7 +398,7 @@ async fn resolve_gif_url(
     }
 
     // 2. Check gif_favorites table (any user's entry for this gif_id)
-    if let Ok(Some(row)) = GifFavoritesRepo::find_by_gif_id(&state.pool, gif_id).await {
+    if let Ok(Some(row)) = GifFavoritesRepo::get_by_gif_id(&state.pool, gif_id).await {
         // Re-populate cache for future requests
         cache_gif(gif_id, &row.gif_url, &row.preview_url);
         return Ok(if size == "small" { row.preview_url } else { row.gif_url });

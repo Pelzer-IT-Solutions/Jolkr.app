@@ -155,7 +155,7 @@ pub(crate) async fn mark_as_read(
             user_id: auth.user_id,
             message_id: body.message_id,
         };
-        if let Ok(members) = DmRepo::get_dm_members(&state.pool, dm_id).await {
+        if let Ok(members) = DmRepo::list_dm_members(&state.pool, dm_id).await {
             for member in &members {
                 state.nats.publish_to_user(member.user_id, &event).await;
             }

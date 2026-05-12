@@ -101,7 +101,7 @@ pub(crate) async fn send_message(
         };
 
         // Batch: fetch all member-roles + overwrites + everyone_role in 3 queries total
-        let member_roles_batch = RoleRepo::get_member_roles_batch(&pool, channel.server_id).await.unwrap_or_default();
+        let member_roles_batch = RoleRepo::list_member_roles_batch(&pool, channel.server_id).await.unwrap_or_default();
         let overwrites = ChannelOverwriteRepo::list_for_channel(&pool, channel_id).await.unwrap_or_default();
         let everyone_role = RoleRepo::get_default(&pool, channel.server_id).await.ok();
 
@@ -144,7 +144,7 @@ pub(crate) async fn send_message(
 }
 
 /// GET /api/channels/:id/messages — requires membership + VIEW_CHANNELS
-pub(crate) async fn get_messages(
+pub(crate) async fn list_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -165,7 +165,7 @@ pub(crate) async fn get_messages(
         }
     }
 
-    let messages = MessageService::get_messages(&state.pool, channel_id, query).await?;
+    let messages = MessageService::list_messages(&state.pool, channel_id, query).await?;
 
     Ok(Json(MessagesResponse { messages }))
 }

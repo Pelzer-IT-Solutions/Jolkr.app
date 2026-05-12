@@ -203,7 +203,7 @@ impl DmService {
         // filters the channel out for the caller and the new conversation
         // never shows up on the initiator's side.
         DmRepo::reopen_dm(pool, channel.id).await.ok();
-        let members = DmRepo::get_dm_members(pool, channel.id).await?;
+        let members = DmRepo::list_dm_members(pool, channel.id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
         Ok(DmChannelInfo {
@@ -228,8 +228,8 @@ impl DmService {
         // something they removed from their own view.
         let channel_ids: Vec<Uuid> = channels.iter().map(|ch| ch.id).collect();
         let (all_members, last_messages) = tokio::try_join!(
-            DmRepo::get_members_for_channels(pool, &channel_ids),
-            DmRepo::get_last_messages_for_user(pool, &channel_ids, Some(user_id)),
+            DmRepo::list_members_for_channels(pool, &channel_ids),
+            DmRepo::list_last_messages_for_user(pool, &channel_ids, Some(user_id)),
         )?;
 
         let result = channels
@@ -363,7 +363,7 @@ impl DmService {
 
         DmRepo::add_member(pool, dm_channel_id, target_user_id).await?;
 
-        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let members = DmRepo::list_dm_members(pool, dm_channel_id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
         Ok(DmChannelInfo {
@@ -392,7 +392,7 @@ impl DmService {
 
         DmRepo::remove_member(pool, dm_channel_id, caller_id).await?;
 
-        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let members = DmRepo::list_dm_members(pool, dm_channel_id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
         Ok(DmChannelInfo {
@@ -432,7 +432,7 @@ impl DmService {
 
         let updated = DmRepo::update_group_dm(pool, dm_channel_id, name.as_deref()).await?;
 
-        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let members = DmRepo::list_dm_members(pool, dm_channel_id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
         Ok(DmChannelInfo {
@@ -514,7 +514,7 @@ impl DmService {
         }
 
         // Block messages to system users (announcement-only DMs)
-        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let members = DmRepo::list_dm_members(pool, dm_channel_id).await?;
         let other_member_ids: Vec<Uuid> = members
             .iter()
             .filter(|m| m.user_id != author_id)
@@ -664,8 +664,8 @@ impl DmService {
             .collect())
     }
 
-    /// Get messages in a DM channel with cursor pagination (batch loads attachments).
-    pub async fn get_messages(
+    /// List messages in a DM channel with cursor pagination (batch loads attachments).
+    pub async fn list_messages(
         pool: &PgPool,
         dm_channel_id: Uuid,
         caller_id: Uuid,
@@ -676,7 +676,7 @@ impl DmService {
         }
 
         let limit = query.limit.unwrap_or(50).clamp(1, 100);
-        let rows = DmRepo::get_messages(pool, dm_channel_id, caller_id, query.before, limit).await?;
+        let rows = DmRepo::list_messages(pool, dm_channel_id, caller_id, query.before, limit).await?;
         let mut messages: Vec<DmMessageInfo> = rows.into_iter().map(DmMessageInfo::from).collect();
 
         // Batch load all attachments in one query

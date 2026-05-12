@@ -187,8 +187,8 @@ impl RoleRepo {
         Ok(())
     }
 
-    /// Get all role IDs assigned to a member.
-    pub async fn get_member_role_ids(
+    /// List all role IDs assigned to a member.
+    pub async fn list_member_role_ids(
         pool: &PgPool,
         member_id: Uuid,
     ) -> Result<Vec<Uuid>, JolkrError> {
@@ -202,8 +202,8 @@ impl RoleRepo {
         Ok(rows.into_iter().map(|(id,)| id).collect())
     }
 
-    /// Get all roles for a member (joined with roles table).
-    pub async fn get_member_roles(
+    /// List all roles for a member (joined with roles table).
+    pub async fn list_member_roles(
         pool: &PgPool,
         member_id: Uuid,
     ) -> Result<Vec<RoleRow>, JolkrError> {
@@ -222,8 +222,8 @@ impl RoleRepo {
         Ok(rows)
     }
 
-    /// Get all `role_ids` for all members in a server (batch query to avoid N+1).
-    pub async fn get_roles_for_server_members(
+    /// List all `role_ids` for all members in a server (batch query to avoid N+1).
+    pub async fn list_roles_for_server_members(
         pool: &PgPool,
         server_id: Uuid,
     ) -> Result<Vec<(Uuid, Uuid)>, JolkrError> {
@@ -242,9 +242,9 @@ impl RoleRepo {
         Ok(rows)
     }
 
-    /// Get all roles with permissions for all members in a server (single query).
+    /// List all roles with permissions for all members in a server (single query).
     /// Returns (`member_id`, `role_id`, permissions) tuples for batch permission computation.
-    pub async fn get_member_roles_batch(
+    pub async fn list_member_roles_batch(
         pool: &PgPool,
         server_id: Uuid,
     ) -> Result<Vec<(Uuid, Uuid, i64)>, JolkrError> {
@@ -329,7 +329,7 @@ impl RoleRepo {
         let mut perms = everyone.map(|r| r.permissions).unwrap_or(Permissions::DEFAULT as i64);
 
         // Get member's assigned roles
-        let roles = Self::get_member_roles(pool, member_id).await?;
+        let roles = Self::list_member_roles(pool, member_id).await?;
         for role in &roles {
             perms |= role.permissions;
         }
@@ -359,7 +359,7 @@ impl RoleRepo {
         }
 
         let overwrites = ChannelOverwriteRepo::list_for_channel(pool, channel_id).await?;
-        let member_role_ids = Self::get_member_role_ids(pool, member_id).await?;
+        let member_role_ids = Self::list_member_role_ids(pool, member_id).await?;
         let everyone = Self::get_default(pool, server_id).await.ok();
 
         base = Self::apply_overwrites(base, &overwrites, &member_role_ids, everyone.as_ref().map(|r| r.id), member_id);
@@ -377,7 +377,7 @@ impl RoleRepo {
     ) -> Result<i64, JolkrError> {
         // Compute server-level permissions (still per-member: @everyone + assigned roles)
         let everyone_perms = everyone_role.map_or(Permissions::DEFAULT as i64, |r| r.permissions);
-        let roles = Self::get_member_roles(pool, member_id).await?;
+        let roles = Self::list_member_roles(pool, member_id).await?;
         let mut base = everyone_perms;
         for role in &roles {
             base |= role.permissions;
@@ -388,7 +388,7 @@ impl RoleRepo {
             return Ok(Permissions::ALL as i64);
         }
 
-        let member_role_ids = Self::get_member_role_ids(pool, member_id).await?;
+        let member_role_ids = Self::list_member_role_ids(pool, member_id).await?;
         let everyone_role_id = everyone_role.map(|r| r.id);
 
         base = Self::apply_overwrites(base, overwrites, &member_role_ids, everyone_role_id, member_id);

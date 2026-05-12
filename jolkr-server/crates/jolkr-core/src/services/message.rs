@@ -309,8 +309,8 @@ pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo
     let poll_ids: Vec<Uuid> = polls.iter().map(|p| p.id).collect();
 
     // Batch load options and vote counts
-    let all_options = PollRepo::get_options_batch(pool, &poll_ids).await?;
-    let all_counts = PollRepo::get_vote_counts_batch(pool, &poll_ids).await?;
+    let all_options = PollRepo::list_options_batch(pool, &poll_ids).await?;
+    let all_counts = PollRepo::list_vote_counts_batch(pool, &poll_ids).await?;
 
     // Group options by poll_id
     let mut options_by_poll: HashMap<Uuid, Vec<serde_json::Value>> = HashMap::new();
@@ -520,8 +520,8 @@ impl MessageService {
         msgs.into_iter().next().ok_or(JolkrError::Internal("Failed to enrich message".into()))
     }
 
-    /// Fetch paginated messages for a channel, including attachments (batch loaded).
-    pub async fn get_messages(
+    /// List paginated messages for a channel, including attachments (batch loaded).
+    pub async fn list_messages(
         pool: &PgPool,
         channel_id: Uuid,
         query: MessageQuery,

@@ -41,7 +41,7 @@ pub(crate) async fn send_dm_message(
 
     // Also broadcast to each DM participant by user_id, so their DM list
     // updates even if they haven't subscribed to this channel yet.
-    let members_opt = DmRepo::get_dm_members(&state.pool, dm_id).await.ok();
+    let members_opt = DmRepo::list_dm_members(&state.pool, dm_id).await.ok();
     if let Some(members) = &members_opt {
         for member in members {
             state.nats.publish_to_user(member.user_id, &event).await;
@@ -54,7 +54,7 @@ pub(crate) async fn send_dm_message(
     // ones are prepended. The event also surfaces last_message so the sidebar
     // preview is correct without a separate fetch.
     //
-    // members_opt = None is rare but possible if get_dm_members hit a transient
+    // members_opt = None is rare but possible if list_dm_members hit a transient
     // DB error above; log it so this regression class is observable.
     match (members_opt.as_ref(), channel_row_result) {
         (Some(members), Ok(channel_row)) => {
@@ -81,7 +81,7 @@ pub(crate) async fn send_dm_message(
         }
         (None, _) => {
             tracing::warn!(
-                "DmCreate fan-out skipped for channel {dm_id}: get_dm_members returned None"
+                "DmCreate fan-out skipped for channel {dm_id}: list_dm_members returned None"
             );
         }
         // get_channel error path already logged above where it occurred.
@@ -147,7 +147,7 @@ pub(crate) async fn send_dm_message(
             Ok(u) => u,
             Err(_) => return,
         };
-        if let Ok(members) = DmRepo::get_dm_members(&pool, dm_id).await {
+        if let Ok(members) = DmRepo::list_dm_members(&pool, dm_id).await {
             for member in members {
                 if member.user_id != author_id {
                     push.notify_dm(
@@ -164,13 +164,13 @@ pub(crate) async fn send_dm_message(
     Ok(Json(DmMessageResponse { message: dm_to_message_info(&message) }))
 }
 
-pub(crate) async fn get_dm_messages(
+pub(crate) async fn list_dm_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(dm_id): Path<Uuid>,
     Query(query): Query<DmMessageQuery>,
 ) -> Result<Json<DmMessagesResponse>, AppError> {
-    let messages = DmService::get_messages(&state.pool, dm_id, auth.user_id, query).await?;
+    let messages = DmService::list_messages(&state.pool, dm_id, auth.user_id, query).await?;
     let messages = messages.iter().map(dm_to_message_info).collect();
 
     Ok(Json(DmMessagesResponse { messages }))

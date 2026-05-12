@@ -112,7 +112,7 @@ impl PushService {
         };
 
         // Get all devices with push tokens
-        let devices = match DeviceRepo::get_pushable_devices(&self.pool, user_id).await {
+        let devices = match DeviceRepo::list_pushable_devices(&self.pool, user_id).await {
             Ok(d) => d,
             Err(e) => {
                 error!(user_id = %user_id, error = %e, "Failed to get pushable devices");
@@ -280,10 +280,10 @@ impl PushService {
         }
 
         // Single batch query for all pushable devices
-        let devices = match DeviceRepo::get_pushable_devices_batch(&self.pool, &offline_user_ids).await {
+        let devices = match DeviceRepo::list_pushable_devices_batch(&self.pool, &offline_user_ids).await {
             Ok(d) => d,
             Err(e) => {
-                error!(error = %e, "Failed to batch-get pushable devices");
+                error!(error = %e, "Failed to list pushable devices");
                 return;
             }
         };
