@@ -1,0 +1,55 @@
+name: Codegen drift check
+
+# Regenerates the TypeScript bindings from the Rust DTOs (via `ts-rs`) and
+# fails if the working tree differs from the committed files. Prevents BE
+# DTO changes landing without the matching `jolkr-app/src/api/generated/`
+# update.
+
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - 'jolkr-server/**'
+      - 'jolkr-app/src/api/generated/**'
+      - '.github/workflows/codegen-drift.yml'
+  push:
+    branches: [dev, main]
+    paths:
+      - 'jolkr-server/**'
+      - 'jolkr-app/src/api/generated/**'
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            jolkr-server/target
+          key: codegen-drift-${{ runner.os }}-${{ hashFiles('jolkr-server/Cargo.lock') }}
+
+      - name: Regenerate TS bindings
+        env:
+          TS_RS_EXPORT_DIR: ${{ github.workspace }}/jolkr-app/src/api/generated
+        run: |
+          cd jolkr-server
+          cargo test --workspace
+
+      - name: Fail if generated TS differs from committed
+        run: |
+          if ! git diff --exit-code -- jolkr-app/src/api/generated/; then
+            echo "::error::Generated TS bindings drifted from the committed files."
+            echo "Run \`cargo test --workspace\` from \`jolkr-server/\` with"
+            echo "TS_RS_EXPORT_DIR=\$(pwd)/../jolkr-app/src/api/generated, then commit"
+            echo "the regenerated \`jolkr-app/src/api/generated/\` directory."
+            exit 1
+          fi
+          echo "OK — generated TS bindings are in sync with Rust DTOs."
