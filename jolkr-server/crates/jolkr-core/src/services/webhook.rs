@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -10,7 +11,9 @@ use jolkr_db::repo::{ChannelRepo, MemberRepo, RoleRepo, ServerRepo, WebhookRepo}
 use crate::services::message::MessageInfo;
 
 /// Webhook info (hides token for list/get)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Webhook")]
 pub struct WebhookInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -26,6 +29,7 @@ pub struct WebhookInfo {
     pub avatar_url: Option<String>,
     /// Opaque token string.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub token: Option<String>,
 }
 

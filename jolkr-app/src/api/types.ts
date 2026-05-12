@@ -7,6 +7,7 @@ import type { Server as GeneratedServer } from './generated/Server';
 import type { User as GeneratedUser } from './generated/User';
 
 export type { Attachment } from './generated/Attachment';
+export type { Ban } from './generated/Ban';
 export type { Category } from './generated/Category';
 export type { ChannelOverwrite } from './generated/ChannelOverwrite';
 export type { DmChannel } from './generated/DmChannel';
@@ -14,12 +15,15 @@ export type { DmLastMessage } from './generated/DmLastMessage';
 export type { Friendship } from './generated/Friendship';
 export type { FriendshipUser } from './generated/FriendshipUser';
 export type { GifFavorite } from './generated/GifFavorite';
+export type { Invite } from './generated/Invite';
 export type { MessageEmbed } from './generated/MessageEmbed';
 export type { Poll } from './generated/Poll';
 export type { PollOption } from './generated/PollOption';
 export type { Role } from './generated/Role';
 export type { Thread } from './generated/Thread';
+export type { TokenPair } from './generated/TokenPair';
 export type { UpdateMeBody } from './generated/UpdateMeBody';
+export type { Webhook } from './generated/Webhook';
 
 /** Who is allowed to start a new DM with the user. */
 export type DmFilter = 'all' | 'friends' | 'none';
@@ -91,41 +95,6 @@ export interface Member {
   timeout_until?: string | null;
   user?: User;
   role_ids?: string[];
-}
-
-export interface Webhook {
-  id: string;
-  channel_id: string;
-  server_id: string;
-  creator_id: string;
-  name: string;
-  avatar_url?: string | null;
-  token?: string;
-}
-
-export interface Ban {
-  id: string;
-  server_id: string;
-  user_id: string;
-  banned_by?: string | null;
-  reason?: string | null;
-  created_at: string;
-}
-
-export interface Invite {
-  id: string;
-  server_id: string;
-  code: string;
-  creator_id: string;
-  max_uses?: number | null;
-  use_count: number;
-  expires_at?: string | null;
-}
-
-export interface TokenPair {
-  access_token: string;
-  refresh_token: string;
-  expires_in?: number;
 }
 
 export interface ServerEmoji {

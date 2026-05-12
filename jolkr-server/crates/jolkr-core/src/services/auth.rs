@@ -7,6 +7,7 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::{info, warn};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::JolkrError;
@@ -31,13 +32,16 @@ pub struct Claims {
 }
 
 /// An access + refresh token pair returned after login / register / refresh.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub struct TokenPair {
     /// Access token string.
     pub access_token: String,
     /// Refresh token string.
     pub refresh_token: String,
     /// Lifetime in seconds.
+    #[ts(type = "number")]
     pub expires_in: i64,
 }
 

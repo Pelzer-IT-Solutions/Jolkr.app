@@ -97,7 +97,9 @@ pub struct SetNicknameRequest {
 }
 
 /// Public ban DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Ban")]
 pub struct BanInfo {
     /// Unique identifier.
     pub id: Uuid,

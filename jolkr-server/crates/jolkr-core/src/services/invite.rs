@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -7,7 +8,9 @@ use jolkr_db::models::InviteRow;
 use jolkr_db::repo::{InviteRepo, MemberRepo, RoleRepo, ServerRepo};
 
 /// Public information about `invite`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Invite")]
 pub struct InviteInfo {
     /// Unique identifier.
     pub id: Uuid,
