@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -8,7 +9,9 @@ use jolkr_db::models::RoleRow;
 use jolkr_db::repo::{MemberRepo, RoleRepo, ServerRepo};
 
 /// Public role DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Role")]
 pub struct RoleInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -21,6 +24,7 @@ pub struct RoleInfo {
     /// Sort position.
     pub position: i32,
     /// Permission bitmask.
+    #[ts(type = "number")]
     pub permissions: i64,
     /// Whether this is the default entry.
     pub is_default: bool,

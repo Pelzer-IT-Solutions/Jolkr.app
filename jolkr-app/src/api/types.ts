@@ -1,6 +1,7 @@
 import type { Channel as GeneratedChannel } from './generated/Channel';
 import type { MeProfile as GeneratedMeProfile } from './generated/MeProfile';
 import type { Message as GeneratedMessage } from './generated/Message';
+import type { Poll } from './generated/Poll';
 import type { Reaction as GeneratedReaction } from './generated/Reaction';
 import type { Server as GeneratedServer } from './generated/Server';
 import type { User as GeneratedUser } from './generated/User';
@@ -8,6 +9,10 @@ import type { User as GeneratedUser } from './generated/User';
 export type { Attachment } from './generated/Attachment';
 export type { Category } from './generated/Category';
 export type { MessageEmbed } from './generated/MessageEmbed';
+export type { Poll } from './generated/Poll';
+export type { PollOption } from './generated/PollOption';
+export type { Role } from './generated/Role';
+export type { Thread } from './generated/Thread';
 export type { UpdateMeBody } from './generated/UpdateMeBody';
 
 /** Who is allowed to start a new DM with the user. */
@@ -71,17 +76,6 @@ export type Message = Omit<
   updated_at?: string | null;
 };
 
-export interface Thread {
-  id: string;
-  channel_id: string;
-  starter_msg_id?: string | null;
-  name?: string | null;
-  is_archived: boolean;
-  message_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Member {
   id: string;
   server_id: string;
@@ -101,37 +95,6 @@ export interface Webhook {
   name: string;
   avatar_url?: string | null;
   token?: string;
-}
-
-export interface Poll {
-  id: string;
-  message_id: string;
-  channel_id: string;
-  question: string;
-  multi_select: boolean;
-  anonymous: boolean;
-  expires_at?: string | null;
-  options: PollOption[];
-  votes: Record<string, number>;
-  my_votes?: string[];
-  total_votes: number;
-}
-
-export interface PollOption {
-  id: string;
-  poll_id: string;
-  position: number;
-  text: string;
-}
-
-export interface Role {
-  id: string;
-  server_id: string;
-  name: string;
-  color: number;
-  position: number;
-  permissions: number;
-  is_default: boolean;
 }
 
 export interface ChannelOverwrite {

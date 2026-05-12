@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 use std::collections::HashMap;
 
@@ -8,7 +9,9 @@ use jolkr_common::JolkrError;
 use jolkr_db::repo::{ChannelRepo, MemberRepo, PollRepo};
 
 /// Public information about `polloption`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "PollOption")]
 pub struct PollOptionInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -21,7 +24,9 @@ pub struct PollOptionInfo {
 }
 
 /// Public information about `poll`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Poll")]
 pub struct PollInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -40,10 +45,12 @@ pub struct PollInfo {
     /// Options list.
     pub options: Vec<PollOptionInfo>,
     /// Map of `option_id` → vote count
+    #[ts(type = "Record<string, number>")]
     pub votes: HashMap<String, i64>,
     /// Current user's voted option IDs
     pub my_votes: Vec<Uuid>,
     /// Total votes.
+    #[ts(type = "number")]
     pub total_votes: i64,
 }
 

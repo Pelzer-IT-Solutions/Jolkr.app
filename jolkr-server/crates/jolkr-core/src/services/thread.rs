@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -21,7 +22,9 @@ const MAX_THREAD_NAME_CHARS: usize = 100;
 // ── DTOs ──────────────────────────────────────────────────────────────
 
 /// Public information about `thread`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Thread")]
 pub struct ThreadInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -34,6 +37,7 @@ pub struct ThreadInfo {
     /// Whether archived.
     pub is_archived: bool,
     /// Cached message count.
+    #[ts(type = "number")]
     pub message_count: i64,
     /// Creation timestamp.
     pub created_at: DateTime<Utc>,
