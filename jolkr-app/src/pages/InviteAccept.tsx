@@ -13,12 +13,12 @@ export function InviteAccept() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const loading = useAuthStore((s) => s.loading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const [error, setError] = useState('');
   const [joining, setJoining] = useState(false);
 
   useEffect(() => {
-    if (loading || !code) return;
+    if (isLoading || !code) return;
 
     if (!user) {
       // Save invite code and redirect to login
@@ -38,9 +38,9 @@ export function InviteAccept() {
         setError((e as Error).message || t('inviteAccept.errorGeneric'));
         setJoining(false);
       });
-  }, [code, user, loading, navigate, t]);
+  }, [code, user, isLoading, navigate, t]);
 
-  if (loading || joining) {
+  if (isLoading || joining) {
     return (
       <div className={s.page}>
         <div className={s.message}>{t('inviteAccept.joining')}</div>

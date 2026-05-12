@@ -15,7 +15,7 @@ export function Register() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const register = useAuthStore((s) => s.register);
-  const loading = useAuthStore((s) => s.loading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const error = useAuthStore((s) => s.error);
   const navigate = useNavigate();
 
@@ -96,8 +96,8 @@ export function Register() {
               style={styles.input}
             />
           </label>
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? t('auth.register.submitting') : t('auth.register.submit')}
+          <button type="submit" disabled={isLoading} style={styles.button}>
+            {isLoading ? t('auth.register.submitting') : t('auth.register.submit')}
           </button>
         </form>
 

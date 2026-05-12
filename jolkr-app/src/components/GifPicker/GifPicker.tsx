@@ -64,7 +64,7 @@ export function GifPicker({ onSelect, width = 450, height = 450 }: Props) {
       .then((favs) => {
         setFavGifs(favs)
         // Also populate the shared store
-        useGifFavoritesStore.setState({ ids: new Set(favs.map((f) => f.gif_id)), loaded: true })
+        useGifFavoritesStore.setState({ ids: new Set(favs.map((f) => f.gif_id)), isLoaded: true })
       })
       .catch((e) => logErr('GifPicker.loadFavorites', e))
   }, [])

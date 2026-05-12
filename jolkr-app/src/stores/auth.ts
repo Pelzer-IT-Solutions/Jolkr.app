@@ -19,7 +19,7 @@ type UserPatch = Partial<Pick<User,
 
 interface AuthState {
   user: MeProfile | null;
-  loading: boolean;
+  isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
@@ -31,35 +31,35 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  loading: false,
+  isLoading: false,
   error: null,
 
   login: async (email, password) => {
-    set({ loading: true, error: null });
+    set({ isLoading: true, error: null });
     try {
       const { user } = await api.login(email, password);
-      set({ user, loading: false });
+      set({ user, isLoading: false });
       useUsersStore.getState().upsertUser(user);
       useLocaleStore.getState().applyMeProfile(user.preferred_language);
       wsClient.connect();
     } catch (e) {
-      set({ loading: false, error: (e as Error).message });
+      set({ isLoading: false, error: (e as Error).message });
       throw e;
     }
   },
 
   register: async (email, username, password) => {
-    set({ loading: true, error: null });
+    set({ isLoading: true, error: null });
     try {
       const { user } = await api.register(email, username, password);
-      set({ user, loading: false });
+      set({ user, isLoading: false });
       useUsersStore.getState().upsertUser(user);
       useLocaleStore.getState().applyMeProfile(user.preferred_language);
       if (user.email_verified) {
         wsClient.connect();
       }
     } catch (e) {
-      set({ loading: false, error: (e as Error).message });
+      set({ isLoading: false, error: (e as Error).message });
       throw e;
     }
   },
@@ -67,10 +67,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   loadUser: async () => {
     const token = api.getAccessToken();
     if (!token) return;
-    set({ loading: true });
+    set({ isLoading: true });
     try {
       const user = await api.getMe();
-      set({ user, loading: false });
+      set({ user, isLoading: false });
       useUsersStore.getState().upsertUser(user);
       useLocaleStore.getState().applyMeProfile(user.preferred_language);
       if (user.email_verified) {
@@ -82,7 +82,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (status === 401 || status === 403) {
         await api.clearTokens();
       }
-      set({ user: null, loading: false });
+      set({ user: null, isLoading: false });
     }
   },
 
@@ -123,7 +123,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     resetE2EE().catch(console.warn);
     // Reset all stores to prevent stale data on re-login
     resetAllStores();
-    set({ user: null, loading: false, error: null });
+    set({ user: null, isLoading: false, error: null });
   },
 }));
 

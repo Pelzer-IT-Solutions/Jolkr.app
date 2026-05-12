@@ -32,10 +32,10 @@ import { STORAGE_KEYS } from './utils/storageKeys';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
-  const loading = useAuthStore((s) => s.loading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const location = useLocation();
 
-  if (loading) return null; // Splash from index.html covers this
+  if (isLoading) return null; // Splash from index.html covers this
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   if (!user.email_verified) return <Navigate to="/verify-email" replace />;
   return <>{children}</>;
@@ -43,8 +43,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function GuestGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
-  const loading = useAuthStore((s) => s.loading);
-  if (loading) return null;
+  const isLoading = useAuthStore((s) => s.isLoading);
+  if (isLoading) return null;
   if (user) return <Navigate to="/" replace />;
   return <>{children}</>;
 }

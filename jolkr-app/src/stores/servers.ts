@@ -29,7 +29,7 @@ interface ServersState {
   permissions: Record<string, number>;
   channelPermissions: Record<string, number>;
   emojis: Record<string, ServerEmoji[]>;
-  loading: boolean;
+  isLoading: boolean;
   fetchServers: () => Promise<void>;
   fetchChannels: (serverId: string) => Promise<void>;
   fetchMembers: (serverId: string) => Promise<void>;
@@ -98,16 +98,16 @@ export const useServersStore = create<ServersState>((set, get) => ({
   permissions: {},
   channelPermissions: {},
   emojis: {},
-  loading: false,
+  isLoading: false,
 
   fetchServers: async () => {
     // Only show loading spinner on initial fetch — refetches update silently
-    if (!get().servers.length) set({ loading: true });
+    if (!get().servers.length) set({ isLoading: true });
     try {
       const servers = await api.getServers();
-      set({ servers, loading: false });
+      set({ servers, isLoading: false });
     } catch {
-      set({ loading: false });
+      set({ isLoading: false });
     }
   },
 
@@ -307,7 +307,7 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   reset: () => {
-    set({ servers: [], channels: {}, members: {}, channelMembers: {}, categories: {}, roles: {}, permissions: {}, channelPermissions: {}, emojis: {}, loading: false });
+    set({ servers: [], channels: {}, members: {}, channelMembers: {}, categories: {}, roles: {}, permissions: {}, channelPermissions: {}, emojis: {}, isLoading: false });
   },
 
   fetchEmojis: async (serverId) => {

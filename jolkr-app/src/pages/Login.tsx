@@ -16,7 +16,7 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const login = useAuthStore((s) => s.login);
-  const loading = useAuthStore((s) => s.loading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const error = useAuthStore((s) => s.error);
   const fetchServers = useServersStore((s) => s.fetchServers);
   const navigate = useNavigate();
@@ -109,8 +109,8 @@ export function Login() {
             />
             <Link to="/forgot-password" style={styles.link}>{t('auth.login.forgotPassword')}</Link>
           </label>
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? t('auth.login.submitting') : t('auth.login.submit')}
+          <button type="submit" disabled={isLoading} style={styles.button}>
+            {isLoading ? t('auth.login.submitting') : t('auth.login.submit')}
           </button>
         </form>
 
