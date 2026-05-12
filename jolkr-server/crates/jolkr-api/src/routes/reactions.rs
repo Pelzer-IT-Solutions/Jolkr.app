@@ -49,7 +49,7 @@ pub(crate) async fn add_reaction(
 
     // Check if member is timed out
     if MemberRepo::is_timed_out(&state.pool, channel.server_id, auth.user_id).await
-        .map_err(|e| AppError(e))? {
+        .map_err(AppError)? {
         return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
 
@@ -60,7 +60,7 @@ pub(crate) async fn add_reaction(
     }
     ReactionRepo::add_reaction(&state.pool, message_id, auth.user_id, &body.emoji)
         .await
-        .map_err(|e| AppError(e))?;
+        .map_err(AppError)?;
 
     // Broadcast aggregated reactions to all channel subscribers
     let rows = ReactionRepo::list_for_message(&state.pool, message_id)
@@ -107,7 +107,7 @@ pub(crate) async fn remove_reaction(
 
     ReactionRepo::remove_reaction(&state.pool, message_id, auth.user_id, &emoji)
         .await
-        .map_err(|e| AppError(e))?;
+        .map_err(AppError)?;
 
     // Broadcast aggregated reactions to all channel subscribers
     let rows = ReactionRepo::list_for_message(&state.pool, message_id)
@@ -154,6 +154,6 @@ pub(crate) async fn list_reactions(
 
     let reactions = ReactionRepo::list_for_message(&state.pool, message_id)
         .await
-        .map_err(|e| AppError(e))?;
+        .map_err(AppError)?;
     Ok(Json(ReactionsResponse { reactions }))
 }

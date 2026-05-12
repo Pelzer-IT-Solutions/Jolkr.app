@@ -403,7 +403,7 @@ impl DmRepo {
         before: Option<DateTime<Utc>>,
         limit: i64,
     ) -> Result<Vec<DmMessageRow>, JolkrError> {
-        let limit = limit.min(100).max(1);
+        let limit = limit.clamp(1, 100);
         let before = before.unwrap_or_else(Utc::now);
 
         let rows = sqlx::query_as::<_, DmMessageRow>(

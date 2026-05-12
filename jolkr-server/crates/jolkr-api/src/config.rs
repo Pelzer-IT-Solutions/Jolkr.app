@@ -36,9 +36,7 @@ impl Config {
             jwt_secret: {
                 let secret = std::env::var("JWT_SECRET")
                     .expect("FATAL: JWT_SECRET must be set. Refusing to start without it.");
-                if secret.len() < 32 {
-                    panic!("FATAL: JWT_SECRET is too short ({} chars). Minimum 32 characters required.", secret.len());
-                }
+                assert!(secret.len() >= 32, "FATAL: JWT_SECRET is too short ({} chars). Minimum 32 characters required.", secret.len());
                 secret
             },
             server_port: env_or("SERVER_PORT", "8080")
@@ -54,9 +52,7 @@ impl Config {
             nats_hmac_secret: {
                 let secret = std::env::var("NATS_HMAC_SECRET")
                     .expect("FATAL: NATS_HMAC_SECRET must be set. Refusing to start without it.");
-                if secret.len() < 32 {
-                    panic!("FATAL: NATS_HMAC_SECRET is too short ({} chars). Minimum 32 characters required.", secret.len());
-                }
+                assert!(secret.len() >= 32, "FATAL: NATS_HMAC_SECRET is too short ({} chars). Minimum 32 characters required.", secret.len());
                 secret
             },
             vapid_private_key: std::env::var("VAPID_PRIVATE_KEY").ok(),

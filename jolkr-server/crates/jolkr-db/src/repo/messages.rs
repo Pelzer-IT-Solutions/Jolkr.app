@@ -87,7 +87,7 @@ impl MessageRepo {
         before: Option<DateTime<Utc>>,
         limit: i64,
     ) -> Result<Vec<MessageRow>, JolkrError> {
-        let limit = limit.min(100).max(1);
+        let limit = limit.clamp(1, 100);
 
         let messages = if let Some(before_ts) = before {
             sqlx::query_as::<_, MessageRow>(
@@ -178,7 +178,7 @@ impl MessageRepo {
         query: &str,
         limit: i64,
     ) -> Result<Vec<MessageRow>, JolkrError> {
-        let limit = limit.min(100).max(1);
+        let limit = limit.clamp(1, 100);
         let pattern = format!("%{}%", escape_like(query));
 
         let messages = sqlx::query_as::<_, MessageRow>(
@@ -212,7 +212,7 @@ impl MessageRepo {
         after: Option<DateTime<Utc>>,
         limit: i64,
     ) -> Result<Vec<MessageRow>, JolkrError> {
-        let limit = limit.min(100).max(1);
+        let limit = limit.clamp(1, 100);
 
         let mut sql = String::from(
             "SELECT m.* FROM messages m WHERE m.channel_id = $1 AND m.thread_id IS NULL"
@@ -352,7 +352,7 @@ impl MessageRepo {
         before: Option<DateTime<Utc>>,
         limit: i64,
     ) -> Result<Vec<MessageRow>, JolkrError> {
-        let limit = limit.min(100).max(1);
+        let limit = limit.clamp(1, 100);
         let messages = if let Some(before_ts) = before {
             sqlx::query_as::<_, MessageRow>(
                 "

@@ -58,7 +58,7 @@ pub(crate) async fn get_audit_log(
         }
     }
 
-    let limit = query.limit.unwrap_or(50).min(100).max(1);
+    let limit = query.limit.unwrap_or(50).clamp(1, 100);
     let rows = AuditLogRepo::list_for_server(
         &state.pool,
         server_id,

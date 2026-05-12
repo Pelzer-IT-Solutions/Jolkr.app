@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
+
+/// Per-message reaction aggregation: message_id → (emoji insertion order, emoji → (count, voter ids)).
+pub(crate) type ReactionAggregateByMsg = HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)>;
 use serde::{Deserialize, Serialize};
 use sqlx::{self, PgPool};
 use tracing::info;
@@ -178,7 +181,7 @@ pub(crate) async fn enrich_with_reactions(pool: &PgPool, messages: &mut [Message
     let all_reactions = ReactionRepo::list_for_messages(pool, &msg_ids).await?;
 
     // Group by message_id, then by emoji (preserving order by first created_at)
-    let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
+    let mut by_msg: ReactionAggregateByMsg = HashMap::new();
     for r in all_reactions {
         let (order, map) = by_msg.entry(r.message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
         if !map.contains_key(&r.emoji) {

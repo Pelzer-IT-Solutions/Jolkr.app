@@ -9,7 +9,7 @@ use jolkr_common::JolkrError;
 use jolkr_db::models::DmMessageRow;
 use jolkr_db::repo::{DmRepo, FriendshipRepo, UserRepo};
 
-use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, attachment_proxy_url};
+use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, ReactionAggregateByMsg, attachment_proxy_url};
 
 /// Lightweight last-message preview included in the DM channel list.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -675,7 +675,7 @@ impl DmService {
             return Err(JolkrError::Forbidden);
         }
 
-        let limit = query.limit.unwrap_or(50).min(100).max(1);
+        let limit = query.limit.unwrap_or(50).clamp(1, 100);
         let rows = DmRepo::get_messages(pool, dm_channel_id, caller_id, query.before, limit).await?;
         let mut messages: Vec<DmMessageInfo> = rows.into_iter().map(DmMessageInfo::from).collect();
 
@@ -710,7 +710,7 @@ impl DmService {
         };
         {
             use std::collections::HashMap;
-            let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
+            let mut by_msg: ReactionAggregateByMsg = HashMap::new();
             for r in all_reactions {
                 let (order, map) = by_msg.entry(r.dm_message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
                 if !map.contains_key(&r.emoji) {
@@ -765,7 +765,7 @@ impl DmService {
     // ── Enrichment helper ──────────────────────────────────────────
 
     /// Enrich DM messages with reactions, attachments, and embeds.
-    async fn enrich_dm_messages(pool: &PgPool, messages: &mut Vec<DmMessageInfo>) -> Result<(), JolkrError> {
+    async fn enrich_dm_messages(pool: &PgPool, messages: &mut [DmMessageInfo]) -> Result<(), JolkrError> {
         if messages.is_empty() { return Ok(()); }
 
         let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
@@ -789,7 +789,7 @@ impl DmService {
         {
             use std::collections::HashMap;
             // Track per-message: emoji insertion order + aggregated data
-            let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
+            let mut by_msg: ReactionAggregateByMsg = HashMap::new();
             for r in all_reactions {
                 let (order, map) = by_msg.entry(r.dm_message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
                 if !map.contains_key(&r.emoji) {

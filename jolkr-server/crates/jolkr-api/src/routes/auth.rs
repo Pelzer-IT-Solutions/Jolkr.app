@@ -57,11 +57,10 @@ async fn clear_login_lockout(state: &AppState, email: &str) {
 fn admin_secret() -> Option<&'static String> {
     static ADMIN_SECRET: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
     ADMIN_SECRET.get_or_init(|| {
-        std::env::var("ADMIN_SECRET").ok().map(|s| {
+        std::env::var("ADMIN_SECRET").ok().inspect(|s| {
             if s.len() < 32 {
                 tracing::error!("ADMIN_SECRET is too short ({} chars). Minimum 32 required for security.", s.len());
             }
-            s
         })
     }).as_ref()
 }

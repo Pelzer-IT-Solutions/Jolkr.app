@@ -131,7 +131,7 @@ pub(crate) async fn rate_limit_middleware(
         .get::<ConnectInfo<std::net::SocketAddr>>()
         .map(|ci| ci.0.ip());
 
-    let ip = if connect_ip.map_or(false, is_trusted_proxy) {
+    let ip = if connect_ip.is_some_and(is_trusted_proxy) {
         // Take the rightmost non-trusted IP — that's the one added by our outermost proxy.
         // The leftmost IP is attacker-controlled and must not be trusted.
         req.headers()

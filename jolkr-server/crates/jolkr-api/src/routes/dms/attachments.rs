@@ -60,7 +60,7 @@ pub(crate) async fn upload_dm_attachment(
         return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
 
-    while let Some(field) = multipart.next_field().await.map_err(|_| {
+    if let Some(field) = multipart.next_field().await.map_err(|_| {
         AppError(jolkr_common::JolkrError::BadRequest("Invalid multipart".into()))
     })? {
         let filename = crate::routes::attachments::sanitize_filename(

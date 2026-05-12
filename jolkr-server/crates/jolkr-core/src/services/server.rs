@@ -488,7 +488,7 @@ impl ServerService {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<ServerInfo>, JolkrError> {
-        let limit = limit.min(50).max(1);
+        let limit = limit.clamp(1, 50);
         let offset = offset.max(0);
         let rows = ServerRepo::list_public(pool, limit, offset).await?;
         let server_ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();

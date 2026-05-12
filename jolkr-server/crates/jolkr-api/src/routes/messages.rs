@@ -11,7 +11,6 @@ use jolkr_core::services::message::{
     EditMessageRequest, MessageInfo, MessageQuery, SendMessageRequest,
 };
 use jolkr_db::repo::{ChannelRepo, ChannelOverwriteRepo, MemberRepo, RoleRepo, ServerRepo, UserRepo};
-use chrono;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
@@ -240,7 +239,7 @@ pub(crate) async fn search_messages(
         }
     }
 
-    let limit = params.limit.unwrap_or(50).min(100).max(1);
+    let limit = params.limit.unwrap_or(50).clamp(1, 100);
 
     // Check if any advanced filters are used
     let has_advanced = params.from.is_some() || params.has.is_some()

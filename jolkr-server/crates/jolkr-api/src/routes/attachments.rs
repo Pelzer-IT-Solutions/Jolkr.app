@@ -91,10 +91,7 @@ pub(crate) fn sanitize_filename(raw: &str) -> String {
     let name = name.rsplit('\\').next().unwrap_or(name);
 
     // Strip null bytes and remaining path separators
-    let name: String = name
-        .replace('\0', "")
-        .replace('/', "")
-        .replace('\\', "");
+    let name: String = name.replace(['\0', '/', '\\'], "");
 
     // Replace ".." sequences to prevent directory traversal
     let name = name.replace("..", "");
@@ -321,7 +318,7 @@ pub(crate) async fn upload_file(
     let purpose = query
         .purpose
         .as_deref()
-        .and_then(ImagePurpose::from_str);
+        .and_then(ImagePurpose::parse_str);
 
     let field = multipart
         .next_field()
