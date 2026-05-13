@@ -153,6 +153,25 @@ export function AppShell() {
     if (isMobile) setActiveMobilePane('chat')
   }, [setActiveDmId, isMobile, setActiveMobilePane])
 
+  // ── ChatArea hot-path handlers ──
+  // Stable references so ChatArea's child memoisation isn't defeated by a
+  // fresh function identity on every AppShell render. The store reads inside
+  // each callback are deliberate — they pick up the latest store snapshot at
+  // call time without re-binding the callback on every store mutation.
+  const effectiveChannelId = dmActive ? activeDmId : activeChannelId
+  const chatHasMore = useMessagesStore(s => s.hasMore[effectiveChannelId] ?? true)
+  const handleLoadOlder = useCallback(() => {
+    const { fetchOlder, loadingOlder } = useMessagesStore.getState()
+    if (!loadingOlder[effectiveChannelId]) fetchOlder(effectiveChannelId, dmActive)
+  }, [effectiveChannelId, dmActive])
+  const handleOpenAuthorProfile = useCallback((authorId: string, e: React.MouseEvent) => {
+    setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
+  }, [setProfileCard])
+  const handleStartThread = useCallback((messageId: string) => {
+    if (dmActive || !activeChannelId) return
+    setThreadPromptMsgId(messageId)
+  }, [dmActive, activeChannelId])
+
   // Open a 1-on-1 conversation with `otherUserId`: reuse an existing real DM
   // if we already have one, otherwise drop a session-only draft into the
   // sidebar. Used by FriendsPanel and ProfileCard so the recipient never
@@ -388,27 +407,18 @@ export function AppShell() {
                       hasThreads={threadsCount > 0}
                       serverId={dmActive ? undefined : activeServerId}
                       userMap={userMap}
-                      onLoadOlder={() => {
-                        const { fetchOlder, loadingOlder } = useMessagesStore.getState()
-                        const channelId = dmActive ? activeDmId : activeChannelId
-                        if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
-                      }}
-                      hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
+                      onLoadOlder={handleLoadOlder}
+                      hasMore={chatHasMore}
                       readOnly={isDmWithSystemUser}
                       onPinMessage={handlePinMessage}
-                      onOpenAuthorProfile={(authorId, e) => {
-                        setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
-                      }}
+                      onOpenAuthorProfile={handleOpenAuthorProfile}
                       mentionableUsers={mentionableUsers}
                       canManageMessages={canManageMessages}
                       canAddReactions={canAddReactions}
                       canSendMessages={canSendMessages}
                       canAttachFiles={canAttachFiles}
                       onOpenThread={handleOpenThreadById}
-                      onStartThread={(messageId) => {
-                        if (dmActive || !activeChannelId) return
-                        setThreadPromptMsgId(messageId)
-                      }}
+                      onStartThread={handleStartThread}
                     />
                   ) : (
                     <div className={s.emptyState}>
