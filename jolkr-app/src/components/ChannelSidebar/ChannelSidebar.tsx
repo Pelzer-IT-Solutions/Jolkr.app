@@ -240,18 +240,16 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   // ── Category rename handlers ──
   function startCategoryRename(category: CategoryDisplay) {
     if (!canManageChannels) return
-    // Find the actual category ID from server data
-    const serverCat = server.categories.find(c => c.name === category.name)
-    if (!serverCat) return
-    setEditingCategoryId(serverCat.name) // Using name as ID for now since UI Category doesn't have ID
+    setEditingCategoryId(category.id)
     setEditingCatName(category.name)
   }
 
   function saveCategoryRename(categoryId: string) {
     const name = editingCatName.trim()
-    if (name && name !== categoryId) {
+    const current = localCats.find(c => c.id === categoryId)
+    if (current && name && name !== current.name) {
       setLocalCats(prev => prev.map(cat =>
-        cat.name === categoryId ? { ...cat, name } : cat
+        cat.id === categoryId ? { ...cat, name } : cat
       ))
       onRenameCategory?.(categoryId, name)
     }
@@ -546,11 +544,11 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
                   chanStaggerStart={catMeta[i].chanStaggerStart}
                   onChannelContextMenu={canManageChannels ? handleChannelContextMenu : undefined}
                   onFolderContextMenu={canManageChannels ? handleFolderContextMenu : undefined}
-                  isCatEditing={editingCategoryId === cat.name}
+                  isCatEditing={editingCategoryId === cat.id}
                   editingCatName={editingCatName}
                   onStartCatRename={() => startCategoryRename(cat)}
-                  onSaveCatRename={() => saveCategoryRename(cat.name)}
-                  onCatRenameKeyDown={(e) => handleCatRenameKeyDown(e, cat.name)}
+                  onSaveCatRename={() => saveCategoryRename(cat.id)}
+                  onCatRenameKeyDown={(e) => handleCatRenameKeyDown(e, cat.id)}
                   onCatRenameChange={setEditingCatName}
                   catRenameInputRef={catRenameInputRef}
                   editingChannelId={editingChannelId}
