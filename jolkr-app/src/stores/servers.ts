@@ -45,12 +45,13 @@ interface ServersState {
   updateChannel: (id: string, serverId: string, body: { name?: string; topic?: string; category_id?: string; is_nsfw?: boolean; slowmode_seconds?: number }) => Promise<Channel>;
   deleteServer: (id: string) => Promise<void>;
   deleteChannel: (id: string, serverId: string) => Promise<void>;
-  reorderChannels: (serverId: string, positions: Array<{ id: string; position: number }>) => Promise<void>;
+  moveChannels: (serverId: string, items: api.ChannelMoveItem[]) => Promise<void>;
   reorderServers: (serverIds: string[]) => Promise<void>;
   leaveServer: (id: string) => Promise<void>;
   createCategory: (serverId: string, name: string) => Promise<Category>;
   updateCategory: (id: string, serverId: string, body: { name?: string; position?: number }) => Promise<Category>;
   deleteCategory: (id: string, serverId: string) => Promise<void>;
+  reorderCategories: (serverId: string, positions: Array<{ id: string; position: number }>) => Promise<void>;
   createRole: (serverId: string, body: { name: string; color?: number; permissions?: number }) => Promise<Role>;
   updateRole: (id: string, serverId: string, body: { name?: string; color?: number; position?: number; permissions?: number }) => Promise<Role>;
   deleteRole: (id: string, serverId: string) => Promise<void>;
@@ -217,14 +218,24 @@ export const useServersStore = create<ServersState>((set, get) => ({
     set({ channels: { ...get().channels, [serverId]: current.filter((c) => c.id !== id) } });
   },
 
-  reorderChannels: async (serverId, positions) => {
-    // Optimistic update
+  moveChannels: async (serverId, items) => {
+    // Optimistic update. category_id is intentionally tri-state: undefined =
+    // keep the existing parent, null = move to uncategorized, string = move
+    // into that category.
     const current = get().channels[serverId] ?? [];
-    const posMap = new Map(positions.map((p) => [p.id, p.position]));
-    const updated = current.map((ch) => posMap.has(ch.id) ? { ...ch, position: posMap.get(ch.id)! } : ch);
+    const moveMap = new Map(items.map((i) => [i.id, i]));
+    const updated = current.map((ch) => {
+      const m = moveMap.get(ch.id);
+      if (!m) return ch;
+      return {
+        ...ch,
+        position: m.position,
+        ...(m.category_id !== undefined ? { category_id: m.category_id } : {}),
+      };
+    });
     set({ channels: { ...get().channels, [serverId]: updated } });
     try {
-      const channels = await api.reorderChannels(serverId, positions);
+      const channels = await api.moveChannels(serverId, items);
       set({ channels: { ...get().channels, [serverId]: channels } });
     } catch {
       // Revert on failure
@@ -272,6 +283,21 @@ export const useServersStore = create<ServersState>((set, get) => ({
     set({ categories: { ...get().categories, [serverId]: current.filter((c) => c.id !== id) } });
     // Refetch channels since their category_id may have changed
     get().fetchChannels(serverId);
+  },
+
+  reorderCategories: async (serverId, positions) => {
+    // Optimistic update
+    const current = get().categories[serverId] ?? [];
+    const posMap = new Map(positions.map((p) => [p.id, p.position]));
+    const updated = current.map((c) => posMap.has(c.id) ? { ...c, position: posMap.get(c.id)! } : c);
+    set({ categories: { ...get().categories, [serverId]: updated } });
+    try {
+      const categories = await api.reorderCategories(serverId, positions);
+      set({ categories: { ...get().categories, [serverId]: categories } });
+    } catch {
+      // Revert on failure
+      set({ categories: { ...get().categories, [serverId]: current } });
+    }
   },
 
   // Roles

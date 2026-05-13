@@ -13,7 +13,6 @@ import { useUploadProgressStore } from '../../stores/uploadProgress'
 import { useUsersStore } from '../../stores/users'
 import { useVoiceStore } from '../../stores/voice'
 import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
-import { logErr } from '../../utils/logErr'
 import { orbsForHue } from '../../utils/theme'
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
@@ -24,7 +23,7 @@ export function useAppHandlers(
   memos: ReturnType<typeof useAppMemos>,
 ) {
   const {
-    navigate, user, membersByServer, categoriesByServer,
+    navigate, user, membersByServer,
     dmList, dmActive, activeDmId, activeServerId, activeChannelId,
     tabbedIds, setTabbedIds, setActiveServerId, setActiveChannelId,
     setDmActive, setActiveDmId, setDmList, setDmUsers,
@@ -402,16 +401,10 @@ export function useAppHandlers(
     }
   }, [activeServerId, activeChannelId, fetchChannels, setActiveChannelId])
 
-  const handleDeleteCategory = useCallback(async (categoryName: string) => {
-    // Find the category by name to get its ID
-    const categories = categoriesByServer[activeServerId] ?? []
-    const category = categories.find(c => c.name === categoryName)
-    if (!category) return
-
-    await api.deleteCategory(category.id)
-    await fetchCategories(activeServerId)
-    await fetchChannels(activeServerId)
-  }, [activeServerId, categoriesByServer, fetchCategories, fetchChannels])
+  const handleDeleteCategory = useCallback(async (categoryId: string) => {
+    if (!activeServerId) return
+    await useServersStore.getState().deleteCategory(categoryId, activeServerId)
+  }, [activeServerId])
 
   const handleArchiveChannel = useCallback(async (channelId: string) => {
     await api.updateChannel(channelId, { is_system: true })
@@ -430,27 +423,15 @@ export function useAppHandlers(
 
   const handleReorderChannels = useCallback(async (items: api.ChannelMoveItem[]) => {
     if (!activeServerId || items.length === 0) return
-    try {
-      await api.moveChannels(activeServerId, items)
-      await fetchChannels(activeServerId)
-    } catch (e) {
-      console.warn('Channel reorder failed, refetching to recover:', e)
-      await fetchChannels(activeServerId).catch((e2) => logErr('useAppHandlers.reorderChannels.recover', e2))
-    }
-  }, [activeServerId, fetchChannels])
+    await useServersStore.getState().moveChannels(activeServerId, items)
+  }, [activeServerId])
 
   const handleReorderCategories = useCallback(async (
     positions: Array<{ id: string; position: number }>,
   ) => {
     if (!activeServerId) return
-    try {
-      await api.reorderCategories(activeServerId, positions)
-      await fetchCategories(activeServerId)
-    } catch (e) {
-      console.warn('Category reorder failed, refetching to recover:', e)
-      await fetchCategories(activeServerId).catch((e2) => logErr('useAppHandlers.reorderCategories.recover', e2))
-    }
-  }, [activeServerId, fetchCategories])
+    await useServersStore.getState().reorderCategories(activeServerId, positions)
+  }, [activeServerId])
 
   // ── Server management ──
   async function handleJoinServer(serverId: string, accessCode: string): Promise<boolean> {
