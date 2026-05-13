@@ -80,32 +80,6 @@ async function doRegisterPush(): Promise<void> {
   }
 }
 
-/**
- * Unsubscribe from Web Push and remove device from backend.
- */
-export async function unregisterPush(): Promise<void> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-  const reg = await navigator.serviceWorker.getRegistration('/app/');
-  if (!reg) return;
-
-  const subscription = await reg.pushManager.getSubscription();
-  if (subscription) {
-    await subscription.unsubscribe();
-  }
-
-  // Remove stored device from backend
-  const storedDeviceId = localStorage.getItem(STORAGE_KEYS.PUSH_DEVICE_ID);
-  if (storedDeviceId) {
-    try {
-      await api.deleteDevice(storedDeviceId);
-    } catch {
-      // Best effort cleanup
-    }
-    localStorage.removeItem(STORAGE_KEYS.PUSH_DEVICE_ID);
-  }
-}
-
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');

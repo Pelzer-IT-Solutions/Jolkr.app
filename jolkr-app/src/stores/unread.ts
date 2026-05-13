@@ -88,11 +88,6 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
   },
 }));
 
-/** Selector: total unread count across a set of channel IDs */
-export const selectTotalUnread = (channelIds: string[]) =>
-  (s: { counts: Record<string, number> }) =>
-    channelIds.reduce((sum, id) => sum + (s.counts[id] ?? 0), 0);
-
 // Wire up WebSocket — increment unread when new message arrives in non-active channel
 wsClient.on((event) => {
   const currentUserId = useAuthStore.getState().user?.id;

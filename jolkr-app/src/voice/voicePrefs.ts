@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import { LOCAL_PREF_EVENT, notifyLocalPrefChange } from '../hooks/useLocalStorageBoolean';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
@@ -142,11 +142,6 @@ export const voicePrefs = {
     };
   },
 };
-
-/** React hook returning the current `VoicePrefs` snapshot. */
-export function useVoicePrefs(): VoicePrefs {
-  return useSyncExternalStore(voicePrefs.subscribe, voicePrefs.get, voicePrefs.get);
-}
 
 /**
  * React hook that enumerates available media devices and refreshes when the

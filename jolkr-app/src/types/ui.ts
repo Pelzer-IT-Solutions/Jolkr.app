@@ -144,7 +144,6 @@ export interface MessageVM {
   webhook_avatar?: string | null
 }
 
-export type MessageStore = Record<string, Record<string, MessageVM[]>>
 
 export interface ThemeOrb {
   id:     string
@@ -172,11 +171,3 @@ export interface MemberDisplay {
   avatar_url?:   string | null
 }
 
-export interface PermissionOverwriteDisplay {
-  id:          string
-  channel_id:  string
-  target_type: 'role' | 'member'
-  target_id:   string
-  allow:       number  // Permission bitfield
-  deny:        number  // Permission bitfield
-}

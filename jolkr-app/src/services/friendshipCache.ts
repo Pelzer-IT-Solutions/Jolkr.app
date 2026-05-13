@@ -42,13 +42,6 @@ export async function loadFriendships(): Promise<FriendshipBundle> {
   return bundle;
 }
 
-/** Synchronously check the cached friendship — returns `null` when cache is cold. */
-export function peekFriendship(userId: string): FriendshipLookup | null {
-  const cached = cache.peek('all');
-  if (!cached) return null;
-  return matchInLists(userId, cached.friends, cached.pending);
-}
-
 /** Look up the friendship, hitting the cache (or fetching) as needed. */
 export async function lookupFriendship(userId: string): Promise<FriendshipLookup> {
   const { friends, pending } = await loadFriendships();

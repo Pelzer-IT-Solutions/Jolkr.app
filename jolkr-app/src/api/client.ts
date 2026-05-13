@@ -336,6 +336,31 @@ export const getMe = () => request<MeProfile>('/users/@me', {}, 'user');
 export const updateMe = (body: UpdateMeBody) =>
   request<MeProfile>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
 export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
+/**
+ * Fetch multiple user profiles in a single round-trip via the backend batch
+ * endpoint. The backend caps the request at 100 ids; the client mirrors the
+ * cap and chunks larger inputs so callers don't have to think about it.
+ * Reserved for future bulk-loads (no caller yet — FE currently uses per-id
+ * getUser); endpoint stays live on BE.
+ */
+export const getUsersBatch = async (ids: string[]): Promise<User[]> => {
+  if (ids.length === 0) return [];
+  const BATCH_SIZE = 100;
+  const out: User[] = [];
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const slice = ids.slice(i, i + BATCH_SIZE);
+    try {
+      const users = await request<User[]>('/users/batch', {
+        method: 'POST',
+        body: JSON.stringify({ ids: slice }),
+      }, 'users');
+      out.push(...users);
+    } catch (e) {
+      console.warn('[getUsersBatch] batch fetch failed', e);
+    }
+  }
+  return out;
+};
 export const searchUsers = (q: string) => request<User[]>(`/users/search?q=${encodeURIComponent(q)}`, {}, 'users');
 
 // Servers
@@ -357,6 +382,10 @@ export const reorderServers = (serverIds: string[]) =>
     method: 'PUT',
     body: JSON.stringify({ server_ids: serverIds }),
   });
+/** Reserved for the public-server-discovery feature (no UI yet — BE endpoint is live). */
+export const discoverServers = (limit = 20, offset = 0) =>
+  request<Server[]>(`/servers/discover?limit=${limit}&offset=${offset}`, {}, 'servers');
+
 export const joinPublicServer = (serverId: string) =>
   request<void>(`/servers/${serverId}/join`, { method: 'POST' });
 
