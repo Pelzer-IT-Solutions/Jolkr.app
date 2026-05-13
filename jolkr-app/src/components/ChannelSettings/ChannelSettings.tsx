@@ -51,10 +51,14 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
   // (the SettingsShell handles the nav reveal independently).
   const isRevealing = useRevealAnimation(overwrites.length, [overwrites.length])
 
-  // Load roles and overwrites
+  // Load roles and overwrites. Fast-switching channels used to let a slower
+  // response from the previous channel overwrite the new channel's overwrite
+  // list — the cancelled flag gates each setState.
   useEffect(() => {
-    api.getRoles(serverId).then(setRoles).catch(() => setRoles([]))
-    api.getChannelOverwrites(channel.id).then(setOverwrites).catch(() => setOverwrites([]))
+    let cancelled = false
+    api.getRoles(serverId).then(r => { if (!cancelled) setRoles(r) }).catch(() => { if (!cancelled) setRoles([]) })
+    api.getChannelOverwrites(channel.id).then(o => { if (!cancelled) setOverwrites(o) }).catch(() => { if (!cancelled) setOverwrites([]) })
+    return () => { cancelled = true }
   }, [serverId, channel.id])
 
   const handleFieldChange = <K extends keyof ApiChannel>(field: K, value: ApiChannel[K]) => {

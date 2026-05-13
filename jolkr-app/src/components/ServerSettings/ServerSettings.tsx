@@ -82,10 +82,15 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [originalRolePermissions, setOriginalRolePermissions] = useState<number>(0)
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
 
-  // Load real data from API
+  // Load real data from API. Fast-switching servers used to let the older
+  // server's responses overwrite the newer server's panels — the cancelled
+  // flag gates every late setState so closing the previous server's data
+  // mid-flight is a no-op.
   useEffect(() => {
     const id = server.id
+    let cancelled = false
     api.getRoles(id).then((loadedRoles) => {
+      if (cancelled) return
       setRoles(loadedRoles)
       // Always auto-select first role when roles are loaded (oldest / lowest position, e.g. @everyone)
       const ordered = sortRolesByPosition(loadedRoles)
@@ -102,11 +107,12 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
         setOriginalRoleColor(colorHex)
         setOriginalRolePermissions(firstRole.permissions)
       }
-    }).catch(() => setRoles([]))
-    api.getMembersWithRoles(id).then(setMembers).catch(() => setMembers([]))
-    api.getInvites(id).then(setInvites).catch(() => setInvites([]))
-    api.getBans(id).then(setBans).catch(() => setBans([]))
-    api.getAuditLog(id).then(setAuditLog).catch(() => setAuditLog([]))
+    }).catch(() => { if (!cancelled) setRoles([]) })
+    api.getMembersWithRoles(id).then(m => { if (!cancelled) setMembers(m) }).catch(() => { if (!cancelled) setMembers([]) })
+    api.getInvites(id).then(i => { if (!cancelled) setInvites(i) }).catch(() => { if (!cancelled) setInvites([]) })
+    api.getBans(id).then(b => { if (!cancelled) setBans(b) }).catch(() => { if (!cancelled) setBans([]) })
+    api.getAuditLog(id).then(a => { if (!cancelled) setAuditLog(a) }).catch(() => { if (!cancelled) setAuditLog([]) })
+    return () => { cancelled = true }
   }, [server.id])
 
   const rolesOrdered = useMemo(() => sortRolesByPosition(roles), [roles])

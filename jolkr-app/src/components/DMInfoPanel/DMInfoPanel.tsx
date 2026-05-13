@@ -118,20 +118,24 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
   // (`draft:…` ids) only exist locally — skip the fetch.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
+    let cancelled = false
     api.getDmPinnedMessages(dmId)
-      .then(setPinned)
-      .catch(() => setPinned([]))
-      .finally(() => setLoadingPins(false))
+      .then(p => { if (!cancelled) setPinned(p) })
+      .catch(() => { if (!cancelled) setPinned([]) })
+      .finally(() => { if (!cancelled) setLoadingPins(false) })
+    return () => { cancelled = true }
   }, [open, dmId, pinnedVersion])
 
   // Fetch shared files. Re-runs alongside pinnedVersion bumps so newly-uploaded
   // attachments show up without requiring a panel reopen.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
+    let cancelled = false
     api.getDmAttachments(dmId)
-      .then(setFiles)
-      .catch(() => setFiles([]))
-      .finally(() => setLoadingFiles(false))
+      .then(f => { if (!cancelled) setFiles(f) })
+      .catch(() => { if (!cancelled) setFiles([]) })
+      .finally(() => { if (!cancelled) setLoadingFiles(false) })
+    return () => { cancelled = true }
   }, [open, dmId, pinnedVersion])
 
   function handleUnpin(msgId: string) {
