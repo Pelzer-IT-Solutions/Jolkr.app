@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use jolkr_core::RoleService;
 use jolkr_core::services::role::{CreateRoleRequest, RoleInfo, UpdateRoleRequest};
+use jolkr_core::services::server::MemberInfo;
 use jolkr_db::repo::{MemberRepo, RoleRepo};
 
 use crate::errors::AppError;
@@ -27,22 +28,10 @@ pub(crate) struct RolesResponse {
     pub roles: Vec<RoleInfo>,
 }
 
-/// A single member joined with their currently-assigned role IDs.
-#[derive(Debug, Serialize)]
-pub(crate) struct MemberWithRoles {
-    pub id: Uuid,
-    pub server_id: Uuid,
-    pub user_id: Uuid,
-    pub nickname: Option<String>,
-    /// RFC3339 timestamp of when the user joined the server.
-    pub joined_at: String,
-    pub role_ids: Vec<Uuid>,
-}
-
 /// Response payload for GET /api/servers/:server_id/members-with-roles.
 #[derive(Debug, Serialize)]
 pub(crate) struct MembersWithRolesResponse {
-    pub members: Vec<MemberWithRoles>,
+    pub members: Vec<MemberInfo>,
 }
 
 /// Request body for PUT /api/servers/:server_id/roles/:role_id/members.
@@ -214,15 +203,11 @@ pub(crate) async fn list_members_with_roles(
         role_map.entry(member_id).or_default().push(role_id);
     }
 
-    let result: Vec<MemberWithRoles> = members
+    let result: Vec<MemberInfo> = members
         .into_iter()
-        .map(|m| MemberWithRoles {
-            id: m.id,
-            server_id: m.server_id,
-            user_id: m.user_id,
-            nickname: m.nickname,
-            joined_at: m.joined_at.to_rfc3339(),
-            role_ids: role_map.remove(&m.id).unwrap_or_default(),
+        .map(|m| {
+            let role_ids = role_map.remove(&m.id).unwrap_or_default();
+            MemberInfo::with_role_ids(m, role_ids)
         })
         .collect();
 

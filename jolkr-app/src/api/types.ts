@@ -1,4 +1,5 @@
 import type { Channel as GeneratedChannel } from './generated/Channel';
+import type { Member as GeneratedMember } from './generated/Member';
 import type { MeProfile as GeneratedMeProfile } from './generated/MeProfile';
 import type { Message as GeneratedMessage } from './generated/Message';
 import type { Poll } from './generated/Poll';
@@ -86,16 +87,12 @@ export type Message = Omit<
   updated_at?: string | null;
 };
 
-export interface Member {
-  id: string;
-  server_id: string;
-  user_id: string;
-  nickname?: string | null;
-  joined_at: string;
-  timeout_until?: string | null;
-  user?: User;
-  role_ids?: string[];
-}
+/**
+ * Wire member shape with FE-only `user` overlay. BE never sends the joined-in
+ * user object — it is resolved client-side from the users store and attached
+ * by transforms.ts so downstream code can branch on a single shape.
+ */
+export type Member = GeneratedMember & { user?: User };
 
 export interface ServerEmoji {
   id: string;

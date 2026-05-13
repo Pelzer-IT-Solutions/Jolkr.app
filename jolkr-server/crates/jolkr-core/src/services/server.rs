@@ -7,6 +7,7 @@ use uuid::Uuid;
 use jolkr_common::{JolkrError, Permissions};
 use jolkr_db::models::ServerRow;
 use jolkr_db::models::BanRow;
+use jolkr_db::models::MemberRow;
 use jolkr_db::repo::{BanRepo, ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
 /// Public server DTO.
@@ -125,6 +126,54 @@ impl From<BanRow> for BanInfo {
             reason: row.reason,
             created_at: row.created_at,
         }
+    }
+}
+
+/// Public member DTO. `role_ids` is only populated by endpoints that join in
+/// role assignments (e.g. members-with-roles, channel members); the basic
+/// `/servers/:id/members` listing omits it.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Member")]
+pub struct MemberInfo {
+    /// Member row identifier (server-membership id, not the user id).
+    pub id: Uuid,
+    /// Owning server identifier.
+    pub server_id: Uuid,
+    /// Owning user identifier.
+    pub user_id: Uuid,
+    /// Per-server nickname; `None` falls back to the user's `display_name`.
+    pub nickname: Option<String>,
+    /// Join timestamp.
+    pub joined_at: chrono::DateTime<chrono::Utc>,
+    /// Timestamp until which the user is timed out.
+    pub timeout_until: Option<chrono::DateTime<chrono::Utc>>,
+    /// Currently-assigned role ids; omitted unless the endpoint joins them in.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub role_ids: Option<Vec<Uuid>>,
+}
+
+impl From<MemberRow> for MemberInfo {
+    fn from(row: MemberRow) -> Self {
+        Self {
+            id: row.id,
+            server_id: row.server_id,
+            user_id: row.user_id,
+            nickname: row.nickname,
+            joined_at: row.joined_at,
+            timeout_until: row.timeout_until,
+            role_ids: None,
+        }
+    }
+}
+
+impl MemberInfo {
+    /// Build a member DTO with role IDs joined in (for endpoints that compute
+    /// member ↔ role assignments).
+    #[must_use]
+    pub fn with_role_ids(row: MemberRow, role_ids: Vec<Uuid>) -> Self {
+        Self { role_ids: Some(role_ids), ..Self::from(row) }
     }
 }
 

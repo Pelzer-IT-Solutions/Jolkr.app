@@ -9,11 +9,10 @@ use uuid::Uuid;
 use jolkr_core::ServerService;
 use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::services::server::{
-    BanInfo, BanMemberRequest, CreateServerRequest, ServerInfo,
+    BanInfo, BanMemberRequest, CreateServerRequest, MemberInfo, ServerInfo,
     SetNicknameRequest, UpdateServerRequest,
 };
 use jolkr_db::repo::MemberRepo;
-use jolkr_db::models::MemberRow;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
@@ -36,7 +35,7 @@ pub(crate) struct ServersResponse {
 /// Response payload for GET /api/servers/:id/members.
 #[derive(Debug, Serialize)]
 pub(crate) struct MembersResponse {
-    pub members: Vec<MemberRow>,
+    pub members: Vec<MemberInfo>,
 }
 
 /// Response payload for POST /api/servers/:id/bans.
@@ -164,6 +163,7 @@ pub(crate) async fn list_members(
             AppError(jolkr_common::JolkrError::Forbidden)
         })?;
     let members = MemberRepo::list_for_server(&state.pool, id).await?;
+    let members = members.into_iter().map(MemberInfo::from).collect();
     Ok(Json(MembersResponse { members }))
 }
 

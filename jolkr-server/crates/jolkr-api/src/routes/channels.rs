@@ -8,6 +8,7 @@ use uuid::Uuid;
 use jolkr_common::{serde_helpers::double_option, JolkrError, Permissions};
 use jolkr_core::ChannelService;
 use jolkr_core::services::channel::{ChannelInfo, ChannelOverwriteInfo, CreateChannelRequest, UpdateChannelRequest, UpsertOverwriteRequest};
+use jolkr_core::services::server::MemberInfo;
 use jolkr_db::repo::{ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
 use crate::errors::AppError;
@@ -47,25 +48,10 @@ pub(crate) struct OverwriteResponse {
     pub overwrite: ChannelOverwriteInfo,
 }
 
-/// Member shape returned by `GET /api/channels/:id/members` — same fields as
-/// `MemberWithRoles` from the roles route so the frontend can reuse its
-/// existing `Member` type without a new shape.
-#[derive(Debug, Serialize)]
-pub(crate) struct ChannelMemberEntry {
-    /// Member row id (server-membership identifier, NOT the user id).
-    pub id: Uuid,
-    pub server_id: Uuid,
-    pub user_id: Uuid,
-    pub nickname: Option<String>,
-    /// RFC3339-formatted timestamp of when the user joined the server.
-    pub joined_at: String,
-    pub role_ids: Vec<Uuid>,
-}
-
 /// Response body for GET /api/channels/:id/members.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelMembersResponse {
-    pub members: Vec<ChannelMemberEntry>,
+    pub members: Vec<MemberInfo>,
 }
 
 /// Request body for PUT /api/servers/:server_id/channels/reorder — reorder within current categories.
@@ -356,19 +342,15 @@ pub(crate) async fn list_channel_members(
         role_map.entry(member_id).or_default().push(role_id);
     }
 
-    let result: Vec<ChannelMemberEntry> = members
+    let result: Vec<MemberInfo> = members
         .into_iter()
         .filter(|m| {
             let perms = perms_by_member.get(&m.id).copied().unwrap_or(0);
             Permissions::from(perms).has(Permissions::VIEW_CHANNELS)
         })
-        .map(|m| ChannelMemberEntry {
-            id: m.id,
-            server_id: m.server_id,
-            user_id: m.user_id,
-            nickname: m.nickname,
-            joined_at: m.joined_at.to_rfc3339(),
-            role_ids: role_map.remove(&m.id).unwrap_or_default(),
+        .map(|m| {
+            let role_ids = role_map.remove(&m.id).unwrap_or_default();
+            MemberInfo::with_role_ids(m, role_ids)
         })
         .collect();
 
