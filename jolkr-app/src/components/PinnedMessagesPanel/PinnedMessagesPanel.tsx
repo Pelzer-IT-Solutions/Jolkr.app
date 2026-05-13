@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import * as api from '../../api/client'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useT } from '../../hooks/useT'
+import { createTtlCache } from '../../utils/cache'
 import s from './PinnedMessagesPanel.module.css'
 import type { User } from '../../api/types'
 import type { Message } from '../../api/types'
@@ -10,7 +11,9 @@ import type { Message } from '../../api/types'
 // Module-level cache so toggling the panel off and back on doesn't trigger a
 // "Loading..." flash. Keyed by `${isDm ? 'dm' : 'ch'}:${channelId}:${pinnedVersion}`
 // so a `pinnedVersion` bump (pin/unpin event) invalidates the cached entry.
-const cache = new Map<string, Message[]>()
+// TTL + bounded size stop the unbounded growth: every pin/unpin used to mint
+// a fresh key whose stale predecessors stayed forever until tab close.
+const cache = createTtlCache<string, Message[]>({ ttl: 60_000, maxEntries: 30 })
 function cacheKey(channelId: string, isDm: boolean, version: number): string {
   return `${isDm ? 'dm' : 'ch'}:${channelId}:${version}`
 }
