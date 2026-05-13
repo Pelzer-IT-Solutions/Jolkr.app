@@ -122,7 +122,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; categoryId: string } | null>(null)
   // Pending delete-confirmations. Holds the target id while the modal is open.
   const [pendingDeleteChannelId, setPendingDeleteChannelId] = useState<string | null>(null)
-  const [pendingDeleteCategoryName, setPendingDeleteCategoryName] = useState<string | null>(null)
+  const [pendingDeleteCategoryId, setPendingDeleteCategoryId] = useState<string | null>(null)
   // `categoryId` (when set on a channel-create) routes the new channel into a
   // specific folder. Without it, the channel is created uncategorized.
   // `kind` selects text vs voice — chosen at menu-open time, then carried
@@ -191,15 +191,15 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const categorizedSet = new Set(localCats.flatMap(c => c.channels))
   const uncategorizedIds = localUncategorized.filter(id => !categorizedSet.has(id))
 
-  function findCatFor(channelId: string, cats: CategoryDisplay[]): string | null {
-    return cats.find(c => c.channels.includes(channelId))?.name ?? null
+  function findCatIdFor(channelId: string, cats: CategoryDisplay[]): string | null {
+    return cats.find(c => c.channels.includes(channelId))?.id ?? null
   }
 
-  function toggleCat(name: string) {
+  function toggleCat(id: string) {
     setCollapsedCats(prev => {
       const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
@@ -295,12 +295,12 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     setChannelContextMenu({ x: e.clientX, y: e.clientY, channelId })
   }
 
-  function handleFolderContextMenu(e: React.MouseEvent, folderName: string) {
+  function handleFolderContextMenu(e: React.MouseEvent, folderId: string) {
     if (!canManageChannels) return          // nothing to show without permissions
     e.preventDefault()
     e.stopPropagation()
     closeAllMenus()
-    setCategoryContextMenu({ x: e.clientX, y: e.clientY, categoryId: folderName })
+    setCategoryContextMenu({ x: e.clientX, y: e.clientY, categoryId: folderId })
   }
 
   function handleAddClick() {
@@ -373,11 +373,11 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     const overId   = over.id   as string
     if (activeId.startsWith('cat:')) return
 
-    const activeCat = findCatFor(activeId, localCats)
+    const activeCat = findCatIdFor(activeId, localCats)
     let overCat: string | null
     if      (overId.startsWith('cat:'))  overCat = overId.slice(4)
     else if (overId === 'uncategorized') overCat = null
-    else                                 overCat = findCatFor(overId, localCats)
+    else                                 overCat = findCatIdFor(overId, localCats)
     if (activeCat === overCat) return
 
     if (overCat === null) {
@@ -396,12 +396,12 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     setLocalUncategorized(prev => prev.filter(id => id !== activeId))
     setLocalCats(prev => {
       const without = prev.map(c => ({ ...c, channels: c.channels.filter(id => id !== activeId) }))
-      const toCat = without.find(c => c.name === overCat)
+      const toCat = without.find(c => c.id === overCat)
       if (!toCat) return without
       const overIdx = overId.startsWith('cat:') ? toCat.channels.length : toCat.channels.indexOf(overId)
       const insertAt = overIdx >= 0 ? overIdx : toCat.channels.length
       return without.map(c => {
-        if (c.name !== overCat) return c
+        if (c.id !== overCat) return c
         const chs = [...c.channels]
         chs.splice(insertAt, 0, activeId)
         return { ...c, channels: chs }
@@ -419,8 +419,8 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
 
     if (activeId.startsWith('cat:') && overId.startsWith('cat:')) {
       setLocalCats(prev => {
-        const from = prev.findIndex(c => `cat:${c.name}` === activeId)
-        const to   = prev.findIndex(c => `cat:${c.name}` === overId)
+        const from = prev.findIndex(c => `cat:${c.id}` === activeId)
+        const to   = prev.findIndex(c => `cat:${c.id}` === overId)
         if (from < 0 || to < 0) return prev
         const next = arrayMove(prev, from, to)
         if (onReorderCategories) {
@@ -447,11 +447,11 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     } else {
       const activeCat = nextCats.find(c => c.channels.includes(activeId))
       const overCat   = nextCats.find(c => c.channels.includes(overId))
-      if (activeCat && overCat && activeCat.name === overCat.name) {
+      if (activeCat && overCat && activeCat.id === overCat.id) {
         const from = activeCat.channels.indexOf(activeId)
         const to   = activeCat.channels.indexOf(overId)
         nextCats = nextCats.map(c =>
-          c.name === activeCat.name ? { ...c, channels: arrayMove(c.channels, from, to) } : c
+          c.id === activeCat.id ? { ...c, channels: arrayMove(c.channels, from, to) } : c
         )
         setLocalCats(nextCats)
       }
@@ -469,8 +469,9 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   const activeChannel = activeDragId && !activeDragId.startsWith('cat:') ? channelMap[activeDragId] : null
-  const activeCatName = activeDragId?.startsWith('cat:') ? activeDragId.slice(4) : null
-  const catIds        = localCats.map(c => `cat:${c.name}`)
+  const activeCatId   = activeDragId?.startsWith('cat:') ? activeDragId.slice(4) : null
+  const activeCatName = activeCatId ? localCats.find(c => c.id === activeCatId)?.name ?? null : null
+  const catIds        = localCats.map(c => `cat:${c.id}`)
 
   // Pre-compute flat stagger indices so each category header and each channel
   // within that category receives a unique, monotonically-increasing index.
@@ -528,16 +529,16 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
             {localCats.map((cat, i) => {
               const isCreatingHere = creating?.type === 'channel' && creating.categoryId === cat.id
               // Force the folder open so the inline input is visible
-              const isCollapsed = isCreatingHere ? false : collapsedCats.has(cat.name)
+              const isCollapsed = isCreatingHere ? false : collapsedCats.has(cat.id)
               return (
                 <SortableCategory
-                  key={cat.name}
+                  key={cat.id}
                   cat={cat}
                   channelMap={channelMap}
                   activeChannelId={activeChannelId}
                   onSwitch={onSwitch}
                   collapsed={isCollapsed}
-                  onToggle={() => toggleCat(cat.name)}
+                  onToggle={() => toggleCat(cat.id)}
                   activeDragId={activeDragId}
                   isRevealing={isRevealing}
                   catStaggerIdx={catMeta[i].catStaggerIdx}
@@ -717,14 +718,14 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       {/* ── Category/folder context menu ── */}
       <Menu open={categoryContextMenu !== null} position={categoryContextMenu ?? { x: 0, y: 0 }} onClose={() => setCategoryContextMenu(null)}>
         {canManageChannels && categoryContextMenu && onCreateChannel && (() => {
-          const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
+          const category = localCats.find(c => c.id === categoryContextMenu.categoryId)
           if (!category) return null
           const startInFolder = (kind: 'text' | 'voice') => {
             // Make sure the folder is expanded so the inline input is visible
             setCollapsedCats(prev => {
-              if (!prev.has(category.name)) return prev
+              if (!prev.has(category.id)) return prev
               const next = new Set(prev)
-              next.delete(category.name)
+              next.delete(category.id)
               return next
             })
             startCreating({ type: 'channel', kind, categoryId: category.id })
@@ -749,7 +750,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
             icon={<Edit3 size={13} strokeWidth={1.5} />}
             label={t('channelSidebar.menuRenameFolder')}
             onClick={() => {
-              const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
+              const category = localCats.find(c => c.id === categoryContextMenu.categoryId)
               if (category) startCategoryRename(category)
               setCategoryContextMenu(null)
             }}
@@ -763,9 +764,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               label={t('channelSidebar.menuDeleteFolder')}
               danger
               onClick={() => {
-                const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
-                const serverCat = category && server.categories.find(c => c.name === category.name)
-                if (serverCat) setPendingDeleteCategoryName(serverCat.name)
+                setPendingDeleteCategoryId(categoryContextMenu.categoryId)
                 setCategoryContextMenu(null)
               }}
             />
@@ -788,17 +787,17 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       />
 
       <ConfirmDialog
-        open={pendingDeleteCategoryName !== null}
+        open={pendingDeleteCategoryId !== null}
         title={t('channelSidebar.menuDeleteFolder')}
         body={t('channelSidebar.confirmDeleteFolder')}
         confirmLabel={t('common.delete')}
         cancelLabel={t('common.cancel')}
         danger
         onConfirm={() => {
-          if (pendingDeleteCategoryName && onDeleteCategory) onDeleteCategory(pendingDeleteCategoryName)
-          setPendingDeleteCategoryName(null)
+          if (pendingDeleteCategoryId && onDeleteCategory) onDeleteCategory(pendingDeleteCategoryId)
+          setPendingDeleteCategoryId(null)
         }}
-        onCancel={() => setPendingDeleteCategoryName(null)}
+        onCancel={() => setPendingDeleteCategoryId(null)}
       />
     </aside>
   )
@@ -838,7 +837,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
   inlineCreateChannel?: React.ReactNode
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: `cat:${cat.name}`,
+    id: `cat:${cat.id}`,
     disabled: !canManageChannels,
   })
 
@@ -924,7 +923,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
         }}
         onContextMenu={(e) => {
           if (!onFolderContextMenu) return
-          onFolderContextMenu(e, cat.name)
+          onFolderContextMenu(e, cat.id)
         }}
         {...attributes}
         {...listeners}
