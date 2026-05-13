@@ -18,6 +18,7 @@ export type { FriendshipUser } from './generated/FriendshipUser';
 export type { GifFavorite } from './generated/GifFavorite';
 export type { Invite } from './generated/Invite';
 export type { MessageEmbed } from './generated/MessageEmbed';
+export type { NotificationSetting } from './generated/NotificationSetting';
 export type { Poll } from './generated/Poll';
 export type { PollOption } from './generated/PollOption';
 export type { Role } from './generated/Role';
@@ -94,14 +95,6 @@ export type Message = Omit<
  * by transforms.ts so downstream code can branch on a single shape.
  */
 export type Member = GeneratedMember & { user?: User };
-
-export interface NotificationSetting {
-  target_type: 'server' | 'channel';
-  target_id: string;
-  muted: boolean;
-  mute_until?: string | null;
-  suppress_everyone: boolean;
-}
 
 export interface AuditLogEntry {
   id: string;

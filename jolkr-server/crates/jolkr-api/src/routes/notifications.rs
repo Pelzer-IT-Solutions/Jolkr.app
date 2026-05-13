@@ -4,6 +4,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_db::repo::NotificationSettingRepo;
@@ -14,9 +15,12 @@ use crate::routes::AppState;
 use crate::ws::events::{GatewayEvent, NotificationSettingPayload};
 
 /// Response payload describing a single notification setting for the caller.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "NotificationSetting")]
 pub(crate) struct NotificationSettingResponse {
     /// Discriminator: `"server"` or `"channel"`.
+    #[ts(type = "'server' | 'channel'")]
     pub target_type: String,
     pub target_id: Uuid,
     pub muted: bool,
