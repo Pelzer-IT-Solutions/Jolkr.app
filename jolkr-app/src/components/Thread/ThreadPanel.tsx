@@ -13,6 +13,11 @@ import { logErr } from '../../utils/logErr'
 import s from './ThreadPanel.module.css'
 import type { Thread, Message, User } from '../../api/types'
 
+// Shared empty-array sentinel so the `?? []` fallback in the selector doesn't
+// hand zustand a fresh array reference every render, which would trigger a
+// rerender on every store mutation (even ones for unrelated threads).
+const EMPTY_THREAD_MESSAGES: Message[] = []
+
 interface Props {
   threadId: string
   channelId: string
@@ -61,7 +66,7 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
   const [sending, setSending] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const messages = useThreadsStore(s => s.threadMessages[threadId] ?? [])
+  const messages = useThreadsStore(s => s.threadMessages[threadId] ?? EMPTY_THREAD_MESSAGES)
   const loading = useThreadsStore(s => s.threadLoading[threadId] ?? false)
   const fetchThreadMessages = useThreadsStore(s => s.fetchThreadMessages)
   const membersByServer = useServersStore(s => s.members)

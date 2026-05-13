@@ -278,6 +278,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     return mentionableUsers.filter((u) => u.username.toLowerCase().includes(q)).slice(0, 8)
   }, [mentionQuery, mentionableUsers])
 
+  // Stable mapping userId → display name for DM/group-DM messages — used by
+  // every Message row to label mentions. Building it inline per Message would
+  // hand each row a fresh object and ruin downstream memoisation.
+  const dmParticipantNames = useMemo(() => {
+    if (!isDm || !dmConversation) return undefined
+    return Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
+  }, [isDm, dmConversation])
+
   const insertMention = useCallback((username: string) => {
     const handle = inputRef.current
     if (!handle) return
@@ -668,9 +676,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       isGroupDm={isDm && (dmConversation?.participants.length ?? 0) > 2}
                       serverId={isDm ? undefined : serverId}
                       userMap={userMap}
-                      dmParticipantNames={isDm && dmConversation
-                        ? Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
-                        : undefined}
+                      dmParticipantNames={dmParticipantNames}
                       canManageMessages={canManageMessages}
                       canAddReactions={canAddReactions}
                       onOpenThread={!isDm && onOpenThread ? onOpenThread : undefined}
