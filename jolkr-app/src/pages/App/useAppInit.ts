@@ -508,23 +508,28 @@ export function useAppInit() {
         const { user_id } = event.d
         if (!user_id) return
 
-        // 1) DM users map — keyed by user.id.
+        // Build the patch once, then write to both caches independently —
+        // keeping the side-effect (upsertUser into the global users cache)
+        // outside the setState updater so React-strict's double-invocation
+        // doesn't double-write the global cache.
+        const patch = {
+          ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
+          ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
+          ...(event.d.bio !== undefined && { bio: event.d.bio }),
+          ...(event.d.status !== undefined && { status: event.d.status }),
+          ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
+        }
+
+        // 1) Global users cache (single source of truth for non-React consumers).
+        const cached = useUsersStore.getState().getUser(user_id)
+        if (cached) useUsersStore.getState().upsertUser({ ...cached, ...patch })
+
+        // 2) Local DM users map — patch the entry if we already know it.
         setDmUsers(prev => {
           const existing = prev.get(user_id)
           if (!existing) return prev
           const next = new Map(prev)
-          const updated = {
-            ...existing,
-            ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
-            ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
-            ...(event.d.bio !== undefined && { bio: event.d.bio }),
-            ...(event.d.status !== undefined && { status: event.d.status }),
-            ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
-          }
-          next.set(user_id, updated)
-          // Mirror into the global users cache so non-React consumers
-          // (typing indicator, etc.) pick up the rename live.
-          useUsersStore.getState().upsertUser(updated)
+          next.set(user_id, { ...existing, ...patch })
           return next
         })
 
@@ -660,19 +665,20 @@ export function useAppInit() {
       const channel = event.d.channel
       if (!channel?.id) return
 
+      // Pre-compute whether the active DM was a draft for this exact member
+      // set — that's the only state-flip the setDmList updater would need to
+      // know about. Hoisting it out keeps the updater pure.
+      const draftId = makeDraftDmId(channel.members)
+      const wasDraftActive = activeDmIdRef.current === draftId
+
       setDmList(prev => {
         // If this user already has a draft for the same member set, replace
         // the draft in place — we promote it rather than ending up with two
         // sidebar entries pointing at the same conversation.
-        const draftId = makeDraftDmId(channel.members)
         const draftIdx = prev.findIndex(c => c.id === draftId)
         if (draftIdx >= 0) {
           const next = prev.slice()
           next[draftIdx] = channel
-          // If the draft was the active conversation, point at the real id.
-          if (activeDmIdRef.current === draftId) {
-            setActiveDmId(channel.id)
-          }
           return next
         }
         const idx = prev.findIndex(c => c.id === channel.id)
@@ -686,27 +692,34 @@ export function useAppInit() {
         return [channel, ...prev]
       })
 
+      if (wasDraftActive) setActiveDmId(channel.id)
+
       // Fetch user details for any unknown members so the DM can render with
-      // a name + avatar instead of "Unknown".
-      setDmUsers(prevUsers => {
-        const missing = channel.members.filter(id => !prevUsers.has(id))
-        if (missing.length === 0) return prevUsers
+      // a name + avatar instead of "Unknown". The global users cache is the
+      // source of truth for "do we already know this user"; checking that
+      // (instead of dmUsers) lets us hoist the work out of the setDmUsers
+      // updater entirely.
+      const usersCache = useUsersStore.getState()
+      const missing = channel.members.filter(id => !usersCache.getUser(id))
+      if (missing.length > 0) {
         Promise.all(missing.map(id => api.getUser(id).catch(() => null)))
           .then(fetched => {
-            setDmUsers(curr => {
-              const merged = new Map(curr)
-              fetched.forEach(u => { if (u) merged.set(u.id, u) })
-              return merged
-            })
-            useUsersStore.getState().upsertUsers(fetched)
+            const valid = fetched.filter((u): u is User => u !== null)
+            if (valid.length > 0) {
+              useUsersStore.getState().upsertUsers(valid)
+              setDmUsers(curr => {
+                const merged = new Map(curr)
+                for (const u of valid) merged.set(u.id, u)
+                return merged
+              })
+            }
           })
           .catch(console.warn)
         // Also fetch presence so the status dot is correct.
         api.queryPresence(missing)
           .then(p => usePresenceStore.getState().setBulk(p))
           .catch(console.warn)
-        return prevUsers
-      })
+      }
     })
     // fetch* are module-scoped store actions (destructured from
     // `useServersStore.getState()` at module load) so they're stable
