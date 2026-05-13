@@ -181,15 +181,21 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }, [server.id, server.categories, initialUncategorized])
 
   useEffect(() => {
-    if (creating) setTimeout(() => inputRef.current?.focus(), 0)
+    if (!creating) return
+    const timer = setTimeout(() => inputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
   }, [creating])
 
   useEffect(() => {
-    if (editingChannelId) setTimeout(() => renameInputRef.current?.focus(), 0)
+    if (!editingChannelId) return
+    const timer = setTimeout(() => renameInputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
   }, [editingChannelId])
 
   useEffect(() => {
-    if (editingCategoryId) setTimeout(() => catRenameInputRef.current?.focus(), 0)
+    if (!editingCategoryId) return
+    const timer = setTimeout(() => catRenameInputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
   }, [editingCategoryId])
 
   // ── Base layout (no drag active): props + temp items merged ──

@@ -92,6 +92,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let updateCheckTimer: ReturnType<typeof setTimeout> | null = null;
     startUnreadBadge();
     initTokens().then(() => loadUser()).then(() => {
       // Only register push if user is logged in (has access token)
@@ -111,13 +112,16 @@ function AppInit({ children }: { children: React.ReactNode }) {
 
       // Check for updates after 5s delay (Tauri only)
       if (isTauri) {
-        setTimeout(() => {
+        updateCheckTimer = setTimeout(() => {
           checkForUpdate().then(setUpdateInfo).catch(console.warn);
         }, 5000);
       }
     }).finally(() => {
       setReady(true);
     });
+    return () => {
+      if (updateCheckTimer) clearTimeout(updateCheckTimer);
+    };
   }, [loadUser]);
 
   if (!ready) {
