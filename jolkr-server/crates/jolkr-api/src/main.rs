@@ -77,6 +77,7 @@ async fn main() {
     // Connect to S3 / MinIO
     let storage = storage::Storage::new(
         &config.minio_endpoint,
+        &config.minio_public_url,
         &config.minio_access_key,
         &config.minio_secret_key,
         &config.minio_bucket,

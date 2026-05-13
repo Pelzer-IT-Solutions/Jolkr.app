@@ -6,6 +6,12 @@ pub(crate) struct Config {
     pub jwt_secret: String,
     pub server_port: u16,
     pub minio_endpoint: String,
+    /// Public-facing URL prefix used to rewrite presigned URLs before they
+    /// leave the API. The internal Docker hostname `minio:9000` is unusable
+    /// from a browser, so presigned URLs are issued against this URL instead
+    /// (signature stays valid because nginx restores Host: minio:9000 on
+    /// the way back).
+    pub minio_public_url: String,
     pub minio_access_key: String,
     pub minio_secret_key: String,
     pub minio_bucket: String,
@@ -53,6 +59,7 @@ impl Config {
                 .parse()
                 .expect("SERVER_PORT must be a valid u16"),
             minio_endpoint: env_or("MINIO_ENDPOINT", "http://localhost:9000"),
+            minio_public_url: env_or("MINIO_PUBLIC_URL", "http://localhost:9000"),
             minio_access_key: env_or("MINIO_ACCESS_KEY", "jolkr"),
             minio_secret_key: env_or("MINIO_SECRET_KEY", "jolkr_dev_secret"),
             minio_bucket: env_or("MINIO_BUCKET", "jolkr"),
