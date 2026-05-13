@@ -3,10 +3,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { hashColor } from '../../adapters/transforms'
 import * as api from '../../api/client'
-import { wsClient } from '../../api/ws'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { useT } from '../../hooks/useT'
-import { invalidateFriendsCache } from '../../services/friendshipCache'
+import { invalidateFriendsCache, loadFriendships, subscribeFriendsCacheInvalidate } from '../../services/friendshipCache'
 import { useAuthStore } from '../../stores/auth'
 import { usePresenceStore } from '../../stores/presence'
 import { useToast } from '../../stores/toast'
@@ -14,7 +13,7 @@ import { Avatar } from '../Avatar/Avatar'
 import { QrCodeDisplay } from '../QrCodeDisplay'
 import { QrCodeScanner } from '../QrCodeScanner'
 import s from './FriendsPanel.module.css'
-import type { Friendship, FriendshipUser, User } from '../../api/types'
+import type { FriendshipUser, User } from '../../api/types'
 import type { MemberDisplay, MemberStatus } from '../../types'
 
 type FriendTab = 'all' | 'online' | 'pending' | 'add'
@@ -91,10 +90,7 @@ export function FriendsPanel({
 
   const refresh = useCallback(async () => {
     if (!myId) return
-    const [accepted, pending] = await Promise.all([
-      api.getFriends().catch(() => [] as Friendship[]),
-      api.getPendingFriends().catch(() => [] as Friendship[]),
-    ])
+    const { friends: accepted, pending } = await loadFriendships().catch(() => ({ friends: [], pending: [] }))
     setFriends(accepted.map(f => {
         const other = f.requester_id === myId ? f.addressee : f.requester
         const otherId = f.requester_id === myId ? f.addressee_id : f.requester_id
@@ -116,23 +112,12 @@ export function FriendsPanel({
       }))
   }, [myId, presence])
 
-  // Refresh whenever the panel opens
+  // Refresh on open + whenever the friendship cache is invalidated
+  // (WS FriendshipUpdate or any explicit invalidateFriendsCache call).
   useEffect(() => {
     if (!open) return
     refresh()
-  }, [open, refresh])
-
-  // Live-sync: backend publishes FriendshipUpdate to both parties on
-  // send/accept/decline/remove/block, so the open panel re-fetches without
-  // polling. Subscribe is gated on `open` to keep the blast radius small.
-  useEffect(() => {
-    if (!open) return
-    const off = wsClient.on(ev => {
-      if (ev.op === 'FriendshipUpdate') {
-        refresh()
-      }
-    })
-    return off
+    return subscribeFriendsCacheInvalidate(() => { refresh() })
   }, [open, refresh])
 
   useEffect(() => {
@@ -180,16 +165,18 @@ export function FriendsPanel({
   const incomingRequests = requests.filter(r => r.type === 'incoming')
   const outgoingRequests = requests.filter(r => r.type === 'outgoing')
 
+  // Mutation handlers leave the cross-component refresh to the cache
+  // invalidate-subscribe chain: each `onX` callback (AppShell) calls
+  // `invalidateFriendsCache()` which notifies subscribers, including this
+  // panel's `refresh`.
   const handleAccept = async (requestId: string) => {
     setRequests(prev => prev.filter(r => r.id !== requestId))
     await Promise.resolve(onAcceptRequest?.(requestId))
-    refresh()
   }
 
   const handleReject = async (requestId: string) => {
     setRequests(prev => prev.filter(r => r.id !== requestId))
     await Promise.resolve(onRejectRequest?.(requestId))
-    refresh()
   }
 
   const handleCancel = async (requestId: string) => {
@@ -197,14 +184,12 @@ export function FriendsPanel({
     // Cancel uses the same DELETE endpoint as decline; reuse onRejectRequest if onCancelRequest isn't wired.
     const cb = onCancelRequest ?? onRejectRequest
     await Promise.resolve(cb?.(requestId))
-    refresh()
   }
 
   const handleRemove = async (userId: string) => {
     setFriends(prev => prev.filter(f => f.user.user_id !== userId))
     setSelectedUserId(null)
     await Promise.resolve(onRemoveFriend?.(userId))
-    refresh()
   }
 
   const handleStartDM = (userId: string) => {
@@ -218,7 +203,6 @@ export function FriendsPanel({
       await api.sendFriendRequest(userId)
       invalidateFriendsCache()
       useToast.getState().show(t('friendsPanel.requestSent'), 'success')
-      refresh()
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('friendsPanel.requestFailed')
       useToast.getState().show(msg, 'error')

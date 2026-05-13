@@ -7,9 +7,14 @@
  * Consumers MUST call `invalidateFriendsCache()` after any mutation
  * (sendFriendRequest, declineFriend, removeFriendByUserId, blockUser) so the
  * next read reflects the new state.
+ *
+ * Module-level WS listener invalidates the cache on any `FriendshipUpdate`
+ * so views subscribed via `subscribeFriendsCacheInvalidate` refresh without
+ * each component owning its own WS handler.
  */
 
 import * as api from '../api/client';
+import { wsClient } from '../api/ws';
 import { createTtlCache } from '../utils/cache';
 import type { Friendship } from '../api/types';
 
@@ -59,6 +64,24 @@ function matchInLists(userId: string, friends: Friendship[], pending: Friendship
   return { state: 'pending', friendship: match };
 }
 
+const subscribers = new Set<() => void>();
+
+/** Subscribe to cache-invalidation events. Returns an unsubscribe function. */
+export function subscribeFriendsCacheInvalidate(cb: () => void): () => void {
+  subscribers.add(cb);
+  return () => { subscribers.delete(cb); };
+}
+
 export function invalidateFriendsCache(): void {
   cache.clear();
+  for (const cb of subscribers) {
+    try { cb(); } catch (e) { console.warn('friendshipCache subscriber threw:', e); }
+  }
 }
+
+// WS-driven invalidation — keeps state fresh after mutations made by another
+// session or by the other party (accept/decline/block/remove). Subscribers
+// re-fetch via loadFriendships() which re-populates the cache.
+wsClient.on(ev => {
+  if (ev.op === 'FriendshipUpdate') invalidateFriendsCache();
+});
