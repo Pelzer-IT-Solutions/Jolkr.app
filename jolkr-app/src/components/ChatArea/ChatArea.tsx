@@ -75,6 +75,16 @@ function normalizeFileType(file: File): File {
   return new File([file], file.name, { type: mime, lastModified: file.lastModified })
 }
 
+// Renders a blob-URL preview for a pending attachment. Owns the object URL's
+// lifetime so it gets revoked when the file leaves the pending list — without
+// this, an inline `URL.createObjectURL(file)` in the JSX would leak a blob
+// reference on every render.
+function PendingFileImage({ file, alt, className }: { file: File; alt: string; className?: string }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file])
+  useEffect(() => () => URL.revokeObjectURL(url), [url])
+  return <img src={url} alt={alt} className={className} />
+}
+
 export interface MentionableUser {
   id: string
   username: string
@@ -755,7 +765,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 {pendingFiles.map((file, i) => (
                   <div key={`${file.name}-${i}`} className={s.pendingFile}>
                     {file.type.startsWith('image/') ? (
-                      <img src={URL.createObjectURL(file)} alt={file.name} className={s.pendingFileThumb} />
+                      <PendingFileImage file={file} alt={file.name} className={s.pendingFileThumb} />
                     ) : (
                       <div className={s.pendingFileIcon}><AttachIcon /></div>
                     )}
