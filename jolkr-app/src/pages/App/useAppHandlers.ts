@@ -86,7 +86,7 @@ export function useAppHandlers(
   }, [dmActive, activeDmId, activeChannelId])
 
   // ── Navigation handlers ──
-  function handleSwitchServer(id: string) {
+  const handleSwitchServer = useCallback((id: string) => {
     if (id === activeServerId) return
     lastChannelPerServer.current[activeServerId] = activeChannelId
     setDmActive(false)
@@ -99,9 +99,9 @@ export function useAppHandlers(
       setActiveChannelId(channelExists ? saved : (channels.find(c => c.kind === 'text')?.id ?? channels[0].id))
     }
     // If no cached channels, activeChannelId will be set by the fetch effect in useAppInit
-  }
+  }, [activeServerId, activeChannelId, lastChannelPerServer, setDmActive, setActiveServerId, setActiveChannelId])
 
-  function handleCloseTab(id: string) {
+  const handleCloseTab = useCallback((id: string) => {
     if (tabbedIds.length === 1) return
     const idx = tabbedIds.indexOf(id)
     const next = tabbedIds.filter(t => t !== id)
@@ -112,16 +112,16 @@ export function useAppHandlers(
       const srv = uiServers.find(s => s.id === fallbackId)
       setActiveChannelId(srv?.channels[0]?.id ?? '')
     }
-  }
+  }, [tabbedIds, activeServerId, uiServers, setTabbedIds, setActiveServerId, setActiveChannelId])
 
-  function handleOpenServer(id: string) {
+  const handleOpenServer = useCallback((id: string) => {
     if (!tabbedIds.includes(id)) {
       setTabbedIds(prev => [id, ...prev])
     }
     handleSwitchServer(id)
-  }
+  }, [tabbedIds, setTabbedIds, handleSwitchServer])
 
-  function handleSwitchChannel(id: string) {
+  const handleSwitchChannel = useCallback((id: string) => {
     // Voice channels: join the SFU instead of switching the chat view.
     // Text channels: standard channel switch.
     const channels = useServersStore.getState().channels[activeServerId] ?? []
@@ -138,7 +138,7 @@ export function useAppHandlers(
     }
     if (id === activeChannelId) return
     setActiveChannelId(id)
-  }
+  }, [activeServerId, activeChannelId, setActiveChannelId])
 
   // ── Message handlers ──
   // Materialise a session-only draft DM by creating it on the server right
@@ -346,14 +346,14 @@ export function useAppHandlers(
     await refreshPinnedMeta(channelId, dmActive)
   }, [dmActive, activeDmId, activeChannelId, refreshPinnedMeta])
 
-  function handleThemeChange(theme: ServerTheme) {
+  const handleThemeChange = useCallback((theme: ServerTheme) => {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
     // Debounce the API save — orb drags fire many rapid updates
     if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current)
     themeSaveTimer.current = setTimeout(() => {
       api.updateServer(activeServerId, { theme } as Parameters<typeof api.updateServer>[1])
     }, 500)
-  }
+  }, [activeServerId, setServerThemes, themeSaveTimer])
 
   // ── Channel CRUD handlers ──
   const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice', categoryId?: string) => {
@@ -415,7 +415,7 @@ export function useAppHandlers(
   }, [activeServerId])
 
   // ── Server management ──
-  async function handleJoinServer(serverId: string, accessCode: string): Promise<boolean> {
+  const handleJoinServer = useCallback(async (serverId: string, accessCode: string): Promise<boolean> => {
     try {
       // If access code is provided, use invite code path; otherwise join public server directly
       if (accessCode && accessCode.trim()) {
@@ -430,9 +430,9 @@ export function useAppHandlers(
     } catch {
       return false
     }
-  }
+  }, [fetchServers, handleOpenServer, setJoinServerOpen])
 
-  async function handleCreateServer(data: { name: string; icon: string; color: string; hue?: number; privacy: 'public' | 'private' }) {
+  const handleCreateServer = useCallback(async (data: { name: string; icon: string; color: string; hue?: number; privacy: 'public' | 'private' }) => {
     try {
       const server = await api.createServer({ name: data.name, description: '' })
       await fetchServers()
@@ -452,14 +452,14 @@ export function useAppHandlers(
     } catch (e) {
       console.error('Failed to create server:', e)
     }
-  }
+  }, [fetchServers, setServerThemes, setTabbedIds, setDmActive, setActiveServerId, setActiveChannelId, setCreateServerOpen])
 
   // ── DM creation ──
   // Picks up a list of usernames (one for 1-on-1, multiple for group) from
   // NewDMModal and either opens an existing conversation or sets up a
   // session-only draft. The DM is materialised on the server lazily on the
   // first message — see `materialiseDraftDm` inside `handleSend`.
-  async function handleCreateDm(names: string[]) {
+  const handleCreateDm = useCallback(async (names: string[]) => {
     if (!user) return
     try {
       // Resolve every selected name to a User in parallel; ignore unknowns.
@@ -513,7 +513,7 @@ export function useAppHandlers(
       useToast.getState().show((e as Error).message || tStatic('toast.createDmFailed'), 'error')
     }
     setNewDmOpen(false)
-  }
+  }, [user, dmList, setDmUsers, setDmList, setActiveDmId, setDmActive, setNewDmOpen])
 
   return {
     mutedServerIds, handleToggleMuteServer,
