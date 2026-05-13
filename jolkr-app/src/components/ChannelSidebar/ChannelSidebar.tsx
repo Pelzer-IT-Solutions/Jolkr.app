@@ -144,17 +144,31 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [editingCatName, setEditingCatName] = useState('')
   const catRenameInputRef = useRef<HTMLInputElement>(null)
 
-  const layoutKey = useMemo(() => {
-    const cats = server.categories.map(c => `${c.id}:${c.channels.join(',')}`).join('|')
-    const uncat = initialUncategorized.join(',')
-    return `${cats}::${uncat}`
-  }, [server.categories, initialUncategorized])
   const prevServerRef = useRef(server.id)
   useLayoutEffect(() => {
-    setLocalCats(server.categories)
-    setLocalUncategorized(initialUncategorized)
-    setLocalExtraChannels([])
-    if (prevServerRef.current !== server.id) {
+    const isServerSwitch = prevServerRef.current !== server.id
+    prevServerRef.current = server.id
+
+    // Sync prop → local mirror only when contents *actually* diverge. After
+    // our own optimistic edits, the BE round-trip + the resulting WS events
+    // produce a server.categories array with matching content; we keep the
+    // existing local array references so dnd-kit's in-flight drop animation
+    // is not aborted by a wholesale items[] swap (which used to cause a
+    // visible flash on dropped categories). External mutations (rename,
+    // create, delete from another session) yield a divergent signature and
+    // propagate normally; optimistic temp folders are likewise replaced
+    // once the BE returns a real id.
+    const propCatsSig = server.categories
+      .map(c => `${c.id}|${c.name}|${c.channels.join(',')}`).join(';')
+    const propUncatSig = initialUncategorized.join(',')
+    setLocalCats(prev => {
+      const prevSig = prev.map(c => `${c.id}|${c.name}|${c.channels.join(',')}`).join(';')
+      return prevSig === propCatsSig ? prev : server.categories
+    })
+    setLocalUncategorized(prev => prev.join(',') === propUncatSig ? prev : initialUncategorized)
+    setLocalExtraChannels(prev => prev.length === 0 ? prev : [])
+
+    if (isServerSwitch) {
       setCollapsedCats(new Set())
       setIsRevealing(true)
       const totalItems =
@@ -162,10 +176,9 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
         server.categories.reduce((sum, c) => sum + c.channels.length, 0) +
         initialUncategorized.length
       const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
-      prevServerRef.current = server.id
       return () => clearTimeout(timer)
     }
-  }, [server.id, server.categories, initialUncategorized, layoutKey])
+  }, [server.id, server.categories, initialUncategorized])
 
   useEffect(() => {
     if (creating) setTimeout(() => inputRef.current?.focus(), 0)
