@@ -8,6 +8,7 @@ import type { Server as GeneratedServer } from './generated/Server';
 import type { User as GeneratedUser } from './generated/User';
 
 export type { Attachment } from './generated/Attachment';
+export type { AuditLogEntry } from './generated/AuditLogEntry';
 export type { Ban } from './generated/Ban';
 export type { Category } from './generated/Category';
 export type { ChannelOverwrite } from './generated/ChannelOverwrite';
@@ -95,18 +96,6 @@ export type Message = Omit<
  * by transforms.ts so downstream code can branch on a single shape.
  */
 export type Member = GeneratedMember & { user?: User };
-
-export interface AuditLogEntry {
-  id: string;
-  server_id: string;
-  user_id: string;
-  action_type: string;
-  target_id?: string | null;
-  target_type?: string | null;
-  changes?: Record<string, unknown> | null;
-  reason?: string | null;
-  created_at: string;
-}
 
 export interface PreKeyBundleResponse {
   user_id: string;

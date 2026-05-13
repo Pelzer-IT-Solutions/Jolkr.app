@@ -4,6 +4,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -14,7 +15,9 @@ use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
 /// A single entry in the server audit log.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "AuditLogEntry")]
 pub(crate) struct AuditLogEntry {
     pub id: Uuid,
     pub server_id: Uuid,
@@ -27,6 +30,7 @@ pub(crate) struct AuditLogEntry {
     /// Entity kind for `target_id`, e.g. `"channel"`, `"member"`, `"role"`.
     pub target_type: Option<String>,
     /// Action-specific structured payload (renamed fields, before/after values, etc.).
+    #[ts(type = "Record<string, unknown> | null")]
     pub changes: Option<serde_json::Value>,
     /// Optional moderator-supplied reason string.
     pub reason: Option<String>,
