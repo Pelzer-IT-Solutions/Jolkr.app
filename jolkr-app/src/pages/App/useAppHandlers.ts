@@ -307,63 +307,44 @@ export function useAppHandlers(
     editMessage(msgId, effectiveChannelId, encrypted.encryptedContent, isDm, encrypted.nonce)
   }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handlePinMessage = useCallback(async (msgId: string) => {
-    const channelId = dmActive ? activeDmId : activeChannelId
-    const store = useMessagesStore.getState()
-    const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
-    if (!msg) return
-    const newPinned = !msg.is_pinned
-    // Optimistic update — only change is_pinned, preserve reactions and other fields
-    store.updateMessage(channelId, { ...msg, is_pinned: newPinned, reactions: undefined } as typeof msg)
+  // Both handlers route through useMessagesStore.setPinned so the optimistic
+  // + revert + API-call path is shared. The handler itself only owns the
+  // pinned-count / pinned-version bookkeeping (UI state that lives in
+  // useAppInit, not in the messages store).
+  const refreshPinnedMeta = useCallback(async (channelId: string, isDm: boolean) => {
     try {
-      if (newPinned) {
-        if (dmActive) await api.pinDmMessage(channelId, msgId)
-        else await api.pinMessage(channelId, msgId)
-      } else {
-        if (dmActive) await api.unpinDmMessage(channelId, msgId)
-        else await api.unpinMessage(channelId, msgId)
-      }
-      const pinned = dmActive
+      const pinned = isDm
         ? await api.getDmPinnedMessages(channelId)
         : await api.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       setPinnedVersion(v => v + 1)
     } catch (err) {
-      console.error('Pin toggle failed:', err)
-      const m = err instanceof Error ? err.message : tStatic('toast.pinFailed')
-      useToast.getState().show(m, 'error')
-      // Revert on failure
-      const revertStore = useMessagesStore.getState()
-      const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
-      if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned, reactions: undefined } as typeof revertMsg)
+      console.warn('Pinned count refresh failed:', err)
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
+  }, [setPinnedCount, setPinnedVersion])
+
+  const handlePinMessage = useCallback(async (msgId: string) => {
+    const channelId = dmActive ? activeDmId : activeChannelId
+    const msg = (useMessagesStore.getState().messages[channelId] ?? []).find(m => m.id === msgId)
+    if (!msg) return
+    const targetPinned = !msg.is_pinned
+    const ok = await useMessagesStore.getState().setPinned(channelId, msgId, dmActive, targetPinned)
+    if (!ok) {
+      useToast.getState().show(tStatic(targetPinned ? 'toast.pinFailed' : 'toast.unpinFailed'), 'error')
+      return
+    }
+    await refreshPinnedMeta(channelId, dmActive)
+  }, [dmActive, activeDmId, activeChannelId, refreshPinnedMeta])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    try {
-      if (dmActive) await api.unpinDmMessage(channelId, msgId)
-      else await api.unpinMessage(channelId, msgId)
-      // Refresh pinned count
-      const pinned = dmActive
-        ? await api.getDmPinnedMessages(channelId)
-        : await api.getPinnedMessages(channelId)
-      setPinnedCount(pinned.length)
-      setPinnedVersion(v => v + 1)
-      // Find and update the message's is_pinned status in the store
-      // Pass reactions: undefined so updateMessage preserves existing reactions
-      const store = useMessagesStore.getState()
-      const channelMsgs = store.messages[channelId] ?? []
-      const msg = channelMsgs.find(m => m.id === msgId)
-      if (msg) {
-        store.updateMessage(channelId, { ...msg, is_pinned: false, reactions: undefined } as typeof msg)
-      }
-    } catch (err) {
-      console.error('Unpin failed:', err)
-      const m = err instanceof Error ? err.message : tStatic('toast.unpinFailed')
-      useToast.getState().show(m, 'error')
+    const ok = await useMessagesStore.getState().setPinned(channelId, msgId, dmActive, false)
+    if (!ok) {
+      useToast.getState().show(tStatic('toast.unpinFailed'), 'error')
+      return
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
+    await refreshPinnedMeta(channelId, dmActive)
+  }, [dmActive, activeDmId, activeChannelId, refreshPinnedMeta])
 
   function handleThemeChange(theme: ServerTheme) {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))

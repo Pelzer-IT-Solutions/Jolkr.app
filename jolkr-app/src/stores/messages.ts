@@ -39,6 +39,10 @@ interface MessagesState {
   updateMessage: (channelId: string, message: Message) => void;
   removeMessage: (channelId: string, messageId: string) => void;
   updateReactions: (channelId: string, messageId: string, reactions: Reaction[]) => void;
+  /** Optimistic pin/unpin with rollback. Resolves `true` on BE success.
+   *  Callers handle UI-side bookkeeping (pinned count, version bump) themselves
+   *  — that state lives in useAppInit, not here. */
+  setPinned: (channelId: string, messageId: string, isDm: boolean, pinned: boolean) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -173,6 +177,37 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ),
       },
     });
+  },
+
+  setPinned: async (channelId, messageId, isDm, pinned) => {
+    const current = get().messages[channelId] ?? [];
+    const msg = current.find((m) => m.id === messageId);
+    if (!msg) return false;
+    const previousPinned = msg.is_pinned;
+    if (previousPinned === pinned) return true; // already in the desired state
+    // Optimistic — reactions: undefined preserves whatever the merge logic
+    // in updateMessage already has, so a concurrent reaction WS event isn't
+    // overwritten by the pin toggle.
+    get().updateMessage(channelId, { ...msg, is_pinned: pinned, reactions: undefined } as Message);
+    try {
+      if (pinned) {
+        if (isDm) await api.pinDmMessage(channelId, messageId);
+        else await api.pinMessage(channelId, messageId);
+      } else {
+        if (isDm) await api.unpinDmMessage(channelId, messageId);
+        else await api.unpinMessage(channelId, messageId);
+      }
+      return true;
+    } catch {
+      // Revert against whatever the latest store state is — a concurrent
+      // WS event may have already mutated the message.
+      const fresh = get().messages[channelId] ?? [];
+      const revertMsg = fresh.find((m) => m.id === messageId);
+      if (revertMsg) {
+        get().updateMessage(channelId, { ...revertMsg, is_pinned: previousPinned, reactions: undefined } as Message);
+      }
+      return false;
+    }
   },
 
   reset: () => {
