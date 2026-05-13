@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import * as api from '../../api/client'
 import { wsClient } from '../../api/ws'
@@ -122,7 +122,11 @@ export function useAppInit() {
   }, [])
 
   // ── Per-server themes ──
-  const [serverThemes, setServerThemes] = useState<Record<string, ServerTheme>>({})
+  // Server.theme on the store is the source of truth. `themeOverrides` is a
+  // local optimistic layer for the theme-orb debounce — handleThemeChange
+  // writes the in-progress theme here, and the effect below drops the
+  // override once the BE-confirmed theme on `servers` catches up.
+  const [themeOverrides, setThemeOverrides] = useState<Record<string, ServerTheme>>({})
 
   // ── Init: fetch servers + DMs, then navigate to correct place ──
   useEffect(() => {
@@ -166,11 +170,7 @@ export function useAppInit() {
       }
 
       const srvs = useServersStore.getState().servers
-      const themes: Record<string, ServerTheme> = {}
-      srvs.forEach(srv => {
-        themes[srv.id] = srv.theme ?? { hue: null, orbs: [] }
-      })
-      setServerThemes(themes)
+      // serverThemes is derived from `servers` via useMemo below — no seed needed.
 
       const ids = srvs.slice(0, 5).map(s => s.id)
 
@@ -730,23 +730,37 @@ export function useAppInit() {
     // listener registration without changing behaviour.
   }, [fetchChannelPermissions, fetchPermissions, fetchChannelMembers, activeChannelId])
 
-  // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
+  // ── Drop optimistic overrides once the BE-confirmed theme matches ──
+  // Bare ref equality on `orbs` is enough — the orb-drag debounce sends the
+  // same array reference back via `api.updateServer`, and a no-op WS event
+  // would still produce a same-value compare here.
   useEffect(() => {
-    setServerThemes(prev => {
-      const next = { ...prev }
+    setThemeOverrides(prev => {
+      if (Object.keys(prev).length === 0) return prev
       let changed = false
-      for (const srv of servers) {
-        if (srv.theme) {
-          const t = srv.theme
-          if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
-            next[srv.id] = t
-            changed = true
-          }
+      const next: Record<string, ServerTheme> = {}
+      for (const [id, override] of Object.entries(prev)) {
+        const srv = servers.find(s => s.id === id)
+        const beTheme = srv?.theme
+        if (beTheme && beTheme.hue === override.hue && beTheme.orbs === override.orbs) {
+          changed = true
+          continue
         }
+        next[id] = override
       }
       return changed ? next : prev
     })
   }, [servers])
+
+  // Derived theme map: store-provided theme per server, with any pending
+  // optimistic override layered on top.
+  const serverThemes = useMemo<Record<string, ServerTheme>>(() => {
+    const out: Record<string, ServerTheme> = {}
+    for (const srv of servers) {
+      if (srv.theme) out[srv.id] = srv.theme
+    }
+    return Object.keys(themeOverrides).length === 0 ? out : { ...out, ...themeOverrides }
+  }, [servers, themeOverrides])
 
   return {
     navigate, location,
@@ -775,6 +789,6 @@ export function useAppInit() {
     profileCard, setProfileCard,
     pinnedCount, setPinnedCount, pinnedVersion, setPinnedVersion, threadsCount, setThreadsCount,
     openThreadId, setOpenThreadId,
-    lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
+    lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes: setThemeOverrides,
   }
 }
