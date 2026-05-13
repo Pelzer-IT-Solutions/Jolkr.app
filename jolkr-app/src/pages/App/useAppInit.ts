@@ -112,6 +112,15 @@ export function useAppInit() {
   const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
 
+  // Cancel any pending theme-save on unmount so a debounced api.updateServer
+  // doesn't fire after logout (or page unmount during a server switch).
+  useEffect(() => () => {
+    if (themeSaveTimer.current) {
+      clearTimeout(themeSaveTimer.current)
+      themeSaveTimer.current = null
+    }
+  }, [])
+
   // ── Per-server themes ──
   const [serverThemes, setServerThemes] = useState<Record<string, ServerTheme>>({})
 
@@ -283,12 +292,17 @@ export function useAppInit() {
   // ── Fetch channel data when switching servers (after init) ──
   useEffect(() => {
     if (!ready || !activeServerId || dmActive) return
+    // Fast-switching servers used to let an older Promise.all resolve after a
+    // newer one and stomp the active channel selection back onto the previous
+    // server's first channel. The cancelled flag gates every late setState.
+    let cancelled = false
     Promise.all([
       fetchChannels(activeServerId),
       fetchMembers(activeServerId),
       fetchCategories(activeServerId),
       fetchPermissions(activeServerId),
     ]).then(() => {
+      if (cancelled) return
       // Ensure a valid channel is selected after fresh channel data arrives
       const chs = useServersStore.getState().channels[activeServerId]
       if (!chs?.length) return
@@ -299,10 +313,12 @@ export function useAppInit() {
       const mems = useServersStore.getState().members[activeServerId]
       if (mems?.length) {
         api.queryPresence(mems.map(m => m.user_id)).then(p => {
+          if (cancelled) return
           usePresenceStore.getState().setBulk(p)
         }).catch(console.warn)
       }
     })
+    return () => { cancelled = true }
   }, [activeServerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Safety: if active server disappears (deleted/left), fall back ──
@@ -361,31 +377,39 @@ export function useAppInit() {
       }
     }
 
-    // Fetch pinned count and threads count for conditional icon display
+    // Fetch pinned count and threads count for conditional icon display.
+    // Cancellation gates every setState so a slow response from the previous
+    // channel can't write counts into the newly-active channel's badges.
+    let cancelled = false
     const fetchCounts = async () => {
       try {
         const pinned = dmActive
           ? await api.getDmPinnedMessages(channelId)
           : await api.getPinnedMessages(channelId)
+        if (cancelled) return
         setPinnedCount(pinned.length)
       } catch {
+        if (cancelled) return
         setPinnedCount(0)
       }
       // Threads only exist in server text channels — DMs have none.
       if (dmActive) {
-        setThreadsCount(0)
+        if (!cancelled) setThreadsCount(0)
         return
       }
       try {
         const threads = await api.getThreads(channelId, false)
+        if (cancelled) return
         setThreadsCount(threads.filter(t => !t.is_archived).length)
       } catch {
+        if (cancelled) return
         setThreadsCount(0)
       }
     }
     fetchCounts()
 
     return () => {
+      cancelled = true
       useUnreadStore.getState().setActiveChannel(null)
     }
     // threadListVersion is included so the count refreshes when ThreadCreate/Update fires.
