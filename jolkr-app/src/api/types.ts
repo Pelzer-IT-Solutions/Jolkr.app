@@ -22,6 +22,7 @@ export type { MessageEmbed } from './generated/MessageEmbed';
 export type { NotificationSetting } from './generated/NotificationSetting';
 export type { Poll } from './generated/Poll';
 export type { PollOption } from './generated/PollOption';
+export type { PreKeyBundleResponse } from './generated/PreKeyBundleResponse';
 export type { Role } from './generated/Role';
 export type { ServerEmoji } from './generated/ServerEmoji';
 export type { Thread } from './generated/Thread';
@@ -96,15 +97,3 @@ export type Message = Omit<
  * by transforms.ts so downstream code can branch on a single shape.
  */
 export type Member = GeneratedMember & { user?: User };
-
-export interface PreKeyBundleResponse {
-  user_id: string;
-  device_id: string;
-  identity_key: string;
-  signed_prekey: string;
-  signed_prekey_signature: string;
-  one_time_prekey?: string | null;
-  pq_signed_prekey?: string | null;
-  pq_signed_prekey_signature?: string | null;
-}
-

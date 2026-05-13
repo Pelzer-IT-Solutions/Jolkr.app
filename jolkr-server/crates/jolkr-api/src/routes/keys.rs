@@ -3,6 +3,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_core::KeyService;
@@ -44,7 +45,9 @@ pub(crate) struct UploadPreKeysResponse {
 
 /// Response payload for GET /api/keys/:user_id[/:device_id]. All key fields
 /// are base64-encoded; one-time prekey is consumed (single-use) on read.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "PreKeyBundleResponse")]
 pub(crate) struct PreKeyBundleResponse {
     pub user_id: Uuid,
     pub device_id: Uuid,
@@ -58,9 +61,11 @@ pub(crate) struct PreKeyBundleResponse {
     pub one_time_prekey: Option<String>,
     /// Base64-encoded ML-KEM-768 encapsulation key. `None` when peer has no PQ bundle.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub pq_signed_prekey: Option<String>,
     /// Base64-encoded Ed25519 signature over the PQ prekey.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub pq_signed_prekey_signature: Option<String>,
 }
 
