@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -11,7 +12,9 @@ const MAX_EMOJIS_PER_SERVER: i64 = 50;
 const MAX_EMOJI_NAME_LEN: usize = 32;
 
 /// Public emoji DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "ServerEmoji")]
 pub struct EmojiInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -19,7 +22,7 @@ pub struct EmojiInfo {
     pub server_id: Uuid,
     /// Display name.
     pub name: String,
-    /// Image URL.
+    /// Presigned image URL.
     pub image_url: String,
     /// Uploader user identifier.
     pub uploader_id: Uuid,

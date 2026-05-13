@@ -21,6 +21,7 @@ export type { MessageEmbed } from './generated/MessageEmbed';
 export type { Poll } from './generated/Poll';
 export type { PollOption } from './generated/PollOption';
 export type { Role } from './generated/Role';
+export type { ServerEmoji } from './generated/ServerEmoji';
 export type { Thread } from './generated/Thread';
 export type { TokenPair } from './generated/TokenPair';
 export type { UpdateMeBody } from './generated/UpdateMeBody';
@@ -93,15 +94,6 @@ export type Message = Omit<
  * by transforms.ts so downstream code can branch on a single shape.
  */
 export type Member = GeneratedMember & { user?: User };
-
-export interface ServerEmoji {
-  id: string;
-  server_id: string;
-  name: string;
-  image_url: string;
-  uploader_id: string;
-  animated: boolean;
-}
 
 export interface NotificationSetting {
   target_type: 'server' | 'channel';
