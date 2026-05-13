@@ -58,6 +58,23 @@ interface ServersState {
   assignRole: (serverId: string, roleId: string, userId: string) => Promise<void>;
   removeRole: (serverId: string, roleId: string, userId: string) => Promise<void>;
   fetchEmojis: (serverId: string) => Promise<void>;
+  /** Apply a Role CRUD WS event to roles[serverId] and drop permission +
+   *  channel-member caches that may now be stale. UI-side refetches stay in
+   *  the WS subscriber — this action only owns the store mutation. */
+  applyRoleChange: (
+    serverId: string,
+    change: { op: 'RoleCreate' | 'RoleUpdate'; role: Role } | { op: 'RoleDelete'; role_id: string },
+  ) => void;
+  /** Drop the cached channelPermissions for this channel so a subsequent
+   *  fetchChannelPermissions yields fresh data. */
+  applyChannelPermissionUpdate: (channelId: string) => void;
+  /** Patch every server's members[].user blob where user_id matches, so
+   *  MemberPanels across servers reflect rename/avatar/status updates from
+   *  a single WS UserUpdate event. */
+  patchMemberUser: (
+    userId: string,
+    patch: Partial<Pick<NonNullable<Member['user']>, 'display_name' | 'avatar_url' | 'bio' | 'status' | 'banner_color'>>,
+  ) => void;
   reset: () => void;
 }
 
@@ -330,6 +347,68 @@ export const useServersStore = create<ServersState>((set, get) => ({
   removeRole: async (serverId, roleId, userId) => {
     await api.removeRole(serverId, roleId, userId);
     get().fetchMembersWithRoles(serverId);
+  },
+
+  applyRoleChange: (serverId, change) => {
+    const state = get();
+    const current = state.roles[serverId] ?? [];
+    let nextRoles: Role[] = current;
+    switch (change.op) {
+      case 'RoleCreate': {
+        if (!current.some((c) => c.id === change.role.id)) nextRoles = [...current, change.role];
+        break;
+      }
+      case 'RoleUpdate': {
+        nextRoles = current.map((c) => (c.id === change.role.id ? change.role : c));
+        break;
+      }
+      case 'RoleDelete': {
+        nextRoles = current.filter((c) => c.id !== change.role_id);
+        break;
+      }
+    }
+    // Drop server + per-channel permission caches plus visible-member rosters —
+    // any of these may shift when role layout changes.
+    const { [serverId]: _serverPerm, ...restServerPerms } = state.permissions;
+    const channelIds = (state.channels[serverId] ?? []).map((c) => c.id);
+    const restChanPerms = { ...state.channelPermissions };
+    const restChannelMembers = { ...state.channelMembers };
+    for (const cid of channelIds) {
+      delete restChanPerms[cid];
+      delete restChannelMembers[cid];
+    }
+    set({
+      roles: { ...state.roles, [serverId]: nextRoles },
+      permissions: restServerPerms,
+      channelPermissions: restChanPerms,
+      channelMembers: restChannelMembers,
+    });
+  },
+
+  applyChannelPermissionUpdate: (channelId) => {
+    const state = get();
+    if (!(channelId in state.channelPermissions)) return;
+    const { [channelId]: _drop, ...rest } = state.channelPermissions;
+    set({ channelPermissions: rest });
+  },
+
+  patchMemberUser: (userId, patch) => {
+    const state = get();
+    const nextMembers: Record<string, Member[]> = {};
+    let changed = false;
+    for (const [sid, list] of Object.entries(state.members)) {
+      const idx = list.findIndex((m) => m.user_id === userId);
+      if (idx === -1) continue;
+      const updatedList = list.slice();
+      const m = updatedList[idx];
+      updatedList[idx] = {
+        ...m,
+        user: m.user ? { ...m.user, ...patch } : m.user,
+      };
+      nextMembers[sid] = updatedList;
+      changed = true;
+    }
+    if (changed) set({ members: { ...state.members, ...nextMembers } });
   },
 
   reset: () => {

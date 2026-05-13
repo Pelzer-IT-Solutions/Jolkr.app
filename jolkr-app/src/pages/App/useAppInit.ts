@@ -14,7 +14,7 @@ import { useThreadsStore } from '../../stores/threads'
 import { useUnreadStore } from '../../stores/unread'
 import { useUsersStore } from '../../stores/users'
 import { makeDraftDmId } from '../../utils/draftDm'
-import type { DmChannel, User, Role } from '../../api/types'
+import type { DmChannel, User } from '../../api/types'
 import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
 import type { ServerTheme } from '../../types/ui'
@@ -533,105 +533,40 @@ export function useAppInit() {
           return next
         })
 
-        // 2) Server members store — patch the embedded `user` blob on every
-        // server where this user is a member so MemberPanel re-renders with
-        // the new name/avatar.
-        const serversState = useServersStore.getState()
-        const newMembers: Record<string, typeof serversState.members[string]> = {}
-        let changed = false
-        for (const [sid, list] of Object.entries(serversState.members)) {
-          const idx = list.findIndex(m => m.user_id === user_id)
-          if (idx === -1) continue
-          const updatedList = list.slice()
-          const m = updatedList[idx]
-          updatedList[idx] = {
-            ...m,
-            user: m.user
-              ? {
-                  ...m.user,
-                  ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
-                  ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
-                  ...(event.d.bio !== undefined && { bio: event.d.bio }),
-                  ...(event.d.status !== undefined && { status: event.d.status }),
-                  ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
-                }
-              : m.user,
-          }
-          newMembers[sid] = updatedList
-          changed = true
-        }
-        if (changed) {
-          useServersStore.setState({ members: { ...serversState.members, ...newMembers } })
-        }
+        // 3) Cross-server members.user patch — store action owns the loop.
+        useServersStore.getState().patchMemberUser(user_id, patch)
         return
       }
 
-      // RoleCreate / RoleUpdate / RoleDelete: server-wide role CRUD. Patch
-      // the roles cache for this server, then invalidate the permissions
-      // caches because effective permissions may have changed for the local
-      // user (if they hold the affected role). Channel-level perms also
-      // need to drop because role overwrites may apply.
+      // RoleCreate / RoleUpdate / RoleDelete: server-wide role CRUD. The store
+      // action patches roles[serverId] and invalidates the affected permission
+      // + channel-member caches; this handler only owns the UI-side refetch
+      // decisions (which depend on the active channel and so live here).
       if (event.op === 'RoleCreate' || event.op === 'RoleUpdate' || event.op === 'RoleDelete') {
         const serverId = event.d.server_id
         if (!serverId) return
-        const s = useServersStore.getState()
-        const current: Role[] = s.roles[serverId] ?? []
-        let nextRoles: Role[] = current
-        switch (event.op) {
-          case 'RoleCreate': {
-            const r = event.d.role
-            if (!current.some(c => c.id === r.id)) nextRoles = [...current, r]
-            break
-          }
-          case 'RoleUpdate': {
-            const r = event.d.role
-            nextRoles = current.map(c => c.id === r.id ? r : c)
-            break
-          }
-          case 'RoleDelete': {
-            const rid = event.d.role_id
-            nextRoles = current.filter(c => c.id !== rid)
-            break
-          }
-        }
-        // Drop server + per-channel permission caches AND the per-channel
-        // visible-member rosters so the next reads refetch with the new role
-        // data baked in.
-        const { [serverId]: _serverPerm, ...restServerPerms } = s.permissions
-        const channelIds = (s.channels[serverId] ?? []).map(c => c.id)
-        const restChanPerms = { ...s.channelPermissions }
-        const restChannelMembers = { ...s.channelMembers }
-        for (const cid of channelIds) {
-          delete restChanPerms[cid]
-          delete restChannelMembers[cid]
-        }
-        useServersStore.setState({
-          roles: { ...s.roles, [serverId]: nextRoles },
-          permissions: restServerPerms,
-          channelPermissions: restChanPerms,
-          channelMembers: restChannelMembers,
-        })
-        // Refetch immediately so the gated UI updates without a user action.
+        const change = event.op === 'RoleDelete'
+          ? { op: 'RoleDelete' as const, role_id: event.d.role_id }
+          : { op: event.op, role: event.d.role }
+        useServersStore.getState().applyRoleChange(serverId, change)
+        // Refetch immediately so gated UI updates without a user action.
         fetchPermissions(serverId).catch(console.warn)
         // If the active channel belongs to this server, refresh its visible
         // member list right away so the panel reflects the new role layout.
+        const channelIds = (useServersStore.getState().channels[serverId] ?? []).map(c => c.id)
         if (activeChannelId && channelIds.includes(activeChannelId)) {
           fetchChannelMembers(activeChannelId).catch(console.warn)
         }
         return
       }
 
-      // ChannelPermissionUpdate: an overwrite was upserted/deleted. Drop the
-      // cached permissions for this channel and refetch so gated UI (composer,
-      // pin button, etc.) reflects the new effective perms. The visible
-      // members list also depends on overwrites, so refresh that too — when
-      // it's the active channel this keeps the right-hand panel honest.
+      // ChannelPermissionUpdate: an overwrite was upserted/deleted. The store
+      // drops the cached permissions for this channel; we refetch the gated
+      // values + the visible-member list if it's the active channel.
       if (event.op === 'ChannelPermissionUpdate') {
         const { channel_id } = event.d
         if (!channel_id) return
-        const s = useServersStore.getState()
-        const { [channel_id]: _drop, ...restChanPerms } = s.channelPermissions
-        useServersStore.setState({ channelPermissions: restChanPerms })
+        useServersStore.getState().applyChannelPermissionUpdate(channel_id)
         fetchChannelPermissions(channel_id).catch(console.warn)
         if (channel_id === activeChannelId) {
           fetchChannelMembers(channel_id).catch(console.warn)
