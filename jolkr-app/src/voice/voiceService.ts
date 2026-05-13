@@ -249,11 +249,21 @@ export class VoiceService {
     }
   }
 
-  dispose() {
-    this.cleanup();
+  /** Drop every external listener without touching the WS/RTC connection.
+   *  Used during logout so a still-running async `leaveChannel()` can finish
+   *  its server-side leave-notice + cleanup without any of its `setState`
+   *  emits ending up back in a store that has just been reset. */
+  detachListeners() {
     this.stateListeners.clear();
     this.participantsListeners.clear();
     this.errorListeners.clear();
+    this.remoteVideoListeners.clear();
+    this.localVideoListeners.clear();
+  }
+
+  dispose() {
+    this.cleanup();
+    this.detachListeners();
   }
 
   // -- Private --
