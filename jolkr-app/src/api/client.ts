@@ -297,14 +297,6 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return data;
 }
 
-export async function resetPassword(email: string, newPassword: string, adminSecret: string): Promise<void> {
-  await request<void>('/auth/reset-password', {
-    method: 'POST',
-    headers: { 'X-Admin-Secret': adminSecret },
-    body: JSON.stringify({ email, new_password: newPassword }),
-  });
-}
-
 export async function forgotPassword(email: string): Promise<void> {
   await request<void>('/auth/forgot-password', {
     method: 'POST',
@@ -344,29 +336,6 @@ export const getMe = () => request<MeProfile>('/users/@me', {}, 'user');
 export const updateMe = (body: UpdateMeBody) =>
   request<MeProfile>('/users/@me', { method: 'PATCH', body: JSON.stringify(body) }, 'user');
 export const getUser = (id: string) => request<User>(`/users/${id}`, {}, 'user');
-/**
- * Fetch multiple user profiles in a single round-trip via the backend batch
- * endpoint. The backend caps the request at 100 ids; the client mirrors the
- * cap and chunks larger inputs so callers don't have to think about it.
- */
-export const getUsersBatch = async (ids: string[]): Promise<User[]> => {
-  if (ids.length === 0) return [];
-  const BATCH_SIZE = 100;
-  const out: User[] = [];
-  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-    const slice = ids.slice(i, i + BATCH_SIZE);
-    try {
-      const users = await request<User[]>('/users/batch', {
-        method: 'POST',
-        body: JSON.stringify({ ids: slice }),
-      }, 'users');
-      out.push(...users);
-    } catch (e) {
-      console.warn('[getUsersBatch] batch fetch failed', e);
-    }
-  }
-  return out;
-};
 export const searchUsers = (q: string) => request<User[]>(`/users/search?q=${encodeURIComponent(q)}`, {}, 'users');
 
 // Servers
@@ -388,9 +357,6 @@ export const reorderServers = (serverIds: string[]) =>
     method: 'PUT',
     body: JSON.stringify({ server_ids: serverIds }),
   });
-export const discoverServers = (limit = 20, offset = 0) =>
-  request<Server[]>(`/servers/discover?limit=${limit}&offset=${offset}`, {}, 'servers');
-
 export const joinPublicServer = (serverId: string) =>
   request<void>(`/servers/${serverId}/join`, { method: 'POST' });
 
@@ -406,12 +372,6 @@ export const unbanMember = (serverId: string, userId: string) =>
   request<void>(`/servers/${serverId}/bans/${userId}`, { method: 'DELETE' });
 export const getBans = (serverId: string) =>
   request<Ban[]>(`/servers/${serverId}/bans`, {}, 'bans');
-export const setNickname = (serverId: string, userId: string, nickname?: string) =>
-  request<void>(`/servers/${serverId}/members/${userId}/nickname`, {
-    method: 'PATCH',
-    body: JSON.stringify({ nickname: nickname || null }),
-  });
-
 // Categories
 export const getCategories = (serverId: string) =>
   request<Category[]>(`/servers/${serverId}/categories`, {}, 'categories');
@@ -458,15 +418,9 @@ export const getChannels = (serverId: string) =>
   request<Channel[]>(`/servers/${serverId}/channels/list`, {}, 'channels');
 export const createChannel = (serverId: string, body: { name: string; kind: ChannelKind; category_id?: string }) =>
   request<Channel>(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify(body) }, 'channel');
-export const getChannel = (id: string) => request<Channel>(`/channels/${id}`, {}, 'channel');
 // `is_system` is accepted by the FE call signature but not persisted — backend `UpdateChannelRequest` doesn't read it (Archive Channel UI is currently a no-op).
 export const updateChannel = (id: string, body: { name?: string; topic?: string | null; category_id?: string | null; is_nsfw?: boolean; slowmode_seconds?: number; is_system?: boolean }) =>
   request<Channel>(`/channels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'channel');
-export const reorderChannels = (serverId: string, positions: Array<{ id: string; position: number }>) =>
-  request<Channel[]>(`/servers/${serverId}/channels/reorder`, {
-    method: 'PUT',
-    body: JSON.stringify({ channel_positions: positions }),
-  }, 'channels');
 export interface ChannelMoveItem {
   id: string;
   position: number;
@@ -515,10 +469,6 @@ export const editMessage = (messageId: string, content: string, nonce?: string) 
 export const deleteMessage = (messageId: string) =>
   request<void>(`/messages/${messageId}`, { method: 'DELETE' });
 
-// Search
-export const searchMessages = (channelId: string, q: string, limit = 50) =>
-  request<Message[]>(`/channels/${channelId}/messages/search?q=${encodeURIComponent(q)}&limit=${limit}`, {}, 'messages');
-
 // Pins
 export const pinMessage = (channelId: string, messageId: string) =>
   request<Message>(`/channels/${channelId}/pins/${messageId}`, { method: 'POST' }, 'message');
@@ -538,8 +488,6 @@ export const markServerRead = (serverId: string) =>
   request<void>(`/servers/${serverId}/read-all`, { method: 'POST' });
 
 // Attachments
-export const getMessageAttachments = (messageId: string) =>
-  request<Attachment[]>(`/messages/${messageId}/attachments`, {}, 'attachments');
 export const uploadAttachment = async (channelId: string, messageId: string, file: File): Promise<Attachment> => {
   const form = new FormData();
   form.append('file', file);
@@ -595,22 +543,6 @@ export const addDmReaction = (messageId: string, emoji: string) =>
     method: 'POST',
     body: JSON.stringify({ emoji }),
   });
-export const getDmReactionsRaw = (messageId: string) =>
-  request<RawReaction[]>(`/dms/messages/${messageId}/reactions`, {}, 'reactions');
-export async function getDmReactionsAggregated(messageId: string, currentUserId: string) {
-  const raw = await getDmReactionsRaw(messageId);
-  const byEmoji: Record<string, { count: number; me: boolean }> = {};
-  for (const r of raw) {
-    if (!byEmoji[r.emoji]) byEmoji[r.emoji] = { count: 0, me: false };
-    byEmoji[r.emoji].count++;
-    if (r.user_id === currentUserId) byEmoji[r.emoji].me = true;
-  }
-  return Object.entries(byEmoji).map(([emoji, data]) => ({
-    emoji,
-    count: data.count,
-    me: data.me,
-  }));
-}
 export const removeDmReaction = (messageId: string, emoji: string) =>
   request<void>(`/dms/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, { method: 'DELETE' });
 export const createGroupDm = (userIds: string[], name?: string) =>
@@ -619,23 +551,8 @@ export const createGroupDm = (userIds: string[], name?: string) =>
     body: JSON.stringify({ user_ids: userIds, ...(name ? { name } : {}) }),
   }, 'channel');
 
-export const addDmMember = (dmId: string, userId: string) =>
-  request<DmChannel>(`/dms/${dmId}/members`, {
-    method: 'PUT',
-    body: JSON.stringify({ user_id: userId }),
-  }, 'channel');
-
-export const leaveDm = (dmId: string) =>
-  request<void>(`/dms/${dmId}/members/@me`, { method: 'DELETE' });
-
 export const closeDm = (dmId: string) =>
   request<void>(`/dms/${dmId}/close`, { method: 'POST' });
-
-export const updateDm = (dmId: string, body: { name?: string }) =>
-  request<DmChannel>(`/dms/${dmId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  }, 'channel');
 
 // DM Read Receipts
 export const markDmRead = (dmId: string, messageId: string) =>
