@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useNavigationType } from 'react-router-dom'
 import * as api from '../../api/client'
 import { wsClient } from '../../api/ws'
 import { useViewport } from '../../hooks/useViewport'
@@ -23,6 +23,7 @@ import type { MemberDisplay } from '../../types/ui'
 export function useAppInit() {
   const navigate = useNavigate()
   const location = useLocation()
+  const navType = useNavigationType()
 
   // ── Backend state from stores ──
   const user = useAuthStore(s => s.user)
@@ -260,12 +261,14 @@ export function useAppInit() {
     }
   }, [ready, dmActive, activeDmId, activeServerId, activeChannelId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Sync URL → state (popstate / programmatic history.back) ──
-  // When the user presses the Android back button or otherwise pops history,
-  // the URL changes but state doesn't. Re-derive activeServerId / activeChannelId
-  // / activeDmId / dmActive from the current path so the UI follows the URL.
+  // ── Sync URL → state on history POP only ──
+  // PUSH/REPLACE come from our own state→URL effect or programmatic navigate
+  // calls inside handlers — feeding those back into setState would close the
+  // feedback loop. Only POP (browser/Android back-button, history.back) needs
+  // to re-derive state from the URL because the URL has already changed
+  // without anyone telling our state.
   useEffect(() => {
-    if (!ready) return
+    if (!ready || navType !== 'POP') return
     const path = location.pathname
     const dmMatch = path.match(/^\/dm(?:\/([^/]+))?/)
     const serverMatch = path.match(/^\/servers\/([^/]+)(?:\/channels\/([^/]+))?/)
@@ -287,7 +290,7 @@ export function useAppInit() {
       if (sid !== activeServerId) setActiveServerId(sid)
       if (cid !== activeChannelId) setActiveChannelId(cid)
     }
-  }, [ready, location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, navType, location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Fetch channel data when switching servers (after init) ──
   useEffect(() => {
