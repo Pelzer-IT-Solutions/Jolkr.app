@@ -40,6 +40,12 @@ interface CallState {
    *  mutually exclusive — at most one is set. */
   remoteSessionCall: { dmId?: string; channelId?: string; isVideo: boolean } | null;
 
+  /** Lives on the store so a CallWindow remount (route or panel change)
+   *  doesn't toss the user back to the maximized view mid-call. Cleared
+   *  on `endActiveCall`/`reset` so the next call starts maximized. */
+  isCallMinimized: boolean;
+  setCallMinimized: (value: boolean) => void;
+
   startCall: (dmId: string, recipientName: string, recipientUserId?: string, opts?: { video?: boolean }) => Promise<void>;
   acceptIncoming: () => Promise<void>;
   rejectIncoming: () => Promise<void>;
@@ -75,6 +81,9 @@ export const useCallStore = create<CallState>((set, get) => ({
   activeCallDmId: null,
   activeCallType: null,
   remoteSessionCall: null,
+  isCallMinimized: false,
+
+  setCallMinimized: (value) => set({ isCallMinimized: value }),
 
   startCall: async (dmId, recipientName, recipientUserId, opts) => {
     const { activeCallDmId, outgoingCall, incomingCall } = get();
@@ -161,7 +170,7 @@ export const useCallStore = create<CallState>((set, get) => ({
       console.warn('Failed to end call (server-side):', e);
     }
     await useVoiceStore.getState().leaveChannel();
-    set({ activeCallDmId: null, activeCallType: null });
+    set({ activeCallDmId: null, activeCallType: null, isCallMinimized: false });
   },
 
   // ── WS event handlers ──────────────────────────────────────────────
@@ -259,7 +268,7 @@ export const useCallStore = create<CallState>((set, get) => ({
   reset: () => {
     clearRingTimer();
     stopRingSound();
-    set({ incomingCall: null, outgoingCall: null, activeCallDmId: null, activeCallType: null, remoteSessionCall: null });
+    set({ incomingCall: null, outgoingCall: null, activeCallDmId: null, activeCallType: null, remoteSessionCall: null, isCallMinimized: false });
   },
 }));
 
@@ -269,7 +278,7 @@ useVoiceStore.subscribe((state, prev) => {
     const { activeCallDmId } = useCallStore.getState();
     if (activeCallDmId) {
       api.endCall(activeCallDmId).catch(e => console.warn('Failed to end call:', e));
-      useCallStore.setState({ activeCallDmId: null, activeCallType: null });
+      useCallStore.setState({ activeCallDmId: null, activeCallType: null, isCallMinimized: false });
     }
   }
 });
