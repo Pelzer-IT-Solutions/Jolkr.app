@@ -5,8 +5,18 @@ import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import { useT } from '../../hooks/useT'
 import { rewriteStorageUrl } from '../../platform/config'
+import { createTtlCache } from '../../utils/cache'
 import s from './DMInfoPanel.module.css'
 import type { Message, User, Attachment } from '../../api/types'
+
+// Module-level TTL caches so toggling the panel or reopening the same DM
+// doesn`t refetch within the window. `pinnedVersion` is baked into the key
+// so a pin/unpin event invalidates the prior entry.
+const pinnedCache = createTtlCache<string, Message[]>({ ttl: 60_000, maxEntries: 30 })
+const filesCache = createTtlCache<string, Attachment[]>({ ttl: 60_000, maxEntries: 30 })
+function pinnedKey(dmId: string, version: number): string {
+  return `${dmId}:${version}`
+}
 
 interface Props {
   open: boolean
@@ -104,23 +114,42 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
     const dmIdentityChanged = dmKey !== prevDmKey
     if (!open || !dmId || dmId.startsWith('draft:')) {
       setFiles([])
-    } else if (dmIdentityChanged) {
-      // Different DM (or panel just opened) — show skeleton while fetching.
-      setLoadingPins(true)
-      setLoadingFiles(true)
+    } else {
+      // Cache-hit short-circuit: warm pinned/attachment caches paint without
+      // a skeleton flash. Cold paths fall through to the effects below.
+      const pk = pinnedKey(dmId, pinnedVersion ?? 0)
+      const cachedPins = pinnedCache.get(pk)
+      if (cachedPins !== undefined) {
+        setPinned(cachedPins)
+        setLoadingPins(false)
+      } else if (dmIdentityChanged) {
+        setLoadingPins(true)
+      }
+      const cachedFiles = filesCache.get(dmId)
+      if (cachedFiles !== undefined) {
+        setFiles(cachedFiles)
+        setLoadingFiles(false)
+      } else if (dmIdentityChanged) {
+        setLoadingFiles(true)
+      }
     }
-    // Else: only pinnedVersion bumped — leave existing data in place; the
-    // effects below will quietly swap it for the fresh payload.
     if (dmIdentityChanged) setPrevDmKey(dmKey)
   }
 
   // Fetch pinned messages when panel becomes open or dmId changes. Drafts
-  // (`draft:…` ids) only exist locally — skip the fetch.
+  // (`draft:…` ids) only exist locally — skip the fetch. Cache-hits are
+  // resolved synchronously in the state-during-render block above.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
+    const k = pinnedKey(dmId, pinnedVersion ?? 0)
+    if (pinnedCache.get(k) !== undefined) return
     let cancelled = false
     api.getDmPinnedMessages(dmId)
-      .then(p => { if (!cancelled) setPinned(p) })
+      .then(p => {
+        if (cancelled) return
+        pinnedCache.set(k, p)
+        setPinned(p)
+      })
       .catch(() => { if (!cancelled) setPinned([]) })
       .finally(() => { if (!cancelled) setLoadingPins(false) })
     return () => { cancelled = true }
@@ -130,9 +159,14 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
   // attachments show up without requiring a panel reopen.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
+    if (filesCache.get(dmId) !== undefined) return
     let cancelled = false
     api.getDmAttachments(dmId)
-      .then(f => { if (!cancelled) setFiles(f) })
+      .then(f => {
+        if (cancelled) return
+        filesCache.set(dmId, f)
+        setFiles(f)
+      })
       .catch(() => { if (!cancelled) setFiles([]) })
       .finally(() => { if (!cancelled) setLoadingFiles(false) })
     return () => { cancelled = true }
@@ -140,7 +174,11 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)
-    setPinned(prev => prev.filter(m => m.id !== msgId))
+    setPinned(prev => {
+      const next = prev.filter(m => m.id !== msgId)
+      pinnedCache.set(pinnedKey(dmId, pinnedVersion ?? 0), next)
+      return next
+    })
   }
 
   return (
