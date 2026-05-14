@@ -232,8 +232,11 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   )
 
-  const categorizedSet = new Set(renderedCats.flatMap(c => c.channels))
-  const uncategorizedIds = renderedUncat.filter(id => !categorizedSet.has(id))
+  // Stable identities — feeds SortableContext items={...}, which re-binds
+  // droppables when the array reference changes. Recompute only on layout
+  // changes (drag, optimistic create, store updates).
+  const categorizedSet = useMemo(() => new Set(renderedCats.flatMap(c => c.channels)), [renderedCats])
+  const uncategorizedIds = useMemo(() => renderedUncat.filter(id => !categorizedSet.has(id)), [renderedUncat, categorizedSet])
 
   function findCatIdFor(channelId: string, cats: CategoryDisplay[]): string | null {
     return cats.find(c => c.channels.includes(channelId))?.id ?? null
@@ -521,18 +524,21 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const activeChannel = activeDragId && !activeDragId.startsWith('cat:') ? channelMap[activeDragId] : null
   const activeCatId   = activeDragId?.startsWith('cat:') ? activeDragId.slice(4) : null
   const activeCatName = activeCatId ? renderedCats.find(c => c.id === activeCatId)?.name ?? null : null
-  const catIds        = renderedCats.map(c => `cat:${c.id}`)
+  const catIds = useMemo(() => renderedCats.map(c => `cat:${c.id}`), [renderedCats])
 
   // Pre-compute flat stagger indices so each category header and each channel
   // within that category receives a unique, monotonically-increasing index.
-  let flatIdx = 0
-  const catMeta = renderedCats.map(cat => {
-    const catStaggerIdx    = flatIdx++
-    const chanStaggerStart = flatIdx
-    flatIdx += cat.channels.length
-    return { catStaggerIdx, chanStaggerStart }
-  })
-  const uncatStaggerStart = flatIdx
+  // Memoized so reveal-animation deps stay stable when no layout change happens.
+  const { catMeta, uncatStaggerStart } = useMemo(() => {
+    let idx = 0
+    const meta = renderedCats.map(cat => {
+      const catStaggerIdx    = idx++
+      const chanStaggerStart = idx
+      idx += cat.channels.length
+      return { catStaggerIdx, chanStaggerStart }
+    })
+    return { catMeta: meta, uncatStaggerStart: idx }
+  }, [renderedCats])
 
   return (
     <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
