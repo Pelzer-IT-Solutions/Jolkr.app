@@ -113,6 +113,11 @@ export function useAppInit() {
   const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
 
+  // Single derived id — replaces `dmActive ? activeDmId : activeChannelId`
+  // ternaries inside effect bodies and dep-lists so React sees a primitive
+  // dep instead of a re-evaluated expression with an eslint-disable.
+  const effectiveChannelId = dmActive ? activeDmId : activeChannelId
+
   // Cancel any pending theme-save on unmount so a debounced api.updateServer
   // doesn't fire after logout (or page unmount during a server switch).
   useEffect(() => () => {
@@ -346,7 +351,7 @@ export function useAppInit() {
 
   // ── Fetch messages when channel changes ──
   useEffect(() => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    const channelId = effectiveChannelId
     if (!channelId) return
     // Draft DMs only exist locally — skip every server-side load (messages,
     // pinned, presence-marker) so we don't 404 on an id the server doesn't
@@ -420,7 +425,7 @@ export function useAppInit() {
       useUnreadStore.getState().setActiveChannel(null)
     }
     // threadListVersion is included so the count refreshes when ThreadCreate/Update fires.
-  }, [dmActive ? activeDmId : activeChannelId, dmActive, threadListVersion]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveChannelId, dmActive, threadListVersion, fetchMessages, fetchChannelPermissions, fetchChannelMembers])
 
   // ── Reset open thread when channel/DM changes ──
   // Otherwise the thread panel would try to render messages from a thread
@@ -431,13 +436,13 @@ export function useAppInit() {
 
   // ── WS channel subscribe/unsubscribe ──
   useEffect(() => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    const channelId = effectiveChannelId
     if (!channelId) return
     // Draft DMs aren't subscribable — the server has no channel for them.
     if (dmActive && channelId.startsWith('draft:')) return
     wsClient.subscribe(channelId)
     return () => { wsClient.unsubscribe(channelId) }
-  }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveChannelId, dmActive])
 
   // ── Resolve friendship state for the open user-context-menu ──
   // Drives the "Add Friend" ↔ "Remove Friend" toggle in the menu.
