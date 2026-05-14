@@ -23,13 +23,16 @@ export function GroupSettingsModal({ open, conv, onClose }: GroupSettingsModalPr
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Reset draft state every time the modal opens for a new conversation.
-  // Keying on `conv?.id` avoids leaking the previous group's name into the
-  // input when the modal is reused for a different group.
-  useEffect(() => {
-    if (!open) return
-    setName(conv?.name ?? '')
+  // Using state-during-render (vs `useEffect` + setState) avoids a cascading
+  // re-render the moment the modal mounts. `openKey` collapses (open, id) so
+  // a single comparison gates the reset.
+  const openKey = open ? (conv?.id ?? '') : null
+  const [prevOpenKey, setPrevOpenKey] = useState<string | null>(null)
+  if (openKey !== prevOpenKey) {
+    setPrevOpenKey(openKey)
+    setName(openKey === null ? '' : (conv?.name ?? ''))
     setIsSaving(false)
-  }, [open, conv?.id, conv?.name])
+  }
 
   useEffect(() => {
     if (!open) return

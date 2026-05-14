@@ -49,6 +49,32 @@ export function useAppHandlers(
     setMuted('server', serverId, !isMuted)
   }, [])
 
+  // DM channels (1:1 and group) reuse the `'channel'` target_type — DM ids
+  // are UUIDs disjoint from server-channel ids, so the same selector key
+  // works for both surfaces without a schema change.
+  const handleToggleMuteDm = useCallback((dmId: string) => {
+    const { settings, setMuted } = useNotificationSettingsStore.getState()
+    const isMuted = settings.some(s => s.target_type === 'channel' && s.target_id === dmId && s.muted)
+    setMuted('channel', dmId, !isMuted)
+  }, [])
+
+  // Leaves a group DM for the current user. BE broadcasts `DmUpdate` to the
+  // remaining members only — the caller's own sessions get no event, so we
+  // optimistically drop the row from this session's list. Other sessions of
+  // the same user pick the change up on their next refetch.
+  const handleLeaveGroupDm = useCallback(async (dmId: string) => {
+    const previous = dmList
+    setDmList(prev => prev.filter(d => d.id !== dmId))
+    if (activeDmId === dmId) setActiveDmId('')
+    try {
+      await api.leaveDm(dmId)
+    } catch (err) {
+      setDmList(previous)
+      const msg = err instanceof Error ? err.message : tStatic('toast.leaveGroupFailed')
+      useToast.getState().show(msg, 'error')
+    }
+  }, [dmList, activeDmId, setDmList, setActiveDmId])
+
   // ── Logout handler ──
   const handleLogout = useCallback(async () => {
     await useAuthStore.getState().logout()
@@ -522,6 +548,7 @@ export function useAppHandlers(
 
   return {
     mutedServerIds, handleToggleMuteServer,
+    handleToggleMuteDm, handleLeaveGroupDm,
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleChangePassword, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,

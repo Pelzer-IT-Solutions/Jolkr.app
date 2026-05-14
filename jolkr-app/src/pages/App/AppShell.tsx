@@ -10,6 +10,9 @@ import { CreateServerModal } from '../../components/CreateServerModal/CreateServ
 import { DMInfoPanel } from '../../components/DMInfoPanel/DMInfoPanel'
 import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
 import { FriendsPanel } from '../../components/FriendsPanel'
+import { GroupContextMenu, type GroupContextMenuState } from '../../components/GroupContextMenu'
+import { GroupInfoPopover, type GroupInfoPopoverState } from '../../components/GroupInfoPopover'
+import { GroupSettingsModal } from '../../components/GroupSettingsModal'
 import { JoinServerModal } from '../../components/JoinServerModal/JoinServerModal'
 import { MemberPanel } from '../../components/MemberPanel/MemberPanel'
 import { NewDMModal } from '../../components/NewDMModal/NewDMModal'
@@ -27,6 +30,7 @@ import { buildInviteUrl } from '../../platform/config'
 import { invalidateFriendsCache } from '../../services/friendshipCache'
 import { useLocaleStore } from '../../stores/locale'
 import { useMessagesStore } from '../../stores/messages'
+import { useNotificationSettingsStore } from '../../stores/notification-settings'
 import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
 import { useToast } from '../../stores/toast'
 import { useUnreadStore } from '../../stores/unread'
@@ -46,6 +50,11 @@ export function AppShell() {
 
   // Pending message id for the "create thread" prompt — replaces window.prompt().
   const [threadPromptMsgId, setThreadPromptMsgId] = useState<string | null>(null)
+
+  // Group-DM surfaces — each one is open on at most a single dm at a time.
+  const [groupContextMenu, setGroupContextMenu] = useState<GroupContextMenuState | null>(null)
+  const [groupInfoPopover, setGroupInfoPopover] = useState<GroupInfoPopoverState | null>(null)
+  const [groupSettingsForDmId, setGroupSettingsForDmId] = useState<string | null>(null)
 
   // Mirror the active locale onto <html lang="..."> for screen readers,
   // Intl.Segmenter, browser hyphenation, and any CSS that targets `:lang(…)`.
@@ -202,6 +211,7 @@ export function AppShell() {
   // ── Destructure handlers ──
   const {
     mutedServerIds, handleToggleMuteServer,
+    handleToggleMuteDm, handleLeaveGroupDm,
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer,
@@ -254,6 +264,27 @@ export function AppShell() {
       console.error('Role toggle failed:', err)
     }
   }, [activeServerId])
+
+  // ── Group-DM surface lookups ──
+  // Resolve the active DM record for each surface so the child components
+  // stay pure (they don't reach into the DM list themselves).
+  const groupContextMenuConv = useMemo(
+    () => groupContextMenu ? uiDmList.find(d => d.id === groupContextMenu.dmId) ?? null : null,
+    [groupContextMenu, uiDmList],
+  )
+  const groupInfoConv = useMemo(
+    () => groupInfoPopover ? uiDmList.find(d => d.id === groupInfoPopover.dmId) ?? null : null,
+    [groupInfoPopover, uiDmList],
+  )
+  const groupSettingsConv = useMemo(
+    () => groupSettingsForDmId ? uiDmList.find(d => d.id === groupSettingsForDmId) ?? null : null,
+    [groupSettingsForDmId, uiDmList],
+  )
+  const isGroupContextMenuMuted = useNotificationSettingsStore(st =>
+    !!groupContextMenu && st.settings.some(x =>
+      x.target_type === 'channel' && x.target_id === groupContextMenu.dmId && x.muted,
+    ),
+  )
 
   // ── Render ──
 
@@ -340,8 +371,13 @@ export function AppShell() {
                       onNewMessage={() => setNewDmOpen(true)}
                       onOpenFriends={() => setFriendsPanelOpen(true)}
                       onConversationContextMenu={(conv, e) => {
-                        // Group DMs don't have a single "other user" to target — skip.
-                        if (conv.type !== 'direct') return
+                        // Group DMs open the GroupContextMenu surface; 1:1 DMs
+                        // fall through to the user-context menu so the existing
+                        // friend / block / close-dm actions stay available.
+                        if (conv.type === 'group') {
+                          setGroupContextMenu({ x: e.clientX, y: e.clientY, dmId: conv.id })
+                          return
+                        }
                         const p = conv.participants[0]
                         if (!p?.userId) return
                         setUserContextMenu({
@@ -728,6 +764,35 @@ export function AppShell() {
           onStartDm={openDmDraft}
         />
       )}
+
+      <GroupContextMenu
+        menu={groupContextMenu}
+        conv={groupContextMenuConv}
+        isMuted={isGroupContextMenuMuted}
+        onClose={() => setGroupContextMenu(null)}
+        onViewInfo={(dmId, anchor) => {
+          setGroupInfoPopover({ x: anchor.x, y: anchor.y, dmId })
+        }}
+        onToggleMute={handleToggleMuteDm}
+        onEdit={(dmId) => setGroupSettingsForDmId(dmId)}
+        onLeave={handleLeaveGroupDm}
+      />
+
+      <GroupInfoPopover
+        state={groupInfoPopover}
+        conv={groupInfoConv}
+        onClose={() => setGroupInfoPopover(null)}
+        onOpenMemberProfile={(userId, anchor) => {
+          setGroupInfoPopover(null)
+          setProfileCard({ userId, x: anchor.x, y: anchor.y })
+        }}
+      />
+
+      <GroupSettingsModal
+        open={groupSettingsForDmId !== null}
+        conv={groupSettingsConv}
+        onClose={() => setGroupSettingsForDmId(null)}
+      />
 
       <PromptDialog
         open={threadPromptMsgId !== null}
