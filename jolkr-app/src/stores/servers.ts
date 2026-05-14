@@ -515,32 +515,27 @@ wsClient.on((event) => {
       if (!server_id || !user_id) break;
       if (!store.servers.some((s) => s.id === server_id)) break;
       const current = store.members[server_id] ?? [];
-      // H22: Process all member update fields
-      const updates: Record<string, unknown> = {};
+      const updates: Partial<Pick<Member, 'timeout_until' | 'nickname' | 'role_ids'>> = {};
       if ('timeout_until' in event.d) updates.timeout_until = timeout_until;
       if ('nickname' in event.d) updates.nickname = nickname;
-      if ('role_ids' in event.d) updates.role_ids = role_ids;
-      const stateUpdate: Record<string, unknown> = {
-        members: {
-          ...store.members,
-          [server_id]: current.map((m) =>
-            m.user_id === user_id ? { ...m, ...updates } : m
-          ),
-        },
+      if ('role_ids' in event.d) updates.role_ids = role_ids ?? undefined;
+      const nextMembers = {
+        ...store.members,
+        [server_id]: current.map((m) =>
+          m.user_id === user_id ? { ...m, ...updates } : m
+        ),
       };
       // Only invalidate permission caches when the CURRENT user's roles change
-      if ('role_ids' in event.d) {
-        const currentUserId = useAuthStore.getState().user?.id;
-        if (user_id === currentUserId) {
-          const { [server_id]: _p, ...restPerms } = store.permissions;
-          const channelIds = (store.channels[server_id] ?? []).map((c) => c.id);
-          const restChanPerms = { ...store.channelPermissions };
-          for (const cid of channelIds) delete restChanPerms[cid];
-          stateUpdate.permissions = restPerms;
-          stateUpdate.channelPermissions = restChanPerms;
-        }
+      const currentUserId = useAuthStore.getState().user?.id;
+      if ('role_ids' in event.d && user_id === currentUserId) {
+        const { [server_id]: _p, ...restPerms } = store.permissions;
+        const channelIds = (store.channels[server_id] ?? []).map((c) => c.id);
+        const restChanPerms = { ...store.channelPermissions };
+        for (const cid of channelIds) delete restChanPerms[cid];
+        useServersStore.setState({ members: nextMembers, permissions: restPerms, channelPermissions: restChanPerms });
+      } else {
+        useServersStore.setState({ members: nextMembers });
       }
-      useServersStore.setState(stateUpdate);
       break;
     }
     case 'ServerUpdate': {
