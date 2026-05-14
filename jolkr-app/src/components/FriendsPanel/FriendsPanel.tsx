@@ -1,5 +1,5 @@
 import { X, UserPlus, Check, XCircle, MessageCircle, UserX, QrCode, ScanLine, Search } from 'lucide-react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { hashColor } from '../../adapters/transforms'
 import * as api from '../../api/client'
@@ -28,7 +28,6 @@ interface FriendRequest {
 
 interface Friend {
   user: MemberDisplay
-  status: MemberStatus
   last_seen?: string
 }
 
@@ -88,16 +87,16 @@ export function FriendsPanel({
   const [qrDisplayOpen, setQrDisplayOpen] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
 
+  // Refresh only depends on identity, not on the live presence stream.
+  // Status is derived per-render via `statusFor` so a PresenceUpdate WS
+  // event re-renders without rebuilding the cache-invalidate subscription.
   const refresh = useCallback(async () => {
     if (!myId) return
     const { friends: accepted, pending } = await loadFriendships().catch(() => ({ friends: [], pending: [] }))
     setFriends(accepted.map(f => {
         const other = f.requester_id === myId ? f.addressee : f.requester
         const otherId = f.requester_id === myId ? f.addressee_id : f.requester_id
-        return {
-          user: toDisplay(other, otherId),
-          status: liveStatus(presence[otherId]),
-        }
+        return { user: toDisplay(other, otherId) }
       }))
       setRequests(pending.map(f => {
         const isIncoming = f.addressee_id === myId
@@ -110,7 +109,12 @@ export function FriendsPanel({
           created_at: '',
         }
       }))
-  }, [myId, presence])
+  }, [myId])
+
+  const statusFor = useCallback(
+    (userId: string): MemberStatus => liveStatus(presence[userId]),
+    [presence],
+  )
 
   // Refresh on open + whenever the friendship cache is invalidated
   // (WS FriendshipUpdate or any explicit invalidateFriendsCache call).
@@ -157,10 +161,10 @@ export function FriendsPanel({
     setActiveTab('all')
   }, [open])
 
-  const filteredFriends = friends.filter(f => {
-    if (activeTab === 'online') return f.status !== 'offline'
-    return true
-  })
+  const filteredFriends = useMemo(() => {
+    if (activeTab !== 'online') return friends
+    return friends.filter(f => statusFor(f.user.user_id) !== 'offline')
+  }, [friends, activeTab, statusFor])
 
   const incomingRequests = requests.filter(r => r.type === 'incoming')
   const outgoingRequests = requests.filter(r => r.type === 'outgoing')
@@ -387,18 +391,20 @@ export function FriendsPanel({
             </div>
           ) : (
             <>
-              {filteredFriends.map(friend => (
+              {filteredFriends.map(friend => {
+                const status = statusFor(friend.user.user_id)
+                return (
                 <div
                   key={friend.user.user_id}
                   className={s.friendRow}
                   onClick={() => setSelectedUserId(selectedUserId === friend.user.user_id ? null : friend.user.user_id)}
                 >
                   <div className={s.userInfo}>
-                    <Avatar url={friend.user.avatar_url} name={friend.user.display_name ?? friend.user.username} size="sm" status={friend.status} userId={friend.user.user_id} color={friend.user.color} />
+                    <Avatar url={friend.user.avatar_url} name={friend.user.display_name ?? friend.user.username} size="sm" status={status} userId={friend.user.user_id} color={friend.user.color} />
                     <div className={s.names}>
                       <span className={`${s.displayName} txt-small txt-medium`}>{friend.user.display_name ?? friend.user.username}</span>
                       <span className={`${s.statusText} txt-tiny`}>
-                        {friend.status === 'offline' ? (friend.last_seen ?? t('userStatus.offline')) : t(`userStatus.${friend.status}`)}
+                        {status === 'offline' ? (friend.last_seen ?? t('userStatus.offline')) : t(`userStatus.${status}`)}
                       </span>
                     </div>
                   </div>
@@ -414,7 +420,8 @@ export function FriendsPanel({
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
 
               {filteredFriends.length === 0 && (
                 <div className={s.empty}>
