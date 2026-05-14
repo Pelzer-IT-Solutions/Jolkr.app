@@ -5,18 +5,15 @@ import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import { useT } from '../../hooks/useT'
 import { rewriteStorageUrl } from '../../platform/config'
+import { loadPinnedMessages, peekPinnedMessages, setPinnedMessagesCache } from '../../services/pinnedCache'
 import { createTtlCache } from '../../utils/cache'
 import s from './DMInfoPanel.module.css'
 import type { Message, User, Attachment } from '../../api/types'
 
-// Module-level TTL caches so toggling the panel or reopening the same DM
-// doesn`t refetch within the window. `pinnedVersion` is baked into the key
-// so a pin/unpin event invalidates the prior entry.
-const pinnedCache = createTtlCache<string, Message[]>({ ttl: 60_000, maxEntries: 30 })
+// Attachment list is panel-specific; reuse the shared pinned cache from
+// services/pinnedCache so PinnedMessagesPanel and useAppHandlers see the
+// same data for the same dmId+version key.
 const filesCache = createTtlCache<string, Attachment[]>({ ttl: 60_000, maxEntries: 30 })
-function pinnedKey(dmId: string, version: number): string {
-  return `${dmId}:${version}`
-}
 
 interface Props {
   open: boolean
@@ -117,8 +114,7 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
     } else {
       // Cache-hit short-circuit: warm pinned/attachment caches paint without
       // a skeleton flash. Cold paths fall through to the effects below.
-      const pk = pinnedKey(dmId, pinnedVersion ?? 0)
-      const cachedPins = pinnedCache.get(pk)
+      const cachedPins = peekPinnedMessages(dmId, true, pinnedVersion ?? 0)
       if (cachedPins !== undefined) {
         setPinned(cachedPins)
         setLoadingPins(false)
@@ -141,16 +137,14 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
   // resolved synchronously in the state-during-render block above.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
-    const k = pinnedKey(dmId, pinnedVersion ?? 0)
-    if (pinnedCache.get(k) !== undefined) return
+    const version = pinnedVersion ?? 0
+    if (peekPinnedMessages(dmId, true, version) !== undefined) return
     let cancelled = false
-    api.getDmPinnedMessages(dmId)
+    loadPinnedMessages(dmId, true, version)
       .then(p => {
         if (cancelled) return
-        pinnedCache.set(k, p)
         setPinned(p)
       })
-      .catch(() => { if (!cancelled) setPinned([]) })
       .finally(() => { if (!cancelled) setLoadingPins(false) })
     return () => { cancelled = true }
   }, [open, dmId, pinnedVersion])
@@ -176,7 +170,7 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
     onUnpin?.(msgId)
     setPinned(prev => {
       const next = prev.filter(m => m.id !== msgId)
-      pinnedCache.set(pinnedKey(dmId, pinnedVersion ?? 0), next)
+      setPinnedMessagesCache(dmId, true, pinnedVersion ?? 0, next)
       return next
     })
   }

@@ -1,22 +1,11 @@
 import { X } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import * as api from '../../api/client'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useT } from '../../hooks/useT'
-import { createTtlCache } from '../../utils/cache'
+import { loadPinnedMessages, peekPinnedMessages, setPinnedMessagesCache } from '../../services/pinnedCache'
 import s from './PinnedMessagesPanel.module.css'
 import type { User } from '../../api/types'
 import type { Message } from '../../api/types'
-
-// Module-level cache so toggling the panel off and back on doesn't trigger a
-// "Loading..." flash. Keyed by `${isDm ? 'dm' : 'ch'}:${channelId}:${pinnedVersion}`
-// so a `pinnedVersion` bump (pin/unpin event) invalidates the cached entry.
-// TTL + bounded size stop the unbounded growth: every pin/unpin used to mint
-// a fresh key whose stale predecessors stayed forever until tab close.
-const cache = createTtlCache<string, Message[]>({ ttl: 60_000, maxEntries: 30 })
-function cacheKey(channelId: string, isDm: boolean, version: number): string {
-  return `${isDm ? 'dm' : 'ch'}:${channelId}:${version}`
-}
 
 interface Props {
   channelId: string
@@ -59,8 +48,8 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
 
 export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, users, pinnedVersion }: Props) {
   const { t } = useT()
-  const key = cacheKey(channelId, isDm, pinnedVersion ?? 0)
-  const cached = cache.get(key)
+  const version = pinnedVersion ?? 0
+  const cached = peekPinnedMessages(channelId, isDm, version)
   const [messages, setMessages] = useState<Message[]>(cached ?? [])
   // No "Loading..." if we already have data for this key — show stale data
   // immediately and revalidate in the background.
@@ -71,10 +60,11 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
   // Stale-while-revalidate: a `pinnedVersion` bump invalidates the cache key,
   // but we keep showing the previous list rather than flashing "Loading..." —
   // the effect below silently fetches the new state and swaps it in.
-  const [prevKey, setPrevKey] = useState(key)
-  if (key !== prevKey) {
-    setPrevKey(key)
-    const cachedNow = cache.get(key)
+  const identityKey = `${isDm ? 'dm' : 'ch'}:${channelId}:${version}`
+  const [prevKey, setPrevKey] = useState(identityKey)
+  if (identityKey !== prevKey) {
+    setPrevKey(identityKey)
+    const cachedNow = peekPinnedMessages(channelId, isDm, version)
     if (cachedNow !== undefined) {
       setMessages(cachedNow)
       setLoading(false)
@@ -85,24 +75,22 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
   }
 
   useEffect(() => {
-    const k = cacheKey(channelId, isDm, pinnedVersion ?? 0)
-    if (cache.get(k) !== undefined) return // already populated synchronously above
+    if (peekPinnedMessages(channelId, isDm, version) !== undefined) return
     let cancelled = false
-    const fetchPromise = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
-    fetchPromise.then(msgs => {
-      if (cancelled) return
-      cache.set(k, msgs)
-      setMessages(msgs)
-      setLoading(false)
-    }).catch(() => { if (!cancelled) setLoading(false) })
+    loadPinnedMessages(channelId, isDm, version)
+      .then(msgs => {
+        if (cancelled) return
+        setMessages(msgs)
+        setLoading(false)
+      })
     return () => { cancelled = true }
-  }, [channelId, isDm, pinnedVersion])
+  }, [channelId, isDm, version])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)
     setMessages(prev => {
       const next = prev.filter(m => m.id !== msgId)
-      cache.set(cacheKey(channelId, isDm, pinnedVersion ?? 0), next)
+      setPinnedMessagesCache(channelId, isDm, version, next)
       return next
     })
   }
