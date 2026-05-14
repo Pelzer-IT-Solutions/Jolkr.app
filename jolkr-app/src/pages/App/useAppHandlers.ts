@@ -351,7 +351,7 @@ export function useAppHandlers(
     // Debounce the API save — orb drags fire many rapid updates
     if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current)
     themeSaveTimer.current = setTimeout(() => {
-      api.updateServer(activeServerId, { theme } as Parameters<typeof api.updateServer>[1])
+      api.updateServer(activeServerId, { theme })
     }, 500)
   }, [activeServerId, setServerThemes, themeSaveTimer])
 
@@ -442,7 +442,7 @@ export function useAppHandlers(
       setServerThemes(prev => ({ ...prev, [server.id]: newTheme }))
       // Persist theme to backend
       if (data.hue != null) {
-        api.updateServer(server.id, { theme: newTheme } as Parameters<typeof api.updateServer>[1])
+        api.updateServer(server.id, { theme: newTheme })
       }
       setTabbedIds(prev => [...prev, server.id])
       setDmActive(false)
