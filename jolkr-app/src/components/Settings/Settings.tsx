@@ -208,6 +208,15 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
     }
   }
 
+  // Revoke any blob preview URL when it's replaced or the panel unmounts.
+  // Only the editedProfile.avatar_url overlay can be a blob — `user?.avatarUrl`
+  // is always a server URL.
+  useEffect(() => {
+    const url = editedProfile.avatar_url
+    if (url == null || !url.startsWith('blob:')) return
+    return () => { URL.revokeObjectURL(url) }
+  }, [editedProfile.avatar_url])
+
   const handleBannerColorChange = (color: string) => {
     setEditedProfile(p => ({ ...p, banner_color: color }))
     setShowColorPicker(false)

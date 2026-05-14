@@ -303,6 +303,14 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
     } catch { /* ignore */ }
   }
 
+  // Revoke any blob URL we minted for the icon preview when it gets replaced
+  // (new upload) or when the panel unmounts (close/save/cancel). The cleanup
+  // runs against the previous render's `iconPreviewUrl`.
+  useEffect(() => {
+    if (!iconPreviewUrl || !iconPreviewUrl.startsWith('blob:')) return
+    return () => { URL.revokeObjectURL(iconPreviewUrl) }
+  }, [iconPreviewUrl])
+
   // Compose nav groups for the shell — counts and the danger variant for
   // Delete Server are computed per-render from the loaded data; labels are
   // pulled from the active locale via t().
