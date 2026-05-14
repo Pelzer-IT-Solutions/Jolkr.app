@@ -1,5 +1,5 @@
 import { PanelLeftOpen } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as api from '../../api/client'
 import s from '../../components/AppShell/AppShell.module.css'
 import { CallWindow } from '../../components/CallWindow/CallWindow'
@@ -231,6 +231,18 @@ export function AppShell() {
   const contextMenuUserRoleIds = userContextMenu
     ? serverMembers.find(m => m.user_id === userContextMenu.user.user_id)?.role_ids ?? []
     : []
+
+  // Pre-built "invite to server" list for UserContextMenu — keeps the prop
+  // identity stable so the (potentially memoized) menu doesn't re-render on
+  // every parent tick. Set lookup avoids the O(n×m) of array.includes inside
+  // the filter.
+  const inviteableServerIdSet = useMemo(() => new Set(inviteableServerIds), [inviteableServerIds])
+  const inviteableServersWithHue = useMemo(
+    () => servers
+      .filter(srv => inviteableServerIdSet.has(srv.id))
+      .map(srv => ({ ...srv, hue: serverThemes[srv.id]?.hue ?? null })),
+    [servers, inviteableServerIdSet, serverThemes],
+  )
 
   const handleToggleRole = useCallback(async (userId: string, roleId: string, hasRole: boolean) => {
     if (!activeServerId) return
@@ -705,7 +717,7 @@ export function AppShell() {
           if (activeServerId) await api.banMember(activeServerId, userId).catch(console.warn)
           setUserContextMenu(null)
         }}
-        servers={servers.filter(s => inviteableServerIds.includes(s.id)).map(s => ({ ...s, hue: serverThemes[s.id]?.hue ?? null }))}
+        servers={inviteableServersWithHue}
         roles={serverRoles}
         userRoleIds={contextMenuUserRoleIds}
         canManageRoles={canManageRoles}
