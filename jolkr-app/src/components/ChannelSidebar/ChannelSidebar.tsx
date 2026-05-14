@@ -1082,7 +1082,10 @@ function SortableChannelRow({ id, channel, active, onClick, isRevealing, stagger
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? s.draggingPlaceholder : ''}
+      className={[
+        canManageChannels ? s.sortableChannel : '',
+        isDragging ? s.draggingPlaceholder : '',
+      ].filter(Boolean).join(' ')}
       {...attributes}
       {...listeners}
     >
