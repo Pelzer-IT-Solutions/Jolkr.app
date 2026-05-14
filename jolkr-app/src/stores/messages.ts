@@ -345,18 +345,10 @@ wsClient.on((event) => {
     case 'PollUpdate': {
       const { poll, message_id, channel_id } = event.d;
       if (!poll || !message_id || !channel_id) break;
-      // Update the message's poll data in the store
-      const msgs = store.messages[channel_id];
-      if (msgs) {
-        useMessagesStore.setState({
-          messages: {
-            ...store.messages,
-            [channel_id]: msgs.map((m) =>
-              m.id === message_id ? { ...m, poll } : m
-            ),
-          },
-        });
-      }
+      // Route through updateMessage so the reactions-preserve merge (and any
+      // future patch semantics) apply uniformly. The previous direct setState
+      // call clobbered other fields a concurrent WS update may have touched.
+      store.updateMessage(channel_id, { id: message_id, poll });
       break;
     }
   }
