@@ -63,8 +63,9 @@ export function GifPicker({ onSelect, width = 450, height = 450 }: Props) {
     getGifFavorites()
       .then((favs) => {
         setFavGifs(favs)
-        // Also populate the shared store
-        useGifFavoritesStore.setState({ ids: new Set(favs.map((f) => f.gif_id)), isLoaded: true })
+        // Mirror into the shared store via its action — keeps the optimistic+
+        // rollback contract intact and avoids a parallel setState path.
+        useGifFavoritesStore.getState().applyFavorites(favs)
       })
       .catch((e) => logErr('GifPicker.loadFavorites', e))
   }, [])
