@@ -52,6 +52,11 @@ export function useDecryptedContent(
     }
 
     let cancelled = false;
+    // Reset the retry counter at effect entry so a fresh input (channel
+    // switch / new message) doesn't inherit the prior message's retry budget
+    // — otherwise a second message arriving while the first is mid-backoff
+    // can land on `retryRef >= 5` and skip straight to failMsg().
+    retryRef.current = 0;
 
     const attempt = () => {
       if (!isE2EEReady()) {
