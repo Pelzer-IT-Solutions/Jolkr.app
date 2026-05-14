@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react'
+import { useCallback, useRef } from 'react'
+import { useShallow } from 'zustand/shallow'
 import * as api from '../../api/client'
 import { wsClient } from '../../api/ws'
 import { encryptChannelMessage } from '../../crypto/channelKeys'
@@ -6,6 +7,7 @@ import { tStatic } from '../../hooks/useT'
 import { getLocalKeys } from '../../services/e2ee'
 import { useAuthStore } from '../../stores/auth'
 import { useMessagesStore } from '../../stores/messages'
+import { useNotificationSettingsStore } from '../../stores/notification-settings'
 import { usePresenceStore } from '../../stores/presence'
 import { useServersStore } from '../../stores/servers'
 import { useToast } from '../../stores/toast'
@@ -36,12 +38,15 @@ export function useAppHandlers(
 
   const { uiServers, effectiveChannelId, currentApiMessages } = memos
 
-  // ── Muted servers (UI-only local state) ──
-  const [mutedServerIds, setMutedServerIds] = useState<string[]>([])
+  // ── Muted servers — derived from useNotificationSettingsStore so the pref
+  //    persists across reloads and syncs cross-device via NotificationSettingUpdate. ──
+  const mutedServerIds = useNotificationSettingsStore(useShallow(s =>
+    s.settings.filter(x => x.target_type === 'server' && x.muted).map(x => x.target_id)
+  ))
   const handleToggleMuteServer = useCallback((serverId: string) => {
-    setMutedServerIds(prev =>
-      prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
-    )
+    const { settings, setMuted } = useNotificationSettingsStore.getState()
+    const isMuted = settings.some(s => s.target_type === 'server' && s.target_id === serverId && s.muted)
+    setMuted('server', serverId, !isMuted)
   }, [])
 
   // ── Logout handler ──
