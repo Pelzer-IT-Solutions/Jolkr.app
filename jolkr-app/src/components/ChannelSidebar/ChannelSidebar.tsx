@@ -5,6 +5,7 @@ import {
   type DragStartEvent, type DragOverEvent, type DragEndEvent,
   type CollisionDetection,
 } from '@dnd-kit/core'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import {
   SortableContext, verticalListSortingStrategy,
   useSortable, arrayMove,
@@ -575,6 +576,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
+        modifiers={[restrictToVerticalAxis]}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
