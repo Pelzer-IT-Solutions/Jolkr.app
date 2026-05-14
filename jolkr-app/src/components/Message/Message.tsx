@@ -83,18 +83,10 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   const messageContent = displayContent || message.content
   const showUnencryptedBadge = !isEncrypted && !!message.content
 
-  // Reply preview: decrypt the referenced message's content the same way the
-  // body is decrypted. Pass empty defaults when there's no reply so the hook
-  // call order stays stable across renders.
-  const replyDecrypt = useDecryptedContent(
-    message.replyTo?.content ?? '',
-    message.replyTo?.nonce,
-    message.replyTo?.isDm ?? isDm,
-    message.replyTo?.channelId ?? undefined,
-  )
-  const replyText = message.replyTo?.nonce
-    ? (replyDecrypt.decrypting ? t('message.decrypt.decrypting') : (replyDecrypt.displayContent || t('message.decrypt.encryptedMessage')))
-    : (message.replyTo?.text ?? '')
+  // Reply preview decryption is moved into a dedicated `ReplyDecrypt`
+  // subcomponent below so the hook (and its effect) only mount when a
+  // reply is actually present — previously every message paid for the
+  // useDecryptedContent effect even when replyTo was undefined.
 
   // Client-side embed generation: extract URLs from displayed content and create
   // video embeds for known platforms (essential for E2EE where server can't read content)
@@ -237,13 +229,9 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     <span className={`${s.editedTag} txt-tiny`}>{t('message.editedTag')}</span>
   ) : null
 
-  const replyBlock = message.replyTo ? (
-    <div className={s.replyContext}>
-      <ReplyIcon />
-      <span className={`${s.replyAuthor} txt-tiny txt-semibold`}>{message.replyTo.author}</span>
-      <span className={`${s.replyPreview} txt-tiny`}>{replyText.length > 80 ? replyText.slice(0, 80) + '…' : replyText}</span>
-    </div>
-  ) : null
+  const replyBlock = message.replyTo
+    ? <ReplyDecrypt replyTo={message.replyTo} isDm={isDm} />
+    : null
 
   const reactionsBlock = message.reactions.length > 0 ? (
     <div className={s.reactions}>
@@ -706,3 +694,26 @@ function PinIcon()      { return <Pin            size={14} strokeWidth={1.4} /> 
 function TrashIcon()    { return <Trash2         size={14} strokeWidth={1.4} /> }
 function FlagIcon()     { return <Flag           size={14} strokeWidth={1.4} /> }
 function ThreadIcon()   { return <MessageSquare  size={14} strokeWidth={1.4} /> }
+
+/** Decrypts the reply preview only when a reply is actually present — pulling
+ *  the hook into its own component means messages without a reply skip the
+ *  per-render effect work that the always-mounted variant paid for. */
+function ReplyDecrypt({ replyTo, isDm }: { replyTo: NonNullable<MessageVM['replyTo']>; isDm: boolean }) {
+  const { t } = useT()
+  const { displayContent, decrypting } = useDecryptedContent(
+    replyTo.content ?? '',
+    replyTo.nonce,
+    replyTo.isDm ?? isDm,
+    replyTo.channelId ?? undefined,
+  )
+  const replyText = replyTo.nonce
+    ? (decrypting ? t('message.decrypt.decrypting') : (displayContent || t('message.decrypt.encryptedMessage')))
+    : (replyTo.text ?? '')
+  return (
+    <div className={s.replyContext}>
+      <ReplyIcon />
+      <span className={`${s.replyAuthor} txt-tiny txt-semibold`}>{replyTo.author}</span>
+      <span className={`${s.replyPreview} txt-tiny`}>{replyText.length > 80 ? replyText.slice(0, 80) + '…' : replyText}</span>
+    </div>
+  )
+}
