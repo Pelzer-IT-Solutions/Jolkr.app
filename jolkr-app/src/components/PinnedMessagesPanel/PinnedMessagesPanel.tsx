@@ -87,12 +87,15 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
   useEffect(() => {
     const k = cacheKey(channelId, isDm, pinnedVersion ?? 0)
     if (cache.get(k) !== undefined) return // already populated synchronously above
+    let cancelled = false
     const fetchPromise = isDm ? api.getDmPinnedMessages(channelId) : api.getPinnedMessages(channelId)
     fetchPromise.then(msgs => {
+      if (cancelled) return
       cache.set(k, msgs)
       setMessages(msgs)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [channelId, isDm, pinnedVersion])
 
   function handleUnpin(msgId: string) {
