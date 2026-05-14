@@ -181,6 +181,11 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   fetchRoles: async (serverId) => {
+    // Warm-cache skip: WS RoleCreate/Update/Delete events (handled in
+    // applyRoleChange) keep the store fresh, so refetching on every panel
+    // open is wasted bandwidth. Callers that need a forced refresh can
+    // clear the slice first.
+    if (get().roles[serverId]) return;
     const roles = await api.getRoles(serverId);
     set({ roles: { ...get().roles, [serverId]: roles } });
   },

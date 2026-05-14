@@ -8,6 +8,7 @@ import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import { useT, type T } from '../../hooks/useT'
 import { buildInviteUrl } from '../../platform/config'
 import { useAuthStore } from '../../stores/auth'
+import { useServersStore } from '../../stores/servers'
 import { useToast } from '../../stores/toast'
 import * as P from '../../utils/permissions'
 import { ServerIcon } from '../ServerIcon/ServerIcon'
@@ -156,14 +157,16 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   // Load real data from API. Fast-switching servers used to let the older
   // server's responses overwrite the newer server's panels — the cancelled
   // flag gates every late setState so closing the previous server's data
-  // mid-flight is a no-op.
+  // mid-flight is a no-op. Roles go through the shared store cache so a
+  // repeat-open / cross-component use (ChannelSettings, UserContextMenu)
+  // hits a warm slice instead of refetching.
   useEffect(() => {
     const id = server.id
     let cancelled = false
-    api.getRoles(id).then((loadedRoles) => {
+    useServersStore.getState().fetchRoles(id).then(() => {
       if (cancelled) return
+      const loadedRoles = useServersStore.getState().roles[id] ?? []
       setRoles(loadedRoles)
-      // Always auto-select first role when roles are loaded (oldest / lowest position, e.g. @everyone)
       const ordered = sortRolesByPosition(loadedRoles)
       if (ordered.length > 0) dispatchRoleEditor({ type: 'SELECT', role: ordered[0] })
     }).catch(() => { if (!cancelled) setRoles([]) })
