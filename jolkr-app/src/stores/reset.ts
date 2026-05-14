@@ -6,6 +6,7 @@ import { useContextMenuStore } from './context-menu';
 import { useDmReadsStore } from './dm-reads';
 import { useGifFavoritesStore } from './gif-favorites';
 import { useMessagesStore } from './messages';
+import { useNotificationSettingsStore } from './notification-settings';
 import { usePresenceStore } from './presence';
 import { useServersStore } from './servers';
 import { useThreadsStore } from './threads';
@@ -28,6 +29,7 @@ export function resetAllStores() {
   useTypingStore.getState().reset();
   useVoiceStore.getState().reset();
   useGifFavoritesStore.getState().reset();
+  useNotificationSettingsStore.getState().reset();
   useContextMenuStore.getState().reset();
   useUsersStore.getState().reset();
   useUploadProgressStore.getState().reset();
