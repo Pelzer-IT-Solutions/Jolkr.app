@@ -324,5 +324,6 @@ export function transformDmConversation(
     lastMessageNonce: lastMessage?.nonce,
     lastTime: lastMessage ? formatTimestamp(lastMessage.created_at) : undefined,
     unread: unreadCount ?? 0,
+    createdAt: dm.created_at,
   }
 }

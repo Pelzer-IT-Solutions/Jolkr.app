@@ -47,6 +47,10 @@ export interface DMConversation {
   lastMessageNonce?: string | null
   lastTime?:    string
   unread:       number
+  /** Raw ISO creation timestamp from the backend. Currently consumed by
+   *  the group-info popover; kept optional so drafts (no BE record yet)
+   *  can omit it. */
+  createdAt?:   string
 }
 
 /** Lightweight member used by MemberPanel and other "card"-style listings. */
