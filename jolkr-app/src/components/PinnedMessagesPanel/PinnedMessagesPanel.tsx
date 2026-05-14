@@ -12,16 +12,19 @@ interface Props {
   isDm?: boolean
   onClose: () => void
   onUnpin?: (messageId: string) => void
+  /** Click on a pinned-message row → jump the chat list to that message. */
+  onJumpToMessage?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number
 }
 
 /** Single pinned message item — uses hook for E2EE decryption. */
-function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
+function PinnedItem({ msg, channelId, isDm, onUnpin, onJumpToMessage, users }: {
   msg: Message
   channelId: string
   isDm: boolean
   onUnpin?: (id: string) => void
+  onJumpToMessage?: (id: string) => void
   users?: Map<string, User>
 }) {
   const { t } = useT()
@@ -30,15 +33,29 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
   )
   const author = users?.get(msg.author_id)
   const authorName = author?.display_name ?? author?.username ?? t('pinned.unknownAuthor')
+  const clickable = !!onJumpToMessage
 
   return (
-    <div className={s.item}>
+    <div
+      className={`${s.item} ${clickable ? s.itemClickable : ''}`}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? () => onJumpToMessage(msg.id) : undefined}
+      onKeyDown={clickable ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onJumpToMessage(msg.id) }
+      } : undefined}
+    >
       <div className={`${s.itemAuthor} txt-tiny txt-semibold`}>{authorName}</div>
       <div className={`${s.itemContent} txt-small`} dir="auto">
         {decrypting ? t('pinned.decrypting') : (displayContent || '').slice(0, 200)}
       </div>
       {onUnpin && (
-        <button className={s.unpinBtn} title={t('pinned.unpin')} aria-label={t('pinned.unpin')} onClick={() => onUnpin(msg.id)}>
+        <button
+          className={s.unpinBtn}
+          title={t('pinned.unpin')}
+          aria-label={t('pinned.unpin')}
+          onClick={(e) => { e.stopPropagation(); onUnpin(msg.id) }}
+        >
           <X size={12} strokeWidth={1.5} />
         </button>
       )}
@@ -46,7 +63,7 @@ function PinnedItem({ msg, channelId, isDm, onUnpin, users }: {
   )
 }
 
-export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, users, pinnedVersion }: Props) {
+export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose, onUnpin, onJumpToMessage, users, pinnedVersion }: Props) {
   const { t } = useT()
   const version = pinnedVersion ?? 0
   const cached = peekPinnedMessages(channelId, isDm, version)
@@ -109,6 +126,7 @@ export function PinnedMessagesPanel({ channelId, isDm = false, onClose: _onClose
             channelId={channelId}
             isDm={isDm}
             onUnpin={onUnpin ? handleUnpin : undefined}
+            onJumpToMessage={onJumpToMessage}
             users={users}
           />
         ))}

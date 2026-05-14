@@ -89,6 +89,9 @@
       "one": "{name} is typing…",
       "two": "{a} and {b} are typing…",
       "many": "Several people are typing…"
+    },
+    "jump": {
+      "notFound": "Couldn't find that message."
     }
   },
 
@@ -234,7 +237,9 @@
     "noPinned": "No pinned messages yet",
     "sharedFiles": "Shared Files",
     "noFiles": "No shared files yet",
-    "decrypting": "Decrypting…"
+    "decrypting": "Decrypting…",
+    "jumpToMessage": "Jump to message",
+    "downloadFile": "Download"
   },
 
   "newDmModal": {

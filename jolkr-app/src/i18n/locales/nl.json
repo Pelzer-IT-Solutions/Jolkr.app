@@ -70,6 +70,9 @@
       "one": "{name} is aan het typen…",
       "two": "{a} en {b} zijn aan het typen…",
       "many": "Meerdere mensen zijn aan het typen…"
+    },
+    "jump": {
+      "notFound": "Kon dat bericht niet vinden."
     }
   },
 
@@ -173,7 +176,8 @@
     "backToChat": "Terug naar chat", "info": "Info", "unpin": "Pin verwijderen",
     "pinnedMessages": "Vastgepinde berichten", "noPinned": "Nog geen vastgepinde berichten",
     "sharedFiles": "Gedeelde bestanden", "noFiles": "Nog geen gedeelde bestanden",
-    "decrypting": "Ontsleutelen…"
+    "decrypting": "Ontsleutelen…",
+    "jumpToMessage": "Spring naar bericht", "downloadFile": "Downloaden"
   },
 
   "newDmModal": {

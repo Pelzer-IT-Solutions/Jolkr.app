@@ -70,6 +70,9 @@
       "one": "{name}님이 입력 중…",
       "two": "{a}님과 {b}님이 입력 중…",
       "many": "여러 사람이 입력 중…"
+    },
+    "jump": {
+      "notFound": "해당 메시지를 찾을 수 없습니다."
     }
   },
 
@@ -173,7 +176,8 @@
     "unpin": "고정 해제", "pinnedMessages": "고정된 메시지",
     "noPinned": "아직 고정된 메시지가 없습니다",
     "sharedFiles": "공유된 파일", "noFiles": "아직 공유된 파일이 없습니다",
-    "decrypting": "복호화 중…"
+    "decrypting": "복호화 중…",
+    "jumpToMessage": "메시지로 이동", "downloadFile": "다운로드"
   },
 
   "newDmModal": {

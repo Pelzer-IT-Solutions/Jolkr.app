@@ -70,6 +70,9 @@
       "one": "{name} sta scrivendo…",
       "two": "{a} e {b} stanno scrivendo…",
       "many": "Diverse persone stanno scrivendo…"
+    },
+    "jump": {
+      "notFound": "Messaggio non trovato."
     }
   },
 
@@ -172,7 +175,8 @@
     "backToChat": "Torna alla chat", "info": "Info", "unpin": "Rimuovi fissaggio",
     "pinnedMessages": "Messaggi fissati", "noPinned": "Nessun messaggio fissato ancora",
     "sharedFiles": "File condivisi", "noFiles": "Nessun file condiviso ancora",
-    "decrypting": "Decifrazione…"
+    "decrypting": "Decifrazione…",
+    "jumpToMessage": "Vai al messaggio", "downloadFile": "Scarica"
   },
 
   "newDmModal": {

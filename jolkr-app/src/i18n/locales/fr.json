@@ -70,6 +70,9 @@
       "one": "{name} est en train d'écrire…",
       "two": "{a} et {b} sont en train d'écrire…",
       "many": "Plusieurs personnes sont en train d'écrire…"
+    },
+    "jump": {
+      "notFound": "Ce message est introuvable."
     }
   },
 
@@ -172,7 +175,8 @@
     "backToChat": "Retour au chat", "info": "Infos", "unpin": "Désépingler",
     "pinnedMessages": "Messages épinglés", "noPinned": "Aucun message épinglé pour l'instant",
     "sharedFiles": "Fichiers partagés", "noFiles": "Aucun fichier partagé pour l'instant",
-    "decrypting": "Déchiffrement…"
+    "decrypting": "Déchiffrement…",
+    "jumpToMessage": "Aller au message", "downloadFile": "Télécharger"
   },
 
   "newDmModal": {

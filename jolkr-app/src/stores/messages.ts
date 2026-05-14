@@ -39,6 +39,9 @@ interface MessagesState {
 
   fetchMessages: (channelId: string, isDm?: boolean) => Promise<void>;
   fetchOlder: (channelId: string, isDm?: boolean) => Promise<void>;
+  /** Walk older pages until `messageId` lands in the cache. Returns true on
+   *  hit, false when the channel runs out of history or the safety cap fires. */
+  loadUntilMessage: (channelId: string, messageId: string, isDm?: boolean) => Promise<boolean>;
   sendMessage: (channelId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   sendDmMessage: (dmId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean, nonce?: string) => Promise<void>;
@@ -119,6 +122,23 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     } catch {
       set({ loadingOlder: { ...get().loadingOlder, [channelId]: false } });
     }
+  },
+
+  loadUntilMessage: async (channelId, messageId, isDm) => {
+    // Cap at 20 page fetches (~1000 messages) so a stale or unreachable id
+    // can't run the loop unbounded. The shared-files / pinned lists rarely
+    // reach back further than a few pages in practice.
+    const MAX_PAGES = 20;
+    for (let i = 0; i < MAX_PAGES; i++) {
+      const current = get().messages[channelId] ?? [];
+      if (current.some((m) => m.id === messageId)) return true;
+      if (get().hasMore[channelId] === false) return false;
+      const before = await get().fetchOlder(channelId, isDm);
+      // fetchOlder swallows errors and resolves void; if hasMore flipped to
+      // false during the await, the next iteration's guard catches it.
+      void before;
+    }
+    return get().messages[channelId]?.some((m) => m.id === messageId) ?? false;
   },
 
   sendMessage: async (channelId, content, replyToId, nonce) => {

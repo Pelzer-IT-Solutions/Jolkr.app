@@ -25,6 +25,8 @@ interface Props {
   /** Plain (left) click on a member row → open the profile card. */
   onMemberOpenProfile?: (member: MemberSummary, e: React.MouseEvent) => void
   onUnpin?: (messageId: string) => void
+  /** Click on a pinned-message row → jump the chat list to that message. */
+  onJumpToMessage?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number
   onMobileClose?: () => void
@@ -36,7 +38,7 @@ interface Props {
   onCloseThread?: () => void
 }
 
-export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, users, pinnedVersion, onMobileClose, openThreadId, onOpenThread, onCloseThread }: Props) {
+export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, onJumpToMessage, users, pinnedVersion, onMobileClose, openThreadId, onOpenThread, onCloseThread }: Props) {
   const { t } = useT()
   const visible = mode !== null
 
@@ -91,6 +93,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
             isDm={isDm}
             onClose={() => {/* handled by parent */}}
             onUnpin={onUnpin}
+            onJumpToMessage={onJumpToMessage}
             users={users}
             pinnedVersion={pinnedVersion}
           />

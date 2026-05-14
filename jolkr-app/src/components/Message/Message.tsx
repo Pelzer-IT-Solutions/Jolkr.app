@@ -479,7 +479,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     return (
       <>
       <article className={`${s.dmRow} ${isOwn ? s.dmRowOwn : ''}`}>
-        <div className={`${s.dmCard} ${isOwn ? s.dmCardOwn : ''}`}>
+        <div data-message-id={message.id} className={`${s.dmCard} ${isOwn ? s.dmCardOwn : ''}`}>
           {/* Header: sender on left, actions on right */}
           <div className={s.dmHeader}>
             <div className={s.dmHeaderSender}>
@@ -631,7 +631,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
   if (message.continued) {
     return (
       <>
-      <article className={`${s.msg} ${s.continued} ${anyOpen ? s.hasMenu : ''}`}>
+      <article data-message-id={message.id} className={`${s.msg} ${s.continued} ${anyOpen ? s.hasMenu : ''}`}>
         <div className={s.body}>{body}</div>
         {toolbar}
       </article>
@@ -646,7 +646,7 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
 
   return (
     <>
-    <article className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
+    <article data-message-id={message.id} className={`${s.msg} ${anyOpen ? s.hasMenu : ''}`}>
       <MessageAvatar message={message} onClick={handleAuthorClick} ariaOpenLabel={t('message.ariaOpenProfile', { name: message.author })} />
       <div className={s.body}>
         <div className={s.meta}>

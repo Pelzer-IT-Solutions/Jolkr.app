@@ -70,6 +70,9 @@
       "one": "{name} が入力中…",
       "two": "{a} と {b} が入力中…",
       "many": "複数の人が入力中…"
+    },
+    "jump": {
+      "notFound": "メッセージが見つかりませんでした。"
     }
   },
 
@@ -173,7 +176,8 @@
     "unpin": "ピン留めを解除", "pinnedMessages": "ピン留めメッセージ",
     "noPinned": "ピン留めされたメッセージはまだありません",
     "sharedFiles": "共有ファイル", "noFiles": "共有ファイルはまだありません",
-    "decrypting": "復号中…"
+    "decrypting": "復号中…",
+    "jumpToMessage": "メッセージへ移動", "downloadFile": "ダウンロード"
   },
 
   "newDmModal": {

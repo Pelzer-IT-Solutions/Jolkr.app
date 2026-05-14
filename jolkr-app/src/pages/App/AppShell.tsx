@@ -1,11 +1,11 @@
 import { PanelLeftOpen } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as api from '../../api/client'
 import s from '../../components/AppShell/AppShell.module.css'
 import { CallWindow } from '../../components/CallWindow/CallWindow'
 import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
 import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
-import { ChatArea } from '../../components/ChatArea/ChatArea'
+import { ChatArea, type ChatAreaHandle } from '../../components/ChatArea/ChatArea'
 import { CreateServerModal } from '../../components/CreateServerModal/CreateServerModal'
 import { DMInfoPanel } from '../../components/DMInfoPanel/DMInfoPanel'
 import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
@@ -180,6 +180,22 @@ export function AppShell() {
     if (dmActive || !activeChannelId) return
     setThreadPromptMsgId(messageId)
   }, [dmActive, activeChannelId])
+
+  // ── Jump-to-message wiring ───────────────────────────────────────
+  // The chat owns the imperative scroll; pinned + shared-files panels just
+  // call into this ref. On mobile the right pane is shown alone, so we hop
+  // back to the chat pane first and defer the scroll until that swap commits.
+  const chatAreaRef = useRef<ChatAreaHandle>(null)
+  const handleJumpToMessage = useCallback((messageId: string) => {
+    if (isMobile) {
+      setActiveMobilePane('chat')
+      requestAnimationFrame(() => {
+        void chatAreaRef.current?.scrollToMessage(messageId)
+      })
+      return
+    }
+    void chatAreaRef.current?.scrollToMessage(messageId)
+  }, [isMobile, setActiveMobilePane])
 
   // Open a 1-on-1 conversation with `otherUserId`: reuse an existing real DM
   // if we already have one, otherwise drop a session-only draft into the
@@ -431,6 +447,7 @@ export function AppShell() {
 
                   {showChat && (hasChatContent ? (
                     <ChatArea
+                      ref={chatAreaRef}
                       channel={activeChannel}
                       messages={displayMessages}
                       sidebarCollapsed={sidebarCollapsedForChatHeader}
@@ -487,6 +504,7 @@ export function AppShell() {
                       open={!rightPanelHidden}
                       dmId={activeDmId}
                       onUnpin={handleUnpinMessage}
+                      onJumpToMessage={handleJumpToMessage}
                       users={userMap}
                       pinnedVersion={pinnedVersion}
                       onMobileClose={isMobile ? mobileBackToChat : undefined}
@@ -520,6 +538,7 @@ export function AppShell() {
                         setProfileCard({ userId: member.userId, x: e.clientX, y: e.clientY })
                       }}
                       onUnpin={handleUnpinMessage}
+                      onJumpToMessage={handleJumpToMessage}
                       users={userMap}
                       pinnedVersion={pinnedVersion}
                       onMobileClose={isMobile ? mobileBackToChat : undefined}

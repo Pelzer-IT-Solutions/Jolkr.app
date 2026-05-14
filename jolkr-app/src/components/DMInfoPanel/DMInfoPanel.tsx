@@ -19,27 +19,47 @@ interface Props {
   open: boolean
   dmId: string
   onUnpin?: (messageId: string) => void
+  /** Click on a pinned-message row or a shared-file row → jump the chat to that message. */
+  onJumpToMessage?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number
   onMobileClose?: () => void
 }
 
-function PinnedItem({ msg, dmId, onUnpin, users }: {
-  msg: Message; dmId: string; onUnpin?: (id: string) => void; users?: Map<string, User>
+function PinnedItem({ msg, dmId, onUnpin, onJumpToMessage, users }: {
+  msg: Message
+  dmId: string
+  onUnpin?: (id: string) => void
+  onJumpToMessage?: (id: string) => void
+  users?: Map<string, User>
 }) {
   const { t } = useT()
   const { displayContent, decrypting } = useDecryptedContent(msg.content, msg.nonce, true, dmId)
   const author = users?.get(msg.author_id)
   const authorName = author?.display_name ?? author?.username ?? t('common.unknown')
+  const clickable = !!onJumpToMessage
 
   return (
-    <div className={s.pinnedItem}>
+    <div
+      className={`${s.pinnedItem} ${clickable ? s.pinnedItemClickable : ''}`}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? () => onJumpToMessage(msg.id) : undefined}
+      onKeyDown={clickable ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onJumpToMessage(msg.id) }
+      } : undefined}
+    >
       <div className={s.pinnedAuthor}>{authorName}</div>
       <div className={s.pinnedContent} dir="auto">
         {decrypting ? t('dmInfoPanel.decrypting') : (displayContent || '').slice(0, 200)}
       </div>
       {onUnpin && (
-        <button className={s.unpinBtn} title={t('dmInfoPanel.unpin')} aria-label={t('dmInfoPanel.unpin')} onClick={() => onUnpin(msg.id)}>
+        <button
+          className={s.unpinBtn}
+          title={t('dmInfoPanel.unpin')}
+          aria-label={t('dmInfoPanel.unpin')}
+          onClick={(e) => { e.stopPropagation(); onUnpin(msg.id) }}
+        >
           <X size={12} strokeWidth={1.5} />
         </button>
       )}
@@ -55,17 +75,45 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
-function SharedFileRow({ att }: { att: Attachment }) {
-  const href = rewriteStorageUrl(att.url) ?? att.url
+function SharedFileRow({ att, onJumpToMessage }: {
+  att: Attachment
+  onJumpToMessage?: (messageId: string) => void
+}) {
+  const { t } = useT()
+  // Jump-target only present when the wire carries `message_id` (newer BE)
+  // AND the panel was wired with a jump-handler. Older BE responses fall
+  // back to a read-only row that still exposes the download chip.
+  const targetId = att.message_id
+  const jumpEnabled = !!(targetId && onJumpToMessage)
+  const downloadHref = rewriteStorageUrl(att.url) ?? att.url
   return (
-    <a className={s.fileItem} href={href} target="_blank" rel="noopener noreferrer" download={att.filename}>
-      <FileText size={16} strokeWidth={1.5} className={s.fileIcon} />
-      <div className={s.fileMeta}>
-        <span className={`${s.fileName} txt-tiny txt-medium txt-truncate`}>{att.filename}</span>
-        <span className={`${s.fileSize} txt-tiny`}>{formatSize(att.size_bytes)}</span>
-      </div>
-      <Download size={12} strokeWidth={1.5} className={s.fileDownload} />
-    </a>
+    <div className={`${s.fileItem} ${jumpEnabled ? s.fileItemClickable : ''}`}>
+      <button
+        type="button"
+        className={s.fileMain}
+        disabled={!jumpEnabled}
+        onClick={jumpEnabled ? () => onJumpToMessage(targetId) : undefined}
+        title={jumpEnabled ? t('dmInfoPanel.jumpToMessage') : att.filename}
+      >
+        <FileText size={16} strokeWidth={1.5} className={s.fileIcon} />
+        <div className={s.fileMeta}>
+          <span className={`${s.fileName} txt-tiny txt-medium txt-truncate`}>{att.filename}</span>
+          <span className={`${s.fileSize} txt-tiny`}>{formatSize(att.size_bytes)}</span>
+        </div>
+      </button>
+      <a
+        className={s.fileDownload}
+        href={downloadHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        download={att.filename}
+        onClick={(e) => e.stopPropagation()}
+        title={t('dmInfoPanel.downloadFile')}
+        aria-label={t('dmInfoPanel.downloadFile')}
+      >
+        <Download size={14} strokeWidth={1.5} />
+      </a>
+    </div>
   )
 }
 
@@ -89,7 +137,7 @@ function SkeletonLines({ count, variant = 'pinned' }: { count: number; variant?:
   )
 }
 
-export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
+export function DMInfoPanel({ open, dmId, onUnpin, onJumpToMessage, users, pinnedVersion, onMobileClose }: Props) {
   const { t } = useT()
   const isRevealing = useRevealAnimation(0, [open], open, 300)
   const [pinned, setPinned] = useState<Message[]>([])
@@ -196,7 +244,14 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
           <div className={`txt-tiny ${s.emptyHint}`}>{t('dmInfoPanel.noPinned')}</div>
         ) : (
           pinned.map(msg => (
-            <PinnedItem key={msg.id} msg={msg} dmId={dmId} onUnpin={onUnpin ? handleUnpin : undefined} users={users} />
+            <PinnedItem
+              key={msg.id}
+              msg={msg}
+              dmId={dmId}
+              onUnpin={onUnpin ? handleUnpin : undefined}
+              onJumpToMessage={onJumpToMessage}
+              users={users}
+            />
           ))
         )}
 
@@ -208,7 +263,9 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
         ) : files.length === 0 ? (
           <div className={`txt-tiny ${s.emptyHint}`}>{t('dmInfoPanel.noFiles')}</div>
         ) : (
-          files.map(att => <SharedFileRow key={att.id} att={att} />)
+          files.map(att => (
+            <SharedFileRow key={att.id} att={att} onJumpToMessage={onJumpToMessage} />
+          ))
         )}
       </div>
     </aside>

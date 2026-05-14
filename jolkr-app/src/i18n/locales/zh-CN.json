@@ -70,6 +70,9 @@
       "one": "{name} 正在输入…",
       "two": "{a} 和 {b} 正在输入…",
       "many": "多人正在输入…"
+    },
+    "jump": {
+      "notFound": "找不到该消息。"
     }
   },
 
@@ -173,7 +176,8 @@
     "unpin": "取消置顶", "pinnedMessages": "置顶消息",
     "noPinned": "还没有置顶消息",
     "sharedFiles": "共享文件", "noFiles": "还没有共享文件",
-    "decrypting": "解密中…"
+    "decrypting": "解密中…",
+    "jumpToMessage": "跳转到消息", "downloadFile": "下载"
   },
 
   "newDmModal": {

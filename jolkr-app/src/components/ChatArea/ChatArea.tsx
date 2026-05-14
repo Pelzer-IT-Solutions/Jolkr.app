@@ -5,11 +5,13 @@ import {
   Bold, Italic, Strikethrough, Code, Pin, BarChart3,
   Pencil,
 } from 'lucide-react'
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { forwardRef, useState, useEffect, useLayoutEffect, useImperativeHandle, useRef, useCallback, useMemo } from 'react'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import { useT } from '../../hooks/useT'
 import { useCallStore } from '../../stores/call'
+import { useMessagesStore } from '../../stores/messages'
+import { useToast } from '../../stores/toast'
 import { useVoiceStore } from '../../stores/voice'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
 import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
@@ -90,6 +92,12 @@ export interface MentionableUser {
   username: string
 }
 
+/** Imperative handle exposed by ChatArea — used by the pinned/files panels
+ *  to jump the message list to a specific message. */
+export interface ChatAreaHandle {
+  scrollToMessage: (messageId: string) => Promise<void>
+}
+
 interface Props {
   channel:            ChannelDisplay
   messages:           MessageVM[]
@@ -129,7 +137,7 @@ interface Props {
   onStartThread?:     (messageId: string) => void
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
+export const ChatArea = forwardRef<ChatAreaHandle, Props>(function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }, ref) {
   const { t, tx } = useT()
   const fmt = useLocaleFormatters()
   const listRef    = useRef<HTMLDivElement>(null)
@@ -219,6 +227,49 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     if (navTimerRef.current) clearTimeout(navTimerRef.current)
     if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
   }, [])
+
+  // ── Jump-to-message handle ─────────────────────────────────────────
+  // Pinned + shared-file panels call `scrollToMessage(id)`. If the target
+  // row is already in the DOM we scroll + highlight; otherwise we walk
+  // older pages via the messages store until it lands, then retry.
+  const effectiveChannelId = channel.id
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+  }, [])
+  useImperativeHandle(ref, () => ({
+    scrollToMessage: async (messageId: string) => {
+      const findEl = () => listRef.current?.querySelector<HTMLElement>(
+        `[data-message-id="${CSS.escape(messageId)}"]`,
+      ) ?? null
+      let el = findEl()
+      if (!el) {
+        const ok = await useMessagesStore.getState().loadUntilMessage(
+          effectiveChannelId, messageId, isDm,
+        )
+        if (!ok) {
+          useToast.getState().show(t('chat.jump.notFound'), 'error')
+          return
+        }
+        // Allow React to commit the freshly-loaded rows before we re-query.
+        await new Promise(requestAnimationFrame)
+        el = findEl()
+        if (!el) {
+          useToast.getState().show(t('chat.jump.notFound'), 'error')
+          return
+        }
+      }
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      // Class is :global in Message.module.css so the keyframe lives next to
+      // the card styles (.msg / .dmCard) it actually paints.
+      el.classList.add('message-jump-highlight')
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = setTimeout(() => {
+        el?.classList.remove('message-jump-highlight')
+        highlightTimerRef.current = null
+      }, 1500)
+    },
+  }), [effectiveChannelId, isDm, t])
 
   function handleScroll() {
     if (!listRef.current || !hasMore || !onLoadOlder) return
@@ -955,7 +1006,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
       />
     </main>
   )
-}
+})
 
 /**
  * Composer reply card. Lifted into its own component so the

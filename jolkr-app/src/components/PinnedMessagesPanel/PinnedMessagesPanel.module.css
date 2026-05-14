@@ -50,6 +50,11 @@
   margin-bottom: 0.5rem;
 }
 .item:hover { background: var(--bg-strong); }
+.itemClickable { cursor: pointer; }
+.itemClickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 .itemAuthor { margin-bottom: 0.25rem; }
 .itemContent {
