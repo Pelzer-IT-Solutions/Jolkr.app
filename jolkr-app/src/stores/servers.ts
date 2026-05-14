@@ -434,6 +434,9 @@ export const useServersStore = create<ServersState>((set, get) => ({
   },
 
   patchMemberUser: (userId, patch) => {
+    // Empty payload is a no-op — happens when a UserUpdate WS event only
+    // carries a user_id (e.g. presence-style ping) and no profile fields.
+    if (Object.keys(patch).length === 0) return;
     const state = get();
     const nextMembers: Record<string, Member[]> = {};
     let changed = false;
