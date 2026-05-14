@@ -681,6 +681,7 @@ impl DmService {
             .into_iter()
             .map(|a| AttachmentInfo {
                 id: a.id,
+                message_id: Some(a.dm_message_id),
                 filename: a.filename,
                 content_type: a.content_type,
                 size_bytes: a.size_bytes,
@@ -718,6 +719,7 @@ impl DmService {
             if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
                 msg.attachments.push(AttachmentInfo {
                     id: att.id,
+                    message_id: None,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
@@ -802,6 +804,7 @@ impl DmService {
             if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
                 msg.attachments.push(AttachmentInfo {
                     id: att.id,
+                    message_id: None,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,

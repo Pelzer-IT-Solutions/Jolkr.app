@@ -3,23 +3,29 @@
 /**
  * Attachment info included in message responses.
  */
-export type Attachment = { 
+export type Attachment = {
 /**
  * Unique identifier.
  */
-id: string, 
+id: string,
+/**
+ * Owning message id. Only filled by the shared-files endpoint — within
+ * a message DTO this would be redundant, so it is left None and skipped
+ * during serialisation.
+ */
+message_id?: string,
 /**
  * File name.
  */
-filename: string, 
+filename: string,
 /**
  * Content type.
  */
-content_type: string, 
+content_type: string,
 /**
  * Size in bytes.
  */
-size_bytes: number, 
+size_bytes: number,
 /**
  * Resource URL.
  */

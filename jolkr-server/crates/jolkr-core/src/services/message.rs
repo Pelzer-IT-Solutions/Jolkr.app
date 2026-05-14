@@ -22,6 +22,12 @@ use jolkr_db::repo::{ChannelRepo, RoleRepo, ServerRepo};
 pub struct AttachmentInfo {
     /// Unique identifier.
     pub id: Uuid,
+    /// Owning message id. Only filled by the shared-files endpoint — within
+    /// a message DTO this would be redundant, so it is left None and skipped
+    /// during serialisation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub message_id: Option<Uuid>,
     /// File name.
     pub filename: String,
     /// Content type.
@@ -294,6 +300,7 @@ pub(crate) async fn enrich_with_attachments(pool: &PgPool, messages: &mut [Messa
     for att in all_atts {
         by_msg.entry(att.message_id).or_default().push(AttachmentInfo {
             id: att.id,
+            message_id: None,
             filename: att.filename,
             content_type: att.content_type,
             size_bytes: att.size_bytes,
@@ -526,6 +533,7 @@ impl MessageService {
         for att in atts {
             msg.attachments.push(AttachmentInfo {
                 id: att.id,
+                message_id: None,
                 filename: att.filename,
                 content_type: att.content_type,
                 size_bytes: att.size_bytes,

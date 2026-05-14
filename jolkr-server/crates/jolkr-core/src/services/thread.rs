@@ -393,6 +393,7 @@ impl ThreadService {
             if let Some(msg) = messages.iter_mut().find(|m| m.id == att.message_id) {
                 msg.attachments.push(AttachmentInfo {
                     id: att.id,
+                    message_id: None,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,

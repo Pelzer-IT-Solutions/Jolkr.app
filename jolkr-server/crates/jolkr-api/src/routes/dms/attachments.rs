@@ -136,6 +136,7 @@ pub(crate) async fn upload_dm_attachment(
             for att in atts {
                 dm_msg.attachments.push(AttachmentInfo {
                     id: att.id,
+                    message_id: None,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
@@ -174,6 +175,7 @@ pub(crate) async fn upload_dm_attachment(
         return Ok(Json(DmAttachmentResponse {
             attachment: AttachmentInfo {
                 id: row.id,
+                message_id: Some(message_id),
                 filename: row.filename,
                 content_type: row.content_type,
                 size_bytes: row.size_bytes,
