@@ -261,7 +261,8 @@
   "groupInfoPopover": {
     "ariaGroup": "{name} のグループ情報",
     "members": "{count} 人のメンバー",
-    "createdOn": "作成日"
+    "createdOn": "作成日",
+    "you": "{name} (あなた)"
   },
 
   "groupSettingsModal": {

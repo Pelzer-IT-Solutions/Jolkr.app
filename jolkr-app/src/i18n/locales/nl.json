@@ -264,7 +264,8 @@
   "groupInfoPopover": {
     "ariaGroup": "Groepsinformatie {name}",
     "members": "{count} leden",
-    "createdOn": "Aangemaakt op"
+    "createdOn": "Aangemaakt op",
+    "you": "{name} (jij)"
   },
 
   "groupSettingsModal": {

@@ -1,9 +1,12 @@
 import { Users } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { hashColor } from '../../adapters/transforms'
+import { hashColor, toMemberStatus, userToAvatar } from '../../adapters/transforms'
 import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import { useT } from '../../hooks/useT'
+import { useAuthStore } from '../../stores/auth'
+import { usePresenceStore } from '../../stores/presence'
+import { displayName } from '../../utils/format'
 import { Avatar } from '../Avatar/Avatar'
 import s from './GroupInfoPopover.module.css'
 import type { DMConversation, DMParticipant } from '../../types'
@@ -43,6 +46,23 @@ export function GroupInfoPopover({
   const { t } = useT()
   const fmt = useLocaleFormatters()
   const cardRef = useRef<HTMLDivElement>(null)
+  // `participants` excludes self by convention (see `transformDmConversation`),
+  // so we build a synthetic "me" row from auth + presence to give the popover
+  // a complete member list and an accurate count.
+  const me = useAuthStore(st => st.user)
+  const selfPresence = usePresenceStore(st => (me ? st.statuses[me.id] : undefined))
+  const selfParticipant: DMParticipant | null = useMemo(() => {
+    if (!me) return null
+    const { color, letter, avatarUrl } = userToAvatar(me)
+    return {
+      name: displayName(me),
+      status: toMemberStatus(selfPresence ?? me.status),
+      color,
+      letter,
+      avatarUrl,
+      userId: me.id,
+    }
+  }, [me, selfPresence])
 
   // Memoise the anchor primitives so the layout effect doesn't re-fire on
   // every render of the parent.
@@ -80,8 +100,9 @@ export function GroupInfoPopover({
 
   if (!state || !conv) return null
 
-  const displayName = conv.name ?? conv.participants.map(p => p.name).join(', ')
-  const memberCount = conv.participants.length
+  const groupDisplayName = conv.name ?? conv.participants.map(p => p.name).join(', ')
+  // `participants` is "everyone except me" — total group size is one greater.
+  const memberCount = conv.participants.length + (selfParticipant ? 1 : 0)
   const bannerColor = hashColor(conv.id)
   const createdLabel = conv.createdAt ? fmt.formatDate(conv.createdAt, 'short') : null
 
@@ -98,7 +119,7 @@ export function GroupInfoPopover({
         ref={cardRef}
         className={s.card}
         role="dialog"
-        aria-label={t('groupInfoPopover.ariaGroup', { name: displayName })}
+        aria-label={t('groupInfoPopover.ariaGroup', { name: groupDisplayName })}
       >
         <div className={s.banner} style={{ background: bannerColor }} />
 
@@ -108,7 +129,7 @@ export function GroupInfoPopover({
 
         <div className={s.body}>
           <div className={s.nameBlock}>
-            <span className={`${s.displayName} txt-shout txt-bold`}>{displayName}</span>
+            <span className={`${s.displayName} txt-shout txt-bold`}>{groupDisplayName}</span>
             <span className={`${s.subtitle} txt-small`}>
               {t('groupInfoPopover.members', { count: memberCount })}
             </span>
@@ -133,6 +154,26 @@ export function GroupInfoPopover({
               {t('groupInfoPopover.members', { count: memberCount })}
             </h3>
             <div className={`${s.memberList} scrollbar-thin`}>
+              {selfParticipant && (
+                <div className={`${s.memberRow} ${s.memberRowSelf}`}>
+                  <Avatar
+                    url={selfParticipant.avatarUrl}
+                    name={selfParticipant.name}
+                    size="sm"
+                    status={selfParticipant.status}
+                    userId={selfParticipant.userId}
+                    color={selfParticipant.color}
+                  />
+                  <div className={s.memberMeta}>
+                    <span className={`${s.memberName} txt-small txt-medium txt-truncate`}>
+                      {t('groupInfoPopover.you', { name: selfParticipant.name })}
+                    </span>
+                    <span className={`${s.memberStatus} txt-tiny`}>
+                      {STATUS_KEY[selfParticipant.status] ? t(STATUS_KEY[selfParticipant.status]) : selfParticipant.status}
+                    </span>
+                  </div>
+                </div>
+              )}
               {conv.participants.map((p, i) => (
                 <button
                   key={p.userId ?? `slot-${i}`}

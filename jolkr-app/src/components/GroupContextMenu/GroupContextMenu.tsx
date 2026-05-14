@@ -60,7 +60,9 @@ export function GroupContextMenu({
   if (!menu || !conv) return null
 
   const displayName = conv.name ?? conv.participants.map(p => p.name).join(', ')
-  const memberCount = conv.participants.length
+  // `participants` is "everyone except me" (see transformDmConversation), so
+  // the total membership of a group DM is always one more than that.
+  const memberCount = conv.participants.length + 1
 
   const handleViewInfo = () => {
     onViewInfo(menu.dmId, { x: menu.x, y: menu.y })

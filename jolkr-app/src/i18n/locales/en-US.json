@@ -368,7 +368,8 @@
   "groupInfoPopover": {
     "ariaGroup": "{name} group info",
     "members": "{count} members",
-    "createdOn": "Created"
+    "createdOn": "Created",
+    "you": "{name} (You)"
   },
 
   "groupSettingsModal": {

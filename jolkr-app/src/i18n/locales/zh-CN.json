@@ -261,7 +261,8 @@
   "groupInfoPopover": {
     "ariaGroup": "{name} 群组信息",
     "members": "{count} 位成员",
-    "createdOn": "创建于"
+    "createdOn": "创建于",
+    "you": "{name} (你)"
   },
 
   "groupSettingsModal": {
