@@ -3,7 +3,8 @@ import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
 import { useUsersStore } from './users';
-import type { Server, Channel, ChannelKind, Member, Role, Category, ServerEmoji } from '../api/types';
+import type { Server as GeneratedServer } from '../api/generated/Server';
+import type { Server, ServerThemeData, Channel, ChannelKind, Member, Role, Category, ServerEmoji } from '../api/types';
 
 /** Push embedded user objects from a member list into the global users cache
  *  so non-server surfaces (typing indicator, profile cards in DMs) can resolve
@@ -11,6 +12,18 @@ import type { Server, Channel, ChannelKind, Member, Role, Category, ServerEmoji 
 function indexMemberUsers(members: Member[]): void {
   const users = members.map((m) => m.user).filter((u): u is NonNullable<Member['user']> => Boolean(u));
   if (users.length) useUsersStore.getState().upsertUsers(users);
+}
+
+/** Wire `Server.theme` is `JsonValue`; the FE overlay (`Server.theme:
+ *  ServerThemeData | null`) carries the typed shape. Guard against
+ *  array/primitive payloads at the boundary. */
+function normalizeServer(raw: GeneratedServer): Server {
+  const t = raw.theme;
+  const theme: ServerThemeData | null =
+    t != null && typeof t === 'object' && !Array.isArray(t)
+      ? (t as unknown as ServerThemeData)
+      : null;
+  return { ...raw, theme };
 }
 
 interface ServersState {
@@ -541,9 +554,7 @@ wsClient.on((event) => {
     case 'ServerUpdate': {
       const { server } = event.d;
       if (!server?.id) break;
-      // Generated `Server.theme` is `JsonValue` (wire-level); FE overlay
-      // carries the typed `ServerThemeData`. Cast on this boundary.
-      const overlay = server as Server;
+      const overlay = normalizeServer(server);
       useServersStore.setState({
         servers: store.servers.map((s) => (s.id === overlay.id ? overlay : s)),
       });

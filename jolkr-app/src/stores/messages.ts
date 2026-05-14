@@ -6,6 +6,14 @@ import { useThreadsStore } from './threads';
 import type { Message as GeneratedMessage } from '../api/generated/Message';
 import type { Message, Poll, Reaction } from '../api/types';
 
+/** WS poll payload is `JsonValue` at the wire level; the FE overlay (`Poll`)
+ *  carries the typed shape. Guard against array/primitive payloads before
+ *  trusting the BE shape. */
+function toPoll(raw: GeneratedMessage['poll']): Poll | undefined {
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  return raw as unknown as Poll;
+}
+
 /** Transform backend reaction format (user_ids) to frontend format (me boolean + user_ids) */
 function transformReactions(msgs: Message[]): Message[] {
   const currentUserId = useAuthStore.getState().user?.id;
@@ -243,7 +251,7 @@ function normalizeWsMessage(raw: GeneratedMessage): Message | null {
     webhook_id: raw.webhook_id ?? null,
     webhook_name: raw.webhook_name ?? null,
     webhook_avatar: raw.webhook_avatar ?? null,
-    poll: raw.poll as Poll | undefined,
+    poll: toPoll(raw.poll),
     reactions: (raw.reactions ?? []).map((r) => ({
       ...r,
       emoji: r.emoji ?? '',
