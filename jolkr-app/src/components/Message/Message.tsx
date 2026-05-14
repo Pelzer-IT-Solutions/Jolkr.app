@@ -193,6 +193,10 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
     setIsEditing(true)
   }
 
+  // Seed the editor only when entering edit mode. Keeping `messageContent`
+  // in deps would let a concurrent WS MessageUpdate overwrite the user's
+  // in-progress draft mid-edit. Once `isEditing` flips to true the browser
+  // owns the contentEditable text until saveEdit/cancelEdit reads it back.
   useEffect(() => {
     if (isEditing && editRef.current) {
       editRef.current.innerText = messageContent
@@ -203,7 +207,8 @@ export function Message({ message, onToggleReaction, onDelete, onHideForMe, onRe
         sel.collapseToEnd()
       }
     }
-  }, [isEditing, messageContent])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- messageContent intentionally omitted; see comment above
+  }, [isEditing])
 
   function saveEdit() {
     const newText = editRef.current?.innerText.trim() ?? ''
