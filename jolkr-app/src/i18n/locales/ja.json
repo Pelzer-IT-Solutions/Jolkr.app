@@ -249,6 +249,30 @@
     "reportUser": "ユーザーを報告"
   },
 
+  "groupContextMenu": {
+    "info": "グループ情報",
+    "mute": "グループをミュート",
+    "unmute": "ミュート解除",
+    "edit": "グループを編集",
+    "leave": "グループを退出",
+    "members": "{count} 人のメンバー"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "{name} のグループ情報",
+    "members": "{count} 人のメンバー",
+    "createdOn": "作成日"
+  },
+
+  "groupSettingsModal": {
+    "title": "グループ設定",
+    "groupName": "グループ名",
+    "namePlaceholder": "グループ名",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "errSaveFailed": "グループ設定の保存に失敗しました"
+  },
+
   "channelSidebar": {
     "title": "チャンネル", "newChannel": "新しいチャンネル",
     "backToChat": "チャットに戻る", "collapseSidebar": "サイドバーを折りたたむ",
@@ -359,6 +383,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "グループから退出できませんでした",
     "friendRequestSent": "フレンドリクエストを送信しました",
     "friendRequestFailed": "フレンドリクエストの送信に失敗しました",
     "friendRequestNotSent": "フレンドリクエストを送信できませんでした",

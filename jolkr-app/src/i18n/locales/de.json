@@ -250,6 +250,30 @@
     "reportUser": "Benutzer melden"
   },
 
+  "groupContextMenu": {
+    "info": "Gruppeninfo",
+    "mute": "Gruppe stummschalten",
+    "unmute": "Stummschaltung aufheben",
+    "edit": "Gruppe bearbeiten",
+    "leave": "Gruppe verlassen",
+    "members": "{count} Mitglieder"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "Gruppeninformationen {name}",
+    "members": "{count} Mitglieder",
+    "createdOn": "Erstellt am"
+  },
+
+  "groupSettingsModal": {
+    "title": "Gruppeneinstellungen",
+    "groupName": "Gruppenname",
+    "namePlaceholder": "Gruppenname",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "errSaveFailed": "Gruppeneinstellungen konnten nicht gespeichert werden"
+  },
+
   "channelSidebar": {
     "title": "Kanäle", "newChannel": "Neuer Kanal",
     "backToChat": "Zurück zum Chat", "collapseSidebar": "Seitenleiste einklappen",
@@ -361,6 +385,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "Gruppe konnte nicht verlassen werden",
     "friendRequestSent": "Freundschaftsanfrage gesendet",
     "friendRequestFailed": "Senden der Freundschaftsanfrage fehlgeschlagen",
     "friendRequestNotSent": "Freundschaftsanfrage konnte nicht gesendet werden",

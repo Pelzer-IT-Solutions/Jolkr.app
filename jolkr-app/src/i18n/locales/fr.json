@@ -250,6 +250,30 @@
     "reportUser": "Signaler l'utilisateur"
   },
 
+  "groupContextMenu": {
+    "info": "Infos du groupe",
+    "mute": "Désactiver le groupe",
+    "unmute": "Activer le groupe",
+    "edit": "Modifier le groupe",
+    "leave": "Quitter le groupe",
+    "members": "{count} membres"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "Infos du groupe {name}",
+    "members": "{count} membres",
+    "createdOn": "Créé le"
+  },
+
+  "groupSettingsModal": {
+    "title": "Paramètres du groupe",
+    "groupName": "Nom du groupe",
+    "namePlaceholder": "Nom du groupe",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "errSaveFailed": "Échec de l'enregistrement des paramètres du groupe"
+  },
+
   "channelSidebar": {
     "title": "Canaux", "newChannel": "Nouveau canal",
     "backToChat": "Retour au chat", "collapseSidebar": "Réduire la barre",
@@ -361,6 +385,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "Échec du départ du groupe",
     "friendRequestSent": "Demande d'ami envoyée",
     "friendRequestFailed": "Échec de l'envoi de la demande d'ami",
     "friendRequestNotSent": "La demande d'ami n'a pas pu être envoyée",

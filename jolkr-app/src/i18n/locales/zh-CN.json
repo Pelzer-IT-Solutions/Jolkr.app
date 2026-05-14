@@ -249,6 +249,30 @@
     "reportUser": "举报用户"
   },
 
+  "groupContextMenu": {
+    "info": "群组信息",
+    "mute": "静音群组",
+    "unmute": "取消静音",
+    "edit": "编辑群组",
+    "leave": "退出群组",
+    "members": "{count} 位成员"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "{name} 群组信息",
+    "members": "{count} 位成员",
+    "createdOn": "创建于"
+  },
+
+  "groupSettingsModal": {
+    "title": "群组设置",
+    "groupName": "群组名称",
+    "namePlaceholder": "群组名称",
+    "save": "保存",
+    "cancel": "取消",
+    "errSaveFailed": "无法保存群组设置"
+  },
+
   "channelSidebar": {
     "title": "频道", "newChannel": "新频道",
     "backToChat": "返回聊天", "collapseSidebar": "收起侧边栏",
@@ -359,6 +383,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "无法退出群组",
     "friendRequestSent": "已发送好友请求",
     "friendRequestFailed": "发送好友请求失败",
     "friendRequestNotSent": "无法发送好友请求",

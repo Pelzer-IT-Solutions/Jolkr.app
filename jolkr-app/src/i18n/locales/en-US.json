@@ -356,6 +356,30 @@
     "reportUser": "Report User"
   },
 
+  "groupContextMenu": {
+    "info": "Group Info",
+    "mute": "Mute Group",
+    "unmute": "Unmute Group",
+    "edit": "Edit Group",
+    "leave": "Leave Group",
+    "members": "{count} members"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "{name} group info",
+    "members": "{count} members",
+    "createdOn": "Created"
+  },
+
+  "groupSettingsModal": {
+    "title": "Group Settings",
+    "groupName": "Group Name",
+    "namePlaceholder": "Group name",
+    "save": "Save",
+    "cancel": "Cancel",
+    "errSaveFailed": "Failed to save group settings"
+  },
+
   "channelSidebar": {
     "title": "Channels",
     "newChannel": "New channel",
@@ -510,6 +534,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "Failed to leave group",
     "friendRequestSent": "Friend request sent",
     "friendRequestFailed": "Failed to send friend request",
     "friendRequestNotSent": "Friend request could not be sent",

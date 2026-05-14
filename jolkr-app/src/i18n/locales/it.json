@@ -250,6 +250,30 @@
     "reportUser": "Segnala utente"
   },
 
+  "groupContextMenu": {
+    "info": "Info gruppo",
+    "mute": "Silenzia gruppo",
+    "unmute": "Riattiva gruppo",
+    "edit": "Modifica gruppo",
+    "leave": "Esci dal gruppo",
+    "members": "{count} membri"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "Info gruppo {name}",
+    "members": "{count} membri",
+    "createdOn": "Creato il"
+  },
+
+  "groupSettingsModal": {
+    "title": "Impostazioni gruppo",
+    "groupName": "Nome gruppo",
+    "namePlaceholder": "Nome gruppo",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "errSaveFailed": "Salvataggio impostazioni gruppo non riuscito"
+  },
+
   "channelSidebar": {
     "title": "Canali", "newChannel": "Nuovo canale",
     "backToChat": "Torna alla chat", "collapseSidebar": "Comprimi la barra",
@@ -361,6 +385,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "Impossibile uscire dal gruppo",
     "friendRequestSent": "Richiesta di amicizia inviata",
     "friendRequestFailed": "Invio della richiesta di amicizia fallito",
     "friendRequestNotSent": "La richiesta di amicizia non è stata inviata",
