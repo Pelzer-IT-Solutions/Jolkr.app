@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { decryptChannelMessage } from '../crypto/channelKeys';
+import { enqueueDecrypt } from '../services/decryptQueue';
 import { isE2EEReady, getLocalKeys } from '../services/e2ee';
 import { tStatic } from './useT';
 
@@ -19,6 +20,9 @@ function failMsg(): string {
  * Hook that decrypts message content.
  * All messages are encrypted: content contains ciphertext, nonce indicates encryption.
  * Decryption uses the channel's shared symmetric key.
+ *
+ * Jobs are funnelled through a single LIFO queue (services/decryptQueue) so
+ * the bottom of an inverted-scroll chat clears before older history.
  */
 export function useDecryptedContent(
   content: string | null,
@@ -57,12 +61,18 @@ export function useDecryptedContent(
     // — otherwise a second message arriving while the first is mid-backoff
     // can land on `retryRef >= 5` and skip straight to failMsg().
     retryRef.current = 0;
+    let cancelJob: (() => void) | null = null;
 
-    const attempt = () => {
+    const runDecrypt = async (): Promise<void> => {
+      if (cancelled) return;
+
       if (!isE2EEReady()) {
         if (retryRef.current < 5) {
           retryRef.current++;
-          retryTimerRef.current = setTimeout(attempt, 1000);
+          retryTimerRef.current = setTimeout(() => {
+            if (cancelled) return;
+            cancelJob = enqueueDecrypt(runDecrypt);
+          }, 1000);
           return;
         }
         setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
@@ -84,24 +94,24 @@ export function useDecryptedContent(
         return;
       }
 
-      decryptChannelMessage(channelId, localKeys, content, nonce, isDm)
-        .then((plaintext) => {
-          if (!cancelled) {
-            setState({ displayContent: plaintext, isEncrypted: true, decrypting: false });
-          }
-        })
-        .catch((err) => {
-          if (!cancelled) {
-            console.warn('E2EE: Failed to decrypt message:', err);
-            setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
-          }
-        });
+      try {
+        const plaintext = await decryptChannelMessage(channelId, localKeys, content, nonce, isDm);
+        if (!cancelled) {
+          setState({ displayContent: plaintext, isEncrypted: true, decrypting: false });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('E2EE: Failed to decrypt message:', err);
+          setState({ displayContent: failMsg(), isEncrypted: true, decrypting: false });
+        }
+      }
     };
 
-    attempt();
+    cancelJob = enqueueDecrypt(runDecrypt);
 
     return () => {
       cancelled = true;
+      cancelJob?.();
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
   }, [content, nonce, isDm, channelId]);
