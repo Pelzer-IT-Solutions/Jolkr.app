@@ -583,6 +583,16 @@ export const createGroupDm = (userIds: string[], name?: string) =>
 export const closeDm = (dmId: string) =>
   request<void>(`/dms/${dmId}/close`, { method: 'POST' });
 
+// Group DM management
+export const updateDm = (dmId: string, body: { name?: string | null }) =>
+  request<DmChannel>(`/dms/${dmId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  }, 'channel');
+
+export const leaveDm = (dmId: string) =>
+  request<void>(`/dms/${dmId}/members/@me`, { method: 'DELETE' });
+
 // DM Read Receipts
 export const markDmRead = (dmId: string, messageId: string) =>
   request<void>(`/dms/${dmId}/read`, {
