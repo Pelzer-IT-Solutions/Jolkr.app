@@ -247,13 +247,9 @@ export function AppShell() {
   const handleToggleRole = useCallback(async (userId: string, roleId: string, hasRole: boolean) => {
     if (!activeServerId) return
     try {
-      if (hasRole) {
-        await api.removeRole(activeServerId, roleId, userId)
-      } else {
-        await api.assignRole(activeServerId, roleId, userId)
-      }
-      // Refresh members to get updated role_ids
-      useServersStore.getState().fetchMembersWithRoles(activeServerId).catch(console.warn)
+      const store = useServersStore.getState()
+      if (hasRole) await store.removeRole(activeServerId, roleId, userId)
+      else await store.assignRole(activeServerId, roleId, userId)
     } catch (err) {
       console.error('Role toggle failed:', err)
     }

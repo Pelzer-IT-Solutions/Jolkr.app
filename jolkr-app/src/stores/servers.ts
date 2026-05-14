@@ -358,13 +358,36 @@ export const useServersStore = create<ServersState>((set, get) => ({
 
   assignRole: async (serverId, roleId, userId) => {
     await api.assignRole(serverId, roleId, userId);
-    // Refetch members to update role_ids
-    get().fetchMembersWithRoles(serverId);
+    // Local role_ids patch — WS MemberUpdate will reconcile any drift but
+    // refetching the full member list per role-toggle is wasteful.
+    const current = get().members[serverId] ?? [];
+    set({
+      members: {
+        ...get().members,
+        [serverId]: current.map((m) => {
+          if (m.user_id !== userId) return m;
+          const ids = m.role_ids ?? [];
+          if (ids.includes(roleId)) return m;
+          return { ...m, role_ids: [...ids, roleId] };
+        }),
+      },
+    });
   },
 
   removeRole: async (serverId, roleId, userId) => {
     await api.removeRole(serverId, roleId, userId);
-    get().fetchMembersWithRoles(serverId);
+    const current = get().members[serverId] ?? [];
+    set({
+      members: {
+        ...get().members,
+        [serverId]: current.map((m) => {
+          if (m.user_id !== userId) return m;
+          const ids = m.role_ids ?? [];
+          if (!ids.includes(roleId)) return m;
+          return { ...m, role_ids: ids.filter((id) => id !== roleId) };
+        }),
+      },
+    });
   },
 
   applyRoleChange: (serverId, change) => {
