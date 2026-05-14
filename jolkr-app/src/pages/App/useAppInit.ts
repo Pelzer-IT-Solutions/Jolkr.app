@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useCallStore } from '../../stores/call'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useMessagesStore } from '../../stores/messages'
+import { useNotificationSettingsStore } from '../../stores/notification-settings'
 import { usePresenceStore } from '../../stores/presence'
 import { useServersStore } from '../../stores/servers'
 import { useThreadsStore } from '../../stores/threads'
@@ -145,11 +146,12 @@ export function useAppInit() {
       const urlServerId = path.match(/\/servers\/([^/]+)/)?.[1]
       const urlChannelId = path.match(/\/servers\/[^/]+\/channels\/([^/]+)/)?.[1]
 
-      // Fetch servers, DMs, and GIF favorites in parallel
+      // Fetch servers, DMs, GIF favorites, and notification settings in parallel
       const [, dms] = await Promise.all([
         fetchServers(),
         api.getDms(),
         useGifFavoritesStore.getState().load(),
+        useNotificationSettingsStore.getState().load(),
       ])
       if (cancelled) return
 
