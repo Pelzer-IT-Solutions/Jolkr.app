@@ -223,10 +223,14 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const renderedCats = dragLayout?.cats ?? baseCats
   const renderedUncat = dragLayout?.uncat ?? baseUncat
 
-  const channelMap: Record<string, ChannelDisplay> = useMemo(() => ({
+  // SortableCategory isn't React.memo, so memoizing this map produced no
+  // re-render savings — keep the build inline. (A memo-wrap on the child
+  // would help but requires stabilising ~25 prop identities first; out of
+  // scope for this perf pass.)
+  const channelMap: Record<string, ChannelDisplay> = {
     ...Object.fromEntries(server.channels.map(c => [c.id, c])),
     ...Object.fromEntries(tempChannels.map(c => [c.id, c])),
-  }), [server.channels, tempChannels])
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
