@@ -400,10 +400,14 @@ export function useAppInit() {
         if (!cancelled) setThreadsCount(0)
         return
       }
+      // Drive the count off the shared store cache that ThreadListPanel
+      // also reads — one fetch fans out into badge + panel without a
+      // duplicate GET per channel-switch.
       try {
-        const threads = await api.getThreads(channelId, false)
+        await useThreadsStore.getState().fetchThreadList(channelId)
         if (cancelled) return
-        setThreadsCount(threads.filter(t => !t.is_archived).length)
+        const list = useThreadsStore.getState().threadList[channelId] ?? []
+        setThreadsCount(list.length)
       } catch {
         if (cancelled) return
         setThreadsCount(0)

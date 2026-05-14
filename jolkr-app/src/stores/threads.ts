@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import * as api from '../api/client';
 import { useAuthStore } from './auth';
-import type { Message, Reaction } from '../api/types';
+import type { Message, Reaction, Thread } from '../api/types';
 
 /** Transform backend reaction format (user_ids) to frontend format (me boolean + user_ids) */
 function transformReactions(msgs: Message[]): Message[] {
@@ -26,11 +26,18 @@ interface ThreadsState {
   threadLoadingOlder: Record<string, boolean>;
   threadHasMore: Record<string, boolean>;
 
+  /** Active (non-archived) thread list keyed by channel id. Populated by
+   *  `fetchThreadList`; consumers re-call it on `threadListVersion` bumps
+   *  (ThreadCreate / ThreadUpdate WS events) so the cached list refreshes. */
+  threadList: Record<string, Thread[]>;
+
   // Counter incremented on ThreadCreate/ThreadUpdate WS events — watchers re-fetch thread lists
   threadListVersion: number;
 
   fetchThreadMessages: (threadId: string) => Promise<void>;
   fetchOlderThreadMessages: (threadId: string) => Promise<void>;
+  /** Fetch and cache the non-archived thread list for a channel. */
+  fetchThreadList: (channelId: string) => Promise<void>;
   sendThreadMessage: (threadId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   addThreadMessage: (threadId: string, message: Message) => void;
   updateThreadMessage: (threadId: string, message: Message) => void;
@@ -47,7 +54,19 @@ export const useThreadsStore = create<ThreadsState>((set, get) => ({
   threadLoading: {},
   threadLoadingOlder: {},
   threadHasMore: {},
+  threadList: {},
   threadListVersion: 0,
+
+  fetchThreadList: async (channelId) => {
+    try {
+      const list = await api.getThreads(channelId, false);
+      // Backend may include archived even when include_archived=false in
+      // some older builds — filter defensively.
+      set({ threadList: { ...get().threadList, [channelId]: list.filter((t) => !t.is_archived) } });
+    } catch {
+      set({ threadList: { ...get().threadList, [channelId]: [] } });
+    }
+  },
 
   fetchThreadMessages: async (threadId) => {
     if (get().threadLoading[threadId]) return;
@@ -156,6 +175,7 @@ export const useThreadsStore = create<ThreadsState>((set, get) => ({
       threadLoading: {},
       threadLoadingOlder: {},
       threadHasMore: {},
+      threadList: {},
       threadListVersion: 0,
     });
   },
