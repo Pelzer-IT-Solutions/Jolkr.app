@@ -36,7 +36,10 @@ interface MessagesState {
   editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean, nonce?: string) => Promise<void>;
   deleteMessage: (messageId: string, channelId: string, isDm?: boolean) => Promise<void>;
   addMessage: (channelId: string, message: Message) => void;
-  updateMessage: (channelId: string, message: Message) => void;
+  /** Patch a message by id. Pass full Message for replace, or `{ id, …partial }`
+   *  for a partial merge — undefined fields are skipped so concurrent WS events
+   *  (e.g. reactions) aren't clobbered by an unrelated patch. */
+  updateMessage: (channelId: string, patch: Pick<Message, 'id'> & Partial<Message>) => void;
   removeMessage: (channelId: string, messageId: string) => void;
   updateReactions: (channelId: string, messageId: string, reactions: Reaction[]) => void;
   /** Optimistic pin/unpin with rollback. Resolves `true` on BE success.
@@ -143,14 +146,14 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     set({ messages: { ...get().messages, [channelId]: [...current, message] } });
   },
 
-  updateMessage: (channelId, message) => {
+  updateMessage: (channelId, patch) => {
     const current = get().messages[channelId] ?? [];
     set({
       messages: {
         ...get().messages,
         [channelId]: current.map((m) =>
-          m.id === message.id
-            ? { ...m, ...message, reactions: message.reactions !== undefined ? message.reactions : m.reactions }
+          m.id === patch.id
+            ? { ...m, ...patch, reactions: patch.reactions !== undefined ? patch.reactions : m.reactions }
             : m,
         ),
       },
@@ -188,7 +191,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     // Optimistic — reactions: undefined preserves whatever the merge logic
     // in updateMessage already has, so a concurrent reaction WS event isn't
     // overwritten by the pin toggle.
-    get().updateMessage(channelId, { ...msg, is_pinned: pinned, reactions: undefined } as Message);
+    get().updateMessage(channelId, { id: messageId, is_pinned: pinned });
     try {
       if (pinned) {
         if (isDm) await api.pinDmMessage(channelId, messageId);
@@ -199,13 +202,9 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       }
       return true;
     } catch {
-      // Revert against whatever the latest store state is — a concurrent
-      // WS event may have already mutated the message.
-      const fresh = get().messages[channelId] ?? [];
-      const revertMsg = fresh.find((m) => m.id === messageId);
-      if (revertMsg) {
-        get().updateMessage(channelId, { ...revertMsg, is_pinned: previousPinned, reactions: undefined } as Message);
-      }
+      // Revert against the latest store state — a concurrent WS event may
+      // have mutated other fields, so the rollback is targeted at is_pinned.
+      get().updateMessage(channelId, { id: messageId, is_pinned: previousPinned });
       return false;
     }
   },
