@@ -1,17 +1,17 @@
-import { useState } from 'react';
 import { Mic, MicOff, Video, VideoOff, RefreshCw, PhoneOff, Minimize2 } from 'lucide-react';
-import { useVoiceStore } from '../../stores/voice';
-import { useCallStore } from '../../stores/call';
-import { useAuthStore } from '../../stores/auth';
-import { useViewport } from '../../hooks/useViewport';
 import { useT } from '../../hooks/useT';
-import { VideoTile } from '../VideoTile/VideoTile';
+import { useViewport } from '../../hooks/useViewport';
+import { useAuthStore } from '../../stores/auth';
+import { useCallStore } from '../../stores/call';
+import { useVoiceStore } from '../../stores/voice';
 import { CallPipWindow } from '../CallPipWindow/CallPipWindow';
+import { VideoTile } from '../VideoTile/VideoTile';
 import s from './CallWindow.module.css';
 
 export function CallWindow() {
   const { t } = useT();
-  const [isMinimized, setIsMinimized] = useState(false);
+  const isMinimized      = useCallStore((st) => st.isCallMinimized);
+  const setCallMinimized = useCallStore((st) => st.setCallMinimized);
 
   const callType        = useVoiceStore((st) => st.callType);
   const connectionState = useVoiceStore((st) => st.connectionState);
@@ -46,7 +46,7 @@ export function CallWindow() {
         remoteIsMuted={remote?.isMuted ?? false}
         remoteIsCameraOn={(remote?.hasVideo ?? false) && remoteStream != null}
         remoteIsSpeaking={remote?.isSpeaking ?? false}
-        onExpand={() => setIsMinimized(false)}
+        onExpand={() => setCallMinimized(false)}
         onHangup={endActiveCall}
       />
     );
@@ -114,7 +114,7 @@ export function CallWindow() {
 
         <button
           className={s.ctrlBtn}
-          onClick={() => setIsMinimized(true)}
+          onClick={() => setCallMinimized(true)}
           title={t('call.window.minimize')}
           aria-label={t('call.window.minimizeAria')}
         >

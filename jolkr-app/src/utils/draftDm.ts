@@ -34,19 +34,6 @@ export function buildDraftDm(memberIds: string[], name?: string | null): DmChann
     name: name ?? null,
     members: sorted,
     created_at: new Date().toISOString(),
-    last_message: null,
   }
 }
 
-/** True if `dm` is a 1-on-1 draft whose other participant matches `userId`. */
-export function isDraftMatching1on1(dm: DmChannel, currentUserId: string, otherUserId: string): boolean {
-  if (!isDraftDmId(dm.id) || dm.is_group) return false
-  const others = dm.members.filter(id => id !== currentUserId)
-  return others.length === 1 && others[0] === otherUserId
-}
-
-/** Find a draft already in the list that matches the desired member set. */
-export function findDraftForMembers(list: DmChannel[], memberIds: string[]): DmChannel | undefined {
-  const target = makeDraftDmId(memberIds)
-  return list.find(d => d.id === target)
-}

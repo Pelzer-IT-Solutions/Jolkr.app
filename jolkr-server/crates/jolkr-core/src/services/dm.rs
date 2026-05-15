@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use tracing::warn;
@@ -9,10 +10,12 @@ use jolkr_common::JolkrError;
 use jolkr_db::models::DmMessageRow;
 use jolkr_db::repo::{DmRepo, FriendshipRepo, UserRepo};
 
-use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, attachment_proxy_url};
+use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, ReactionAggregateByMsg, attachment_proxy_url};
 
 /// Lightweight last-message preview included in the DM channel list.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub struct DmLastMessage {
     /// Unique identifier.
     pub id: Uuid,
@@ -27,7 +30,9 @@ pub struct DmLastMessage {
 }
 
 /// Public information about `dmchannel`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "DmChannel")]
 pub struct DmChannelInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -41,6 +46,7 @@ pub struct DmChannelInfo {
     pub created_at: DateTime<Utc>,
     /// Last message.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub last_message: Option<DmLastMessage>,
 }
 
@@ -165,6 +171,7 @@ pub struct DmService;
 
 impl DmService {
     /// Open (or get existing) DM with another user.
+    #[tracing::instrument(skip(pool))]
     pub async fn open_dm(
         pool: &PgPool,
         caller_id: Uuid,
@@ -203,7 +210,7 @@ impl DmService {
         // filters the channel out for the caller and the new conversation
         // never shows up on the initiator's side.
         DmRepo::reopen_dm(pool, channel.id).await.ok();
-        let members = DmRepo::get_dm_members(pool, channel.id).await?;
+        let members = DmRepo::list_dm_members(pool, channel.id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
         Ok(DmChannelInfo {
@@ -217,6 +224,7 @@ impl DmService {
     }
 
     /// List all DM channels for the caller (batch loads members).
+    #[tracing::instrument(skip(pool))]
     pub async fn list_dms(
         pool: &PgPool,
         user_id: Uuid,
@@ -228,8 +236,8 @@ impl DmService {
         // something they removed from their own view.
         let channel_ids: Vec<Uuid> = channels.iter().map(|ch| ch.id).collect();
         let (all_members, last_messages) = tokio::try_join!(
-            DmRepo::get_members_for_channels(pool, &channel_ids),
-            DmRepo::get_last_messages_for_user(pool, &channel_ids, Some(user_id)),
+            DmRepo::list_members_for_channels(pool, &channel_ids),
+            DmRepo::list_last_messages_for_user(pool, &channel_ids, Some(user_id)),
         )?;
 
         let result = channels
@@ -266,6 +274,7 @@ impl DmService {
     }
 
     /// Create a group DM with multiple users.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_group_dm(
         pool: &PgPool,
         caller_id: Uuid,
@@ -337,6 +346,7 @@ impl DmService {
     }
 
     /// Add a member to a group DM.
+    #[tracing::instrument(skip(pool))]
     pub async fn add_member(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -363,7 +373,7 @@ impl DmService {
 
         DmRepo::add_member(pool, dm_channel_id, target_user_id).await?;
 
-        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let members = DmRepo::list_dm_members(pool, dm_channel_id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
         Ok(DmChannelInfo {
@@ -377,6 +387,7 @@ impl DmService {
     }
 
     /// Leave a group DM.
+    #[tracing::instrument(skip(pool))]
     pub async fn leave_group(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -392,7 +403,7 @@ impl DmService {
 
         DmRepo::remove_member(pool, dm_channel_id, caller_id).await?;
 
-        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let members = DmRepo::list_dm_members(pool, dm_channel_id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
         Ok(DmChannelInfo {
@@ -406,6 +417,7 @@ impl DmService {
     }
 
     /// Update a group DM (name).
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_group(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -432,7 +444,7 @@ impl DmService {
 
         let updated = DmRepo::update_group_dm(pool, dm_channel_id, name.as_deref()).await?;
 
-        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let members = DmRepo::list_dm_members(pool, dm_channel_id).await?;
         let member_ids: Vec<Uuid> = members.iter().map(|m| m.user_id).collect();
 
         Ok(DmChannelInfo {
@@ -446,6 +458,7 @@ impl DmService {
     }
 
     /// Close (hide) a DM channel for the caller.
+    #[tracing::instrument(skip(pool))]
     pub async fn close_dm(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -460,6 +473,7 @@ impl DmService {
 
     /// Mark messages as read up to a given message ID.
     /// Returns `true` if the read receipt should be broadcast (user has `show_read_receipts` enabled).
+    #[tracing::instrument(skip(pool))]
     pub async fn mark_as_read(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -486,6 +500,7 @@ impl DmService {
     }
 
     /// Send a message in a DM channel.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn send_message(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -514,7 +529,7 @@ impl DmService {
         }
 
         // Block messages to system users (announcement-only DMs)
-        let members = DmRepo::get_dm_members(pool, dm_channel_id).await?;
+        let members = DmRepo::list_dm_members(pool, dm_channel_id).await?;
         let other_member_ids: Vec<Uuid> = members
             .iter()
             .filter(|m| m.user_id != author_id)
@@ -545,7 +560,10 @@ impl DmService {
         let nonce = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+            .map_err(|e| {
+                warn!(?e, "base64 decode of DM message nonce failed");
+                JolkrError::Validation("Invalid base64 for nonce".into())
+            })?;
 
         let msg_id = Uuid::new_v4();
         let row = DmRepo::send_message(
@@ -566,6 +584,7 @@ impl DmService {
     }
 
     /// Edit a DM message.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn edit_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -593,13 +612,17 @@ impl DmService {
         let nonce_bytes = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+            .map_err(|e| {
+                warn!(?e, "base64 decode of DM edit nonce failed");
+                JolkrError::Validation("Invalid base64 for nonce".into())
+            })?;
 
         let row = DmRepo::update_message(pool, message_id, &content, nonce_bytes.as_deref()).await?;
         Ok(DmMessageInfo::from(row))
     }
 
     /// Delete a DM message (only author can delete).
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -619,6 +642,7 @@ impl DmService {
     /// me" delete option and for shift-deleting messages from other users.
     /// Returns the DM channel id so the route can broadcast to the user's
     /// other sessions.
+    #[tracing::instrument(skip(pool))]
     pub async fn hide_message_for_me(
         pool: &PgPool,
         message_id: Uuid,
@@ -636,6 +660,7 @@ impl DmService {
     /// side panel. Membership is enforced and per-user hidden messages are
     /// excluded so the caller never sees an attachment from a message they
     /// removed from their view.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_attachments(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -656,6 +681,7 @@ impl DmService {
             .into_iter()
             .map(|a| AttachmentInfo {
                 id: a.id,
+                message_id: Some(a.dm_message_id),
                 filename: a.filename,
                 content_type: a.content_type,
                 size_bytes: a.size_bytes,
@@ -664,8 +690,9 @@ impl DmService {
             .collect())
     }
 
-    /// Get messages in a DM channel with cursor pagination (batch loads attachments).
-    pub async fn get_messages(
+    /// List messages in a DM channel with cursor pagination (batch loads attachments).
+    #[tracing::instrument(skip(pool, query))]
+    pub async fn list_messages(
         pool: &PgPool,
         dm_channel_id: Uuid,
         caller_id: Uuid,
@@ -675,8 +702,8 @@ impl DmService {
             return Err(JolkrError::Forbidden);
         }
 
-        let limit = query.limit.unwrap_or(50).min(100).max(1);
-        let rows = DmRepo::get_messages(pool, dm_channel_id, caller_id, query.before, limit).await?;
+        let limit = query.limit.unwrap_or(50).clamp(1, 100);
+        let rows = DmRepo::list_messages(pool, dm_channel_id, caller_id, query.before, limit).await?;
         let mut messages: Vec<DmMessageInfo> = rows.into_iter().map(DmMessageInfo::from).collect();
 
         // Batch load all attachments in one query
@@ -692,6 +719,7 @@ impl DmService {
             if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
                 msg.attachments.push(AttachmentInfo {
                     id: att.id,
+                    message_id: None,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
@@ -710,7 +738,7 @@ impl DmService {
         };
         {
             use std::collections::HashMap;
-            let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
+            let mut by_msg: ReactionAggregateByMsg = HashMap::new();
             for r in all_reactions {
                 let (order, map) = by_msg.entry(r.dm_message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
                 if !map.contains_key(&r.emoji) {
@@ -765,7 +793,7 @@ impl DmService {
     // ── Enrichment helper ──────────────────────────────────────────
 
     /// Enrich DM messages with reactions, attachments, and embeds.
-    async fn enrich_dm_messages(pool: &PgPool, messages: &mut Vec<DmMessageInfo>) -> Result<(), JolkrError> {
+    async fn enrich_dm_messages(pool: &PgPool, messages: &mut [DmMessageInfo]) -> Result<(), JolkrError> {
         if messages.is_empty() { return Ok(()); }
 
         let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
@@ -776,6 +804,7 @@ impl DmService {
             if let Some(msg) = messages.iter_mut().find(|m| m.id == att.dm_message_id) {
                 msg.attachments.push(AttachmentInfo {
                     id: att.id,
+                    message_id: None,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
@@ -789,7 +818,7 @@ impl DmService {
         {
             use std::collections::HashMap;
             // Track per-message: emoji insertion order + aggregated data
-            let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
+            let mut by_msg: ReactionAggregateByMsg = HashMap::new();
             for r in all_reactions {
                 let (order, map) = by_msg.entry(r.dm_message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
                 if !map.contains_key(&r.emoji) {
@@ -838,6 +867,7 @@ impl DmService {
     // ── Pins ─────────────────────────────────────────────────────────
 
     /// Pin a message in a DM channel.
+    #[tracing::instrument(skip(pool))]
     pub async fn pin_message(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -862,6 +892,7 @@ impl DmService {
     }
 
     /// Unpin a message in a DM channel.
+    #[tracing::instrument(skip(pool))]
     pub async fn unpin_message(
         pool: &PgPool,
         dm_channel_id: Uuid,
@@ -882,6 +913,7 @@ impl DmService {
     }
 
     /// List pinned messages in a DM channel (enriched with attachments, reactions, embeds).
+    #[tracing::instrument(skip(pool))]
     pub async fn list_pinned(
         pool: &PgPool,
         dm_channel_id: Uuid,

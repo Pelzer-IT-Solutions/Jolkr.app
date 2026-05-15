@@ -72,19 +72,19 @@ impl DmRepo {
         Ok(rows)
     }
 
-    /// Get the last message for each of the given DM channels in a single query.
+    /// List the last message for each of the given DM channels in a single query.
     /// When `caller_id` is supplied, messages hidden by that user are skipped
     /// so the sidebar preview never shows something the user has hidden.
-    pub async fn get_last_messages(
+    pub async fn list_last_messages(
         pool: &PgPool,
         channel_ids: &[Uuid],
     ) -> Result<Vec<DmMessageRow>, JolkrError> {
-        Self::get_last_messages_for_user(pool, channel_ids, None).await
+        Self::list_last_messages_for_user(pool, channel_ids, None).await
     }
 
-    /// Variant of `get_last_messages` that filters out messages the caller has
+    /// Variant of `list_last_messages` that filters out messages the caller has
     /// hidden via `dm_message_hidden_for_user`. Pass `None` to skip the filter.
-    pub async fn get_last_messages_for_user(
+    pub async fn list_last_messages_for_user(
         pool: &PgPool,
         channel_ids: &[Uuid],
         caller_id: Option<Uuid>,
@@ -161,8 +161,8 @@ impl DmRepo {
         Ok(())
     }
 
-    /// Fetches dm members.
-    pub async fn get_dm_members(
+    /// Lists dm members.
+    pub async fn list_dm_members(
         pool: &PgPool,
         dm_channel_id: Uuid,
     ) -> Result<Vec<DmMemberRow>, JolkrError> {
@@ -332,8 +332,8 @@ impl DmRepo {
         Ok(())
     }
 
-    /// Get read states (`user_id`, `last_read_message_id`) for all members of a DM channel.
-    pub async fn get_read_states(
+    /// List read states (`user_id`, `last_read_message_id`) for all members of a DM channel.
+    pub async fn list_read_states(
         pool: &PgPool,
         dm_channel_id: Uuid,
     ) -> Result<Vec<(Uuid, Option<Uuid>)>, JolkrError> {
@@ -395,15 +395,15 @@ impl DmRepo {
         Ok(row)
     }
 
-    /// Fetches messages, excluding any the caller has hidden for themselves.
-    pub async fn get_messages(
+    /// Lists messages, excluding any the caller has hidden for themselves.
+    pub async fn list_messages(
         pool: &PgPool,
         dm_channel_id: Uuid,
         caller_id: Uuid,
         before: Option<DateTime<Utc>>,
         limit: i64,
     ) -> Result<Vec<DmMessageRow>, JolkrError> {
-        let limit = limit.min(100).max(1);
+        let limit = limit.clamp(1, 100);
         let before = before.unwrap_or_else(Utc::now);
 
         let rows = sqlx::query_as::<_, DmMessageRow>(
@@ -551,8 +551,8 @@ impl DmRepo {
         Ok(rows)
     }
 
-    /// Get members for multiple DM channels in a single query.
-    pub async fn get_members_for_channels(
+    /// List members for multiple DM channels in a single query.
+    pub async fn list_members_for_channels(
         pool: &PgPool,
         channel_ids: &[Uuid],
     ) -> Result<Vec<DmMemberRow>, JolkrError> {

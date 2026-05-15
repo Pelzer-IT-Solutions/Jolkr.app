@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, useCallback, type RefObject } from 'react';
+import { takeover, release } from './playerRegistry';
 import type {
   PlayerCore as PlayerCoreType,
   BasePlaylistItem,
   TimeState,
 } from '@nomercy-entertainment/nomercy-music-player';
 import type AudioMotionAnalyzerType from 'audiomotion-analyzer';
-import { takeover, release } from './playerRegistry';
 
 interface NMMusicState {
   isPlaying: boolean;

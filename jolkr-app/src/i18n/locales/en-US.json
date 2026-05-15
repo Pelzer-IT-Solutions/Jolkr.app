@@ -89,6 +89,9 @@
       "one": "{name} is typing…",
       "two": "{a} and {b} are typing…",
       "many": "Several people are typing…"
+    },
+    "jump": {
+      "notFound": "Couldn't find that message."
     }
   },
 
@@ -234,7 +237,9 @@
     "noPinned": "No pinned messages yet",
     "sharedFiles": "Shared Files",
     "noFiles": "No shared files yet",
-    "decrypting": "Decrypting…"
+    "decrypting": "Decrypting…",
+    "jumpToMessage": "Jump to message",
+    "downloadFile": "Download"
   },
 
   "newDmModal": {
@@ -354,6 +359,31 @@
     "assignRole": "Assign Role",
     "inviteToServer": "Invite to Server",
     "reportUser": "Report User"
+  },
+
+  "groupContextMenu": {
+    "info": "Group Info",
+    "mute": "Mute Group",
+    "unmute": "Unmute Group",
+    "edit": "Edit Group",
+    "leave": "Leave Group",
+    "members": "{count} members"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "{name} group info",
+    "members": "{count} members",
+    "createdOn": "Created",
+    "you": "{name} (You)"
+  },
+
+  "groupSettingsModal": {
+    "title": "Group Settings",
+    "groupName": "Group Name",
+    "namePlaceholder": "Group name",
+    "save": "Save",
+    "cancel": "Cancel",
+    "errSaveFailed": "Failed to save group settings"
   },
 
   "channelSidebar": {
@@ -510,6 +540,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "Failed to leave group",
     "friendRequestSent": "Friend request sent",
     "friendRequestFailed": "Failed to send friend request",
     "friendRequestNotSent": "Friend request could not be sent",

@@ -4,11 +4,13 @@ use uuid::Uuid;
 use jolkr_core::services::dm::{DmChannelInfo, DmMessageInfo};
 use jolkr_core::services::message::MessageInfo;
 
+/// HTTP response for a single DM channel.
 #[derive(Serialize)]
 pub(crate) struct DmChannelResponse {
     pub channel: DmChannelInfo,
 }
 
+/// HTTP response for a list of the caller's DM channels.
 #[derive(Serialize)]
 pub(crate) struct DmChannelsResponse {
     pub channels: Vec<DmChannelInfo>,

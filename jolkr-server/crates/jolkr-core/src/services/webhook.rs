@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -10,7 +11,9 @@ use jolkr_db::repo::{ChannelRepo, MemberRepo, RoleRepo, ServerRepo, WebhookRepo}
 use crate::services::message::MessageInfo;
 
 /// Webhook info (hides token for list/get)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Webhook")]
 pub struct WebhookInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -26,6 +29,7 @@ pub struct WebhookInfo {
     pub avatar_url: Option<String>,
     /// Opaque token string.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub token: Option<String>,
 }
 
@@ -89,6 +93,7 @@ impl WebhookService {
     }
 
     /// Create a webhook. Requires `MANAGE_WEBHOOKS` permission.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_webhook(
         pool: &PgPool,
         channel_id: Uuid,
@@ -101,7 +106,10 @@ impl WebhookService {
         // Check permission
         if server.owner_id != caller_id {
             let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
-                .await.map_err(|_| JolkrError::Forbidden)?;
+                .await.map_err(|e| {
+                    tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while creating webhook");
+                    JolkrError::Forbidden
+                })?;
             let perms = RoleRepo::compute_channel_permissions(
                 pool, channel.server_id, channel_id, member.id,
             ).await?;
@@ -128,6 +136,7 @@ impl WebhookService {
     }
 
     /// List webhooks for a channel.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_webhooks(
         pool: &PgPool,
         channel_id: Uuid,
@@ -135,13 +144,17 @@ impl WebhookService {
     ) -> Result<Vec<WebhookInfo>, JolkrError> {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         MemberRepo::get_member(pool, channel.server_id, caller_id)
-            .await.map_err(|_| JolkrError::Forbidden)?;
+            .await.map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while listing webhooks");
+                JolkrError::Forbidden
+            })?;
 
         let rows = WebhookRepo::list_for_channel(pool, channel_id).await?;
         Ok(rows.into_iter().map(|r| WebhookInfo::from_row(r, None)).collect())
     }
 
     /// Update a webhook.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_webhook(
         pool: &PgPool,
         webhook_id: Uuid,
@@ -153,7 +166,10 @@ impl WebhookService {
 
         if server.owner_id != caller_id {
             let member = MemberRepo::get_member(pool, webhook.server_id, caller_id)
-                .await.map_err(|_| JolkrError::Forbidden)?;
+                .await.map_err(|e| {
+                    tracing::warn!(?e, server_id = %webhook.server_id, caller_id = %caller_id, "member lookup failed while updating webhook");
+                    JolkrError::Forbidden
+                })?;
             let perms = RoleRepo::compute_channel_permissions(
                 pool, webhook.server_id, webhook.channel_id, member.id,
             ).await?;
@@ -174,6 +190,7 @@ impl WebhookService {
     }
 
     /// Delete a webhook.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_webhook(
         pool: &PgPool,
         webhook_id: Uuid,
@@ -184,7 +201,10 @@ impl WebhookService {
 
         if server.owner_id != caller_id {
             let member = MemberRepo::get_member(pool, webhook.server_id, caller_id)
-                .await.map_err(|_| JolkrError::Forbidden)?;
+                .await.map_err(|e| {
+                    tracing::warn!(?e, server_id = %webhook.server_id, caller_id = %caller_id, "member lookup failed while deleting webhook");
+                    JolkrError::Forbidden
+                })?;
             let perms = RoleRepo::compute_channel_permissions(
                 pool, webhook.server_id, webhook.channel_id, member.id,
             ).await?;
@@ -199,6 +219,7 @@ impl WebhookService {
     }
 
     /// Regenerate a webhook's token.
+    #[tracing::instrument(skip(pool))]
     pub async fn regenerate_token(
         pool: &PgPool,
         webhook_id: Uuid,
@@ -209,7 +230,10 @@ impl WebhookService {
 
         if server.owner_id != caller_id {
             let member = MemberRepo::get_member(pool, webhook.server_id, caller_id)
-                .await.map_err(|_| JolkrError::Forbidden)?;
+                .await.map_err(|e| {
+                    tracing::warn!(?e, server_id = %webhook.server_id, caller_id = %caller_id, "member lookup failed while regenerating webhook token");
+                    JolkrError::Forbidden
+                })?;
             let perms = RoleRepo::compute_channel_permissions(
                 pool, webhook.server_id, webhook.channel_id, member.id,
             ).await?;
@@ -225,6 +249,7 @@ impl WebhookService {
 
     /// Execute a webhook — create a message as the webhook identity.
     /// This is unauthenticated; the token proves authorization.
+    #[tracing::instrument(skip(pool, token, req))]
     pub async fn execute_webhook(
         pool: &PgPool,
         webhook_id: Uuid,

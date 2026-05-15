@@ -187,14 +187,12 @@ pub(crate) fn run_sfu(
                                 Event::Connected => {
                                     info!("WebRTC connected: {}", client.user_id);
                                 }
-                                Event::MediaData(data) => {
-                                    if !client.is_muted {
-                                        props.push((
-                                            client.user_id,
-                                            client.channel_id,
-                                            data,
-                                        ));
-                                    }
+                                Event::MediaData(data) if !client.is_muted => {
+                                    props.push((
+                                        client.user_id,
+                                        client.channel_id,
+                                        data,
+                                    ));
                                 }
                                 _ => {}
                             },

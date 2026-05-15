@@ -1,38 +1,65 @@
-import { useState, useEffect } from 'react'
 import { X, ArrowLeft, FileText, Download } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import * as api from '../../api/client'
-import type { Message, User, Attachment } from '../../api/types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import { useT } from '../../hooks/useT'
 import { rewriteStorageUrl } from '../../platform/config'
+import { loadPinnedMessages, peekPinnedMessages, setPinnedMessagesCache } from '../../services/pinnedCache'
+import { createTtlCache } from '../../utils/cache'
 import s from './DMInfoPanel.module.css'
+import type { Message, User, Attachment } from '../../api/types'
+
+// Attachment list is panel-specific; reuse the shared pinned cache from
+// services/pinnedCache so PinnedMessagesPanel and useAppHandlers see the
+// same data for the same dmId+version key.
+const filesCache = createTtlCache<string, Attachment[]>({ ttl: 60_000, maxEntries: 30 })
 
 interface Props {
   open: boolean
   dmId: string
   onUnpin?: (messageId: string) => void
+  /** Click on a pinned-message row or a shared-file row → jump the chat to that message. */
+  onJumpToMessage?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number
   onMobileClose?: () => void
 }
 
-function PinnedItem({ msg, dmId, onUnpin, users }: {
-  msg: Message; dmId: string; onUnpin?: (id: string) => void; users?: Map<string, User>
+function PinnedItem({ msg, dmId, onUnpin, onJumpToMessage, users }: {
+  msg: Message
+  dmId: string
+  onUnpin?: (id: string) => void
+  onJumpToMessage?: (id: string) => void
+  users?: Map<string, User>
 }) {
   const { t } = useT()
   const { displayContent, decrypting } = useDecryptedContent(msg.content, msg.nonce, true, dmId)
   const author = users?.get(msg.author_id)
   const authorName = author?.display_name ?? author?.username ?? t('common.unknown')
+  const clickable = !!onJumpToMessage
 
   return (
-    <div className={s.pinnedItem}>
+    <div
+      className={`${s.pinnedItem} ${clickable ? s.pinnedItemClickable : ''}`}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? () => onJumpToMessage(msg.id) : undefined}
+      onKeyDown={clickable ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onJumpToMessage(msg.id) }
+      } : undefined}
+    >
       <div className={s.pinnedAuthor}>{authorName}</div>
       <div className={s.pinnedContent} dir="auto">
         {decrypting ? t('dmInfoPanel.decrypting') : (displayContent || '').slice(0, 200)}
       </div>
       {onUnpin && (
-        <button className={s.unpinBtn} title={t('dmInfoPanel.unpin')} aria-label={t('dmInfoPanel.unpin')} onClick={() => onUnpin(msg.id)}>
+        <button
+          className={s.unpinBtn}
+          title={t('dmInfoPanel.unpin')}
+          aria-label={t('dmInfoPanel.unpin')}
+          onClick={(e) => { e.stopPropagation(); onUnpin(msg.id) }}
+        >
           <X size={12} strokeWidth={1.5} />
         </button>
       )}
@@ -48,17 +75,45 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
-function SharedFileRow({ att }: { att: Attachment }) {
-  const href = rewriteStorageUrl(att.url) ?? att.url
+function SharedFileRow({ att, onJumpToMessage }: {
+  att: Attachment
+  onJumpToMessage?: (messageId: string) => void
+}) {
+  const { t } = useT()
+  // Jump-target only present when the wire carries `message_id` (newer BE)
+  // AND the panel was wired with a jump-handler. Older BE responses fall
+  // back to a read-only row that still exposes the download chip.
+  const targetId = att.message_id
+  const jumpEnabled = !!(targetId && onJumpToMessage)
+  const downloadHref = rewriteStorageUrl(att.url) ?? att.url
   return (
-    <a className={s.fileItem} href={href} target="_blank" rel="noopener noreferrer" download={att.filename}>
-      <FileText size={16} strokeWidth={1.5} className={s.fileIcon} />
-      <div className={s.fileMeta}>
-        <span className={`${s.fileName} txt-tiny txt-medium txt-truncate`}>{att.filename}</span>
-        <span className={`${s.fileSize} txt-tiny`}>{formatSize(att.size_bytes)}</span>
-      </div>
-      <Download size={12} strokeWidth={1.5} className={s.fileDownload} />
-    </a>
+    <div className={`${s.fileItem} ${jumpEnabled ? s.fileItemClickable : ''}`}>
+      <button
+        type="button"
+        className={s.fileMain}
+        disabled={!jumpEnabled}
+        onClick={jumpEnabled ? () => onJumpToMessage(targetId) : undefined}
+        title={jumpEnabled ? t('dmInfoPanel.jumpToMessage') : att.filename}
+      >
+        <FileText size={16} strokeWidth={1.5} className={s.fileIcon} />
+        <div className={s.fileMeta}>
+          <span className={`${s.fileName} txt-tiny txt-medium txt-truncate`}>{att.filename}</span>
+          <span className={`${s.fileSize} txt-tiny`}>{formatSize(att.size_bytes)}</span>
+        </div>
+      </button>
+      <a
+        className={s.fileDownload}
+        href={downloadHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        download={att.filename}
+        onClick={(e) => e.stopPropagation()}
+        title={t('dmInfoPanel.downloadFile')}
+        aria-label={t('dmInfoPanel.downloadFile')}
+      >
+        <Download size={14} strokeWidth={1.5} />
+      </a>
+    </div>
   )
 }
 
@@ -82,7 +137,7 @@ function SkeletonLines({ count, variant = 'pinned' }: { count: number; variant?:
   )
 }
 
-export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobileClose }: Props) {
+export function DMInfoPanel({ open, dmId, onUnpin, onJumpToMessage, users, pinnedVersion, onMobileClose }: Props) {
   const { t } = useT()
   const isRevealing = useRevealAnimation(0, [open], open, 300)
   const [pinned, setPinned] = useState<Message[]>([])
@@ -104,39 +159,68 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
     const dmIdentityChanged = dmKey !== prevDmKey
     if (!open || !dmId || dmId.startsWith('draft:')) {
       setFiles([])
-    } else if (dmIdentityChanged) {
-      // Different DM (or panel just opened) — show skeleton while fetching.
-      setLoadingPins(true)
-      setLoadingFiles(true)
+    } else {
+      // Cache-hit short-circuit: warm pinned/attachment caches paint without
+      // a skeleton flash. Cold paths fall through to the effects below.
+      const cachedPins = peekPinnedMessages(dmId, true, pinnedVersion ?? 0)
+      if (cachedPins !== undefined) {
+        setPinned(cachedPins)
+        setLoadingPins(false)
+      } else if (dmIdentityChanged) {
+        setLoadingPins(true)
+      }
+      const cachedFiles = filesCache.get(dmId)
+      if (cachedFiles !== undefined) {
+        setFiles(cachedFiles)
+        setLoadingFiles(false)
+      } else if (dmIdentityChanged) {
+        setLoadingFiles(true)
+      }
     }
-    // Else: only pinnedVersion bumped — leave existing data in place; the
-    // effects below will quietly swap it for the fresh payload.
     if (dmIdentityChanged) setPrevDmKey(dmKey)
   }
 
   // Fetch pinned messages when panel becomes open or dmId changes. Drafts
-  // (`draft:…` ids) only exist locally — skip the fetch.
+  // (`draft:…` ids) only exist locally — skip the fetch. Cache-hits are
+  // resolved synchronously in the state-during-render block above.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
-    api.getDmPinnedMessages(dmId)
-      .then(setPinned)
-      .catch(() => setPinned([]))
-      .finally(() => setLoadingPins(false))
+    const version = pinnedVersion ?? 0
+    if (peekPinnedMessages(dmId, true, version) !== undefined) return
+    let cancelled = false
+    loadPinnedMessages(dmId, true, version)
+      .then(p => {
+        if (cancelled) return
+        setPinned(p)
+      })
+      .finally(() => { if (!cancelled) setLoadingPins(false) })
+    return () => { cancelled = true }
   }, [open, dmId, pinnedVersion])
 
   // Fetch shared files. Re-runs alongside pinnedVersion bumps so newly-uploaded
   // attachments show up without requiring a panel reopen.
   useEffect(() => {
     if (!open || !dmId || dmId.startsWith('draft:')) return
+    if (filesCache.get(dmId) !== undefined) return
+    let cancelled = false
     api.getDmAttachments(dmId)
-      .then(setFiles)
-      .catch(() => setFiles([]))
-      .finally(() => setLoadingFiles(false))
+      .then(f => {
+        if (cancelled) return
+        filesCache.set(dmId, f)
+        setFiles(f)
+      })
+      .catch(() => { if (!cancelled) setFiles([]) })
+      .finally(() => { if (!cancelled) setLoadingFiles(false) })
+    return () => { cancelled = true }
   }, [open, dmId, pinnedVersion])
 
   function handleUnpin(msgId: string) {
     onUnpin?.(msgId)
-    setPinned(prev => prev.filter(m => m.id !== msgId))
+    setPinned(prev => {
+      const next = prev.filter(m => m.id !== msgId)
+      setPinnedMessagesCache(dmId, true, pinnedVersion ?? 0, next)
+      return next
+    })
   }
 
   return (
@@ -160,7 +244,14 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
           <div className={`txt-tiny ${s.emptyHint}`}>{t('dmInfoPanel.noPinned')}</div>
         ) : (
           pinned.map(msg => (
-            <PinnedItem key={msg.id} msg={msg} dmId={dmId} onUnpin={onUnpin ? handleUnpin : undefined} users={users} />
+            <PinnedItem
+              key={msg.id}
+              msg={msg}
+              dmId={dmId}
+              onUnpin={onUnpin ? handleUnpin : undefined}
+              onJumpToMessage={onJumpToMessage}
+              users={users}
+            />
           ))
         )}
 
@@ -172,7 +263,9 @@ export function DMInfoPanel({ open, dmId, onUnpin, users, pinnedVersion, onMobil
         ) : files.length === 0 ? (
           <div className={`txt-tiny ${s.emptyHint}`}>{t('dmInfoPanel.noFiles')}</div>
         ) : (
-          files.map(att => <SharedFileRow key={att.id} att={att} />)
+          files.map(att => (
+            <SharedFileRow key={att.id} att={att} onJumpToMessage={onJumpToMessage} />
+          ))
         )}
       </div>
     </aside>

@@ -50,7 +50,7 @@ const statusColorClass: Record<string, string> = {
   online: s.online, idle: s.idle, dnd: s.dnd, offline: s.offline,
 }
 
-export default function Avatar({ url, name, size = 'lg', status, userId, className, color }: AvatarProps) {
+export function Avatar({ url, name, size = 'lg', status, userId, className, color }: AvatarProps) {
   // For the current user, version-hint via the auth store so every Avatar refreshes after an upload even if the caller's data is stale.
   const currentUser = useAuthStore(s => s.user)
   const versionHint = (userId && currentUser && userId === currentUser.id)

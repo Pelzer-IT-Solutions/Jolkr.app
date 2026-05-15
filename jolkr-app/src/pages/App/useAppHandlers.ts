@@ -1,31 +1,31 @@
-import { useState, useCallback, useRef } from 'react'
-import type { ReplyRef, ServerTheme } from '../../types/ui'
-import { useAuthStore } from '../../stores/auth'
-import { useServersStore } from '../../stores/servers'
-import { usePresenceStore } from '../../stores/presence'
-import { wsClient } from '../../api/ws'
+import { useCallback, useRef } from 'react'
+import { useShallow } from 'zustand/shallow'
 import * as api from '../../api/client'
-import { getLocalKeys } from '../../services/e2ee'
+import { wsClient } from '../../api/ws'
 import { encryptChannelMessage } from '../../crypto/channelKeys'
-import { orbsForHue } from '../../utils/theme'
-import { useMessagesStore } from '../../stores/messages'
-import { useVoiceStore } from '../../stores/voice'
-import { useToast } from '../../stores/toast'
-import { useUsersStore } from '../../stores/users'
-import { useUploadProgressStore } from '../../stores/uploadProgress'
-import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
-import { logErr } from '../../utils/logErr'
 import { tStatic } from '../../hooks/useT'
-
+import { getLocalKeys } from '../../services/e2ee'
+import { useAuthStore } from '../../stores/auth'
+import { useMessagesStore } from '../../stores/messages'
+import { useNotificationSettingsStore } from '../../stores/notification-settings'
+import { usePresenceStore } from '../../stores/presence'
+import { useServersStore } from '../../stores/servers'
+import { useToast } from '../../stores/toast'
+import { useUploadProgressStore } from '../../stores/uploadProgress'
+import { useUsersStore } from '../../stores/users'
+import { useVoiceStore } from '../../stores/voice'
+import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
+import { orbsForHue } from '../../utils/theme'
 import type { useAppInit } from './useAppInit'
 import type { useAppMemos } from './useAppMemos'
+import type { ReplyRef, ServerTheme } from '../../types/ui'
 
 export function useAppHandlers(
   init: ReturnType<typeof useAppInit>,
   memos: ReturnType<typeof useAppMemos>,
 ) {
   const {
-    navigate, user, membersByServer, categoriesByServer,
+    navigate, user, membersByServer,
     dmList, dmActive, activeDmId, activeServerId, activeChannelId,
     tabbedIds, setTabbedIds, setActiveServerId, setActiveChannelId,
     setDmActive, setActiveDmId, setDmList, setDmUsers,
@@ -38,13 +38,42 @@ export function useAppHandlers(
 
   const { uiServers, effectiveChannelId, currentApiMessages } = memos
 
-  // ── Muted servers (UI-only local state) ──
-  const [mutedServerIds, setMutedServerIds] = useState<string[]>([])
+  // ── Muted servers — derived from useNotificationSettingsStore so the pref
+  //    persists across reloads and syncs cross-device via NotificationSettingUpdate. ──
+  const mutedServerIds = useNotificationSettingsStore(useShallow(s =>
+    s.settings.filter(x => x.target_type === 'server' && x.muted).map(x => x.target_id)
+  ))
   const handleToggleMuteServer = useCallback((serverId: string) => {
-    setMutedServerIds(prev =>
-      prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
-    )
+    const { settings, setMuted } = useNotificationSettingsStore.getState()
+    const isMuted = settings.some(s => s.target_type === 'server' && s.target_id === serverId && s.muted)
+    setMuted('server', serverId, !isMuted)
   }, [])
+
+  // DM channels (1:1 and group) reuse the `'channel'` target_type — DM ids
+  // are UUIDs disjoint from server-channel ids, so the same selector key
+  // works for both surfaces without a schema change.
+  const handleToggleMuteDm = useCallback((dmId: string) => {
+    const { settings, setMuted } = useNotificationSettingsStore.getState()
+    const isMuted = settings.some(s => s.target_type === 'channel' && s.target_id === dmId && s.muted)
+    setMuted('channel', dmId, !isMuted)
+  }, [])
+
+  // Leaves a group DM for the current user. BE broadcasts `DmUpdate` to the
+  // remaining members only — the caller's own sessions get no event, so we
+  // optimistically drop the row from this session's list. Other sessions of
+  // the same user pick the change up on their next refetch.
+  const handleLeaveGroupDm = useCallback(async (dmId: string) => {
+    const previous = dmList
+    setDmList(prev => prev.filter(d => d.id !== dmId))
+    if (activeDmId === dmId) setActiveDmId('')
+    try {
+      await api.leaveDm(dmId)
+    } catch (err) {
+      setDmList(previous)
+      const msg = err instanceof Error ? err.message : tStatic('toast.leaveGroupFailed')
+      useToast.getState().show(msg, 'error')
+    }
+  }, [dmList, activeDmId, setDmList, setActiveDmId])
 
   // ── Logout handler ──
   const handleLogout = useCallback(async () => {
@@ -88,7 +117,7 @@ export function useAppHandlers(
   }, [dmActive, activeDmId, activeChannelId])
 
   // ── Navigation handlers ──
-  function handleSwitchServer(id: string) {
+  const handleSwitchServer = useCallback((id: string) => {
     if (id === activeServerId) return
     lastChannelPerServer.current[activeServerId] = activeChannelId
     setDmActive(false)
@@ -101,9 +130,9 @@ export function useAppHandlers(
       setActiveChannelId(channelExists ? saved : (channels.find(c => c.kind === 'text')?.id ?? channels[0].id))
     }
     // If no cached channels, activeChannelId will be set by the fetch effect in useAppInit
-  }
+  }, [activeServerId, activeChannelId, lastChannelPerServer, setDmActive, setActiveServerId, setActiveChannelId])
 
-  function handleCloseTab(id: string) {
+  const handleCloseTab = useCallback((id: string) => {
     if (tabbedIds.length === 1) return
     const idx = tabbedIds.indexOf(id)
     const next = tabbedIds.filter(t => t !== id)
@@ -114,16 +143,16 @@ export function useAppHandlers(
       const srv = uiServers.find(s => s.id === fallbackId)
       setActiveChannelId(srv?.channels[0]?.id ?? '')
     }
-  }
+  }, [tabbedIds, activeServerId, uiServers, setTabbedIds, setActiveServerId, setActiveChannelId])
 
-  function handleOpenServer(id: string) {
+  const handleOpenServer = useCallback((id: string) => {
     if (!tabbedIds.includes(id)) {
       setTabbedIds(prev => [id, ...prev])
     }
     handleSwitchServer(id)
-  }
+  }, [tabbedIds, setTabbedIds, handleSwitchServer])
 
-  function handleSwitchChannel(id: string) {
+  const handleSwitchChannel = useCallback((id: string) => {
     // Voice channels: join the SFU instead of switching the chat view.
     // Text channels: standard channel switch.
     const channels = useServersStore.getState().channels[activeServerId] ?? []
@@ -140,7 +169,7 @@ export function useAppHandlers(
     }
     if (id === activeChannelId) return
     setActiveChannelId(id)
-  }
+  }, [activeServerId, activeChannelId, setActiveChannelId])
 
   // ── Message handlers ──
   // Materialise a session-only draft DM by creating it on the server right
@@ -309,72 +338,53 @@ export function useAppHandlers(
     editMessage(msgId, effectiveChannelId, encrypted.encryptedContent, isDm, encrypted.nonce)
   }, [dmActive, activeDmId, activeChannelId, activeServerId, effectiveChannelId, dmList, membersByServer]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handlePinMessage = useCallback(async (msgId: string) => {
-    const channelId = dmActive ? activeDmId : activeChannelId
-    const store = useMessagesStore.getState()
-    const msg = (store.messages[channelId] ?? []).find(m => m.id === msgId)
-    if (!msg) return
-    const newPinned = !msg.is_pinned
-    // Optimistic update — only change is_pinned, preserve reactions and other fields
-    store.updateMessage(channelId, { ...msg, is_pinned: newPinned, reactions: undefined } as typeof msg)
+  // Both handlers route through useMessagesStore.setPinned so the optimistic
+  // + revert + API-call path is shared. The handler itself only owns the
+  // pinned-count / pinned-version bookkeeping (UI state that lives in
+  // useAppInit, not in the messages store).
+  const refreshPinnedMeta = useCallback(async (channelId: string, isDm: boolean) => {
     try {
-      if (newPinned) {
-        if (dmActive) await api.pinDmMessage(channelId, msgId)
-        else await api.pinMessage(channelId, msgId)
-      } else {
-        if (dmActive) await api.unpinDmMessage(channelId, msgId)
-        else await api.unpinMessage(channelId, msgId)
-      }
-      const pinned = dmActive
+      const pinned = isDm
         ? await api.getDmPinnedMessages(channelId)
         : await api.getPinnedMessages(channelId)
       setPinnedCount(pinned.length)
       setPinnedVersion(v => v + 1)
     } catch (err) {
-      console.error('Pin toggle failed:', err)
-      const m = err instanceof Error ? err.message : tStatic('toast.pinFailed')
-      useToast.getState().show(m, 'error')
-      // Revert on failure
-      const revertStore = useMessagesStore.getState()
-      const revertMsg = (revertStore.messages[channelId] ?? []).find(m => m.id === msgId)
-      if (revertMsg) revertStore.updateMessage(channelId, { ...revertMsg, is_pinned: msg.is_pinned, reactions: undefined } as typeof revertMsg)
+      console.warn('Pinned count refresh failed:', err)
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
+  }, [setPinnedCount, setPinnedVersion])
+
+  const handlePinMessage = useCallback(async (msgId: string) => {
+    const channelId = dmActive ? activeDmId : activeChannelId
+    const msg = (useMessagesStore.getState().messages[channelId] ?? []).find(m => m.id === msgId)
+    if (!msg) return
+    const targetPinned = !msg.is_pinned
+    const ok = await useMessagesStore.getState().setPinned(channelId, msgId, dmActive, targetPinned)
+    if (!ok) {
+      useToast.getState().show(tStatic(targetPinned ? 'toast.pinFailed' : 'toast.unpinFailed'), 'error')
+      return
+    }
+    await refreshPinnedMeta(channelId, dmActive)
+  }, [dmActive, activeDmId, activeChannelId, refreshPinnedMeta])
 
   const handleUnpinMessage = useCallback(async (msgId: string) => {
     const channelId = dmActive ? activeDmId : activeChannelId
-    try {
-      if (dmActive) await api.unpinDmMessage(channelId, msgId)
-      else await api.unpinMessage(channelId, msgId)
-      // Refresh pinned count
-      const pinned = dmActive
-        ? await api.getDmPinnedMessages(channelId)
-        : await api.getPinnedMessages(channelId)
-      setPinnedCount(pinned.length)
-      setPinnedVersion(v => v + 1)
-      // Find and update the message's is_pinned status in the store
-      // Pass reactions: undefined so updateMessage preserves existing reactions
-      const store = useMessagesStore.getState()
-      const channelMsgs = store.messages[channelId] ?? []
-      const msg = channelMsgs.find(m => m.id === msgId)
-      if (msg) {
-        store.updateMessage(channelId, { ...msg, is_pinned: false, reactions: undefined } as typeof msg)
-      }
-    } catch (err) {
-      console.error('Unpin failed:', err)
-      const m = err instanceof Error ? err.message : tStatic('toast.unpinFailed')
-      useToast.getState().show(m, 'error')
+    const ok = await useMessagesStore.getState().setPinned(channelId, msgId, dmActive, false)
+    if (!ok) {
+      useToast.getState().show(tStatic('toast.unpinFailed'), 'error')
+      return
     }
-  }, [dmActive, activeDmId, activeChannelId, setPinnedCount, setPinnedVersion])
+    await refreshPinnedMeta(channelId, dmActive)
+  }, [dmActive, activeDmId, activeChannelId, refreshPinnedMeta])
 
-  function handleThemeChange(theme: ServerTheme) {
+  const handleThemeChange = useCallback((theme: ServerTheme) => {
     setServerThemes(prev => ({ ...prev, [activeServerId]: theme }))
     // Debounce the API save — orb drags fire many rapid updates
     if (themeSaveTimer.current) clearTimeout(themeSaveTimer.current)
     themeSaveTimer.current = setTimeout(() => {
-      api.updateServer(activeServerId, { theme } as Parameters<typeof api.updateServer>[1])
+      api.updateServer(activeServerId, { theme })
     }, 500)
-  }
+  }, [activeServerId, setServerThemes, themeSaveTimer])
 
   // ── Channel CRUD handlers ──
   const handleCreateChannel = useCallback(async (name: string, kind: 'text' | 'voice', categoryId?: string) => {
@@ -403,16 +413,10 @@ export function useAppHandlers(
     }
   }, [activeServerId, activeChannelId, fetchChannels, setActiveChannelId])
 
-  const handleDeleteCategory = useCallback(async (categoryName: string) => {
-    // Find the category by name to get its ID
-    const categories = categoriesByServer[activeServerId] ?? []
-    const category = categories.find(c => c.name === categoryName)
-    if (!category) return
-
-    await api.deleteCategory(category.id)
-    await fetchCategories(activeServerId)
-    await fetchChannels(activeServerId)
-  }, [activeServerId, categoriesByServer, fetchCategories, fetchChannels])
+  const handleDeleteCategory = useCallback(async (categoryId: string) => {
+    if (!activeServerId) return
+    await useServersStore.getState().deleteCategory(categoryId, activeServerId)
+  }, [activeServerId])
 
   const handleArchiveChannel = useCallback(async (channelId: string) => {
     await api.updateChannel(channelId, { is_system: true })
@@ -431,30 +435,18 @@ export function useAppHandlers(
 
   const handleReorderChannels = useCallback(async (items: api.ChannelMoveItem[]) => {
     if (!activeServerId || items.length === 0) return
-    try {
-      await api.moveChannels(activeServerId, items)
-      await fetchChannels(activeServerId)
-    } catch (e) {
-      console.warn('Channel reorder failed, refetching to recover:', e)
-      await fetchChannels(activeServerId).catch((e2) => logErr('useAppHandlers.reorderChannels.recover', e2))
-    }
-  }, [activeServerId, fetchChannels])
+    await useServersStore.getState().moveChannels(activeServerId, items)
+  }, [activeServerId])
 
   const handleReorderCategories = useCallback(async (
     positions: Array<{ id: string; position: number }>,
   ) => {
     if (!activeServerId) return
-    try {
-      await api.reorderCategories(activeServerId, positions)
-      await fetchCategories(activeServerId)
-    } catch (e) {
-      console.warn('Category reorder failed, refetching to recover:', e)
-      await fetchCategories(activeServerId).catch((e2) => logErr('useAppHandlers.reorderCategories.recover', e2))
-    }
-  }, [activeServerId, fetchCategories])
+    await useServersStore.getState().reorderCategories(activeServerId, positions)
+  }, [activeServerId])
 
   // ── Server management ──
-  async function handleJoinServer(serverId: string, accessCode: string): Promise<boolean> {
+  const handleJoinServer = useCallback(async (serverId: string, accessCode: string): Promise<boolean> => {
     try {
       // If access code is provided, use invite code path; otherwise join public server directly
       if (accessCode && accessCode.trim()) {
@@ -469,9 +461,9 @@ export function useAppHandlers(
     } catch {
       return false
     }
-  }
+  }, [fetchServers, handleOpenServer, setJoinServerOpen])
 
-  async function handleCreateServer(data: { name: string; icon: string; color: string; hue?: number; privacy: 'public' | 'private' }) {
+  const handleCreateServer = useCallback(async (data: { name: string; icon: string; color: string; hue?: number; privacy: 'public' | 'private' }) => {
     try {
       const server = await api.createServer({ name: data.name, description: '' })
       await fetchServers()
@@ -481,7 +473,7 @@ export function useAppHandlers(
       setServerThemes(prev => ({ ...prev, [server.id]: newTheme }))
       // Persist theme to backend
       if (data.hue != null) {
-        api.updateServer(server.id, { theme: newTheme } as Parameters<typeof api.updateServer>[1])
+        api.updateServer(server.id, { theme: newTheme })
       }
       setTabbedIds(prev => [...prev, server.id])
       setDmActive(false)
@@ -491,14 +483,14 @@ export function useAppHandlers(
     } catch (e) {
       console.error('Failed to create server:', e)
     }
-  }
+  }, [fetchServers, setServerThemes, setTabbedIds, setDmActive, setActiveServerId, setActiveChannelId, setCreateServerOpen])
 
   // ── DM creation ──
   // Picks up a list of usernames (one for 1-on-1, multiple for group) from
   // NewDMModal and either opens an existing conversation or sets up a
   // session-only draft. The DM is materialised on the server lazily on the
   // first message — see `materialiseDraftDm` inside `handleSend`.
-  async function handleCreateDm(names: string[]) {
+  const handleCreateDm = useCallback(async (names: string[]) => {
     if (!user) return
     try {
       // Resolve every selected name to a User in parallel; ignore unknowns.
@@ -552,10 +544,11 @@ export function useAppHandlers(
       useToast.getState().show((e as Error).message || tStatic('toast.createDmFailed'), 'error')
     }
     setNewDmOpen(false)
-  }
+  }, [user, dmList, setDmUsers, setDmList, setActiveDmId, setDmActive, setNewDmOpen])
 
   return {
     mutedServerIds, handleToggleMuteServer,
+    handleToggleMuteDm, handleLeaveGroupDm,
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleChangePassword, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer, handleSwitchChannel,

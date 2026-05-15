@@ -36,9 +36,15 @@
   position: relative;
 }
 
+/* While the user is mid-drag (pre-overlay) the grab cursor flips to
+   grabbing so the press-and-hold reads correctly — mirrors the
+   .categoryHeader pattern in ChannelSidebar. */
+.tab:active { cursor: grabbing; }
+
 /* On Tauri mobile (touch) the drag listeners are skipped — restore the
    default cursor and let horizontal pan-scroll through the tab. */
-.tab.tabNoDrag {
+.tab.tabNoDrag,
+.tab.tabNoDrag:active {
   cursor: default;
   touch-action: pan-x;
 }

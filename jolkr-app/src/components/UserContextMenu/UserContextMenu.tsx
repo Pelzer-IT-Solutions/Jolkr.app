@@ -1,13 +1,13 @@
+import { VolumeX, Flag, UserPlus, Link2, CircleSlash, UserMinus, Gavel, Shield, User as UserIcon, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { VolumeX, Flag, UserPlus, Link2, CircleSlash, UserMinus, Gavel, Shield, User as UserIcon, X } from 'lucide-react'
-import type { MemberDisplay } from '../../types'
-import type { Server as ApiServer, Role } from '../../api/types'
-import Avatar from '../Avatar/Avatar'
-import ServerIconComp from '../ServerIcon/ServerIcon'
 import { useClampedMenuPosition } from '../../hooks/useClampedMenuPosition'
 import { useT } from '../../hooks/useT'
+import { Avatar } from '../Avatar/Avatar'
+import { ServerIcon as ServerIconComp } from '../ServerIcon/ServerIcon'
 import s from './UserContextMenu.module.css'
+import type { Server as ApiServer, Role } from '../../api/types'
+import type { MemberDisplay } from '../../types'
 
 // Extend API Server with frontend-only display fields
 type Server = ApiServer & { hue?: number | null }

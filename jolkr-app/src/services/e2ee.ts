@@ -1,17 +1,15 @@
-import type { LocalKeySet, PreKeyBundle, EncryptedPayload } from '../crypto';
+import * as api from '../api/client';
 import {
   generateKeySetFromSeed,
-  encryptForRecipient,
-  decryptFromSender,
   toBase64,
   fromBase64,
 } from '../crypto';
 import { clearKeySet } from '../crypto/keyStore';
 import { storage } from '../platform/storage';
-import * as api from '../api/client';
-import type { PreKeyBundleResponse } from '../api/types';
-import { STORAGE_KEYS } from '../utils/storageKeys';
 import { createTtlCache } from '../utils/cache';
+import { STORAGE_KEYS } from '../utils/storageKeys';
+import type { PreKeyBundleResponse } from '../api/types';
+import type { LocalKeySet, PreKeyBundle } from '../crypto';
 
 // ── Seed storage ─────────────────────────────────────────────────
 // Goes through `storage` so on Tauri desktop the seed lives in the
@@ -178,39 +176,6 @@ export async function getRecipientBundle(userId: string): Promise<PreKeyBundle |
     bundleCache.set(userId, null);
     return null;
   }
-}
-
-/**
- * Encrypt a DM message for a recipient. Returns null if E2EE unavailable.
- */
-export async function encryptDmMessage(
-  recipientUserId: string,
-  plaintext: string,
-): Promise<EncryptedPayload | null> {
-  if (!localKeys) return null;
-
-  const bundle = await getRecipientBundle(recipientUserId);
-  if (!bundle) return null;
-
-  return encryptForRecipient(bundle, plaintext);
-}
-
-/**
- * Decrypt an incoming encrypted DM message.
- */
-export async function decryptDmMessage(
-  encryptedContentB64: string,
-  nonceB64: string,
-): Promise<string> {
-  if (!localKeys) {
-    throw new Error('E2EE keys not loaded');
-  }
-  return decryptFromSender(localKeys, encryptedContentB64, nonceB64);
-}
-
-/** Invalidate a cached bundle so the next encryption fetches fresh keys. */
-export function invalidateBundle(userId: string): void {
-  bundleCache.delete(userId);
 }
 
 /**

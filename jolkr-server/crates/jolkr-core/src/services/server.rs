@@ -1,15 +1,19 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
 use jolkr_db::models::ServerRow;
 use jolkr_db::models::BanRow;
+use jolkr_db::models::MemberRow;
 use jolkr_db::repo::{BanRepo, ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
 /// Public server DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Server")]
 pub struct ServerInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -27,9 +31,11 @@ pub struct ServerInfo {
     pub is_public: bool,
     /// Cached member count.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "number | null")]
     pub member_count: Option<i64>,
     /// Theme.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub theme: Option<serde_json::Value>,
 }
 
@@ -92,7 +98,9 @@ pub struct SetNicknameRequest {
 }
 
 /// Public ban DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Ban")]
 pub struct BanInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -121,12 +129,61 @@ impl From<BanRow> for BanInfo {
     }
 }
 
+/// Public member DTO. `role_ids` is only populated by endpoints that join in
+/// role assignments (e.g. members-with-roles, channel members); the basic
+/// `/servers/:id/members` listing omits it.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Member")]
+pub struct MemberInfo {
+    /// Member row identifier (server-membership id, not the user id).
+    pub id: Uuid,
+    /// Owning server identifier.
+    pub server_id: Uuid,
+    /// Owning user identifier.
+    pub user_id: Uuid,
+    /// Per-server nickname; `None` falls back to the user's `display_name`.
+    pub nickname: Option<String>,
+    /// Join timestamp.
+    pub joined_at: chrono::DateTime<chrono::Utc>,
+    /// Timestamp until which the user is timed out.
+    pub timeout_until: Option<chrono::DateTime<chrono::Utc>>,
+    /// Currently-assigned role ids; omitted unless the endpoint joins them in.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub role_ids: Option<Vec<Uuid>>,
+}
+
+impl From<MemberRow> for MemberInfo {
+    fn from(row: MemberRow) -> Self {
+        Self {
+            id: row.id,
+            server_id: row.server_id,
+            user_id: row.user_id,
+            nickname: row.nickname,
+            joined_at: row.joined_at,
+            timeout_until: row.timeout_until,
+            role_ids: None,
+        }
+    }
+}
+
+impl MemberInfo {
+    /// Build a member DTO with role IDs joined in (for endpoints that compute
+    /// member ↔ role assignments).
+    #[must_use]
+    pub fn with_role_ids(row: MemberRow, role_ids: Vec<Uuid>) -> Self {
+        Self { role_ids: Some(role_ids), ..Self::from(row) }
+    }
+}
+
 /// Domain service for `server` operations.
 pub struct ServerService;
 
 impl ServerService {
     /// Create a new server. The caller becomes the owner and first member.
     /// A default "general" text channel is auto-created.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_server(
         pool: &PgPool,
         owner_id: Uuid,
@@ -165,12 +222,14 @@ impl ServerService {
     }
 
     /// Get server info by ID. Only members should be able to call this (checked at API layer).
+    #[tracing::instrument(skip(pool))]
     pub async fn get_server(pool: &PgPool, server_id: Uuid) -> Result<ServerInfo, JolkrError> {
         let row = ServerRepo::get_by_id(pool, server_id).await?;
         Ok(ServerInfo::from(row))
     }
 
     /// List all servers the given user is a member of.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_servers(
         pool: &PgPool,
         user_id: Uuid,
@@ -180,6 +239,7 @@ impl ServerService {
     }
 
     /// Update server metadata. Only the owner may do this.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -226,6 +286,7 @@ impl ServerService {
     }
 
     /// Delete a server. Only the owner may do this.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -241,6 +302,7 @@ impl ServerService {
     }
 
     /// Join a server (add member). Banned users cannot join.
+    #[tracing::instrument(skip(pool))]
     pub async fn join_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -258,6 +320,7 @@ impl ServerService {
     }
 
     /// Leave a server. The owner cannot leave their own server.
+    #[tracing::instrument(skip(pool))]
     pub async fn leave_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -281,6 +344,7 @@ impl ServerService {
     // ── Moderation ─────────────────────────────────────────────────────
 
     /// Kick a member from the server. Requires `KICK_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn kick_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -314,6 +378,7 @@ impl ServerService {
 
     /// Ban a member from the server. Requires `BAN_MEMBERS` permission.
     /// Creates a ban record and removes the member.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn ban_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -367,6 +432,7 @@ impl ServerService {
     }
 
     /// Unban a user from the server. Requires `BAN_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn unban_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -385,6 +451,7 @@ impl ServerService {
     }
 
     /// List all bans for a server. Requires `BAN_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_bans(
         pool: &PgPool,
         server_id: Uuid,
@@ -404,6 +471,7 @@ impl ServerService {
     /// Set or clear a member's nickname. Returns the canonical (trimmed,
     /// empty→None) nickname that was actually persisted so callers can emit
     /// a `MemberUpdate` WS event with the correct value.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn set_nickname(
         pool: &PgPool,
         server_id: Uuid,
@@ -439,6 +507,7 @@ impl ServerService {
     }
 
     /// Timeout a member. Requires `MODERATE_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn timeout_member(
         pool: &PgPool,
         server_id: Uuid,
@@ -465,6 +534,7 @@ impl ServerService {
     }
 
     /// Remove timeout from a member. Requires `MODERATE_MEMBERS` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn remove_timeout(
         pool: &PgPool,
         server_id: Uuid,
@@ -483,12 +553,13 @@ impl ServerService {
     }
 
     /// Discover public servers. Returns servers with member counts.
+    #[tracing::instrument(skip(pool))]
     pub async fn discover_servers(
         pool: &PgPool,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<ServerInfo>, JolkrError> {
-        let limit = limit.min(50).max(1);
+        let limit = limit.clamp(1, 50);
         let offset = offset.max(0);
         let rows = ServerRepo::list_public(pool, limit, offset).await?;
         let server_ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
@@ -506,6 +577,7 @@ impl ServerService {
     }
 
     /// Join a public server. Banned users cannot join.
+    #[tracing::instrument(skip(pool))]
     pub async fn join_public_server(
         pool: &PgPool,
         server_id: Uuid,
@@ -525,6 +597,7 @@ impl ServerService {
     }
 
     /// Reorder servers for a user. Accepts an ordered list of `server_ids`.
+    #[tracing::instrument(skip(pool, server_ids))]
     pub async fn reorder_servers(
         pool: &PgPool,
         user_id: Uuid,

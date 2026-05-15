@@ -58,6 +58,7 @@ image = { version = "0.25", default-features = false, features = [
 resvg = "0.37"
 metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
+ts-rs = { workspace = true }
 
 [lints]
 workspace = true

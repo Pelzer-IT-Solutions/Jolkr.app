@@ -41,16 +41,20 @@ async fn check_webhook_rate(state: &AppState, webhook_id: Uuid) -> bool {
     }
 }
 
+/// Response payload for single-webhook endpoints (create/update/regenerate).
 #[derive(Debug, Serialize)]
 pub(crate) struct WebhookResponse {
     pub webhook: WebhookInfo,
 }
 
+/// Response payload for GET /api/channels/:id/webhooks.
 #[derive(Debug, Serialize)]
 pub(crate) struct WebhooksResponse {
     pub webhooks: Vec<WebhookInfo>,
 }
 
+/// Response payload for POST /api/webhooks/:id/:token — the message produced
+/// by a successful webhook execution.
 #[derive(Debug, Serialize)]
 pub(crate) struct WebhookMessageResponse {
     pub message: MessageInfo,

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -8,7 +9,9 @@ use jolkr_db::models::RoleRow;
 use jolkr_db::repo::{MemberRepo, RoleRepo, ServerRepo};
 
 /// Public role DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Role")]
 pub struct RoleInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -21,6 +24,7 @@ pub struct RoleInfo {
     /// Sort position.
     pub position: i32,
     /// Permission bitmask.
+    #[ts(type = "number")]
     pub permissions: i64,
     /// Whether this is the default entry.
     pub is_default: bool,
@@ -69,6 +73,7 @@ pub struct RoleService;
 
 impl RoleService {
     /// Create the default @everyone role for a newly created server.
+    #[tracing::instrument(skip(pool))]
     pub async fn create_default_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -90,6 +95,7 @@ impl RoleService {
     }
 
     /// Create a new custom role. Requires `MANAGE_ROLES` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -129,6 +135,7 @@ impl RoleService {
     }
 
     /// List all roles in a server.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_roles(
         pool: &PgPool,
         server_id: Uuid,
@@ -138,6 +145,7 @@ impl RoleService {
     }
 
     /// Update a role. Cannot change @everyone's `is_default` status.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_role(
         pool: &PgPool,
         role_id: Uuid,
@@ -173,6 +181,7 @@ impl RoleService {
     }
 
     /// Delete a role. Cannot delete the @everyone role.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_role(
         pool: &PgPool,
         role_id: Uuid,
@@ -195,6 +204,7 @@ impl RoleService {
     }
 
     /// Assign a role to a member.
+    #[tracing::instrument(skip(pool))]
     pub async fn assign_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -215,7 +225,10 @@ impl RoleService {
 
         let member = MemberRepo::get_member(pool, server_id, target_user_id)
             .await
-            .map_err(|_| JolkrError::NotFound)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, target_user_id = %target_user_id, "member lookup failed while assigning role");
+                JolkrError::NotFound
+            })?;
 
         RoleRepo::assign_role(pool, member.id, role_id).await?;
         info!(role_id = %role_id, user_id = %target_user_id, "Role assigned");
@@ -223,6 +236,7 @@ impl RoleService {
     }
 
     /// Remove a role from a member.
+    #[tracing::instrument(skip(pool))]
     pub async fn remove_role(
         pool: &PgPool,
         server_id: Uuid,
@@ -237,7 +251,10 @@ impl RoleService {
 
         let member = MemberRepo::get_member(pool, server_id, target_user_id)
             .await
-            .map_err(|_| JolkrError::NotFound)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, target_user_id = %target_user_id, "member lookup failed while removing role");
+                JolkrError::NotFound
+            })?;
 
         RoleRepo::remove_role(pool, member.id, role_id).await?;
         info!(role_id = %role_id, user_id = %target_user_id, "Role removed");
@@ -245,6 +262,7 @@ impl RoleService {
     }
 
     /// Get computed permissions for a user in a server.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_permissions(
         pool: &PgPool,
         server_id: Uuid,
@@ -258,13 +276,17 @@ impl RoleService {
 
         let member = MemberRepo::get_member(pool, server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed while computing user permissions");
+                JolkrError::Forbidden
+            })?;
 
         RoleRepo::compute_permissions(pool, server_id, member.id).await
     }
 }
 
 /// Helper: check if a user has a specific permission in a server.
+#[tracing::instrument(skip(pool))]
 pub async fn check_permission(
     pool: &PgPool,
     server_id: Uuid,
@@ -273,7 +295,10 @@ pub async fn check_permission(
 ) -> Result<(), JolkrError> {
     let member = MemberRepo::get_member(pool, server_id, user_id)
         .await
-        .map_err(|_| JolkrError::Forbidden)?;
+        .map_err(|e| {
+            tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed for role permission check");
+            JolkrError::Forbidden
+        })?;
     let perms_bits = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
     let perms = Permissions::from(perms_bits);
     if !perms.has(permission) {

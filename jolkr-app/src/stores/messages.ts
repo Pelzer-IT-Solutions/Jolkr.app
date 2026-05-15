@@ -1,8 +1,18 @@
 import { create } from 'zustand';
-import type { Message, Reaction } from '../api/types';
 import * as api from '../api/client';
 import { wsClient } from '../api/ws';
 import { useAuthStore } from './auth';
+import { useThreadsStore } from './threads';
+import type { Message as GeneratedMessage } from '../api/generated/Message';
+import type { Message, Poll, Reaction } from '../api/types';
+
+/** WS poll payload is `JsonValue` at the wire level; the FE overlay (`Poll`)
+ *  carries the typed shape. Guard against array/primitive payloads before
+ *  trusting the BE shape. */
+function toPoll(raw: GeneratedMessage['poll']): Poll | undefined {
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  return raw as unknown as Poll;
+}
 
 /** Transform backend reaction format (user_ids) to frontend format (me boolean + user_ids) */
 function transformReactions(msgs: Message[]): Message[] {
@@ -27,34 +37,26 @@ interface MessagesState {
   loadingOlder: Record<string, boolean>;
   hasMore: Record<string, boolean>;
 
-  // Thread messages keyed by threadId
-  threadMessages: Record<string, Message[]>;
-  threadLoading: Record<string, boolean>;
-  threadLoadingOlder: Record<string, boolean>;
-  threadHasMore: Record<string, boolean>;
-
-  // Counter incremented on ThreadCreate/ThreadUpdate WS events — watchers re-fetch thread lists
-  threadListVersion: number;
-
   fetchMessages: (channelId: string, isDm?: boolean) => Promise<void>;
   fetchOlder: (channelId: string, isDm?: boolean) => Promise<void>;
+  /** Walk older pages until `messageId` lands in the cache. Returns true on
+   *  hit, false when the channel runs out of history or the safety cap fires. */
+  loadUntilMessage: (channelId: string, messageId: string, isDm?: boolean) => Promise<boolean>;
   sendMessage: (channelId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   sendDmMessage: (dmId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
   editMessage: (messageId: string, channelId: string, content: string, isDm?: boolean, nonce?: string) => Promise<void>;
   deleteMessage: (messageId: string, channelId: string, isDm?: boolean) => Promise<void>;
   addMessage: (channelId: string, message: Message) => void;
-  updateMessage: (channelId: string, message: Message) => void;
+  /** Patch a message by id. Pass full Message for replace, or `{ id, …partial }`
+   *  for a partial merge — undefined fields are skipped so concurrent WS events
+   *  (e.g. reactions) aren't clobbered by an unrelated patch. */
+  updateMessage: (channelId: string, patch: Pick<Message, 'id'> & Partial<Message>) => void;
   removeMessage: (channelId: string, messageId: string) => void;
   updateReactions: (channelId: string, messageId: string, reactions: Reaction[]) => void;
-
-  // Thread actions
-  fetchThreadMessages: (threadId: string) => Promise<void>;
-  fetchOlderThreadMessages: (threadId: string) => Promise<void>;
-  sendThreadMessage: (threadId: string, content: string, replyToId?: string, nonce?: string) => Promise<Message>;
-  addThreadMessage: (threadId: string, message: Message) => void;
-  updateThreadMessage: (threadId: string, message: Message) => void;
-  removeThreadMessage: (threadId: string, messageId: string) => void;
-  clearThreadMessages: (threadId: string) => void;
+  /** Optimistic pin/unpin with rollback. Resolves `true` on BE success.
+   *  Callers handle UI-side bookkeeping (pinned count, version bump) themselves
+   *  — that state lives in useAppInit, not here. */
+  setPinned: (channelId: string, messageId: string, isDm: boolean, pinned: boolean) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -76,11 +78,6 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   loading: {},
   loadingOlder: {},
   hasMore: {},
-  threadMessages: {},
-  threadLoading: {},
-  threadLoadingOlder: {},
-  threadHasMore: {},
-  threadListVersion: 0,
 
   fetchMessages: async (channelId, isDm) => {
     const hasCached = (get().messages[channelId]?.length ?? 0) > 0;
@@ -127,6 +124,23 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
+  loadUntilMessage: async (channelId, messageId, isDm) => {
+    // Cap at 20 page fetches (~1000 messages) so a stale or unreachable id
+    // can't run the loop unbounded. The shared-files / pinned lists rarely
+    // reach back further than a few pages in practice.
+    const MAX_PAGES = 20;
+    for (let i = 0; i < MAX_PAGES; i++) {
+      const current = get().messages[channelId] ?? [];
+      if (current.some((m) => m.id === messageId)) return true;
+      if (get().hasMore[channelId] === false) return false;
+      const before = await get().fetchOlder(channelId, isDm);
+      // fetchOlder swallows errors and resolves void; if hasMore flipped to
+      // false during the await, the next iteration's guard catches it.
+      void before;
+    }
+    return get().messages[channelId]?.some((m) => m.id === messageId) ?? false;
+  },
+
   sendMessage: async (channelId, content, replyToId, nonce) => {
     return api.sendMessage(channelId, content, nonce, replyToId);
   },
@@ -160,14 +174,14 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     set({ messages: { ...get().messages, [channelId]: [...current, message] } });
   },
 
-  updateMessage: (channelId, message) => {
+  updateMessage: (channelId, patch) => {
     const current = get().messages[channelId] ?? [];
     set({
       messages: {
         ...get().messages,
         [channelId]: current.map((m) =>
-          m.id === message.id
-            ? { ...m, ...message, reactions: message.reactions !== undefined ? message.reactions : m.reactions }
+          m.id === patch.id
+            ? { ...m, ...patch, reactions: patch.reactions !== undefined ? patch.reactions : m.reactions }
             : m,
         ),
       },
@@ -186,115 +200,45 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   updateReactions: (channelId, messageId, reactions) => {
     const current = get().messages[channelId] ?? [];
-    const updatedMessages = {
-      ...get().messages,
-      [channelId]: current.map((m) =>
-        m.id === messageId ? { ...m, reactions } : m,
-      ),
-    };
-
-    // Also update reactions in threadMessages
-    const threadMsgs = { ...get().threadMessages };
-    for (const threadId of Object.keys(threadMsgs)) {
-      const threadArr = threadMsgs[threadId];
-      if (threadArr.some((m) => m.id === messageId)) {
-        threadMsgs[threadId] = threadArr.map((m) =>
-          m.id === messageId ? { ...m, reactions } : m,
-        );
-        break;
-      }
-    }
-
-    set({ messages: updatedMessages, threadMessages: threadMsgs });
-  },
-
-  // ── Thread actions ────────────────────────────────────────────────
-
-  fetchThreadMessages: async (threadId) => {
-    if (get().threadLoading[threadId]) return;
-    set({ threadLoading: { ...get().threadLoading, [threadId]: true } });
-    try {
-      const msgs = await api.getThreadMessages(threadId);
-      const reversed = transformReactions([...msgs].reverse());
-      set({
-        threadMessages: { ...get().threadMessages, [threadId]: reversed },
-        threadLoading: { ...get().threadLoading, [threadId]: false },
-        threadHasMore: { ...get().threadHasMore, [threadId]: msgs.length >= 50 },
-      });
-    } catch {
-      set({ threadLoading: { ...get().threadLoading, [threadId]: false } });
-    }
-  },
-
-  fetchOlderThreadMessages: async (threadId) => {
-    if (get().threadLoadingOlder[threadId]) return;
-    const current = get().threadMessages[threadId] ?? [];
-    if (current.length === 0) return;
-    set({ threadLoadingOlder: { ...get().threadLoadingOlder, [threadId]: true } });
-    try {
-      const oldest = current[0];
-      const msgs = await api.getThreadMessages(threadId, 50, oldest.created_at);
-      const reversed = transformReactions([...msgs].reverse());
-      const fresh = get().threadMessages[threadId] ?? [];
-      set({
-        threadMessages: { ...get().threadMessages, [threadId]: [...reversed, ...fresh] },
-        threadHasMore: { ...get().threadHasMore, [threadId]: msgs.length >= 50 },
-        threadLoadingOlder: { ...get().threadLoadingOlder, [threadId]: false },
-      });
-    } catch {
-      set({ threadLoadingOlder: { ...get().threadLoadingOlder, [threadId]: false } });
-    }
-  },
-
-  sendThreadMessage: async (threadId, content, replyToId, nonce) => {
-    return api.sendThreadMessage(threadId, content, nonce, replyToId);
-  },
-
-  addThreadMessage: (threadId, message) => {
-    const current = get().threadMessages[threadId] ?? [];
-    if (current.some((m) => m.id === message.id)) return;
-    set({ threadMessages: { ...get().threadMessages, [threadId]: [...current, message] } });
-  },
-
-  updateThreadMessage: (threadId, message) => {
-    const current = get().threadMessages[threadId] ?? [];
     set({
-      threadMessages: {
-        ...get().threadMessages,
-        [threadId]: current.map((m) =>
-          m.id === message.id
-            ? { ...m, ...message, reactions: message.reactions !== undefined ? message.reactions : m.reactions }
-            : m,
+      messages: {
+        ...get().messages,
+        [channelId]: current.map((m) =>
+          m.id === messageId ? { ...m, reactions } : m,
         ),
       },
     });
   },
 
-  removeThreadMessage: (threadId, messageId) => {
-    const current = get().threadMessages[threadId] ?? [];
-    set({
-      threadMessages: {
-        ...get().threadMessages,
-        [threadId]: current.filter((m) => m.id !== messageId),
-      },
-    });
-  },
-
-  clearThreadMessages: (threadId) => {
-    const { [threadId]: _, ...restMsgs } = get().threadMessages;
-    const { [threadId]: _l, ...restLoading } = get().threadLoading;
-    const { [threadId]: _lo, ...restLoadingOlder } = get().threadLoadingOlder;
-    const { [threadId]: _h, ...restHasMore } = get().threadHasMore;
-    set({
-      threadMessages: restMsgs,
-      threadLoading: restLoading,
-      threadLoadingOlder: restLoadingOlder,
-      threadHasMore: restHasMore,
-    });
+  setPinned: async (channelId, messageId, isDm, pinned) => {
+    const current = get().messages[channelId] ?? [];
+    const msg = current.find((m) => m.id === messageId);
+    if (!msg) return false;
+    const previousPinned = msg.is_pinned;
+    if (previousPinned === pinned) return true; // already in the desired state
+    // Optimistic — reactions: undefined preserves whatever the merge logic
+    // in updateMessage already has, so a concurrent reaction WS event isn't
+    // overwritten by the pin toggle.
+    get().updateMessage(channelId, { id: messageId, is_pinned: pinned });
+    try {
+      if (pinned) {
+        if (isDm) await api.pinDmMessage(channelId, messageId);
+        else await api.pinMessage(channelId, messageId);
+      } else {
+        if (isDm) await api.unpinDmMessage(channelId, messageId);
+        else await api.unpinMessage(channelId, messageId);
+      }
+      return true;
+    } catch {
+      // Revert against the latest store state — a concurrent WS event may
+      // have mutated other fields, so the rollback is targeted at is_pinned.
+      get().updateMessage(channelId, { id: messageId, is_pinned: previousPinned });
+      return false;
+    }
   },
 
   reset: () => {
-    set({ messages: {}, loading: {}, loadingOlder: {}, hasMore: {}, threadMessages: {}, threadLoading: {}, threadLoadingOlder: {}, threadHasMore: {}, threadListVersion: 0 });
+    set({ messages: {}, loading: {}, loadingOlder: {}, hasMore: {} });
   },
 }));
 
@@ -308,7 +252,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
  * Runtime "is this actually a Message?" validation lives where the JSON
  * is parsed (api/ws.ts) — that's the real trust boundary.
  */
-function normalizeWsMessage(raw: Message): Message | null {
+function normalizeWsMessage(raw: GeneratedMessage): Message | null {
   if (!raw.channel_id || !raw.id) return null;
   const currentUserId = useAuthStore.getState().user?.id;
   return {
@@ -327,12 +271,13 @@ function normalizeWsMessage(raw: Message): Message | null {
     webhook_id: raw.webhook_id ?? null,
     webhook_name: raw.webhook_name ?? null,
     webhook_avatar: raw.webhook_avatar ?? null,
+    poll: toPoll(raw.poll),
     reactions: (raw.reactions ?? []).map((r) => ({
       ...r,
       emoji: r.emoji ?? '',
       count: r.count ?? 0,
       user_ids: r.user_ids ?? [],
-      me: currentUserId ? (r.user_ids ?? []).includes(currentUserId) : (r.me ?? false),
+      me: currentUserId ? (r.user_ids ?? []).includes(currentUserId) : false,
     })),
   };
 }
@@ -343,13 +288,14 @@ function normalizeWsMessage(raw: Message): Message | null {
 //   MessageDelete        → d = { message_id, channel_id }
 wsClient.on((event) => {
   const store = useMessagesStore.getState();
+  const threads = useThreadsStore.getState();
   switch (event.op) {
     case 'MessageCreate': {
       const msg = normalizeWsMessage(event.d.message);
       if (!msg) break;
       if (msg.thread_id) {
-        // Thread message → add to thread store + increment parent's thread_reply_count
-        store.addThreadMessage(msg.thread_id, msg);
+        // Thread message → add to threads store + increment parent's thread_reply_count
+        threads.addThreadMessage(msg.thread_id, msg);
         // Find the starter message in channel messages (the only channel msg with this thread_id)
         const channelMsgs = store.messages[msg.channel_id] ?? [];
         const starter = channelMsgs.find((m) => m.thread_id === msg.thread_id);
@@ -368,8 +314,7 @@ wsClient.on((event) => {
       const msg = normalizeWsMessage(event.d.message);
       if (!msg) break;
       if (msg.thread_id) {
-        // Update in thread store
-        store.updateThreadMessage(msg.thread_id, msg);
+        threads.updateThreadMessage(msg.thread_id, msg);
       }
       // Also update in channel store (starter messages live there)
       store.updateMessage(msg.channel_id, msg);
@@ -378,13 +323,12 @@ wsClient.on((event) => {
     case 'MessageDelete': {
       const { channel_id: channelId, message_id: messageId } = event.d;
       if (!channelId || !messageId) break;
-      // Remove from channel messages
       store.removeMessage(channelId, messageId);
-      // Also check thread stores and remove from any matching thread
-      const threadMsgs = store.threadMessages;
+      // Also check threads store and remove from any matching thread
+      const threadMsgs = threads.threadMessages;
       for (const threadId of Object.keys(threadMsgs)) {
         if (threadMsgs[threadId].some((m) => m.id === messageId)) {
-          store.removeThreadMessage(threadId, messageId);
+          threads.removeThreadMessage(threadId, messageId);
           // Decrement the starter message's thread_reply_count in channel store
           const channelMsgs = store.messages[channelId] ?? [];
           const starter = channelMsgs.find((m) => m.thread_id === threadId);
@@ -401,8 +345,7 @@ wsClient.on((event) => {
     }
     case 'ThreadCreate':
     case 'ThreadUpdate': {
-      // Increment version counter so ThreadListPanel re-fetches
-      useMessagesStore.setState({ threadListVersion: store.threadListVersion + 1 });
+      threads.bumpThreadListVersion();
       break;
     }
     case 'ReactionUpdate': {
@@ -416,23 +359,16 @@ wsClient.on((event) => {
         user_ids: r.user_ids ?? [],
       }));
       store.updateReactions(channel_id, message_id, reactions);
+      threads.updateThreadReactionsForMessage(message_id, reactions);
       break;
     }
     case 'PollUpdate': {
       const { poll, message_id, channel_id } = event.d;
       if (!poll || !message_id || !channel_id) break;
-      // Update the message's poll data in the store
-      const msgs = store.messages[channel_id];
-      if (msgs) {
-        useMessagesStore.setState({
-          messages: {
-            ...store.messages,
-            [channel_id]: msgs.map((m) =>
-              m.id === message_id ? { ...m, poll } : m
-            ),
-          },
-        });
-      }
+      // Route through updateMessage so the reactions-preserve merge (and any
+      // future patch semantics) apply uniformly. The previous direct setState
+      // call clobbered other fields a concurrent WS update may have touched.
+      store.updateMessage(channel_id, { id: message_id, poll });
       break;
     }
   }

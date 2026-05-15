@@ -9,6 +9,12 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct Storage {
     bucket: Box<Bucket>,
+    /// Internal endpoint the bucket talks to (e.g. `http://minio:9000`).
+    internal_endpoint: String,
+    /// Public URL prefix to substitute into presigned URLs before returning
+    /// them to clients. When equal to `internal_endpoint`, no rewrite is
+    /// applied (local dev outside Docker).
+    public_url: String,
 }
 
 /// Maximum file size: 250 MB.
@@ -18,6 +24,7 @@ impl Storage {
     /// Connect to MinIO / S3 and ensure the bucket exists.
     pub async fn new(
         endpoint: &str,
+        public_url: &str,
         access_key: &str,
         secret_key: &str,
         bucket_name: &str,
@@ -52,8 +59,12 @@ impl Storage {
             }
         }
 
-        info!(endpoint = endpoint, bucket = bucket_name, "S3 storage connected");
-        Ok(Self { bucket })
+        info!(endpoint = endpoint, public_url = public_url, bucket = bucket_name, "S3 storage connected");
+        Ok(Self {
+            bucket,
+            internal_endpoint: endpoint.trim_end_matches('/').to_string(),
+            public_url: public_url.trim_end_matches('/').to_string(),
+        })
     }
 
     /// Check MinIO/S3 connectivity by listing the bucket.
@@ -131,11 +142,21 @@ impl Storage {
     }
 
     /// Generate a presigned download URL (valid for `expires_secs` seconds).
+    ///
+    /// The S3 SDK signs against the internal endpoint host, but the URL we
+    /// hand to clients must point at the public host so browsers can reach
+    /// it. The signature stays valid because nginx restores the internal
+    /// `Host` header before forwarding to MinIO.
     pub async fn presign_get(&self, key: &str, expires_secs: u32) -> Result<String, String> {
-        self.bucket
+        let url = self.bucket
             .presign_get(key, expires_secs, None)
             .await
-            .map_err(|e: S3Error| e.to_string())
+            .map_err(|e: S3Error| e.to_string())?;
+        if self.public_url != self.internal_endpoint && url.starts_with(&self.internal_endpoint) {
+            Ok(format!("{}{}", self.public_url, &url[self.internal_endpoint.len()..]))
+        } else {
+            Ok(url)
+        }
     }
 
     /// Fetch the total size + content-type of an object via HEAD. Used by

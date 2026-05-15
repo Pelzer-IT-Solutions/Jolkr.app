@@ -168,6 +168,13 @@
 /* Hollow placeholder where the dragged item was */
 .draggingPlaceholder { opacity: 0; pointer-events: none; }
 
+/* Channel drag-affordance — mirror the .categoryHeader pattern.
+   The inner .channel uses cursor: inherit so the wrapper-cursor wins. */
+.sortableChannel { cursor: grab; }
+.sortableChannel .channel { cursor: inherit; }
+.sortableChannel:active,
+.sortableChannel:active .channel { cursor: grabbing; }
+
 /* Ghost element that follows the cursor */
 .dragOverlay {
   border-radius: 0.5rem;

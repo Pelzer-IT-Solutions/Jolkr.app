@@ -14,18 +14,22 @@ use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 use crate::ws::events::{FriendshipUpdateKind, GatewayEvent};
 
+/// Response payload carrying a single friendship row.
 #[derive(Serialize)]
 pub(crate) struct FriendshipResponse {
     pub friendship: FriendshipInfo,
 }
 
+/// Response payload for GET /api/friends and GET /api/friends/pending.
 #[derive(Serialize)]
 pub(crate) struct FriendshipsResponse {
     pub friendships: Vec<FriendshipInfo>,
 }
 
+/// Request body for POST /api/friends (send request) and POST /api/friends/block.
 #[derive(Deserialize)]
 pub(crate) struct SendRequestBody {
+    /// The user to send the request to / block.
     pub user_id: Uuid,
 }
 

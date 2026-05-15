@@ -17,34 +17,42 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload for single-thread endpoints (get/update).
 #[derive(Debug, Serialize)]
 pub(crate) struct ThreadResponse {
     pub thread: ThreadInfo,
 }
 
+/// Response payload for GET /api/channels/:channel_id/threads.
 #[derive(Debug, Serialize)]
 pub(crate) struct ThreadsResponse {
     pub threads: Vec<ThreadInfo>,
 }
 
+/// Response payload for POST /api/channels/:channel_id/threads — returns both
+/// the new thread and the starter message that anchors it.
 #[derive(Debug, Serialize)]
 pub(crate) struct ThreadCreatedResponse {
     pub thread: ThreadInfo,
     pub message: MessageInfo,
 }
 
+/// Response payload for POST /api/threads/:thread_id/messages.
 #[derive(Debug, Serialize)]
 pub(crate) struct MessageResponse {
     pub message: MessageInfo,
 }
 
+/// Response payload for GET /api/threads/:thread_id/messages.
 #[derive(Debug, Serialize)]
 pub(crate) struct MessagesResponse {
     pub messages: Vec<MessageInfo>,
 }
 
+/// Query parameters for GET /api/channels/:channel_id/threads.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ListThreadsQuery {
+    /// When true, archived threads are included in the result. Defaults to false.
     pub include_archived: Option<bool>,
 }
 
@@ -119,14 +127,14 @@ pub(crate) async fn update_thread(
 }
 
 /// GET /api/threads/:thread_id/messages
-pub(crate) async fn get_thread_messages(
+pub(crate) async fn list_thread_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(thread_id): Path<Uuid>,
     Query(query): Query<ThreadMessageQuery>,
 ) -> Result<Json<MessagesResponse>, AppError> {
     let messages =
-        ThreadService::get_thread_messages(&state.pool, thread_id, auth.user_id, query).await?;
+        ThreadService::list_thread_messages(&state.pool, thread_id, auth.user_id, query).await?;
 
     Ok(Json(MessagesResponse { messages }))
 }

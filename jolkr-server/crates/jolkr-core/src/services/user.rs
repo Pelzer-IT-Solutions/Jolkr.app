@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::JolkrError;
@@ -9,7 +10,9 @@ use jolkr_db::repo::UserRepo;
 
 /// Public user profile DTO (hides `password_hash`, `email` and other
 /// internals). Returned by `/users/:id`, `/users/search`, `/users/batch`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "User")]
 pub struct UserProfile {
     /// Unique identifier.
     pub id: Uuid,
@@ -71,7 +74,9 @@ impl From<UserRow> for UserProfile {
 /// Self-profile DTO returned exclusively by `/users/@me` (GET + PATCH). Adds
 /// the privacy-sensitive `email` on top of the public `UserProfile` so it
 /// never leaks via lookups for other users.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub struct MeProfile {
     /// Unique identifier.
     pub id: Uuid,
@@ -160,12 +165,14 @@ pub struct UserService;
 
 impl UserService {
     /// Fetch the full profile for the given user ID.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_profile(pool: &PgPool, user_id: Uuid) -> Result<UserProfile, JolkrError> {
         let row = UserRepo::get_by_id(pool, user_id).await?;
         Ok(UserProfile::from(row))
     }
 
     /// Fetch the self-profile (includes `email`) for the authenticated user.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_me(pool: &PgPool, user_id: Uuid) -> Result<MeProfile, JolkrError> {
         let row = UserRepo::get_by_id(pool, user_id).await?;
         Ok(MeProfile::from(row))
@@ -173,6 +180,7 @@ impl UserService {
 
     /// Update mutable profile fields and return the self-profile shape so the
     /// caller can refresh its own auth state without a follow-up `get_me`.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_me(
         pool: &PgPool,
         user_id: Uuid,
@@ -183,6 +191,7 @@ impl UserService {
     }
 
     /// Update mutable profile fields for the calling user.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_profile(
         pool: &PgPool,
         user_id: Uuid,
@@ -228,6 +237,7 @@ impl UserService {
     }
 
     /// Fetch profiles for multiple user IDs in a single query (batch).
+    #[tracing::instrument(skip(pool, user_ids), fields(count = user_ids.len()))]
     pub async fn get_profiles_batch(
         pool: &PgPool,
         user_ids: &[Uuid],
@@ -242,6 +252,7 @@ impl UserService {
     }
 
     /// Search users by exact username or email match.
+    #[tracing::instrument(skip(pool, query))]
     pub async fn search_users(
         pool: &PgPool,
         query: &str,

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 use std::collections::HashMap;
 
@@ -8,7 +9,9 @@ use jolkr_common::JolkrError;
 use jolkr_db::repo::{ChannelRepo, MemberRepo, PollRepo};
 
 /// Public information about `polloption`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "PollOption")]
 pub struct PollOptionInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -21,7 +24,9 @@ pub struct PollOptionInfo {
 }
 
 /// Public information about `poll`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Poll")]
 pub struct PollInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -40,10 +45,12 @@ pub struct PollInfo {
     /// Options list.
     pub options: Vec<PollOptionInfo>,
     /// Map of `option_id` → vote count
+    #[ts(type = "Record<string, number>")]
     pub votes: HashMap<String, i64>,
     /// Current user's voted option IDs
     pub my_votes: Vec<Uuid>,
     /// Total votes.
+    #[ts(type = "number")]
     pub total_votes: i64,
 }
 
@@ -74,6 +81,7 @@ pub struct PollService;
 
 impl PollService {
     /// Create a poll — also creates a message in the channel to attach it to.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_poll(
         pool: &PgPool,
         channel_id: Uuid,
@@ -95,7 +103,10 @@ impl PollService {
 
         // Verify the channel exists and user is a member
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
-        MemberRepo::get_member(pool, channel.server_id, author_id).await.map_err(|_| JolkrError::Forbidden)?;
+        MemberRepo::get_member(pool, channel.server_id, author_id).await.map_err(|e| {
+            tracing::warn!(?e, server_id = %channel.server_id, author_id = %author_id, "member lookup failed while creating poll");
+            JolkrError::Forbidden
+        })?;
 
         // Create a message for the poll
         let message_id = Uuid::new_v4();
@@ -145,6 +156,7 @@ impl PollService {
     }
 
     /// Vote on a poll.
+    #[tracing::instrument(skip(pool))]
     pub async fn vote(
         pool: &PgPool,
         poll_id: Uuid,
@@ -162,10 +174,13 @@ impl PollService {
 
         // Verify user is a member of the channel's server
         let channel = ChannelRepo::get_by_id(pool, poll.channel_id).await?;
-        MemberRepo::get_member(pool, channel.server_id, user_id).await.map_err(|_| JolkrError::Forbidden)?;
+        MemberRepo::get_member(pool, channel.server_id, user_id).await.map_err(|e| {
+            tracing::warn!(?e, server_id = %channel.server_id, user_id = %user_id, "member lookup failed while voting on poll");
+            JolkrError::Forbidden
+        })?;
 
         // H1: Validate option_id belongs to this poll
-        let options = PollRepo::get_options(pool, poll_id).await?;
+        let options = PollRepo::list_options(pool, poll_id).await?;
         if !options.iter().any(|o| o.id == option_id) {
             return Err(JolkrError::Validation("Option does not belong to this poll".into()));
         }
@@ -181,6 +196,7 @@ impl PollService {
     }
 
     /// Remove a vote.
+    #[tracing::instrument(skip(pool))]
     pub async fn unvote(
         pool: &PgPool,
         poll_id: Uuid,
@@ -198,13 +214,17 @@ impl PollService {
 
         // H2: Verify user is a member of the channel's server
         let channel = ChannelRepo::get_by_id(pool, poll.channel_id).await?;
-        MemberRepo::get_member(pool, channel.server_id, user_id).await.map_err(|_| JolkrError::Forbidden)?;
+        MemberRepo::get_member(pool, channel.server_id, user_id).await.map_err(|e| {
+            tracing::warn!(?e, server_id = %channel.server_id, user_id = %user_id, "member lookup failed while unvoting on poll");
+            JolkrError::Forbidden
+        })?;
 
         PollRepo::remove_vote(pool, poll_id, option_id, user_id).await?;
         Self::get_poll(pool, poll_id, user_id).await
     }
 
     /// Get full poll info with vote counts.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_poll(
         pool: &PgPool,
         poll_id: Uuid,
@@ -214,10 +234,13 @@ impl PollService {
 
         // H3: Verify viewer is a member of the channel's server
         let channel = ChannelRepo::get_by_id(pool, poll.channel_id).await?;
-        MemberRepo::get_member(pool, channel.server_id, viewer_user_id).await.map_err(|_| JolkrError::Forbidden)?;
-        let opts = PollRepo::get_options(pool, poll_id).await?;
-        let counts = PollRepo::get_vote_counts(pool, poll_id).await?;
-        let my_votes = PollRepo::get_user_votes(pool, poll_id, viewer_user_id).await?;
+        MemberRepo::get_member(pool, channel.server_id, viewer_user_id).await.map_err(|e| {
+            tracing::warn!(?e, server_id = %channel.server_id, viewer_user_id = %viewer_user_id, "member lookup failed while viewing poll");
+            JolkrError::Forbidden
+        })?;
+        let opts = PollRepo::list_options(pool, poll_id).await?;
+        let counts = PollRepo::list_vote_counts(pool, poll_id).await?;
+        let my_votes = PollRepo::list_user_votes(pool, poll_id, viewer_user_id).await?;
 
         let mut votes_map = HashMap::new();
         let mut total = 0i64;

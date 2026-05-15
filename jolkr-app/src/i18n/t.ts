@@ -17,9 +17,9 @@
  * no hook required.
  */
 
-import type { ReactNode } from 'react';
-import type { Translations } from './types';
 import { FALLBACK_DICT } from './loader';
+import type { Translations } from './types';
+import type { ReactNode } from 'react';
 
 /** Walk a dotted key like `auth.login.title` through a nested dict. */
 function walk(dict: Translations | undefined, key: string): string | undefined {

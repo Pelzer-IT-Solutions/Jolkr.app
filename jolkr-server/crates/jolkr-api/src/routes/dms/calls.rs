@@ -30,7 +30,7 @@ async fn validate_dm_call(
     if !DmRepo::is_member(pool, dm_id, caller_id).await? {
         return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
-    let members = DmRepo::get_dm_members(pool, dm_id).await?;
+    let members = DmRepo::list_dm_members(pool, dm_id).await?;
     let others: Vec<Uuid> = members
         .iter()
         .map(|m| m.user_id)

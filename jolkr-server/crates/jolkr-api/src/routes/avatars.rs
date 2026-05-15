@@ -24,7 +24,10 @@ pub(crate) async fn get_user_avatar(
 ) -> Result<Response<Body>, StatusCode> {
     let user = UserRepo::get_by_id(&state.pool, user_id)
         .await
-        .map_err(|_| StatusCode::NOT_FOUND)?;
+        .map_err(|e| {
+            tracing::warn!(?e, "avatar: user lookup failed → 404");
+            StatusCode::NOT_FOUND
+        })?;
 
     let key = user.avatar_url.ok_or(StatusCode::NOT_FOUND)?;
 
@@ -34,7 +37,10 @@ pub(crate) async fn get_user_avatar(
             .header(header::LOCATION, &key)
             .header(header::CACHE_CONTROL, "public, max-age=3600")
             .body(Body::empty())
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+            .map_err(|e| {
+                tracing::warn!(?e, "avatar redirect response builder failed");
+                StatusCode::INTERNAL_SERVER_ERROR
+            });
     }
 
     serve_resized_avatar(&state, &key).await
@@ -50,7 +56,10 @@ pub(crate) async fn get_server_icon(
 ) -> Result<Response<Body>, StatusCode> {
     let server = ServerRepo::get_by_id(&state.pool, server_id)
         .await
-        .map_err(|_| StatusCode::NOT_FOUND)?;
+        .map_err(|e| {
+            tracing::warn!(?e, "server icon: server lookup failed → 404");
+            StatusCode::NOT_FOUND
+        })?;
 
     let key = server.icon_url.ok_or(StatusCode::NOT_FOUND)?;
 
@@ -60,7 +69,10 @@ pub(crate) async fn get_server_icon(
             .header(header::LOCATION, &key)
             .header(header::CACHE_CONTROL, "public, max-age=3600")
             .body(Body::empty())
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+            .map_err(|e| {
+                tracing::warn!(?e, "server icon redirect response builder failed");
+                StatusCode::INTERNAL_SERVER_ERROR
+            });
     }
 
     serve_resized_avatar(&state, &key).await
@@ -79,7 +91,10 @@ async fn serve_resized_avatar(state: &AppState, key: &str) -> Result<Response<Bo
     // Resize + convert to WebP (handles PNG, JPEG, WebP, GIF, SVG, etc.)
     // This uses the same convert_to_webp pipeline but with our serve-time max (128px)
     let webp_data = resize_to_webp(&raw_data, &content_type)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            tracing::warn!(?e, "avatar/icon WebP resize failed");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     let etag = format!("\"{}\"", &key.replace('/', "-"));
 
@@ -90,7 +105,10 @@ async fn serve_resized_avatar(state: &AppState, key: &str) -> Result<Response<Bo
         .header(header::ETAG, &etag)
         .header("Vary", "Accept-Encoding")
         .body(Body::from(webp_data))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|e| {
+            tracing::warn!(?e, "avatar/icon response builder failed");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 /// Resize an image to SERVE_MAX_PX and encode as WebP.

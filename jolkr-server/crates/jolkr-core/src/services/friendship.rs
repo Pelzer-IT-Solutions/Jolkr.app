@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::JolkrError;
@@ -9,7 +10,9 @@ use jolkr_db::repo::FriendshipRepo;
 
 /// Minimal public profile fields embedded inside a `FriendshipInfo` so the
 /// frontend can render names + avatars in one round-trip.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
 pub struct FriendshipUser {
     /// User identifier.
     pub id: Uuid,
@@ -22,7 +25,9 @@ pub struct FriendshipUser {
 }
 
 /// Public information about `friendship`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Friendship")]
 pub struct FriendshipInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -31,13 +36,16 @@ pub struct FriendshipInfo {
     /// Addressee user identifier.
     pub addressee_id: Uuid,
     /// Current status.
+    #[ts(type = "\"pending\" | \"accepted\" | \"blocked\"")]
     pub status: String,
     /// Requester public profile (populated on list endpoints; `None` for
     /// row-only conversions such as the response of `send_request`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub requester: Option<FriendshipUser>,
     /// Addressee public profile (populated on list endpoints).
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub addressee: Option<FriendshipUser>,
 }
 
@@ -84,6 +92,7 @@ pub struct FriendshipService;
 
 impl FriendshipService {
     /// Sends request.
+    #[tracing::instrument(skip(pool))]
     pub async fn send_request(
         pool: &PgPool,
         requester_id: Uuid,
@@ -110,6 +119,7 @@ impl FriendshipService {
     }
 
     /// Accept request.
+    #[tracing::instrument(skip(pool))]
     pub async fn accept_request(
         pool: &PgPool,
         friendship_id: Uuid,
@@ -121,6 +131,7 @@ impl FriendshipService {
 
     /// Decline or remove. Returns the deleted friendship so the caller can
     /// publish a WS event to both participants before forgetting about it.
+    #[tracing::instrument(skip(pool))]
     pub async fn decline_or_remove(
         pool: &PgPool,
         friendship_id: Uuid,
@@ -131,6 +142,7 @@ impl FriendshipService {
     }
 
     /// Block user.
+    #[tracing::instrument(skip(pool))]
     pub async fn block_user(
         pool: &PgPool,
         blocker_id: Uuid,
@@ -144,6 +156,7 @@ impl FriendshipService {
     }
 
     /// Lists friends.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_friends(
         pool: &PgPool,
         user_id: Uuid,
@@ -153,6 +166,7 @@ impl FriendshipService {
     }
 
     /// Lists pending.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_pending(
         pool: &PgPool,
         user_id: Uuid,

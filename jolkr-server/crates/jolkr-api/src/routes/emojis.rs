@@ -16,11 +16,13 @@ use crate::storage::MAX_FILE_SIZE;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload for POST /api/servers/:server_id/emojis.
 #[derive(Debug, Serialize)]
 pub(crate) struct EmojiResponse {
     pub emoji: EmojiInfo,
 }
 
+/// Response payload for GET /api/servers/:server_id/emojis.
 #[derive(Debug, Serialize)]
 pub(crate) struct EmojisResponse {
     pub emojis: Vec<EmojiInfo>,
@@ -43,7 +45,10 @@ pub(crate) async fn upload_emoji(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid multipart data".into())))?
+        .map_err(|e| {
+            tracing::warn!(?e, "emoji upload: multipart next_field failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid multipart data".into()))
+        })?
     {
         let field_name = field.name().unwrap_or("").to_string();
         match field_name.as_str() {
@@ -52,7 +57,10 @@ pub(crate) async fn upload_emoji(
                     field
                         .text()
                         .await
-                        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid name field".into())))?,
+                        .map_err(|e| {
+                            tracing::warn!(?e, "emoji upload: reading 'name' text field failed");
+                            AppError(jolkr_common::JolkrError::Validation("Invalid name field".into()))
+                        })?,
                 );
             }
             "file" => {
@@ -62,7 +70,10 @@ pub(crate) async fn upload_emoji(
                     field
                         .bytes()
                         .await
-                        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Failed to read file".into())))?
+                        .map_err(|e| {
+                            tracing::warn!(?e, "emoji upload: reading 'file' bytes field failed");
+                            AppError(jolkr_common::JolkrError::Validation("Failed to read file".into()))
+                        })?
                         .to_vec(),
                 );
             }

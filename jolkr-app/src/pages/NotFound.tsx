@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { getAccessToken } from '../api/client';
-import Button from '../components/ui/Button';
+import { Button } from '../components/ui/Button';
 import { useT } from '../hooks/useT';
 import s from './NotFound.module.css';
 
-export default function NotFound() {
+export function NotFound() {
   const { t } = useT();
   const navigate = useNavigate();
   const isLoggedIn = !!getAccessToken();

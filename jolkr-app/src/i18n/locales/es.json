@@ -70,6 +70,9 @@
       "one": "{name} está escribiendo…",
       "two": "{a} y {b} están escribiendo…",
       "many": "Varias personas están escribiendo…"
+    },
+    "jump": {
+      "notFound": "No se ha encontrado ese mensaje."
     }
   },
 
@@ -172,7 +175,8 @@
     "backToChat": "Volver al chat", "info": "Info", "unpin": "Desfijar",
     "pinnedMessages": "Mensajes fijados", "noPinned": "Aún no hay mensajes fijados",
     "sharedFiles": "Archivos compartidos", "noFiles": "Aún no hay archivos compartidos",
-    "decrypting": "Descifrando…"
+    "decrypting": "Descifrando…",
+    "jumpToMessage": "Ir al mensaje", "downloadFile": "Descargar"
   },
 
   "newDmModal": {
@@ -248,6 +252,31 @@
     "kick": "Expulsar", "ban": "Banear",
     "assignRole": "Asignar rol", "inviteToServer": "Invitar al servidor",
     "reportUser": "Reportar usuario"
+  },
+
+  "groupContextMenu": {
+    "info": "Información del grupo",
+    "mute": "Silenciar grupo",
+    "unmute": "Activar grupo",
+    "edit": "Editar grupo",
+    "leave": "Salir del grupo",
+    "members": "{count} miembros"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "Información del grupo {name}",
+    "members": "{count} miembros",
+    "createdOn": "Creado el",
+    "you": "{name} (Tú)"
+  },
+
+  "groupSettingsModal": {
+    "title": "Configuración del grupo",
+    "groupName": "Nombre del grupo",
+    "namePlaceholder": "Nombre del grupo",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "errSaveFailed": "No se pudo guardar la configuración del grupo"
   },
 
   "channelSidebar": {
@@ -361,6 +390,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "No se pudo salir del grupo",
     "friendRequestSent": "Solicitud de amistad enviada",
     "friendRequestFailed": "Error al enviar la solicitud de amistad",
     "friendRequestNotSent": "No se pudo enviar la solicitud de amistad",

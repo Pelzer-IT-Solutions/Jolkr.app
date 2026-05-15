@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{serde_helpers::double_option, JolkrError, Permissions};
@@ -8,7 +9,9 @@ use jolkr_db::models::ChannelRow;
 use jolkr_db::repo::{ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
 /// Public channel DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Channel")]
 pub struct ChannelInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -21,6 +24,7 @@ pub struct ChannelInfo {
     /// Topic.
     pub topic: Option<String>,
     /// Discriminator describing the variant.
+    #[ts(type = "\"text\" | \"voice\" | \"category\"")]
     pub kind: String,
     /// Sort position.
     pub position: i32,
@@ -81,19 +85,24 @@ pub struct UpdateChannelRequest {
 }
 
 /// Channel overwrite DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "ChannelOverwrite")]
 pub struct ChannelOverwriteInfo {
     /// Unique identifier.
     pub id: Uuid,
     /// Owning channel identifier.
     pub channel_id: Uuid,
     /// Target type.
+    #[ts(type = "\"role\" | \"member\"")]
     pub target_type: String,
     /// Target identifier.
     pub target_id: Uuid,
     /// Allow.
+    #[ts(type = "number")]
     pub allow: i64,
     /// Deny.
+    #[ts(type = "number")]
     pub deny: i64,
 }
 
@@ -124,6 +133,7 @@ pub struct ChannelService;
 
 impl ChannelService {
     /// Create a new channel in a server. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_channel(
         pool: &PgPool,
         server_id: Uuid,
@@ -178,6 +188,7 @@ impl ChannelService {
     }
 
     /// Get channel info by ID.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_channel(pool: &PgPool, channel_id: Uuid) -> Result<ChannelInfo, JolkrError> {
         let row = ChannelRepo::get_by_id(pool, channel_id).await?;
         Ok(ChannelInfo::from(row))
@@ -185,6 +196,7 @@ impl ChannelService {
 
     /// List all channels in a server, filtered by `VIEW_CHANNELS` permission.
     /// Server owner always sees all channels.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_channels(
         pool: &PgPool,
         server_id: Uuid,
@@ -201,7 +213,10 @@ impl ChannelService {
         // Get member and compute base permissions
         let member = MemberRepo::get_member(pool, server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, caller_id = %caller_id, "member lookup failed while listing channels");
+                JolkrError::Forbidden
+            })?;
         let base_perms = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
 
         // ADMINISTRATOR sees everything
@@ -211,7 +226,7 @@ impl ChannelService {
 
         // Batch-fetch all overwrites for this server
         let overwrites = ChannelOverwriteRepo::list_for_server(pool, server_id).await?;
-        let member_role_ids = RoleRepo::get_member_role_ids(pool, member.id).await?;
+        let member_role_ids = RoleRepo::list_member_role_ids(pool, member.id).await?;
         let everyone = RoleRepo::get_default(pool, server_id).await.ok();
         let everyone_role_id = everyone.as_ref().map(|r| r.id);
 
@@ -236,6 +251,7 @@ impl ChannelService {
     }
 
     /// Update channel metadata. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_channel(
         pool: &PgPool,
         channel_id: Uuid,
@@ -303,6 +319,7 @@ impl ChannelService {
     }
 
     /// Delete a channel. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_channel(
         pool: &PgPool,
         channel_id: Uuid,
@@ -320,6 +337,7 @@ impl ChannelService {
     }
 
     /// Get computed channel permissions for a user.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_channel_permissions(
         pool: &PgPool,
         channel_id: Uuid,
@@ -335,11 +353,15 @@ impl ChannelService {
 
         let member = MemberRepo::get_member(pool, channel.server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, user_id = %user_id, "member lookup failed for channel permission query");
+                JolkrError::Forbidden
+            })?;
         RoleRepo::compute_channel_permissions(pool, channel.server_id, channel_id, member.id).await
     }
 
     /// List all overwrites for a channel. Requires `MANAGE_CHANNELS`.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_overwrites(
         pool: &PgPool,
         channel_id: Uuid,
@@ -363,6 +385,7 @@ impl ChannelService {
     }
 
     /// Upsert a channel overwrite. Requires `MANAGE_ROLES`.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn upsert_overwrite(
         pool: &PgPool,
         channel_id: Uuid,
@@ -393,7 +416,10 @@ impl ChannelService {
         if req.target_type == "role" {
             let role = RoleRepo::get_by_id(pool, req.target_id)
                 .await
-                .map_err(|_| JolkrError::Validation("Role not found".into()))?;
+                .map_err(|e| {
+                    tracing::warn!(?e, role_id = %req.target_id, "role lookup failed while upserting channel overwrite");
+                    JolkrError::Validation("Role not found".into())
+                })?;
             if role.server_id != channel.server_id {
                 return Err(JolkrError::Validation("Role does not belong to this server".into()));
             }
@@ -427,6 +453,7 @@ impl ChannelService {
     }
 
     /// Delete a channel overwrite. Requires `MANAGE_ROLES`.
+    #[tracing::instrument(skip(pool, target_type))]
     pub async fn delete_overwrite(
         pool: &PgPool,
         channel_id: Uuid,
@@ -456,6 +483,7 @@ impl ChannelService {
     /// channels in a single transaction. Used by the FE drag-and-drop layer
     /// so a single API call covers reorders, cross-folder moves, and
     /// folder ↔ uncategorized moves atomically.
+    #[tracing::instrument(skip(pool, items), fields(count = items.len()))]
     pub async fn move_channels(
         pool: &PgPool,
         server_id: Uuid,
@@ -506,6 +534,7 @@ impl ChannelService {
     }
 
     /// Reorder channels in a server. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, channel_positions), fields(count = channel_positions.len()))]
     pub async fn reorder_channels(
         pool: &PgPool,
         server_id: Uuid,
@@ -553,7 +582,10 @@ impl ChannelService {
     ) -> Result<(), JolkrError> {
         let member = MemberRepo::get_member(pool, server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed for channel permission check");
+                JolkrError::Forbidden
+            })?;
         let perms_bits = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
         let perms = Permissions::from(perms_bits);
         if !perms.has(permission) {

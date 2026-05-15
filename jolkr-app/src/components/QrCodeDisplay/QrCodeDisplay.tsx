@@ -1,10 +1,10 @@
+import { X, Copy, Check } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { QRCodeSVG } from 'qrcode.react'
-import { X, Copy, Check } from 'lucide-react'
-import { useAuthStore } from '../../stores/auth'
 import { useT } from '../../hooks/useT'
-import Avatar from '../Avatar/Avatar'
+import { useAuthStore } from '../../stores/auth'
+import { Avatar } from '../Avatar/Avatar'
 import s from './QrCodeDisplay.module.css'
 
 interface Props {

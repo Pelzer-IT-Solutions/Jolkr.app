@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { TimeData, VolumeState } from '@nomercy-entertainment/nomercy-video-player';
 import { isMobile } from '../platform/detect';
 import { takeover, release } from './playerRegistry';
+import type { TimeData, VolumeState } from '@nomercy-entertainment/nomercy-video-player';
 
 interface NMPlayerState {
   isPlaying: boolean;

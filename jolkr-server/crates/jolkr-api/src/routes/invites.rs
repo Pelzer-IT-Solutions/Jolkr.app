@@ -13,11 +13,13 @@ use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
+/// Response payload carrying a single invite (create + use endpoints).
 #[derive(Serialize)]
 pub(crate) struct InviteResponse {
     pub invite: InviteInfo,
 }
 
+/// Response payload for GET /api/servers/:server_id/invites.
 #[derive(Serialize)]
 pub(crate) struct InvitesResponse {
     pub invites: Vec<InviteInfo>,

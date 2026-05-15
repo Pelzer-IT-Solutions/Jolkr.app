@@ -1,9 +1,9 @@
+import { ChevronRight, X } from 'lucide-react'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronRight, X } from 'lucide-react'
-import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import { useT } from '../../hooks/useT'
+import { revealDelay } from '../../utils/animations'
 import s from './SettingsShell.module.css'
 
 /** A single nav item rendered in the shell's left rail. */

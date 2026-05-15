@@ -70,6 +70,9 @@
       "one": "{name} is aan het typen…",
       "two": "{a} en {b} zijn aan het typen…",
       "many": "Meerdere mensen zijn aan het typen…"
+    },
+    "jump": {
+      "notFound": "Kon dat bericht niet vinden."
     }
   },
 
@@ -173,7 +176,8 @@
     "backToChat": "Terug naar chat", "info": "Info", "unpin": "Pin verwijderen",
     "pinnedMessages": "Vastgepinde berichten", "noPinned": "Nog geen vastgepinde berichten",
     "sharedFiles": "Gedeelde bestanden", "noFiles": "Nog geen gedeelde bestanden",
-    "decrypting": "Ontsleutelen…"
+    "decrypting": "Ontsleutelen…",
+    "jumpToMessage": "Spring naar bericht", "downloadFile": "Downloaden"
   },
 
   "newDmModal": {
@@ -250,6 +254,31 @@
     "kick": "Schoppen", "ban": "Verbannen",
     "assignRole": "Rol toewijzen", "inviteToServer": "Uitnodigen voor server",
     "reportUser": "Gebruiker rapporteren"
+  },
+
+  "groupContextMenu": {
+    "info": "Groepsinfo",
+    "mute": "Groep dempen",
+    "unmute": "Dempen opheffen",
+    "edit": "Groep bewerken",
+    "leave": "Groep verlaten",
+    "members": "{count} leden"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "Groepsinformatie {name}",
+    "members": "{count} leden",
+    "createdOn": "Aangemaakt op",
+    "you": "{name} (jij)"
+  },
+
+  "groupSettingsModal": {
+    "title": "Groepsinstellingen",
+    "groupName": "Groepsnaam",
+    "namePlaceholder": "Groepsnaam",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "errSaveFailed": "Groepsinstellingen opslaan mislukt"
   },
 
   "channelSidebar": {
@@ -362,6 +391,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "Groep verlaten mislukt",
     "friendRequestSent": "Vriendverzoek verzonden",
     "friendRequestFailed": "Vriendverzoek versturen mislukt",
     "friendRequestNotSent": "Vriendverzoek kon niet worden verstuurd",

@@ -1,21 +1,20 @@
-import { useState, useEffect, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { X, UserPlus, Check, XCircle, MessageCircle, UserX, QrCode, ScanLine, Search } from 'lucide-react'
-import type { MemberDisplay, MemberStatus } from '../../types'
-import type { Friendship, User } from '../../api/types'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import { hashColor } from '../../adapters/transforms'
 import * as api from '../../api/client'
-import { wsClient } from '../../api/ws'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { useT } from '../../hooks/useT'
+import { invalidateFriendsCache, loadFriendships, subscribeFriendsCacheInvalidate } from '../../services/friendshipCache'
 import { useAuthStore } from '../../stores/auth'
 import { usePresenceStore } from '../../stores/presence'
-import { useDebouncedValue } from '../../hooks/useDebouncedValue'
-import { invalidateFriendsCache } from '../../services/friendshipCache'
-import { hashColor } from '../../adapters/transforms'
 import { useToast } from '../../stores/toast'
-import { useT } from '../../hooks/useT'
-import Avatar from '../Avatar/Avatar'
+import { Avatar } from '../Avatar/Avatar'
 import { QrCodeDisplay } from '../QrCodeDisplay'
 import { QrCodeScanner } from '../QrCodeScanner'
 import s from './FriendsPanel.module.css'
+import type { FriendshipUser, User } from '../../api/types'
+import type { MemberDisplay, MemberStatus } from '../../types'
 
 type FriendTab = 'all' | 'online' | 'pending' | 'add'
 
@@ -29,7 +28,6 @@ interface FriendRequest {
 
 interface Friend {
   user: MemberDisplay
-  status: MemberStatus
   last_seen?: string
 }
 
@@ -44,7 +42,7 @@ interface Props {
 }
 
 // Backend Friendship → MemberDisplay for the OTHER party (not the current user).
-function toDisplay(otherUser: User | undefined, fallbackUserId: string): MemberDisplay {
+function toDisplay(otherUser: FriendshipUser | undefined, fallbackUserId: string): MemberDisplay {
   const username = otherUser?.username ?? fallbackUserId.slice(0, 8)
   const displayName = otherUser?.display_name ?? null
   return {
@@ -89,19 +87,16 @@ export function FriendsPanel({
   const [qrDisplayOpen, setQrDisplayOpen] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
 
+  // Refresh only depends on identity, not on the live presence stream.
+  // Status is derived per-render via `statusFor` so a PresenceUpdate WS
+  // event re-renders without rebuilding the cache-invalidate subscription.
   const refresh = useCallback(async () => {
     if (!myId) return
-    const [accepted, pending] = await Promise.all([
-      api.getFriends().catch(() => [] as Friendship[]),
-      api.getPendingFriends().catch(() => [] as Friendship[]),
-    ])
+    const { friends: accepted, pending } = await loadFriendships().catch(() => ({ friends: [], pending: [] }))
     setFriends(accepted.map(f => {
         const other = f.requester_id === myId ? f.addressee : f.requester
         const otherId = f.requester_id === myId ? f.addressee_id : f.requester_id
-        return {
-          user: toDisplay(other, otherId),
-          status: liveStatus(presence[otherId]),
-        }
+        return { user: toDisplay(other, otherId) }
       }))
       setRequests(pending.map(f => {
         const isIncoming = f.addressee_id === myId
@@ -114,25 +109,19 @@ export function FriendsPanel({
           created_at: '',
         }
       }))
-  }, [myId, presence])
+  }, [myId])
 
-  // Refresh whenever the panel opens
+  const statusFor = useCallback(
+    (userId: string): MemberStatus => liveStatus(presence[userId]),
+    [presence],
+  )
+
+  // Refresh on open + whenever the friendship cache is invalidated
+  // (WS FriendshipUpdate or any explicit invalidateFriendsCache call).
   useEffect(() => {
     if (!open) return
     refresh()
-  }, [open, refresh])
-
-  // Live-sync: backend publishes FriendshipUpdate to both parties on
-  // send/accept/decline/remove/block, so the open panel re-fetches without
-  // polling. Subscribe is gated on `open` to keep the blast radius small.
-  useEffect(() => {
-    if (!open) return
-    const off = wsClient.on(ev => {
-      if (ev.op === 'FriendshipUpdate') {
-        refresh()
-      }
-    })
-    return off
+    return subscribeFriendsCacheInvalidate(() => { refresh() })
   }, [open, refresh])
 
   useEffect(() => {
@@ -172,24 +161,26 @@ export function FriendsPanel({
     setActiveTab('all')
   }, [open])
 
-  const filteredFriends = friends.filter(f => {
-    if (activeTab === 'online') return f.status !== 'offline'
-    return true
-  })
+  const filteredFriends = useMemo(() => {
+    if (activeTab !== 'online') return friends
+    return friends.filter(f => statusFor(f.user.user_id) !== 'offline')
+  }, [friends, activeTab, statusFor])
 
   const incomingRequests = requests.filter(r => r.type === 'incoming')
   const outgoingRequests = requests.filter(r => r.type === 'outgoing')
 
+  // Mutation handlers leave the cross-component refresh to the cache
+  // invalidate-subscribe chain: each `onX` callback (AppShell) calls
+  // `invalidateFriendsCache()` which notifies subscribers, including this
+  // panel's `refresh`.
   const handleAccept = async (requestId: string) => {
     setRequests(prev => prev.filter(r => r.id !== requestId))
     await Promise.resolve(onAcceptRequest?.(requestId))
-    refresh()
   }
 
   const handleReject = async (requestId: string) => {
     setRequests(prev => prev.filter(r => r.id !== requestId))
     await Promise.resolve(onRejectRequest?.(requestId))
-    refresh()
   }
 
   const handleCancel = async (requestId: string) => {
@@ -197,14 +188,12 @@ export function FriendsPanel({
     // Cancel uses the same DELETE endpoint as decline; reuse onRejectRequest if onCancelRequest isn't wired.
     const cb = onCancelRequest ?? onRejectRequest
     await Promise.resolve(cb?.(requestId))
-    refresh()
   }
 
   const handleRemove = async (userId: string) => {
     setFriends(prev => prev.filter(f => f.user.user_id !== userId))
     setSelectedUserId(null)
     await Promise.resolve(onRemoveFriend?.(userId))
-    refresh()
   }
 
   const handleStartDM = (userId: string) => {
@@ -218,7 +207,6 @@ export function FriendsPanel({
       await api.sendFriendRequest(userId)
       invalidateFriendsCache()
       useToast.getState().show(t('friendsPanel.requestSent'), 'success')
-      refresh()
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('friendsPanel.requestFailed')
       useToast.getState().show(msg, 'error')
@@ -403,18 +391,20 @@ export function FriendsPanel({
             </div>
           ) : (
             <>
-              {filteredFriends.map(friend => (
+              {filteredFriends.map(friend => {
+                const status = statusFor(friend.user.user_id)
+                return (
                 <div
                   key={friend.user.user_id}
                   className={s.friendRow}
                   onClick={() => setSelectedUserId(selectedUserId === friend.user.user_id ? null : friend.user.user_id)}
                 >
                   <div className={s.userInfo}>
-                    <Avatar url={friend.user.avatar_url} name={friend.user.display_name ?? friend.user.username} size="sm" status={friend.status} userId={friend.user.user_id} color={friend.user.color} />
+                    <Avatar url={friend.user.avatar_url} name={friend.user.display_name ?? friend.user.username} size="sm" status={status} userId={friend.user.user_id} color={friend.user.color} />
                     <div className={s.names}>
                       <span className={`${s.displayName} txt-small txt-medium`}>{friend.user.display_name ?? friend.user.username}</span>
                       <span className={`${s.statusText} txt-tiny`}>
-                        {friend.status === 'offline' ? (friend.last_seen ?? t('userStatus.offline')) : t(`userStatus.${friend.status}`)}
+                        {status === 'offline' ? (friend.last_seen ?? t('userStatus.offline')) : t(`userStatus.${status}`)}
                       </span>
                     </div>
                   </div>
@@ -430,7 +420,8 @@ export function FriendsPanel({
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
 
               {filteredFriends.length === 0 && (
                 <div className={s.empty}>

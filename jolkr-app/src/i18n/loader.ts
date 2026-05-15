@@ -9,8 +9,8 @@
  * `setLocale()` calls don't re-fetch.
  */
 
-import type { LocaleCode, Translations } from './types';
 import enUS from './locales/en-US.json';
+import type { LocaleCode, Translations } from './types';
 
 const cache: Partial<Record<LocaleCode, Translations>> = {
   'en-US': enUS as Translations,

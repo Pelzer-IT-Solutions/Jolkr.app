@@ -1,15 +1,15 @@
 import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { ReactionDisplay } from '../../types';
-import type { User } from '../../api/types';
+import { hashColor } from '../../adapters/transforms';
+import { useT } from '../../hooks/useT';
 import { useAuthStore } from '../../stores/auth';
 import { useServersStore } from '../../stores/servers';
-import { hashColor } from '../../adapters/transforms';
-import { displayName } from '../../utils/format';
 import { emojiToImgUrl } from '../../utils/emoji';
-import { useT } from '../../hooks/useT';
-import Avatar from '../Avatar/Avatar';
+import { displayName } from '../../utils/format';
+import { Avatar } from '../Avatar/Avatar';
 import s from './ReactionTooltip.module.css';
+import type { User } from '../../api/types';
+import type { ReactionDisplay } from '../../types';
 
 interface Props {
   reaction: ReactionDisplay;

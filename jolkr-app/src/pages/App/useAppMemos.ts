@@ -1,7 +1,4 @@
 import { useMemo } from 'react'
-import type { ChannelDisplay, DMConversation } from '../../types/ui'
-import { useTypingUsers } from '../../stores/typing'
-import { getApiBaseUrl } from '../../platform/config'
 import {
   transformServer,
   transformMessages,
@@ -10,16 +7,18 @@ import {
   hashColor,
   avatarLetter,
 } from '../../adapters/transforms'
-import { displayName } from '../../utils/format'
-import { useAnimatedTheme } from '../../utils/useAnimatedTheme'
+import { getApiBaseUrl } from '../../platform/config'
+import { useTypingUsers } from '../../stores/typing'
 import { useColorMode } from '../../utils/colorMode'
+import { displayName } from '../../utils/format'
 import {
   hasPermission, MANAGE_CHANNELS, MANAGE_ROLES, MANAGE_SERVER,
   MANAGE_MESSAGES, ADD_REACTIONS, SEND_MESSAGES, ATTACH_FILES, CREATE_INVITE,
 } from '../../utils/permissions'
-
-import type { User, Message as ApiMessage } from '../../api/types'
+import { useAnimatedTheme } from '../../utils/useAnimatedTheme'
 import type { useAppInit } from './useAppInit'
+import type { User, Message as ApiMessage } from '../../api/types'
+import type { ChannelDisplay, DMConversation } from '../../types/ui'
 
 export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   const { isDark, pref: colorPref, setPreference: setColorPref } = useColorMode()
@@ -146,9 +145,12 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
   }, [dmList, userMap, presenceMap, user, storeMessages, unreadCounts])
 
   // ── Derived ──
-  const tabbedServers = tabbedIds.map(id => uiServers.find(s => s.id === id)).filter(Boolean) as typeof uiServers
-  const activeServer = uiServers.find(s => s.id === activeServerId)
-  const activeRawServer = servers.find(s => s.id === activeServerId)
+  const tabbedServers = useMemo(
+    () => tabbedIds.map(id => uiServers.find(s => s.id === id)).filter((s): s is typeof uiServers[number] => s != null),
+    [tabbedIds, uiServers],
+  )
+  const activeServer = useMemo(() => uiServers.find(s => s.id === activeServerId), [uiServers, activeServerId])
+  const activeRawServer = useMemo(() => servers.find(s => s.id === activeServerId), [servers, activeServerId])
   const isServerOwner = !!user && activeRawServer?.owner_id === user.id
   const myPerms = serverPermissions[activeServerId] ?? 0
   const canAccessSettings = isServerOwner || hasPermission(myPerms, MANAGE_SERVER) || hasPermission(myPerms, MANAGE_CHANNELS) || hasPermission(myPerms, MANAGE_ROLES)

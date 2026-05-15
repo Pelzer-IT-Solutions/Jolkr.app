@@ -95,8 +95,8 @@ impl PollRepo {
         Ok(polls)
     }
 
-    /// Get options for a poll.
-    pub async fn get_options(pool: &PgPool, poll_id: Uuid) -> Result<Vec<PollOptionRow>, JolkrError> {
+    /// List options for a poll.
+    pub async fn list_options(pool: &PgPool, poll_id: Uuid) -> Result<Vec<PollOptionRow>, JolkrError> {
         let opts = sqlx::query_as::<_, PollOptionRow>(
             "SELECT * FROM poll_options WHERE poll_id = $1 ORDER BY position ASC"
         )
@@ -106,8 +106,8 @@ impl PollRepo {
         Ok(opts)
     }
 
-    /// Get options for multiple polls (batch).
-    pub async fn get_options_batch(pool: &PgPool, poll_ids: &[Uuid]) -> Result<Vec<PollOptionRow>, JolkrError> {
+    /// List options for multiple polls (batch).
+    pub async fn list_options_batch(pool: &PgPool, poll_ids: &[Uuid]) -> Result<Vec<PollOptionRow>, JolkrError> {
         if poll_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -170,8 +170,8 @@ impl PollRepo {
         Ok(())
     }
 
-    /// Get vote counts grouped by `option_id`.
-    pub async fn get_vote_counts(pool: &PgPool, poll_id: Uuid) -> Result<Vec<(Uuid, i64)>, JolkrError> {
+    /// List vote counts grouped by `option_id`.
+    pub async fn list_vote_counts(pool: &PgPool, poll_id: Uuid) -> Result<Vec<(Uuid, i64)>, JolkrError> {
         let counts: Vec<(Uuid, i64)> = sqlx::query_as(
             "SELECT option_id, COUNT(*) as count FROM poll_votes WHERE poll_id = $1 GROUP BY option_id"
         )
@@ -181,8 +181,8 @@ impl PollRepo {
         Ok(counts)
     }
 
-    /// Get vote counts for multiple polls (batch).
-    pub async fn get_vote_counts_batch(pool: &PgPool, poll_ids: &[Uuid]) -> Result<Vec<(Uuid, Uuid, i64)>, JolkrError> {
+    /// List vote counts for multiple polls (batch).
+    pub async fn list_vote_counts_batch(pool: &PgPool, poll_ids: &[Uuid]) -> Result<Vec<(Uuid, Uuid, i64)>, JolkrError> {
         if poll_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -195,8 +195,8 @@ impl PollRepo {
         Ok(counts)
     }
 
-    /// Get the user's votes for a poll.
-    pub async fn get_user_votes(pool: &PgPool, poll_id: Uuid, user_id: Uuid) -> Result<Vec<Uuid>, JolkrError> {
+    /// List the user's votes for a poll.
+    pub async fn list_user_votes(pool: &PgPool, poll_id: Uuid, user_id: Uuid) -> Result<Vec<Uuid>, JolkrError> {
         let votes: Vec<(Uuid,)> = sqlx::query_as(
             "SELECT option_id FROM poll_votes WHERE poll_id = $1 AND user_id = $2"
         )
@@ -207,8 +207,8 @@ impl PollRepo {
         Ok(votes.into_iter().map(|(id,)| id).collect())
     }
 
-    /// Get user votes for multiple polls (batch).
-    pub async fn get_user_votes_batch(pool: &PgPool, poll_ids: &[Uuid], user_id: Uuid) -> Result<Vec<(Uuid, Uuid)>, JolkrError> {
+    /// List user votes for multiple polls (batch).
+    pub async fn list_user_votes_batch(pool: &PgPool, poll_ids: &[Uuid], user_id: Uuid) -> Result<Vec<(Uuid, Uuid)>, JolkrError> {
         if poll_ids.is_empty() {
             return Ok(Vec::new());
         }

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../api/client';
-import { resetAuthTheme } from '../utils/resetAuthTheme';
-import { MIN_PASSWORD_LENGTH } from '../utils/constants';
 import { useT } from '../hooks/useT';
+import { MIN_PASSWORD_LENGTH } from '../utils/constants';
+import { resetAuthTheme } from '../utils/resetAuthTheme';
 
 const s: Record<string, React.CSSProperties> = {
   page: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-default)' },
@@ -21,7 +21,7 @@ const s: Record<string, React.CSSProperties> = {
   hintError: { fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.25rem' },
 };
 
-export default function ForgotPassword() {
+export function ForgotPassword() {
   useEffect(resetAuthTheme, []);
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');

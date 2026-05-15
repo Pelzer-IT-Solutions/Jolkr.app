@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { wsClient } from '../api/ws';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 import { useAuthStore } from './auth';
 import { useMessagesStore } from './messages';
-import { STORAGE_KEYS } from '../utils/storageKeys';
 
 function persistLastSeen(data: Record<string, string>) {
   try { localStorage.setItem(STORAGE_KEYS.LAST_SEEN, JSON.stringify(data)); }
@@ -87,11 +87,6 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
     localStorage.removeItem(STORAGE_KEYS.LAST_SEEN);
   },
 }));
-
-/** Selector: total unread count across a set of channel IDs */
-export const selectTotalUnread = (channelIds: string[]) =>
-  (s: { counts: Record<string, number> }) =>
-    channelIds.reduce((sum, id) => sum + (s.counts[id] ?? 0), 0);
 
 // Wire up WebSocket — increment unread when new message arrives in non-active channel
 wsClient.on((event) => {

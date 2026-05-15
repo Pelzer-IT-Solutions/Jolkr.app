@@ -10,13 +10,13 @@
  */
 
 import { useMemo } from 'react';
-import { useLocaleStore } from '../stores/locale';
 import {
   formatDate as fmtDate,
   formatTime as fmtTime,
   formatRelativeTime as fmtRelative,
   formatNumber as fmtNumber,
 } from '../i18n/formatters';
+import { useLocaleStore } from '../stores/locale';
 
 export interface LocaleFormatters {
   formatDate: (iso: string | Date, variant?: 'short' | 'long') => string;

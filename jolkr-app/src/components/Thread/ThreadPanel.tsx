@@ -1,17 +1,22 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
 import { ArrowLeft, SendHorizontal } from 'lucide-react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import * as api from '../../api/client'
-import type { Thread, Message, User } from '../../api/types'
-import { useMessagesStore } from '../../stores/messages'
-import { useServersStore } from '../../stores/servers'
-import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { encryptChannelMessage } from '../../crypto/channelKeys'
+import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
+import { useT } from '../../hooks/useT'
 import { getLocalKeys } from '../../services/e2ee'
+import { useServersStore } from '../../stores/servers'
+import { useThreadsStore } from '../../stores/threads'
 import { displayName } from '../../utils/format'
 import { logErr } from '../../utils/logErr'
-import { useT } from '../../hooks/useT'
-import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
 import s from './ThreadPanel.module.css'
+import type { Thread, Message, User } from '../../api/types'
+
+// Shared empty-array sentinel so the `?? []` fallback in the selector doesn't
+// hand zustand a fresh array reference every render, which would trigger a
+// rerender on every store mutation (even ones for unrelated threads).
+const EMPTY_THREAD_MESSAGES: Message[] = []
 
 interface Props {
   threadId: string
@@ -61,9 +66,9 @@ export function ThreadPanel({ threadId, channelId, serverId, users, onBack }: Pr
   const [sending, setSending] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const messages = useMessagesStore(s => s.threadMessages[threadId] ?? [])
-  const loading = useMessagesStore(s => s.threadLoading[threadId] ?? false)
-  const fetchThreadMessages = useMessagesStore(s => s.fetchThreadMessages)
+  const messages = useThreadsStore(s => s.threadMessages[threadId] ?? EMPTY_THREAD_MESSAGES)
+  const loading = useThreadsStore(s => s.threadLoading[threadId] ?? false)
+  const fetchThreadMessages = useThreadsStore(s => s.fetchThreadMessages)
   const membersByServer = useServersStore(s => s.members)
 
   // Fetch thread metadata + messages on mount / threadId change

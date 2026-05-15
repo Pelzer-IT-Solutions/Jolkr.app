@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import type { MemberGroup, MemberSummary } from '../../types'
-import type { User, Thread } from '../../api/types'
-import Avatar from '../Avatar/Avatar'
+import { useEffect, useRef, useState } from 'react'
+import { useRevealAnimation } from '../../hooks/useRevealAnimation'
+import { useT } from '../../hooks/useT'
+import { revealDelay } from '../../utils/animations'
+import { Avatar } from '../Avatar/Avatar'
 import { PinnedMessagesPanel } from '../PinnedMessagesPanel/PinnedMessagesPanel'
 import { ThreadListPanel } from '../Thread/ThreadListPanel'
 import { ThreadPanel } from '../Thread/ThreadPanel'
-import { revealDelay } from '../../utils/animations'
-import { useRevealAnimation } from '../../hooks/useRevealAnimation'
-import { useT } from '../../hooks/useT'
 import s from './MemberPanel.module.css'
+import type { User, Thread } from '../../api/types'
+import type { MemberGroup, MemberSummary } from '../../types'
 
 /** How long the panel's collapse animation takes (matches `--transition`). */
 const HIDE_TRANSITION_MS = 200
@@ -25,6 +25,8 @@ interface Props {
   /** Plain (left) click on a member row → open the profile card. */
   onMemberOpenProfile?: (member: MemberSummary, e: React.MouseEvent) => void
   onUnpin?: (messageId: string) => void
+  /** Click on a pinned-message row → jump the chat list to that message. */
+  onJumpToMessage?: (messageId: string) => void
   users?: Map<string, User>
   pinnedVersion?: number
   onMobileClose?: () => void
@@ -36,7 +38,7 @@ interface Props {
   onCloseThread?: () => void
 }
 
-export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, users, pinnedVersion, onMobileClose, openThreadId, onOpenThread, onCloseThread }: Props) {
+export function MemberPanel({ members, mode, serverId, channelId, isDm = false, onMemberClick, onMemberOpenProfile, onUnpin, onJumpToMessage, users, pinnedVersion, onMobileClose, openThreadId, onOpenThread, onCloseThread }: Props) {
   const { t } = useT()
   const visible = mode !== null
 
@@ -91,6 +93,7 @@ export function MemberPanel({ members, mode, serverId, channelId, isDm = false, 
             isDm={isDm}
             onClose={() => {/* handled by parent */}}
             onUnpin={onUnpin}
+            onJumpToMessage={onJumpToMessage}
             users={users}
             pinnedVersion={pinnedVersion}
           />

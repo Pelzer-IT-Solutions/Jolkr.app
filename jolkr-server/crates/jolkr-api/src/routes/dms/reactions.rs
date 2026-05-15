@@ -11,26 +11,32 @@ use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
+/// Request body for POST /api/dms/messages/:id/reactions.
 #[derive(Deserialize)]
 pub(crate) struct AddReactionRequest {
+    /// Unicode emoji or custom-emoji shortcode. Max 100 chars.
     pub emoji: String,
 }
 
+/// Response payload for POST /api/dms/messages/:id/reactions.
 #[derive(Serialize)]
 pub(crate) struct DmReactionResponse {
     pub reaction: DmReactionInfo,
 }
 
+/// Response payload for GET /api/dms/messages/:id/reactions.
 #[derive(Serialize)]
 pub(crate) struct DmReactionsResponse {
     pub reactions: Vec<DmReactionInfo>,
 }
 
+/// A single reaction row on a DM message.
 #[derive(Serialize)]
 pub(crate) struct DmReactionInfo {
     pub id: Uuid,
     pub message_id: Uuid,
     pub user_id: Uuid,
+    /// Unicode emoji or custom-emoji shortcode.
     pub emoji: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }

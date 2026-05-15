@@ -1,47 +1,48 @@
-import { useCallback, useEffect, useState } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
-import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
-import type { MemberStatus } from '../../types'
-import { useUnreadStore } from '../../stores/unread'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as api from '../../api/client'
+import s from '../../components/AppShell/AppShell.module.css'
+import { CallWindow } from '../../components/CallWindow/CallWindow'
+import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
+import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
+import { ChatArea, type ChatAreaHandle } from '../../components/ChatArea/ChatArea'
+import { CreateServerModal } from '../../components/CreateServerModal/CreateServerModal'
+import { DMInfoPanel } from '../../components/DMInfoPanel/DMInfoPanel'
+import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
+import { FriendsPanel } from '../../components/FriendsPanel'
+import { GroupContextMenu, type GroupContextMenuState } from '../../components/GroupContextMenu'
+import { GroupInfoPopover, type GroupInfoPopoverState } from '../../components/GroupInfoPopover'
+import { GroupSettingsModal } from '../../components/GroupSettingsModal'
+import { JoinServerModal } from '../../components/JoinServerModal/JoinServerModal'
+import { MemberPanel } from '../../components/MemberPanel/MemberPanel'
+import { NewDMModal } from '../../components/NewDMModal/NewDMModal'
+import { NotificationsPanel } from '../../components/NotificationsPanel/NotificationsPanel'
+import { ProfileCard } from '../../components/ProfileCard/ProfileCard'
+import { ReportModal } from '../../components/ReportModal/ReportModal'
+import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
+import { Settings } from '../../components/Settings/Settings'
+import { TabBar } from '../../components/TabBar/TabBar'
+import { PromptDialog } from '../../components/ui/PromptDialog/PromptDialog'
+import { UserContextMenu } from '../../components/UserContextMenu'
+import { VoiceConnectionBar } from '../../components/VoiceConnectionBar/VoiceConnectionBar'
+import { useT } from '../../hooks/useT'
+import { buildInviteUrl } from '../../platform/config'
+import { invalidateFriendsCache } from '../../services/friendshipCache'
+import { useLocaleStore } from '../../stores/locale'
 import { useMessagesStore } from '../../stores/messages'
+import { useNotificationSettingsStore } from '../../stores/notification-settings'
 import { useServersStore, selectServerRoles, selectServerMembers } from '../../stores/servers'
 import { useToast } from '../../stores/toast'
-import { useLocaleStore } from '../../stores/locale'
-import { useT } from '../../hooks/useT'
-import PromptDialog from '../../components/ui/PromptDialog/PromptDialog'
-import { buildInviteUrl } from '../../platform/config'
-import { orbsForHue } from '../../utils/theme'
-import * as api from '../../api/client'
-
-import { TabBar } from '../../components/TabBar/TabBar'
-import { ChannelSidebar } from '../../components/ChannelSidebar/ChannelSidebar'
-import { VoiceConnectionBar } from '../../components/VoiceConnectionBar/VoiceConnectionBar'
-import { CallWindow } from '../../components/CallWindow/CallWindow'
-import { DMSidebar } from '../../components/DMSidebar/DMSidebar'
-import { ChatArea } from '../../components/ChatArea/ChatArea'
-import { MemberPanel } from '../../components/MemberPanel/MemberPanel'
-import { DMInfoPanel } from '../../components/DMInfoPanel/DMInfoPanel'
-import { Settings } from '../../components/Settings/Settings'
-import { NewDMModal } from '../../components/NewDMModal/NewDMModal'
-import { JoinServerModal } from '../../components/JoinServerModal/JoinServerModal'
-import { CreateServerModal } from '../../components/CreateServerModal/CreateServerModal'
-import { NotificationsPanel } from '../../components/NotificationsPanel/NotificationsPanel'
-import { FriendsPanel } from '../../components/FriendsPanel'
-import { ServerSettings } from '../../components/ServerSettings/ServerSettings'
-import { ChannelSettings } from '../../components/ChannelSettings/ChannelSettings'
-import { ReportModal } from '../../components/ReportModal/ReportModal'
-import { UserContextMenu } from '../../components/UserContextMenu'
-import { ProfileCard } from '../../components/ProfileCard/ProfileCard'
-import { invalidateFriendsCache } from '../../services/friendshipCache'
+import { useUnreadStore } from '../../stores/unread'
 import { buildDraftDm, isDraftDmId } from '../../utils/draftDm'
-
+import { hasPermission, KICK_MEMBERS, BAN_MEMBERS, MANAGE_ROLES } from '../../utils/permissions'
+import { orbsForHue } from '../../utils/theme'
+import { useAppHandlers } from './useAppHandlers'
 import { useAppInit } from './useAppInit'
 import { useAppMemos } from './useAppMemos'
-import { useAppHandlers } from './useAppHandlers'
+import type { MemberStatus } from '../../types'
 
-import s from '../../components/AppShell/AppShell.module.css'
-
-export default function AppShell() {
+export function AppShell() {
   const { t } = useT()
   const init = useAppInit()
   const memos = useAppMemos(init)
@@ -49,6 +50,11 @@ export default function AppShell() {
 
   // Pending message id for the "create thread" prompt — replaces window.prompt().
   const [threadPromptMsgId, setThreadPromptMsgId] = useState<string | null>(null)
+
+  // Group-DM surfaces — each one is open on at most a single dm at a time.
+  const [groupContextMenu, setGroupContextMenu] = useState<GroupContextMenuState | null>(null)
+  const [groupInfoPopover, setGroupInfoPopover] = useState<GroupInfoPopoverState | null>(null)
+  const [groupSettingsForDmId, setGroupSettingsForDmId] = useState<string | null>(null)
 
   // Mirror the active locale onto <html lang="..."> for screen readers,
   // Intl.Segmenter, browser hyphenation, and any CSS that targets `:lang(…)`.
@@ -156,6 +162,41 @@ export default function AppShell() {
     if (isMobile) setActiveMobilePane('chat')
   }, [setActiveDmId, isMobile, setActiveMobilePane])
 
+  // ── ChatArea hot-path handlers ──
+  // Stable references so ChatArea's child memoisation isn't defeated by a
+  // fresh function identity on every AppShell render. The store reads inside
+  // each callback are deliberate — they pick up the latest store snapshot at
+  // call time without re-binding the callback on every store mutation.
+  const effectiveChannelId = dmActive ? activeDmId : activeChannelId
+  const chatHasMore = useMessagesStore(s => s.hasMore[effectiveChannelId] ?? true)
+  const handleLoadOlder = useCallback(() => {
+    const { fetchOlder, loadingOlder } = useMessagesStore.getState()
+    if (!loadingOlder[effectiveChannelId]) fetchOlder(effectiveChannelId, dmActive)
+  }, [effectiveChannelId, dmActive])
+  const handleOpenAuthorProfile = useCallback((authorId: string, e: React.MouseEvent) => {
+    setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
+  }, [setProfileCard])
+  const handleStartThread = useCallback((messageId: string) => {
+    if (dmActive || !activeChannelId) return
+    setThreadPromptMsgId(messageId)
+  }, [dmActive, activeChannelId])
+
+  // ── Jump-to-message wiring ───────────────────────────────────────
+  // The chat owns the imperative scroll; pinned + shared-files panels just
+  // call into this ref. On mobile the right pane is shown alone, so we hop
+  // back to the chat pane first and defer the scroll until that swap commits.
+  const chatAreaRef = useRef<ChatAreaHandle>(null)
+  const handleJumpToMessage = useCallback((messageId: string) => {
+    if (isMobile) {
+      setActiveMobilePane('chat')
+      requestAnimationFrame(() => {
+        void chatAreaRef.current?.scrollToMessage(messageId)
+      })
+      return
+    }
+    void chatAreaRef.current?.scrollToMessage(messageId)
+  }, [isMobile, setActiveMobilePane])
+
   // Open a 1-on-1 conversation with `otherUserId`: reuse an existing real DM
   // if we already have one, otherwise drop a session-only draft into the
   // sidebar. Used by FriendsPanel and ProfileCard so the recipient never
@@ -186,6 +227,7 @@ export default function AppShell() {
   // ── Destructure handlers ──
   const {
     mutedServerIds, handleToggleMuteServer,
+    handleToggleMuteDm, handleLeaveGroupDm,
     handleLogout, handleStatusChange, handleUpdateProfile,
     handleUploadAvatar, handleTyping,
     handleSwitchServer, handleCloseTab, handleOpenServer,
@@ -216,20 +258,49 @@ export default function AppShell() {
     ? serverMembers.find(m => m.user_id === userContextMenu.user.user_id)?.role_ids ?? []
     : []
 
+  // Pre-built "invite to server" list for UserContextMenu — keeps the prop
+  // identity stable so the (potentially memoized) menu doesn't re-render on
+  // every parent tick. Set lookup avoids the O(n×m) of array.includes inside
+  // the filter.
+  const inviteableServerIdSet = useMemo(() => new Set(inviteableServerIds), [inviteableServerIds])
+  const inviteableServersWithHue = useMemo(
+    () => servers
+      .filter(srv => inviteableServerIdSet.has(srv.id))
+      .map(srv => ({ ...srv, hue: serverThemes[srv.id]?.hue ?? null })),
+    [servers, inviteableServerIdSet, serverThemes],
+  )
+
   const handleToggleRole = useCallback(async (userId: string, roleId: string, hasRole: boolean) => {
     if (!activeServerId) return
     try {
-      if (hasRole) {
-        await api.removeRole(activeServerId, roleId, userId)
-      } else {
-        await api.assignRole(activeServerId, roleId, userId)
-      }
-      // Refresh members to get updated role_ids
-      useServersStore.getState().fetchMembersWithRoles(activeServerId).catch(console.warn)
+      const store = useServersStore.getState()
+      if (hasRole) await store.removeRole(activeServerId, roleId, userId)
+      else await store.assignRole(activeServerId, roleId, userId)
     } catch (err) {
       console.error('Role toggle failed:', err)
     }
   }, [activeServerId])
+
+  // ── Group-DM surface lookups ──
+  // Resolve the active DM record for each surface so the child components
+  // stay pure (they don't reach into the DM list themselves).
+  const groupContextMenuConv = useMemo(
+    () => groupContextMenu ? uiDmList.find(d => d.id === groupContextMenu.dmId) ?? null : null,
+    [groupContextMenu, uiDmList],
+  )
+  const groupInfoConv = useMemo(
+    () => groupInfoPopover ? uiDmList.find(d => d.id === groupInfoPopover.dmId) ?? null : null,
+    [groupInfoPopover, uiDmList],
+  )
+  const groupSettingsConv = useMemo(
+    () => groupSettingsForDmId ? uiDmList.find(d => d.id === groupSettingsForDmId) ?? null : null,
+    [groupSettingsForDmId, uiDmList],
+  )
+  const isGroupContextMenuMuted = useNotificationSettingsStore(st =>
+    !!groupContextMenu && st.settings.some(x =>
+      x.target_type === 'channel' && x.target_id === groupContextMenu.dmId && x.muted,
+    ),
+  )
 
   // ── Render ──
 
@@ -316,8 +387,13 @@ export default function AppShell() {
                       onNewMessage={() => setNewDmOpen(true)}
                       onOpenFriends={() => setFriendsPanelOpen(true)}
                       onConversationContextMenu={(conv, e) => {
-                        // Group DMs don't have a single "other user" to target — skip.
-                        if (conv.type !== 'direct') return
+                        // Group DMs open the GroupContextMenu surface; 1:1 DMs
+                        // fall through to the user-context menu so the existing
+                        // friend / block / close-dm actions stay available.
+                        if (conv.type === 'group') {
+                          setGroupContextMenu({ x: e.clientX, y: e.clientY, dmId: conv.id })
+                          return
+                        }
                         const p = conv.participants[0]
                         if (!p?.userId) return
                         setUserContextMenu({
@@ -371,6 +447,7 @@ export default function AppShell() {
 
                   {showChat && (hasChatContent ? (
                     <ChatArea
+                      ref={chatAreaRef}
                       channel={activeChannel}
                       messages={displayMessages}
                       sidebarCollapsed={sidebarCollapsedForChatHeader}
@@ -391,27 +468,18 @@ export default function AppShell() {
                       hasThreads={threadsCount > 0}
                       serverId={dmActive ? undefined : activeServerId}
                       userMap={userMap}
-                      onLoadOlder={() => {
-                        const { fetchOlder, loadingOlder } = useMessagesStore.getState()
-                        const channelId = dmActive ? activeDmId : activeChannelId
-                        if (!loadingOlder[channelId]) fetchOlder(channelId, dmActive)
-                      }}
-                      hasMore={useMessagesStore.getState().hasMore[dmActive ? activeDmId : activeChannelId] ?? true}
+                      onLoadOlder={handleLoadOlder}
+                      hasMore={chatHasMore}
                       readOnly={isDmWithSystemUser}
                       onPinMessage={handlePinMessage}
-                      onOpenAuthorProfile={(authorId, e) => {
-                        setProfileCard({ userId: authorId, x: e.clientX, y: e.clientY })
-                      }}
+                      onOpenAuthorProfile={handleOpenAuthorProfile}
                       mentionableUsers={mentionableUsers}
                       canManageMessages={canManageMessages}
                       canAddReactions={canAddReactions}
                       canSendMessages={canSendMessages}
                       canAttachFiles={canAttachFiles}
                       onOpenThread={handleOpenThreadById}
-                      onStartThread={(messageId) => {
-                        if (dmActive || !activeChannelId) return
-                        setThreadPromptMsgId(messageId)
-                      }}
+                      onStartThread={handleStartThread}
                     />
                   ) : (
                     <div className={s.emptyState}>
@@ -436,6 +504,7 @@ export default function AppShell() {
                       open={!rightPanelHidden}
                       dmId={activeDmId}
                       onUnpin={handleUnpinMessage}
+                      onJumpToMessage={handleJumpToMessage}
                       users={userMap}
                       pinnedVersion={pinnedVersion}
                       onMobileClose={isMobile ? mobileBackToChat : undefined}
@@ -469,6 +538,7 @@ export default function AppShell() {
                         setProfileCard({ userId: member.userId, x: e.clientX, y: e.clientY })
                       }}
                       onUnpin={handleUnpinMessage}
+                      onJumpToMessage={handleJumpToMessage}
                       users={userMap}
                       pinnedVersion={pinnedVersion}
                       onMobileClose={isMobile ? mobileBackToChat : undefined}
@@ -698,7 +768,7 @@ export default function AppShell() {
           if (activeServerId) await api.banMember(activeServerId, userId).catch(console.warn)
           setUserContextMenu(null)
         }}
-        servers={servers.filter(s => inviteableServerIds.includes(s.id)).map(s => ({ ...s, hue: serverThemes[s.id]?.hue ?? null }))}
+        servers={inviteableServersWithHue}
         roles={serverRoles}
         userRoleIds={contextMenuUserRoleIds}
         canManageRoles={canManageRoles}
@@ -713,6 +783,35 @@ export default function AppShell() {
           onStartDm={openDmDraft}
         />
       )}
+
+      <GroupContextMenu
+        menu={groupContextMenu}
+        conv={groupContextMenuConv}
+        isMuted={isGroupContextMenuMuted}
+        onClose={() => setGroupContextMenu(null)}
+        onViewInfo={(dmId, anchor) => {
+          setGroupInfoPopover({ x: anchor.x, y: anchor.y, dmId })
+        }}
+        onToggleMute={handleToggleMuteDm}
+        onEdit={(dmId) => setGroupSettingsForDmId(dmId)}
+        onLeave={handleLeaveGroupDm}
+      />
+
+      <GroupInfoPopover
+        state={groupInfoPopover}
+        conv={groupInfoConv}
+        onClose={() => setGroupInfoPopover(null)}
+        onOpenMemberProfile={(userId, anchor) => {
+          setGroupInfoPopover(null)
+          setProfileCard({ userId, x: anchor.x, y: anchor.y })
+        }}
+      />
+
+      <GroupSettingsModal
+        open={groupSettingsForDmId !== null}
+        conv={groupSettingsConv}
+        onClose={() => setGroupSettingsForDmId(null)}
+      />
 
       <PromptDialog
         open={threadPromptMsgId !== null}

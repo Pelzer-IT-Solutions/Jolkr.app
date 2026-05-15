@@ -1,24 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import * as api from '../api/client';
+import { Button } from '../components/ui/Button';
+import { useT } from '../hooks/useT';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
-import * as api from '../api/client';
-import Button from '../components/ui/Button';
-import { useT } from '../hooks/useT';
-import s from './InviteAccept.module.css';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import s from './InviteAccept.module.css';
 
-export default function InviteAccept() {
+export function InviteAccept() {
   const { t } = useT();
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const loading = useAuthStore((s) => s.loading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const [error, setError] = useState('');
   const [joining, setJoining] = useState(false);
 
   useEffect(() => {
-    if (loading || !code) return;
+    if (isLoading || !code) return;
 
     if (!user) {
       // Save invite code and redirect to login
@@ -38,9 +38,9 @@ export default function InviteAccept() {
         setError((e as Error).message || t('inviteAccept.errorGeneric'));
         setJoining(false);
       });
-  }, [code, user, loading, navigate, t]);
+  }, [code, user, isLoading, navigate, t]);
 
-  if (loading || joining) {
+  if (isLoading || joining) {
     return (
       <div className={s.page}>
         <div className={s.message}>{t('inviteAccept.joining')}</div>

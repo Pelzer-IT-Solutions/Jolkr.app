@@ -15,24 +15,29 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response body for endpoints returning a single category (create/update).
 #[derive(Debug, Serialize)]
 pub(crate) struct CategoryResponse {
     pub category: CategoryInfo,
 }
 
+/// Response body for endpoints returning the full category list of a server.
 #[derive(Debug, Serialize)]
 pub(crate) struct CategoriesResponse {
     pub categories: Vec<CategoryInfo>,
 }
 
+/// Request body for PUT /api/servers/:server_id/categories/reorder.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ReorderCategoriesRequest {
     pub category_positions: Vec<CategoryPositionEntry>,
 }
 
+/// New position for a single category in a reorder request.
 #[derive(Debug, Deserialize)]
 pub(crate) struct CategoryPositionEntry {
     pub id: Uuid,
+    /// Zero-based sort index within the server's category list.
     pub position: i32,
 }
 
@@ -62,7 +67,10 @@ pub(crate) async fn list_categories(
 ) -> Result<Json<CategoriesResponse>, AppError> {
     MemberRepo::get_member(&state.pool, server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list categories: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     let categories = CategoryService::list_categories(&state.pool, server_id).await?;
     Ok(Json(CategoriesResponse { categories }))
 }

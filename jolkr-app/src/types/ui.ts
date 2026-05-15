@@ -47,6 +47,10 @@ export interface DMConversation {
   lastMessageNonce?: string | null
   lastTime?:    string
   unread:       number
+  /** Raw ISO creation timestamp from the backend. Currently consumed by
+   *  the group-info popover; kept optional so drafts (no BE record yet)
+   *  can omit it. */
+  createdAt?:   string
 }
 
 /** Lightweight member used by MemberPanel and other "card"-style listings. */
@@ -144,7 +148,6 @@ export interface MessageVM {
   webhook_avatar?: string | null
 }
 
-export type MessageStore = Record<string, Record<string, MessageVM[]>>
 
 export interface ThemeOrb {
   id:     string
@@ -172,11 +175,3 @@ export interface MemberDisplay {
   avatar_url?:   string | null
 }
 
-export interface PermissionOverwriteDisplay {
-  id:          string
-  channel_id:  string
-  target_type: 'role' | 'member'
-  target_id:   string
-  allow:       number  // Permission bitfield
-  deny:        number  // Permission bitfield
-}

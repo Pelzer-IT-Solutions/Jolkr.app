@@ -1,9 +1,9 @@
 import { SquarePen, Users, PanelLeftClose, ArrowLeft } from 'lucide-react'
-import type { DMConversation } from '../../types'
 import { useDecryptedContent } from '../../hooks/useDecryptedContent'
 import { useT } from '../../hooks/useT'
-import Avatar from '../Avatar/Avatar'
+import { Avatar } from '../Avatar/Avatar'
 import s from './DMSidebar.module.css'
+import type { DMConversation } from '../../types'
 
 interface Props {
   conversations: DMConversation[]
@@ -11,7 +11,9 @@ interface Props {
   onSelect:      (id: string) => void
   onNewMessage:  () => void
   onOpenFriends?: () => void
-  /** Right-click on a DM row → open the user-context menu. Group DMs are skipped. */
+  /** Right-click on a DM row. Direct conversations open `UserContextMenu`,
+   *  group conversations open `GroupContextMenu` — the branch lives in the
+   *  parent so this component stays agnostic of which menu fires. */
   onConversationContextMenu?: (conv: DMConversation, e: React.MouseEvent) => void
   collapsed?:     boolean
   onCollapse?:    () => void

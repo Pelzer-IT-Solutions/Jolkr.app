@@ -133,8 +133,10 @@ pub(crate) async fn close_dm(
 
 // ── Read Receipts ────────────────────────────────────────────────────
 
+/// Request body for POST /api/dms/:dm_id/read — advances the caller's read marker in a DM.
 #[derive(Deserialize)]
 pub(crate) struct MarkAsReadRequest {
+    /// Most-recent DM message id the caller has seen; clears the unread counter up to and including this id.
     pub message_id: Uuid,
 }
 
@@ -155,7 +157,7 @@ pub(crate) async fn mark_as_read(
             user_id: auth.user_id,
             message_id: body.message_id,
         };
-        if let Ok(members) = DmRepo::get_dm_members(&state.pool, dm_id).await {
+        if let Ok(members) = DmRepo::list_dm_members(&state.pool, dm_id).await {
             for member in &members {
                 state.nats.publish_to_user(member.user_id, &event).await;
             }

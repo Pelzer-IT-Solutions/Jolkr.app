@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getSafePosition } from '../../utils/position'
 import s from './Menu.module.css'
@@ -22,21 +22,20 @@ export function Menu({ open, position, onClose, children, minWidth = '11rem', cl
   const menuRef = useRef<HTMLDivElement>(null)
   const [safePos, setSafePos] = useState(position)
 
-  // Recalculate safe position when menu mounts or position changes.
-  // Defer setState to a microtask so it doesn't fire synchronously inside the
-  // effect body (react-hooks/set-state-in-effect). The microtask still runs
-  // before paint so there's no visible reflow.
-  useEffect(() => {
+  // Recalculate safe position once the menu is mounted so it can be measured.
+  // useLayoutEffect is the textbook fit for measure-then-adjust patterns —
+  // it runs synchronously after DOM mutation but before paint, so the user
+  // never sees the unadjusted position. setState here is intentional: the
+  // adjusted value depends on a DOM measurement that's only available after
+  // mount, so it cannot be derived in render.
+  useLayoutEffect(() => {
     if (!open || !menuRef.current || disableAutoPosition) {
-      queueMicrotask(() => setSafePos(position))
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- measure-then-adjust pattern; see comment above
+      setSafePos(position)
       return
     }
     const rect = menuRef.current.getBoundingClientRect()
-    const adjusted = getSafePosition(
-      position,
-      { width: rect.width, height: rect.height }
-    )
-    queueMicrotask(() => setSafePos(adjusted))
+    setSafePos(getSafePosition(position, { width: rect.width, height: rect.height }))
   }, [open, position, disableAutoPosition])
 
   // Close on outside click or Escape

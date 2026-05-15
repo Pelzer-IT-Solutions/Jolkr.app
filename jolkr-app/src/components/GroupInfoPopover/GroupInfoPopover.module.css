@@ -1,0 +1,152 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-profile-card);
+  background: transparent;
+}
+
+.card {
+  position: fixed;
+  z-index: calc(var(--z-profile-card) + 1);
+  width: 20rem;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  background: var(--bg-loud);
+  border: 1px solid var(--border-muted);
+  border-radius: 0.875rem;
+  box-shadow: var(--shadow-elevation-large);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: cardIn 160ms var(--ease-out-quart) both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+.banner {
+  height: 3.75rem;
+  flex-shrink: 0;
+  /* `background` is supplied inline via `hashColor(dmId)` for deterministic tint. */
+}
+
+.iconWrap {
+  margin: -1.5rem 0 0 1rem;
+  width: 3rem;
+  height: 3rem;
+  padding: 0.25rem;
+  background: var(--bg-loud);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-strong);
+  position: relative;
+  z-index: 1;
+}
+
+.body {
+  padding: 0.5rem 1rem 1rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.nameBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.displayName {
+  color: var(--text-strong);
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.subtitle { color: var(--text-default); }
+
+.divider {
+  height: 1px;
+  background: var(--border-muted);
+  margin: 0.75rem 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-height: 0;
+}
+
+.sectionLabel {
+  color: var(--text-default);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin: 0;
+}
+
+.dim { color: var(--text-default); }
+
+/* ── Member list ── */
+.memberList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.4375rem 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-default);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition), color var(--transition);
+  min-width: 0;
+}
+
+.memberRow:hover:not(:disabled) {
+  background: var(--bg-dark-muted);
+  color: var(--text-strong);
+}
+
+.memberRow:disabled {
+  cursor: default;
+}
+
+/* Self-row is informational only — no hover, no click affordance. */
+.memberRowSelf {
+  cursor: default;
+}
+.memberRowSelf:hover { background: transparent; color: var(--text-default); }
+
+.memberMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+}
+
+.memberName {
+  color: var(--text-strong);
+  display: block;
+}
+
+.memberStatus {
+  color: var(--text-faint);
+  display: block;
+}

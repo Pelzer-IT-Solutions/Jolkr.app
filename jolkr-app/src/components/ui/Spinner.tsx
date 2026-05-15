@@ -8,7 +8,7 @@ interface SpinnerProps {
   className?: string;
 }
 
-export default function Spinner({ size = 'sm', className }: SpinnerProps) {
+export function Spinner({ size = 'sm', className }: SpinnerProps) {
   const { t } = useT();
   const composed = [s.spinner, s[size], className ?? ''].filter(Boolean).join(' ');
   return <div className={composed} role="status" aria-label={t('common.loading')} />;

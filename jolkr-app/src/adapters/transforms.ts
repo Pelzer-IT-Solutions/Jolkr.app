@@ -4,10 +4,11 @@
  * This adapter layer bridges the two type systems.
  */
 
-import { displayName } from '../utils/format'
 import { tStatic } from '../hooks/useT'
-import { getLocaleCode } from '../stores/locale'
 import { formatDate, formatTime } from '../i18n/formatters'
+import { getApiBaseUrl } from '../platform/config'
+import { getLocaleCode } from '../stores/locale'
+import { displayName } from '../utils/format'
 import type {
   User,
   Server as ApiServer,
@@ -17,8 +18,6 @@ import type {
   Message as ApiMessage,
   DmChannel,
 } from '../api/types'
-import { getApiBaseUrl } from '../platform/config'
-
 import type {
   ServerDisplay,
   ChannelDisplay,
@@ -46,7 +45,7 @@ export function hashColor(input: string): string {
 }
 
 /** First letter of display name or username, uppercased. */
-export function avatarLetter(user: User): string {
+export function avatarLetter(user: { display_name?: string | null; username: string }): string {
   return (displayName(user)?.[0] ?? '?').toUpperCase()
 }
 
@@ -156,7 +155,7 @@ export function transformMessage(
   const reactions: ReactionDisplay[] = (msg.reactions ?? []).map(r => ({
     emoji: r.emoji,
     count: r.count,
-    me: r.me,
+    me: r.me ?? false,
     userIds: r.user_ids ?? [],
   }))
 
@@ -325,5 +324,6 @@ export function transformDmConversation(
     lastMessageNonce: lastMessage?.nonce,
     lastTime: lastMessage ? formatTimestamp(lastMessage.created_at) : undefined,
     unread: unreadCount ?? 0,
+    createdAt: dm.created_at,
   }
 }

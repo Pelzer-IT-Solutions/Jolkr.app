@@ -1,4 +1,3 @@
-import type React from 'react'
 import type { ThemeOrb, ServerTheme } from '../types'
 
 /** Default three-orb layout for a given primary hue */
@@ -73,38 +72,3 @@ export function buildBackground(theme: ServerTheme, isDark = false): string {
   return buildOrbBackground(orbs, { baseHue, intensity: 1, isDark })
 }
 
-/**
- * Build the inline style object for the app root.
- * Explicitly computes every hue-dependent token so browsers never have to
- * re-evaluate `var(--theme-hue)` inside an inherited custom property value —
- * a case where some engines fall back to the :root definition instead.
- */
-export function buildThemeStyle(
-  hue: number | null,
-  isDark: boolean,
-  background: string,
-): React.CSSProperties {
-  const h = hue ?? 0
-  // hasHue is true when there's a preset OR custom orb hues are in use
-  const hasHue = hue !== null
-
-  return {
-    '--theme-hue':    h,
-    '--accent':       hasHue ? `oklch(55% 0.18 ${h})` : 'oklch(55% 0 0)',
-    '--accent-muted': hasHue ? `oklch(55% 0.18 ${h} / 0.12)` : 'oklch(55% 0 0 / 0.12)',
-    '--accent-strong':hasHue ? `oklch(55% 0.18 ${h} / 0.24)` : 'oklch(55% 0 0 / 0.24)',
-    '--accent-text':  hasHue
-      ? (isDark ? `oklch(72% 0.14 ${h})` : `oklch(38% 0.14 ${h})`)
-      : (isDark ? 'oklch(72% 0 0)'       : 'oklch(42% 0 0)'),
-    background,
-  } as React.CSSProperties
-}
-
-/** Randomise orb positions, keeping their hues and scales */
-export function randomiseOrbs(orbs: ThemeOrb[]): ThemeOrb[] {
-  return orbs.map(o => ({
-    ...o,
-    x: 0.08 + Math.random() * 0.84,
-    y: 0.08 + Math.random() * 0.84,
-  }))
-}

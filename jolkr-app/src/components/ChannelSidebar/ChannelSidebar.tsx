@@ -1,4 +1,3 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import {
   DndContext, DragOverlay, closestCenter,
   PointerSensor, useSensor, useSensors,
@@ -6,21 +5,23 @@ import {
   type DragStartEvent, type DragOverEvent, type DragEndEvent,
   type CollisionDetection,
 } from '@dnd-kit/core'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import {
   SortableContext, verticalListSortingStrategy,
   useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Plus, PanelLeftClose, ArrowLeft, ChevronDown, FolderPlus, Hash, Volume2, Trash2, Archive, Edit3, MoreHorizontal, Settings } from 'lucide-react'
-import type { ServerDisplay, ChannelDisplay, CategoryDisplay, ServerTheme } from '../../types'
-import type { ChannelMoveItem } from '../../api/client'
-import type { ColorPreference } from '../../utils/colorMode'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useT } from '../../hooks/useT'
 import { revealDelay, revealWindowMs } from '../../utils/animations'
 import { Menu, MenuItem, MenuDivider } from '../Menu'
 import { ThemePicker } from '../ThemePicker/ThemePicker'
-import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
-import { useT } from '../../hooks/useT'
+import { ConfirmDialog } from '../ui/ConfirmDialog/ConfirmDialog'
 import s from './ChannelSidebar.module.css'
+import type { ChannelMoveItem } from '../../api/client'
+import type { ServerDisplay, ChannelDisplay, CategoryDisplay, ServerTheme } from '../../types'
+import type { ColorPreference } from '../../utils/colorMode'
 
 // Diff the layout before vs. after a drag and produce the API payloads:
 function buildChannelMoveItems(
@@ -105,16 +106,35 @@ interface Props {
 
 export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, collapsed, isMobile = false, theme, onThemeChange, isDark, colorPref, onSetColorPref, onOpenSettings: _onOpenSettings, canManageChannels, canEditTheme, onCreateChannel, onCreateCategory, onDeleteChannel, onDeleteCategory, onRenameChannel, onRenameCategory, onArchiveChannel, onOpenChannelSettings, onReorderChannels, onReorderCategories }: Props) {
   const { t } = useT()
+
+  // Channel ids that have no category in the props snapshot. Used as the base
+  // for the uncategorized lane; tempChannels in `tempChannelCat` with a null
+  // parent are appended at render time.
   const initialUncategorized = useMemo(() => {
     const inCat = new Set(server.categories.flatMap(c => c.channels))
     return server.channels.map(c => c.id).filter(id => !inCat.has(id))
   }, [server.categories, server.channels])
-  const [collapsedCats,      setCollapsedCats]      = useState<Set<string>>(new Set())
-  const [localCats,          setLocalCats]           = useState<CategoryDisplay[]>(server.categories)
-  const [localUncategorized, setLocalUncategorized]  = useState<string[]>(initialUncategorized)
-  const [localExtraChannels, setLocalExtraChannels]  = useState<ChannelDisplay[]>([])
-  const [activeDragId,       setActiveDragId]        = useState<string | null>(null)
-  const [isRevealing,        setIsRevealing]         = useState(false)
+
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set())
+
+  // Transient drag layout — exists only while a drag is in progress. dnd-kit's
+  // onDragOver mutates it; onDragEnd snapshots the final shape, fires the store
+  // action, and resets it to null so the next render reads straight from props
+  // (= store-state, single source-of-truth).
+  const [dragLayout, setDragLayout] = useState<{ cats: CategoryDisplay[]; uncat: string[] } | null>(null)
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [isRevealing, setIsRevealing] = useState(false)
+
+  // Optimistic-create temp items, distinct from the drag-layout. They appear in
+  // the UI between the user pressing Enter on the inline input and the BE
+  // round-trip (createCategory/createChannel + refetch) populating the store.
+  // Each entry is removed once its create-promise resolves (success or fail).
+  const [tempCats, setTempCats] = useState<CategoryDisplay[]>([])
+  const [tempChannels, setTempChannels] = useState<ChannelDisplay[]>([])
+  // tempChannelId → parent categoryId (null = uncategorized). Decoupled from
+  // tempChannels so a tempChannel that lives in a real category still merges
+  // cleanly into the rendered layout.
+  const [tempChannelCat, setTempChannelCat] = useState<Record<string, string | null>>({})
 
   // ── Context menus ──
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
@@ -122,7 +142,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [categoryContextMenu, setCategoryContextMenu] = useState<{ x: number; y: number; categoryId: string } | null>(null)
   // Pending delete-confirmations. Holds the target id while the modal is open.
   const [pendingDeleteChannelId, setPendingDeleteChannelId] = useState<string | null>(null)
-  const [pendingDeleteCategoryName, setPendingDeleteCategoryName] = useState<string | null>(null)
+  const [pendingDeleteCategoryId, setPendingDeleteCategoryId] = useState<string | null>(null)
   // `categoryId` (when set on a channel-create) routes the new channel into a
   // specific folder. Without it, the channel is created uncategorized.
   // `kind` selects text vs voice — chosen at menu-open time, then carried
@@ -144,62 +164,94 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   const [editingCatName, setEditingCatName] = useState('')
   const catRenameInputRef = useRef<HTMLInputElement>(null)
 
-  const layoutKey = useMemo(() => {
-    const cats = server.categories.map(c => `${c.id}:${c.channels.join(',')}`).join('|')
-    const uncat = initialUncategorized.join(',')
-    return `${cats}::${uncat}`
-  }, [server.categories, initialUncategorized])
+  // Reset collapsed-state + replay reveal animation on server switch only.
+  // Other prop changes (rename, reorder, etc.) flow directly through render
+  // — no mirror to sync.
   const prevServerRef = useRef(server.id)
-  useLayoutEffect(() => {
-    setLocalCats(server.categories)
-    setLocalUncategorized(initialUncategorized)
-    setLocalExtraChannels([])
-    if (prevServerRef.current !== server.id) {
-      setCollapsedCats(new Set())
-      setIsRevealing(true)
-      const totalItems =
-        server.categories.length +
-        server.categories.reduce((sum, c) => sum + c.channels.length, 0) +
-        initialUncategorized.length
-      const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
-      prevServerRef.current = server.id
-      return () => clearTimeout(timer)
-    }
-  }, [server.id, server.categories, initialUncategorized, layoutKey])
+  useEffect(() => {
+    if (prevServerRef.current === server.id) return
+    prevServerRef.current = server.id
+    setCollapsedCats(new Set())
+    setIsRevealing(true)
+    const totalItems =
+      server.categories.length +
+      server.categories.reduce((sum, c) => sum + c.channels.length, 0) +
+      initialUncategorized.length
+    const timer = setTimeout(() => setIsRevealing(false), revealWindowMs(totalItems))
+    return () => clearTimeout(timer)
+  }, [server.id, server.categories, initialUncategorized])
 
   useEffect(() => {
-    if (creating) setTimeout(() => inputRef.current?.focus(), 0)
+    if (!creating) return
+    const timer = setTimeout(() => inputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
   }, [creating])
 
   useEffect(() => {
-    if (editingChannelId) setTimeout(() => renameInputRef.current?.focus(), 0)
+    if (!editingChannelId) return
+    const timer = setTimeout(() => renameInputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
   }, [editingChannelId])
 
   useEffect(() => {
-    if (editingCategoryId) setTimeout(() => catRenameInputRef.current?.focus(), 0)
+    if (!editingCategoryId) return
+    const timer = setTimeout(() => catRenameInputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
   }, [editingCategoryId])
 
+  // ── Base layout (no drag active): props + temp items merged ──
+  const baseCats: CategoryDisplay[] = useMemo(() => {
+    const merged: CategoryDisplay[] = [...server.categories, ...tempCats]
+    if (Object.keys(tempChannelCat).length === 0) return merged
+    return merged.map(cat => {
+      const inserts: string[] = []
+      for (const [tempId, parentId] of Object.entries(tempChannelCat)) {
+        if (parentId === cat.id) inserts.push(tempId)
+      }
+      return inserts.length > 0 ? { ...cat, channels: [...cat.channels, ...inserts] } : cat
+    })
+  }, [server.categories, tempCats, tempChannelCat])
+
+  const baseUncat: string[] = useMemo(() => {
+    const uncatTemps: string[] = []
+    for (const [tempId, parentId] of Object.entries(tempChannelCat)) {
+      if (parentId === null) uncatTemps.push(tempId)
+    }
+    return uncatTemps.length > 0 ? [...initialUncategorized, ...uncatTemps] : initialUncategorized
+  }, [initialUncategorized, tempChannelCat])
+
+  // Active layout — drag wins, else base (= store-derived).
+  const renderedCats = dragLayout?.cats ?? baseCats
+  const renderedUncat = dragLayout?.uncat ?? baseUncat
+
+  // SortableCategory isn't React.memo, so memoizing this map produced no
+  // re-render savings — keep the build inline. (A memo-wrap on the child
+  // would help but requires stabilising ~25 prop identities first; out of
+  // scope for this perf pass.)
   const channelMap: Record<string, ChannelDisplay> = {
     ...Object.fromEntries(server.channels.map(c => [c.id, c])),
-    ...Object.fromEntries(localExtraChannels.map(c => [c.id, c])),
+    ...Object.fromEntries(tempChannels.map(c => [c.id, c])),
   }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   )
 
-  const categorizedSet = new Set(localCats.flatMap(c => c.channels))
-  const uncategorizedIds = localUncategorized.filter(id => !categorizedSet.has(id))
+  // Stable identities — feeds SortableContext items={...}, which re-binds
+  // droppables when the array reference changes. Recompute only on layout
+  // changes (drag, optimistic create, store updates).
+  const categorizedSet = useMemo(() => new Set(renderedCats.flatMap(c => c.channels)), [renderedCats])
+  const uncategorizedIds = useMemo(() => renderedUncat.filter(id => !categorizedSet.has(id)), [renderedUncat, categorizedSet])
 
-  function findCatFor(channelId: string, cats: CategoryDisplay[]): string | null {
-    return cats.find(c => c.channels.includes(channelId))?.name ?? null
+  function findCatIdFor(channelId: string, cats: CategoryDisplay[]): string | null {
+    return cats.find(c => c.channels.includes(channelId))?.id ?? null
   }
 
-  function toggleCat(name: string) {
+  function toggleCat(id: string) {
     setCollapsedCats(prev => {
       const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
@@ -214,7 +266,10 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   function saveChannelRename(channelId: string) {
     const name = editingName.trim()
     if (name && name !== channelMap[channelId]?.name) {
-      setLocalExtraChannels(prev => prev.map(ch =>
+      // Mirror the rename into temp items so an in-flight tempChannel still
+      // shows the new name until the BE round-trip lands. Real channels flow
+      // through the store-action's optimistic+rollback path.
+      setTempChannels(prev => prev.map(ch =>
         ch.id === channelId ? { ...ch, name } : ch
       ))
       onRenameChannel?.(channelId, name)
@@ -240,18 +295,18 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   // ── Category rename handlers ──
   function startCategoryRename(category: CategoryDisplay) {
     if (!canManageChannels) return
-    // Find the actual category ID from server data
-    const serverCat = server.categories.find(c => c.name === category.name)
-    if (!serverCat) return
-    setEditingCategoryId(serverCat.name) // Using name as ID for now since UI Category doesn't have ID
+    setEditingCategoryId(category.id)
     setEditingCatName(category.name)
   }
 
   function saveCategoryRename(categoryId: string) {
     const name = editingCatName.trim()
-    if (name && name !== categoryId) {
-      setLocalCats(prev => prev.map(cat =>
-        cat.name === categoryId ? { ...cat, name } : cat
+    const current = renderedCats.find(c => c.id === categoryId)
+    if (current && name && name !== current.name) {
+      // Mirror into tempCats so a still-pending optimistic temp folder shows
+      // the new name. Real categories rename via the parent handler → store.
+      setTempCats(prev => prev.map(cat =>
+        cat.id === categoryId ? { ...cat, name } : cat
       ))
       onRenameCategory?.(categoryId, name)
     }
@@ -297,12 +352,12 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     setChannelContextMenu({ x: e.clientX, y: e.clientY, channelId })
   }
 
-  function handleFolderContextMenu(e: React.MouseEvent, folderName: string) {
+  function handleFolderContextMenu(e: React.MouseEvent, folderId: string) {
     if (!canManageChannels) return          // nothing to show without permissions
     e.preventDefault()
     e.stopPropagation()
     closeAllMenus()
-    setCategoryContextMenu({ x: e.clientX, y: e.clientY, categoryId: folderName })
+    setCategoryContextMenu({ x: e.clientX, y: e.clientY, categoryId: folderId })
   }
 
   function handleAddClick() {
@@ -332,40 +387,43 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     setNewName('')
     if (!intent) return
 
-    // Optimistic local update — show the new item immediately. If the API
-    // fails or returns different data, the next fetchChannels reconciles.
     if (intent.type === 'folder') {
       const tempId = `cat-${Date.now()}`
-      setLocalCats(prev => [...prev, { id: tempId, name, channels: [] }])
+      setTempCats(prev => [...prev, { id: tempId, name, channels: [] }])
+      try {
+        await onCreateCategory?.(name)
+      } catch (err) {
+        console.error('Failed to create:', err)
+      } finally {
+        // Real entry has either landed in the store (success) or never will
+        // (failure) — drop the temp either way.
+        setTempCats(prev => prev.filter(c => c.id !== tempId))
+      }
     } else {
       const tempId = `ch-${Date.now()}`
       const tempIcon = intent.kind === 'voice' ? '🔊' : '#'
-      setLocalExtraChannels(prev => [...prev, { id: tempId, name, icon: tempIcon, desc: '', unread: 0, kind: intent.kind }])
-      if (intent.categoryId) {
-        setLocalCats(prev => prev.map(c =>
-          c.id === intent.categoryId ? { ...c, channels: [...c.channels, tempId] } : c
-        ))
-      } else {
-        setLocalUncategorized(prev => [...prev, tempId])
-      }
-    }
-
-    // Fire API call — on error, the next fetchChannels will correct state
-    try {
-      if (intent.type === 'folder') {
-        await onCreateCategory?.(name)
-      } else {
+      setTempChannels(prev => [...prev, { id: tempId, name, icon: tempIcon, desc: '', unread: 0, kind: intent.kind }])
+      setTempChannelCat(prev => ({ ...prev, [tempId]: intent.categoryId ?? null }))
+      try {
         await onCreateChannel?.(name, intent.kind, intent.categoryId)
+      } catch (err) {
+        console.error('Failed to create:', err)
+      } finally {
+        setTempChannels(prev => prev.filter(c => c.id !== tempId))
+        setTempChannelCat(prev => {
+          const { [tempId]: _, ...rest } = prev
+          return rest
+        })
       }
-    } catch (err) {
-      console.error('Failed to create:', err)
     }
   }
 
   const dragStartLayoutRef = useRef<{ cats: CategoryDisplay[]; uncat: string[] } | null>(null)
   function handleDragStart({ active }: DragStartEvent) {
     if (!canManageChannels) return
-    dragStartLayoutRef.current = { cats: localCats, uncat: localUncategorized }
+    const snapshot = { cats: baseCats, uncat: baseUncat }
+    dragStartLayoutRef.current = snapshot
+    setDragLayout(snapshot)
     setActiveDragId(active.id as string)
   }
 
@@ -375,67 +433,66 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
     const overId   = over.id   as string
     if (activeId.startsWith('cat:')) return
 
-    const activeCat = findCatFor(activeId, localCats)
-    let overCat: string | null
-    if      (overId.startsWith('cat:'))  overCat = overId.slice(4)
-    else if (overId === 'uncategorized') overCat = null
-    else                                 overCat = findCatFor(overId, localCats)
-    if (activeCat === overCat) return
+    setDragLayout(prev => {
+      if (!prev) return prev
+      const activeCat = findCatIdFor(activeId, prev.cats)
+      let overCat: string | null
+      if      (overId.startsWith('cat:'))  overCat = overId.slice(4)
+      else if (overId === 'uncategorized') overCat = null
+      else                                 overCat = findCatIdFor(overId, prev.cats)
+      if (activeCat === overCat) return prev
 
-    if (overCat === null) {
-      setLocalCats(prev => prev.map(c => ({ ...c, channels: c.channels.filter(id => id !== activeId) })))
-      setLocalUncategorized(prev => {
-        if (prev.includes(activeId)) return prev
-        const overIdx = overId === 'uncategorized' ? prev.length : prev.indexOf(overId)
-        const insertAt = overIdx >= 0 ? overIdx : prev.length
-        const next = [...prev]
-        next.splice(insertAt, 0, activeId)
-        return next
-      })
-      return
-    }
+      if (overCat === null) {
+        const catsNext = prev.cats.map(c => ({ ...c, channels: c.channels.filter(id => id !== activeId) }))
+        if (prev.uncat.includes(activeId)) return { cats: catsNext, uncat: prev.uncat }
+        const overIdx = overId === 'uncategorized' ? prev.uncat.length : prev.uncat.indexOf(overId)
+        const insertAt = overIdx >= 0 ? overIdx : prev.uncat.length
+        const uncatNext = [...prev.uncat]
+        uncatNext.splice(insertAt, 0, activeId)
+        return { cats: catsNext, uncat: uncatNext }
+      }
 
-    setLocalUncategorized(prev => prev.filter(id => id !== activeId))
-    setLocalCats(prev => {
-      const without = prev.map(c => ({ ...c, channels: c.channels.filter(id => id !== activeId) }))
-      const toCat = without.find(c => c.name === overCat)
-      if (!toCat) return without
+      const uncatNext = prev.uncat.filter(id => id !== activeId)
+      const without = prev.cats.map(c => ({ ...c, channels: c.channels.filter(id => id !== activeId) }))
+      const toCat = without.find(c => c.id === overCat)
+      if (!toCat) return { cats: without, uncat: uncatNext }
       const overIdx = overId.startsWith('cat:') ? toCat.channels.length : toCat.channels.indexOf(overId)
       const insertAt = overIdx >= 0 ? overIdx : toCat.channels.length
-      return without.map(c => {
-        if (c.name !== overCat) return c
+      const catsNext = without.map(c => {
+        if (c.id !== overCat) return c
         const chs = [...c.channels]
         chs.splice(insertAt, 0, activeId)
         return { ...c, channels: chs }
       })
+      return { cats: catsNext, uncat: uncatNext }
     })
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
-    setActiveDragId(null)
     const startLayout = dragStartLayoutRef.current
+    const endLayout = dragLayout
     dragStartLayoutRef.current = null
+    setActiveDragId(null)
+    setDragLayout(null)
+
     if (!canManageChannels || !over || active.id === over.id) return
+    if (!endLayout) return
+
     const activeId = active.id as string
     const overId   = over.id   as string
 
     if (activeId.startsWith('cat:') && overId.startsWith('cat:')) {
-      setLocalCats(prev => {
-        const from = prev.findIndex(c => `cat:${c.name}` === activeId)
-        const to   = prev.findIndex(c => `cat:${c.name}` === overId)
-        if (from < 0 || to < 0) return prev
-        const next = arrayMove(prev, from, to)
-        if (onReorderCategories) {
-          const positions = next.map((c, i) => ({ id: c.id, position: i }))
-          void onReorderCategories(positions)
-        }
-        return next
-      })
+      const from = endLayout.cats.findIndex(c => `cat:${c.id}` === activeId)
+      const to   = endLayout.cats.findIndex(c => `cat:${c.id}` === overId)
+      if (from < 0 || to < 0) return
+      const next = arrayMove(endLayout.cats, from, to)
+      const positions = next.map((c, i) => ({ id: c.id, position: i }))
+      if (onReorderCategories) void onReorderCategories(positions)
       return
     }
 
-    let nextCats = localCats
-    let nextUncat = localUncategorized
+    let nextCats = endLayout.cats
+    let nextUncat = endLayout.uncat
 
     const activeInUncat = nextUncat.includes(activeId)
     const overInUncat = overId === 'uncategorized' || nextUncat.includes(overId)
@@ -444,18 +501,16 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       const to   = nextUncat.indexOf(overId)
       if (from >= 0 && to >= 0) {
         nextUncat = arrayMove(nextUncat, from, to)
-        setLocalUncategorized(nextUncat)
       }
     } else {
       const activeCat = nextCats.find(c => c.channels.includes(activeId))
       const overCat   = nextCats.find(c => c.channels.includes(overId))
-      if (activeCat && overCat && activeCat.name === overCat.name) {
+      if (activeCat && overCat && activeCat.id === overCat.id) {
         const from = activeCat.channels.indexOf(activeId)
         const to   = activeCat.channels.indexOf(overId)
         nextCats = nextCats.map(c =>
-          c.name === activeCat.name ? { ...c, channels: arrayMove(c.channels, from, to) } : c
+          c.id === activeCat.id ? { ...c, channels: arrayMove(c.channels, from, to) } : c
         )
-        setLocalCats(nextCats)
       }
     }
 
@@ -466,24 +521,29 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
   }
 
   function handleDragCancel() {
-    setActiveDragId(null)
     dragStartLayoutRef.current = null
+    setActiveDragId(null)
+    setDragLayout(null)
   }
 
   const activeChannel = activeDragId && !activeDragId.startsWith('cat:') ? channelMap[activeDragId] : null
-  const activeCatName = activeDragId?.startsWith('cat:') ? activeDragId.slice(4) : null
-  const catIds        = localCats.map(c => `cat:${c.name}`)
+  const activeCatId   = activeDragId?.startsWith('cat:') ? activeDragId.slice(4) : null
+  const activeCatName = activeCatId ? renderedCats.find(c => c.id === activeCatId)?.name ?? null : null
+  const catIds = useMemo(() => renderedCats.map(c => `cat:${c.id}`), [renderedCats])
 
   // Pre-compute flat stagger indices so each category header and each channel
   // within that category receives a unique, monotonically-increasing index.
-  let flatIdx = 0
-  const catMeta = localCats.map(cat => {
-    const catStaggerIdx    = flatIdx++
-    const chanStaggerStart = flatIdx
-    flatIdx += cat.channels.length
-    return { catStaggerIdx, chanStaggerStart }
-  })
-  const uncatStaggerStart = flatIdx
+  // Memoized so reveal-animation deps stay stable when no layout change happens.
+  const { catMeta, uncatStaggerStart } = useMemo(() => {
+    let idx = 0
+    const meta = renderedCats.map(cat => {
+      const catStaggerIdx    = idx++
+      const chanStaggerStart = idx
+      idx += cat.channels.length
+      return { catStaggerIdx, chanStaggerStart }
+    })
+    return { catMeta: meta, uncatStaggerStart: idx }
+  }, [renderedCats])
 
   return (
     <aside className={`${s.sidebar} ${collapsed ? s.collapsed : ''}`}>
@@ -516,6 +576,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
+        modifiers={[restrictToVerticalAxis]}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -527,30 +588,30 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
           onContextMenu={handleContextMenu}
         >
           <SortableContext items={catIds} strategy={verticalListSortingStrategy}>
-            {localCats.map((cat, i) => {
+            {renderedCats.map((cat, i) => {
               const isCreatingHere = creating?.type === 'channel' && creating.categoryId === cat.id
               // Force the folder open so the inline input is visible
-              const isCollapsed = isCreatingHere ? false : collapsedCats.has(cat.name)
+              const isCollapsed = isCreatingHere ? false : collapsedCats.has(cat.id)
               return (
                 <SortableCategory
-                  key={cat.name}
+                  key={cat.id}
                   cat={cat}
                   channelMap={channelMap}
                   activeChannelId={activeChannelId}
                   onSwitch={onSwitch}
                   collapsed={isCollapsed}
-                  onToggle={() => toggleCat(cat.name)}
+                  onToggle={() => toggleCat(cat.id)}
                   activeDragId={activeDragId}
                   isRevealing={isRevealing}
                   catStaggerIdx={catMeta[i].catStaggerIdx}
                   chanStaggerStart={catMeta[i].chanStaggerStart}
                   onChannelContextMenu={canManageChannels ? handleChannelContextMenu : undefined}
                   onFolderContextMenu={canManageChannels ? handleFolderContextMenu : undefined}
-                  isCatEditing={editingCategoryId === cat.name}
+                  isCatEditing={editingCategoryId === cat.id}
                   editingCatName={editingCatName}
                   onStartCatRename={() => startCategoryRename(cat)}
-                  onSaveCatRename={() => saveCategoryRename(cat.name)}
-                  onCatRenameKeyDown={(e) => handleCatRenameKeyDown(e, cat.name)}
+                  onSaveCatRename={() => saveCategoryRename(cat.id)}
+                  onCatRenameKeyDown={(e) => handleCatRenameKeyDown(e, cat.id)}
                   onCatRenameChange={setEditingCatName}
                   catRenameInputRef={catRenameInputRef}
                   editingChannelId={editingChannelId}
@@ -719,14 +780,14 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       {/* ── Category/folder context menu ── */}
       <Menu open={categoryContextMenu !== null} position={categoryContextMenu ?? { x: 0, y: 0 }} onClose={() => setCategoryContextMenu(null)}>
         {canManageChannels && categoryContextMenu && onCreateChannel && (() => {
-          const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
+          const category = renderedCats.find(c => c.id === categoryContextMenu.categoryId)
           if (!category) return null
           const startInFolder = (kind: 'text' | 'voice') => {
             // Make sure the folder is expanded so the inline input is visible
             setCollapsedCats(prev => {
-              if (!prev.has(category.name)) return prev
+              if (!prev.has(category.id)) return prev
               const next = new Set(prev)
-              next.delete(category.name)
+              next.delete(category.id)
               return next
             })
             startCreating({ type: 'channel', kind, categoryId: category.id })
@@ -751,7 +812,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
             icon={<Edit3 size={13} strokeWidth={1.5} />}
             label={t('channelSidebar.menuRenameFolder')}
             onClick={() => {
-              const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
+              const category = renderedCats.find(c => c.id === categoryContextMenu.categoryId)
               if (category) startCategoryRename(category)
               setCategoryContextMenu(null)
             }}
@@ -765,9 +826,7 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
               label={t('channelSidebar.menuDeleteFolder')}
               danger
               onClick={() => {
-                const category = localCats.find(c => c.name === categoryContextMenu.categoryId)
-                const serverCat = category && server.categories.find(c => c.name === category.name)
-                if (serverCat) setPendingDeleteCategoryName(serverCat.name)
+                setPendingDeleteCategoryId(categoryContextMenu.categoryId)
                 setCategoryContextMenu(null)
               }}
             />
@@ -790,17 +849,17 @@ export function ChannelSidebar({ server, activeChannelId, onSwitch, onCollapse, 
       />
 
       <ConfirmDialog
-        open={pendingDeleteCategoryName !== null}
+        open={pendingDeleteCategoryId !== null}
         title={t('channelSidebar.menuDeleteFolder')}
         body={t('channelSidebar.confirmDeleteFolder')}
         confirmLabel={t('common.delete')}
         cancelLabel={t('common.cancel')}
         danger
         onConfirm={() => {
-          if (pendingDeleteCategoryName && onDeleteCategory) onDeleteCategory(pendingDeleteCategoryName)
-          setPendingDeleteCategoryName(null)
+          if (pendingDeleteCategoryId && onDeleteCategory) onDeleteCategory(pendingDeleteCategoryId)
+          setPendingDeleteCategoryId(null)
         }}
-        onCancel={() => setPendingDeleteCategoryName(null)}
+        onCancel={() => setPendingDeleteCategoryId(null)}
       />
     </aside>
   )
@@ -819,7 +878,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
   catStaggerIdx:   number
   chanStaggerStart: number
   onChannelContextMenu?: (e: React.MouseEvent, channelId: string) => void
-  onFolderContextMenu?: (e: React.MouseEvent, folderName: string) => void
+  onFolderContextMenu?: (e: React.MouseEvent, folderId: string) => void
   isCatEditing?:   boolean
   editingCatName?: string
   onStartCatRename?: () => void
@@ -840,7 +899,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
   inlineCreateChannel?: React.ReactNode
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: `cat:${cat.name}`,
+    id: `cat:${cat.id}`,
     disabled: !canManageChannels,
   })
 
@@ -926,7 +985,7 @@ function SortableCategory({ cat, channelMap, activeChannelId, onSwitch, collapse
         }}
         onContextMenu={(e) => {
           if (!onFolderContextMenu) return
-          onFolderContextMenu(e, cat.name)
+          onFolderContextMenu(e, cat.id)
         }}
         {...attributes}
         {...listeners}
@@ -1023,7 +1082,10 @@ function SortableChannelRow({ id, channel, active, onClick, isRevealing, stagger
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? s.draggingPlaceholder : ''}
+      className={[
+        canManageChannels ? s.sortableChannel : '',
+        isDragging ? s.draggingPlaceholder : '',
+      ].filter(Boolean).join(' ')}
       {...attributes}
       {...listeners}
     >

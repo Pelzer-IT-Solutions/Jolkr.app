@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client'
 import './styles/tokens.css'
 import './styles/globals.css'
 import './styles/scroll-fade.css'
-import App from './App'
+import { App } from './App'
 import { isTauri, isMobile } from './platform/detect'
+import { hasTauriInternals, setTauriOsDark } from './platform/tauriGlobals'
 import { migrateLegacyStorageKeys } from './utils/storageKeys'
 
 // Apply one-time storage-key migrations before any other code reads localStorage.
@@ -48,12 +49,12 @@ if (isTauri) {
 }
 
 async function applyTauriOsTheme(): Promise<void> {
-  if (!('__TAURI_INTERNALS__' in window)) return
+  if (!hasTauriInternals()) return
   try {
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
     const w = getCurrentWindow()
     const apply = (t: 'light' | 'dark' | null) => {
-      ;(window as unknown as { __TAURI_OS_DARK?: boolean }).__TAURI_OS_DARK = t === 'dark'
+      setTauriOsDark(t === 'dark')
       window.dispatchEvent(new Event('jolkr-tauri-theme-change'))
       const pref = localStorage.getItem('jolkr-color-mode')
       if (pref === 'light' || pref === 'dark') return

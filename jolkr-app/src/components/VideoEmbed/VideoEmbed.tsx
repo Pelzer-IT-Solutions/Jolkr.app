@@ -1,13 +1,12 @@
+import { Play, Video } from 'lucide-react';
 import { useState, useEffect, memo } from 'react';
+import { getOembed } from '../../api/client';
+import { isTauri } from '../../platform/detect';
+import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../../utils/videoUrl';
+import { NMVideoPlayer } from '../NMVideoPlayer/NMVideoPlayer';
+import s from './VideoEmbed.module.css';
 import type { MessageEmbed } from '../../api/types';
 import type { VideoInfo } from '../../utils/videoUrl';
-import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../../utils/videoUrl';
-import { getOembed } from '../../api/client';
-
-import { isTauri } from '../../platform/detect';
-import { Play, Video } from 'lucide-react';
-import NMVideoPlayer from '../NMVideoPlayer/NMVideoPlayer';
-import s from './VideoEmbed.module.css';
 
 export interface VideoEmbedProps {
   embed: MessageEmbed;
@@ -66,9 +65,7 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
   );
 }
 
-const VideoEmbed = memo(VideoEmbedInner);
-export default VideoEmbed;
-
+export const VideoEmbed = memo(VideoEmbedInner);
 /* ── Thumbnail ── */
 
 function Thumbnail({ url, platform, onClick }: { url: string | null; platform: string; onClick: () => void }) {

@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth';
 import { deriveE2EESeed } from '../crypto/e2ee';
+import { useT } from '../hooks/useT';
 import { initE2EE } from '../services/e2ee';
+import { useAuthStore } from '../stores/auth';
+import { MIN_PASSWORD_LENGTH } from '../utils/constants';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
-import { MIN_PASSWORD_LENGTH } from '../utils/constants';
-import { useT } from '../hooks/useT';
 
-export default function Register() {
+export function Register() {
   useEffect(resetAuthTheme, []);
   const { t } = useT();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const register = useAuthStore((s) => s.register);
-  const loading = useAuthStore((s) => s.loading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const error = useAuthStore((s) => s.error);
   const navigate = useNavigate();
 
@@ -96,8 +96,8 @@ export default function Register() {
               style={styles.input}
             />
           </label>
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? t('auth.register.submitting') : t('auth.register.submit')}
+          <button type="submit" disabled={isLoading} style={styles.button}>
+            {isLoading ? t('auth.register.submitting') : t('auth.register.submit')}
           </button>
         </form>
 

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -11,7 +12,9 @@ const MAX_EMOJIS_PER_SERVER: i64 = 50;
 const MAX_EMOJI_NAME_LEN: usize = 32;
 
 /// Public emoji DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "ServerEmoji")]
 pub struct EmojiInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -19,7 +22,7 @@ pub struct EmojiInfo {
     pub server_id: Uuid,
     /// Display name.
     pub name: String,
-    /// Image URL.
+    /// Presigned image URL.
     pub image_url: String,
     /// Uploader user identifier.
     pub uploader_id: Uuid,
@@ -54,6 +57,7 @@ pub struct EmojiService;
 
 impl EmojiService {
     /// Upload a new custom emoji. Requires `MANAGE_SERVER` permission.
+    #[tracing::instrument(skip(pool, name, image_key))]
     pub async fn create_emoji(
         pool: &PgPool,
         server_id: Uuid,
@@ -97,6 +101,7 @@ impl EmojiService {
     }
 
     /// List all emojis for a server. Requires membership.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_emojis(
         pool: &PgPool,
         server_id: Uuid,
@@ -105,12 +110,16 @@ impl EmojiService {
         // Membership check
         MemberRepo::get_member(pool, server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, caller_id = %caller_id, "member lookup failed while listing emojis");
+                JolkrError::Forbidden
+            })?;
 
         EmojiRepo::list_for_server(pool, server_id).await
     }
 
     /// Delete a custom emoji. Requires `MANAGE_SERVER` permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_emoji(
         pool: &PgPool,
         emoji_id: Uuid,
@@ -137,7 +146,10 @@ impl EmojiService {
     ) -> Result<(), JolkrError> {
         let member = MemberRepo::get_member(pool, server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed for emoji permission check");
+                JolkrError::Forbidden
+            })?;
         let perms_bits = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
         let perms = Permissions::from(perms_bits);
         if !perms.has(permission) {

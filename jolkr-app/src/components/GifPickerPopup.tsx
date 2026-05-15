@@ -1,8 +1,8 @@
 import { createPortal } from 'react-dom'
-import type { RefObject } from 'react'
 import { useClickOutside } from '../hooks/useClickOutside'
-import GifPicker from './GifPicker/GifPicker'
 import s from './EmojiPickerPopup/EmojiPickerPopup.module.css'
+import { GifPicker } from './GifPicker/GifPicker'
+import type { RefObject } from 'react'
 
 interface Props {
   position: { top: number; left: number }
@@ -12,7 +12,7 @@ interface Props {
   anchor?: RefObject<HTMLElement | null>
 }
 
-export default function GifPickerPopup({ position, onSelect, onClose, anchor }: Props) {
+export function GifPickerPopup({ position, onSelect, onClose, anchor }: Props) {
   const ref = useClickOutside<HTMLDivElement>(onClose, true, anchor)
 
   return createPortal(

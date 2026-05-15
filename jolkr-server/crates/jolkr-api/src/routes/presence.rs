@@ -9,19 +9,25 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
+/// One user's presence state in a presence-query response.
 #[derive(Debug, Serialize)]
 pub(crate) struct PresenceEntry {
     pub user_id: Uuid,
+    /// One of `"online"`, `"idle"`, `"dnd"`, `"offline"`. Note: `"invisible"`
+    /// is collapsed to `"offline"` before being sent to clients.
     pub status: String,
 }
 
+/// Response payload for POST /api/presence/query.
 #[derive(Debug, Serialize)]
 pub(crate) struct PresenceResponse {
     pub presences: Vec<PresenceEntry>,
 }
 
+/// Request body for POST /api/presence/query.
 #[derive(Debug, Deserialize)]
 pub(crate) struct PresenceQuery {
+    /// User IDs to look up — capped at 100 per request.
     pub user_ids: Vec<Uuid>,
 }
 

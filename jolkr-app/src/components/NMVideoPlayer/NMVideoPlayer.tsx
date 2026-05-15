@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Download, Maximize, Minimize, Pause, Play, Volume2, VolumeX, Volume1,
   RotateCcw, RotateCw, Settings, PictureInPicture2,
 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNMPlayer } from '../../hooks/useNMPlayer';
 import { useT } from '../../hooks/useT';
-import Spinner from '../ui/Spinner';
+import { Spinner } from '../ui/Spinner';
 import s from './NMVideoPlayer.module.css';
 
 export interface NMVideoPlayerProps {
@@ -33,7 +33,7 @@ const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
  * visible chrome — center play, scrubber with buffered overlay, skip ±10,
  * volume slider, settings (speed), PiP, fullscreen, keyboard shortcuts.
  */
-export default function NMVideoPlayer({ src, title = '', image = '', autoPlay = false, downloadUrl, downloadFilename }: NMVideoPlayerProps) {
+export function NMVideoPlayer({ src, title = '', image = '', autoPlay = false, downloadUrl, downloadFilename }: NMVideoPlayerProps) {
   const { t } = useT();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {

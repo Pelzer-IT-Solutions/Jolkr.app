@@ -3,6 +3,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_core::KeyService;
@@ -15,7 +16,7 @@ use crate::routes::AppState;
 
 // ── Request / Response types ───────────────────────────────────────────
 
-/// Client sends base64-encoded keys in JSON.
+/// Request body for POST /api/keys/upload. Client sends base64-encoded keys in JSON.
 #[derive(Debug, Deserialize)]
 pub(crate) struct UploadPreKeysBody {
     pub device_id: Uuid,
@@ -33,29 +34,46 @@ pub(crate) struct UploadPreKeysBody {
     pub pq_signed_prekey_signature: Option<String>,
 }
 
+/// Response payload for POST /api/keys/upload.
 #[derive(Debug, Serialize)]
 pub(crate) struct UploadPreKeysResponse {
+    /// Human-readable success message.
     pub message: String,
+    /// Number of one-time prekeys persisted by this request.
     pub prekey_count: usize,
 }
 
-#[derive(Debug, Serialize)]
+/// Response payload for GET /api/keys/:user_id[/:device_id]. All key fields
+/// are base64-encoded; one-time prekey is consumed (single-use) on read.
+#[derive(Debug, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "PreKeyBundleResponse")]
 pub(crate) struct PreKeyBundleResponse {
     pub user_id: Uuid,
     pub device_id: Uuid,
+    /// Base64-encoded Ed25519 public key (32 bytes).
     pub identity_key: String,
+    /// Base64-encoded X25519 signed prekey (32 bytes).
     pub signed_prekey: String,
+    /// Base64-encoded Ed25519 signature over the signed prekey (64 bytes).
     pub signed_prekey_signature: String,
+    /// Base64-encoded one-time X25519 public key. `None` once the pool is exhausted.
     pub one_time_prekey: Option<String>,
+    /// Base64-encoded ML-KEM-768 encapsulation key. `None` when peer has no PQ bundle.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub pq_signed_prekey: Option<String>,
+    /// Base64-encoded Ed25519 signature over the PQ prekey.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub pq_signed_prekey_signature: Option<String>,
 }
 
+/// Response payload for GET /api/keys/count/:device_id.
 #[derive(Debug, Serialize)]
 pub(crate) struct PreKeyCountResponse {
     pub device_id: Uuid,
+    /// Number of one-time prekeys still available on the server for this device.
     pub remaining: i64,
 }
 
@@ -72,19 +90,31 @@ pub(crate) async fn upload_prekeys(
 
     let identity_key = engine
         .decode(&body.identity_key)
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for identity_key".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of identity_key failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for identity_key".into()))
+        })?;
     let signed_prekey = engine
         .decode(&body.signed_prekey)
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for signed_prekey".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of signed_prekey failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for signed_prekey".into()))
+        })?;
     let signed_prekey_signature = engine
         .decode(&body.signed_prekey_signature)
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for signed_prekey_signature".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of signed_prekey_signature failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for signed_prekey_signature".into()))
+        })?;
 
     let mut one_time_prekeys = Vec::with_capacity(body.one_time_prekeys.len());
     for (i, otpk_b64) in body.one_time_prekeys.iter().enumerate() {
         let otpk = engine
             .decode(otpk_b64)
-            .map_err(|_| AppError(jolkr_common::JolkrError::Validation(format!("Invalid base64 for one_time_prekey[{i}]"))))?;
+            .map_err(|e| {
+                tracing::warn!(?e, index = i, "base64 decode of one_time_prekey failed");
+                AppError(jolkr_common::JolkrError::Validation(format!("Invalid base64 for one_time_prekey[{i}]")))
+            })?;
         one_time_prekeys.push(otpk);
     }
 
@@ -92,13 +122,19 @@ pub(crate) async fn upload_prekeys(
         .as_ref()
         .map(|b64| engine.decode(b64))
         .transpose()
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of pq_signed_prekey failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey".into()))
+        })?;
 
     let pq_signed_prekey_signature = body.pq_signed_prekey_signature
         .as_ref()
         .map(|b64| engine.decode(b64))
         .transpose()
-        .map_err(|_| AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey_signature".into())))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "base64 decode of pq_signed_prekey_signature failed");
+            AppError(jolkr_common::JolkrError::Validation("Invalid base64 for pq_signed_prekey_signature".into()))
+        })?;
 
     let count = one_time_prekeys.len();
 

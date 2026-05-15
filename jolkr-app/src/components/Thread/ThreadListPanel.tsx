@@ -1,56 +1,36 @@
-import { useEffect, useState } from 'react'
-import * as api from '../../api/client'
-import type { Thread } from '../../api/types'
-import { useMessagesStore } from '../../stores/messages'
+import { useEffect } from 'react'
 import { useT } from '../../hooks/useT'
+import { useThreadsStore } from '../../stores/threads'
 import s from './ThreadListPanel.module.css'
+import type { Thread } from '../../api/types'
 
 interface Props {
   channelId: string
   onOpenThread: (thread: Thread) => void
 }
 
+const EMPTY_THREADS: Thread[] = []
+
 /**
  * Lists active threads in the current channel.
  *
- * Re-fetches when:
- *   - the channel changes (different channelId)
- *   - any ThreadCreate / ThreadUpdate WS event lands (bumps `threadListVersion`
- *     in the messages store — see stores/messages.ts WS handler).
+ * The thread list lives in `useThreadsStore.threadList[channelId]`. We
+ * call `fetchThreadList` whenever the channel changes or any
+ * ThreadCreate/Update WS event bumps `threadListVersion` — the same fetch
+ * also powers the thread-count badge in useAppInit so we hit the wire once.
  */
 export function ThreadListPanel({ channelId, onOpenThread }: Props) {
   const { t, tn } = useT()
-  const [threads, setThreads] = useState<Thread[]>([])
-  const [loading, setLoading] = useState(true)
-  const threadListVersion = useMessagesStore(s => s.threadListVersion)
-
-  // Flip to loading whenever the fetch key changes — state-during-render
-  // pattern avoids set-state-in-effect on the synchronous setLoading.
-  const fetchKey = `${channelId}|${threadListVersion}`
-  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
-  if (fetchKey !== prevFetchKey) {
-    setPrevFetchKey(fetchKey)
-    if (channelId) setLoading(true)
-  }
+  const threads = useThreadsStore(s => s.threadList[channelId] ?? EMPTY_THREADS)
+  const threadListVersion = useThreadsStore(s => s.threadListVersion)
+  const fetchThreadList = useThreadsStore(s => s.fetchThreadList)
+  const cached = useThreadsStore(s => s.threadList[channelId])
+  const loading = cached === undefined
 
   useEffect(() => {
     if (!channelId) return
-    let cancelled = false
-    api.getThreads(channelId, false)
-      .then(list => {
-        if (cancelled) return
-        // Backend may include archived even when include_archived=false in some
-        // older builds — filter defensively.
-        setThreads(list.filter(t => !t.is_archived))
-        setLoading(false)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setThreads([])
-        setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [channelId, threadListVersion])
+    fetchThreadList(channelId)
+  }, [channelId, threadListVersion, fetchThreadList])
 
   if (loading) {
     return <div className={`${s.loading} txt-small`}>{t('thread.list.loading')}</div>

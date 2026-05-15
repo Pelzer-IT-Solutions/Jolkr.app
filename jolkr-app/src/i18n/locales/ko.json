@@ -70,6 +70,9 @@
       "one": "{name}님이 입력 중…",
       "two": "{a}님과 {b}님이 입력 중…",
       "many": "여러 사람이 입력 중…"
+    },
+    "jump": {
+      "notFound": "해당 메시지를 찾을 수 없습니다."
     }
   },
 
@@ -173,7 +176,8 @@
     "unpin": "고정 해제", "pinnedMessages": "고정된 메시지",
     "noPinned": "아직 고정된 메시지가 없습니다",
     "sharedFiles": "공유된 파일", "noFiles": "아직 공유된 파일이 없습니다",
-    "decrypting": "복호화 중…"
+    "decrypting": "복호화 중…",
+    "jumpToMessage": "메시지로 이동", "downloadFile": "다운로드"
   },
 
   "newDmModal": {
@@ -247,6 +251,31 @@
     "moderation": "관리", "kick": "추방", "ban": "차단",
     "assignRole": "역할 할당", "inviteToServer": "서버에 초대",
     "reportUser": "사용자 신고"
+  },
+
+  "groupContextMenu": {
+    "info": "그룹 정보",
+    "mute": "그룹 음소거",
+    "unmute": "음소거 해제",
+    "edit": "그룹 편집",
+    "leave": "그룹 나가기",
+    "members": "{count}명"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "{name} 그룹 정보",
+    "members": "{count}명",
+    "createdOn": "생성일",
+    "you": "{name} (나)"
+  },
+
+  "groupSettingsModal": {
+    "title": "그룹 설정",
+    "groupName": "그룹 이름",
+    "namePlaceholder": "그룹 이름",
+    "save": "저장",
+    "cancel": "취소",
+    "errSaveFailed": "그룹 설정을 저장하지 못했습니다"
   },
 
   "channelSidebar": {
@@ -359,6 +388,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "그룹에서 나갈 수 없습니다",
     "friendRequestSent": "친구 요청을 보냈습니다",
     "friendRequestFailed": "친구 요청 전송 실패",
     "friendRequestNotSent": "친구 요청을 보낼 수 없습니다",

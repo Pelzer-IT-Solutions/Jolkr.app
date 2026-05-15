@@ -9,11 +9,10 @@ use uuid::Uuid;
 use jolkr_core::ServerService;
 use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 use jolkr_core::services::server::{
-    BanInfo, BanMemberRequest, CreateServerRequest, ServerInfo,
+    BanInfo, BanMemberRequest, CreateServerRequest, MemberInfo, ServerInfo,
     SetNicknameRequest, UpdateServerRequest,
 };
 use jolkr_db::repo::MemberRepo;
-use jolkr_db::models::MemberRow;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
@@ -21,33 +20,41 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload for single-server endpoints (create/get/update).
 #[derive(Debug, Serialize)]
 pub(crate) struct ServerResponse {
     pub server: ServerInfo,
 }
 
+/// Response payload for endpoints returning a list of servers.
 #[derive(Debug, Serialize)]
 pub(crate) struct ServersResponse {
     pub servers: Vec<ServerInfo>,
 }
 
+/// Response payload for GET /api/servers/:id/members.
 #[derive(Debug, Serialize)]
 pub(crate) struct MembersResponse {
-    pub members: Vec<MemberRow>,
+    pub members: Vec<MemberInfo>,
 }
 
+/// Response payload for POST /api/servers/:id/bans.
 #[derive(Debug, Serialize)]
 pub(crate) struct BanResponse {
     pub ban: BanInfo,
 }
 
+/// Response payload for GET /api/servers/:id/bans.
 #[derive(Debug, Serialize)]
 pub(crate) struct BansResponse {
     pub bans: Vec<BanInfo>,
 }
 
+/// Request body for PATCH /api/servers/:id/members/:user_id/nickname.
 #[derive(Debug, Deserialize)]
 pub(crate) struct NicknameBody {
+    /// New nickname; `None` (or omitted) clears it back to the user's
+    /// global `display_name`.
     pub nickname: Option<String>,
 }
 
@@ -100,7 +107,10 @@ pub(crate) async fn get_server(
     // Verify caller is a member
     MemberRepo::get_member(&state.pool, id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "get server: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     let mut server = ServerService::get_server(&state.pool, id).await?;
     presign_server_urls(&state, &mut server).await;
     Ok(Json(ServerResponse { server }))
@@ -148,8 +158,12 @@ pub(crate) async fn list_members(
     // Verify caller is a member
     MemberRepo::get_member(&state.pool, id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list server members: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     let members = MemberRepo::list_for_server(&state.pool, id).await?;
+    let members = members.into_iter().map(MemberInfo::from).collect();
     Ok(Json(MembersResponse { members }))
 }
 
@@ -289,8 +303,10 @@ pub(crate) async fn list_bans(
 
 // ── Timeout Handlers ──────────────────────────────────────────────────
 
+/// Request body for POST /api/servers/:id/members/:user_id/timeout.
 #[derive(Debug, Deserialize)]
 pub(crate) struct TimeoutBody {
+    /// When the timeout expires. Must be in the future, max 28 days out.
     pub timeout_until: DateTime<Utc>,
 }
 
@@ -397,8 +413,10 @@ pub(crate) async fn set_nickname(
 
 // ── Server Reordering ────────────────────────────────────────────────
 
+/// Request body for PUT /api/users/@me/servers/reorder.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ReorderServersRequest {
+    /// Full ordered list of server IDs from top to bottom of the sidebar.
     pub server_ids: Vec<Uuid>,
 }
 
@@ -414,6 +432,7 @@ pub(crate) async fn reorder_servers(
 
 // ── Discovery Handlers ────────────────────────────────────────────────
 
+/// Query parameters for GET /api/servers/discover.
 #[derive(Debug, Deserialize)]
 pub(crate) struct DiscoverQuery {
     pub limit: Option<i64>,

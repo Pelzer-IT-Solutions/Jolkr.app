@@ -11,7 +11,6 @@ use jolkr_core::services::message::{
     EditMessageRequest, MessageInfo, MessageQuery, SendMessageRequest,
 };
 use jolkr_db::repo::{ChannelRepo, ChannelOverwriteRepo, MemberRepo, RoleRepo, ServerRepo, UserRepo};
-use chrono;
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
@@ -19,11 +18,13 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload carrying a single channel message.
 #[derive(Debug, Serialize)]
 pub(crate) struct MessageResponse {
     pub message: MessageInfo,
 }
 
+/// Response payload for list/search/pins endpoints.
 #[derive(Debug, Serialize)]
 pub(crate) struct MessagesResponse {
     pub messages: Vec<MessageInfo>,
@@ -102,7 +103,7 @@ pub(crate) async fn send_message(
         };
 
         // Batch: fetch all member-roles + overwrites + everyone_role in 3 queries total
-        let member_roles_batch = RoleRepo::get_member_roles_batch(&pool, channel.server_id).await.unwrap_or_default();
+        let member_roles_batch = RoleRepo::list_member_roles_batch(&pool, channel.server_id).await.unwrap_or_default();
         let overwrites = ChannelOverwriteRepo::list_for_channel(&pool, channel_id).await.unwrap_or_default();
         let everyone_role = RoleRepo::get_default(&pool, channel.server_id).await.ok();
 
@@ -145,7 +146,7 @@ pub(crate) async fn send_message(
 }
 
 /// GET /api/channels/:id/messages — requires membership + VIEW_CHANNELS
-pub(crate) async fn get_messages(
+pub(crate) async fn list_messages(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(channel_id): Path<Uuid>,
@@ -155,7 +156,10 @@ pub(crate) async fn get_messages(
     let channel = ChannelRepo::get_by_id(&state.pool, channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list messages: caller is not a member of channel's server → 403");
+            AppError(JolkrError::Forbidden)
+        })?;
     let server = ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
         let perms = RoleRepo::compute_channel_permissions(
@@ -166,7 +170,7 @@ pub(crate) async fn get_messages(
         }
     }
 
-    let messages = MessageService::get_messages(&state.pool, channel_id, query).await?;
+    let messages = MessageService::list_messages(&state.pool, channel_id, query).await?;
 
     Ok(Json(MessagesResponse { messages }))
 }
@@ -208,13 +212,20 @@ pub(crate) async fn delete_message(
 
 // ── Search ────────────────────────────────────────────────────────────
 
+/// Query parameters for GET /api/channels/:id/messages/search.
 #[derive(Debug, Deserialize)]
 pub(crate) struct SearchMessagesQuery {
+    /// Full-text query. Required when no advanced filter is supplied.
     pub q: Option<String>,
+    /// Filter by author username (exact match).
     pub from: Option<String>,
+    /// Attachment-type filter: `image`, `video`, `file`, etc.
     pub has: Option<String>,
+    /// RFC3339 upper bound on `created_at`.
     pub before: Option<String>,
+    /// RFC3339 lower bound on `created_at`.
     pub after: Option<String>,
+    /// Result cap. Defaults to 50, clamped to [1, 100].
     pub limit: Option<i64>,
 }
 
@@ -229,7 +240,10 @@ pub(crate) async fn search_messages(
     let channel = ChannelRepo::get_by_id(&state.pool, channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "search messages: caller is not a member of channel's server → 403");
+            AppError(JolkrError::Forbidden)
+        })?;
     let server = ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
         let perms = RoleRepo::compute_channel_permissions(
@@ -240,7 +254,7 @@ pub(crate) async fn search_messages(
         }
     }
 
-    let limit = params.limit.unwrap_or(50).min(100).max(1);
+    let limit = params.limit.unwrap_or(50).clamp(1, 100);
 
     // Check if any advanced filters are used
     let has_advanced = params.from.is_some() || params.has.is_some()

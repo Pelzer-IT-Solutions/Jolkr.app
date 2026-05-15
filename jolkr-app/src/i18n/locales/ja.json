@@ -70,6 +70,9 @@
       "one": "{name} が入力中…",
       "two": "{a} と {b} が入力中…",
       "many": "複数の人が入力中…"
+    },
+    "jump": {
+      "notFound": "メッセージが見つかりませんでした。"
     }
   },
 
@@ -173,7 +176,8 @@
     "unpin": "ピン留めを解除", "pinnedMessages": "ピン留めメッセージ",
     "noPinned": "ピン留めされたメッセージはまだありません",
     "sharedFiles": "共有ファイル", "noFiles": "共有ファイルはまだありません",
-    "decrypting": "復号中…"
+    "decrypting": "復号中…",
+    "jumpToMessage": "メッセージへ移動", "downloadFile": "ダウンロード"
   },
 
   "newDmModal": {
@@ -247,6 +251,31 @@
     "moderation": "モデレーション", "kick": "キック", "ban": "BAN",
     "assignRole": "ロールを割り当て", "inviteToServer": "サーバーに招待",
     "reportUser": "ユーザーを報告"
+  },
+
+  "groupContextMenu": {
+    "info": "グループ情報",
+    "mute": "グループをミュート",
+    "unmute": "ミュート解除",
+    "edit": "グループを編集",
+    "leave": "グループを退出",
+    "members": "{count} 人のメンバー"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "{name} のグループ情報",
+    "members": "{count} 人のメンバー",
+    "createdOn": "作成日",
+    "you": "{name} (あなた)"
+  },
+
+  "groupSettingsModal": {
+    "title": "グループ設定",
+    "groupName": "グループ名",
+    "namePlaceholder": "グループ名",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "errSaveFailed": "グループ設定の保存に失敗しました"
   },
 
   "channelSidebar": {
@@ -359,6 +388,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "グループから退出できませんでした",
     "friendRequestSent": "フレンドリクエストを送信しました",
     "friendRequestFailed": "フレンドリクエストの送信に失敗しました",
     "friendRequestNotSent": "フレンドリクエストを送信できませんでした",

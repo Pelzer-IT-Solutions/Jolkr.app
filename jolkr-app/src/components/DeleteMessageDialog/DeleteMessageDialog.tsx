@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-
 import { useT } from '../../hooks/useT'
 import s from './DeleteMessageDialog.module.css'
 

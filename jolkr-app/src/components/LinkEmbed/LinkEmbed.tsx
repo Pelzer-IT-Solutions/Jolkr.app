@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import type { MessageEmbed } from '../../api/types';
 import s from './LinkEmbed.module.css';
+import type { MessageEmbed } from '../../api/types';
 
 interface LinkEmbedProps {
   embed: MessageEmbed;
 }
 
-export default function LinkEmbed({ embed }: LinkEmbedProps) {
+export function LinkEmbed({ embed }: LinkEmbedProps) {
   const borderColor = (embed.color && /^#[0-9a-fA-F]{3,6}$/.test(embed.color)) ? embed.color : '#5865F2';
   const [imgErrored, setImgErrored] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);

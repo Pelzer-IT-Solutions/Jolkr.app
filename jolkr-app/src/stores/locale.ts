@@ -23,10 +23,10 @@
  */
 
 import { create } from 'zustand';
-import type { LocaleCode, Translations } from '../i18n/types';
-import { DEFAULT_LOCALE, isLocaleCode, SUPPORTED_LOCALES } from '../i18n/types';
 import { FALLBACK_DICT, loadLocale } from '../i18n/loader';
+import { DEFAULT_LOCALE, isLocaleCode, SUPPORTED_LOCALES } from '../i18n/types';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import type { LocaleCode, Translations } from '../i18n/types';
 
 interface LocaleState {
   /** Active locale tag (e.g. `'en-US'`, `'fr'`). */

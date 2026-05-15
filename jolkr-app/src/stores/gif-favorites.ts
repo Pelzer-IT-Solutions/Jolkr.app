@@ -1,10 +1,15 @@
 import { create } from 'zustand'
 import { getGifFavorites, addGifFavorite, removeGifFavorite } from '../api/client'
+import type { GifFavorite } from '../api/types'
 
 interface GifFavoritesState {
   ids: Set<string>
-  loaded: boolean
+  isLoaded: boolean
   load: () => Promise<void>
+  /** Replace the local set with server-loaded favorites. Used by components
+   *  that already own the full GifFavorite[] (e.g. GifPicker shows the
+   *  thumbnails) — they call this instead of writing to the store directly. */
+  applyFavorites: (favs: GifFavorite[]) => void
   toggle: (gifId: string) => void
   /** Apply a server-pushed favorite change from another session.
    *  Idempotent: a no-op if the local set already reflects the change
@@ -16,19 +21,21 @@ interface GifFavoritesState {
 
 export const useGifFavoritesStore = create<GifFavoritesState>((set, get) => ({
   ids: new Set<string>(),
-  loaded: false,
+  isLoaded: false,
 
-  reset: () => set({ ids: new Set<string>(), loaded: false }),
+  reset: () => set({ ids: new Set<string>(), isLoaded: false }),
 
   load: async () => {
-    if (get().loaded) return
+    if (get().isLoaded) return
     try {
       const favs = await getGifFavorites()
-      set({ ids: new Set(favs.map((f) => f.gif_id)), loaded: true })
+      get().applyFavorites(favs)
     } catch {
-      set({ loaded: true })
+      set({ isLoaded: true })
     }
   },
+
+  applyFavorites: (favs) => set({ ids: new Set(favs.map((f) => f.gif_id)), isLoaded: true }),
 
   toggle: (gifId: string) => {
     const { ids } = get()

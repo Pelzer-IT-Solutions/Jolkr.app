@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
-import type React from 'react'
-import type { ServerTheme } from '../types'
 import { buildOrbBackground } from './theme'
+import type { ServerTheme } from '../types'
+import type React from 'react'
 
 const DURATION = 1200
 

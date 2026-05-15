@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { type UpdateInfo, downloadAndInstallUpdate } from '../services/updater';
 import { useT } from '../hooks/useT';
-import Button from './ui/Button';
+import { type UpdateInfo, downloadAndInstallUpdate } from '../services/updater';
+import { Button } from './ui/Button';
 import s from './UpdateNotification.module.css';
 
 export interface UpdateNotificationProps {
   update: UpdateInfo;
 }
 
-export default function UpdateNotification({ update }: UpdateNotificationProps) {
+export function UpdateNotification({ update }: UpdateNotificationProps) {
   const { tx, t } = useT();
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);

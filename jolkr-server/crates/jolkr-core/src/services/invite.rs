@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -7,7 +8,9 @@ use jolkr_db::models::InviteRow;
 use jolkr_db::repo::{InviteRepo, MemberRepo, RoleRepo, ServerRepo};
 
 /// Public information about `invite`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Invite")]
 pub struct InviteInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -63,6 +66,7 @@ pub struct InviteService;
 
 impl InviteService {
     /// Creates invite.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_invite(
         pool: &PgPool,
         server_id: Uuid,
@@ -111,6 +115,7 @@ impl InviteService {
     /// invite is returned without consuming a use slot — so following an invite
     /// link to a server you've already joined just navigates you there instead
     /// of returning an error.
+    #[tracing::instrument(skip(pool, code))]
     pub async fn use_invite(
         pool: &PgPool,
         code: &str,
@@ -187,6 +192,7 @@ impl InviteService {
     }
 
     /// Lists invites.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_invites(
         pool: &PgPool,
         server_id: Uuid,
@@ -200,6 +206,7 @@ impl InviteService {
     }
 
     /// Deletes invite.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_invite(
         pool: &PgPool,
         invite_id: Uuid,

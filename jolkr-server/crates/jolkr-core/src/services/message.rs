@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
+
+/// Per-message reaction aggregation: message_id → (emoji insertion order, emoji → (count, voter ids)).
+pub(crate) type ReactionAggregateByMsg = HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)>;
 use serde::{Deserialize, Serialize};
 use sqlx::{self, PgPool};
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -12,15 +16,24 @@ use jolkr_db::repo::{AttachmentRepo, EmbedRepo, MemberRepo, MessageRepo, PinRepo
 use jolkr_db::repo::{ChannelRepo, RoleRepo, ServerRepo};
 
 /// Attachment info included in message responses.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Attachment")]
 pub struct AttachmentInfo {
     /// Unique identifier.
     pub id: Uuid,
+    /// Owning message id. Only filled by the shared-files endpoint — within
+    /// a message DTO this would be redundant, so it is left None and skipped
+    /// during serialisation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub message_id: Option<Uuid>,
     /// File name.
     pub filename: String,
     /// Content type.
     pub content_type: String,
     /// Size in bytes.
+    #[ts(type = "number")]
     pub size_bytes: i64,
     /// Resource URL.
     pub url: String,
@@ -33,18 +46,23 @@ pub fn attachment_proxy_url(id: Uuid) -> String {
 }
 
 /// Reaction info included in message responses.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Reaction")]
 pub struct ReactionInfo {
     /// Emoji.
     pub emoji: String,
     /// Count.
+    #[ts(type = "number")]
     pub count: i64,
     /// User ids.
     pub user_ids: Vec<Uuid>,
 }
 
 /// Embed info included in message responses.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "MessageEmbed")]
 pub struct EmbedInfo {
     /// Resource URL.
     pub url: String,
@@ -61,7 +79,9 @@ pub struct EmbedInfo {
 }
 
 /// Public message DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Message")]
 pub struct MessageInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -81,9 +101,11 @@ pub struct MessageInfo {
     pub reply_to_id: Option<Uuid>,
     /// Owning thread identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub thread_id: Option<Uuid>,
     /// Number of replies in this thread.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "number | null")]
     pub thread_reply_count: Option<i64>,
     /// Attached files.
     #[serde(default)]
@@ -96,15 +118,19 @@ pub struct MessageInfo {
     pub embeds: Vec<EmbedInfo>,
     /// Attached poll, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub poll: Option<serde_json::Value>,
     /// Webhook identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub webhook_id: Option<Uuid>,
     /// Webhook name.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub webhook_name: Option<String>,
     /// Webhook avatar.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub webhook_avatar: Option<String>,
     /// Creation timestamp.
     pub created_at: DateTime<Utc>,
@@ -178,7 +204,7 @@ pub(crate) async fn enrich_with_reactions(pool: &PgPool, messages: &mut [Message
     let all_reactions = ReactionRepo::list_for_messages(pool, &msg_ids).await?;
 
     // Group by message_id, then by emoji (preserving order by first created_at)
-    let mut by_msg: HashMap<Uuid, (Vec<String>, HashMap<String, (i64, Vec<Uuid>)>)> = HashMap::new();
+    let mut by_msg: ReactionAggregateByMsg = HashMap::new();
     for r in all_reactions {
         let (order, map) = by_msg.entry(r.message_id).or_insert_with(|| (Vec::new(), HashMap::new()));
         if !map.contains_key(&r.emoji) {
@@ -274,6 +300,7 @@ pub(crate) async fn enrich_with_attachments(pool: &PgPool, messages: &mut [Messa
     for att in all_atts {
         by_msg.entry(att.message_id).or_default().push(AttachmentInfo {
             id: att.id,
+            message_id: None,
             filename: att.filename,
             content_type: att.content_type,
             size_bytes: att.size_bytes,
@@ -306,8 +333,8 @@ pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo
     let poll_ids: Vec<Uuid> = polls.iter().map(|p| p.id).collect();
 
     // Batch load options and vote counts
-    let all_options = PollRepo::get_options_batch(pool, &poll_ids).await?;
-    let all_counts = PollRepo::get_vote_counts_batch(pool, &poll_ids).await?;
+    let all_options = PollRepo::list_options_batch(pool, &poll_ids).await?;
+    let all_counts = PollRepo::list_vote_counts_batch(pool, &poll_ids).await?;
 
     // Group options by poll_id
     let mut options_by_poll: HashMap<Uuid, Vec<serde_json::Value>> = HashMap::new();
@@ -391,7 +418,8 @@ impl MessageService {
 
         // Verify the channel exists and the user is a member of its server
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
-        let member = MemberRepo::get_member(pool, channel.server_id, author_id).await.map_err(|_| {
+        let member = MemberRepo::get_member(pool, channel.server_id, author_id).await.map_err(|e| {
+            tracing::warn!(?e, server_id = %channel.server_id, author_id = %author_id, "member lookup failed while sending message");
             JolkrError::Forbidden
         })?;
 
@@ -446,7 +474,10 @@ impl MessageService {
         let nonce_bytes = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+            .map_err(|e| {
+                tracing::warn!(?e, "base64 decode of message nonce failed");
+                JolkrError::Validation("Invalid base64 for nonce".into())
+            })?;
 
         let row = if let Some(tid) = thread_id {
             MessageRepo::create_message_in_thread(
@@ -477,6 +508,7 @@ impl MessageService {
 
     /// Send a message to a channel.
     /// The caller must be a member of the server that owns the channel.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn send_message(
         pool: &PgPool,
         channel_id: Uuid,
@@ -488,6 +520,7 @@ impl MessageService {
 
     /// Get a single message by ID with attachments and reactions.
     /// Internal use only — callers must verify authorization before calling.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_message_by_id(
         pool: &PgPool,
         message_id: Uuid,
@@ -500,6 +533,7 @@ impl MessageService {
         for att in atts {
             msg.attachments.push(AttachmentInfo {
                 id: att.id,
+                message_id: None,
                 filename: att.filename,
                 content_type: att.content_type,
                 size_bytes: att.size_bytes,
@@ -517,8 +551,9 @@ impl MessageService {
         msgs.into_iter().next().ok_or(JolkrError::Internal("Failed to enrich message".into()))
     }
 
-    /// Fetch paginated messages for a channel, including attachments (batch loaded).
-    pub async fn get_messages(
+    /// List paginated messages for a channel, including attachments (batch loaded).
+    #[tracing::instrument(skip(pool, query))]
+    pub async fn list_messages(
         pool: &PgPool,
         channel_id: Uuid,
         query: MessageQuery,
@@ -538,6 +573,7 @@ impl MessageService {
     }
 
     /// Search messages in a channel by content.
+    #[tracing::instrument(skip(pool, query))]
     pub async fn search_messages(
         pool: &PgPool,
         channel_id: Uuid,
@@ -562,6 +598,7 @@ impl MessageService {
     }
 
     /// Enrich raw `MessageRows` with attachments, reactions, threads, embeds.
+    #[tracing::instrument(skip(pool, rows))]
     pub async fn enrich_messages(
         pool: &PgPool,
         rows: Vec<MessageRow>,
@@ -578,6 +615,7 @@ impl MessageService {
     }
 
     /// Edit a message. Only the original author may edit.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn edit_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -605,7 +643,10 @@ impl MessageService {
         let nonce_bytes = req.nonce.as_deref()
             .map(|s| engine.decode(s))
             .transpose()
-            .map_err(|_| JolkrError::Validation("Invalid base64 for nonce".into()))?;
+            .map_err(|e| {
+                tracing::warn!(?e, "base64 decode of message edit nonce failed");
+                JolkrError::Validation("Invalid base64 for nonce".into())
+            })?;
 
         let _updated = MessageRepo::update(pool, message_id, &content, nonce_bytes.as_deref()).await?;
         // Return the full enriched message (with attachments, reactions, thread info)
@@ -614,6 +655,7 @@ impl MessageService {
     }
 
     /// Delete a message. The author, server owner, or users with `MANAGE_MESSAGES` may delete.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_message(
         pool: &PgPool,
         message_id: Uuid,
@@ -629,7 +671,10 @@ impl MessageService {
             if server.owner_id != caller_id {
                 let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
                     .await
-                    .map_err(|_| JolkrError::Forbidden)?;
+                    .map_err(|e| {
+                        tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while deleting message");
+                        JolkrError::Forbidden
+                    })?;
                 let ch_perms = RoleRepo::compute_channel_permissions(
                     pool, channel.server_id, msg.channel_id, member.id,
                 ).await?;
@@ -645,6 +690,7 @@ impl MessageService {
     }
 
     /// Pin a message. Requires `MANAGE_MESSAGES` channel permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn pin_message(
         pool: &PgPool,
         channel_id: Uuid,
@@ -654,7 +700,10 @@ impl MessageService {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while pinning message");
+                JolkrError::Forbidden
+            })?;
         // Check MANAGE_MESSAGES (owner bypasses)
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
         if server.owner_id != caller_id {
@@ -683,6 +732,7 @@ impl MessageService {
     }
 
     /// Unpin a message. Requires `MANAGE_MESSAGES` channel permission.
+    #[tracing::instrument(skip(pool))]
     pub async fn unpin_message(
         pool: &PgPool,
         channel_id: Uuid,
@@ -692,7 +742,10 @@ impl MessageService {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while unpinning message");
+                JolkrError::Forbidden
+            })?;
         // Check MANAGE_MESSAGES (owner bypasses)
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
         if server.owner_id != caller_id {
@@ -721,6 +774,7 @@ impl MessageService {
     }
 
     /// List pinned messages for a channel. Requires `VIEW_CHANNELS`.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_pinned(
         pool: &PgPool,
         channel_id: Uuid,
@@ -729,7 +783,10 @@ impl MessageService {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while listing pinned messages");
+                JolkrError::Forbidden
+            })?;
         // Check VIEW_CHANNELS (owner bypasses)
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
         if server.owner_id != caller_id {

@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import * as api from '../api/client';
+import { deriveE2EESeed } from '../crypto/e2ee';
+import { useT } from '../hooks/useT';
+import { initE2EE } from '../services/e2ee';
 import { useAuthStore } from '../stores/auth';
 import { useServersStore } from '../stores/servers';
 import { useToast } from '../stores/toast';
-import * as api from '../api/client';
-import { deriveE2EESeed } from '../crypto/e2ee';
-import { initE2EE } from '../services/e2ee';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
 import { STORAGE_KEYS } from '../utils/storageKeys';
-import { useT } from '../hooks/useT';
 
-export default function Login() {
+export function Login() {
   useEffect(resetAuthTheme, []);
   const { t } = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const login = useAuthStore((s) => s.login);
-  const loading = useAuthStore((s) => s.loading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const error = useAuthStore((s) => s.error);
   const fetchServers = useServersStore((s) => s.fetchServers);
   const navigate = useNavigate();
@@ -109,8 +109,8 @@ export default function Login() {
             />
             <Link to="/forgot-password" style={styles.link}>{t('auth.login.forgotPassword')}</Link>
           </label>
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? t('auth.login.submitting') : t('auth.login.submit')}
+          <button type="submit" disabled={isLoading} style={styles.button}>
+            {isLoading ? t('auth.login.submitting') : t('auth.login.submit')}
           </button>
         </form>
 

@@ -70,6 +70,9 @@
       "one": "{name} est en train d'écrire…",
       "two": "{a} et {b} sont en train d'écrire…",
       "many": "Plusieurs personnes sont en train d'écrire…"
+    },
+    "jump": {
+      "notFound": "Ce message est introuvable."
     }
   },
 
@@ -172,7 +175,8 @@
     "backToChat": "Retour au chat", "info": "Infos", "unpin": "Désépingler",
     "pinnedMessages": "Messages épinglés", "noPinned": "Aucun message épinglé pour l'instant",
     "sharedFiles": "Fichiers partagés", "noFiles": "Aucun fichier partagé pour l'instant",
-    "decrypting": "Déchiffrement…"
+    "decrypting": "Déchiffrement…",
+    "jumpToMessage": "Aller au message", "downloadFile": "Télécharger"
   },
 
   "newDmModal": {
@@ -248,6 +252,31 @@
     "kick": "Expulser", "ban": "Bannir",
     "assignRole": "Attribuer un rôle", "inviteToServer": "Inviter sur un serveur",
     "reportUser": "Signaler l'utilisateur"
+  },
+
+  "groupContextMenu": {
+    "info": "Infos du groupe",
+    "mute": "Désactiver le groupe",
+    "unmute": "Activer le groupe",
+    "edit": "Modifier le groupe",
+    "leave": "Quitter le groupe",
+    "members": "{count} membres"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "Infos du groupe {name}",
+    "members": "{count} membres",
+    "createdOn": "Créé le",
+    "you": "{name} (Vous)"
+  },
+
+  "groupSettingsModal": {
+    "title": "Paramètres du groupe",
+    "groupName": "Nom du groupe",
+    "namePlaceholder": "Nom du groupe",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "errSaveFailed": "Échec de l'enregistrement des paramètres du groupe"
   },
 
   "channelSidebar": {
@@ -361,6 +390,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "Échec du départ du groupe",
     "friendRequestSent": "Demande d'ami envoyée",
     "friendRequestFailed": "Échec de l'envoi de la demande d'ami",
     "friendRequestNotSent": "La demande d'ami n'a pas pu être envoyée",

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::JolkrError;
@@ -8,7 +9,9 @@ use jolkr_db::models::CategoryRow;
 use jolkr_db::repo::{CategoryRepo, ServerRepo};
 
 /// Public category DTO.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Category")]
 pub struct CategoryInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -52,6 +55,7 @@ pub struct CategoryService;
 
 impl CategoryService {
     /// Create a new category. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_category(
         pool: &PgPool,
         server_id: Uuid,
@@ -83,6 +87,7 @@ impl CategoryService {
     }
 
     /// List all categories in a server.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_categories(
         pool: &PgPool,
         server_id: Uuid,
@@ -92,6 +97,7 @@ impl CategoryService {
     }
 
     /// Update a category. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_category(
         pool: &PgPool,
         category_id: Uuid,
@@ -118,6 +124,7 @@ impl CategoryService {
     }
 
     /// Reorder categories in a server. Requires `MANAGE_CHANNELS` or server owner.
+    #[tracing::instrument(skip(pool, category_positions), fields(count = category_positions.len()))]
     pub async fn reorder_categories(
         pool: &PgPool,
         server_id: Uuid,
@@ -155,6 +162,7 @@ impl CategoryService {
     }
 
     /// Delete a category. Channels in it get moved to uncategorized.
+    #[tracing::instrument(skip(pool))]
     pub async fn delete_category(
         pool: &PgPool,
         category_id: Uuid,
@@ -183,7 +191,10 @@ impl CategoryService {
 
         let member = MemberRepo::get_member(pool, server_id, user_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %server_id, user_id = %user_id, "member lookup failed for category permission check");
+                JolkrError::Forbidden
+            })?;
         let perms_bits = RoleRepo::compute_permissions(pool, server_id, member.id).await?;
         let perms = Permissions::from(perms_bits);
         if !perms.has(permission) {

@@ -1,5 +1,5 @@
-import { isTauri } from '../platform/detect';
 import * as api from '../api/client';
+import { isTauri } from '../platform/detect';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
 // Module-scoped guards make registerPush idempotent: even if it's called
@@ -77,32 +77,6 @@ async function doRegisterPush(): Promise<void> {
   });
   if (device?.id) {
     localStorage.setItem(STORAGE_KEYS.PUSH_DEVICE_ID, device.id);
-  }
-}
-
-/**
- * Unsubscribe from Web Push and remove device from backend.
- */
-export async function unregisterPush(): Promise<void> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-  const reg = await navigator.serviceWorker.getRegistration('/app/');
-  if (!reg) return;
-
-  const subscription = await reg.pushManager.getSubscription();
-  if (subscription) {
-    await subscription.unsubscribe();
-  }
-
-  // Remove stored device from backend
-  const storedDeviceId = localStorage.getItem(STORAGE_KEYS.PUSH_DEVICE_ID);
-  if (storedDeviceId) {
-    try {
-      await api.deleteDevice(storedDeviceId);
-    } catch {
-      // Best effort cleanup
-    }
-    localStorage.removeItem(STORAGE_KEYS.PUSH_DEVICE_ID);
   }
 }
 

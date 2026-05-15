@@ -3,6 +3,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_core::UserService;
@@ -15,6 +16,7 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload for GET /api/users/:id — public user profile.
 #[derive(Debug, Serialize)]
 pub(crate) struct UserResponse {
     pub user: UserProfile,
@@ -26,16 +28,33 @@ pub(crate) struct MeResponse {
     pub user: MeProfile,
 }
 
-#[derive(Debug, Deserialize)]
+/// Request body for PATCH /api/users/@me — every field is optional; `None`
+/// (or omitted) leaves the existing value untouched.
+#[derive(Debug, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "UpdateMeBody")]
 pub(crate) struct UpdateMeRequest {
+    #[ts(optional)]
     pub display_name: Option<String>,
+    #[ts(optional)]
     pub avatar_url: Option<String>,
+    /// Free-form status text (max 128 chars).
+    #[ts(optional)]
     pub status: Option<String>,
+    #[ts(optional)]
     pub bio: Option<String>,
+    #[ts(optional)]
     pub show_read_receipts: Option<bool>,
+    /// Hex color string (`#RRGGBB`) for the profile banner.
+    #[ts(optional)]
     pub banner_color: Option<String>,
+    /// DM filter mode: one of `"all"`, `"friends"`, `"none"`.
+    #[ts(optional)]
     pub dm_filter: Option<String>,
+    #[ts(optional)]
     pub allow_friend_requests: Option<bool>,
+    /// BCP-47 locale code; must be in [`SUPPORTED_LOCALES`].
+    #[ts(optional)]
     pub preferred_language: Option<String>,
 }
 
@@ -46,16 +65,21 @@ pub(crate) const SUPPORTED_LOCALES: &[&str] = &[
     "en-US", "nl", "fr", "de", "es", "it", "ja", "ko", "zh-CN",
 ];
 
+/// Query parameters for GET /api/users/search.
 #[derive(Debug, Deserialize)]
 pub(crate) struct SearchQuery {
+    /// Search term — matches against username and display_name (case-insensitive).
     pub q: String,
 }
 
+/// Request body for POST /api/users/batch.
 #[derive(Debug, Deserialize)]
 pub(crate) struct BatchUsersRequest {
+    /// User IDs to fetch — capped at 100 per request.
     pub ids: Vec<Uuid>,
 }
 
+/// Response payload for endpoints returning a list of public user profiles.
 #[derive(Debug, Serialize)]
 pub(crate) struct UsersResponse {
     pub users: Vec<UserProfile>,

@@ -28,7 +28,7 @@ impl ImagePurpose {
     }
 
     /// Parses from a string.
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_str(s: &str) -> Option<Self> {
         match s {
             "avatar" => Some(Self::Avatar),
             "icon" => Some(Self::Icon),

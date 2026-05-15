@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::info;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -21,7 +22,9 @@ const MAX_THREAD_NAME_CHARS: usize = 100;
 // ── DTOs ──────────────────────────────────────────────────────────────
 
 /// Public information about `thread`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "Thread")]
 pub struct ThreadInfo {
     /// Unique identifier.
     pub id: Uuid,
@@ -34,6 +37,7 @@ pub struct ThreadInfo {
     /// Whether archived.
     pub is_archived: bool,
     /// Cached message count.
+    #[ts(type = "number")]
     pub message_count: i64,
     /// Creation timestamp.
     pub created_at: DateTime<Utc>,
@@ -94,7 +98,10 @@ async fn check_view_permission(
     let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
     let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
         .await
-        .map_err(|_| JolkrError::Forbidden)?;
+        .map_err(|e| {
+            tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed during thread view-permission check");
+            JolkrError::Forbidden
+        })?;
     let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
     if server.owner_id != caller_id {
         let ch_perms = RoleRepo::compute_channel_permissions(
@@ -117,6 +124,7 @@ impl ThreadService {
     /// Create a thread from an existing message.
     /// Requires `VIEW_CHANNELS` + `SEND_MESSAGES` on the parent channel.
     /// Uses a transaction to ensure atomicity and prevent race conditions.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn create_thread(
         pool: &PgPool,
         channel_id: Uuid,
@@ -137,7 +145,10 @@ impl ThreadService {
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while creating thread");
+                JolkrError::Forbidden
+            })?;
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
         if server.owner_id != caller_id {
             let ch_perms = RoleRepo::compute_channel_permissions(
@@ -199,6 +210,7 @@ impl ThreadService {
     }
 
     /// Get a single thread with message count. Requires `VIEW_CHANNELS`.
+    #[tracing::instrument(skip(pool))]
     pub async fn get_thread(
         pool: &PgPool,
         thread_id: Uuid,
@@ -211,6 +223,7 @@ impl ThreadService {
     }
 
     /// List threads for a channel. Requires `VIEW_CHANNELS`.
+    #[tracing::instrument(skip(pool))]
     pub async fn list_threads(
         pool: &PgPool,
         channel_id: Uuid,
@@ -240,6 +253,7 @@ impl ThreadService {
     /// Update thread name or archive status.
     /// Allowed by: thread starter message author, `MANAGE_MESSAGES` holders, server owner.
     /// Requires `VIEW_CHANNELS` on the parent channel.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn update_thread(
         pool: &PgPool,
         thread_id: Uuid,
@@ -257,7 +271,10 @@ impl ThreadService {
         let channel = ChannelRepo::get_by_id(pool, thread.channel_id).await?;
         let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
             .await
-            .map_err(|_| JolkrError::Forbidden)?;
+            .map_err(|e| {
+                tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while updating thread");
+                JolkrError::Forbidden
+            })?;
         let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
 
         // Permission check: owner bypasses, else check VIEW_CHANNELS + (MANAGE_MESSAGES or starter author)
@@ -310,6 +327,7 @@ impl ThreadService {
     }
 
     /// Send a message to a thread. Requires `SEND_MESSAGES` on parent channel.
+    #[tracing::instrument(skip(pool, req))]
     pub async fn send_thread_message(
         pool: &PgPool,
         thread_id: Uuid,
@@ -351,8 +369,9 @@ impl ThreadService {
         Ok(msg)
     }
 
-    /// Get paginated messages for a thread. Requires `VIEW_CHANNELS` on parent channel.
-    pub async fn get_thread_messages(
+    /// List paginated messages for a thread. Requires `VIEW_CHANNELS` on parent channel.
+    #[tracing::instrument(skip(pool, query))]
+    pub async fn list_thread_messages(
         pool: &PgPool,
         thread_id: Uuid,
         caller_id: Uuid,
@@ -374,6 +393,7 @@ impl ThreadService {
             if let Some(msg) = messages.iter_mut().find(|m| m.id == att.message_id) {
                 msg.attachments.push(AttachmentInfo {
                     id: att.id,
+                    message_id: None,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,

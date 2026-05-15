@@ -122,20 +122,20 @@ fn is_public_ip(ip: IpAddr) -> bool {
         IpAddr::V6(v6) => {
             !v6.is_loopback()
                 && !v6.is_unspecified()
-                && !(v6.segments()[0] & 0xfe00 == 0xfc00)
-                && !(v6.segments()[0] & 0xffc0 == 0xfe80)
+                && (v6.segments()[0] & 0xfe00 != 0xfc00)
+                && (v6.segments()[0] & 0xffc0 != 0xfe80)
         }
     }
 }
 
 /// Service for fetching link previews and storing them as embeds.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct LinkEmbedService {}
 
 impl LinkEmbedService {
     /// Creates a new instance.
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 
     /// Resolve DNS and build a one-shot client pinned to validated IPs.

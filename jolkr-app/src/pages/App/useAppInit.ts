@@ -1,28 +1,30 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import type { ServerTheme } from '../../types/ui'
-import { useViewport } from '../../hooks/useViewport'
-import { useAuthStore } from '../../stores/auth'
-import { useServersStore } from '../../stores/servers'
-import { useMessagesStore } from '../../stores/messages'
-import { usePresenceStore } from '../../stores/presence'
-import { useUnreadStore } from '../../stores/unread'
-import { wsClient } from '../../api/ws'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate, useLocation, useNavigationType } from 'react-router-dom'
 import * as api from '../../api/client'
-import { useGifFavoritesStore } from '../../stores/gif-favorites'
-import { useCallStore } from '../../stores/call'
-import { useUsersStore } from '../../stores/users'
-
-import type { DmChannel, User, Role } from '../../api/types'
-import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
-import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
+import { wsClient } from '../../api/ws'
+import { useViewport } from '../../hooks/useViewport'
 import { lookupFriendship } from '../../services/friendshipCache'
+import { useAuthStore } from '../../stores/auth'
+import { useCallStore } from '../../stores/call'
+import { useGifFavoritesStore } from '../../stores/gif-favorites'
+import { useMessagesStore } from '../../stores/messages'
+import { useNotificationSettingsStore } from '../../stores/notification-settings'
+import { usePresenceStore } from '../../stores/presence'
+import { useServersStore } from '../../stores/servers'
+import { useThreadsStore } from '../../stores/threads'
+import { useUnreadStore } from '../../stores/unread'
+import { useUsersStore } from '../../stores/users'
 import { makeDraftDmId } from '../../utils/draftDm'
+import type { DmChannel, User } from '../../api/types'
+import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
+import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
+import type { ServerTheme } from '../../types/ui'
 import type { MemberDisplay } from '../../types/ui'
 
 export function useAppInit() {
   const navigate = useNavigate()
   const location = useLocation()
+  const navType = useNavigationType()
 
   // ── Backend state from stores ──
   const user = useAuthStore(s => s.user)
@@ -32,7 +34,7 @@ export function useAppInit() {
   const channelMembersByChannel = useServersStore(s => s.channelMembers)
   const categoriesByServer = useServersStore(s => s.categories)
   const storeMessages = useMessagesStore(s => s.messages)
-  const threadListVersion = useMessagesStore(s => s.threadListVersion)
+  const threadListVersion = useThreadsStore(s => s.threadListVersion)
   const presences = usePresenceStore(s => s.statuses)
   const unreadCounts = useUnreadStore(s => s.counts)
   const serverPermissions = useServersStore(s => s.permissions)
@@ -112,8 +114,26 @@ export function useAppInit() {
   const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
 
+  // Single derived id — replaces `dmActive ? activeDmId : activeChannelId`
+  // ternaries inside effect bodies and dep-lists so React sees a primitive
+  // dep instead of a re-evaluated expression with an eslint-disable.
+  const effectiveChannelId = dmActive ? activeDmId : activeChannelId
+
+  // Cancel any pending theme-save on unmount so a debounced api.updateServer
+  // doesn't fire after logout (or page unmount during a server switch).
+  useEffect(() => () => {
+    if (themeSaveTimer.current) {
+      clearTimeout(themeSaveTimer.current)
+      themeSaveTimer.current = null
+    }
+  }, [])
+
   // ── Per-server themes ──
-  const [serverThemes, setServerThemes] = useState<Record<string, ServerTheme>>({})
+  // Server.theme on the store is the source of truth. `themeOverrides` is a
+  // local optimistic layer for the theme-orb debounce — handleThemeChange
+  // writes the in-progress theme here, and the effect below drops the
+  // override once the BE-confirmed theme on `servers` catches up.
+  const [themeOverrides, setThemeOverrides] = useState<Record<string, ServerTheme>>({})
 
   // ── Init: fetch servers + DMs, then navigate to correct place ──
   useEffect(() => {
@@ -126,11 +146,12 @@ export function useAppInit() {
       const urlServerId = path.match(/\/servers\/([^/]+)/)?.[1]
       const urlChannelId = path.match(/\/servers\/[^/]+\/channels\/([^/]+)/)?.[1]
 
-      // Fetch servers, DMs, and GIF favorites in parallel
+      // Fetch servers, DMs, GIF favorites, and notification settings in parallel
       const [, dms] = await Promise.all([
         fetchServers(),
         api.getDms(),
         useGifFavoritesStore.getState().load(),
+        useNotificationSettingsStore.getState().load(),
       ])
       if (cancelled) return
 
@@ -157,11 +178,7 @@ export function useAppInit() {
       }
 
       const srvs = useServersStore.getState().servers
-      const themes: Record<string, ServerTheme> = {}
-      srvs.forEach(srv => {
-        themes[srv.id] = srv.theme ?? { hue: null, orbs: [] }
-      })
-      setServerThemes(themes)
+      // serverThemes is derived from `servers` via useMemo below — no seed needed.
 
       const ids = srvs.slice(0, 5).map(s => s.id)
 
@@ -251,12 +268,14 @@ export function useAppInit() {
     }
   }, [ready, dmActive, activeDmId, activeServerId, activeChannelId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Sync URL → state (popstate / programmatic history.back) ──
-  // When the user presses the Android back button or otherwise pops history,
-  // the URL changes but state doesn't. Re-derive activeServerId / activeChannelId
-  // / activeDmId / dmActive from the current path so the UI follows the URL.
+  // ── Sync URL → state on history POP only ──
+  // PUSH/REPLACE come from our own state→URL effect or programmatic navigate
+  // calls inside handlers — feeding those back into setState would close the
+  // feedback loop. Only POP (browser/Android back-button, history.back) needs
+  // to re-derive state from the URL because the URL has already changed
+  // without anyone telling our state.
   useEffect(() => {
-    if (!ready) return
+    if (!ready || navType !== 'POP') return
     const path = location.pathname
     const dmMatch = path.match(/^\/dm(?:\/([^/]+))?/)
     const serverMatch = path.match(/^\/servers\/([^/]+)(?:\/channels\/([^/]+))?/)
@@ -278,17 +297,22 @@ export function useAppInit() {
       if (sid !== activeServerId) setActiveServerId(sid)
       if (cid !== activeChannelId) setActiveChannelId(cid)
     }
-  }, [ready, location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, navType, location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Fetch channel data when switching servers (after init) ──
   useEffect(() => {
     if (!ready || !activeServerId || dmActive) return
+    // Fast-switching servers used to let an older Promise.all resolve after a
+    // newer one and stomp the active channel selection back onto the previous
+    // server's first channel. The cancelled flag gates every late setState.
+    let cancelled = false
     Promise.all([
       fetchChannels(activeServerId),
       fetchMembers(activeServerId),
       fetchCategories(activeServerId),
       fetchPermissions(activeServerId),
     ]).then(() => {
+      if (cancelled) return
       // Ensure a valid channel is selected after fresh channel data arrives
       const chs = useServersStore.getState().channels[activeServerId]
       if (!chs?.length) return
@@ -299,10 +323,12 @@ export function useAppInit() {
       const mems = useServersStore.getState().members[activeServerId]
       if (mems?.length) {
         api.queryPresence(mems.map(m => m.user_id)).then(p => {
+          if (cancelled) return
           usePresenceStore.getState().setBulk(p)
         }).catch(console.warn)
       }
     })
+    return () => { cancelled = true }
   }, [activeServerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Safety: if active server disappears (deleted/left), fall back ──
@@ -327,7 +353,7 @@ export function useAppInit() {
 
   // ── Fetch messages when channel changes ──
   useEffect(() => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    const channelId = effectiveChannelId
     if (!channelId) return
     // Draft DMs only exist locally — skip every server-side load (messages,
     // pinned, presence-marker) so we don't 404 on an id the server doesn't
@@ -361,35 +387,47 @@ export function useAppInit() {
       }
     }
 
-    // Fetch pinned count and threads count for conditional icon display
+    // Fetch pinned count and threads count for conditional icon display.
+    // Cancellation gates every setState so a slow response from the previous
+    // channel can't write counts into the newly-active channel's badges.
+    let cancelled = false
     const fetchCounts = async () => {
       try {
         const pinned = dmActive
           ? await api.getDmPinnedMessages(channelId)
           : await api.getPinnedMessages(channelId)
+        if (cancelled) return
         setPinnedCount(pinned.length)
       } catch {
+        if (cancelled) return
         setPinnedCount(0)
       }
       // Threads only exist in server text channels — DMs have none.
       if (dmActive) {
-        setThreadsCount(0)
+        if (!cancelled) setThreadsCount(0)
         return
       }
+      // Drive the count off the shared store cache that ThreadListPanel
+      // also reads — one fetch fans out into badge + panel without a
+      // duplicate GET per channel-switch.
       try {
-        const threads = await api.getThreads(channelId, false)
-        setThreadsCount(threads.filter(t => !t.is_archived).length)
+        await useThreadsStore.getState().fetchThreadList(channelId)
+        if (cancelled) return
+        const list = useThreadsStore.getState().threadList[channelId] ?? []
+        setThreadsCount(list.length)
       } catch {
+        if (cancelled) return
         setThreadsCount(0)
       }
     }
     fetchCounts()
 
     return () => {
+      cancelled = true
       useUnreadStore.getState().setActiveChannel(null)
     }
     // threadListVersion is included so the count refreshes when ThreadCreate/Update fires.
-  }, [dmActive ? activeDmId : activeChannelId, dmActive, threadListVersion]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveChannelId, dmActive, threadListVersion, fetchMessages, fetchChannelPermissions, fetchChannelMembers])
 
   // ── Reset open thread when channel/DM changes ──
   // Otherwise the thread panel would try to render messages from a thread
@@ -400,13 +438,13 @@ export function useAppInit() {
 
   // ── WS channel subscribe/unsubscribe ──
   useEffect(() => {
-    const channelId = dmActive ? activeDmId : activeChannelId
+    const channelId = effectiveChannelId
     if (!channelId) return
     // Draft DMs aren't subscribable — the server has no channel for them.
     if (dmActive && channelId.startsWith('draft:')) return
     wsClient.subscribe(channelId)
     return () => { wsClient.unsubscribe(channelId) }
-  }, [dmActive ? activeDmId : activeChannelId, dmActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveChannelId, dmActive])
 
   // ── Resolve friendship state for the open user-context-menu ──
   // Drives the "Add Friend" ↔ "Remove Friend" toggle in the menu.
@@ -484,125 +522,65 @@ export function useAppInit() {
         const { user_id } = event.d
         if (!user_id) return
 
-        // 1) DM users map — keyed by user.id.
+        // Build the patch once, then write to both caches independently —
+        // keeping the side-effect (upsertUser into the global users cache)
+        // outside the setState updater so React-strict's double-invocation
+        // doesn't double-write the global cache.
+        const patch = {
+          ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
+          ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
+          ...(event.d.bio !== undefined && { bio: event.d.bio }),
+          ...(event.d.status !== undefined && { status: event.d.status }),
+          ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
+        }
+
+        // 1) Global users cache (single source of truth for non-React consumers).
+        const cached = useUsersStore.getState().getUser(user_id)
+        if (cached) useUsersStore.getState().upsertUser({ ...cached, ...patch })
+
+        // 2) Local DM users map — patch the entry if we already know it.
         setDmUsers(prev => {
           const existing = prev.get(user_id)
           if (!existing) return prev
           const next = new Map(prev)
-          const updated = {
-            ...existing,
-            ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
-            ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
-            ...(event.d.bio !== undefined && { bio: event.d.bio }),
-            ...(event.d.status !== undefined && { status: event.d.status }),
-            ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
-          }
-          next.set(user_id, updated)
-          // Mirror into the global users cache so non-React consumers
-          // (typing indicator, etc.) pick up the rename live.
-          useUsersStore.getState().upsertUser(updated)
+          next.set(user_id, { ...existing, ...patch })
           return next
         })
 
-        // 2) Server members store — patch the embedded `user` blob on every
-        // server where this user is a member so MemberPanel re-renders with
-        // the new name/avatar.
-        const serversState = useServersStore.getState()
-        const newMembers: Record<string, typeof serversState.members[string]> = {}
-        let changed = false
-        for (const [sid, list] of Object.entries(serversState.members)) {
-          const idx = list.findIndex(m => m.user_id === user_id)
-          if (idx === -1) continue
-          const updatedList = list.slice()
-          const m = updatedList[idx]
-          updatedList[idx] = {
-            ...m,
-            user: m.user
-              ? {
-                  ...m.user,
-                  ...(event.d.display_name !== undefined && { display_name: event.d.display_name }),
-                  ...(event.d.avatar_url !== undefined && { avatar_url: event.d.avatar_url }),
-                  ...(event.d.bio !== undefined && { bio: event.d.bio }),
-                  ...(event.d.status !== undefined && { status: event.d.status }),
-                  ...(event.d.banner_color !== undefined && { banner_color: event.d.banner_color }),
-                }
-              : m.user,
-          }
-          newMembers[sid] = updatedList
-          changed = true
-        }
-        if (changed) {
-          useServersStore.setState({ members: { ...serversState.members, ...newMembers } })
-        }
+        // 3) Cross-server members.user patch — store action owns the loop.
+        useServersStore.getState().patchMemberUser(user_id, patch)
         return
       }
 
-      // RoleCreate / RoleUpdate / RoleDelete: server-wide role CRUD. Patch
-      // the roles cache for this server, then invalidate the permissions
-      // caches because effective permissions may have changed for the local
-      // user (if they hold the affected role). Channel-level perms also
-      // need to drop because role overwrites may apply.
+      // RoleCreate / RoleUpdate / RoleDelete: server-wide role CRUD. The store
+      // action patches roles[serverId] and invalidates the affected permission
+      // + channel-member caches; this handler only owns the UI-side refetch
+      // decisions (which depend on the active channel and so live here).
       if (event.op === 'RoleCreate' || event.op === 'RoleUpdate' || event.op === 'RoleDelete') {
         const serverId = event.d.server_id
         if (!serverId) return
-        const s = useServersStore.getState()
-        const current: Role[] = s.roles[serverId] ?? []
-        let nextRoles: Role[] = current
-        switch (event.op) {
-          case 'RoleCreate': {
-            const r = event.d.role
-            if (!current.some(c => c.id === r.id)) nextRoles = [...current, r]
-            break
-          }
-          case 'RoleUpdate': {
-            const r = event.d.role
-            nextRoles = current.map(c => c.id === r.id ? r : c)
-            break
-          }
-          case 'RoleDelete': {
-            const rid = event.d.role_id
-            nextRoles = current.filter(c => c.id !== rid)
-            break
-          }
-        }
-        // Drop server + per-channel permission caches AND the per-channel
-        // visible-member rosters so the next reads refetch with the new role
-        // data baked in.
-        const { [serverId]: _serverPerm, ...restServerPerms } = s.permissions
-        const channelIds = (s.channels[serverId] ?? []).map(c => c.id)
-        const restChanPerms = { ...s.channelPermissions }
-        const restChannelMembers = { ...s.channelMembers }
-        for (const cid of channelIds) {
-          delete restChanPerms[cid]
-          delete restChannelMembers[cid]
-        }
-        useServersStore.setState({
-          roles: { ...s.roles, [serverId]: nextRoles },
-          permissions: restServerPerms,
-          channelPermissions: restChanPerms,
-          channelMembers: restChannelMembers,
-        })
-        // Refetch immediately so the gated UI updates without a user action.
+        const change = event.op === 'RoleDelete'
+          ? { op: 'RoleDelete' as const, role_id: event.d.role_id }
+          : { op: event.op, role: event.d.role }
+        useServersStore.getState().applyRoleChange(serverId, change)
+        // Refetch immediately so gated UI updates without a user action.
         fetchPermissions(serverId).catch(console.warn)
         // If the active channel belongs to this server, refresh its visible
         // member list right away so the panel reflects the new role layout.
+        const channelIds = (useServersStore.getState().channels[serverId] ?? []).map(c => c.id)
         if (activeChannelId && channelIds.includes(activeChannelId)) {
           fetchChannelMembers(activeChannelId).catch(console.warn)
         }
         return
       }
 
-      // ChannelPermissionUpdate: an overwrite was upserted/deleted. Drop the
-      // cached permissions for this channel and refetch so gated UI (composer,
-      // pin button, etc.) reflects the new effective perms. The visible
-      // members list also depends on overwrites, so refresh that too — when
-      // it's the active channel this keeps the right-hand panel honest.
+      // ChannelPermissionUpdate: an overwrite was upserted/deleted. The store
+      // drops the cached permissions for this channel; we refetch the gated
+      // values + the visible-member list if it's the active channel.
       if (event.op === 'ChannelPermissionUpdate') {
         const { channel_id } = event.d
         if (!channel_id) return
-        const s = useServersStore.getState()
-        const { [channel_id]: _drop, ...restChanPerms } = s.channelPermissions
-        useServersStore.setState({ channelPermissions: restChanPerms })
+        useServersStore.getState().applyChannelPermissionUpdate(channel_id)
         fetchChannelPermissions(channel_id).catch(console.warn)
         if (channel_id === activeChannelId) {
           fetchChannelMembers(channel_id).catch(console.warn)
@@ -636,19 +614,20 @@ export function useAppInit() {
       const channel = event.d.channel
       if (!channel?.id) return
 
+      // Pre-compute whether the active DM was a draft for this exact member
+      // set — that's the only state-flip the setDmList updater would need to
+      // know about. Hoisting it out keeps the updater pure.
+      const draftId = makeDraftDmId(channel.members)
+      const wasDraftActive = activeDmIdRef.current === draftId
+
       setDmList(prev => {
         // If this user already has a draft for the same member set, replace
         // the draft in place — we promote it rather than ending up with two
         // sidebar entries pointing at the same conversation.
-        const draftId = makeDraftDmId(channel.members)
         const draftIdx = prev.findIndex(c => c.id === draftId)
         if (draftIdx >= 0) {
           const next = prev.slice()
           next[draftIdx] = channel
-          // If the draft was the active conversation, point at the real id.
-          if (activeDmIdRef.current === draftId) {
-            setActiveDmId(channel.id)
-          }
           return next
         }
         const idx = prev.findIndex(c => c.id === channel.id)
@@ -662,27 +641,34 @@ export function useAppInit() {
         return [channel, ...prev]
       })
 
+      if (wasDraftActive) setActiveDmId(channel.id)
+
       // Fetch user details for any unknown members so the DM can render with
-      // a name + avatar instead of "Unknown".
-      setDmUsers(prevUsers => {
-        const missing = channel.members.filter(id => !prevUsers.has(id))
-        if (missing.length === 0) return prevUsers
+      // a name + avatar instead of "Unknown". The global users cache is the
+      // source of truth for "do we already know this user"; checking that
+      // (instead of dmUsers) lets us hoist the work out of the setDmUsers
+      // updater entirely.
+      const usersCache = useUsersStore.getState()
+      const missing = channel.members.filter(id => !usersCache.getUser(id))
+      if (missing.length > 0) {
         Promise.all(missing.map(id => api.getUser(id).catch(() => null)))
           .then(fetched => {
-            setDmUsers(curr => {
-              const merged = new Map(curr)
-              fetched.forEach(u => { if (u) merged.set(u.id, u) })
-              return merged
-            })
-            useUsersStore.getState().upsertUsers(fetched)
+            const valid = fetched.filter((u): u is User => u !== null)
+            if (valid.length > 0) {
+              useUsersStore.getState().upsertUsers(valid)
+              setDmUsers(curr => {
+                const merged = new Map(curr)
+                for (const u of valid) merged.set(u.id, u)
+                return merged
+              })
+            }
           })
           .catch(console.warn)
         // Also fetch presence so the status dot is correct.
         api.queryPresence(missing)
           .then(p => usePresenceStore.getState().setBulk(p))
           .catch(console.warn)
-        return prevUsers
-      })
+      }
     })
     // fetch* are module-scoped store actions (destructured from
     // `useServersStore.getState()` at module load) so they're stable
@@ -693,23 +679,37 @@ export function useAppInit() {
     // listener registration without changing behaviour.
   }, [fetchChannelPermissions, fetchPermissions, fetchChannelMembers, activeChannelId])
 
-  // ── Sync serverThemes when store servers change (e.g. via WS ServerUpdate) ──
+  // ── Drop optimistic overrides once the BE-confirmed theme matches ──
+  // Bare ref equality on `orbs` is enough — the orb-drag debounce sends the
+  // same array reference back via `api.updateServer`, and a no-op WS event
+  // would still produce a same-value compare here.
   useEffect(() => {
-    setServerThemes(prev => {
-      const next = { ...prev }
+    setThemeOverrides(prev => {
+      if (Object.keys(prev).length === 0) return prev
       let changed = false
-      for (const srv of servers) {
-        if (srv.theme) {
-          const t = srv.theme
-          if (prev[srv.id]?.hue !== t.hue || prev[srv.id]?.orbs !== t.orbs) {
-            next[srv.id] = t
-            changed = true
-          }
+      const next: Record<string, ServerTheme> = {}
+      for (const [id, override] of Object.entries(prev)) {
+        const srv = servers.find(s => s.id === id)
+        const beTheme = srv?.theme
+        if (beTheme && beTheme.hue === override.hue && beTheme.orbs === override.orbs) {
+          changed = true
+          continue
         }
+        next[id] = override
       }
       return changed ? next : prev
     })
   }, [servers])
+
+  // Derived theme map: store-provided theme per server, with any pending
+  // optimistic override layered on top.
+  const serverThemes = useMemo<Record<string, ServerTheme>>(() => {
+    const out: Record<string, ServerTheme> = {}
+    for (const srv of servers) {
+      if (srv.theme) out[srv.id] = srv.theme
+    }
+    return Object.keys(themeOverrides).length === 0 ? out : { ...out, ...themeOverrides }
+  }, [servers, themeOverrides])
 
   return {
     navigate, location,
@@ -738,6 +738,6 @@ export function useAppInit() {
     profileCard, setProfileCard,
     pinnedCount, setPinnedCount, pinnedVersion, setPinnedVersion, threadsCount, setThreadsCount,
     openThreadId, setOpenThreadId,
-    lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes,
+    lastChannelPerServer, themeSaveTimer, ready, serverThemes, setServerThemes: setThemeOverrides,
   }
 }

@@ -1,25 +1,25 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   User, Shield, Link, Palette, Accessibility,
   Mic, Bell, Keyboard, Globe, Camera,
 } from 'lucide-react'
-import type { ColorPreference } from '../../utils/colorMode'
-import type { DmFilter } from '../../api/types'
-import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
-import { Select } from '../ui/Select'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import * as api from '../../api/client'
+import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
+import { useT } from '../../hooks/useT'
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type LocaleCode } from '../../i18n/types'
+import { ensureNotificationPermission } from '../../services/notifications'
 import { useAuthStore } from '../../stores/auth'
 import { useLocaleStore } from '../../stores/locale'
 import { useToast } from '../../stores/toast'
-import { useLocalStorageBoolean } from '../../hooks/useLocalStorageBoolean'
-import { useT } from '../../hooks/useT'
-import * as api from '../../api/client'
-import { LOCALE_LABELS, SUPPORTED_LOCALES, type LocaleCode } from '../../i18n/types'
-import { ensureNotificationPermission } from '../../services/notifications'
 import { STORAGE_KEYS } from '../../utils/storageKeys'
 import {
   voicePrefs, useVoiceMediaDevices, useOutputSinkSupported,
 } from '../../voice/voicePrefs'
+import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
+import { Select } from '../ui/Select'
 import s from './Settings.module.css'
+import type { DmFilter } from '../../api/types'
+import type { ColorPreference } from '../../utils/colorMode'
 
 type Section =
   | 'account' | 'privacy' | 'connections'
@@ -140,43 +140,36 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   const { t } = useT()
   const [isEditing, setIsEditing] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
-  const [editedProfile, setEditedProfile] = useState({
-    display_name: user?.displayName ?? '',
-    bio: user?.bio ?? '',
-    banner_color: user?.bannerColor ?? user?.avatarColor ?? '',
-    avatar_url: user?.avatarUrl ?? null,
-  })
+  // Overlay-shaped edits. Render reads `editedProfile.X ?? user.X` so the
+  // panel always shows the freshest server prop until the user touches a
+  // field. Save/Cancel just clear the overlay — no userKey-prev mirror needed.
+  const [editedProfile, setEditedProfile] = useState<Partial<{
+    display_name: string
+    bio:          string
+    banner_color: string
+    avatar_url:   string | null
+  }>>({})
   // S3 key from upload — only persisted on Save, discarded on Cancel
   const [pendingAvatarKey, setPendingAvatarKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Sync editedProfile when user prop changes (e.g., after save) — store-prev
-  // pattern keeps the reset behavior without triggering set-state-in-effect.
-  // Track the user-version + isEditing combo so we resync only when the user
-  // actually changed AND we're not in the middle of editing.
-  const userKey = `${user?.displayName ?? ''}|${user?.bio ?? ''}|${user?.bannerColor ?? user?.avatarColor ?? ''}|${user?.avatarUrl ?? ''}|${isEditing}`
-  const [prevUserKey, setPrevUserKey] = useState(userKey)
-  if (userKey !== prevUserKey) {
-    setPrevUserKey(userKey)
-    if (!isEditing) {
-      setEditedProfile({
-        display_name: user?.displayName ?? '',
-        bio: user?.bio ?? '',
-        banner_color: user?.bannerColor ?? user?.avatarColor ?? '',
-        avatar_url: user?.avatarUrl ?? null,
-      })
-      setPendingAvatarKey(null)
-    }
-  }
+  // Render values: overlay → prop fallback.
+  const displayName = editedProfile.display_name ?? user?.displayName ?? ''
+  const bio         = editedProfile.bio          ?? user?.bio          ?? ''
+  const bannerColor = editedProfile.banner_color ?? user?.bannerColor ?? user?.avatarColor ?? ''
+  const avatarUrl   = editedProfile.avatar_url !== undefined
+    ? editedProfile.avatar_url
+    : (user?.avatarUrl ?? null)
 
   const handleSave = async () => {
     try {
-      await onUpdateProfile?.({
-        display_name: editedProfile.display_name,
-        bio: editedProfile.bio,
-        banner_color: editedProfile.banner_color,
-        ...(pendingAvatarKey ? { avatar_url: pendingAvatarKey } : {}),
-      })
+      const payload: { display_name?: string; bio?: string; banner_color?: string; avatar_url?: string } = {}
+      if (editedProfile.display_name !== undefined) payload.display_name = editedProfile.display_name
+      if (editedProfile.bio !== undefined) payload.bio = editedProfile.bio
+      if (editedProfile.banner_color !== undefined) payload.banner_color = editedProfile.banner_color
+      if (pendingAvatarKey) payload.avatar_url = pendingAvatarKey
+      await onUpdateProfile?.(payload)
+      setEditedProfile({})
       setPendingAvatarKey(null)
       setIsEditing(false)
       setShowColorPicker(false)
@@ -188,12 +181,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
   const handleCancel = () => {
     // Discard pending avatar — it was only uploaded to S3, not saved to profile
     setPendingAvatarKey(null)
-    setEditedProfile({
-      display_name: user?.displayName ?? '',
-      bio: user?.bio ?? '',
-      banner_color: user?.bannerColor ?? user?.avatarColor ?? '',
-      avatar_url: user?.avatarUrl ?? null,
-    })
+    setEditedProfile({})
     setIsEditing(false)
     setShowColorPicker(false)
   }
@@ -212,9 +200,22 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
       console.error('Avatar upload failed:', err)
       URL.revokeObjectURL(previewUrl)
       setPendingAvatarKey(null)
-      setEditedProfile(p => ({ ...p, avatar_url: user?.avatarUrl ?? null }))
+      // Drop the avatar overlay so render falls back to the user prop.
+      setEditedProfile(p => {
+        const { avatar_url: _, ...rest } = p
+        return rest
+      })
     }
   }
+
+  // Revoke any blob preview URL when it's replaced or the panel unmounts.
+  // Only the editedProfile.avatar_url overlay can be a blob — `user?.avatarUrl`
+  // is always a server URL.
+  useEffect(() => {
+    const url = editedProfile.avatar_url
+    if (url == null || !url.startsWith('blob:')) return
+    return () => { URL.revokeObjectURL(url) }
+  }, [editedProfile.avatar_url])
 
   const handleBannerColorChange = (color: string) => {
     setEditedProfile(p => ({ ...p, banner_color: color }))
@@ -244,7 +245,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                   {BANNER_COLORS.map((c) => (
                     <button
                       key={c.value}
-                      className={`${s.colorPickerSwatch} ${editedProfile.banner_color === c.value ? s.colorPickerSwatchActive : ''}`}
+                      className={`${s.colorPickerSwatch} ${bannerColor === c.value ? s.colorPickerSwatchActive : ''}`}
                       style={{ background: c.value }}
                       onClick={() => handleBannerColorChange(c.value)}
                       title={t(`settings.bannerColors.${c.nameKey}`)}
@@ -269,7 +270,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
         </div>
 
         {/* Banner */}
-        <div className={s.previewBanner} style={{ background: editedProfile.banner_color }} />
+        <div className={s.previewBanner} style={{ background: bannerColor }} />
 
         {/* Profile Content */}
         <div className={s.previewContent}>
@@ -282,11 +283,11 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
               style={{ display: 'none' }}
               onChange={handleAvatarChange}
             />
-            <div className={s.previewAvatar} style={{ background: editedProfile.banner_color }}>
-              {editedProfile.avatar_url ? (
-                <img src={editedProfile.avatar_url} alt={t('settings.account.profileAlt')} className={s.previewAvatarImg} />
+            <div className={s.previewAvatar} style={{ background: bannerColor }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={t('settings.account.profileAlt')} className={s.previewAvatarImg} />
               ) : (
-                editedProfile.display_name.charAt(0).toUpperCase()
+                displayName.charAt(0).toUpperCase()
               )}
             </div>
             {isEditing && (
@@ -305,7 +306,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                   <input
                     type="text"
                     className={s.editInput}
-                    value={editedProfile.display_name}
+                    value={displayName}
                     onChange={(e) => setEditedProfile(p => ({ ...p, display_name: e.target.value }))}
                     placeholder={t('settings.account.displayNamePlaceholder')}
                   />
@@ -317,7 +318,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
               </>
             ) : (
               <>
-                <h3 className={s.previewDisplayName}>{editedProfile.display_name}</h3>
+                <h3 className={s.previewDisplayName}>{displayName}</h3>
                 <p className={s.previewUsername}>{user?.username}</p>
               </>
             )}
@@ -329,7 +330,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                 <label className={s.editLabel}>{t('settings.account.bio')}</label>
                 <textarea
                   className={s.editTextarea}
-                  value={editedProfile.bio}
+                  value={bio}
                   onChange={(e) => setEditedProfile(p => ({ ...p, bio: e.target.value }))}
                   placeholder={t('settings.account.bioPlaceholder')}
                   rows={3}
@@ -337,7 +338,7 @@ function AccountSection({ user, onLogout, onClose, onUpdateProfile, onUploadAvat
                 />
               </div>
             ) : (
-              <p className={s.previewBio}>{editedProfile.bio || t('settings.account.noBio')}</p>
+              <p className={s.previewBio}>{bio || t('settings.account.noBio')}</p>
             )}
           </div>
 

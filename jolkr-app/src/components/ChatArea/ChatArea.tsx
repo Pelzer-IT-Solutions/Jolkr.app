@@ -1,4 +1,3 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Phone, Video, Files, CornerUpLeft, X,
   PanelLeftOpen, AlignLeft, Users, Smile,
@@ -6,24 +5,27 @@ import {
   Bold, Italic, Strikethrough, Code, Pin, BarChart3,
   Pencil,
 } from 'lucide-react'
-import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
-import type { User } from '../../api/types'
+import { forwardRef, useState, useEffect, useLayoutEffect, useImperativeHandle, useRef, useCallback, useMemo } from 'react'
+import { useDecryptedContent } from '../../hooks/useDecryptedContent'
+import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
+import { useT } from '../../hooks/useT'
+import { useCallStore } from '../../stores/call'
+import { useMessagesStore } from '../../stores/messages'
+import { useToast } from '../../stores/toast'
+import { useVoiceStore } from '../../stores/voice'
 import { revealDelay, revealWindowMs, CHAT_REVEAL_LIMIT } from '../../utils/animations'
-import { Message } from '../Message/Message'
-import EmojiPickerPopup from '../EmojiPickerPopup/EmojiPickerPopup'
-import GifPickerPopup from '../GifPickerPopup'
 import { searchEmojis, emojiToImgUrl } from '../../utils/emoji'
+import { EmojiPickerPopup } from '../EmojiPickerPopup/EmojiPickerPopup'
+import { GifPickerPopup } from '../GifPickerPopup'
+import { Message } from '../Message/Message'
+import { PollCreator } from '../Poll/PollCreator'
+import { ConfirmDialog } from '../ui/ConfirmDialog/ConfirmDialog'
+import { PromptDialog } from '../ui/PromptDialog/PromptDialog'
+import s from './ChatArea.module.css'
 import { RichInput, type RichInputHandle } from './RichInput'
 import { createEmojiImg } from './richInputHelpers'
-import { PollCreator } from '../Poll/PollCreator'
-import { useCallStore } from '../../stores/call'
-import { useVoiceStore } from '../../stores/voice'
-import { useDecryptedContent } from '../../hooks/useDecryptedContent'
-import { useT } from '../../hooks/useT'
-import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
-import ConfirmDialog from '../ui/ConfirmDialog/ConfirmDialog'
-import PromptDialog from '../ui/PromptDialog/PromptDialog'
-import s from './ChatArea.module.css'
+import type { User } from '../../api/types'
+import type { ChannelDisplay, DMConversation, MessageVM, ReplyRef } from '../../types'
 
 // Mirrors backend MAX_ATTACHMENT_SIZE.
 const MAX_FILE_SIZE_MB = 250
@@ -75,9 +77,25 @@ function normalizeFileType(file: File): File {
   return new File([file], file.name, { type: mime, lastModified: file.lastModified })
 }
 
+// Renders a blob-URL preview for a pending attachment. Owns the object URL's
+// lifetime so it gets revoked when the file leaves the pending list — without
+// this, an inline `URL.createObjectURL(file)` in the JSX would leak a blob
+// reference on every render.
+function PendingFileImage({ file, alt, className }: { file: File; alt: string; className?: string }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file])
+  useEffect(() => () => URL.revokeObjectURL(url), [url])
+  return <img src={url} alt={alt} className={className} />
+}
+
 export interface MentionableUser {
   id: string
   username: string
+}
+
+/** Imperative handle exposed by ChatArea — used by the pinned/files panels
+ *  to jump the message list to a specific message. */
+export interface ChatAreaHandle {
+  scrollToMessage: (messageId: string) => Promise<void>
 }
 
 interface Props {
@@ -119,7 +137,7 @@ interface Props {
   onStartThread?:     (messageId: string) => void
 }
 
-export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }: Props) {
+export const ChatArea = forwardRef<ChatAreaHandle, Props>(function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, onExpandSidebar, onSetRightPanelMode, onSend, onToggleReaction, onDeleteMessage, onHideMessage, onEditMessage, isDm = false, dmConversation, animationKey, onTyping, onLoadOlder, hasMore, readOnly = false, typingUsers, onPinMessage, onOpenAuthorProfile, serverId, userMap, mentionableUsers = [], canManageMessages = false, canAddReactions = false, canSendMessages = true, canAttachFiles = true, hasPinnedMessages = false, hasThreads = false, onOpenThread, onStartThread }, ref) {
   const { t, tx } = useT()
   const fmt = useLocaleFormatters()
   const listRef    = useRef<HTMLDivElement>(null)
@@ -210,6 +228,49 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     if (mentionTimerRef.current) clearTimeout(mentionTimerRef.current)
   }, [])
 
+  // ── Jump-to-message handle ─────────────────────────────────────────
+  // Pinned + shared-file panels call `scrollToMessage(id)`. If the target
+  // row is already in the DOM we scroll + highlight; otherwise we walk
+  // older pages via the messages store until it lands, then retry.
+  const effectiveChannelId = channel.id
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+  }, [])
+  useImperativeHandle(ref, () => ({
+    scrollToMessage: async (messageId: string) => {
+      const findEl = () => listRef.current?.querySelector<HTMLElement>(
+        `[data-message-id="${CSS.escape(messageId)}"]`,
+      ) ?? null
+      let el = findEl()
+      if (!el) {
+        const ok = await useMessagesStore.getState().loadUntilMessage(
+          effectiveChannelId, messageId, isDm,
+        )
+        if (!ok) {
+          useToast.getState().show(t('chat.jump.notFound'), 'error')
+          return
+        }
+        // Allow React to commit the freshly-loaded rows before we re-query.
+        await new Promise(requestAnimationFrame)
+        el = findEl()
+        if (!el) {
+          useToast.getState().show(t('chat.jump.notFound'), 'error')
+          return
+        }
+      }
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      // Class is :global in Message.module.css so the keyframe lives next to
+      // the card styles (.msg / .dmCard) it actually paints.
+      el.classList.add('message-jump-highlight')
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = setTimeout(() => {
+        el?.classList.remove('message-jump-highlight')
+        highlightTimerRef.current = null
+      }, 1500)
+    },
+  }), [effectiveChannelId, isDm, t])
+
   function handleScroll() {
     if (!listRef.current || !hasMore || !onLoadOlder) return
     const el = listRef.current
@@ -267,6 +328,14 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
     const q = mentionQuery.toLowerCase()
     return mentionableUsers.filter((u) => u.username.toLowerCase().includes(q)).slice(0, 8)
   }, [mentionQuery, mentionableUsers])
+
+  // Stable mapping userId → display name for DM/group-DM messages — used by
+  // every Message row to label mentions. Building it inline per Message would
+  // hand each row a fresh object and ruin downstream memoisation.
+  const dmParticipantNames = useMemo(() => {
+    if (!isDm || !dmConversation) return undefined
+    return Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
+  }, [isDm, dmConversation])
 
   const insertMention = useCallback((username: string) => {
     const handle = inputRef.current
@@ -658,9 +727,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                       isGroupDm={isDm && (dmConversation?.participants.length ?? 0) > 2}
                       serverId={isDm ? undefined : serverId}
                       userMap={userMap}
-                      dmParticipantNames={isDm && dmConversation
-                        ? Object.fromEntries(dmConversation.participants.map(p => [p.userId ?? p.name, p.name]))
-                        : undefined}
+                      dmParticipantNames={dmParticipantNames}
                       canManageMessages={canManageMessages}
                       canAddReactions={canAddReactions}
                       onOpenThread={!isDm && onOpenThread ? onOpenThread : undefined}
@@ -755,7 +822,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
                 {pendingFiles.map((file, i) => (
                   <div key={`${file.name}-${i}`} className={s.pendingFile}>
                     {file.type.startsWith('image/') ? (
-                      <img src={URL.createObjectURL(file)} alt={file.name} className={s.pendingFileThumb} />
+                      <PendingFileImage file={file} alt={file.name} className={s.pendingFileThumb} />
                     ) : (
                       <div className={s.pendingFileIcon}><AttachIcon /></div>
                     )}
@@ -939,7 +1006,7 @@ export function ChatArea({ channel, messages, sidebarCollapsed, rightPanelMode, 
       />
     </main>
   )
-}
+})
 
 /**
  * Composer reply card. Lifted into its own component so the

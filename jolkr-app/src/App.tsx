@@ -1,41 +1,41 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { STORAGE_KEYS } from './utils/storageKeys';
-import { useAuthStore } from './stores/auth';
-import { useServersStore } from './stores/servers';
-import { getBasename } from './platform/config';
-import { isTauri } from './platform/detect';
 import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
-import { useToast } from './stores/toast';
-import { tStatic } from './hooks/useT';
-import { requestNotificationPermission } from './services/notifications';
-import { startUnreadBadge } from './services/unreadBadge';
-import { registerPush } from './services/pushRegistration';
-import { initE2EE } from './services/e2ee';
-import { checkForUpdate, type UpdateInfo } from './services/updater';
-import { onDeepLink, initDeepLinks } from './services/deepLink';
-import ErrorBoundary from './components/ErrorBoundary';
-import TextContextMenu from './components/TextContextMenu';
-import ContextMenu from './components/ContextMenu';
-import UpdateNotification from './components/UpdateNotification';
-import IncomingCallDialog from './components/CallDialogs/IncomingCallDialog';
-import OutgoingCallDialog from './components/CallDialogs/OutgoingCallDialog';
+import { IncomingCallDialog } from './components/CallDialogs/IncomingCallDialog';
+import { OutgoingCallDialog } from './components/CallDialogs/OutgoingCallDialog';
+import { ContextMenu } from './components/ContextMenu';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { TextContextMenu } from './components/TextContextMenu';
+import { UpdateNotification } from './components/UpdateNotification';
 import { useCallEvents } from './hooks/useCallEvents';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import NotFound from './pages/NotFound';
-import AppShell from './pages/App/AppShell';
-import InviteAccept from './pages/InviteAccept';
-import VerifyEmail from './pages/VerifyEmail';
+import { tStatic } from './hooks/useT';
+import { AppShell } from './pages/App/AppShell';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { InviteAccept } from './pages/InviteAccept';
+import { Login } from './pages/Login';
+import { NotFound } from './pages/NotFound';
+import { Register } from './pages/Register';
+import { VerifyEmail } from './pages/VerifyEmail';
+import { getBasename } from './platform/config';
+import { isTauri } from './platform/detect';
+import { onDeepLink, initDeepLinks } from './services/deepLink';
+import { initE2EE } from './services/e2ee';
+import { requestNotificationPermission } from './services/notifications';
+import { registerPush } from './services/pushRegistration';
+import { startUnreadBadge } from './services/unreadBadge';
+import { checkForUpdate, type UpdateInfo } from './services/updater';
+import { useAuthStore } from './stores/auth';
+import { useServersStore } from './stores/servers';
+import { useToast } from './stores/toast';
+import { STORAGE_KEYS } from './utils/storageKeys';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
-  const loading = useAuthStore((s) => s.loading);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const location = useLocation();
 
-  if (loading) return null; // Splash from index.html covers this
+  if (isLoading) return null; // Splash from index.html covers this
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   if (!user.email_verified) return <Navigate to="/verify-email" replace />;
   return <>{children}</>;
@@ -43,8 +43,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function GuestGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
-  const loading = useAuthStore((s) => s.loading);
-  if (loading) return null;
+  const isLoading = useAuthStore((s) => s.isLoading);
+  if (isLoading) return null;
   if (user) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -92,6 +92,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let updateCheckTimer: ReturnType<typeof setTimeout> | null = null;
     startUnreadBadge();
     initTokens().then(() => loadUser()).then(() => {
       // Only register push if user is logged in (has access token)
@@ -111,13 +112,16 @@ function AppInit({ children }: { children: React.ReactNode }) {
 
       // Check for updates after 5s delay (Tauri only)
       if (isTauri) {
-        setTimeout(() => {
+        updateCheckTimer = setTimeout(() => {
           checkForUpdate().then(setUpdateInfo).catch(console.warn);
         }, 5000);
       }
     }).finally(() => {
       setReady(true);
     });
+    return () => {
+      if (updateCheckTimer) clearTimeout(updateCheckTimer);
+    };
   }, [loadUser]);
 
   if (!ready) {
@@ -195,7 +199,7 @@ function DeepLinkHandler() {
   return null;
 }
 
-export default function App() {
+export function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter basename={getBasename()}>

@@ -8,6 +8,7 @@ use uuid::Uuid;
 use jolkr_common::{serde_helpers::double_option, JolkrError, Permissions};
 use jolkr_core::ChannelService;
 use jolkr_core::services::channel::{ChannelInfo, ChannelOverwriteInfo, CreateChannelRequest, UpdateChannelRequest, UpsertOverwriteRequest};
+use jolkr_core::services::server::MemberInfo;
 use jolkr_db::repo::{ChannelOverwriteRepo, ChannelRepo, MemberRepo, RoleRepo, ServerRepo};
 
 use crate::errors::AppError;
@@ -16,69 +17,70 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response body for endpoints returning a single channel.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelResponse {
     pub channel: ChannelInfo,
 }
 
+/// Response body for endpoints returning a list of channels.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelsResponse {
     pub channels: Vec<ChannelInfo>,
 }
 
+/// Response body for GET /api/channels/:id/permissions/@me — the caller's effective channel permissions.
 #[derive(Debug, Serialize)]
 pub(crate) struct PermissionsResponse {
+    /// Bitmask of `Permissions` flags after role + overwrite layering for this channel.
     pub permissions: i64,
 }
 
+/// Response body for GET /api/channels/:id/overwrites.
 #[derive(Debug, Serialize)]
 pub(crate) struct OverwritesResponse {
     pub overwrites: Vec<ChannelOverwriteInfo>,
 }
 
+/// Response body for PUT /api/channels/:id/overwrites.
 #[derive(Debug, Serialize)]
 pub(crate) struct OverwriteResponse {
     pub overwrite: ChannelOverwriteInfo,
 }
 
-/// Member shape returned by `GET /api/channels/:id/members` — same fields as
-/// `MemberWithRoles` from the roles route so the frontend can reuse its
-/// existing `Member` type without a new shape.
-#[derive(Debug, Serialize)]
-pub(crate) struct ChannelMemberEntry {
-    pub id: Uuid,
-    pub server_id: Uuid,
-    pub user_id: Uuid,
-    pub nickname: Option<String>,
-    pub joined_at: String,
-    pub role_ids: Vec<Uuid>,
-}
-
+/// Response body for GET /api/channels/:id/members.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelMembersResponse {
-    pub members: Vec<ChannelMemberEntry>,
+    pub members: Vec<MemberInfo>,
 }
 
+/// Request body for PUT /api/servers/:server_id/channels/reorder — reorder within current categories.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ReorderChannelsRequest {
     pub channel_positions: Vec<ChannelPositionEntry>,
 }
 
+/// New position for a single channel in a reorder request.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ChannelPositionEntry {
     pub id: Uuid,
+    /// Zero-based sort index within the channel's current category.
     pub position: i32,
 }
 
+/// Request body for PUT /api/servers/:server_id/channels/move — reorder AND optionally re-parent.
 #[derive(Debug, Deserialize)]
 pub(crate) struct MoveChannelsRequest {
     pub items: Vec<MoveChannelEntry>,
 }
 
+/// New position (and optional new category) for a single channel in a move request.
 #[derive(Debug, Deserialize)]
 pub(crate) struct MoveChannelEntry {
     pub id: Uuid,
+    /// Zero-based sort index within the target category.
     pub position: i32,
+    /// Three-state field via double-Option: absent = keep current category, `null` = uncategorized, `Some(uuid)` = move to that category.
     #[serde(default, deserialize_with = "double_option::deserialize")]
     pub category_id: Option<Option<Uuid>>,
 }
@@ -199,7 +201,10 @@ pub(crate) async fn get_channel(
     let channel = ChannelService::get_channel(&state.pool, id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "get channel: caller is not a member of channel's server → 403");
+            AppError(JolkrError::Forbidden)
+        })?;
     // Check VIEW_CHANNELS (owner bypasses)
     let server = ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
@@ -295,7 +300,10 @@ pub(crate) async fn list_channel_members(
     } else {
         let caller_member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
             .await
-            .map_err(|_| AppError(JolkrError::Forbidden))?;
+            .map_err(|e| {
+                tracing::warn!(?e, "list channel members: caller is not a member of channel's server → 403");
+                AppError(JolkrError::Forbidden)
+            })?;
         let perms = RoleRepo::compute_channel_permissions(
             &state.pool,
             channel.server_id,
@@ -312,8 +320,8 @@ pub(crate) async fn list_channel_members(
     // N+1 queries: members list, role assignments+permissions, channel
     // overwrites, the @everyone role.
     let members = MemberRepo::list_for_server(&state.pool, channel.server_id).await?;
-    let role_assignments = RoleRepo::get_roles_for_server_members(&state.pool, channel.server_id).await?;
-    let role_perms_batch = RoleRepo::get_member_roles_batch(&state.pool, channel.server_id).await?;
+    let role_assignments = RoleRepo::list_roles_for_server_members(&state.pool, channel.server_id).await?;
+    let role_perms_batch = RoleRepo::list_member_roles_batch(&state.pool, channel.server_id).await?;
     let overwrites = ChannelOverwriteRepo::list_for_channel(&state.pool, channel_id).await?;
     let everyone = RoleRepo::get_default(&state.pool, channel.server_id).await.ok();
 
@@ -334,19 +342,15 @@ pub(crate) async fn list_channel_members(
         role_map.entry(member_id).or_default().push(role_id);
     }
 
-    let result: Vec<ChannelMemberEntry> = members
+    let result: Vec<MemberInfo> = members
         .into_iter()
         .filter(|m| {
             let perms = perms_by_member.get(&m.id).copied().unwrap_or(0);
             Permissions::from(perms).has(Permissions::VIEW_CHANNELS)
         })
-        .map(|m| ChannelMemberEntry {
-            id: m.id,
-            server_id: m.server_id,
-            user_id: m.user_id,
-            nickname: m.nickname,
-            joined_at: m.joined_at.to_rfc3339(),
-            role_ids: role_map.remove(&m.id).unwrap_or_default(),
+        .map(|m| {
+            let role_ids = role_map.remove(&m.id).unwrap_or_default();
+            MemberInfo::with_role_ids(m, role_ids)
         })
         .collect();
 
@@ -375,11 +379,14 @@ pub(crate) async fn upsert_overwrite(
     Ok(Json(OverwriteResponse { overwrite }))
 }
 
-/// DELETE /api/channels/:id/overwrites/:target_type/:target_id
+/// Path parameters for DELETE /api/channels/:id/overwrites/:target_type/:target_id.
 #[derive(Deserialize)]
 pub(crate) struct OverwritePathParams {
+    /// Channel id.
     pub id: Uuid,
+    /// Overwrite scope — `"role"` or `"member"`.
     pub target_type: String,
+    /// Id of the role or member the overwrite applies to (matches `target_type`).
     pub target_id: Uuid,
 }
 
@@ -440,8 +447,10 @@ async fn broadcast_channel_overwrites(state: &AppState, channel_id: Uuid) {
 
 // ── Mark channel as read ────────────────────────────────────────────
 
+/// Request body for POST /api/channels/:channel_id/read — advances the caller's read marker.
 #[derive(Debug, Deserialize)]
 pub(crate) struct MarkChannelReadRequest {
+    /// Most-recent message id the caller has seen; the unread counter clears up to and including this id.
     pub message_id: Uuid,
 }
 

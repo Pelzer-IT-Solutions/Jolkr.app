@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import {
   X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, ExternalLink,
   MoreHorizontal, Copy, Link, Info, ChevronRight as ArrowRight,
 } from 'lucide-react'
-import type { Attachment } from '../../api/types'
-import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuthedFileUrl } from '../../hooks/useAuthedFileUrl'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useT } from '../../hooks/useT'
 import { rewriteStorageUrl } from '../../platform/config'
 import { formatBytes } from '../../utils/format'
-import { useT } from '../../hooks/useT'
 import s from './ImageLightbox.module.css'
+import type { Attachment } from '../../api/types'
 
 export interface LightboxImage {
   src: string
@@ -41,7 +41,7 @@ function resolveSrc(rawUrl: string): string {
   return rewriteStorageUrl(rawUrl) ?? rawUrl
 }
 
-export default function ImageLightbox(props: Props) {
+export function ImageLightbox(props: Props) {
   const { t } = useT()
   // Normalize both prop shapes into a single internal model — the legacy
   // "images" prop carries a precomputed src; the newer "attachments" prop

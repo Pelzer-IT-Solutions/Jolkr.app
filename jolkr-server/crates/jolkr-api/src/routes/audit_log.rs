@@ -4,6 +4,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use jolkr_common::{JolkrError, Permissions};
@@ -13,28 +14,43 @@ use crate::errors::AppError;
 use crate::middleware::AuthUser;
 use crate::routes::AppState;
 
-#[derive(Debug, Serialize)]
+/// A single entry in the server audit log.
+#[derive(Debug, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, rename = "AuditLogEntry")]
 pub(crate) struct AuditLogEntry {
     pub id: Uuid,
     pub server_id: Uuid,
+    /// User who performed the action.
     pub user_id: Uuid,
+    /// Action identifier, e.g. `channel_create`, `channel_delete`, `member_kick`, `role_update`.
     pub action_type: String,
+    /// ID of the affected entity (channel, member, role, …), when applicable.
     pub target_id: Option<Uuid>,
+    /// Entity kind for `target_id`, e.g. `"channel"`, `"member"`, `"role"`.
     pub target_type: Option<String>,
+    /// Action-specific structured payload (renamed fields, before/after values, etc.).
+    #[ts(type = "Record<string, unknown> | null")]
     pub changes: Option<serde_json::Value>,
+    /// Optional moderator-supplied reason string.
     pub reason: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
+/// Response body for GET /api/servers/:server_id/audit-log.
 #[derive(Debug, Serialize)]
 pub(crate) struct AuditLogResponse {
     pub entries: Vec<AuditLogEntry>,
 }
 
+/// Query parameters for GET /api/servers/:server_id/audit-log.
 #[derive(Debug, Deserialize)]
 pub(crate) struct AuditLogQuery {
+    /// Optional filter on `action_type` (exact match).
     pub action: Option<String>,
+    /// Page size; server clamps to [1, 100], defaults to 50.
     pub limit: Option<i64>,
+    /// Cursor: only return entries strictly older than this timestamp.
     pub before: Option<DateTime<Utc>>,
 }
 
@@ -51,14 +67,17 @@ pub(crate) async fn get_audit_log(
     if server.owner_id != auth.user_id {
         let member = MemberRepo::get_member(&state.pool, server_id, auth.user_id)
             .await
-            .map_err(|_| AppError(JolkrError::Forbidden))?;
+            .map_err(|e| {
+                tracing::warn!(?e, "audit-log: caller is not a server member → 403");
+                AppError(JolkrError::Forbidden)
+            })?;
         let perms = RoleRepo::compute_permissions(&state.pool, server_id, member.id).await?;
         if !Permissions::from(perms).has(Permissions::MANAGE_SERVER) {
             return Err(AppError(JolkrError::Forbidden));
         }
     }
 
-    let limit = query.limit.unwrap_or(50).min(100).max(1);
+    let limit = query.limit.unwrap_or(50).clamp(1, 100);
     let rows = AuditLogRepo::list_for_server(
         &state.pool,
         server_id,

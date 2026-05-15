@@ -10,6 +10,22 @@
 .msg:hover,
 .msg.hasMenu { background: var(--bg-dark-faint); }
 
+/* ─── Jump-to-message highlight ───
+   Applied imperatively by ChatArea.scrollToMessage on the element carrying
+   data-message-id — the channel <article>.msg or the DM <div>.dmCard. The
+   :global rule lets a non-module call-site add the class without importing
+   this module. Background flashes for 1.5s and decays back to transparent. */
+:global(.message-jump-highlight) {
+  animation: messageJumpFlash 1.5s var(--ease-out-quart);
+}
+@keyframes messageJumpFlash {
+  0%, 100% { background: transparent; }
+  15%      { background: var(--accent-muted); }
+}
+@media (prefers-reduced-motion: reduce) {
+  :global(.message-jump-highlight) { animation: none; background: var(--accent-muted); }
+}
+
 .msg.continued {
   padding: 0.0625rem 0.5rem 0.0625rem 3.75rem;
 }

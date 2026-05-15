@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
 import * as api from '../api/client';
+import { useT } from '../hooks/useT';
 import { useAuthStore } from '../stores/auth';
 import { resetAuthTheme } from '../utils/resetAuthTheme';
-import { useT } from '../hooks/useT';
 
 const s: Record<string, React.CSSProperties> = {
   page: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-default)' },
@@ -16,7 +16,7 @@ const s: Record<string, React.CSSProperties> = {
   link: { color: 'var(--accent)', fontSize: '0.875rem', textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 },
 };
 
-export default function VerifyEmail() {
+export function VerifyEmail() {
   useEffect(resetAuthTheme, []);
   const user = useAuthStore((s) => s.user);
   const [searchParams] = useSearchParams();

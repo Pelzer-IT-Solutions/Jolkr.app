@@ -1,7 +1,7 @@
 import { Component } from 'react';
-import type { ReactNode, ErrorInfo } from 'react';
-import Button from './ui/Button';
 import s from './ErrorBoundary.module.css';
+import { Button } from './ui/Button';
+import type { ReactNode, ErrorInfo } from 'react';
 
 export interface ErrorBoundaryProps {
   children: ReactNode;
@@ -15,7 +15,7 @@ interface State {
 
 const MAX_RETRIES = 3;
 
-export default class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null, retryCount: 0 };

@@ -14,13 +14,16 @@ use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
 
+/// Response payload for GET /api/messages/:id/reactions — raw, ungrouped rows.
 #[derive(Serialize)]
 pub(crate) struct ReactionsResponse {
     pub reactions: Vec<ReactionRow>,
 }
 
+/// Request body for POST /api/messages/:id/reactions.
 #[derive(Deserialize)]
 pub(crate) struct AddReactionRequest {
+    /// Unicode emoji or `:name:` shortcode (max 100 chars).
     pub emoji: String,
 }
 
@@ -35,7 +38,10 @@ pub(crate) async fn add_reaction(
     let channel = ChannelRepo::get_by_id(&state.pool, msg.channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "add reaction: caller is not a member of channel's server → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     // Check ADD_REACTIONS permission (owner bypasses)
     let server = jolkr_db::repo::ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
@@ -49,7 +55,7 @@ pub(crate) async fn add_reaction(
 
     // Check if member is timed out
     if MemberRepo::is_timed_out(&state.pool, channel.server_id, auth.user_id).await
-        .map_err(|e| AppError(e))? {
+        .map_err(AppError)? {
         return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
 
@@ -60,7 +66,7 @@ pub(crate) async fn add_reaction(
     }
     ReactionRepo::add_reaction(&state.pool, message_id, auth.user_id, &body.emoji)
         .await
-        .map_err(|e| AppError(e))?;
+        .map_err(AppError)?;
 
     // Broadcast aggregated reactions to all channel subscribers
     let rows = ReactionRepo::list_for_message(&state.pool, message_id)
@@ -103,11 +109,14 @@ pub(crate) async fn remove_reaction(
     let channel = ChannelRepo::get_by_id(&state.pool, msg.channel_id).await?;
     MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "remove reaction: caller is not a member of channel's server → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
 
     ReactionRepo::remove_reaction(&state.pool, message_id, auth.user_id, &emoji)
         .await
-        .map_err(|e| AppError(e))?;
+        .map_err(AppError)?;
 
     // Broadcast aggregated reactions to all channel subscribers
     let rows = ReactionRepo::list_for_message(&state.pool, message_id)
@@ -150,10 +159,13 @@ pub(crate) async fn list_reactions(
     let channel = ChannelRepo::get_by_id(&state.pool, msg.channel_id).await?;
     MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list reactions: caller is not a member of channel's server → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
 
     let reactions = ReactionRepo::list_for_message(&state.pool, message_id)
         .await
-        .map_err(|e| AppError(e))?;
+        .map_err(AppError)?;
     Ok(Json(ReactionsResponse { reactions }))
 }

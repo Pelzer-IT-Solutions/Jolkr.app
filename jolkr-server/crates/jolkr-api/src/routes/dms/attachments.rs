@@ -17,11 +17,13 @@ use crate::storage::MAX_FILE_SIZE;
 
 use super::types::dm_to_message_info;
 
+/// Response body for POST /api/dms/:dm_id/messages/:message_id/attachments.
 #[derive(Serialize)]
 pub(crate) struct DmAttachmentResponse {
     pub attachment: AttachmentInfo,
 }
 
+/// Response body for GET /api/dms/:dm_id/attachments.
 #[derive(Serialize)]
 pub(crate) struct DmAttachmentsResponse {
     pub attachments: Vec<AttachmentInfo>,
@@ -60,7 +62,8 @@ pub(crate) async fn upload_dm_attachment(
         return Err(AppError(jolkr_common::JolkrError::Forbidden));
     }
 
-    while let Some(field) = multipart.next_field().await.map_err(|_| {
+    if let Some(field) = multipart.next_field().await.map_err(|e| {
+        tracing::warn!(?e, "dm attachment upload: multipart next_field failed");
         AppError(jolkr_common::JolkrError::BadRequest("Invalid multipart".into()))
     })? {
         let filename = crate::routes::attachments::sanitize_filename(
@@ -77,7 +80,8 @@ pub(crate) async fn upload_dm_attachment(
             )));
         }
 
-        let data = field.bytes().await.map_err(|_| {
+        let data = field.bytes().await.map_err(|e| {
+            tracing::warn!(?e, "dm attachment upload: reading file bytes failed");
             AppError(jolkr_common::JolkrError::BadRequest("Failed to read file".into()))
         })?;
 
@@ -132,6 +136,7 @@ pub(crate) async fn upload_dm_attachment(
             for att in atts {
                 dm_msg.attachments.push(AttachmentInfo {
                     id: att.id,
+                    message_id: None,
                     filename: att.filename,
                     content_type: att.content_type,
                     size_bytes: att.size_bytes,
@@ -170,6 +175,7 @@ pub(crate) async fn upload_dm_attachment(
         return Ok(Json(DmAttachmentResponse {
             attachment: AttachmentInfo {
                 id: row.id,
+                message_id: Some(message_id),
                 filename: row.filename,
                 content_type: row.content_type,
                 size_bytes: row.size_bytes,

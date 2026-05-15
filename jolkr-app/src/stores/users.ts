@@ -66,13 +66,3 @@ export const useUsersStore = create<UsersState>((set, get) => ({
   reset: () => set({ byId: {} }),
 }));
 
-/**
- * Synchronous lookup helper for non-React contexts (e.g. WS listeners).
- * Returns the best display label for a user_id from the cache, falling
- * back to a generic placeholder when the user hasn't been seen yet.
- */
-export function lookupDisplayName(userId: string, fallback = 'Someone'): string {
-  const u = useUsersStore.getState().byId[userId];
-  if (!u) return fallback;
-  return u.display_name?.trim() || u.username || fallback;
-}

@@ -91,10 +91,7 @@ pub(crate) fn sanitize_filename(raw: &str) -> String {
     let name = name.rsplit('\\').next().unwrap_or(name);
 
     // Strip null bytes and remaining path separators
-    let name: String = name
-        .replace('\0', "")
-        .replace('/', "")
-        .replace('\\', "");
+    let name: String = name.replace(['\0', '/', '\\'], "");
 
     // Replace ".." sequences to prevent directory traversal
     let name = name.replace("..", "");
@@ -105,22 +102,28 @@ pub(crate) fn sanitize_filename(raw: &str) -> String {
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Metadata for a single message attachment, returned by the upload and list endpoints.
 #[derive(Debug, Serialize)]
 pub(crate) struct AttachmentInfo {
     pub id: Uuid,
     pub message_id: Uuid,
     pub filename: String,
+    /// MIME type as stored server-side (after magic-byte validation; may differ from the client-claimed type).
     pub content_type: String,
+    /// File size in bytes.
     pub size_bytes: i64,
+    /// Internal attachment-proxy URL (`/api/attachments/:id`), not a direct S3 link.
     pub url: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// Response body for POST /api/channels/:channel_id/messages/:message_id/attachments.
 #[derive(Debug, Serialize)]
 pub(crate) struct UploadResponse {
     pub attachment: AttachmentInfo,
 }
 
+/// Response body for GET /api/messages/:message_id/attachments.
 #[derive(Debug, Serialize)]
 pub(crate) struct AttachmentsResponse {
     pub attachments: Vec<AttachmentInfo>,
@@ -141,7 +144,10 @@ pub(crate) async fn upload_attachment(
     let channel = ChannelRepo::get_by_id(&state.pool, channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "attachment upload: caller is not a member of channel's server → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     // Check ATTACH_FILES permission (owner bypasses)
     let server = jolkr_db::repo::ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
@@ -267,7 +273,10 @@ pub(crate) async fn list_attachments(
     let channel = ChannelRepo::get_by_id(&state.pool, msg.channel_id).await?;
     let member = MemberRepo::get_member(&state.pool, channel.server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list attachments: caller is not a member of channel's server → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     // H4: Check VIEW_CHANNELS permission (owner bypasses)
     let server = jolkr_db::repo::ServerRepo::get_by_id(&state.pool, channel.server_id).await?;
     if server.owner_id != auth.user_id {
@@ -321,7 +330,7 @@ pub(crate) async fn upload_file(
     let purpose = query
         .purpose
         .as_deref()
-        .and_then(ImagePurpose::from_str);
+        .and_then(ImagePurpose::parse_str);
 
     let field = multipart
         .next_field()

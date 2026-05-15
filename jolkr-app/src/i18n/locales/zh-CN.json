@@ -70,6 +70,9 @@
       "one": "{name} 正在输入…",
       "two": "{a} 和 {b} 正在输入…",
       "many": "多人正在输入…"
+    },
+    "jump": {
+      "notFound": "找不到该消息。"
     }
   },
 
@@ -173,7 +176,8 @@
     "unpin": "取消置顶", "pinnedMessages": "置顶消息",
     "noPinned": "还没有置顶消息",
     "sharedFiles": "共享文件", "noFiles": "还没有共享文件",
-    "decrypting": "解密中…"
+    "decrypting": "解密中…",
+    "jumpToMessage": "跳转到消息", "downloadFile": "下载"
   },
 
   "newDmModal": {
@@ -247,6 +251,31 @@
     "moderation": "管理", "kick": "踢出", "ban": "封禁",
     "assignRole": "分配角色", "inviteToServer": "邀请到服务器",
     "reportUser": "举报用户"
+  },
+
+  "groupContextMenu": {
+    "info": "群组信息",
+    "mute": "静音群组",
+    "unmute": "取消静音",
+    "edit": "编辑群组",
+    "leave": "退出群组",
+    "members": "{count} 位成员"
+  },
+
+  "groupInfoPopover": {
+    "ariaGroup": "{name} 群组信息",
+    "members": "{count} 位成员",
+    "createdOn": "创建于",
+    "you": "{name} (你)"
+  },
+
+  "groupSettingsModal": {
+    "title": "群组设置",
+    "groupName": "群组名称",
+    "namePlaceholder": "群组名称",
+    "save": "保存",
+    "cancel": "取消",
+    "errSaveFailed": "无法保存群组设置"
   },
 
   "channelSidebar": {
@@ -359,6 +388,7 @@
   },
 
   "toast": {
+    "leaveGroupFailed": "无法退出群组",
     "friendRequestSent": "已发送好友请求",
     "friendRequestFailed": "发送好友请求失败",
     "friendRequestNotSent": "无法发送好友请求",

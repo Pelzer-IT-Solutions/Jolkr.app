@@ -13,34 +13,45 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Request body for POST /api/devices — registers a new device or upserts an existing one (by `device_id`).
 #[derive(Debug, Deserialize)]
 pub(crate) struct RegisterDeviceRequest {
+    /// Existing device id for upsert; when omitted, the server allocates a new UUID.
     pub device_id: Option<Uuid>,
+    /// Human-readable label shown in the user's device list (e.g. "Phil's iPhone").
     pub device_name: String,
+    /// Platform identifier — `"ios"`, `"android"`, `"web"`, `"desktop"`.
     pub device_type: String,
+    /// Platform push token (APNs/FCM/web-push); omit to leave push disabled for this device.
     pub push_token: Option<String>,
 }
 
+/// Request body for PATCH /api/devices/:device_id/push-token — refresh the platform push token.
 #[derive(Debug, Deserialize)]
 pub(crate) struct UpdatePushTokenRequest {
     pub push_token: String,
 }
 
+/// Public representation of a registered device (push token itself is never exposed).
 #[derive(Debug, Serialize)]
 pub(crate) struct DeviceInfo {
     pub id: Uuid,
     pub device_name: String,
+    /// Platform identifier — `"ios"`, `"android"`, `"web"`, `"desktop"`.
     pub device_type: String,
+    /// True if a push token is currently registered (the token itself is never returned).
     pub has_push_token: bool,
     pub last_active_at: Option<chrono::DateTime<chrono::Utc>>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// Response body for endpoints returning a single device.
 #[derive(Debug, Serialize)]
 pub(crate) struct DeviceResponse {
     pub device: DeviceInfo,
 }
 
+/// Response body for GET /api/devices.
 #[derive(Debug, Serialize)]
 pub(crate) struct DevicesResponse {
     pub devices: Vec<DeviceInfo>,

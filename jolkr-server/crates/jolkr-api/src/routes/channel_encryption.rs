@@ -14,12 +14,15 @@ use crate::routes::AppState;
 
 // ── Request / Response types ───────────────────────────────────────────
 
+/// Request body for the E2EE key-distribution endpoints (channel and DM variants).
 #[derive(Debug, Deserialize)]
 pub(crate) struct DistributeKeysBody {
+    /// Monotonically increasing generation counter; clients refuse keys with a lower generation than they've already seen.
     pub key_generation: i32,
     pub recipients: Vec<RecipientKeyBody>,
 }
 
+/// Per-recipient encrypted-key payload inside a `DistributeKeysBody`.
 #[derive(Debug, Deserialize)]
 pub(crate) struct RecipientKeyBody {
     pub user_id: Uuid,
@@ -29,14 +32,20 @@ pub(crate) struct RecipientKeyBody {
     pub nonce: String,
 }
 
+/// Response body for GET /api/channels/:id/e2ee/my-key and the DM variant.
 #[derive(Debug, Serialize)]
 pub(crate) struct ChannelKeyResponse {
+    /// base64-encoded encrypted channel key (decrypt with the caller's private key).
     pub encrypted_key: String,
+    /// base64-encoded 12-byte nonce paired with `encrypted_key`.
     pub nonce: String,
+    /// Generation counter of the key being returned.
     pub key_generation: i32,
+    /// User who distributed this key (used to fetch the matching public key for verification).
     pub distributor_user_id: Uuid,
 }
 
+/// Response body for GET /api/channels/:id/e2ee/generation.
 #[derive(Debug, Serialize)]
 pub(crate) struct KeyGenerationResponse {
     pub key_generation: i32,

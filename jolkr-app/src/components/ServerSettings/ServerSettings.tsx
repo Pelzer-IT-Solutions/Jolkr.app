@@ -1,25 +1,24 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
-import type { Dispatch, SetStateAction } from 'react'
-import { createPortal } from 'react-dom'
 import {
   X, Info, Users, Shield, Link2, ScrollText, Trash2, Save, Plus, Check, Camera, Palette, Upload, Copy
 } from 'lucide-react'
-import type { Invite, Role, Ban, AuditLogEntry } from '../../api/types'
-import type { Server as ApiServer, Member } from '../../api/types'
+import { useState, useEffect, useLayoutEffect, useReducer, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import * as api from '../../api/client'
-import * as P from '../../utils/permissions'
-import { useAuthStore } from '../../stores/auth'
-import { buildInviteUrl } from '../../platform/config'
-import { useToast } from '../../stores/toast'
-import { useT, type T } from '../../hooks/useT'
 import { useLocaleFormatters } from '../../hooks/useLocaleFormatters'
-import ServerIcon from '../ServerIcon/ServerIcon'
-import { Select } from '../ui/Select'
+import { useT, type T } from '../../hooks/useT'
+import { buildInviteUrl } from '../../platform/config'
+import { useAuthStore } from '../../stores/auth'
+import { useServersStore } from '../../stores/servers'
+import { useToast } from '../../stores/toast'
+import * as P from '../../utils/permissions'
+import { ServerIcon } from '../ServerIcon/ServerIcon'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
-
-// Extend API Server with frontend-only display fields
-type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
+import { Select } from '../ui/Select'
 import s from './ServerSettings.module.css'
+import type { Invite, Role, Ban, AuditLogEntry, Server as ApiServer, Member } from '../../api/types'
+import type { Dispatch, SetStateAction } from 'react'
+
+type Server = ApiServer & { hue?: number | null; discoverable?: boolean }
 
 type Section = 'overview' | 'roles' | 'invites' | 'bans' | 'audit' | 'delete'
 
@@ -29,6 +28,85 @@ function sortRolesByPosition(roles: Role[]): Role[] {
     if (a.position !== b.position) return a.position - b.position
     return a.name.localeCompare(b.name)
   })
+}
+
+// ── Role editor state machine ─────────────────────────────────────
+// Nine parallel useStates would drift when an action forgot a setter;
+// the reducer keeps `editing` and `original` in lockstep with `selectedRoleId`
+// and the Cancel/Save semantics live in one place.
+
+interface RoleFields {
+  name:        string
+  color:       string  // `#rrggbb`
+  permissions: number
+}
+
+interface RoleEditorState {
+  selectedRoleId: string | null
+  editing:        ({ id: string } & RoleFields) | null
+  original:        RoleFields | null
+}
+
+const initialRoleEditor: RoleEditorState = { selectedRoleId: null, editing: null, original: null }
+
+function roleToFields(role: Role): RoleFields {
+  return {
+    name:        role.name,
+    color:       `#${role.color.toString(16).padStart(6, '0')}`,
+    permissions: role.permissions,
+  }
+}
+
+type RoleEditorAction =
+  | { type: 'SELECT';            role: Role }
+  | { type: 'ROLE_ADDED';        role: Role }
+  | { type: 'ROLE_SAVED';        role: Role }
+  | { type: 'ROLE_DELETED';      roleId: string; nextRole: Role | null }
+  | { type: 'SET_NAME';          name: string }
+  | { type: 'SET_COLOR';         color: string }
+  | { type: 'TOGGLE_PERMISSION'; flag: number }
+  | { type: 'SET_PERMISSIONS';   permissions: number }
+  | { type: 'CANCEL' }
+
+function roleEditorReducer(state: RoleEditorState, action: RoleEditorAction): RoleEditorState {
+  switch (action.type) {
+    case 'SELECT': {
+      if (state.selectedRoleId === action.role.id) return state
+      const fields = roleToFields(action.role)
+      return { selectedRoleId: action.role.id, editing: { id: action.role.id, ...fields }, original: fields }
+    }
+    case 'ROLE_ADDED': {
+      const fields = roleToFields(action.role)
+      return { selectedRoleId: action.role.id, editing: { id: action.role.id, ...fields }, original: fields }
+    }
+    case 'ROLE_SAVED': {
+      if (state.selectedRoleId !== action.role.id || !state.editing) return state
+      const fields = roleToFields(action.role)
+      return { ...state, editing: { id: action.role.id, ...fields }, original: fields }
+    }
+    case 'ROLE_DELETED': {
+      if (state.selectedRoleId !== action.roleId) return state
+      if (!action.nextRole) return initialRoleEditor
+      const fields = roleToFields(action.nextRole)
+      return { selectedRoleId: action.nextRole.id, editing: { id: action.nextRole.id, ...fields }, original: fields }
+    }
+    case 'SET_NAME':
+      return state.editing ? { ...state, editing: { ...state.editing, name: action.name } } : state
+    case 'SET_COLOR':
+      return state.editing ? { ...state, editing: { ...state.editing, color: action.color } } : state
+    case 'TOGGLE_PERMISSION': {
+      if (!state.editing) return state
+      const has = (state.editing.permissions & action.flag) === action.flag
+      const next = has ? state.editing.permissions & ~action.flag : state.editing.permissions | action.flag
+      return { ...state, editing: { ...state.editing, permissions: next } }
+    }
+    case 'SET_PERMISSIONS':
+      return state.editing ? { ...state, editing: { ...state.editing, permissions: action.permissions } } : state
+    case 'CANCEL':
+      return state.editing && state.original
+        ? { ...state, editing: { ...state.editing, ...state.original } }
+        : state
+  }
 }
 
 interface Props {
@@ -73,42 +151,30 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
   const [bans, setBans] = useState<Ban[]>([])
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([])
 
-  // Role editing state
-  const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
-  const [editingRoleName, setEditingRoleName] = useState('')
-  const [editingRoleColor, setEditingRoleColor] = useState('#000000')
-  const [editingRolePermissions, setEditingRolePermissions] = useState<number>(0)
-  // Store original values to detect changes and support cancel
-  const [originalRoleName, setOriginalRoleName] = useState('')
-  const [originalRoleColor, setOriginalRoleColor] = useState('#000000')
-  const [originalRolePermissions, setOriginalRolePermissions] = useState<number>(0)
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
+  const [roleEditor, dispatchRoleEditor] = useReducer(roleEditorReducer, initialRoleEditor)
+  const { selectedRoleId, editing: roleEditing, original: roleOriginal } = roleEditor
 
-  // Load real data from API
+  // Load real data from API. Fast-switching servers used to let the older
+  // server's responses overwrite the newer server's panels — the cancelled
+  // flag gates every late setState so closing the previous server's data
+  // mid-flight is a no-op. Roles go through the shared store cache so a
+  // repeat-open / cross-component use (ChannelSettings, UserContextMenu)
+  // hits a warm slice instead of refetching.
   useEffect(() => {
     const id = server.id
-    api.getRoles(id).then((loadedRoles) => {
+    let cancelled = false
+    useServersStore.getState().fetchRoles(id).then(() => {
+      if (cancelled) return
+      const loadedRoles = useServersStore.getState().roles[id] ?? []
       setRoles(loadedRoles)
-      // Always auto-select first role when roles are loaded (oldest / lowest position, e.g. @everyone)
       const ordered = sortRolesByPosition(loadedRoles)
-      if (ordered.length > 0) {
-        const firstRole = ordered[0]
-        setSelectedRoleId(firstRole.id)
-        // Initialize editing state for the first role
-        const colorHex = `#${firstRole.color.toString(16).padStart(6, '0')}`
-        setEditingRoleId(firstRole.id)
-        setEditingRoleName(firstRole.name)
-        setEditingRoleColor(colorHex)
-        setEditingRolePermissions(firstRole.permissions)
-        setOriginalRoleName(firstRole.name)
-        setOriginalRoleColor(colorHex)
-        setOriginalRolePermissions(firstRole.permissions)
-      }
-    }).catch(() => setRoles([]))
-    api.getMembersWithRoles(id).then(setMembers).catch(() => setMembers([]))
-    api.getInvites(id).then(setInvites).catch(() => setInvites([]))
-    api.getBans(id).then(setBans).catch(() => setBans([]))
-    api.getAuditLog(id).then(setAuditLog).catch(() => setAuditLog([]))
+      if (ordered.length > 0) dispatchRoleEditor({ type: 'SELECT', role: ordered[0] })
+    }).catch(() => { if (!cancelled) setRoles([]) })
+    api.getMembersWithRoles(id).then(m => { if (!cancelled) setMembers(m) }).catch(() => { if (!cancelled) setMembers([]) })
+    api.getInvites(id).then(i => { if (!cancelled) setInvites(i) }).catch(() => { if (!cancelled) setInvites([]) })
+    api.getBans(id).then(b => { if (!cancelled) setBans(b) }).catch(() => { if (!cancelled) setBans([]) })
+    api.getAuditLog(id).then(a => { if (!cancelled) setAuditLog(a) }).catch(() => { if (!cancelled) setAuditLog([]) })
+    return () => { cancelled = true }
   }, [server.id])
 
   const rolesOrdered = useMemo(() => sortRolesByPosition(roles), [roles])
@@ -178,111 +244,55 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
         permissions: 0,
       })
       setRoles(prev => [...prev, newRole])
-      // Auto-select the new role and initialize edit state
-      setSelectedRoleId(newRole.id)
-      setEditingRoleId(newRole.id)
-      setEditingRoleName(newRole.name)
-      setEditingRoleColor(`#${newRole.color.toString(16).padStart(6, '0')}`)
-      setEditingRolePermissions(newRole.permissions)
-      // Store original values (same as new since it's fresh)
-      setOriginalRoleName(newRole.name)
-      setOriginalRoleColor(`#${newRole.color.toString(16).padStart(6, '0')}`)
-      setOriginalRolePermissions(newRole.permissions)
+      dispatchRoleEditor({ type: 'ROLE_ADDED', role: newRole })
     } catch (e) { console.warn('Failed to create role:', e) }
   }
 
   const handlePermissionToggle = (permissionFlag: number) => {
-    setEditingRolePermissions(prev => {
-      const hasPerm = (prev & permissionFlag) === permissionFlag
-      if (hasPerm) {
-        return prev & ~permissionFlag
-      } else {
-        return prev | permissionFlag
-      }
-    })
+    dispatchRoleEditor({ type: 'TOGGLE_PERMISSION', flag: permissionFlag })
   }
 
-  const handleSelectRole = (roleId: string) => {
-    // Radio button behavior: always have one selected, can't unselect
-    if (selectedRoleId === roleId) {
-      // Clicking already selected role does nothing
-      return
-    }
-
-    // Select the new role
-    setSelectedRoleId(roleId)
-
-    // Initialize editing state for the selected role
-    const role = roles.find(r => r.id === roleId)
-    if (role) {
-      const colorHex = `#${role.color.toString(16).padStart(6, '0')}`
-      setEditingRoleId(roleId)
-      setEditingRoleName(role.name)
-      setEditingRoleColor(colorHex)
-      setEditingRolePermissions(role.permissions)
-      // Store original values for change detection and cancel
-      setOriginalRoleName(role.name)
-      setOriginalRoleColor(colorHex)
-      setOriginalRolePermissions(role.permissions)
-    }
+  const handleSelectRole = (role: Role) => {
+    // Radio button behavior: clicking the already-selected role is a no-op
+    // and is gated inside the reducer.
+    dispatchRoleEditor({ type: 'SELECT', role })
   }
 
   const handleDeleteRole = async (roleId: string) => {
     try {
       await api.deleteRole(roleId)
-      setRoles(prev => {
-        const newRoles = prev.filter(r => r.id !== roleId)
-        // Select another role if the deleted one was selected (first in display order)
-        if (selectedRoleId === roleId && newRoles.length > 0) {
-          const newSelectedRole = sortRolesByPosition(newRoles)[0]
-          setSelectedRoleId(newSelectedRole.id)
-          // Initialize editing state for the new selected role
-          const colorHex = `#${newSelectedRole.color.toString(16).padStart(6, '0')}`
-          setEditingRoleId(newSelectedRole.id)
-          setEditingRoleName(newSelectedRole.name)
-          setEditingRoleColor(colorHex)
-          setEditingRolePermissions(newSelectedRole.permissions)
-          setOriginalRoleName(newSelectedRole.name)
-          setOriginalRoleColor(colorHex)
-          setOriginalRolePermissions(newSelectedRole.permissions)
-        }
-        return newRoles
-      })
+      const remaining = roles.filter(r => r.id !== roleId)
+      setRoles(remaining)
       setMembers(prev => prev.map(m => ({
         ...m,
         role_ids: (m.role_ids ?? []).filter((id: string) => id !== roleId)
       })))
+      const nextSorted = sortRolesByPosition(remaining)
+      dispatchRoleEditor({ type: 'ROLE_DELETED', roleId, nextRole: nextSorted[0] ?? null })
     } catch (e) { console.warn('Failed to delete role:', e) }
   }
 
   const handleSaveRoleInfo = async () => {
-    if (!editingRoleId || !editingRoleName.trim()) return
+    if (!roleEditing || !roleEditing.name.trim()) return
     try {
-      const updated = await api.updateRole(editingRoleId, {
-        name: editingRoleName.trim(),
-        color: parseInt(editingRoleColor.replace('#', ''), 16),
-        permissions: editingRolePermissions,
+      const updated = await api.updateRole(roleEditing.id, {
+        name: roleEditing.name.trim(),
+        color: parseInt(roleEditing.color.replace('#', ''), 16),
+        permissions: roleEditing.permissions,
       })
-      setRoles(prev => prev.map(r => r.id === editingRoleId ? updated : r))
-      // Update original values after successful save
-      setOriginalRoleName(editingRoleName.trim())
-      setOriginalRoleColor(editingRoleColor)
-      setOriginalRolePermissions(editingRolePermissions)
+      setRoles(prev => prev.map(r => r.id === updated.id ? updated : r))
+      dispatchRoleEditor({ type: 'ROLE_SAVED', role: updated })
     } catch (e) { console.warn('Failed to update role:', e) }
   }
 
   const handleCancelEditRoleInfo = () => {
-    // Revert to original values instead of closing
-    setEditingRoleName(originalRoleName)
-    setEditingRoleColor(originalRoleColor)
-    setEditingRolePermissions(originalRolePermissions)
+    dispatchRoleEditor({ type: 'CANCEL' })
   }
 
-  // Check if there are any unsaved changes
-  const hasRoleChanges = editingRoleId && (
-    editingRoleName !== originalRoleName ||
-    editingRoleColor !== originalRoleColor ||
-    editingRolePermissions !== originalRolePermissions
+  const hasRoleChanges = !!roleEditing && !!roleOriginal && (
+    roleEditing.name        !== roleOriginal.name ||
+    roleEditing.color       !== roleOriginal.color ||
+    roleEditing.permissions !== roleOriginal.permissions
   )
 
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,6 +305,14 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
       setIconPreviewUrl(URL.createObjectURL(file))
     } catch { /* ignore */ }
   }
+
+  // Revoke any blob URL we minted for the icon preview when it gets replaced
+  // (new upload) or when the panel unmounts (close/save/cancel). The cleanup
+  // runs against the previous render's `iconPreviewUrl`.
+  useEffect(() => {
+    if (!iconPreviewUrl || !iconPreviewUrl.startsWith('blob:')) return
+    return () => { URL.revokeObjectURL(iconPreviewUrl) }
+  }, [iconPreviewUrl])
 
   // Compose nav groups for the shell — counts and the danger variant for
   // Delete Server are computed per-render from the loaded data; labels are
@@ -373,7 +391,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                         <button
                           key={role.id}
                           className={`${s.roleItem} ${selectedRoleId === role.id ? s.roleItemSelected : ''}`}
-                          onClick={() => handleSelectRole(role.id)}
+                          onClick={() => handleSelectRole(role)}
                         >
                           <div
                             className={s.roleColorDot}
@@ -396,11 +414,11 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
 
                   {/* Right: Role Editor */}
                   <div className={s.rolesRightPanel}>
-                    {selectedRoleId && (() => {
+                    {selectedRoleId && roleEditing && (() => {
                       const role = roles.find(r => r.id === selectedRoleId)
                       if (!role) return null
-                      const isRoleSelected = editingRoleId === role.id
-                      const currentPermissions = editingRolePermissions
+                      const isRoleSelected = true  // reducer keeps editing.id === selectedRoleId
+                      const currentPermissions = roleEditing.permissions
 
                       return (
                         <>
@@ -410,14 +428,14 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                               <div className={s.roleInfoEditRow}>
                                 <input
                                   type="color"
-                                  value={editingRoleColor}
-                                  onChange={e => setEditingRoleColor(e.target.value)}
+                                  value={roleEditing.color}
+                                  onChange={e => dispatchRoleEditor({ type: 'SET_COLOR', color: e.target.value })}
                                   className={s.colorPickerInline}
                                 />
                                 <input
                                   type="text"
-                                  value={editingRoleName}
-                                  onChange={e => setEditingRoleName(e.target.value)}
+                                  value={roleEditing.name}
+                                  onChange={e => dispatchRoleEditor({ type: 'SET_NAME', name: e.target.value })}
                                   className={s.roleNameInput}
                                   maxLength={32}
                                   onKeyDown={e => {
@@ -435,7 +453,7 @@ export function ServerSettings({ server, onClose, onUpdate, onDelete, onLeave }:
                               <h4 className={`${s.permissionsSectionTitle} txt-small txt-semibold`}>{t('serverSettings.roles.permissionsTitle')}</h4>
                               <button
                                 className={s.clearPermsBtn}
-                                onClick={() => setEditingRolePermissions(0)}
+                                onClick={() => dispatchRoleEditor({ type: 'SET_PERMISSIONS', permissions: 0 })}
                               >
                                 {t('serverSettings.roles.clearPermissions')}
                               </button>

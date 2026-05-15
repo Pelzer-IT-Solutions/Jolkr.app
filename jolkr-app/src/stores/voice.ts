@@ -1,8 +1,8 @@
 import { create } from 'zustand';
+import { getAccessToken } from '../api/client';
+import { getMediaWsUrl } from '../platform/config';
 import { VoiceService } from '../voice/voiceService';
 import type { VoiceParticipant, VoiceConnectionState } from '../voice/voiceService';
-import { getMediaWsUrl } from '../platform/config';
-import { getAccessToken } from '../api/client';
 
 interface VoiceState {
   connectionState: VoiceConnectionState;
@@ -213,10 +213,16 @@ export const useVoiceStore = create<VoiceState>((set) => ({
   },
 
   reset: () => {
-    // Best-effort tear down active call; ignore errors during logout.
+    // Order matters: detach listeners first (synchronously), THEN kick off the
+    // async leaveChannel. dispose() would also call cleanup() which closes the
+    // signal-WS, breaking the leave-notice that leaveChannel() needs to send.
+    // With listeners detached, the in-flight leave's own cleanup + setState
+    // emits land in a void — no zombie writes into the just-reset store.
     if (_voiceService) {
-      _voiceService.leaveChannel().catch(() => { /* noop */ });
+      const svc = _voiceService;
       _voiceService = null;
+      svc.detachListeners();
+      svc.leaveChannel().catch(() => { /* noop */ });
     }
     set({
       connectionState: 'disconnected',

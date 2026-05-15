@@ -15,7 +15,7 @@ interface Props {
   anchor?: RefObject<HTMLElement | null>
 }
 
-export default function EmojiPickerPopup({ position, onSelect, onClose, anchor }: Props) {
+export function EmojiPickerPopup({ position, onSelect, onClose, anchor }: Props) {
   const ref = useClickOutside<HTMLDivElement>(onClose, true, anchor)
   const { isDark } = useColorMode()
   const theme = (isDark ? 'dark' : 'light') as never

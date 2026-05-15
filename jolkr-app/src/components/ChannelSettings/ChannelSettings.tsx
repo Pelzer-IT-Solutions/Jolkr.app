@@ -1,15 +1,16 @@
-import { useMemo, useState, useEffect } from 'react'
 import {
   Hash, Lock, Shield, Save, Plus, Trash2, Check, XCircle
 } from 'lucide-react'
-import type { Channel as ApiChannel, Role, ChannelOverwrite } from '../../api/types'
+import { useMemo, useState, useEffect } from 'react'
 import * as api from '../../api/client'
-import * as P from '../../utils/permissions'
-import { revealDelay } from '../../utils/animations'
 import { useRevealAnimation } from '../../hooks/useRevealAnimation'
 import { useT } from '../../hooks/useT'
+import { selectServerRoles, useServersStore } from '../../stores/servers'
+import { revealDelay } from '../../utils/animations'
+import * as P from '../../utils/permissions'
 import { SettingsShell, type SettingsNavGroup } from '../SettingsShell'
 import s from './ChannelSettings.module.css'
+import type { Channel as ApiChannel, ChannelOverwrite } from '../../api/types'
 
 type Section = 'overview' | 'permissions'
 
@@ -39,8 +40,10 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
   const [section, setSection] = useState<Section>('overview')
   const [editedChannel, setEditedChannel] = useState<Partial<ApiChannel>>({})
   const [hasChanges, setHasChanges] = useState(false)
-  // Permissions state
-  const [roles, setRoles] = useState<Role[]>([])
+  // Roles come from the shared store cache (WS-driven invalidation via
+  // applyRoleChange keeps the slice fresh). Overwrites stay local.
+  const roles = useServersStore(selectServerRoles(serverId))
+  const fetchRoles = useServersStore(s => s.fetchRoles)
   const [overwrites, setOverwrites] = useState<ChannelOverwrite[]>([])
   const [selectedOverwriteId, setSelectedOverwriteId] = useState<string | null>(null)
   const [showAddOverwrite, setShowAddOverwrite] = useState(false)
@@ -51,11 +54,18 @@ export function ChannelSettings({ channel, serverId, serverPermissions, onClose,
   // (the SettingsShell handles the nav reveal independently).
   const isRevealing = useRevealAnimation(overwrites.length, [overwrites.length])
 
-  // Load roles and overwrites
+  // Roles are read straight from the store selector — fetchRoles only hits
+  // the network when the slice is cold. Overwrites stay component-local with
+  // a cancelled-flag for the fast-switch race.
   useEffect(() => {
-    api.getRoles(serverId).then(setRoles).catch(() => setRoles([]))
-    api.getChannelOverwrites(channel.id).then(setOverwrites).catch(() => setOverwrites([]))
-  }, [serverId, channel.id])
+    fetchRoles(serverId).catch(() => { /* WS will retry via applyRoleChange */ })
+  }, [serverId, fetchRoles])
+
+  useEffect(() => {
+    let cancelled = false
+    api.getChannelOverwrites(channel.id).then(o => { if (!cancelled) setOverwrites(o) }).catch(() => { if (!cancelled) setOverwrites([]) })
+    return () => { cancelled = true }
+  }, [channel.id])
 
   const handleFieldChange = <K extends keyof ApiChannel>(field: K, value: ApiChannel[K]) => {
     setEditedChannel(prev => ({ ...prev, [field]: value }))

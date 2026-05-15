@@ -123,10 +123,6 @@ export function parseVideoUrl(url: string): VideoInfo | null {
   return null;
 }
 
-export function isVideoUrl(url: string): boolean {
-  return parseVideoUrl(url) !== null;
-}
-
 export function getYouTubeThumbnail(id: string): string {
   return `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
 }

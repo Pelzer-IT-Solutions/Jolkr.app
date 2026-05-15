@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
 import { Heart, Search, X, ArrowLeft } from 'lucide-react'
-import { getApiBaseUrl } from '../../platform/config'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { getGifFavorites, getGifCategories, searchGifs, getFeaturedGifs } from '../../api/client'
-import type { TenorResult, TenorCategory } from '../../api/client'
 // addGifFavorite/removeGifFavorite are called by the shared store
-import type { GifFavorite } from '../../api/types'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { useT } from '../../hooks/useT'
+import { getApiBaseUrl } from '../../platform/config'
 import { useGifFavoritesStore } from '../../stores/gif-favorites'
 import { useColorMode } from '../../utils/colorMode'
-import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { logErr } from '../../utils/logErr'
-import { useT } from '../../hooks/useT'
 import s from './GifPicker.module.css'
+import type { TenorResult, TenorCategory } from '../../api/client'
+import type { GifFavorite } from '../../api/types'
 
 const apiBase = getApiBaseUrl().replace(/\/api$/, '')
 
@@ -32,7 +32,7 @@ interface Props {
   height?: number
 }
 
-export default function GifPicker({ onSelect, width = 450, height = 450 }: Props) {
+export function GifPicker({ onSelect, width = 450, height = 450 }: Props) {
   const { t } = useT()
   const [view, setView] = useState<View>('home')
   const [query, setQuery] = useState('')
@@ -63,8 +63,9 @@ export default function GifPicker({ onSelect, width = 450, height = 450 }: Props
     getGifFavorites()
       .then((favs) => {
         setFavGifs(favs)
-        // Also populate the shared store
-        useGifFavoritesStore.setState({ ids: new Set(favs.map((f) => f.gif_id)), loaded: true })
+        // Mirror into the shared store via its action — keeps the optimistic+
+        // rollback contract intact and avoids a parallel setState path.
+        useGifFavoritesStore.getState().applyFavorites(favs)
       })
       .catch((e) => logErr('GifPicker.loadFavorites', e))
   }, [])

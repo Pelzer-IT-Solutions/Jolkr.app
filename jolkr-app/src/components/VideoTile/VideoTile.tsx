@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { MicOff } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import s from './VideoTile.module.css';
 
 interface VideoTileProps {

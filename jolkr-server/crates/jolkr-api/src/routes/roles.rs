@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use jolkr_core::RoleService;
 use jolkr_core::services::role::{CreateRoleRequest, RoleInfo, UpdateRoleRequest};
+use jolkr_core::services::server::MemberInfo;
 use jolkr_db::repo::{MemberRepo, RoleRepo};
 
 use crate::errors::AppError;
@@ -15,38 +16,34 @@ use crate::routes::AppState;
 
 // ── DTOs ───────────────────────────────────────────────────────────────
 
+/// Response payload for single-role endpoints (create/update/get).
 #[derive(Debug, Serialize)]
 pub(crate) struct RoleResponse {
     pub role: RoleInfo,
 }
 
+/// Response payload for GET /api/servers/:server_id/roles.
 #[derive(Debug, Serialize)]
 pub(crate) struct RolesResponse {
     pub roles: Vec<RoleInfo>,
 }
 
-#[derive(Debug, Serialize)]
-pub(crate) struct MemberWithRoles {
-    pub id: Uuid,
-    pub server_id: Uuid,
-    pub user_id: Uuid,
-    pub nickname: Option<String>,
-    pub joined_at: String,
-    pub role_ids: Vec<Uuid>,
-}
-
+/// Response payload for GET /api/servers/:server_id/members-with-roles.
 #[derive(Debug, Serialize)]
 pub(crate) struct MembersWithRolesResponse {
-    pub members: Vec<MemberWithRoles>,
+    pub members: Vec<MemberInfo>,
 }
 
+/// Request body for PUT /api/servers/:server_id/roles/:role_id/members.
 #[derive(Debug, Deserialize)]
 pub(crate) struct AssignRoleBody {
     pub user_id: Uuid,
 }
 
+/// Response payload for GET /api/servers/:server_id/permissions/@me.
 #[derive(Debug, Serialize)]
 pub(crate) struct PermissionsResponse {
+    /// Effective permission bitmask (see `jolkr_common::Permissions` for flags).
     pub permissions: i64,
 }
 
@@ -79,7 +76,10 @@ pub(crate) async fn list_roles(
 ) -> Result<Json<RolesResponse>, AppError> {
     MemberRepo::get_member(&state.pool, server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list roles: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
     let roles = RoleService::list_roles(&state.pool, server_id).await?;
     Ok(Json(RolesResponse { roles }))
 }
@@ -162,7 +162,7 @@ async fn broadcast_member_role_update(state: &AppState, server_id: Uuid, target_
             return;
         }
     };
-    let role_ids = match RoleRepo::get_member_role_ids(&state.pool, member.id).await {
+    let role_ids = match RoleRepo::list_member_role_ids(&state.pool, member.id).await {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("MemberUpdate broadcast skipped — role lookup failed: {e}");
@@ -189,10 +189,13 @@ pub(crate) async fn list_members_with_roles(
 ) -> Result<Json<MembersWithRolesResponse>, AppError> {
     MemberRepo::get_member(&state.pool, server_id, auth.user_id)
         .await
-        .map_err(|_| AppError(jolkr_common::JolkrError::Forbidden))?;
+        .map_err(|e| {
+            tracing::warn!(?e, "list members-with-roles: caller is not a server member → 403");
+            AppError(jolkr_common::JolkrError::Forbidden)
+        })?;
 
     let members = MemberRepo::list_for_server(&state.pool, server_id).await?;
-    let role_assignments = RoleRepo::get_roles_for_server_members(&state.pool, server_id).await?;
+    let role_assignments = RoleRepo::list_roles_for_server_members(&state.pool, server_id).await?;
 
     // Build member_id -> Vec<role_id> map
     let mut role_map: std::collections::HashMap<Uuid, Vec<Uuid>> = std::collections::HashMap::new();
@@ -200,15 +203,11 @@ pub(crate) async fn list_members_with_roles(
         role_map.entry(member_id).or_default().push(role_id);
     }
 
-    let result: Vec<MemberWithRoles> = members
+    let result: Vec<MemberInfo> = members
         .into_iter()
-        .map(|m| MemberWithRoles {
-            id: m.id,
-            server_id: m.server_id,
-            user_id: m.user_id,
-            nickname: m.nickname,
-            joined_at: m.joined_at.to_rfc3339(),
-            role_ids: role_map.remove(&m.id).unwrap_or_default(),
+        .map(|m| {
+            let role_ids = role_map.remove(&m.id).unwrap_or_default();
+            MemberInfo::with_role_ids(m, role_ids)
         })
         .collect();
 
