@@ -44,6 +44,7 @@ export const STORAGE_KEYS = {
   COLOR_MODE: 'jolkr_color_mode',                   // migrated from 'jolkr-color-mode'
   CALL_PIP_LAYOUT: 'jolkr_call_pip_layout',         // migrated from 'call.pip.layout'
   LOCALE: 'jolkr_locale',                           // BCP-47 lite, e.g. 'en-US' / 'fr' / 'zh-CN'
+  TABBED_SERVER_IDS: 'jolkr_tabbed_server_ids',     // suffixed with `:<userId>` — per-user open-tab list
 
   // ── sessionStorage (transient / cross-page) ──────────────────────
   PENDING_INVITE: 'jolkr_pending_invite',
