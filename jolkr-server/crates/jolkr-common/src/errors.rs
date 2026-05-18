@@ -38,6 +38,10 @@ pub enum JolkrError {
     /// `Jwt` variant.
     #[error("JWT error: {0}")]
     Jwt(String),
+
+    /// `RateLimited` variant.
+    #[error("Rate limited: {0}")]
+    RateLimited(String),
 }
 
 impl JolkrError {
@@ -54,6 +58,7 @@ impl JolkrError {
             Self::Internal(_) => 500,
             Self::Database(_) => 500,
             Self::Jwt(_) => 401,
+            Self::RateLimited(_) => 429,
         }
     }
 }

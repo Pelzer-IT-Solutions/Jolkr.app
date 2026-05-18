@@ -21,6 +21,7 @@ impl IntoResponse for AppError {
             JolkrError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             JolkrError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
             JolkrError::Jwt(_) => StatusCode::UNAUTHORIZED,
+            JolkrError::RateLimited(_) => StatusCode::TOO_MANY_REQUESTS,
         };
 
         // H6: Hide internal sqlx error details from clients

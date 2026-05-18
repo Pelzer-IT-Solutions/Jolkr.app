@@ -403,12 +403,39 @@ pub(crate) async fn verify_email(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Per-user quota for verification-email resends: at most 3 per hour.
+/// Without this, a user (or a script in their session) could flood themselves
+/// with email — and indirectly burn through outbound SMTP quota — by hammering
+/// `/api/auth/resend-verification`.
+const VERIFY_RESEND_MAX_PER_HOUR: u64 = 3;
+const VERIFY_RESEND_WINDOW_SECS: i64 = 3600;
+
+async fn check_verify_resend_quota(state: &AppState, user_id: uuid::Uuid) -> Result<(), AppError> {
+    let key = format!("verify_resend:{user_id}");
+    let mut conn = state.redis.connection();
+    let count: u64 = conn.incr(&key, 1u64).await.map_err(|e| {
+        warn!(error = %e, "Redis verify-resend quota INCR failed");
+        AppError(jolkr_common::JolkrError::Internal("Quota backend unavailable".into()))
+    })?;
+    if count == 1 {
+        drop(conn.expire::<_, ()>(&key, VERIFY_RESEND_WINDOW_SECS).await);
+    }
+    if count > VERIFY_RESEND_MAX_PER_HOUR {
+        return Err(AppError(jolkr_common::JolkrError::RateLimited(
+            "Too many verification email requests. Try again in an hour.".into(),
+        )));
+    }
+    Ok(())
+}
+
 /// POST /api/auth/resend-verification
 /// Authenticated: resends the verification email for the current user.
 pub(crate) async fn resend_verification(
     auth: AuthUser,
     State(state): State<AppState>,
 ) -> Result<StatusCode, AppError> {
+    check_verify_resend_quota(&state, auth.user_id).await?;
+
     let user = UserRepo::get_by_id(&state.pool, auth.user_id).await
         .map_err(AppError)?;
 
