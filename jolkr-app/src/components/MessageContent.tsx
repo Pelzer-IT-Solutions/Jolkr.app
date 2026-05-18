@@ -186,6 +186,12 @@ const ALLOWED_TAGS = ['b', 'i', 'em', 'strong', 'a', 'code', 'pre', 'br', 'p', '
 // SVG-specific attributes (viewBox, fill, stroke, stroke-*, d) and `type` are
 // dropped along with the SVG/button tags — none of the remaining allowed tags
 // use them.
+// `style` stays in the allowlist because the markdown renderer above emits
+// inline `style` on <img> (max-width/max-height for inline GIFs and custom
+// emojis) and on the GIF-embed wrapper <span>. All style strings are literal
+// constants under our control — never user input — so re-allowing them at
+// sanitization time is safe. Drop only if those renderer outputs are migrated
+// to CSS classes.
 const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', 'title', 'loading', 'draggable', 'referrerpolicy', 'crossorigin', 'data-gif-id', 'width', 'height'];
 
 export const MessageContent = memo(function MessageContent({ content, className, emojiMap, serverId }: MessageContentProps) {
