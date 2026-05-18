@@ -35,3 +35,47 @@ Progress is tracked in [.claude/plans/audit-2026-05-18-security-fixes.md](.claud
 
 **Risk if rolled back:** Email enumeration via login timing returns.
 
+---
+
+## F05 — `/api/auth/logout` verifies session ownership
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-api/src/routes/auth.rs` (one-line guard in `logout`)
+
+**Why:** `logout` accepted any refresh token in the body and deleted whatever session matched its hash, with no check that the session belonged to the authenticated caller. Holding a leaked refresh token (shared computer, log scrape, etc.) was enough to revoke another user. Now returns `Forbidden` when `session.user_id != auth.user_id`, before the delete.
+
+**Risk if rolled back:** Anyone with a stolen refresh token can revoke that user's session.
+
+---
+
+## F08 — `MessageService::edit_message` rechecks channel access
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-core/src/services/message.rs` (post-author auth check)
+
+**Why:** Only `msg.author_id == caller_id` was checked. A user kicked/banned from the server still held a valid JWT until expiry and could PATCH their old messages — which then broadcast as `MessageUpdate`. Now after the author check we also resolve the channel's server, bypass for the server owner, and otherwise require membership + `VIEW_CHANNELS` (mirrors the non-author branch of `delete_message`). DM messages flow through `DmService::edit_message` instead, so are out of scope for this commit — flagged as follow-up.
+
+**Risk if rolled back:** Kicked/banned member can edit old messages, broadcasting `MessageUpdate` events into the server.
+
+---
+
+## F17 — voice WS pins JWT algorithm to HS256
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-media/src/signaling.rs` (`validate_jwt`)
+
+**Why:** `Validation::default()` can be permissive about which algorithms it accepts. The API server already pins to `HS256` + `validate_exp = true` (`AuthService::validate_token`); the voice service must match so a token forged with a different algorithm cannot slip past voice auth.
+
+**Risk if rolled back:** Voice WS may accept JWTs validated by an unexpected algorithm.
+
+---
+
+## F18 — soft-delete filter verification: not applicable
+
+**Files changed:** _(no code change)_
+
+**Why:** Audit asked to verify that `MessageRepo::get_by_id` filters out soft-deleted messages. After grep, there is no `deleted_at` or `is_deleted` column anywhere in `jolkr-server` — `MessageRepo::delete` performs a hard `DELETE FROM messages WHERE id = $1`. The audit's preconditions don't hold; nothing to filter. No commit produced for this finding.
+
+**Risk if rolled back:** N/A.
+
+
