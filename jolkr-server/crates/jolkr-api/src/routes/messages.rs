@@ -58,9 +58,10 @@ pub(crate) async fn send_message(
         let embed_msg_id = message.id;
         let embed_channel_id = channel_id;
         let embed_content = content.clone();
+        let embed_caller_id = auth.user_id;
         tokio::spawn(async move {
             embed_svc.process_message(&embed_pool, embed_msg_id, &embed_content, false).await;
-            match MessageService::get_message_by_id(&embed_pool, embed_msg_id).await {
+            match MessageService::get_message_by_id_for(&embed_pool, embed_msg_id, embed_caller_id).await {
                 Ok(msg) if !msg.embeds.is_empty() => {
                     let event = crate::ws::events::GatewayEvent::MessageUpdate { message: msg };
                     embed_nats.publish_to_channel(embed_channel_id, &event).await;
