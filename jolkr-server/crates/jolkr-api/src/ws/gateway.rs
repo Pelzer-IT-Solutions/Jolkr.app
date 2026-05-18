@@ -2,9 +2,13 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use dashmap::DashMap;
+use sqlx::PgPool;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 use uuid::Uuid;
+
+use jolkr_common::Permissions;
+use jolkr_db::repo::{ChannelOverwriteRepo, MemberRepo, RoleRepo, ServerRepo};
 
 use super::events::GatewayEvent;
 
@@ -123,6 +127,85 @@ impl GatewayState {
                 }
             }
         }
+    }
+
+    /// Broadcast a channel-scoped event only to users who have `VIEW_CHANNELS`
+    /// on the given channel. Used for ChannelCreate/Update/Delete and
+    /// ChannelPermissionUpdate — server-wide broadcast leaks the channel name,
+    /// topic, and permissions to users who shouldn't see the channel at all.
+    ///
+    /// Falls back to a full server broadcast on DB lookup failures: refusing to
+    /// emit on a transient Redis/Postgres blip would break the legitimate
+    /// recipients' UI more visibly than the leak would matter, and the safe
+    /// payload shape (no body) of ChannelDelete makes over-broadcast acceptable.
+    pub async fn broadcast_to_channel_visible(
+        &self,
+        server_id: Uuid,
+        channel_id: Uuid,
+        event: &GatewayEvent,
+        pool: &PgPool,
+    ) {
+        let allowed = match Self::compute_allowed_user_ids(pool, server_id, channel_id).await {
+            Some(set) => set,
+            None => {
+                // Lookup failed — log and fall back to existing server broadcast.
+                self.broadcast_to_server(server_id, event);
+                return;
+            }
+        };
+
+        for entry in self.clients.iter() {
+            let client = entry.value();
+            if client.subscribed_servers.contains(&server_id) && allowed.contains(&client.user_id) {
+                drop(client.tx.try_send(event.clone()));
+            }
+        }
+    }
+
+    /// Resolve the set of user_ids who currently have VIEW_CHANNELS on
+    /// `channel_id`. Returns None if any required lookup failed — callers
+    /// should treat that as "unknown" and choose a safe fallback.
+    async fn compute_allowed_user_ids(
+        pool: &PgPool,
+        server_id: Uuid,
+        channel_id: Uuid,
+    ) -> Option<HashSet<Uuid>> {
+        let members = match MemberRepo::list_for_server(pool, server_id).await {
+            Ok(m) => m,
+            Err(e) => {
+                warn!(?e, %server_id, "broadcast_to_channel_visible: list_for_server failed");
+                return None;
+            }
+        };
+        let server = match ServerRepo::get_by_id(pool, server_id).await {
+            Ok(s) => s,
+            Err(e) => {
+                warn!(?e, %server_id, "broadcast_to_channel_visible: get_by_id(server) failed");
+                return None;
+            }
+        };
+        let member_roles = RoleRepo::list_member_roles_batch(pool, server_id).await.unwrap_or_default();
+        let overwrites = ChannelOverwriteRepo::list_for_channel(pool, channel_id).await.unwrap_or_default();
+        let everyone_role = RoleRepo::get_default(pool, server_id).await.ok();
+
+        let member_pairs: Vec<(Uuid, Uuid)> = members.iter().map(|m| (m.id, m.user_id)).collect();
+        let perms_map = RoleRepo::compute_channel_permissions_for_all_members(
+            &member_pairs,
+            &member_roles,
+            &overwrites,
+            everyone_role.as_ref(),
+            server.owner_id,
+        );
+
+        let allowed: HashSet<Uuid> = members
+            .iter()
+            .filter(|m| {
+                let p = perms_map.get(&m.id).copied().unwrap_or(0);
+                Permissions::from(p).has(Permissions::VIEW_CHANNELS)
+            })
+            .map(|m| m.user_id)
+            .collect();
+        Some(allowed)
     }
 
     /// Broadcast an event to all clients subscribed to a given channel.
