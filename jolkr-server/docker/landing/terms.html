@@ -8,7 +8,8 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <meta name="description" content="Jolkr Terms of Service — the rules and guidelines for using the Jolkr platform.">
-  <meta name="theme-color" content="#0D1117">
+  <meta name="theme-color" content="#e7ecec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#161a1a" media="(prefers-color-scheme: dark)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -23,21 +24,53 @@
       box-sizing: border-box;
     }
 
+    /* Tokens mirror jolkr-app/src/styles/tokens.css — default theme-hue 182 (Jolkr teal).
+       Light mode is the default; dark mode follows the OS preference. */
     :root {
-      --bg-primary: #0D1117;
-      --bg-secondary: #151B23;
-      --bg-surface: #212B3B;
-      --border-primary: #30363D;
-      --border-subtle: #21262D;
-      --text-primary: #F0F6FC;
-      --text-secondary: #8B949E;
-      --text-tertiary: #6E7681;
-      --accent: #2DD4BF;
-      --accent-hover: #5EEAD4;
-      --accent-muted: rgba(45, 212, 191, 0.125);
+      color-scheme: light dark;
+      --theme-hue: 182;
+
+      /* Surfaces — light (app surface-nav / content / field) */
+      --bg-primary:    oklch(93%   0.004 var(--theme-hue));
+      --bg-secondary:  oklch(96%   0.004 var(--theme-hue));
+      --bg-surface:    oklch(97.5% 0.004 var(--theme-hue));
+
+      /* Borders — derived from the neutral-dark scale at low alpha */
+      --border-primary: oklch(25.42% 0.004 var(--theme-hue) / 0.16);
+      --border-subtle:  oklch(25.42% 0.004 var(--theme-hue) / 0.08);
+
+      /* Text — near-black tinted */
+      --text-primary:   oklch(25.42% 0.004 var(--theme-hue));
+      --text-secondary: oklch(25.42% 0.004 var(--theme-hue) / 0.7);
+      --text-tertiary:  oklch(25.42% 0.004 var(--theme-hue) / 0.4);
+
+      /* Accent — theme-hue driven, identical to app --accent */
+      --accent:        oklch(55% 0.18 var(--theme-hue));
+      --accent-hover:  oklch(62% 0.18 var(--theme-hue));
+      --accent-muted:  oklch(55% 0.18 var(--theme-hue) / 0.12);
+      --text-on-accent: #fff;
+
       --radius-md: 10px;
       --radius-lg: 14px;
       --radius-xl: 20px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        /* Surfaces — dark (app surface-nav / content / field) */
+        --bg-primary:    oklch(11% 0.004 var(--theme-hue));
+        --bg-secondary:  oklch(14% 0.004 var(--theme-hue));
+        --bg-surface:    oklch(18% 0.004 var(--theme-hue));
+
+        /* Borders — near-white at low alpha */
+        --border-primary: oklch(99% 0.004 var(--theme-hue) / 0.16);
+        --border-subtle:  oklch(99% 0.004 var(--theme-hue) / 0.08);
+
+        /* Text — near-white tinted */
+        --text-primary:   oklch(99% 0.004 var(--theme-hue));
+        --text-secondary: oklch(99% 0.004 var(--theme-hue) / 0.7);
+        --text-tertiary:  oklch(99% 0.004 var(--theme-hue) / 0.4);
+      }
     }
 
     html {
@@ -121,7 +154,7 @@
       gap: 8px;
       padding: 10px 20px;
       background: var(--accent);
-      color: var(--bg-primary);
+      color: var(--text-on-accent);
       border-radius: var(--radius-md);
       font-weight: 600;
       font-size: 13px;
@@ -132,9 +165,9 @@
 
     .btn-accent:hover {
       background: var(--accent-hover);
-      color: var(--bg-primary);
+      color: var(--text-on-accent);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(45, 212, 191, 0.25);
+      box-shadow: 0 4px 12px oklch(55% 0.18 var(--theme-hue) / 0.3);
     }
 
     /* ─── Content ─── */
