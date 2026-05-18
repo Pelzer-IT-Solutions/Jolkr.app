@@ -327,9 +327,14 @@ pub(crate) async fn logout(
     headers: HeaderMap,
     Json(body): Json<LogoutRequest>,
 ) -> Result<StatusCode, AppError> {
-    // Delete the session (refresh token)
+    // Delete the session (refresh token). Reject if the token doesn't belong to
+    // the caller — without this, anyone holding another user's refresh token
+    // could revoke their session.
     let token_hash = AuthService::hash_refresh_token_pub(&body.refresh_token);
     if let Ok(session) = SessionRepo::get_by_token(&state.pool, &token_hash).await {
+        if session.user_id != auth.user_id {
+            return Err(AppError(jolkr_common::JolkrError::Forbidden));
+        }
         SessionRepo::delete_session(&state.pool, session.id).await?;
     }
 
