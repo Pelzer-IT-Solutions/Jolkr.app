@@ -186,10 +186,22 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 // Validate the JWT and check blacklist (mirrors HTTP auth middleware)
                 match AuthService::validate_token(&state.jwt_secret, &token) {
                     Ok(claims) => {
-                        // Check if this token has been revoked (e.g. via logout)
+                        // Check if this token has been revoked (e.g. via logout).
+                        // Fail CLOSED on Redis errors — without the blacklist we
+                        // can't tell whether the token is still valid, so refuse
+                        // identification rather than silently honour it.
                         let blacklist_key = format!("blacklist:{}", claims.jti);
                         let mut conn = state.redis.connection();
-                        let is_revoked: bool = conn.exists(&blacklist_key).await.unwrap_or(false);
+                        let is_revoked: bool = match conn.exists(&blacklist_key).await {
+                            Ok(b) => b,
+                            Err(e) => {
+                                tracing::error!(error = %e, "Redis blacklist check failed during WS Identify");
+                                drop(tx.try_send(GatewayEvent::Error {
+                                    message: "Auth backend unavailable".to_string(),
+                                }));
+                                continue;
+                            }
+                        };
                         if is_revoked {
                             let err = GatewayEvent::Error {
                                 message: "Token has been revoked".to_string(),

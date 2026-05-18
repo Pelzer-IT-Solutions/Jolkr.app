@@ -23,17 +23,24 @@ pub(crate) struct AuthUser {
 }
 
 /// Error returned when authentication fails.
-pub(crate) struct AuthError(String);
+pub(crate) enum AuthError {
+    Unauthorized(String),
+    ServiceUnavailable(String),
+}
 
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
+        let (status, message) = match self {
+            AuthError::Unauthorized(m) => (StatusCode::UNAUTHORIZED, m),
+            AuthError::ServiceUnavailable(m) => (StatusCode::SERVICE_UNAVAILABLE, m),
+        };
         let body = json!({
             "error": {
-                "code": 401,
-                "message": self.0,
+                "code": status.as_u16(),
+                "message": message,
             }
         });
-        (StatusCode::UNAUTHORIZED, Json(body)).into_response()
+        (status, Json(body)).into_response()
     }
 }
 
@@ -49,21 +56,29 @@ impl FromRequestParts<AppState> for AuthUser {
             .headers
             .get(header::AUTHORIZATION)
             .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| AuthError("Missing Authorization header".into()))?;
+            .ok_or_else(|| AuthError::Unauthorized("Missing Authorization header".into()))?;
 
         let token = header_value
             .strip_prefix("Bearer ")
-            .ok_or_else(|| AuthError("Invalid Authorization header format".into()))?;
+            .ok_or_else(|| AuthError::Unauthorized("Invalid Authorization header format".into()))?;
 
         let claims = AuthService::validate_token(&state.jwt_secret, token)
-            .map_err(|e| AuthError(format!("Invalid token: {e}")))?;
+            .map_err(|e| AuthError::Unauthorized(format!("Invalid token: {e}")))?;
 
-        // Check if this token has been revoked (e.g. via logout)
+        // Check if this token has been revoked (e.g. via logout). Fail CLOSED on
+        // Redis errors — without the blacklist we cannot tell whether the token
+        // is still valid, so refuse the request rather than silently honour it.
         let blacklist_key = format!("blacklist:{}", claims.jti);
         let mut conn = state.redis.connection();
-        let is_revoked: bool = conn.exists(&blacklist_key).await.unwrap_or(false);
+        let is_revoked: bool = match conn.exists(&blacklist_key).await {
+            Ok(b) => b,
+            Err(e) => {
+                tracing::error!(error = %e, "Redis blacklist check failed");
+                return Err(AuthError::ServiceUnavailable("Auth backend unavailable".into()));
+            }
+        };
         if is_revoked {
-            return Err(AuthError("Token has been revoked".into()));
+            return Err(AuthError::Unauthorized("Token has been revoked".into()));
         }
 
         Ok(AuthUser {
