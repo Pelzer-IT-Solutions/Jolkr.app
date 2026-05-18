@@ -431,6 +431,12 @@ impl RoleRepo {
     }
 
     /// Apply channel overwrites to base permissions (shared logic).
+    ///
+    /// Each `o.target_type` is parsed via `OverwriteTarget::from_text` so a
+    /// typo or case-drifted row in `channel_permission_overwrites` fails loud
+    /// (the overwrite is skipped) rather than silently matching against the
+    /// wrong target — which would be a privilege escalation in either
+    /// direction. See F14 in SECURITY_FIXES.md.
     fn apply_overwrites(
         mut base: i64,
         overwrites: &[ChannelOverwriteRow],
@@ -438,9 +444,18 @@ impl RoleRepo {
         everyone_role_id: Option<Uuid>,
         member_id: Uuid,
     ) -> i64 {
+        use jolkr_common::OverwriteTarget;
+
+        let is_role = |o: &&ChannelOverwriteRow| {
+            OverwriteTarget::from_text(&o.target_type) == Some(OverwriteTarget::Role)
+        };
+        let is_member = |o: &&ChannelOverwriteRow| {
+            OverwriteTarget::from_text(&o.target_type) == Some(OverwriteTarget::Member)
+        };
+
         // Step 1: Apply @everyone role overwrite
         if let Some(everyone_id) = everyone_role_id {
-            if let Some(ow) = overwrites.iter().find(|o| o.target_type == "role" && o.target_id == everyone_id) {
+            if let Some(ow) = overwrites.iter().find(|o| is_role(o) && o.target_id == everyone_id) {
                 base = (base & !ow.deny) | ow.allow;
             }
         }
@@ -449,7 +464,7 @@ impl RoleRepo {
         let mut agg_allow: i64 = 0;
         let mut agg_deny: i64 = 0;
         for ow in overwrites.iter().filter(|o| {
-            o.target_type == "role"
+            is_role(o)
                 && (everyone_role_id != Some(o.target_id))
                 && member_role_ids.contains(&o.target_id)
         }) {
@@ -459,7 +474,7 @@ impl RoleRepo {
         base = (base & !agg_deny) | agg_allow;
 
         // Step 3: Apply member-specific overwrite
-        if let Some(ow) = overwrites.iter().find(|o| o.target_type == "member" && o.target_id == member_id) {
+        if let Some(ow) = overwrites.iter().find(|o| is_member(o) && o.target_id == member_id) {
             base = (base & !ow.deny) | ow.allow;
         }
 
