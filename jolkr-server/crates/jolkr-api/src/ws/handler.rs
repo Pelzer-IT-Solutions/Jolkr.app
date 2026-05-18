@@ -22,6 +22,7 @@ use jolkr_core::AuthService;
 use jolkr_db::repo::{ChannelRepo, DmRepo, MemberRepo, RoleRepo, ServerRepo};
 
 use super::events::{ClientEvent, GatewayEvent};
+use crate::middleware::client_ip::resolve_client_ip;
 use crate::routes::AppState;
 
 /// Maximum WebSocket connections allowed per IP address.
@@ -29,34 +30,6 @@ const MAX_WS_PER_IP: u32 = 10;
 
 /// Global per-IP WebSocket connection counter.
 static WS_CONNECTIONS: LazyLock<DashMap<IpAddr, AtomicU32>> = LazyLock::new(DashMap::new);
-
-/// Extract the real client IP from the request, considering trusted proxies.
-fn is_trusted_proxy_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => v4.is_loopback() || (v4.octets()[0] == 172 && (v4.octets()[1] & 0xF0) == 16),
-        IpAddr::V6(v6) => v6.is_loopback(),
-    }
-}
-
-fn resolve_client_ip(connect_addr: std::net::SocketAddr, headers: &HeaderMap) -> IpAddr {
-    let connect_ip = connect_addr.ip();
-    if is_trusted_proxy_ip(connect_ip) {
-        // Take the rightmost non-trusted IP (attacker can't control it)
-        headers
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| {
-                s.split(',')
-                    .rev()
-                    .map(|p| p.trim())
-                    .filter_map(|p| p.parse::<IpAddr>().ok())
-                    .find(|ip| !is_trusted_proxy_ip(*ip))
-            })
-            .unwrap_or(connect_ip)
-    } else {
-        connect_ip
-    }
-}
 
 /// Check if a user has access to a channel (regular or DM).
 /// For regular channels: checks VIEW_CHANNELS permission (with channel overwrites).

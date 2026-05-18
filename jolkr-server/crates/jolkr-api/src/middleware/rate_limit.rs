@@ -15,6 +15,7 @@ use redis::AsyncCommands;
 use serde_json::json;
 use tracing::warn;
 
+use crate::middleware::client_ip::resolve_client_ip;
 use crate::redis_store::RedisStore;
 
 /// Per-IP rate limiter with Redis backend and local DashMap fallback.
@@ -112,43 +113,17 @@ impl RateLimiter {
     }
 }
 
-/// Check if an IP is a trusted proxy (localhost or Docker network 172.16.0.0/12).
-fn is_trusted_proxy(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => v4.is_loopback() || (v4.octets()[0] == 172 && (v4.octets()[1] & 0xF0) == 16),
-        IpAddr::V6(v6) => v6.is_loopback(),
-    }
-}
-
 /// Axum middleware function for rate limiting.
 pub(crate) async fn rate_limit_middleware(
     Extension(limiter): Extension<RateLimiter>,
     req: Request<Body>,
     next: Next,
 ) -> Response {
-    let connect_ip = req
+    let ip = req
         .extensions()
         .get::<ConnectInfo<std::net::SocketAddr>>()
-        .map(|ci| ci.0.ip());
-
-    let ip = if connect_ip.is_some_and(is_trusted_proxy) {
-        // Take the rightmost non-trusted IP — that's the one added by our outermost proxy.
-        // The leftmost IP is attacker-controlled and must not be trusted.
-        req.headers()
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| {
-                s.split(',')
-                    .rev()
-                    .map(|p| p.trim())
-                    .filter_map(|p| p.parse::<IpAddr>().ok())
-                    .find(|ip| !is_trusted_proxy(*ip))
-            })
-            .or(connect_ip)
-            .unwrap_or_else(|| "127.0.0.1".parse().unwrap())
-    } else {
-        connect_ip.unwrap_or_else(|| "127.0.0.1".parse().unwrap())
-    };
+        .map(|ci| resolve_client_ip(ci.0, req.headers()))
+        .unwrap_or_else(|| "127.0.0.1".parse().unwrap());
 
     if !limiter.try_consume(ip).await {
         return (
