@@ -231,6 +231,102 @@ Spans skip `password`, `jwt_secret`, `new_password`, `current_password`, `token`
 
 **Risk:** None until acted on. Listing here so the fix doesn't get lost.
 
+---
+
+## F06 — drop stale channel subscriptions when a user is kicked/banned
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-api/src/ws/gateway.rs` (`ConnectedClient.channel_servers`, `subscribe(session, channel, server_id)`, `revoke_server_for_user` drops stale channels)
+- `jolkr-server/crates/jolkr-api/src/ws/handler.rs` (Subscribe branch looks up channel→server and passes through)
+
+**Why:** `revoke_server_for_user` removed the server-level subscription but left `subscribed_channels` untouched — the open WS kept receiving `MessageCreate` etc. from the revoked server until the client reconnected. Now each subscription records the owning `server_id` (None for DMs), and revoke walks that map to drop stale channels alongside the server.
+
+Per the audit's gated decision the caller-side lookup was chosen — the WS handler does `ChannelRepo::get_by_id` before `gateway.subscribe`, keeping the gateway API synchronous (less invasive than an async variant).
+
+**Risk if rolled back:** Kicked/banned users keep getting channel events on their existing WS.
+
+---
+
+## F07 — port chat-WS controls to the voice signaling WebSocket
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-media/Cargo.toml` (add `redis` workspace dep + `dashmap = "6"`)
+- `jolkr-server/crates/jolkr-media/src/config.rs` (add `redis_url`)
+- `jolkr-server/crates/jolkr-media/src/main.rs` (connect Redis, switch to `into_make_service_with_connect_info::<SocketAddr>()`, pass `redis` into `VoiceState`)
+- `jolkr-server/crates/jolkr-media/src/signaling.rs` (per-IP cap, token-bucket rate limit, heartbeat timeout, blacklist check)
+
+**Why:** Voice WS had none of the controls the chat WS has — revoked JWTs kept working, logout didn't kick voice users, and there was no IP cap, no per-connection rate limit, and no zombie-socket timeout. All four controls are now present with identical numbers (`MAX_WS_PER_IP=10`, 30 msg/sec burst 30, 90 s heartbeat). Blacklist check fails CLOSED on Redis errors, mirroring F11. `Claims` now carries `jti` for the lookup.
+
+**Risk if rolled back:** Voice WS reverts to no IP cap / no rate limit / no zombie timeout / no token revocation.
+
+---
+
+# Status — completed this session
+
+| ID | Severity | Status |
+|----|----------|--------|
+| F01 | CRITICAL | **Deferred** — see "Open decisions" below |
+| F02 | CRITICAL | ✅ committed |
+| F03 | HIGH | ✅ committed |
+| F04 | HIGH | ✅ committed |
+| F05 | HIGH | ✅ committed |
+| F06 | HIGH | ✅ committed |
+| F07 | HIGH | ✅ committed |
+| F08 | HIGH | ✅ committed (server-channel path; `DmService::edit_message` flagged as follow-up) |
+| F09 | MEDIUM | ✅ committed |
+| F10 | MEDIUM | ✅ committed |
+| F11 | MEDIUM | ✅ committed |
+| F12 | MEDIUM | ✅ phase 1 committed; phase 2 (Ed25519/RS256) deferred per audit |
+| F13 | MEDIUM | ✅ committed |
+| F14 | MEDIUM | ✅ committed (resolver-only; enum-everywhere migration deferred — >5 files) |
+| F15 | LOW | ✅ committed |
+| F16 | LOW | ✅ committed |
+| F17 | LOW | ✅ committed |
+| F18 | LOW | ✅ documented (no soft-delete in this codebase) |
+| F19 | LOW | ✅ committed |
+| F20 | LOW | ✅ documented (no allowlist change needed) |
+| F21 | LOW | **Deferred** — see "Open decisions" |
+| F22 | LOW | ✅ audit list produced; fix awaiting decision |
+
+# Open decisions — please answer before next session
+
+1. **F01 (CRITICAL) — voice/SFU authorization token shape**
+   - Implementation is fully gated. Two viable paths for the wire change:
+     - **Add an optional `voice_token: Option<String>` field to the existing `VoiceClientEvent::Join`** — backwards-compatible for older clients (they fail auth-loud) and FE only needs a one-line change.
+     - **Introduce `VoiceClientEvent::JoinV2 { ... }`** — keeps `Join` unchanged forever and lets old clients hit a clean "unknown op" rejection.
+   - Either is fine; the audit prompt explicitly defers the choice to you.
+   - **Also confirm:** should `POST /api/voice/token` accept `channel_id` for *both* server channels and DM voice rooms, or two separate endpoints?
+
+2. **F21 — password policy**
+   - Keep the existing composition rules (8 chars, upper + lower + digit), or switch to length-only (min 12) plus a HaveIBeenPwned k-anonymity lookup at registration/password-change?
+   - The HIBP path adds an outbound HTTPS call per password change; the composition path is what's already in `services/auth.rs::validate_password`.
+
+3. **F22 — apply the four `#[tracing::instrument]` skips?**
+   - Four functions in `services/auth.rs` log `email` (and one logs `username`) by default. Adding `skip(email)` / `skip(email, username)` is 4 one-line edits. Go / no-go?
+
+4. **F04 follow-up — suspicious-login email**
+   - When N distinct subnets fail a login for one email in window W, should we email the user? Wiring exists for `send_password_reset` etc., so this is mostly a router decision. Default off until you confirm.
+
+5. **F08 follow-up — `DmService::edit_message` authz parity**
+   - `services/dm.rs::edit_message` has the same author-only check that F08 fixed on the server-channel side. Mirror the membership check there too?
+
+6. **F14 follow-up — `OverwriteTarget` enum-everywhere**
+   - Resolver-side comparison is locked down. Migrating `channel_overwrites.rs` (writes) + ~10 callers to take `OverwriteTarget` instead of `&str` would close the typo window at write time too — but exceeds the 5-file gate and was deferred. Worth doing as a separate PR?
+
+7. **F12 phase 2 — JWT key rotation to Ed25519/RS256**
+   - Deferred per audit instruction. Bigger lift (key generation, rotation procedure, public-key endpoint for the voice server). Schedule when you want.
+
+# Final state
+
+- Branch: `security/audit-2026-05` (not pushed)
+- 18 finding commits + 4 doc/bookkeeping commits + 1 chore = 23 commits
+- Workspace `cargo clippy --workspace -- -D warnings` clean
+- `cargo test --workspace` clean (7 new client_ip unit tests + 2 new auth dummy-hash unit tests pass)
+- Frontend `tsc -b` clean (only F20 + F10 touched FE; no codegen drift)
+- No DB migrations, no public API shape changes, no WS payload changes (only recipient narrowing)
+- No push performed — awaiting your review of the branch.
+
+
 
 
 
