@@ -265,7 +265,15 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 if let Some(sid) = session_id {
                     if let Some(uid) = user_id {
                         if can_access_channel(&state, uid, channel_id).await {
-                            state.gateway.subscribe(&sid, channel_id);
+                            // Look up the owning server (None for DM channels) so
+                            // revoke_server_for_user can drop this subscription on
+                            // kick/ban. Caller-side lookup keeps gateway::subscribe
+                            // synchronous (F06).
+                            let server_id = ChannelRepo::get_by_id(&state.pool, channel_id)
+                                .await
+                                .ok()
+                                .map(|c| c.server_id);
+                            state.gateway.subscribe(&sid, channel_id, server_id);
                         } else {
                             drop(tx.try_send(GatewayEvent::Error {
                                 message: "Cannot subscribe: no access to channel".to_string(),

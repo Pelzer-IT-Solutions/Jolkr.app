@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use dashmap::DashMap;
@@ -19,6 +19,11 @@ pub struct ConnectedClient {
     pub session_id: Uuid,
     /// Channels this client is subscribed to.
     pub subscribed_channels: HashSet<Uuid>,
+    /// channel_id → server_id for entries in `subscribed_channels` that belong
+    /// to a server channel (DM channels are absent). Lets `revoke_server_for_user`
+    /// drop stale channel subscriptions on kick/ban; otherwise the WS would keep
+    /// receiving MessageCreate etc. until the client reconnects.
+    pub channel_servers: HashMap<Uuid, Uuid>,
     /// Servers this client is a member of (auto-subscribed on Identify).
     pub subscribed_servers: HashSet<Uuid>,
     /// Sender half for pushing events to the client's WebSocket write loop.
@@ -54,6 +59,7 @@ impl GatewayState {
                 user_id,
                 session_id,
                 subscribed_channels: HashSet::new(),
+                channel_servers: HashMap::new(),
                 subscribed_servers: HashSet::new(),
                 tx,
             },
@@ -67,10 +73,15 @@ impl GatewayState {
         }
     }
 
-    /// Subscribe a client to a channel's events.
-    pub fn subscribe(&self, session_id: &Uuid, channel_id: Uuid) {
+    /// Subscribe a client to a channel's events. `server_id` is required for
+    /// server channels so the subscription can be revoked on kick/ban; pass
+    /// `None` for DM channels (no server scope).
+    pub fn subscribe(&self, session_id: &Uuid, channel_id: Uuid, server_id: Option<Uuid>) {
         if let Some(mut client) = self.clients.get_mut(session_id) {
             client.subscribed_channels.insert(channel_id);
+            if let Some(sid) = server_id {
+                client.channel_servers.insert(channel_id, sid);
+            }
         }
     }
 
@@ -78,6 +89,7 @@ impl GatewayState {
     pub fn unsubscribe(&self, session_id: &Uuid, channel_id: Uuid) {
         if let Some(mut client) = self.clients.get_mut(session_id) {
             client.subscribed_channels.remove(&channel_id);
+            client.channel_servers.remove(&channel_id);
         }
     }
 
@@ -103,13 +115,22 @@ impl GatewayState {
     }
 
     /// Revoke a user's server subscription across all their sessions (e.g. on kick/ban).
+    /// Also drops any channel subscriptions that belong to the revoked server so
+    /// the still-open WS doesn't keep receiving MessageCreate / etc. from
+    /// channels the user no longer has access to.
     pub fn revoke_server_for_user(&self, user_id: Uuid, server_id: Uuid) {
         for mut entry in self.clients.iter_mut() {
             let client = entry.value_mut();
             if client.user_id == user_id {
                 client.subscribed_servers.remove(&server_id);
-                // Also remove any channel subscriptions for that server
-                // (channels will be checked on next subscribe anyway)
+                let stale: Vec<Uuid> = client.channel_servers.iter()
+                    .filter(|(_, &owning_server)| owning_server == server_id)
+                    .map(|(&channel, _)| channel)
+                    .collect();
+                for channel in stale {
+                    client.subscribed_channels.remove(&channel);
+                    client.channel_servers.remove(&channel);
+                }
             }
         }
     }
