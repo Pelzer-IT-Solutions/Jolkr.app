@@ -627,6 +627,27 @@ impl MessageService {
             return Err(JolkrError::Forbidden);
         }
 
+        // Re-check channel access. Authorship alone isn't enough: a member who's
+        // been kicked or banned still holds a valid JWT until expiry and could
+        // PATCH old messages, which then broadcast as MessageUpdate. Owner bypass
+        // mirrors delete_message. (DM messages flow through DmService, not here.)
+        let channel = ChannelRepo::get_by_id(pool, msg.channel_id).await?;
+        let server = ServerRepo::get_by_id(pool, channel.server_id).await?;
+        if server.owner_id != caller_id {
+            let member = MemberRepo::get_member(pool, channel.server_id, caller_id)
+                .await
+                .map_err(|e| {
+                    tracing::warn!(?e, server_id = %channel.server_id, caller_id = %caller_id, "member lookup failed while editing message");
+                    JolkrError::Forbidden
+                })?;
+            let ch_perms = RoleRepo::compute_channel_permissions(
+                pool, channel.server_id, msg.channel_id, member.id,
+            ).await?;
+            if !Permissions::from(ch_perms).has(Permissions::VIEW_CHANNELS) {
+                return Err(JolkrError::Forbidden);
+            }
+        }
+
         let content = req.content.trim().to_owned();
         if content.is_empty() {
             return Err(JolkrError::Validation("Content cannot be empty".into()));
