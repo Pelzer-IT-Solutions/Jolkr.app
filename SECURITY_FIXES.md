@@ -150,5 +150,87 @@ Progress is tracked in [.claude/plans/audit-2026-05-18-security-fixes.md](.claud
 
 **Risk if rolled back:** Comment lost, future maintainer may inadvertently drop `style` and break inline rendering.
 
+---
+
+## F02 — narrow channel-scoped event broadcasts to permitted recipients
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-api/src/ws/gateway.rs` (new `broadcast_to_channel_visible` + private `compute_allowed_user_ids`)
+- `jolkr-server/crates/jolkr-api/src/nats_bus.rs` (`spawn_subscriber` now takes `PgPool`; server-arm branches on event variant)
+- `jolkr-server/crates/jolkr-api/src/main.rs` (passes `pool.clone()` into `spawn_subscriber`)
+
+**Why:** `ChannelCreate` / `ChannelUpdate` / `ChannelDelete` / `ChannelPermissionUpdate` were `publish_to_server` → server-wide fan-out, leaking the channel name/topic/permissions to every member regardless of `VIEW_CHANNELS`. Now the NATS subscriber branches on those four variants and calls the new helper which batch-resolves perms via `compute_channel_permissions_for_all_members` and only delivers to allowed sessions. Helper falls back to `broadcast_to_server` on DB lookup failure (safe — affected events carry only IDs after channel delete). Event payloads unchanged; only the recipient set narrows.
+
+**Risk if rolled back:** Private channel metadata leak returns.
+
+---
+
+## F04 — login lockout keyed on `(email, ip_subnet)`
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-api/src/routes/auth.rs` (new `ip_subnet_key` helper, `check`/`record`/`clear_login_lockout` take subnet, `login` uses `resolve_client_ip` from F19)
+
+**Why:** Lockout keyed on email alone was a one-line targeted DoS — anyone knowing the address could trip the counter from any IP. Bucketing by `/24` (v4) / `/64` (v6) instead pins an attacker to a reasonable scope without locking out an entire NAT for one user. The "notify by email when N subnets hit one address in window W" side of the audit is left as a TODO comment in code pending user decision before adding outbound mail.
+
+**Risk if rolled back:** Targeted account-lockout DoS returns.
+
+---
+
+## F09 — per-target prekey-bundle quota
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-api/src/routes/keys.rs` (new `check_prekey_fetch_quota`, both bundle GET handlers call it)
+
+**Why:** Each prekey fetch consumes one of the target's one-time prekeys. With no per-target rate limit, an authenticated requester could drain a victim's pool. Redis key `prekey_fetch:{requester}:{target}` capped at 5/day per pair; over-cap returns HTTP 429 via the `RateLimited` variant introduced in F15.
+
+**Risk if rolled back:** Per-target prekey pool can be drained.
+
+---
+
+## F10 — CSP `connect-src` no longer accepts arbitrary HTTPS
+
+**Files changed:**
+- `jolkr-app/src-tauri/tauri.conf.json` (replace `https:` with explicit `https://jolkr.app https://*.jolkr.app`)
+
+**Why:** The bare `https:` glob in `connect-src` let post-XSS code exfiltrate to any HTTPS origin. Verified by grepping `jolkr-app/src` for outbound fetch/XHR/WS targets — the FE proxies all third-party content through `/api/*`, so the explicit jolkr.app pair is sufficient. Embed providers (YouTube, Vimeo, etc.) load into iframes governed by `frame-src` and are unaffected.
+
+**Risk if rolled back:** Unrestricted HTTPS exfiltration channel returns.
+
+---
+
+## F14 — typed `OverwriteTarget` enum in the permission resolver
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-common/src/types.rs` (new `OverwriteTarget` enum + `as_str`/`from_text`)
+- `jolkr-server/crates/jolkr-db/src/repo/roles.rs` (`apply_overwrites` parses `target_type` via `from_text`)
+
+**Why:** `apply_overwrites` compared `o.target_type == "role"` / `"member"` directly. A typo or case-drifted row (`"Role"`, `"ROLE"`) silently failed to match and the overwrite was dropped — a privilege escalation in either direction. The resolver now parses via `OverwriteTarget::from_text`; unknown values yield `None` and the overwrite is skipped explicitly (loud).
+
+Scoped per audit guidance: DB column stays TEXT (no schema change), no `CHECK` constraint, the migration of `channel_overwrites.rs` + ~10 callers to take `OverwriteTarget` instead of `&str` exceeds the 5-file gate and is deferred.
+
+**Risk if rolled back:** Case drift / typos in `target_type` silently drop overwrites.
+
+---
+
+## F22 — PII in `#[tracing::instrument]` spans (audit list, no fix yet)
+
+**Files inspected:** all `jolkr-server/crates/*/src/**/*.rs`. No code change in this commit — the audit asked to "produce a list and ASK before changing more than a handful."
+
+**Findings (high-confidence PII captured by tracing spans):**
+
+| File | Function | PII captured |
+|------|----------|--------------|
+| `jolkr-core/src/services/auth.rs` | `register(_, _, email, username, _)` | `email`, `username` |
+| `jolkr-core/src/services/auth.rs` | `login(_, _, email, _)` | `email` |
+| `jolkr-core/src/services/auth.rs` | `reset_password(_, email, _)` | `email` |
+| `jolkr-core/src/services/auth.rs` | `request_password_reset(_, email)` | `email` |
+
+Spans skip `password`, `jwt_secret`, `new_password`, `current_password`, `token` correctly. `email` / `username` are scalar `&str` args and are captured by default. A one-line `skip(...)` extension on each of these four `#[tracing::instrument]` attributes removes the leak. **No code change yet — awaiting user decision on whether to land all four in one sweep or pick a subset.**
+
+`jolkr-core/src/services/user.rs` was inspected separately — `update_me`/`update_profile`/`search_users` already `skip(req)` / `skip(query)`, so user-supplied PII inside those structs/queries isn't logged.
+
+**Risk:** None until acted on. Listing here so the fix doesn't get lost.
+
+
 
 
