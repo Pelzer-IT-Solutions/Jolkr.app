@@ -22,5 +22,16 @@ Progress is tracked in [.claude/plans/audit-2026-05-18-security-fixes.md](.claud
 
 **Risk if rolled back:** Two copies of IP-resolution logic come back; subsequent F04 lockout-by-(email,ip) fix would also need to be reverted.
 
-**Commit:** _filled after commit_
+**Commit:** see `git log --grep "security(F19)"`.
+
+---
+
+## F03 — equalize login timing with precomputed dummy hash
+
+**Files changed:**
+- `jolkr-server/crates/jolkr-core/src/services/auth.rs` (add `DUMMY_PASSWORD_HASH`, rewrite `login`, two unit tests)
+
+**Why:** `login()` returned immediately on unknown email but ran Argon2 on known emails — the ~100 ms gap leaked which emails were registered. Now `login()` always calls `verify_password` against either the real hash or a precomputed dummy Argon2 hash, so both paths cost the same. Dummy hash is built once at startup via `LazyLock`.
+
+**Risk if rolled back:** Email enumeration via login timing returns.
 
