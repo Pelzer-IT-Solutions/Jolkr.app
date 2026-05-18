@@ -213,7 +213,11 @@ struct Claims {
 
 fn validate_jwt(secret: &str, token: &str) -> Result<Claims, String> {
     let key = jsonwebtoken::DecodingKey::from_secret(secret.as_bytes());
-    let validation = jsonwebtoken::Validation::default();
+    // Pin the algorithm — Validation::default() can be permissive about which
+    // algorithms it accepts; mirror what the API server's AuthService does so
+    // a token forged for another algorithm can't slip through here.
+    let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
+    validation.validate_exp = true;
     jsonwebtoken::decode::<Claims>(token, &key, &validation)
         .map(|data| data.claims)
         .map_err(|e| e.to_string())
