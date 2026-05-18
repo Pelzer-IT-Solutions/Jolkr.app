@@ -410,7 +410,9 @@ impl AuthService {
         device_id: Option<Uuid>,
     ) -> Result<TokenPair, JolkrError> {
         let now = Utc::now();
-        let access_exp = now + Duration::hours(24);
+        // 1 h cap on the access token. Refresh token is the long-lived credential
+        // (30 d) and is sender-bound via SHA-256 hash lookup in the sessions table.
+        let access_exp = now + Duration::hours(1);
         let refresh_exp = now + Duration::days(30);
 
         // Build access token
@@ -437,7 +439,7 @@ impl AuthService {
         Ok(TokenPair {
             access_token,
             refresh_token,
-            expires_in: 86400, // 24 hours in seconds
+            expires_in: 3600, // 1 hour in seconds — keep in sync with access_exp
         })
     }
 
