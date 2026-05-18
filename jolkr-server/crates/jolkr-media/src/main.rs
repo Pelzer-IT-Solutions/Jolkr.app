@@ -103,10 +103,18 @@ async fn main() {
         })
         .expect("Failed to spawn SFU thread");
 
+    // ── Redis (for F07 token blacklist + per-IP/per-conn limits) ───────
+    let redis_client = redis::Client::open(config.redis_url.as_str())
+        .expect("REDIS_URL must be a valid redis:// URL");
+    let redis_conn = redis::aio::ConnectionManager::new(redis_client)
+        .await
+        .expect("Failed to connect to Redis for voice WS blacklist checks");
+
     // ── Voice WebSocket state ───────────────────────────────────────────
     let voice_state = VoiceState {
         sfu_tx,
         jwt_secret: config.jwt_secret,
+        redis: redis_conn,
     };
 
     // ── Axum HTTP/WS server ─────────────────────────────────────────────
@@ -126,9 +134,15 @@ async fn main() {
         .await
         .expect("Failed to bind HTTP listener");
 
-    axum::serve(listener, app.into_make_service())
-        .await
-        .expect("Media server error");
+    // `into_make_service_with_connect_info` is required so the WS upgrade
+    // handler can extract the client peer address — needed for the per-IP
+    // connection cap (F07).
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .expect("Media server error");
 }
 
 async fn health() -> &'static str {

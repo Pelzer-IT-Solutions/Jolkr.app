@@ -22,6 +22,9 @@ pub(crate) struct Config {
     /// MUST match the value used by jolkr-api so its subscriber will accept
     /// our published events.
     pub nats_hmac_secret: String,
+    /// Redis connection URL — used by the voice WS to honour token blacklist
+    /// entries written by /api/auth/logout (F07).
+    pub redis_url: String,
 }
 
 impl Config {
@@ -48,6 +51,8 @@ impl Config {
                 .expect("NATS_PASSWORD environment variable must be set"),
             nats_hmac_secret: std::env::var("NATS_HMAC_SECRET")
                 .expect("NATS_HMAC_SECRET environment variable must be set"),
+            redis_url: std::env::var("REDIS_URL")
+                .unwrap_or_else(|_| "redis://redis:6379".into()),
         }
     }
 }
