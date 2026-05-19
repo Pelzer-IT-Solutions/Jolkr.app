@@ -4,11 +4,10 @@
   background: var(--surface-raised);
   border: 1px solid var(--border-muted);
   border-radius: 0.5rem;
-  box-shadow: var(--shadow-tooltip, var(--shadow-elevation-large));
+  box-shadow: var(--popover-menu-shadow);
   padding: 0.25rem 0;
   min-width: 12.5rem;
   animation: dropdownEnter 120ms var(--ease-out-quart);
-  backdrop-filter: blur(8px);
 }
 
 .divider {

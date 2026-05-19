@@ -58,8 +58,6 @@
   transform: translateX(-50%);
   padding: 0.25rem 0.5rem;
   background: oklch(0% 0 0 / 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   color: oklch(100% 0 0);
   font-size: 0.625rem;
   font-weight: 500;

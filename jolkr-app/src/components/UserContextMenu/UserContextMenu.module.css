@@ -5,19 +5,13 @@
 
 .menu {
   position: fixed;
-  background-image: var(--surface-raised);
-  background-color: var(--bg-shout);
+  background: var(--menu-bg);
+  border: 1px solid var(--border-muted);
   border-radius: 0.875rem;
   padding: 0.25rem;
   min-width: 14rem;
   max-width: 18rem;
-  box-shadow:
-    0 0 0 1px var(--jolkr-neutral-dark-4),
-    0 4px 6px -2px var(--jolkr-neutral-dark-4),
-    0 16px 28px -8px var(--jolkr-neutral-dark-8),
-    0 24px 40px -12px var(--jolkr-neutral-dark-12);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--popover-menu-shadow);
   z-index: var(--z-context-menu);
   animation: popIn 120ms var(--ease-out-quart) both;
   overflow: hidden;
@@ -63,7 +57,7 @@
   width: 0.625rem;
   height: 0.625rem;
   border-radius: 50%;
-  border: 2px solid var(--bg-shout);
+  border: 2px solid var(--menu-bg);
 }
 .online  { background: #3ba55c; }
 .idle    { background: #faa61a; }

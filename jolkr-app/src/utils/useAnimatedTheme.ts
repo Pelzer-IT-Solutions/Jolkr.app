@@ -5,6 +5,9 @@ import type React from 'react'
 
 const DURATION = 1200
 
+/** Maximum neutral chrominance applied to chrome surfaces when themed (oklch C). Intensity lerps [0→1]. */
+const NEUTRAL_WASH_MAX = 0.0085
+
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 }
@@ -102,6 +105,8 @@ function buildBg(st: ThemeSnap, dark: boolean): string {
 
 const ROOT_KEYS = [
   '--theme-hue',
+  '--theme-neutral-c',
+  '--theme-intensity',
   '--accent',
   '--accent-muted',
   '--accent-strong',
@@ -114,17 +119,20 @@ const ROOT_KEYS = [
  * color with no intermediate hues.
  */
 function computeTokens(st: ThemeSnap, dark: boolean, targetHue?: number): Record<string, string> {
-  const h   = targetHue ?? st.baseHue
-  const acC = 0.18 * st.intensity
-  const atC = 0.14 * st.intensity
-  const atL = dark ? 72 : 42 - 4 * st.intensity
+  const h           = targetHue ?? st.baseHue
+  const acC         = 0.18 * st.intensity
+  const atC         = 0.14 * st.intensity
+  const atL         = dark ? 72 : 42 - 4 * st.intensity
+  const neutralWash = (st.intensity * NEUTRAL_WASH_MAX).toFixed(5)
 
   return {
-    '--theme-hue':     String(h),
-    '--accent':        `oklch(55% ${acC.toFixed(4)} ${h})`,
-    '--accent-muted':  `oklch(55% ${acC.toFixed(4)} ${h} / 0.12)`,
-    '--accent-strong': `oklch(55% ${acC.toFixed(4)} ${h} / 0.24)`,
-    '--accent-text':   `oklch(${atL.toFixed(1)}% ${atC.toFixed(4)} ${h})`,
+    '--theme-hue':        String(h),
+    '--theme-neutral-c':  neutralWash,
+    '--theme-intensity':  String(st.intensity),
+    '--accent':           `oklch(55% ${acC.toFixed(4)} ${h})`,
+    '--accent-muted':     `oklch(55% ${acC.toFixed(4)} ${h} / 0.12)`,
+    '--accent-strong':    `oklch(55% ${acC.toFixed(4)} ${h} / 0.24)`,
+    '--accent-text':      `oklch(${atL.toFixed(1)}% ${atC.toFixed(4)} ${h})`,
   }
 }
 

@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-call-dialog);
-  background: var(--overlay-backdrop);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;

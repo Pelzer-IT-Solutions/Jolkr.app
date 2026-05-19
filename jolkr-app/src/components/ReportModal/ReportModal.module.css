@@ -1,12 +1,11 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: var(--overlay-backdrop);
+  background: var(--overlay);
   z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(2px);
 }
 
 .modal {

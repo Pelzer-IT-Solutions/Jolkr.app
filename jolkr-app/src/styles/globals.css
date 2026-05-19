@@ -55,13 +55,17 @@ svg { display: block; flex-shrink: 0; }
 .color-mode-transition *,
 .color-mode-transition *::before,
 .color-mode-transition *::after {
+  /* Border and box-shadow are omitted on purpose: most chrome uses
+     background-image (--main-shell-glass, gradients) which does not tween the
+     same way as border-color / shadow during L↔D. Animating strokes while images
+     snap reads as borders “lagging” behind fills. Solid fills still ease via
+     background-color below. */
   transition:
-    background-color 300ms ease,
-    border-color     300ms ease,
-    box-shadow       300ms ease,
-    color            200ms ease,
-    fill             200ms ease,
-    stroke           200ms ease !important;
+    background-color 280ms ease,
+    opacity          280ms ease,
+    color            220ms ease,
+    fill             220ms ease,
+    stroke           220ms ease !important;
 }
 
 /* ─── Scrollbar styling ─── */
