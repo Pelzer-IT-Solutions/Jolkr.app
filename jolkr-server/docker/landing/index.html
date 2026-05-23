@@ -5,8 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jolkr - Chat freely. Stay private.</title>
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
   <meta name="description"
     content="Jolkr is a privacy-first chat platform where your conversations stay yours. End-to-end encrypted messaging with zero data collection.">
   <meta name="theme-color" content="#e7ecec" media="(prefers-color-scheme: light)">
@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600&family=Uncial+Antiqua&display=swap"
     rel="stylesheet">
   <style>
     *,
@@ -25,7 +25,7 @@
       box-sizing: border-box;
     }
 
-    /* Tokens mirror jolkr-app/src/styles/tokens.css — default theme-hue 182 (Jolkr teal).
+    /* Tokens mirror jolkr-app surface/text scales; accent from icon.svg olive green.
        Light mode is the default; dark mode follows the OS preference. */
     :root {
       color-scheme: light dark;
@@ -46,12 +46,16 @@
       --text-secondary: oklch(25.42% 0.004 var(--theme-hue) / 0.7);
       --text-tertiary:  oklch(25.42% 0.004 var(--theme-hue) / 0.4);
 
-      /* Accent — theme-hue driven, identical to app --accent */
-      --accent:        oklch(55% 0.18 var(--theme-hue));
-      --accent-hover:  oklch(62% 0.18 var(--theme-hue));
-      --accent-muted:  oklch(55% 0.18 var(--theme-hue) / 0.12);
-      --accent-text:   oklch(38% 0.14 var(--theme-hue));
+      /* Accent — olive green from icon.svg radial gradient stops */
+      --accent:         #697B4B;
+      --accent-hover:   #788764;
+      --accent-muted:   color-mix(in srgb, var(--accent) 12%, transparent);
+      --accent-text:    #506823;
+      --accent-shadow:  color-mix(in srgb, var(--accent) 30%, transparent);
+      --accent-glow:    color-mix(in srgb, var(--accent) 35%, transparent);
       --text-on-accent: #fff;
+
+      --font-display: 'Uncial Antiqua', Georgia, 'Times New Roman', serif;
 
       /* Hover overlays for neutral surfaces */
       --hover-overlay: oklch(25.42% 0.004 var(--theme-hue) / 0.06);
@@ -65,15 +69,18 @@
       --radius-lg: 14px;
       --radius-xl: 20px;
       --radius-full: 999px;
+
+      --nav-bg: oklch(99% 0.004 var(--theme-hue) / 0.72);
+      --dot-color: oklch(25.42% 0.004 var(--theme-hue) / 0.12);
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
-        /* Surfaces — dark (app surface-nav / content / field / raised) */
-        --bg-primary:    oklch(11% 0.004 var(--theme-hue));
-        --bg-secondary:  oklch(14% 0.004 var(--theme-hue));
-        --bg-surface:    oklch(18% 0.004 var(--theme-hue));
-        --bg-raised:     oklch(21% 0.004 var(--theme-hue));
+        /* Surfaces — dark, anchored to #141414 */
+        --bg-primary:    #141414;
+        --bg-secondary:  #1a1a1a;
+        --bg-surface:    #202020;
+        --bg-raised:     #262626;
 
         /* Borders — near-white at low alpha */
         --border-primary: oklch(99% 0.004 var(--theme-hue) / 0.16);
@@ -85,7 +92,7 @@
         --text-tertiary:  oklch(99% 0.004 var(--theme-hue) / 0.4);
 
         /* Accent-text brightened in dark for readability */
-        --accent-text:   oklch(72% 0.14 var(--theme-hue));
+        --accent-text:   #B5C49A;
 
         /* Hover overlays for neutral surfaces */
         --hover-overlay: oklch(99% 0.004 var(--theme-hue) / 0.08);
@@ -93,6 +100,9 @@
 
         /* Card / button lift shadow (heavier in dark) */
         --shadow-card: 0 4px 16px oklch(0% 0 0 / 0.35);
+
+        --nav-bg: rgb(20 20 20 / 0.75);
+        --dot-color: rgba(255, 255, 255, 0.07);
       }
     }
 
@@ -111,6 +121,45 @@
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 160vh;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px),
+        radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px);
+      background-size: 28px 48px;
+      background-position: 0 0, 14px 24px;
+      -webkit-mask-image: radial-gradient(ellipse 100% 90% at 50% 0%, black 0%, transparent 88%);
+      mask-image: radial-gradient(ellipse 100% 90% at 50% 0%, black 0%, transparent 88%);
+    }
+
+    html::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 200px 200px;
+      opacity: 0.03;
+      mix-blend-mode: overlay;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html::after {
+        opacity: 0.05;
+        mix-blend-mode: screen;
+      }
     }
 
     ::-webkit-scrollbar {
@@ -225,70 +274,98 @@
       height: 28px;
     }
 
-    /* ─── Nav ─── */
-    nav {
+    /* ─── Floating pill nav ─── */
+    .nav-wrap {
       position: sticky;
-      top: 0;
+      top: 14px;
       z-index: 50;
       display: flex;
+      justify-content: center;
+      padding: 0 16px;
+      pointer-events: none;
+    }
+
+    .nav {
+      pointer-events: auto;
+      display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 16px 48px;
-      background: var(--bg-primary);
-      border-bottom: 1px solid var(--border-primary);
+      gap: 6px;
+      padding: 5px 6px 5px 12px;
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-full);
+      background: var(--nav-bg);
+      backdrop-filter: blur(18px) saturate(1.15);
+      -webkit-backdrop-filter: blur(18px) saturate(1.15);
+      box-shadow: var(--shadow-card);
     }
 
     .nav-brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 7px;
+      padding-right: 10px;
+      margin-right: 4px;
+      border-right: 1px solid var(--border-subtle);
     }
 
     .nav-brand img {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
+      width: 20px;
+      height: 20px;
+      border-radius: 24%;
     }
 
     .nav-brand span {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
       color: var(--text-primary);
     }
 
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 32px;
+      gap: 2px;
     }
 
     .nav-links a {
-      font-size: 14px;
+      padding: 6px 11px;
+      font-size: 13px;
       font-weight: 500;
       color: var(--text-secondary);
-      transition: color 0.15s;
+      border-radius: var(--radius-full);
+      transition: color 0.15s, background 0.15s;
     }
 
     .nav-links a:hover {
       color: var(--text-primary);
+      background: var(--hover-overlay);
     }
 
     .nav-right {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 4px;
+      margin-left: 4px;
     }
 
     .nav-sign-in {
-      font-size: 14px;
+      padding: 6px 11px;
+      font-size: 13px;
       font-weight: 500;
       color: var(--text-secondary);
+      border-radius: var(--radius-full);
       transition: color 0.15s;
     }
 
     .nav-sign-in:hover {
       color: var(--text-primary);
+    }
+
+    .nav .btn-accent {
+      padding: 7px 14px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
     }
 
     .btn-accent {
@@ -309,7 +386,7 @@
     .btn-accent:hover {
       background: var(--accent-hover);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px oklch(55% 0.18 var(--theme-hue) / 0.3);
+      box-shadow: 0 4px 12px var(--accent-shadow);
     }
 
     .btn-accent:active {
@@ -356,7 +433,8 @@
     .hero-icon {
       width: 64px;
       height: 64px;
-      filter: drop-shadow(0 20px 60px oklch(55% 0.18 var(--theme-hue) / 0.3));
+      border-radius: 24%;
+      filter: drop-shadow(0 20px 60px var(--accent-shadow));
     }
 
     .hero-heading {
@@ -367,17 +445,19 @@
     }
 
     .hero-heading h1 {
+      font-family: var(--font-display);
       font-size: 56px;
-      font-weight: 800;
-      letter-spacing: -1.5px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
       line-height: 1.1;
       color: var(--text-primary);
     }
 
     .hero-heading .accent-line {
+      font-family: var(--font-display);
       font-size: 56px;
-      font-weight: 800;
-      letter-spacing: -1.5px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
       line-height: 1.1;
       color: var(--accent);
     }
@@ -404,7 +484,7 @@
       padding: 14px 28px;
       background: var(--accent);
       color: var(--text-on-accent);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-full);
       font-weight: 600;
       font-size: 15px;
       font-family: inherit;
@@ -416,7 +496,7 @@
     .btn-cta-primary:hover {
       background: var(--accent-hover);
       transform: translateY(-1px);
-      box-shadow: 0 4px 16px oklch(55% 0.18 var(--theme-hue) / 0.35);
+      box-shadow: 0 4px 16px var(--accent-glow);
     }
 
     .btn-cta-primary:active {
@@ -431,7 +511,7 @@
       background: var(--bg-surface);
       color: var(--text-primary);
       border: 1px solid var(--border-primary);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-full);
       font-weight: 500;
       font-size: 15px;
       font-family: inherit;
@@ -509,8 +589,10 @@
     }
 
     .section-title {
+      font-family: var(--font-display);
       font-size: 36px;
-      font-weight: 700;
+      font-weight: 400;
+      letter-spacing: 0.02em;
     }
 
     .section-subtitle {
@@ -547,7 +629,7 @@
     }
 
     .feature-card:hover {
-      border-color: oklch(55% 0.18 var(--theme-hue) / 0.35);
+      border-color: var(--accent-glow);
       box-shadow: var(--shadow-card);
       transform: translateY(-2px);
     }
@@ -559,6 +641,7 @@
     .feature-card h3 {
       font-size: 18px;
       font-weight: 600;
+      letter-spacing: -0.01em;
       color: var(--text-primary);
     }
 
@@ -580,8 +663,10 @@
     }
 
     .download-heading {
+      font-family: var(--font-display);
       font-size: 40px;
-      font-weight: 700;
+      font-weight: 400;
+      letter-spacing: 0.02em;
     }
 
     .download-subtitle {
@@ -607,7 +692,7 @@
       background: var(--bg-surface);
       color: var(--text-primary);
       border: 1px solid var(--border-primary);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-full);
       font-size: 15px;
       font-weight: 500;
       font-family: inherit;
@@ -688,8 +773,10 @@
     }
 
     .oss-card h2 {
+      font-family: var(--font-display);
       font-size: 32px;
-      font-weight: 700;
+      font-weight: 400;
+      letter-spacing: 0.02em;
     }
 
     .oss-card p {
@@ -706,7 +793,7 @@
       padding: 14px 28px;
       background: var(--accent);
       color: var(--text-on-accent);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-full);
       font-weight: 600;
       font-size: 15px;
       font-family: inherit;
@@ -718,7 +805,7 @@
     .btn-github:hover {
       background: var(--accent-hover);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px oklch(55% 0.18 var(--theme-hue) / 0.3);
+      box-shadow: 0 4px 12px var(--accent-shadow);
     }
 
     .btn-github:active {
@@ -775,8 +862,9 @@
 
     /* ─── Responsive ─── */
     @media (max-width: 768px) {
-      nav {
-        padding: 12px 16px;
+      .nav-wrap {
+        top: 10px;
+        padding: 0 12px;
       }
 
       .nav-links {
@@ -790,7 +878,7 @@
       .hero-heading h1,
       .hero-heading .accent-line {
         font-size: 36px;
-        letter-spacing: -1px;
+        letter-spacing: 0.015em;
       }
 
       .hero-subtitle {
@@ -800,7 +888,7 @@
       .hero-icon {
         width: 52px;
         height: 52px;
-        border-radius: 14px;
+        border-radius: 24%;
       }
 
       .stats-row {
@@ -872,10 +960,6 @@
     }
 
     @media (min-width: 769px) and (max-width: 1024px) {
-      nav {
-        padding: 16px 24px;
-      }
-
       .hero {
         padding: 60px 24px;
       }
@@ -912,19 +996,25 @@
 
 <body>
 
-  <nav>
-    <a href="/" class="nav-brand">
-      <img src="/icon.svg" alt="Jolkr" width="28" height="28">
-      <span>Jolkr</span>
-    </a>
-    <div class="nav-right">
-      <a href="/app" class="nav-sign-in">Sign In</a>
-      <a href="/app/register" class="btn-accent">Sign Up</a>
-    </div>
-  </nav>
+  <div class="nav-wrap">
+    <nav class="nav">
+      <a href="/" class="nav-brand">
+        <img src="icon.svg" alt="" width="20" height="20">
+        <span>Jolkr</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#downloads">Download</a>
+      </div>
+      <div class="nav-right">
+        <a href="/app" class="nav-sign-in">Sign In</a>
+        <a href="/app/register" class="btn-accent">Sign Up</a>
+      </div>
+    </nav>
+  </div>
 
   <main class="hero">
-    <img src="/icon.svg" alt="Jolkr" class="hero-icon animate-fade-up" width="64" height="64">
+    <img src="icon.svg" alt="" class="hero-icon animate-fade-up" width="64" height="64">
 
     <div class="hero-heading animate-fade-up delay-1">
       <h1>Chat freely.</h1>

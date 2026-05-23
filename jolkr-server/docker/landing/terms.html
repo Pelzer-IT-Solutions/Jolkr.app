@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jolkr - Terms of Service</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
   <meta name="description" content="Jolkr Terms of Service — the rules and guidelines for using the Jolkr platform.">
   <meta name="theme-color" content="#e7ecec" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#161a1a" media="(prefers-color-scheme: dark)">
@@ -24,7 +24,7 @@
       box-sizing: border-box;
     }
 
-    /* Tokens mirror jolkr-app/src/styles/tokens.css — default theme-hue 182 (Jolkr teal).
+    /* Tokens mirror jolkr-app surface/text scales; accent from icon.svg olive green.
        Light mode is the default; dark mode follows the OS preference. */
     :root {
       color-scheme: light dark;
@@ -44,10 +44,11 @@
       --text-secondary: oklch(25.42% 0.004 var(--theme-hue) / 0.7);
       --text-tertiary:  oklch(25.42% 0.004 var(--theme-hue) / 0.4);
 
-      /* Accent — theme-hue driven, identical to app --accent */
-      --accent:        oklch(55% 0.18 var(--theme-hue));
-      --accent-hover:  oklch(62% 0.18 var(--theme-hue));
-      --accent-muted:  oklch(55% 0.18 var(--theme-hue) / 0.12);
+      /* Accent — olive green from icon.svg radial gradient stops */
+      --accent:         #697B4B;
+      --accent-hover:   #788764;
+      --accent-muted:   color-mix(in srgb, var(--accent) 12%, transparent);
+      --accent-shadow:  color-mix(in srgb, var(--accent) 30%, transparent);
       --text-on-accent: #fff;
 
       --radius-md: 10px;
@@ -167,7 +168,7 @@
       background: var(--accent-hover);
       color: var(--text-on-accent);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px oklch(55% 0.18 var(--theme-hue) / 0.3);
+      box-shadow: 0 4px 12px var(--accent-shadow);
     }
 
     /* ─── Content ─── */
@@ -329,7 +330,7 @@
 
   <nav>
     <a href="/" class="nav-brand">
-      <img src="/icon.svg" alt="Jolkr" width="28" height="28">
+      <img src="icon.svg" alt="Jolkr" width="28" height="28">
       <span>Jolkr</span>
     </a>
     <div class="nav-right">
