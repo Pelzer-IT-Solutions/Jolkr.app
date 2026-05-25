@@ -88,8 +88,10 @@ async fn main() {
     // Build application state
     let gateway = ws::gateway::GatewayState::new();
 
-    // Spawn NATS → local gateway subscriber (distributes events from other instances)
-    nats.spawn_subscriber(gateway.clone());
+    // Spawn NATS → local gateway subscriber (distributes events from other instances).
+    // Needs the pool so the subscriber can narrow channel-scoped events to recipients
+    // who actually have VIEW_CHANNELS on the affected channel (see F02).
+    nats.spawn_subscriber(gateway.clone(), pool.clone());
 
     // Push notification service
     let push = push_service::PushService::new(

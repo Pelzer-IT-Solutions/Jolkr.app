@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -13,6 +15,15 @@ use uuid::Uuid;
 use jolkr_common::JolkrError;
 use jolkr_db::models::UserRow;
 use jolkr_db::repo::{EmailVerificationRepo, PasswordResetRepo, SessionRepo, UserRepo};
+
+/// Precomputed Argon2 hash used to equalize `login()` timing for unknown emails.
+/// Without this, login would respond ~1 ms for unknown emails vs ~100 ms for known
+/// ones (the Argon2 verify), leaking which addresses are registered. The plaintext
+/// here is irrelevant — we only ever compare against it, never expose it.
+static DUMMY_PASSWORD_HASH: LazyLock<String> = LazyLock::new(|| {
+    AuthService::hash_password("__jolkr-dummy-password-for-timing-equalization__")
+        .expect("startup: hashing dummy password must succeed")
+});
 
 // ── Public types ───────────────────────────────────────────────────────
 
@@ -148,19 +159,24 @@ impl AuthService {
         email: &str,
         password: &str,
     ) -> Result<(AuthUser, TokenPair), JolkrError> {
-        // -- Find user by email ------------------------------------------------
-        let user_row = UserRepo::get_by_email(pool, email).await.map_err(|e| {
-            warn!(?e, email = %email, "Login attempt for unknown email");
-            JolkrError::Unauthorized
-        })?;
+        // Always run Argon2 — against the real hash when the user exists, or against
+        // a precomputed dummy hash when they don't. Skipping the verify on unknown
+        // email would let an attacker enumerate registered addresses by timing.
+        let user_lookup = UserRepo::get_by_email(pool, email).await.ok();
+        let hash = user_lookup
+            .as_ref()
+            .map(|u| u.password_hash.as_str())
+            .unwrap_or(DUMMY_PASSWORD_HASH.as_str());
+        if Self::verify_password(password, hash).is_err() {
+            return Err(JolkrError::Unauthorized);
+        }
 
-        // -- Verify password ---------------------------------------------------
-        Self::verify_password(password, &user_row.password_hash)?;
+        // verify_password only succeeds against a real user's hash — the dummy hash
+        // doesn't match any real password. If we got here, user_lookup must be Some.
+        let user_row = user_lookup.ok_or(JolkrError::Unauthorized)?;
         info!(user_id = %user_row.id, "User logged in");
 
-        // -- Issue tokens -------------------------------------------------------
         let token_pair = Self::issue_tokens(pool, jwt_secret, user_row.id, None).await?;
-
         Ok((AuthUser::from(user_row), token_pair))
     }
 
@@ -394,7 +410,9 @@ impl AuthService {
         device_id: Option<Uuid>,
     ) -> Result<TokenPair, JolkrError> {
         let now = Utc::now();
-        let access_exp = now + Duration::hours(24);
+        // 1 h cap on the access token. Refresh token is the long-lived credential
+        // (30 d) and is sender-bound via SHA-256 hash lookup in the sessions table.
+        let access_exp = now + Duration::hours(1);
         let refresh_exp = now + Duration::days(30);
 
         // Build access token
@@ -421,7 +439,7 @@ impl AuthService {
         Ok(TokenPair {
             access_token,
             refresh_token,
-            expires_in: 86400, // 24 hours in seconds
+            expires_in: 3600, // 1 hour in seconds — keep in sync with access_exp
         })
     }
 
@@ -551,5 +569,26 @@ impl AuthService {
             ));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dummy_password_hash_is_valid_argon2() {
+        let h: &str = &DUMMY_PASSWORD_HASH;
+        assert!(h.starts_with("$argon2"), "expected Argon2 hash format, got {h:?}");
+    }
+
+    #[test]
+    fn dummy_password_hash_rejects_common_passwords() {
+        for candidate in ["", "password", "admin", "12345678", "letmein"] {
+            assert!(
+                AuthService::verify_password(candidate, &DUMMY_PASSWORD_HASH).is_err(),
+                "dummy hash unexpectedly validated against {candidate:?}"
+            );
+        }
     }
 }

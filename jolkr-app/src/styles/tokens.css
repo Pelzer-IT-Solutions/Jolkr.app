@@ -1,48 +1,124 @@
 /* ─── Design tokens ─── */
 :root {
-  /* ── Theme hue — drives the entire palette tint ── */
-  /* Overridden at runtime by useAnimatedTheme (synced to :root) */
+  /* ── Theme hue — drives accent + neutral hue wash ── */
+  /* Overridden at runtime by useAnimatedTheme & resetAuthTheme (synced :root). */
   --theme-hue: 182;
 
-  /* Base palette — tinted neutrals that respond to theme-hue */
-  /* Low chroma creates "neutral with character" - subtle tint matching the theme */
-  --jolkr-base-heavy:        oklch(87.92% 0.066 var(--theme-hue));
-  --jolkr-base-heavy-loud:   oklch(87.92% 0.066 var(--theme-hue) / 0.96);
-  --jolkr-base-heavy-strong: oklch(87.92% 0.066 var(--theme-hue) / 0.72);
-  --jolkr-base-heavy-muted:  oklch(87.92% 0.066 var(--theme-hue) / 0.4);
+  /* Theme intensity 0–1 — how much saturation the server theme applies to chrome.
+     Animated with server switches so neutral ↔ themed cross-fades feel continuous. */
+  --theme-intensity: 0;
+  /*
+   * Chrominance wash on neutrals (`oklch(L var(--theme-neutral-c) var(--theme-hue))`).
+   * 0 ⇒ true grayscale chrome; lerps toward NEUTRAL_WASH_MAX × intensity via JS.
+   */
+  --theme-neutral-c: 0;
 
-  --jolkr-base-light:         oklch(94.00% 0.032 var(--theme-hue));
-  --jolkr-base-light-loud:    oklch(94.00% 0.032 var(--theme-hue) / 0.96);
-  --jolkr-base-light-strong:  oklch(94.00% 0.032 var(--theme-hue) / 0.8);
-  --jolkr-base-light-default: oklch(94.00% 0.032 var(--theme-hue) / 0.7);
-  --jolkr-base-light-muted:   oklch(94.00% 0.032 var(--theme-hue) / 0.6);
+  /* ── Structural shell (light) — Figma simplified mock (node 511:1045)
+     Main pane & composer: translucent fill + layered highlight (no backdrop-blur — avoids GPU/layout issues). */
+  --app-bg:              oklch(93.5% var(--theme-neutral-c) var(--theme-hue));
 
-  /* Neutral dark scale — low chroma tinted greys */
-  --jolkr-neutral-dark-2:    oklch(25.42% 0.004 var(--theme-hue) / 0.02);
-  --jolkr-neutral-dark-4:    oklch(25.42% 0.004 var(--theme-hue) / 0.04);
-  --jolkr-neutral-dark-6:    oklch(25.42% 0.004 var(--theme-hue) / 0.06);
-  --jolkr-neutral-dark-8:    oklch(25.42% 0.004 var(--theme-hue) / 0.08);
-  --jolkr-neutral-dark-10:   oklch(25.42% 0.004 var(--theme-hue) / 0.1);
-  --jolkr-neutral-dark-16:   oklch(25.42% 0.004 var(--theme-hue) / 0.16);
-  --jolkr-neutral-dark-20:   oklch(25.42% 0.004 var(--theme-hue) / 0.2);
-  --jolkr-neutral-dark-30:   oklch(25.42% 0.004 var(--theme-hue) / 0.3);
-  --jolkr-neutral-dark-40:   oklch(25.42% 0.004 var(--theme-hue) / 0.4);
-  --jolkr-neutral-dark-50:   oklch(25.42% 0.004 var(--theme-hue) / 0.5);
-  --jolkr-neutral-dark-60:   oklch(25.42% 0.004 var(--theme-hue) / 0.6);
-  --jolkr-neutral-dark-70:   oklch(25.42% 0.004 var(--theme-hue) / 0.7);
-  --jolkr-neutral-dark-80:   oklch(25.42% 0.004 var(--theme-hue) / 0.8);
-  --jolkr-neutral-dark-90:   oklch(25.42% 0.004 var(--theme-hue) / 0.9);
-  --jolkr-neutral-dark-100:  oklch(25.42% 0.004 var(--theme-hue));
+  --main-bg-solid:       oklch(96%   var(--theme-neutral-c) var(--theme-hue));
+  --main-glass-fill:     oklch(100% var(--theme-neutral-c) var(--theme-hue) / 0.8);
+  --main-bg:             var(--main-glass-fill);
+  /* Top sheen (#fff / 2% → transparent) over translucent body */
+  --main-shell-glass:
+    linear-gradient(
+      to bottom,
+      oklch(100% 0 0 / 0.02) 0%,
+      oklch(100% 0 0 / 0) 100%
+    ),
+    linear-gradient(to right, var(--main-glass-fill), var(--main-glass-fill));
+  /* Hairline framing the frosted pane (Figma rgba(255,255,255,0.96) on light) */
+  --main-border:         oklch(100% 0 0 / 0.96);
+
+  --main-radius:         1rem;
+  --main-input-bg:       oklch(97.6% var(--theme-neutral-c) var(--theme-hue));
+  --main-input-border:   oklch(from var(--main-input-bg) calc(l - 0.08) calc(c + 0) h / 1);
+  --main-input-radius:   0.5rem;
+
+  /* Chat composer chips — rgba(255,255,255,0.06) wash over shared glass fill */
+  --composer-glass-highlight: oklch(100% 0 0 / 0.06);
+  --composer-shell-glass:
+    linear-gradient(90deg,
+      var(--composer-glass-highlight) 0%,
+      var(--composer-glass-highlight) 100%),
+    linear-gradient(to right, var(--main-glass-fill), var(--main-glass-fill));
+  /* Figma rgba(20,20,20,0.1) stroke on light */
+  --composer-input-border: oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.12);
+
+  --server-tab-bg:         transparent;
+  --server-tab-bg-active:  oklch(100% var(--theme-neutral-c) var(--theme-hue) / 0.8);
+  --server-tab-radius:     0.7rem;
+
+  --overlay:               oklch(38% var(--theme-neutral-c) var(--theme-hue) / 0.42);
+
+  --modal-sidebar-bg:      oklch(93%    var(--theme-neutral-c) var(--theme-hue));
+  --modal-bg:              oklch(99.25% var(--theme-neutral-c) var(--theme-hue));
+  --menu-bg:               var(--modal-bg);
+
+  /* Legacy surface names — aliases (defined after primitives they reference). */
+  --surface-nav:     var(--modal-sidebar-bg);
+  --surface-content: var(--main-bg-solid);
+  --surface-field:   var(--main-input-bg);
+  --surface-raised:  var(--modal-bg);
+
+  /* Portal menus — solid fill (same as message context menu); shadow uses black
+     alpha only — semantic neutrals invert in dark mode and would read as a light halo. */
+  --popover-menu-shadow:
+    0 0 0 1px oklch(0% 0 0 / 0.075),
+    0 4px 8px oklch(0% 0 0 / 0.08),
+    0 16px 32px oklch(0% 0 0 / 0.14);
+
+  /* Jolkr accent — overridden at runtime useAnimatedTheme → :root alongside wash */
+  --accent:        oklch(55% 0.18 var(--theme-hue));
+  --accent-muted:  oklch(55% 0.18 var(--theme-hue) / 0.12);
+  --accent-strong: oklch(55% 0.18 var(--theme-hue) / 0.24);
+  --accent-text:   oklch(38% 0.14 var(--theme-hue));
+
+  --button-primary-bg:        var(--accent);
+  --button-primary-content:   var(--text-on-accent);
+  --button-primary-bg-hover:    oklch(from var(--accent) calc(l - 0.05) c h / 1);
+  --button-primary-bg-active: oklch(from var(--accent) calc(l - 0.085) c h / 1);
+  --button-primary-bg-disabled: oklch(from var(--accent) l c h / 0.38);
+
+  /* ── Decorative bases — saturate only when themed (intensity > 0) ── */
+  --jolkr-base-heavy:        oklch(87.92% calc(var(--theme-neutral-c) + 0.066 * var(--theme-intensity)) var(--theme-hue));
+  --jolkr-base-heavy-loud:   oklch(87.92% calc(var(--theme-neutral-c) + 0.066 * var(--theme-intensity)) var(--theme-hue) / 0.96);
+  --jolkr-base-heavy-strong: oklch(87.92% calc(var(--theme-neutral-c) + 0.066 * var(--theme-intensity)) var(--theme-hue) / 0.72);
+  --jolkr-base-heavy-muted:  oklch(87.92% calc(var(--theme-neutral-c) + 0.066 * var(--theme-intensity)) var(--theme-hue) / 0.4);
+
+  --jolkr-base-light:         oklch(94.00% calc(var(--theme-neutral-c) + 0.032 * var(--theme-intensity)) var(--theme-hue));
+  --jolkr-base-light-loud:    oklch(94.00% calc(var(--theme-neutral-c) + 0.032 * var(--theme-intensity)) var(--theme-hue) / 0.96);
+  --jolkr-base-light-strong:  oklch(94.00% calc(var(--theme-neutral-c) + 0.032 * var(--theme-intensity)) var(--theme-hue) / 0.8);
+  --jolkr-base-light-default: oklch(94.00% calc(var(--theme-neutral-c) + 0.032 * var(--theme-intensity)) var(--theme-hue) / 0.7);
+  --jolkr-base-light-muted:   oklch(94.00% calc(var(--theme-neutral-c) + 0.032 * var(--theme-intensity)) var(--theme-hue) / 0.6);
+
+  /* Neutral dark scale — lightness ladder; hue/chroma washed only when themed */
+  --jolkr-neutral-dark-2:    oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.02);
+  --jolkr-neutral-dark-4:    oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.04);
+  --jolkr-neutral-dark-6:    oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.06);
+  --jolkr-neutral-dark-8:    oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.08);
+  --jolkr-neutral-dark-10:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.1);
+  --jolkr-neutral-dark-16:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.16);
+  --jolkr-neutral-dark-20:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.2);
+  --jolkr-neutral-dark-30:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.3);
+  --jolkr-neutral-dark-40:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.4);
+  --jolkr-neutral-dark-50:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.5);
+  --jolkr-neutral-dark-60:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.6);
+  --jolkr-neutral-dark-70:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.7);
+  --jolkr-neutral-dark-80:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.8);
+  --jolkr-neutral-dark-90:   oklch(25.42% var(--theme-neutral-c) var(--theme-hue) / 0.9);
+  --jolkr-neutral-dark-100:  oklch(25.42% var(--theme-neutral-c) var(--theme-hue));
   --jolkr-neutral-dark-1000: #000;
 
-  /* Neutral light scale — low chroma tinted greys */
-  --jolkr-neutral-light-2:    oklch(97.92% 0.011 var(--theme-hue) / 0.02);
-  --jolkr-neutral-light-4:    oklch(97.92% 0.011 var(--theme-hue) / 0.04);
-  --jolkr-neutral-light-8:    oklch(97.92% 0.011 var(--theme-hue) / 0.08);
-  --jolkr-neutral-light-20:   oklch(97.92% 0.011 var(--theme-hue) / 0.2);
-  --jolkr-neutral-light-40:   oklch(97.92% 0.011 var(--theme-hue) / 0.4);
-  --jolkr-neutral-light-80:   oklch(97.92% 0.011 var(--theme-hue) / 0.8);
-  --jolkr-neutral-light-90:   oklch(97.92% 0.011 var(--theme-hue) / 0.9);
+  /* Neutral light scale — used for elevations & alpha composites */
+  --jolkr-neutral-light-2:    oklch(97.92% var(--theme-neutral-c) var(--theme-hue) / 0.02);
+  --jolkr-neutral-light-4:    oklch(97.92% var(--theme-neutral-c) var(--theme-hue) / 0.04);
+  --jolkr-neutral-light-8:    oklch(97.92% var(--theme-neutral-c) var(--theme-hue) / 0.08);
+  --jolkr-neutral-light-20:   oklch(97.92% var(--theme-neutral-c) var(--theme-hue) / 0.2);
+  --jolkr-neutral-light-40:   oklch(97.92% var(--theme-neutral-c) var(--theme-hue) / 0.4);
+  --jolkr-neutral-light-80:   oklch(97.92% var(--theme-neutral-c) var(--theme-hue) / 0.8);
+  --jolkr-neutral-light-90:   oklch(97.92% var(--theme-neutral-c) var(--theme-hue) / 0.9);
   --jolkr-neutral-light-1000: #fff;
 
   /* Semantic backgrounds */
@@ -89,11 +165,6 @@
   /* Entity shape: servers / workspaces use rounded squares; people use circles */
   --radius-server-icon: 0.4375rem;
   --radius-user-avatar: 50%;
-
-  /* Raised glass surface gradient */
-  --surface-raised:
-    linear-gradient(to bottom, var(--bg-shout) 0%, var(--bg-strong) 100%),
-    linear-gradient(to bottom, var(--bg-loud)  0%, var(--bg-loud)   100%);
 
   /* Shadows — semantic elevation system */
   /* Panel: main shell container shadow */
@@ -161,20 +232,6 @@
   --bp-compact:  768px;
   --bp-mobile:   600px;
 
-  /* Solid opaque surfaces — for modals/portals that render over the body */
-  /* Hierarchy: nav (darkest/furthest) → content → field → raised (lightest/closest) */
-  /* Tinted neutrals that respond to theme-hue */
-  --surface-nav:     oklch(93%   0.004 var(--theme-hue));
-  --surface-content: oklch(96%   0.004 var(--theme-hue));
-  --surface-field:   oklch(97.5% 0.004 var(--theme-hue));
-  --surface-raised:  oklch(99%   0.004 var(--theme-hue));
-
-  /* Jolkr accent — driven by the server theme hue */
-  --accent:        oklch(55% 0.18 var(--theme-hue));
-  --accent-muted:  oklch(55% 0.18 var(--theme-hue) / 0.12);
-  --accent-strong: oklch(55% 0.18 var(--theme-hue) / 0.24);
-  --accent-text:   oklch(38% 0.14 var(--theme-hue));
-
   /* Danger / destructive — fixed red, not theme-driven */
   --danger-default: oklch(55% 0.2 25);
   --danger-strong:  oklch(62% 0.22 25);
@@ -190,8 +247,8 @@
   --status-idle:   oklch(75% 0.18 65);
   --status-dnd:    oklch(55% 0.2 25);
 
-  /* Overlay backdrop */
-  --overlay-backdrop: oklch(20% 0 0 / 0.7);
+  /* Legacy backdrop name — portals still reference both */
+  --overlay-backdrop: var(--overlay);
 
   /* ── Z-index scale — overlay layering tiers ──
      Local stacking-context values (0..100) stay as raw integers; only
@@ -214,7 +271,7 @@
      Resolved against the existing semantic scale so dark-mode overrides on
      the source tokens propagate automatically. */
   --bg-subtle:             var(--bg-muted);
-  --bg-panel:              var(--surface-nav);
+  --bg-panel:              var(--modal-sidebar-bg);
   --surface-raised-strong: var(--bg-strong);
   --accent-default:        var(--accent);
   --fg-muted:              var(--text-faint);
@@ -239,63 +296,57 @@
 
 /* ─── Dark mode overrides ────────────────────────────────────────────── */
 /*
- * Strategy: shift the two neutral scales so that every semantic variable
- * (--bg-*, --text-*, --icon-*, --border-*) and every direct palette
- * reference adapts automatically while preserving elevation hierarchy.
- *
- * "dark" neutrals (used for text / icons / borders in light mode)
- *   → become near-white (oklch 99%) in dark mode — text stays light-on-dark.
- *
- * "light" neutrals (used for surfaces / backgrounds in light mode)
- *   → shift to a dark-range raised surface (oklch 22%) in dark mode.
- *   The alpha steps (0.02 → solid) are kept, so faint surfaces barely rise
- *   above the ~14% page background while shout surfaces land at ~22% —
- *   the same elevated-is-lighter direction as light mode.
- *
- * Shadows and --surface-raised are overridden explicitly because their
- * visual role doesn't change with the palette.
+ * Shift the neutral scales so every semantic (--bg*, --text*, --border*) tracks
+ * while preserving hierarchy. Structural tokens below restate the ladder with
+ * dark-friendly lightness and the same theme wash knobs.
  */
 :root.dark {
-  /* ── Neutral dark → near-white (tinted) ── */
-  --jolkr-neutral-dark-2:    oklch(99% 0.004 var(--theme-hue) / 0.02);
-  --jolkr-neutral-dark-4:    oklch(99% 0.004 var(--theme-hue) / 0.04);
-  --jolkr-neutral-dark-6:    oklch(99% 0.004 var(--theme-hue) / 0.06);
-  --jolkr-neutral-dark-8:    oklch(99% 0.004 var(--theme-hue) / 0.08);
-  --jolkr-neutral-dark-10:   oklch(99% 0.004 var(--theme-hue) / 0.10);
-  --jolkr-neutral-dark-16:   oklch(99% 0.004 var(--theme-hue) / 0.16);
-  --jolkr-neutral-dark-20:   oklch(99% 0.004 var(--theme-hue) / 0.20);
-  --jolkr-neutral-dark-30:   oklch(99% 0.004 var(--theme-hue) / 0.30);
-  --jolkr-neutral-dark-40:   oklch(99% 0.004 var(--theme-hue) / 0.40);
-  --jolkr-neutral-dark-50:   oklch(99% 0.004 var(--theme-hue) / 0.50);
-  --jolkr-neutral-dark-60:   oklch(99% 0.004 var(--theme-hue) / 0.60);
-  --jolkr-neutral-dark-70:   oklch(99% 0.004 var(--theme-hue) / 0.70);
-  --jolkr-neutral-dark-80:   oklch(99% 0.004 var(--theme-hue) / 0.80);
-  --jolkr-neutral-dark-90:   oklch(99% 0.004 var(--theme-hue) / 0.90);
-  --jolkr-neutral-dark-100:  oklch(99% 0.004 var(--theme-hue));
+  /* ── Neutral dark → near-white (washed chroma synced from JS when themed) ── */
+  --jolkr-neutral-dark-2:    oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.02);
+  --jolkr-neutral-dark-4:    oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.04);
+  --jolkr-neutral-dark-6:    oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.06);
+  --jolkr-neutral-dark-8:    oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.08);
+  --jolkr-neutral-dark-10:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.10);
+  --jolkr-neutral-dark-16:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.16);
+  --jolkr-neutral-dark-20:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.20);
+  --jolkr-neutral-dark-30:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.30);
+  --jolkr-neutral-dark-40:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.40);
+  --jolkr-neutral-dark-50:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.50);
+  --jolkr-neutral-dark-60:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.60);
+  --jolkr-neutral-dark-70:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.70);
+  --jolkr-neutral-dark-80:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.80);
+  --jolkr-neutral-dark-90:   oklch(99% var(--theme-neutral-c) var(--theme-hue) / 0.90);
+  --jolkr-neutral-dark-100:  oklch(99% var(--theme-neutral-c) var(--theme-hue));
   --jolkr-neutral-dark-1000: #fff;
 
-  /* ── Neutral light → raised dark surface (tinted) ── */
-  --jolkr-neutral-light-2:    oklch(22% 0.004 var(--theme-hue) / 0.02);
-  --jolkr-neutral-light-4:    oklch(22% 0.004 var(--theme-hue) / 0.04);
-  --jolkr-neutral-light-8:    oklch(22% 0.004 var(--theme-hue) / 0.08);
-  --jolkr-neutral-light-20:   oklch(22% 0.004 var(--theme-hue) / 0.20);
-  --jolkr-neutral-light-40:   oklch(22% 0.004 var(--theme-hue) / 0.40);
-  --jolkr-neutral-light-80:   oklch(22% 0.004 var(--theme-hue) / 0.80);
-  --jolkr-neutral-light-90:   oklch(22% 0.004 var(--theme-hue) / 0.90);
-  --jolkr-neutral-light-1000: oklch(27% 0.004 var(--theme-hue));
+  /* ── Neutral light → raised dark chrome (opaque steps for surfaces) ── */
+  --jolkr-neutral-light-2:    oklch(22% var(--theme-neutral-c) var(--theme-hue) / 0.02);
+  --jolkr-neutral-light-4:    oklch(22% var(--theme-neutral-c) var(--theme-hue) / 0.04);
+  --jolkr-neutral-light-8:    oklch(22% var(--theme-neutral-c) var(--theme-hue) / 0.08);
+  --jolkr-neutral-light-20:   oklch(22% var(--theme-neutral-c) var(--theme-hue) / 0.20);
+  --jolkr-neutral-light-40:   oklch(22% var(--theme-neutral-c) var(--theme-hue) / 0.40);
+  --jolkr-neutral-light-80:   oklch(22% var(--theme-neutral-c) var(--theme-hue) / 0.80);
+  --jolkr-neutral-light-90:   oklch(22% var(--theme-neutral-c) var(--theme-hue) / 0.90);
+  --jolkr-neutral-light-1000: oklch(27% var(--theme-neutral-c) var(--theme-hue));
 
-  /* ── Raised glass surface — dark glass gradient (tinted) ── */
-  --surface-raised:
-    linear-gradient(
-      to bottom,
-      oklch(18% 0.004 var(--theme-hue)) 0%,
-      oklch(13% 0.004 var(--theme-hue)) 100%
-    ),
-    linear-gradient(
-      to bottom,
-      oklch(15% 0.004 var(--theme-hue)) 0%,
-      oklch(15% 0.004 var(--theme-hue)) 100%
-    );
+  /* ── Structural shell (dark) — Figma node 511:590 ── */
+  --app-bg:             oklch(12.5% var(--theme-neutral-c) var(--theme-hue));
+  --main-bg-solid:      oklch(14.2% var(--theme-neutral-c) var(--theme-hue));
+  /* rgba(20,20,20,0.8) over blurred orbital backdrop */
+  --main-glass-fill:    oklch(21% var(--theme-neutral-c) var(--theme-hue) / 0.8);
+  --main-bg:            var(--main-glass-fill);
+  --main-border:        oklch(100% 0 0 / 0.06);
+  --main-input-bg:      oklch(18% var(--theme-neutral-c) var(--theme-hue));
+  --main-input-border:  oklch(31% var(--theme-neutral-c) var(--theme-hue) / 0.35);
+  /* rgba(255,255,255,0.1) */
+  --composer-input-border: oklch(100% 0 0 / 0.1);
+
+  --server-tab-bg-active: oklch(100% 0 0 / 0.16);
+
+  --overlay: oklch(14% var(--theme-neutral-c) var(--theme-hue) / 0.74);
+
+  --modal-sidebar-bg: oklch(11%   var(--theme-neutral-c) var(--theme-hue));
+  --modal-bg:         oklch(21.2% var(--theme-neutral-c) var(--theme-hue));
 
   /* ── Navigation x-small — dark mode variant ── */
   --shadow-navigation-x-small:
@@ -333,12 +384,6 @@
     0 0 2px  0  rgba(0, 0, 0, 0.12),
     0 4px 6px 0 rgba(0, 0, 0, 0.10),
     0 10px 24px 0 rgba(0, 0, 0, 0.10);
-
-  /* ── Solid surfaces — dark equivalents (tinted) ── */
-  --surface-nav:     oklch(11% 0.004 var(--theme-hue));
-  --surface-content: oklch(14% 0.004 var(--theme-hue));
-  --surface-field:   oklch(18% 0.004 var(--theme-hue));
-  --surface-raised:  oklch(21% 0.004 var(--theme-hue));
 
   /* ── Accent text — brighter in dark for readability ── */
   --accent-text: oklch(72% 0.14 var(--theme-hue));

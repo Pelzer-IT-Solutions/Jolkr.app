@@ -1,5 +1,10 @@
-use axum::{extract::State, http::StatusCode, Json};
-use axum::http::HeaderMap;
+use std::net::{IpAddr, SocketAddr};
+
+use axum::{
+    extract::{ConnectInfo, State},
+    http::{HeaderMap, StatusCode},
+    Json,
+};
 use chrono::Utc;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
@@ -11,6 +16,7 @@ use jolkr_db::repo::{SessionRepo, UserRepo};
 
 use crate::errors::AppError;
 use crate::middleware::AuthUser;
+use crate::middleware::client_ip::resolve_client_ip;
 use crate::routes::AppState;
 use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 
@@ -19,9 +25,31 @@ use crate::routes::attachments::PRESIGN_EXPIRY_SECS;
 const MAX_LOGIN_ATTEMPTS: u64 = 5;
 const LOCKOUT_WINDOW_SECS: u64 = 900; // 15 minutes
 
-/// Check if an account is locked out due to too many failed login attempts.
-async fn check_login_lockout(state: &AppState, email: &str) -> Result<(), AppError> {
-    let key = format!("lockout:{}", email.to_lowercase());
+/// Reduce an IP to a coarse network key for lockout bucketing — /24 for IPv4,
+/// /64 for IPv6. Bucketing by full IP would let a small NAT or hotspot lock
+/// itself out; bucketing by the whole subnet still pins the attacker to a
+/// reasonable scope without exposing a single victim to one-line targeted DoS
+/// keyed on email alone.
+fn ip_subnet_key(ip: IpAddr) -> String {
+    match ip {
+        IpAddr::V4(v4) => {
+            let o = v4.octets();
+            format!("{}.{}.{}.0/24", o[0], o[1], o[2])
+        }
+        IpAddr::V6(v6) => {
+            let s = v6.segments();
+            format!("{:x}:{:x}:{:x}:{:x}::/64", s[0], s[1], s[2], s[3])
+        }
+    }
+}
+
+fn lockout_key(email: &str, subnet: &str) -> String {
+    format!("lockout:{}:{}", email.to_lowercase(), subnet)
+}
+
+/// Check if a `(email, subnet)` pair is locked out due to repeated failed logins.
+async fn check_login_lockout(state: &AppState, email: &str, subnet: &str) -> Result<(), AppError> {
+    let key = lockout_key(email, subnet);
     let mut conn = state.redis.connection();
     let count: u64 = conn.get(&key).await.unwrap_or(0);
     if count >= MAX_LOGIN_ATTEMPTS {
@@ -32,23 +60,26 @@ async fn check_login_lockout(state: &AppState, email: &str) -> Result<(), AppErr
     Ok(())
 }
 
-/// Record a failed login attempt in Redis.
-async fn record_failed_login(state: &AppState, email: &str) {
-    let key = format!("lockout:{}", email.to_lowercase());
+/// Record a failed login attempt in Redis, scoped to `(email, subnet)`.
+async fn record_failed_login(state: &AppState, email: &str, subnet: &str) {
+    let key = lockout_key(email, subnet);
     let mut conn = state.redis.connection();
     match conn.incr::<_, _, u64>(&key, 1u64).await {
         Ok(count) => {
             if count == 1 {
                 drop(conn.expire::<_, ()>(&key, LOCKOUT_WINDOW_SECS as i64).await);
             }
+            // TODO(F04 follow-up): when N distinct subnets hit one email in
+            // window W, dispatch a "suspicious login activity" email — decision
+            // pending user OK before wiring email send here.
         }
         Err(e) => warn!(error = %e, "Failed to record login attempt in Redis"),
     }
 }
 
-/// Clear lockout counter on successful login.
-async fn clear_login_lockout(state: &AppState, email: &str) {
-    let key = format!("lockout:{}", email.to_lowercase());
+/// Clear the lockout counter on successful login.
+async fn clear_login_lockout(state: &AppState, email: &str, subnet: &str) {
+    let key = lockout_key(email, subnet);
     let mut conn = state.redis.connection();
     drop(conn.del::<_, ()>(&key).await);
 }
@@ -204,21 +235,25 @@ pub(crate) async fn register(
 /// POST /api/auth/login
 pub(crate) async fn login(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Json(body): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, AppError> {
-    // Check lockout before attempting authentication
-    check_login_lockout(&state, &body.email).await?;
+    // Key lockout on (email, subnet) — locking on email alone lets anyone who
+    // knows a victim's address lock them out from any IP (targeted DoS).
+    let subnet = ip_subnet_key(resolve_client_ip(addr, &headers));
+    check_login_lockout(&state, &body.email, &subnet).await?;
 
     match AuthService::login(&state.pool, &state.jwt_secret, &body.email, &body.password).await {
         Ok((user, tokens)) => {
             // Success — clear any lockout counter
-            clear_login_lockout(&state, &body.email).await;
+            clear_login_lockout(&state, &body.email, &subnet).await;
             let me = build_me_profile(&state, user.id).await?;
             Ok(Json(AuthResponse { user: me, tokens }))
         }
         Err(e) => {
             // Record failed attempt
-            record_failed_login(&state, &body.email).await;
+            record_failed_login(&state, &body.email, &subnet).await;
             Err(AppError(e))
         }
     }
@@ -327,9 +362,14 @@ pub(crate) async fn logout(
     headers: HeaderMap,
     Json(body): Json<LogoutRequest>,
 ) -> Result<StatusCode, AppError> {
-    // Delete the session (refresh token)
+    // Delete the session (refresh token). Reject if the token doesn't belong to
+    // the caller — without this, anyone holding another user's refresh token
+    // could revoke their session.
     let token_hash = AuthService::hash_refresh_token_pub(&body.refresh_token);
     if let Ok(session) = SessionRepo::get_by_token(&state.pool, &token_hash).await {
+        if session.user_id != auth.user_id {
+            return Err(AppError(jolkr_common::JolkrError::Forbidden));
+        }
         SessionRepo::delete_session(&state.pool, session.id).await?;
     }
 
@@ -398,12 +438,39 @@ pub(crate) async fn verify_email(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Per-user quota for verification-email resends: at most 3 per hour.
+/// Without this, a user (or a script in their session) could flood themselves
+/// with email — and indirectly burn through outbound SMTP quota — by hammering
+/// `/api/auth/resend-verification`.
+const VERIFY_RESEND_MAX_PER_HOUR: u64 = 3;
+const VERIFY_RESEND_WINDOW_SECS: i64 = 3600;
+
+async fn check_verify_resend_quota(state: &AppState, user_id: uuid::Uuid) -> Result<(), AppError> {
+    let key = format!("verify_resend:{user_id}");
+    let mut conn = state.redis.connection();
+    let count: u64 = conn.incr(&key, 1u64).await.map_err(|e| {
+        warn!(error = %e, "Redis verify-resend quota INCR failed");
+        AppError(jolkr_common::JolkrError::Internal("Quota backend unavailable".into()))
+    })?;
+    if count == 1 {
+        drop(conn.expire::<_, ()>(&key, VERIFY_RESEND_WINDOW_SECS).await);
+    }
+    if count > VERIFY_RESEND_MAX_PER_HOUR {
+        return Err(AppError(jolkr_common::JolkrError::RateLimited(
+            "Too many verification email requests. Try again in an hour.".into(),
+        )));
+    }
+    Ok(())
+}
+
 /// POST /api/auth/resend-verification
 /// Authenticated: resends the verification email for the current user.
 pub(crate) async fn resend_verification(
     auth: AuthUser,
     State(state): State<AppState>,
 ) -> Result<StatusCode, AppError> {
+    check_verify_resend_quota(&state, auth.user_id).await?;
+
     let user = UserRepo::get_by_id(&state.pool, auth.user_id).await
         .map_err(AppError)?;
 

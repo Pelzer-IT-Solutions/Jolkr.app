@@ -37,7 +37,7 @@ pub(crate) async fn create_poll(
     let (poll, message_id) = PollService::create_poll(&state.pool, channel_id, auth.user_id, body).await?;
 
     // Get the enriched message
-    let message = MessageService::get_message_by_id(&state.pool, message_id).await?;
+    let message = MessageService::get_message_by_id_for(&state.pool, message_id, auth.user_id).await?;
 
     // Publish MessageCreate via NATS
     let event = crate::ws::events::GatewayEvent::MessageCreate {

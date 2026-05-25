@@ -244,7 +244,7 @@ pub(crate) async fn upload_attachment(
     let proxy_url = jolkr_core::services::message::attachment_proxy_url(row.id);
 
     // Broadcast MessageUpdate so other clients see the new attachment
-    if let Ok(enriched) = MessageService::get_message_by_id(&state.pool, message_id).await {
+    if let Ok(enriched) = MessageService::get_message_by_id_for(&state.pool, message_id, auth.user_id).await {
         let event = crate::ws::events::GatewayEvent::MessageUpdate { message: enriched };
         state.nats.publish_to_channel(channel_id, &event).await;
     }

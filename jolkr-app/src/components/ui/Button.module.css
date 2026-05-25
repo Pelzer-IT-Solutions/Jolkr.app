@@ -16,13 +16,22 @@
 
 /* Variants */
 .primary {
-  background: var(--accent);
-  color: var(--bg-default);
+  background: var(--button-primary-bg);
+  color: var(--button-primary-content);
   font-weight: 600;
 }
 
 .primary:hover:not(:disabled) {
-  background: oklch(from var(--accent) calc(l - 0.05) c h);
+  background: var(--button-primary-bg-hover);
+}
+
+.primary:active:not(:disabled) {
+  background: var(--button-primary-bg-active);
+}
+
+.primary:disabled {
+  background: var(--button-primary-bg-disabled);
+  opacity: 1;
 }
 
 .secondary {

@@ -2,7 +2,9 @@ use axum::{
     extract::{Path, State},
     Json,
 };
+use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
+use tracing::warn;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -13,6 +15,35 @@ use jolkr_db::repo::keys::PreKeyBundle;
 use crate::errors::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::routes::AppState;
+
+// Per-target prekey-fetch quota. Each fetch consumes one of the target's
+// one-time prekeys, so an unbounded requester can drain a victim's pool and
+// degrade everyone's E2EE handshake performance for that user. 5/day/target
+// per requester is far above any honest usage (real clients cache bundles).
+const PREKEY_FETCH_MAX_PER_DAY: u64 = 5;
+const PREKEY_FETCH_WINDOW_SECS: i64 = 86_400;
+
+async fn check_prekey_fetch_quota(
+    state: &AppState,
+    requester: Uuid,
+    target: Uuid,
+) -> Result<(), AppError> {
+    let key = format!("prekey_fetch:{requester}:{target}");
+    let mut conn = state.redis.connection();
+    let count: u64 = conn.incr(&key, 1u64).await.map_err(|e| {
+        warn!(error = %e, "Redis prekey-fetch quota INCR failed");
+        AppError(jolkr_common::JolkrError::Internal("Quota backend unavailable".into()))
+    })?;
+    if count == 1 {
+        drop(conn.expire::<_, ()>(&key, PREKEY_FETCH_WINDOW_SECS).await);
+    }
+    if count > PREKEY_FETCH_MAX_PER_DAY {
+        return Err(AppError(jolkr_common::JolkrError::RateLimited(
+            "Too many prekey bundle requests for this user. Try again later.".into(),
+        )));
+    }
+    Ok(())
+}
 
 // ── Request / Response types ───────────────────────────────────────────
 
@@ -162,9 +193,11 @@ pub(crate) async fn upload_prekeys(
 /// GET /api/keys/:user_id/:device_id — Fetch a prekey bundle for initiating E2EE.
 pub(crate) async fn get_prekey_bundle(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path((target_user_id, target_device_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<PreKeyBundleResponse>, AppError> {
+    check_prekey_fetch_quota(&state, auth.user_id, target_user_id).await?;
+
     use base64::Engine;
     let engine = base64::engine::general_purpose::STANDARD;
 
@@ -186,9 +219,11 @@ pub(crate) async fn get_prekey_bundle(
 /// GET /api/keys/:user_id — Fetch a prekey bundle by user_id only (auto-selects device).
 pub(crate) async fn get_prekey_bundle_by_user(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(target_user_id): Path<Uuid>,
 ) -> Result<Json<PreKeyBundleResponse>, AppError> {
+    check_prekey_fetch_quota(&state, auth.user_id, target_user_id).await?;
+
     use base64::Engine;
     let engine = base64::engine::general_purpose::STANDARD;
 

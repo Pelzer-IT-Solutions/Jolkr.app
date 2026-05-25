@@ -1,1317 +1,855 @@
-# Frontend ↔ Backend Integratie Documentatie
+# Frontend ↔ Backend Integration Reference
 
-> **Versie**: 0.11.0
+> **Version**: 0.11.3 (matches `jolkr-app/package.json` and the `jolkr-server` workspace).
 >
-> Volledige mapping van alle koppelingen tussen `jolkr-app` (React/Vite/TypeScript) en `jolkr-server` (Rust/Axum).
-> Doel: nieuwe frontend 1:1 koppelen aan dezelfde backend zonder iets te missen.
+> Complete map of every wire between `jolkr-app` (React 19 + Vite + TypeScript + Zustand, wrapped in Tauri) and `jolkr-server` (Rust / Axum). Reading this end-to-end is enough to bring a new client implementation 1:1 on the same backend without missing a single endpoint, event, or invariant.
+>
+> The companion document `docs-backend-api-reference.md` is the authoritative endpoint/event reference; this file is the integration playbook: which files call what, in which order, with which state container.
 
 ---
 
-## Inhoudsopgave
+## Table of Contents
 
-1. [Architectuur Overzicht](#1-architectuur-overzicht)
-2. [Platform & URL Configuratie](#2-platform--url-configuratie)
-3. [Token & Auth Systeem](#3-token--auth-systeem)
-4. [REST API Endpoints (compleet)](#4-rest-api-endpoints)
-5. [WebSocket Gateway Protocol](#5-websocket-gateway-protocol)
+1. [Architecture overview](#1-architecture-overview)
+2. [Platform & URL configuration](#2-platform--url-configuration)
+3. [Token & auth lifecycle](#3-token--auth-lifecycle)
+4. [REST API client (`src/api/client.ts`)](#4-rest-api-client-srcapiclientts)
+5. [WebSocket gateway client (`src/api/ws.ts`)](#5-websocket-gateway-client-srcapiwsts)
 6. [Voice WebSocket & WebRTC](#6-voice-websocket--webrtc)
-7. [E2EE Crypto Systeem](#7-e2ee-crypto-systeem)
-8. [Zustand Stores & State Management](#8-zustand-stores--state-management)
-9. [Services](#9-services)
-10. [Hooks met Backend Interactie](#10-hooks-met-backend-interactie)
-11. [App Initialisatie & Routing](#11-app-initialisatie--routing)
-12. [Data Types (TypeScript Interfaces)](#12-data-types)
-13. [Feature Flags & Platform Detectie](#13-feature-flags--platform-detectie)
-14. [Migratiechecklist](#14-migratiechecklist)
+7. [E2EE crypto stack](#7-e2ee-crypto-stack)
+8. [Zustand stores](#8-zustand-stores)
+9. [Services layer](#9-services-layer)
+10. [Hooks that touch the network](#10-hooks-that-touch-the-network)
+11. [App boot order & routing](#11-app-boot-order--routing)
+12. [Wire types (TypeScript)](#12-wire-types-typescript)
+13. [Build, env & platform detection](#13-build-env--platform-detection)
+14. [Cloudflare upload bypass](#14-cloudflare-upload-bypass)
+15. [Migration checklist (porting to a new client)](#15-migration-checklist-porting-to-a-new-client)
 
 ---
 
-## 1. Architectuur Overzicht
+## 1. Architecture overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Frontend (jolkr-app)                                   │
-│                                                         │
-│  api/client.ts ──── fetch() ────► /api/*  (REST)        │
-│  api/ws.ts ──────── WebSocket ──► /ws     (Gateway)     │
-│  voice/voiceClient ─ WebSocket ─► /media/ws/voice       │
-│  voice/voiceService─ WebRTC ────► STUN/TURN + P2P       │
-│                                                         │
-│  Geen axios, geen React Query, geen Redux               │
-│  State: Zustand stores (module-level singletons)        │
-│  Crypto: @noble/curves + @noble/post-quantum            │
-└─────────────────────────────────────────────────────────┘
-         │              │              │
-         ▼              ▼              ▼
-┌─────────────┐ ┌──────────────┐ ┌───────────────┐
-│ Axum REST   │ │ WS Gateway   │ │ Media Server  │
-│ /api/*      │ │ /ws          │ │ /media/ws/*   │
-│ (HTTP JSON) │ │ (JSON frames)│ │ (WebRTC SFU)  │
-└─────────────┘ └──────────────┘ └───────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Frontend (jolkr-app)                                       │
+│                                                             │
+│  src/api/client.ts  ── fetch() ──▶ /api/*       (REST)      │
+│  src/api/ws.ts      ── WebSocket ▶ /ws          (gateway)   │
+│  src/voice/         ── WebSocket ▶ /media/ws/voice          │
+│                     ── WebRTC ───▶ STUN + UDP media         │
+│                                                             │
+│  State:   Zustand stores (module-level singletons)          │
+│  Crypto:  @noble/curves (Ed/X25519) + @noble/post-quantum   │
+│           (ML-KEM-768) — derived in memory, seed on disk    │
+│  Network: native fetch + WebSocket; no axios / no React     │
+│           Query / no Redux                                  │
+└─────────────────────────────────────────────────────────────┘
+        │                  │                  │
+        ▼                  ▼                  ▼
+┌──────────────┐  ┌────────────────┐  ┌────────────────┐
+│ Axum API     │  │ WS Gateway     │  │ jolkr-media    │
+│ /api/*       │  │ /ws            │  │ /ws/voice +    │
+│ HTTP JSON    │  │ JSON frames    │  │ UDP SFU        │
+└──────────────┘  └────────────────┘  └────────────────┘
 ```
 
-**Kernbestanden:**
+### Key files
 
-| Bestand | Rol |
-|---------|-----|
-| `src/api/client.ts` | Alle 80+ REST endpoints, token management |
-| `src/api/ws.ts` | WebSocket gateway singleton |
-| `src/api/types.ts` | Alle TypeScript interfaces |
-| `src/platform/config.ts` | URL resolutie (web vs Tauri) |
-| `src/platform/storage.ts` | Token opslag (Stronghold vs localStorage) |
-| `src/voice/voiceClient.ts` | Voice signaling WebSocket |
-| `src/voice/voiceService.ts` | WebRTC + voice E2EE orchestratie |
+| File | Role |
+|------|------|
+| `src/api/client.ts` | Every REST call, token store, refresh logic, upload helpers |
+| `src/api/ws.ts` | Gateway singleton (`wsClient`) — connect, heartbeat, fan-out |
+| `src/api/ws-events.ts` | Discriminated union of every server→client event type |
+| `src/api/types.ts` | TS types (mostly `ts-rs`-generated, with a few FE-side overlays) |
+| `src/api/generated/*.ts` | Generated from Rust DTOs via `ts-rs` |
+| `src/platform/config.ts` | URL resolution (web vs Tauri vs Tauri-dev) |
+| `src/platform/detect.ts` | `isTauri`, `isMobile`, `isDesktop`, `isWeb` |
+| `src/platform/storage.ts` | Stronghold (desktop Tauri) vs `localStorage` (web + mobile Tauri) |
+| `src/voice/voiceClient.ts` | Voice signalling WebSocket |
+| `src/voice/voiceService.ts` | WebRTC orchestration (peer connections, transceivers) |
+| `src/voice/encryptionWorker.ts` | Voice E2EE worker (SFrame-style) |
+| `src/crypto/keys.ts` | X25519 / Ed25519 / ML-KEM-768 primitives |
+| `src/crypto/e2ee.ts` | Per-DM session encryption (X3DH-derived) |
+| `src/crypto/channelKeys.ts` | Channel sender-key cache |
+| `src/services/e2ee.ts` | Init / reset orchestrator |
+| `src/services/pushRegistration.ts` | Web Push registration + VAPID |
+| `src/stores/*` | Zustand stores — see §8 |
+| `src/App.tsx` | Boot sequence, routing, guards, deep-link handling |
+
+### Tech versions (`package.json`)
+
+- React 19.2, react-router-dom 7.13, Zustand 5.0
+- Vite 7.3, TypeScript 5.9
+- `@noble/curves` 2.0, `@noble/post-quantum` 0.5
+- Tauri 2.10 with plugins: `stronghold`, `deep-link`, `autostart`, `process`, `updater`
+- DnD: `@dnd-kit/core` 6.3 + `sortable` 10 + `modifiers` 9
+- Optional embedded players: `nomercy-music-player`, `nomercy-video-player`
 
 ---
 
-## 2. Platform & URL Configuratie
+## 2. Platform & URL configuration
 
-### Bronbestand: `src/platform/config.ts`
+Source: `src/platform/config.ts` + `src/platform/detect.ts`.
 
-| Functie | Web | Tauri Desktop | Tauri Dev |
-|---------|-----|---------------|-----------|
-| `getApiBaseUrl()` | `/api` | `https://jolkr.app/api` | `localStorage.jolkr_server_url + /api` |
-| `getUploadBaseUrl()` | `https://upload.jolkr.app/api` | `https://upload.jolkr.app/api` | `/api` (Vite proxy als `VITE_API_TARGET=local`) |
-| `getWsUrl()` | `/ws` | `wss://jolkr.app/ws` | custom server URL |
-| `getMediaWsUrl()` | `/media/ws/voice` | `wss://jolkr.app/media/ws/voice` | custom |
-| `rewriteStorageUrl(url)` | Herschrijft `minio:9000` → `/s3/` | Herschrijft naar `https://jolkr.app/s3/` | — |
+| Function | Web (prod) | Web (Vite dev, `VITE_API_TARGET=local`) | Web (Vite dev, default) | Tauri desktop | Tauri mobile |
+|----------|------------|----------------------------------------|-------------------------|---------------|--------------|
+| `getServerUrl()` | `""` (same origin) | `""` | `""` | `https://jolkr.app` | `https://jolkr.app` |
+| `getApiBaseUrl()` | `/api` | `/api` (via Vite proxy) | `https://jolkr.app/api` | `https://jolkr.app/api` | `https://jolkr.app/api` |
+| `getUploadBaseUrl()` | `https://upload.jolkr.app/api` | `/api` (local nginx) | `https://upload.jolkr.app/api` | `https://upload.jolkr.app/api` | `https://upload.jolkr.app/api` |
+| `getWsUrl()` | `wss://{host}/ws` (auto) | `ws://{host}/ws` | `wss://jolkr.app/ws` | `wss://jolkr.app/ws` | `wss://jolkr.app/ws` |
+| `getMediaWsUrl()` | `wss://{host}/media/ws/voice` | `ws://{host}/media/ws/voice` | `wss://jolkr.app/media/ws/voice` | `wss://jolkr.app/media/ws/voice` | same |
+| `getBasename()` | `/app` | `/app` | `/app` | `/` | `/` |
+| `rewriteStorageUrl(url)` | `minio:9000` → `/s3/` | passthrough | `minio:9000` → `https://jolkr.app/s3/` | `minio:9000` → `{server}/s3/` | same |
+| `buildInviteUrl(code)` | `{origin}/app/invite/{code}` | same | same | `https://jolkr.app/app/invite/{code}` | same |
 
-> **`upload.jolkr.app` (grey-cloud subdomain)**: A-record `upload` is in Cloudflare gezet als **DNS only** (proxied=false), zodat upload-traffic NIET door Cloudflare gaat. CF heeft een 100MB request body limit (Free/Pro plan); door eromheen te routen kunnen we de volle backend `MAX_FILE_SIZE = 250MB` benutten. Op de remote nginx (HestiaCP) draait een aparte `jolkr-upload` proxy template die ALLEEN de twee message-attachment endpoints proxiet — al het andere → 404.
+### Why the upload base differs
 
-### Vite Dev Proxy (`vite.config.ts`)
+Cloudflare imposes a 100 MB request-body limit on the Free/Pro plans, which is below the backend's `MAX_FILE_SIZE = 250 MB`. The `upload.jolkr.app` subdomain is a DNS-only A-record (not Cloudflare-proxied) wired into the same nginx; the remote nginx restricts that host to only the two message-attachment endpoints. `getUploadBaseUrl()` returns it for the message-attachment flows only — every other call still goes through the normal Cloudflare-proxied path. (Details in §14 and §26.3 of the backend reference.)
+
+### Vite dev proxy (`vite.config.ts`)
 
 ```
 /api  → http://localhost:8080
 /ws   → ws://localhost:8080
 ```
 
-### Environment Variables
+### Build-time defines
 
-| Variable | Waarde | Gebruik |
-|----------|--------|---------|
-| `VITE_DEV_MODE` | `true` | Tauri dev: server-selectiescherm |
-| `import.meta.env.BASE_URL` | `/app/` (web) of `/` (Tauri) | Asset paths |
-| `__APP_VERSION__` | uit package.json | Build-time versie |
+- `__APP_VERSION__` (from `package.json`)
+- `import.meta.env.BASE_URL` — `/app/` for web, `/` for Tauri
+- `import.meta.env.VITE_API_TARGET` — set to `local` to force the local-backend dev path
+- `import.meta.env.TAURI_ENV_PLATFORM` — set automatically by Tauri build (`android | ios | windows | macos | linux`)
 
 ---
 
-## 3. Token & Auth Systeem
+## 3. Token & auth lifecycle
 
-### Bronbestand: `src/api/client.ts`
+Source: `src/api/client.ts` + `src/platform/storage.ts` + `src/stores/auth.ts`.
 
-### Token Opslag
+### Token storage
 
-| Platform | Methode | Details |
-|----------|---------|---------|
-| Tauri Desktop | Stronghold encrypted vault | `{appDataDir}/vault.hold`, random password per installatie in `sessionStorage` (legacy fallback: `io.jolkr.app`) |
-| Web / Mobile | `localStorage` | Keys: `access_token`, `refresh_token` |
+| Platform | Implementation | Notes |
+|----------|----------------|-------|
+| Tauri desktop | `@tauri-apps/plugin-stronghold` encrypted vault at `{appDataDir}/vault.hold` | Vault password is a per-install random 32-byte hex string stored in `sessionStorage` under `STORAGE_KEYS.VAULT_PASSWORD`. Legacy installs may still use the hard-coded `"io.jolkr.app"` password — `Stronghold.load` falls back to it when the new password fails. SEC-011 (server-side migration 040 + client release) rotates this on first install. |
+| Tauri mobile (Android/iOS) | `localStorage` | Stronghold hangs on Android — detection via UA. |
+| Web | `localStorage` | Keys: `access_token`, `refresh_token`. |
 
-Extra localStorage keys:
-- `jolkr_logged_out` — persistent logout flag (voorkomt token laden na refresh)
-- `jolkr_e2ee_device_id` — device ID voor E2EE key upload
+Persistent localStorage flags (across platforms):
 
-### Token Type: `TokenPair`
+- `jolkr_logged_out` — survives page reload; blocks `setTokens` and `initTokens` until cleared by explicit login/register
+- `jolkr_e2ee_device_id` — random UUID identifying this installation for E2EE prekey upload
+- `jolkr_e2ee_seed_v2` — encrypted seed for in-memory E2EE key derivation (web) / Stronghold (desktop)
+
+### `TokenPair`
 
 ```typescript
 interface TokenPair {
-  access_token: string;   // JWT
-  refresh_token: string;
-  expires_in: number;     // seconden
+  access_token: string;   // HS256 JWT
+  refresh_token: string;  // opaque, bcrypt-hashed on the server
+  expires_in: number;     // seconds, used to schedule proactive refresh
 }
 ```
 
-### Authorization Header
+### Authorization header
 
-Elke REST call via `request<T>()` zet automatisch:
-```
-Authorization: Bearer {accessToken}
-Content-Type: application/json  (overgeslagen bij FormData)
-```
+`request<T>()` always attaches `Authorization: Bearer <accessToken>` if a token is in memory, and `Content-Type: application/json` for non-FormData bodies. Multipart uploads omit the JSON content-type so the browser can set the multipart boundary.
 
-### JWT Decode (client-side)
+### JWT decode (client-side only)
 
-`isAccessTokenExpiredOrNearExpiry()`: base64-decodeert het JWT middle segment (geen signature verificatie), checkt `payload.exp`, markeert als expired als < 5 minuten over.
+`isAccessTokenExpiredOrNearExpiry()` base64-decodes the middle JWT segment **without verifying the signature**, reads `payload.exp`, and treats the token as expired if `Date.now() > exp*1000 - 5min`. The server, of course, still verifies signatures.
 
-### Token Refresh Mechanisme
+### Refresh triggers
 
-4 onafhankelijke triggers roepen allemaal `refreshAccessToken()` aan:
+Four independent triggers can call `refreshAccessToken()`:
 
-1. **Proactieve timer**: 30 min vóór `expires_in` (min 60s)
-2. **Periodic interval**: elke 30 min check op near-expiry
-3. **Visibility change**: als tab/window weer zichtbaar wordt
-4. **Op 401 response**: met deduplicatie-queue (max 1 refresh per 10s)
+1. **Proactive timer** — scheduled in `setTokens()` for `max(60s, (expires_in − 1800) * 1000)`.
+2. **Periodic interval** — every 30 minutes, re-checks `isAccessTokenExpiredOrNearExpiry()`.
+3. **Visibility change** — `document.visibilitychange` → if the tab returns to foreground and the token is near expiry, refresh.
+4. **HTTP 401 response** — `request<T>()` queues callers, refreshes once, retries the original request.
 
-Refresh call: `POST /api/auth/refresh` met `{ refresh_token }` body.
+Deduplication: `lastRefreshAttempt` enforces ≥ 10 s between attempts. While a refresh is in flight, subsequent 401-handlers push onto `refreshQueue` and wait for the same promise. On refresh failure, the queue is drained and the user is sent to `/login`.
 
-Bij refresh failure: tokens gewist, redirect naar `/login`.
+The refresh call retries up to 3 times with linear backoff (1 s, 2 s, 3 s) for transient network errors.
 
-### Login Flow
+### Login flow
 
 ```
-1. POST /api/auth/login { email, password }
-   → { tokens: TokenPair }
-2. setTokens(tokens) → opslaan + refresh timer starten
-3. GET /api/users/@me → user state vullen
-4. wsClient.connect() → WebSocket openen
-5. deriveE2EESeed(password, userId) → PBKDF2
-6. initE2EE(deviceId, seed) → keys genereren + uploaden
+1. POST /api/auth/login { email, password }     → AuthResponse { user, tokens }
+2. setTokens(tokens)                            → store + schedule refresh
+3. authStore.user = response.user               → already in the response
+4. wsClient.connect()                           → gateway authenticates with Identify
+5. registerPush() (if logged in + permission)   → /api/devices + /api/push/vapid-key
+6. initE2EE(deviceId)                           → load/generate keys, upload prekeys if needed
 ```
 
-### Register Flow
+Register is identical with `POST /api/auth/register`.
 
-Identiek aan login, maar met `POST /api/auth/register { email, username, password }`.
-
-### Logout Flow
+### Logout flow
 
 ```
-1. voiceStore.leaveChannel()
+1. voiceStore.leaveChannel() / endCall()
 2. wsClient.disconnect()
-3. stopNotifications()
-4. api.clearTokens() → set jolkr_logged_out flag
-5. resetE2EE() → wis in-memory keys + storage
-6. resetAllStores() → alle Zustand stores resetten
-7. user = null
+3. stopUnreadBadge() / stopNotifications()
+4. api.clearTokens()              → setLogoutFlag(), clear in-memory, wipe Stronghold/localStorage
+5. resetE2EE()                    → drop in-memory keys + clear seed from storage
+6. resetAllStores()               → every Zustand store calls its reset action
+7. user = null; navigate('/login')
 ```
 
----
+The persistent `jolkr_logged_out` flag is cleared only by an explicit `login()` or `register()` call.
 
-## 4. REST API Endpoints
+### `useAuthStore`
 
-### Bronbestand: `src/api/client.ts`
+```typescript
+type AuthState = {
+  user: MeProfile | null;
+  isLoading: boolean;
+  loadUser(): Promise<void>;
+  setUser(u: MeProfile | null): void;
+  logout(): Promise<void>;
+};
+```
 
-Alle endpoints zijn relatief aan `getApiBaseUrl()` (standaard `/api`).
-
----
-
-### 4.1 Auth
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `register` | POST | `/auth/register` | `{email, username, password}` | `{tokens: TokenPair}` |
-| `login` | POST | `/auth/login` | `{email, password}` | `{tokens: TokenPair}` |
-| `refreshAccessToken` | POST | `/auth/refresh` | `{refresh_token}` | `{tokens: TokenPair}` |
-| `resetPassword` | POST | `/auth/reset-password` | `{email, new_password}` + Header: `X-Admin-Secret` | void |
-| `forgotPassword` | POST | `/auth/forgot-password` | `{email}` | void |
-| `resetPasswordConfirm` | POST | `/auth/reset-password-confirm` | `{token, new_password}` | void |
-| `changePassword` | POST | `/auth/change-password` | `{current_password, new_password}` | void |
-| `verifyEmail` | POST | `/auth/verify-email` | `{token}` | void |
-| `resendVerification` | POST | `/auth/resend-verification` | — | void |
+`loadUser()` is called once on boot from `AppInit` after `initTokens()`. It calls `getMe()`; on 401 the token-refresh layer kicks in or the user is redirected. The store has `isLoading: true` until the first attempt resolves so the route guards can avoid flashing the login page.
 
 ---
+
+## 4. REST API client (`src/api/client.ts`)
+
+Every method lives at module scope and is imported as either a named export (`api.login(...)`) or via the wildcard `import * as api`. Below is the complete surface, grouped by domain. All paths are relative to `getApiBaseUrl()`. Upload endpoints use `getUploadBaseUrl()` automatically.
+
+> Convention: a third positional argument to `request<T>()` is the response-envelope key to unwrap. E.g. `request<Server>('/servers/:id', {}, 'server')` returns `body.server` directly.
+
+### 4.1 Auth (`src/api/client.ts`)
+
+| Function | Method | Path | Body / Response |
+|----------|--------|------|-----------------|
+| `register(email, username, password)` | POST | `/auth/register` | `AuthResponse { user, tokens }` |
+| `login(email, password)` | POST | `/auth/login` | `AuthResponse` |
+| `forgotPassword(email)` | POST | `/auth/forgot-password` | 204 always |
+| `resetPasswordConfirm(token, newPassword)` | POST | `/auth/reset-password-confirm` | 204 |
+| `verifyEmail(token)` | POST | `/auth/verify-email` | 204 |
+| `resendVerification()` | POST | `/auth/resend-verification` | 204 |
+| `changePassword(current, new)` | POST | `/auth/change-password` | 204 |
+| `refreshAccessToken()` (internal) | POST | `/auth/refresh` | `{ tokens }` |
+| `refreshAccessTokenIfNeeded()` | — | — | Calls refresh if a refresh token exists and last attempt was > 10 s ago |
+
+Also exported: `initTokens`, `setTokens`, `clearTokens`, `getAccessToken`, `getRefreshToken`, `ApiError`, `authedFetch(path, init?)` (streams raw `Response` while still attaching the bearer header).
 
 ### 4.2 Users
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getMe` | GET | `/users/@me` | — | `{user: MeProfile}` |
-| `updateMe` | PATCH | `/users/@me` | `{display_name?, bio?, avatar_url?, status?, banner_color?, show_read_receipts?, dm_filter?, allow_friend_requests?, preferred_language?}` | `{user: MeProfile}` |
-| `getUser` | GET | `/users/{id}` | — | `{user: User}` |
-| `getUsersBatch` | POST | `/users/batch` | `{ids: string[]}` (client chunked op 100) | `{users: User[]}` |
-| `searchUsers` | GET | `/users/search?q={q}` | — | `{users: User[]}` |
-
----
+| Function | Method | Path |
+|----------|--------|------|
+| `getMe()` | GET | `/users/@me` |
+| `updateMe(body)` | PATCH | `/users/@me` |
+| `getUser(id)` | GET | `/users/:id` |
+| `getUsersBatch(ids)` | POST | `/users/batch` — chunks `ids` in slices of 100 |
+| `searchUsers(q)` | GET | `/users/search?q=…` |
 
 ### 4.3 Servers
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getServers` | GET | `/servers` | — | `{servers: Server[]}` |
-| `createServer` | POST | `/servers` | `{name, description?}` | `{server: Server}` |
-| `getServer` | GET | `/servers/{id}` | — | `{server: Server}` |
-| `updateServer` | PATCH | `/servers/{id}` | `{name?, description?, icon_url?, is_public?}` | `{server: Server}` |
-| `deleteServer` | DELETE | `/servers/{id}` | — | void |
-| `getServerMembers` | GET | `/servers/{id}/members` | — | `{members: Member[]}` |
-| `getMembersWithRoles` | GET | `/servers/{id}/members-with-roles` | — | `{members: Member[]}` |
-| `leaveServer` | DELETE | `/servers/{id}/members/@me` | — | void |
-| `reorderServers` | PUT | `/users/@me/servers/reorder` | `{server_ids: string[]}` | void |
-| `discoverServers` | GET | `/servers/discover?limit={n}&offset={n}` | — | `{servers: Server[]}` |
-| `joinPublicServer` | POST | `/servers/{id}/join` | — | void |
-| `getMyPermissions` | GET | `/servers/{id}/permissions/@me` | — | `{permissions: number}` |
-| `markServerRead` | POST | `/servers/{id}/read-all` | — | void |
+`getServers`, `createServer`, `getServer`, `updateServer`, `deleteServer`, `getServerMembers`, `leaveServer`, `reorderServers`, `discoverServers(limit, offset)`, `joinPublicServer`, plus moderation: `kickMember`, `banMember`, `unbanMember`, `getBans`. `updateServer` body includes the typed `theme?: ServerThemeData | null` overlay (BE stores it as JSONB).
 
----
+### 4.4 Members & moderation
 
-### 4.4 Server Moderatie
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `kickMember` | DELETE | `/servers/{id}/members/{userId}` | — | void |
-| `banMember` | POST | `/servers/{id}/bans` | `{user_id, reason?}` | `{ban: Ban}` |
-| `unbanMember` | DELETE | `/servers/{id}/bans/{userId}` | — | void |
-| `getBans` | GET | `/servers/{id}/bans` | — | `{bans: Ban[]}` |
-| `setNickname` | PATCH | `/servers/{id}/members/{userId}/nickname` | `{nickname}` | void |
-| `timeoutMember` | POST | `/servers/{id}/members/{userId}/timeout` | `{timeout_until: ISO8601}` | void |
-| `removeTimeout` | DELETE | `/servers/{id}/members/{userId}/timeout` | — | void |
-
----
+`getMembersWithRoles(serverId)`, `getChannelMembers(channelId)` (members who can `VIEW_CHANNELS` after overwrites), `getMyPermissions(serverId)`, `timeoutMember(serverId, userId, until)`, `removeTimeout(serverId, userId)`, `markServerRead(serverId)`. `setNickname` (in roles section below) — wait, that's already in moderation.
 
 ### 4.5 Categories
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getCategories` | GET | `/servers/{id}/categories` | — | `{categories: Category[]}` |
-| `createCategory` | POST | `/servers/{id}/categories` | `{name}` | `{category: Category}` |
-| `updateCategory` | PATCH | `/categories/{id}` | `{name?, position?}` | `{category: Category}` |
-| `deleteCategory` | DELETE | `/categories/{id}` | — | void |
-
----
+`getCategories`, `createCategory`, `updateCategory`, `reorderCategories(serverId, positions[])`, `deleteCategory`.
 
 ### 4.6 Roles
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getRoles` | GET | `/servers/{id}/roles` | — | `{roles: Role[]}` |
-| `createRole` | POST | `/servers/{id}/roles` | `{name, color?, permissions?}` | `{role: Role}` |
-| `updateRole` | PATCH | `/roles/{id}` | `{name?, color?, position?, permissions?}` | `{role: Role}` |
-| `deleteRole` | DELETE | `/roles/{id}` | — | void |
-| `assignRole` | PUT | `/servers/{id}/roles/{roleId}/members` | `{user_id}` | void |
-| `removeRole` | DELETE | `/servers/{id}/roles/{roleId}/members/{userId}` | — | void |
-| `getChannelMembers` | GET | `/channels/{id}/members` | — | `{members: Member[]}` (filtert op VIEW_CHANNEL) |
-
----
+`getRoles`, `createRole`, `updateRole`, `deleteRole`, `assignRole(serverId, roleId, userId)`, `removeRole(serverId, roleId, userId)`.
 
 ### 4.7 Channels
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getChannels` | GET | `/servers/{id}/channels/list` | — | `{channels: Channel[]}` |
-| `createChannel` | POST | `/servers/{id}/channels` | `{name, kind?, topic?, category_id?}` | `{channel: Channel}` |
-| `getChannel` | GET | `/channels/{id}` | — | `{channel: Channel}` |
-| `updateChannel` | PATCH | `/channels/{id}` | `{name?, topic?, category_id?, is_nsfw?, slowmode_seconds?}` | `{channel: Channel}` |
-| `reorderChannels` | PUT | `/servers/{id}/channels/reorder` | `{channel_positions: [{id, position}]}` | `{channels: Channel[]}` |
-| `deleteChannel` | DELETE | `/channels/{id}` | — | void |
-| `getMyChannelPermissions` | GET | `/channels/{id}/permissions/@me` | — | `{permissions: number}` |
-| `getChannelOverwrites` | GET | `/channels/{id}/overwrites` | — | `{overwrites: ChannelOverwrite[]}` |
-| `upsertChannelOverwrite` | PUT | `/channels/{id}/overwrites` | `{target_type, target_id, allow, deny}` | `{overwrite: ChannelOverwrite}` |
-| `deleteChannelOverwrite` | DELETE | `/channels/{id}/overwrites/{targetType}/{targetId}` | — | void |
+`getChannels`, `createChannel`, `updateChannel`, `deleteChannel`, `moveChannels(serverId, items[])` (the unified reorder+reparent endpoint at `PUT /servers/:id/channels/move`), plus permission overwrites: `getMyChannelPermissions`, `getChannelOverwrites`, `upsertChannelOverwrite`, `deleteChannelOverwrite`.
 
----
+`updateChannel` accepts an `is_system?: boolean` field on the **frontend** signature for forward-compat — the backend currently ignores it (Archive Channel UI is a no-op). See `todos.md`.
 
 ### 4.8 Messages
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getMessages` | GET | `/channels/{id}/messages?limit={n}&before={datetime?}` | — | `{messages: Message[]}` |
-| `sendMessage` | POST | `/channels/{id}/messages` | `{content, nonce?, reply_to_id?}` | `{message: Message}` |
-| `editMessage` | PATCH | `/messages/{id}` | `{content, nonce?}` | `{message: Message}` |
-| `deleteMessage` | DELETE | `/messages/{id}` | — | void |
-| `searchMessages` | GET | `/channels/{id}/messages/search?q={q}&limit={n}` | — | `{messages: Message[]}` |
-| `searchMessagesAdvanced` | GET | `/channels/{id}/messages/search?{q,from,has,before,after,limit}` | — | `{messages: Message[], total: number}` |
-| `pinMessage` | POST | `/channels/{id}/pins/{messageId}` | — | `{message: Message}` |
-| `unpinMessage` | DELETE | `/channels/{id}/pins/{messageId}` | — | `{message: Message}` |
-| `getPinnedMessages` | GET | `/channels/{id}/pins` | — | `{messages: Message[]}` |
-| `markChannelRead` | POST | `/channels/{id}/read` | `{message_id}` | void |
+`getMessages(channelId, limit?, before?)`, `sendMessage(channelId, content, nonce?, replyToId?)`, `editMessage(messageId, content, nonce?)`, `deleteMessage`, `searchMessagesAdvanced(channelId, { q, from, has, before, after, limit })`. Encrypted messages pass `nonce`; plaintext omits it.
 
----
+### 4.9 Threads
 
-### 4.9 Attachments & Upload
+`createThread(channelId, messageId, name?)` → `{ thread, message }`; `getThreads(channelId, includeArchived)`, `getThread`, `updateThread`, `getThreadMessages(threadId, limit?, before?)`, `sendThreadMessage(threadId, content, nonce?, replyToId?)`.
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getMessageAttachments` | GET | `/messages/{id}/attachments` | — | `{attachments: Attachment[]}` |
-| `uploadAttachment` *(via `getUploadBaseUrl()`)* | POST | `/channels/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
-| `uploadDmAttachment` *(via `getUploadBaseUrl()`)* | POST | `/dms/{id}/messages/{msgId}/attachments` | `FormData {file}` | `{attachment: Attachment}` |
-| `uploadFile` | POST | `/upload?purpose={avatar\|icon}` | `FormData {file}` | `{key: string, url: string}` |
-| `getFileUrl` | GET | `/files/{attachmentId}` | — | Binary file (streamed) |
+### 4.10 Reactions & pins
 
-> De twee message-attachment uploads gaan via `https://upload.jolkr.app/api/...` (Cloudflare grey-cloud) i.p.v. `https://jolkr.app/api/...` om de Cloudflare 100MB body-size limiet te omzeilen. Avatars/server icons (`uploadFile`) en emojis (`uploadEmoji`) blijven via de normale CF-proxied route — die zijn altijd klein (<5MB).
+Channel: `addReaction`, `getReactionsRaw`, `getReactionsAggregated(messageId, currentUserId)` (FE-side `{ emoji, count, me }` aggregation), `removeReaction`. Channel pins: `pinMessage`, `unpinMessage`, `getPinnedMessages`. Read state: `markChannelRead(channelId, messageId)`, `markServerRead(serverId)`.
 
----
+### 4.11 DMs
 
-### 4.10 DMs (Direct Messages)
+`getDms`, `openDm(userId)` (1-on-1), `createGroupDm(userIds, name?)`, `getDmMessages`, `sendDmMessage`, `editDmMessage`, `deleteDmMessage`, `hideDmMessage` (soft-delete for self), `closeDm`, `updateDm` (rename group), `leaveDm`, `markDmRead`, DM reactions (`addDmReaction`, `removeDmReaction`), DM pins (`pinDmMessage`, `unpinDmMessage`, `getDmPinnedMessages`), DM gallery (`getDmAttachments`).
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getDms` | GET | `/dms` | — | `{channels: DmChannel[]}` |
-| `openDm` | POST | `/dms` | `{user_id}` | `{channel: DmChannel}` |
-| `createGroupDm` | POST | `/dms` | `{user_ids, name?}` | `{channel: DmChannel}` |
-| `getDmMessages` | GET | `/dms/{id}/messages?limit={n}&before={datetime?}` | — | `{messages: Message[]}` |
-| `sendDmMessage` | POST | `/dms/{id}/messages` | `{content, nonce?, reply_to_id?}` | `{message: Message}` |
-| `editDmMessage` | PATCH | `/dms/messages/{id}` | `{content, nonce?}` | `{message: Message}` |
-| `deleteDmMessage` | DELETE | `/dms/messages/{id}` | — | void |
-| `hideDmMessage` | POST | `/dms/messages/{id}/hide` | — | void |
-| `getDmAttachments` | GET | `/dms/{id}/attachments` | — | `{attachments: Attachment[]}` |
-| `pinDmMessage` | POST | `/dms/{id}/pins/{messageId}` | — | `{message: Message}` |
-| `unpinDmMessage` | DELETE | `/dms/{id}/pins/{messageId}` | — | `{message: Message}` |
-| `getDmPinnedMessages` | GET | `/dms/{id}/pins` | — | `{messages: Message[]}` |
-| `addDmMember` | PUT | `/dms/{id}/members` | `{user_id}` | `{channel: DmChannel}` |
-| `leaveDm` | DELETE | `/dms/{id}/members/@me` | — | void |
-| `closeDm` | POST | `/dms/{id}/close` | — | void |
-| `updateDm` | PATCH | `/dms/{id}` | `{name?}` | `{channel: DmChannel}` |
-| `markDmRead` | POST | `/dms/{id}/read` | `{message_id}` | void |
+DM calls: `initiateCall(dmId, { isVideo? })`, `acceptCall`, `rejectCall`, `endCall`. `is_video` is passed as a query param (`?is_video=true`).
 
----
+### 4.12 Attachments
 
-### 4.11 DM Call Signaling
+Standard: `uploadAttachment(channelId, messageId, file)`, `uploadDmAttachment(dmId, messageId, file)`. Streaming with progress (XHR): `uploadAttachmentWithProgress(channelId, messageId, file, onProgress)`, `uploadDmAttachmentWithProgress(...)`. General-purpose icon/avatar: `uploadFile(file, purpose?: 'avatar' | 'icon')` — server resizes to 256×256 WebP when a purpose is set.
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `initiateCall` | POST | `/dms/{id}/call?is_video={bool?}` | — | void |
-| `acceptCall` | POST | `/dms/{id}/call/accept` | — | void |
-| `rejectCall` | POST | `/dms/{id}/call/reject` | — | void |
-| `endCall` | POST | `/dms/{id}/call/end` | — | void |
-
-> `is_video` query param wordt door de backend doorgegeven aan de ontvanger via het `DmCallRing` WS event (`is_video: bool`).
-
----
-
-### 4.12 Reactions
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `addReaction` | POST | `/messages/{id}/reactions` | `{emoji}` | void |
-| `removeReaction` | DELETE | `/messages/{id}/reactions/{emoji}` | — | void |
-| `getReactionsRaw` | GET | `/messages/{id}/reactions` | — | `{reactions: RawReaction[]}` |
-| `addDmReaction` | POST | `/dms/messages/{id}/reactions` | `{emoji}` | void |
-| `removeDmReaction` | DELETE | `/dms/messages/{id}/reactions/{emoji}` | — | void |
-| `getDmReactionsRaw` | GET | `/dms/messages/{id}/reactions` | — | `{reactions: RawReaction[]}` |
-
-`getReactionsAggregated` en `getDmReactionsAggregated` zijn client-side computed: backend retourneert raw rows (`{id, message_id, user_id, emoji, created_at}[]`), frontend aggregeert naar `{emoji, count, me}[]`.
-
----
+`UploadProgressEvent { loaded, total }` is dispatched per `xhr.upload.onprogress`. Used because `fetch()` has no upload-progress event.
 
 ### 4.13 Invites
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `createInvite` | POST | `/servers/{id}/invites` | `{max_uses?, max_age_seconds?}` | `{invite: Invite}` |
-| `getInvites` | GET | `/servers/{id}/invites` | — | `{invites: Invite[]}` |
-| `deleteInvite` | DELETE | `/servers/{id}/invites/{inviteId}` | — | void |
-| `useInvite` | POST | `/invites/{code}` | — | `{invite: Invite}` |
-
-> **Invite create body**: `{max_uses?: number, max_age_seconds?: number}` — beide optioneel.
-
----
+`createInvite(serverId, { max_uses?, max_age_seconds? })`, `getInvites`, `deleteInvite`, `useInvite(code)` — the join entry point used by `<InviteAccept />` and the deep-link handler.
 
 ### 4.14 Friends
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getFriends` | GET | `/friends` | — | `{friendships: Friendship[]}` |
-| `getPendingFriends` | GET | `/friends/pending` | — | `{friendships: Friendship[]}` |
-| `sendFriendRequest` | POST | `/friends` | `{user_id}` | `{friendship: Friendship}` |
-| `acceptFriend` | POST | `/friends/{id}/accept` | — | `{friendship: Friendship}` |
-| `declineFriend` | DELETE | `/friends/{id}` | — | void |
-| `blockUser` | POST | `/friends/block` | `{user_id}` | `{friendship: Friendship}` |
-| `removeFriendByUserId` | DELETE | `/friends/user/{userId}` | — | void | ⚠️ Geen backend route — client-only |
+`getFriends`, `getPendingFriends`, `sendFriendRequest`, `acceptFriend`, `declineFriend`, `blockUser`, `removeFriendByUserId(userId)` (handles the FE shortcut of removing by counterpart instead of friendship id).
+
+### 4.15 Notifications & devices
+
+`getNotificationSettings`, `getNotificationSetting(targetType, targetId)`, `updateNotificationSetting(targetType, targetId, body)`. Devices: `getVapidKey`, `registerDevice(body)`, `getDevices`, `deleteDevice`, `updatePushToken`.
+
+### 4.16 Presence
+
+`queryPresence(userIds: string[])` — chunks/maps the array into `Record<userId, status>`.
+
+### 4.17 Audit log
+
+`getAuditLog(serverId, { action?, limit?, before? })`.
+
+### 4.18 Webhooks
+
+`getChannelWebhooks`, `createWebhook`, `updateWebhook`, `deleteWebhook`, `regenerateWebhookToken`. Plaintext tokens are returned only on create + regenerate.
+
+### 4.19 Polls
+
+`createPoll(channelId, body)` → `{ poll, message }`, `votePoll(pollId, optionId)`, `unvotePoll(pollId, optionId)`, `getPoll`.
+
+### 4.20 Server emojis
+
+`getServerEmojis`, `uploadEmoji(serverId, name, file)`, `deleteEmoji`.
+
+### 4.21 E2EE keys
+
+- `uploadPrekeys(body)` → `POST /keys/upload` with identity + signed prekey + N one-time prekeys + optional PQ prekey
+- `getPreKeyBundle(userId)` → `GET /keys/:user_id` (all devices)
+- `distributeChannelKeys(channelId, body, isDm?)` — routes to `/channels/:id/e2ee/distribute` or `/dms/:id/e2ee/distribute`
+- `getMyChannelKey(channelId, isDm?)` → `null` if no key yet
+- `getChannelKeyGeneration(channelId)` → `{ key_generation }`
+
+### 4.22 GIFs & oEmbed
+
+`getGifFavorites`, `addGifFavorite(gifId)`, `removeGifFavorite(gifId)`, `searchGifs(query, limit, pos)`, `getFeaturedGifs(limit, pos)`, `getGifCategories()`, `getOembed(url)`.
+
+GIF responses use a Tenor-v2-compatible shape (`{ results: [{ id, title, content_description, url, media_formats: { gif, tinygif } }], next? }`).
 
 ---
 
-### 4.15 Threads
+## 5. WebSocket gateway client (`src/api/ws.ts`)
 
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `createThread` | POST | `/channels/{id}/threads` | `{message_id: string, name?: string}` | `{thread: Thread, message: Message}` |
-| `getThreads` | GET | `/channels/{id}/threads?include_archived={bool}` | — | `{threads: Thread[]}` |
-| `getThread` | GET | `/threads/{id}` | — | `{thread: Thread}` |
-| `updateThread` | PATCH | `/threads/{id}` | `{name?, is_archived?}` | `{thread: Thread}` |
-| `getThreadMessages` | GET | `/threads/{id}/messages?limit={n}&before={datetime?}` | — | `{messages: Message[]}` |
-| `sendThreadMessage` | POST | `/threads/{id}/messages` | `{content, nonce?, reply_to_id?}` | `{message: Message}` |
+A singleton `wsClient` instance is exported. The class exposes only the bare contract the rest of the app uses; everything else is private state.
 
----
+### Public surface
 
-### 4.16 Polls
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `createPoll` | POST | `/channels/{id}/polls` | `{question, options: string[], multi_select?, anonymous?, expires_at?: ISO8601}` | `{poll: Poll, message: Message}` |
-| `votePoll` | POST | `/polls/{id}/vote` | `{option_id}` | `{poll: Poll}` |
-| `unvotePoll` | DELETE | `/polls/{id}/vote` | `{option_id}` | `{poll: Poll}` |
-| `getPoll` | GET | `/polls/{id}` | — | `{poll: Poll}` |
-
----
-
-### 4.17 Webhooks
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getChannelWebhooks` | GET | `/channels/{id}/webhooks` | — | `{webhooks: Webhook[]}` |
-| `createWebhook` | POST | `/channels/{id}/webhooks` | `{name, avatar_url?}` | `{webhook: Webhook}` |
-| `updateWebhook` | PATCH | `/webhooks/{id}` | `{name?, avatar_url?}` | `{webhook: Webhook}` |
-| `deleteWebhook` | DELETE | `/webhooks/{id}` | — | void |
-| `regenerateWebhookToken` | POST | `/webhooks/{id}/token` | — | `{webhook: Webhook}` |
-
----
-
-### 4.18 Server Emojis
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getServerEmojis` | GET | `/servers/{id}/emojis` | — | `{emojis: ServerEmoji[]}` |
-| `uploadEmoji` | POST | `/servers/{id}/emojis` | `FormData {name, file}` | `{emoji: ServerEmoji}` |
-| `deleteEmoji` | DELETE | `/emojis/{id}` | — | void |
-
----
-
-### 4.19 Push & Devices
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getVapidKey` | GET | `/push/vapid-key` | — | `{public_key: string}` |
-| `registerDevice` | POST | `/devices` | `{device_id?, device_name, device_type, push_token?}` | `{device: {id}}` |
-| `getDevices` | GET | `/devices` | — | `{devices: Device[]}` |
-| `deleteDevice` | DELETE | `/devices/{id}` | — | void |
-| `updatePushToken` | PATCH | `/devices/{id}/push-token` | `{push_token}` | void |
-
----
-
-### 4.20 E2EE Keys
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `uploadPrekeys` | POST | `/keys/upload` | `{device_id, identity_key, signed_prekey, signed_prekey_signature, one_time_prekeys[], pq_signed_prekey?, pq_signed_prekey_signature?}` | `{message, prekey_count}` |
-| `getPreKeyBundle` | GET | `/keys/{userId}` | — | `PreKeyBundleResponse` |
-| `distributeChannelKeys` | POST | `/channels/{id}/e2ee/distribute` of `/dms/{id}/e2ee/distribute` | `{key_generation, recipients: [{user_id, encrypted_key, nonce}]}` | `{ok: boolean}` |
-| `getMyChannelKey` | GET | `/channels/{id}/e2ee/my-key` of `/dms/{id}/e2ee/my-key` | — | `{encrypted_key, nonce, key_generation, distributor_user_id}` of null |
-| `getChannelKeyGeneration` | GET | `/channels/{id}/e2ee/generation` | — | `{key_generation: number}` |
-
----
-
-### 4.21 Notification Settings
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `getNotificationSettings` | GET | `/users/me/notifications` | — | `{settings: NotificationSetting[]}` |
-| `getNotificationSetting` | GET | `/users/me/notifications/{type}/{id}` | — | `NotificationSetting` |
-| `updateNotificationSetting` | PUT | `/users/me/notifications/{type}/{id}` | `{muted, mute_until?, suppress_everyone?}` | `NotificationSetting` |
-
----
-
-### 4.22 Overig
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `queryPresence` | POST | `/presence/query` | `{user_ids: string[]}` | `{presences: [{user_id, status}]}` |
-| `getAuditLog` | GET | `/servers/{id}/audit-log?action?&limit?&before?` | — | `{entries: AuditLogEntry[]}` |
-
----
-
-### 4.23 GIFs & oEmbed
-
-| Functie | Method | Path | Body | Response |
-|---------|--------|------|------|----------|
-| `searchGifs` | GET | `/gifs/search?q={q}&limit?&pos?` | — | `TenorSearchResponse` |
-| `getFeaturedGifs` | GET | `/gifs/featured?limit?&pos?` | — | `TenorSearchResponse` |
-| `getGifCategories` | GET | `/gifs/categories` | — | `{tags: TenorCategory[]}` (30min cache) |
-| `getGifFavorites` | GET | `/gifs/favorites` | — | `{favorites: GifFavorite[]}` |
-| `addGifFavorite` | POST | `/gifs/favorites` | `{gif_id, gif_url, preview_url, title?}` | void |
-| `removeGifFavorite` | DELETE | `/gifs/favorites/{gifId}` | — | void |
-| `getOembed` | GET | `/oembed?url={url}` | — | `OembedResponse` |
-
-> **Backend providers**: GIPHY proxy voor `/search`/`/featured`/`/categories`/`/i/`/`/media`. Frontend types heten "Tenor" om historische redenen — de schema's zijn compatibel.
->
-> **GIF favorite sync**: backend emit `GifFavoriteUpdate` WS event op de user-channel zodat sibling sessies de favorites lijst mee updaten zonder polling.
-
----
-
-### 4.24 Backend routes zonder dedicated client.ts wrapper
-
-De volgende backend routes bestaan maar hebben geen aparte functie in `src/api/client.ts` (ze worden indirect gebruikt of zijn intern):
-
-| Method | Path | Omschrijving |
-|--------|------|-------------|
-| GET | `/avatars/{userId}` | Publiek avatar endpoint (geen auth, direct via `<img src=...>`) |
-| GET | `/icons/{serverId}` | Publiek server icon endpoint (geen auth, direct via `<img src=...>`) |
-| GET | `/keys/count/{deviceId}` | One-time prekey count (FE controleert niet actief, backend monitort zelf) |
-| GET | `/keys/{userId}/{deviceId}` | PreKey bundle voor specifiek device (FE gebruikt `getPreKeyBundle` op `/keys/{userId}` voor alle devices) |
-| POST | `/auth/logout` | Sessie invalideren (client roept dit niet expliciet aan; tokens worden lokaal gewist via `clearTokens`) |
-| POST | `/auth/logout-all` | Alle sessies invalideren (geen directe wrapper — alleen via Settings UI flow) |
-| POST | `/auth/refresh` | Token refresh — intern via `refreshAccessToken()` private functie, geen public wrapper |
-| POST | `/webhooks/{id}/{token}` | Webhook uitvoeren (geen auth, extern aangeroepen door bots) |
-
----
-
-## 5. WebSocket Gateway Protocol
-
-### Bronbestand: `src/api/ws.ts`
-
-### Verbinding
-
-- URL: `getWsUrl()` → `/ws` (web) of `wss://jolkr.app/ws` (Tauri)
-- Protocol: JSON frames `{ "op": "<EventName>", "d": { ...payload } }`
-- Auth: na `onopen` → `{ "op": "Identify", "d": { "token": "<jwt>" } }`
-- Server antwoordt met `{ "op": "Ready" }` na succesvolle auth
-- Heartbeat: elke 30s → `{ "op": "Heartbeat", "d": { "seq": N } }`, server antwoordt met `HeartbeatAck`
-
-### Reconnectie
-
-- Exponential backoff met jitter: `min(1000 × 2^attempt + random(0..1000), 60000)` ms
-- Max 10 pogingen, daarna synthetisch `Disconnected` event
-- Vóór elke reconnect: `refreshAccessTokenIfNeeded()`
-- Channel subscriptions blijven bewaard in `Map<channelId, refcount>` en worden op `Ready` opnieuw verstuurd
-
-### Client → Server Events
-
-| Op | Payload | Wanneer |
-|----|---------|---------|
-| `Identify` | `{ token: string }` | Na WS open |
-| `Heartbeat` | `{ seq: number }` | Elke 30s |
-| `Subscribe` | `{ channel_id: string }` | Channel view geopend (refcount 0→1) |
-| `Unsubscribe` | `{ channel_id: string }` | Channel view gesloten (refcount→0) |
-| `TypingStart` | `{ channel_id: string }` | User typt (throttled 3s) |
-| `PresenceUpdate` | `{ status: string }` | Status wijziging (online/idle/dnd/offline) |
-
-### Server → Client Events
-
-| Op | Payload `d` | Consumer(s) |
-|----|-------------|-------------|
-| `Ready` | _(leeg)_ | `ws.ts` (re-subscribe), `Layout.tsx` (banner weg) |
-| `HeartbeatAck` | _(leeg)_ | `ws.ts` (no-op) |
-| `MessageCreate` | `{ message: Message }` | `stores/messages.ts`, `stores/unread.ts`, `services/notifications.ts`, `DmList.tsx` |
-| `MessageUpdate` | `{ message: Message }` | `stores/messages.ts` |
-| `MessageDelete` | `{ message_id, channel_id?, dm_channel_id? }` | `stores/messages.ts` |
-| `ReactionUpdate` | `{ channel_id, message_id, reactions[] }` | `stores/messages.ts` |
-| `PollUpdate` | `{ poll, message_id, channel_id }` | `stores/messages.ts` |
-| `ThreadCreate` | _(any)_ | `stores/messages.ts` (threadListVersion++) |
-| `ThreadUpdate` | _(any)_ | `stores/messages.ts` (threadListVersion++) |
-| `PresenceUpdate` | `{ user_id, status }` | `stores/presence.ts` |
-| `TypingStart` | `{ channel_id, user_id }` | `stores/typing.ts` (5s TTL) |
-| `ChannelCreate` | `{ channel: Channel }` | `stores/servers.ts` |
-| `ChannelUpdate` | `{ channel: Channel }` | `stores/servers.ts` |
-| `ChannelDelete` | `{ channel_id, server_id }` | `stores/servers.ts` |
-| `MemberJoin` | `{ server_id, user_id }` | `stores/servers.ts` |
-| `MemberLeave` | `{ server_id, user_id }` | `stores/servers.ts` |
-| `MemberUpdate` | `{ server_id, user_id, timeout_until?, nickname?, role_ids? }` | `stores/servers.ts` (+ permission cache invalidatie) |
-| `ServerUpdate` | `{ server: Server }` | `stores/servers.ts` |
-| `ServerDelete` | `{ server_id }` | `stores/servers.ts` |
-| `RoleCreate` | `{ server_id, role: Role }` | `stores/servers.ts` |
-| `RoleUpdate` | `{ server_id, role: Role }` | `stores/servers.ts` (+ permission cache invalidatie) |
-| `RoleDelete` | `{ server_id, role_id }` | `stores/servers.ts` |
-| `ChannelPermissionUpdate` | `{ channel_id, server_id, overwrites: ChannelOverwrite[] }` | `stores/servers.ts` |
-| `UserUpdate` | `{ status?, display_name?, avatar_url?, bio?, banner_color?, show_read_receipts?, dm_filter?, allow_friend_requests?, preferred_language? }` | `stores/auth.ts`, `stores/locale.ts` (preferred_language) |
-| `EmailVerified` | `{ user_id }` | `stores/auth.ts` |
-| `FriendshipUpdate` | `{ friendship, kind }` | `stores/friends.ts` |
-| `DmMessagesRead` | `{ dm_id, user_id, message_id }` | `stores/unread.ts`, `stores/dm-reads.ts` |
-| `DmCreate` | `{ channel: DmChannel }` | `DmList.tsx` |
-| `DmUpdate` | `{ channel: DmChannel }` | `DmList.tsx`, `DmChat.tsx` |
-| `DmClose` | `{ dm_id }` | `stores/dms.ts` (sibling-session sync) |
-| `DmMessageHide` | `{ dm_id, message_id }` | `stores/messages.ts` (sibling-session sync) |
-| `CategoryCreate` | `{ category: Category }` | `stores/servers.ts` |
-| `CategoryUpdate` | `{ category: Category }` | `stores/servers.ts` |
-| `CategoryDelete` | `{ category_id, server_id }` | `stores/servers.ts` |
-| `ChannelMessagesRead` | `{ channel_id, user_id, message_id }` | `stores/unread.ts` |
-| `ServerMessagesRead` | `{ server_id, user_id }` | `stores/unread.ts` |
-| `DmCallRing` | `{ dm_id, caller_id, caller_username, is_video }` | `hooks/useCallEvents.ts` |
-| `DmCallAccept` | `{ dm_id, user_id }` | `hooks/useCallEvents.ts` |
-| `DmCallReject` | `{ dm_id, user_id }` | `hooks/useCallEvents.ts` |
-| `DmCallEnd` | `{ dm_id, user_id }` | `hooks/useCallEvents.ts` |
-| `UserCallPresence` | `{ dm_id?, channel_id?, is_video? }` | `stores/call.ts` (sibling-session "On a call" indicator) |
-| `GifFavoriteUpdate` | `{ added?, removed_gif_id? }` | `stores/gifFavorites.ts` |
-| `NotificationSettingUpdate` | `{ target_type, target_id, setting? }` | `stores/notifications.ts` |
-
-### Channel Subscription (refcount systeem)
-
-```
-subscribe(channelId):   refcount++ → op 0→1: stuur Subscribe
-unsubscribe(channelId): refcount-- → op →0: stuur Unsubscribe
-Bij Ready event:        alle channels in Map re-subscriben
+```typescript
+wsClient.connect();                          // idempotent; bails if no access token
+wsClient.disconnect();                       // hard-close, no reconnect
+wsClient.subscribe(channelId);               // refcounted — only one Subscribe per channel
+wsClient.unsubscribe(channelId);             // refcounted
+wsClient.sendTyping(channelId);
+wsClient.updatePresence(status);             // 'online' | 'idle' | 'dnd' | 'offline'
+wsClient.on((event: WsListenerEvent) => …);  // returns an unsubscribe fn
 ```
 
-Gebruikt door `MessageList.tsx` (mount/unmount).
+### Lifecycle
+
+1. `connect()` is no-op if `this.ws` is already set or no access token is available.
+2. On `open` → sends `Identify { token }` immediately.
+3. On any `message` → JSON-parses `{ op, d }`, dispatches to every registered listener.
+4. On `op === 'Ready'` → marks the connection ready, starts heartbeat, replays any tracked channel subscriptions.
+5. Heartbeat — `setInterval` every **30 000 ms** sends `Heartbeat { seq: ++this.seq }`. Server expects one within 90 s.
+6. On `close` → cleanup heartbeat, null the socket, `scheduleReconnect()`.
+7. On `error` → just closes; reconnect handles the retry.
+
+### Reconnect
+
+Exponential backoff `min(1000 * 2^n + jitter, 60_000)` ms, max 10 attempts. Before each reconnect it calls `refreshAccessTokenIfNeeded()` because the close may have been triggered by token expiry. Once `MAX_ATTEMPTS` is reached the listener receives a synthetic `{ op: 'Disconnected', d: { reason: 'max_reconnect_attempts' } }` event so UI can show "offline".
+
+### Subscriptions
+
+`subscribe()` / `unsubscribe()` are refcounted: multiple hooks can subscribe to the same channel and only the first/last triggers an actual `Subscribe` / `Unsubscribe` frame. On reconnect the entire `subscribedChannels` map is replayed.
+
+### Event handling
+
+`WsListenerEvent` (in `src/api/ws-events.ts`) is the discriminated union of every server→client op. Stores subscribe via `wsClient.on(...)` and `switch (event.op)` to update local state. Unknown ops fall through to an `UnknownWsEvent` branch.
+
+Built-in handling inside `WsClient.handleEvent`:
+
+- `Ready` → flip `connected`, start heartbeat, replay subscriptions
+- `HeartbeatAck` → no-op
+- `Error` → `console.warn('[ws] gateway error', d.message)` (consumers can still observe via their own listener)
+
+### Which store handles which event
+
+| Op | Store(s) | Effect |
+|----|----------|--------|
+| `MessageCreate` | `messages` + `unread` | Append to channel/DM/thread feed; bump unread |
+| `MessageUpdate` / `MessageDelete` | `messages` | Replace or remove |
+| `ReactionUpdate` | `messages` | Replace reactions array on the message |
+| `PollUpdate` | `messages` | Replace embedded poll snapshot |
+| `TypingStart` | `typing` | Set a TTL'd "X is typing" entry |
+| `PresenceUpdate` | `presence` | Map user → status |
+| `DmCreate` / `DmUpdate` / `DmClose` / `DmMessageHide` / `DmMessagesRead` | `dm-reads`, `messages`, `servers` (DM list) | Sync DM list & messages |
+| `ThreadCreate` / `ThreadUpdate` | `threads` | Sync thread list |
+| `ChannelCreate` / `ChannelUpdate` / `ChannelDelete` | `servers` | Sync channel tree |
+| `CategoryCreate/Update/Delete` | `servers` | Sync categories |
+| `MemberJoin/Leave/Update` | `users`, `servers` | Roster updates |
+| `ServerUpdate/Delete` | `servers` | Sync server metadata |
+| `RoleCreate/Update/Delete` | `servers` | Sync roles; trigger permission re-fetch on `RoleUpdate` |
+| `ChannelPermissionUpdate` | `servers` | Replace overwrites |
+| `DmCallRing/Accept/Reject/End` + `UserCallPresence` | `call` | Drive call UI / overlays |
+| `UserUpdate` | `users`, `auth` (if `user_id === me`), `locale` (if `preferred_language` present) | Profile + self-only privacy/locale sync |
+| `EmailVerified` | `auth` | Refresh `me.email_verified` |
+| `FriendshipUpdate` | `users` / friendship cache | Update friends panel |
+| `GifFavoriteUpdate` | `gif-favorites` | Sync favorite list |
+| `NotificationSettingUpdate` | `notification-settings` | Sync mute/notify state |
+| `ChannelMessagesRead` / `ServerMessagesRead` | `unread` | Clear read markers |
 
 ---
 
 ## 6. Voice WebSocket & WebRTC
 
-### Bronbestanden: `src/voice/voiceClient.ts`, `src/voice/voiceService.ts`
+Source: `src/voice/voiceClient.ts`, `src/voice/voiceService.ts`, `src/voice/encryptionWorker.ts`, `src/voice/voicePrefs.ts`, `src/stores/voice.ts`, `src/stores/call.ts`.
 
-### Voice Signaling WebSocket
+### Voice WS client
 
-- URL: `getMediaWsUrl()` → `/media/ws/voice`
-- Auth: zelfde `Identify` pattern als main gateway
-- Geen reconnectie (als WS valt maar WebRTC draait, blijft audio actief)
+`new VoiceClient(wsUrl).connect(token)` opens a WebSocket to `getMediaWsUrl()` and immediately sends `Identify { token }`. Returns a promise that resolves on `open` (10-second timeout, rejects otherwise).
 
-#### Client → Media Server
+Client → server ops:
 
-| Op | Payload |
-|----|---------|
-| `Identify` | `{ token: string }` |
-| `Join` | `{ channel_id: string }` |
-| `Answer` | `{ sdp: string }` |
-| `IceCandidate` | `{ candidate: string }` |
-| `Leave` | `{}` |
-| `Mute` | `{ muted: boolean }` |
-| `Deafen` | `{ deafened: boolean }` |
+| Op | Payload | Purpose |
+|----|---------|---------|
+| `Identify` | `{ token }` | Authenticate. Must be first. |
+| `Join` | `{ channel_id, with_video }` | Join voice room (text-or-DM channel id) |
+| `Answer` | `{ sdp }` | Reply to server `Offer` |
+| `IceCandidate` | `{ candidate }` | Trickle ICE up to the SFU |
+| `Leave` | `{}` | Leave room (also fired on disconnect cleanup) |
+| `Mute` | `{ muted }` | Update mute state |
+| `Deafen` | `{ deafened }` | Update deafen state |
 
-#### Media Server → Client
+Server → client ops (mapped to `VoiceEventType` strings):
 
-| Op | Payload |
-|----|---------|
-| `Joined` | `{ participants: [{user_id, is_muted, is_deafened}] }` |
-| `Offer` | `{ sdp: string }` |
-| `IceCandidate` | `{ candidate: string }` |
-| `ParticipantJoined` | `{ user_id }` |
-| `ParticipantLeft` | `{ user_id }` |
-| `MuteUpdate` | `{ user_id, muted }` |
-| `DeafenUpdate` | `{ user_id, deafened }` |
-| `Speaking` | `{ user_id, speaking }` |
-| `Error` | `{ message }` |
+| Wire op | Listener name | Payload |
+|---------|---------------|---------|
+| `Joined` | `joined` | `{ room_id, participants: ParticipantInfo[] }` |
+| `Offer` | `offer` | `{ sdp }` |
+| `IceCandidate` | `iceCandidate` | `{ candidate }` (trickle from SFU; the OP_MAP includes it even though the backend currently bundles ICE inside the Offer) |
+| `ParticipantJoined` | `participantJoined` | `{ user_id, has_video, audio_mid, video_mid? }` |
+| `ParticipantLeft` | `participantLeft` | `{ user_id }` |
+| `MuteUpdate` | `muteUpdate` | `{ user_id, muted }` |
+| `DeafenUpdate` | `deafenUpdate` | `{ user_id, deafened }` |
+| `Speaking` | `speaking` | Reserved, **not currently emitted** |
+| `Error` | `error` | `{ message }` |
 
-### WebRTC
+On close with a non-1000 code, the client emits an `error` event with `WebSocket closed: {code} {reason}` so `VoiceService` can fall back / reconnect.
 
-- STUN server: `stun:stun.l.google.com:19302`
-- SFU model: server stuurt SDP Offer, client antwoordt met Answer
-- ICE candidates worden uitgewisseld via voice WS
+### Voice service (WebRTC)
 
-### Voice E2EE
+`VoiceService` owns:
 
-- Worker: `src/voice/encryptionWorker.ts` (Web Worker via `RTCRtpScriptTransform`)
-- Key: voor server voice channels → channel shared key; voor DM calls → pairwise X25519 DH
-- KDF: `HKDF-SHA256(channelKeyBytes, salt=zero[32], info="jolkr-voice-e2ee-v1")` → AES-256-GCM
-- IV: `SSRC(4B BE) || counter(4B LE) || zeros(4B)` — voorkomt collision bij meerdere deelnemers
-- Frame format: `[AES-GCM ciphertext + 16B tag] [4B counter LE]`
+- One `RTCPeerConnection` per voice session
+- Local `MediaStreamTrack`s (mic, optional camera, optional screenshare)
+- A map of `RTCRtpTransceiver`s indexed by participant `audio_mid` / `video_mid`
+- Optional voice E2EE (SFrame-style) via `encryptionWorker.ts` — encrypted frames are inserted via `RTCRtpScriptTransform` / Insertable Streams where supported.
 
----
+Flow:
 
-## 7. E2EE Crypto Systeem
+1. `voiceService.join(channelId, opts)` → `voiceClient.connect(token)` → `voiceClient.join(channelId, { withVideo })`.
+2. Receive `Joined` → record participants, prepare transceivers.
+3. Receive `Offer` → `pc.setRemoteDescription` → `pc.createAnswer` → `voiceClient.sendAnswer(sdp)`.
+4. Trickle ICE both directions.
+5. `ParticipantJoined` / `Left` → add or remove transceivers / playback elements.
+6. `voiceService.leave()` → tear down transceivers + `voiceClient.leave()` → close socket.
 
-### Bronbestanden: `src/crypto/`, `src/services/e2ee.ts`
+User toggles `setMuted/setDeafened` propagate locally (enable/disable tracks) and to the server (`voiceClient.setMuted/setDeafened`) so other participants see the same state via `MuteUpdate` / `DeafenUpdate`.
 
-### Libraries
+### Stores
 
-- `@noble/curves/ed25519` — Ed25519 signing + X25519 ECDH
-- `@noble/post-quantum/ml-kem` — ML-KEM-768 (post-quantum KEM)
-
-### Key Types
-
-| Type | Algoritme | Gebruik |
-|------|-----------|---------|
-| `IdentityKeyPair` | Ed25519 | Signing (signature verificatie) |
-| `SignedPreKey` | X25519 + Ed25519 sig | ECDH key exchange |
-| `PQSignedPreKey` | ML-KEM-768 + Ed25519 sig | Post-quantum KEM |
-
-### Deterministische Key Generatie (login)
-
-```
-1. PBKDF2-SHA256(password, "jolkr-e2ee-v2:" + userId, 210000 iterations) → 256-bit seed
-2. HKDF-SHA256(seed, info="jolkr-e2ee-identity-ed25519") → Ed25519 private key
-3. HKDF-SHA256(seed, info="jolkr-e2ee-signedprekey-x25519") → X25519 private key
-4. HKDF-SHA256(seed, info="jolkr-e2ee-pqprekey-mlkem768", 512 bits) → ML-KEM-768 seed → keygen
-5. Sign X25519 public key met Ed25519 → signed prekey
-6. Sign ML-KEM encapsulation key met Ed25519 → pq signed prekey
-```
-
-### Key Opslag
-
-Via `src/crypto/keyStore.ts` → `src/platform/storage.ts`:
-- Desktop: Stronghold encrypted vault
-- Web: localStorage (base64 encoded)
-
-Storage keys: `e2ee_identity_pub`, `e2ee_identity_priv`, `e2ee_signed_prekey_pub`, `e2ee_signed_prekey_priv`, `e2ee_signed_prekey_sig`, `e2ee_pq_encapsulation_key`, `e2ee_pq_decapsulation_key`, `e2ee_pq_signature`
-
-### Key Upload
-
-Na login/register:
-1. `POST /api/devices` — device registreren
-2. `POST /api/keys/upload` — public keys + signatures uploaden
-3. Flag `e2ee_keys_uploaded` in storage gezet (1x per sessie)
-
-### DM Encryptie (per-bericht asymmetrisch)
-
-```
-Encrypt:
-1. Fetch recipient PreKeyBundle (GET /keys/{userId}, 5min cache)
-2. Verify signed prekey signature (Ed25519)
-3. Genereer ephemeral X25519 keypair
-4. X25519 DH: ephemeralPriv × recipient.signedPrekey → classicalShared
-5. ML-KEM-768 encapsulate(recipient.pqKey) → pqCiphertext + pqShared
-6. HKDF-SHA256(classicalShared || pqShared, info="jolkr-e2ee-hybrid-v1") → AES key
-7. AES-256-GCM encrypt met 12-byte random nonce
-8. Pack: version(0x03) || ephemeralPub(32B) || pqCiphertext(1088B) || ciphertext
-
-Decrypt:
-1. Lees version byte → route naar juiste KDF
-2. Unpack ephemeralPub + pqCiphertext + ciphertext
-3. X25519 DH: mySignedPrekeyPriv × ephemeralPub → classicalShared
-4. ML-KEM-768 decapsulate(myDecapsKey, pqCiphertext) → pqShared
-5. Zelfde HKDF → AES key → AES-GCM decrypt
-```
-
-### Version Bytes
-
-| Byte | KDF | Quantum | Status |
-|------|-----|---------|--------|
-| `0x03` | HKDF-SHA256 | Ja (hybrid X25519 + ML-KEM-768) | **Enige supported versie** |
-
-> Legacy versies `0x01` (classical) en `0x02` (SHA-256 hybrid) zijn verwijderd. Alleen v0x03 wordt ondersteund.
-
-### Channel/Group Encryptie (shared symmetric key)
-
-```
-1. GET /channels/{id}/e2ee/my-key → encrypted channel key (of null)
-2. Als null: genereer 32 random bytes, encrypt voor elke member via DM E2EE
-3. POST /channels/{id}/e2ee/distribute met per-recipient ciphertexts
-4. Encrypt berichten: AES-256-GCM met channel key + random nonce
-5. Cache: in-memory Map<channelId, CachedChannelKey> (geen TTL, gewist bij logout)
-6. Key rotation: server tracked key_generation integer
-```
-
-### Safety Numbers
-
-`SHA-256(sorted(identityKey_A || identityKey_B))` → 60 decimale cijfers, 12 groepen van 5.
+- **`stores/voice.ts`** — currently joined room, peer states, local mute/deafen/video state, output device.
+- **`stores/call.ts`** — DM call overlays (incoming ring + outgoing dialing). Driven by `DmCallRing/Accept/Reject/End` + `UserCallPresence`.
+- **`voice/voicePrefs.ts`** — persisted audio device IDs, push-to-talk binding, noise-suppression toggles.
 
 ---
 
-## 8. Zustand Stores & State Management
+## 7. E2EE crypto stack
 
-Geen Redux, geen React Query. Alle state in Zustand stores (module-level singletons).
+Source: `src/crypto/` + `src/services/e2ee.ts` + `src/services/decryptQueue.ts`.
 
-### 8.1 `useAuthStore` (`stores/auth.ts`)
+### Primitives (`src/crypto/keys.ts`)
 
-| State | Type |
-|-------|------|
-| `user` | `User \| null` |
-| `loading` | `boolean` |
-| `error` | `string \| null` |
+- **Identity / signing**: Ed25519 (via `@noble/curves`)
+- **Key agreement**: X25519
+- **Post-quantum KEM**: ML-KEM-768 (via `@noble/post-quantum`)
+- **Signed prekey** + **PQ signed prekey** signatures are both produced by the identity Ed25519 key.
 
-| Action | API calls |
-|--------|-----------|
-| `login(email, pw)` | `api.login`, `api.getMe`, `wsClient.connect` |
-| `register(email, user, pw)` | `api.register`, `api.getMe`, `wsClient.connect` |
-| `loadUser()` | `api.getMe`, `wsClient.connect` |
-| `updateProfile(data)` | `api.updateMe` |
-| `logout()` | `wsClient.disconnect`, `api.clearTokens`, `resetE2EE`, `resetAllStores` |
+Helpers: `generateIdentityKeyPair`, `generateSignedPreKey`, `generatePQSignedPreKey`, `verifySignedPreKey`, `verifyPQSignedPreKey`, `x25519KeyAgreement`, `mlkemEncapsulate`, `mlkemDecapsulate`, `toBase64`, `fromBase64`.
 
-WS listener: `UserUpdate` → patcht eigen user object.
-
-### 8.2 `useServersStore` (`stores/servers.ts`)
-
-| State | Type |
-|-------|------|
-| `servers` | `Server[]` |
-| `channels` | `Record<serverId, Channel[]>` |
-| `members` | `Record<serverId, Member[]>` |
-| `categories` | `Record<serverId, Category[]>` |
-| `roles` | `Record<serverId, Role[]>` |
-| `permissions` | `Record<serverId, number>` |
-| `channelPermissions` | `Record<channelId, number>` |
-| `emojis` | `Record<serverId, ServerEmoji[]>` |
-
-WS listeners: `ChannelCreate/Update/Delete`, `CategoryCreate/Update/Delete`, `MemberJoin/Leave/Update`, `ServerUpdate/Delete`.
-
-Cache: skip fetch als data al geladen; permission cache invalidatie bij eigen role wijziging.
-
-### 8.3 `useMessagesStore` (`stores/messages.ts`)
-
-| State | Type |
-|-------|------|
-| `messages` | `Record<channelId, Message[]>` |
-| `loading/loadingOlder/hasMore` | per channel |
-| `threadMessages/threadLoading/...` | parallel voor threads |
-| `threadListVersion` | `number` (increment = re-fetch trigger) |
-
-LRU cache: max 30 kanalen (`MAX_CACHED_CHANNELS`).
-
-`normalizeWsMessage()`: canonical message shape voor WS events.
-
-`transformReactions()`: maps backend `user_ids[]` → `me: boolean`.
-
-WS listeners: `MessageCreate/Update/Delete`, `ThreadCreate/Update`, `ReactionUpdate`, `PollUpdate`.
-
-### 8.4 `usePresenceStore` (`stores/presence.ts`)
-
-| State | Type |
-|-------|------|
-| `presence` | `Record<userId, 'online' \| 'idle' \| 'offline'>` |
-
-Geen API calls — puur WS-driven (`PresenceUpdate` event).
-
-### 8.11 `useTypingStore` (`stores/typing.ts`)
-
-| State | Type |
-|-------|------|
-| `typing` | `Record<channelId, Record<userId, TypingEntry>>` |
-
-WS: `TypingStart` → track per-channel typing. Auto-clear na 5s. Selector `useTypingUsers(channelId, ownUserId)` filtert eigen user.
-
-### 8.5 `useVoiceStore` (`stores/voice.ts`)
-
-| State | Type |
-|-------|------|
-| `connectionState` | string |
-| `channelId/serverId/channelName` | string |
-| `isMuted/isDeafened` | boolean |
-| `participants` | array |
-| `error` | string |
-
-Gebruikt `VoiceService` singleton, geen REST API.
-
-### 8.6 `useCallStore` (`stores/call.ts`)
-
-| State | Type |
-|-------|------|
-| `incomingCall` | object |
-| `outgoingCall` | object |
-| `activeCallDmId` | string |
-
-API calls: `api.initiateCall`, `acceptCall`, `rejectCall`, `endCall`.
-
-60s ring timer. Cross-store subscription naar `useVoiceStore`.
-
-### 8.7 `useUnreadStore` (`stores/unread.ts`)
-
-| State | Type |
-|-------|------|
-| `counts` | `Record<channelId, number>` |
-| `activeChannel` | `string \| null` |
-| `lastSeenMessageId` | `Record<channelId, string>` (localStorage `jolkr_last_seen`) |
-
-| Action | Beschrijving |
-|--------|-------------|
-| `increment(channelId)` | +1 als user niet in dat kanaal zit |
-| `markRead(channelId)` | Reset count naar 0 |
-| `setActiveChannel(channelId)` | Markeert kanaal als gelezen, slaat last seen op |
-| `markServerRead(channelIds)` | Clear counts voor meerdere kanalen tegelijk |
-
-WS: `MessageCreate` (increment), `DmMessagesRead` (mark read), `ChannelMessagesRead` (sync read state), `ServerMessagesRead` (clear all counts).
-
-### 8.8 `useDmReadsStore` (`stores/dm-reads.ts`)
-
-| State | Type |
-|-------|------|
-| `readStates` | `Record<dmId, Record<userId, messageId>>` |
-
-WS: `DmMessagesRead` — voor read receipt rendering.
-
-### 8.9 `useContextMenuStore` (`stores/context-menu.ts`)
-
-Pure UI state. Geen backend interactie.
-
-### 8.10 `resetAllStores` (`stores/reset.ts`)
-
-Utility functie die `.reset()` / `.clearAll()` aanroept op alle stores. Aangeroepen door `logout()`.
-
----
-
-## 9. Services
-
-### 9.1 `services/e2ee.ts`
-
-E2EE lifecycle: init, key generatie, upload, bundle caching, encrypt/decrypt.
-
-API calls: `api.registerDevice`, `api.uploadPrekeys`, `api.getPreKeyBundle`.
-
-Bundle cache: `Map<userId, CachedBundle>` (5min TTL valid, 10s TTL null).
-
-Één key set in memory: `localKeys` (HKDF-derived). Legacy SHA-256 keys zijn verwijderd — alleen v0x03 hybrid X25519+ML-KEM-768 wordt ondersteund.
-
-### 9.2 `services/notifications.ts`
-
-In-app notification: Web Audio API (geen externe bestanden) + desktop `Notification API`.
-
-WS listener: `MessageCreate` → geluid + notification voor niet-actieve channels; skipt eigen berichten.
-
-Respecteert localStorage prefs: `jolkr_sound`, `jolkr_desktop_notif`.
-
-### 9.3 `services/pushRegistration.ts`
-
-Web Push: `navigator.serviceWorker.register('/app/sw.js')` → `pushManager.subscribe`.
-
-API calls: `api.getVapidKey`, `api.registerDevice`, `api.deleteDevice`.
-
-Device ID: `localStorage.jolkr_push_device_id`.
-
-Skipt op Tauri desktop.
-
-### 9.4 `services/deepLink.ts`
-
-Tauri only. Registreert `jolkr://` URL handler.
-
-Ondersteunt: `jolkr://invite/{code}` → `api.useInvite`, `jolkr://add/{userId}` → `api.sendFriendRequest`.
-
-### 9.5 `services/updater.ts`
-
-Tauri only. Auto-updater via `@tauri-apps/plugin-updater`.
-
----
-
-## 10. Hooks met Backend Interactie
-
-### `useCallEvents` (`hooks/useCallEvents.ts`)
-
-WS events: `DmCallRing`, `DmCallAccept`, `DmCallReject`, `DmCallEnd` → dispatcht naar `useCallStore`.
-
-Ring sound: `HTMLAudioElement` + Web Audio API fallback.
-
-### `useDecryptedContent` (`hooks/useDecryptedContent.ts`)
-
-Decrypts encrypted message content. Parameters: `content, nonce?, isDm?, channelId`.
-
-Returns: `{displayContent, isEncrypted, decrypting}`.
-
-- Decrypts via `decryptChannelMessage()` met shared symmetric channel key
-- `nonce` aanwezig = encrypted, anders plaintext
-- Fallback: `[Encrypted message — keys unavailable]` als decryptie faalt
-- Retry: max 3x met 1s delay als E2EE keys nog niet geladen
-
-### `usePresignRefresh` (`hooks/usePresignRefresh.ts`)
-
-Refresht presigned S3 URLs elke 3 uur. Roept `fetchMessages`, `fetchServers`, `loadUser` aan.
-
-### Pure UI hooks (geen backend)
-
-- `useMobileNav` / `MobileNavProvider` — enige React Context in de app
-- `useMobileView` — media query `max-width: 767px`
-- `useKeyboardShortcuts` — Ctrl+K, Ctrl+Shift+M, Escape
-- `useNMPlayer` — video player wrapper
-- `useFocusTrap` — modal focus trap
-- `useClickOutside` — click outside handler
-
----
-
-## 11. App Initialisatie & Routing
-
-### Bronbestand: `src/App.tsx`
-
-### Provider Tree
-
-```
-<BrowserRouter basename="/app" | "/">
-  <AppInit>                    ← lifecycle orchestrator
-    <DeepLinkHandler />        ← jolkr:// URL handler (Tauri)
-    <CallOverlays />           ← IncomingCallDialog + OutgoingCallDialog
-    <TextContextMenu />
-    <ContextMenu />
-    <Routes>...</Routes>
-  </AppInit>
-</BrowserRouter>
-```
-
-Geen `QueryClientProvider`, geen Redux Provider, geen externe context providers behalve `MobileNavProvider` (in Layout).
-
-### Initialisatie Sequence (AppInit useEffect)
-
-```
-1. initTokens()                    → tokens laden uit storage
-2. loadUser()                      → GET /users/@me + wsClient.connect()
-3. requestNotificationPermission() → browser Notification API
-4. registerPush()                  → Web Push subscription
-5. initE2EE(deviceId)              → key generatie + upload
-6. initNotifications()             → WS message listener voor sounds
-7. (Tauri) checkForUpdates()       → na 5s delay
-```
-
-### Routes
-
-| Path | Component | Guard |
-|------|-----------|-------|
-| `/login` | `Login` | GuestGuard |
-| `/register` | `Register` | GuestGuard |
-| `/forgot-password` | `ForgotPassword` | GuestGuard |
-| `/invite/:code` | `InviteAccept` | Geen |
-| `/` | `Layout` → `Home` | AuthGuard |
-| `/dm/:dmId` | `Layout` → `DmChat` | AuthGuard |
-| `/friends` | `Layout` → `Friends` | AuthGuard |
-| `/servers/:serverId` | `Layout` → `ServerPage` | AuthGuard |
-| `/servers/:serverId/channels/:channelId` | `Layout` → `ChannelPage` | AuthGuard |
-| `/settings` | `Layout` → `Settings` | AuthGuard |
-
-### Guards
-
-- `AuthGuard`: redirect naar `/login` als `user === null`
-- `GuestGuard`: redirect naar `/` als `user !== null`
-
----
-
-## 12. Data Types
-
-### Bronbestand: `src/api/types.ts`
+`LocalKeySet` is the in-memory shape:
 
 ```typescript
-interface User {
-  id: string; username: string;
-  display_name?: string | null; email?: string | null;
-  avatar_url?: string | null; status?: string | null;
-  bio?: string | null; is_online?: boolean;
-  email_verified?: boolean;
-  show_read_receipts?: boolean; is_system?: boolean;
-  banner_color?: string | null;
-  created_at?: string | null;
+interface LocalKeySet {
+  identity: IdentityKeyPair;
+  signedPreKey: SignedPreKey;
+  pqSignedPreKey: PQSignedPreKey;
+  oneTimePreKeys: X25519KeyPair[];   // each one consumed by an incoming X3DH handshake
+}
+```
+
+### `keyStore` (memory + storage)
+
+Holds the active `LocalKeySet` after `initE2EE()`. The seed (32 bytes) is the only thing persisted via `storage.set('jolkr_e2ee_seed_v2', ...)`; everything else is derived from it deterministically on every boot so an attacker who reads only `localStorage` learns nothing useful.
+
+### Per-DM session (`crypto/e2ee.ts`)
+
+X3DH-style handshake: combine `identity_priv ⊗ peer_signed_prekey`, `eph_priv ⊗ peer_identity`, `eph_priv ⊗ peer_signed_prekey`, `eph_priv ⊗ peer_one_time_prekey` (if available), `mlkem_decapsulate(peer_pq_signed_prekey)`. Result is HKDF'd into a session key. Messages are sealed with XChaCha20-Poly1305: `nonce` (24 bytes) goes on the wire, `content` is base64 ciphertext.
+
+### Sender keys (channels + group DMs) (`crypto/channelKeys.ts`)
+
+Every channel has a `key_generation` number (server-side). Sender keys are XChaCha20-Poly1305 keys. The distributor encrypts the channel key per-recipient with the recipient's identity X25519 key, posts via `POST /channels/:id/e2ee/distribute` (or `/dms/:id/e2ee/distribute`). Each member fetches their copy via `GET …/e2ee/my-key` and caches it locally. On `ChannelUpdate` carrying a new `e2ee_key_generation`, the cache for that channel is invalidated and re-fetched.
+
+`invalidateChannelKey(channelId)` and `clearAllChannelKeys()` are exported for the auth-reset path.
+
+### Orchestrator (`services/e2ee.ts`)
+
+```typescript
+deriveE2EESeed(password, userId)   // PBKDF2 → 32 bytes
+initE2EE(deviceId, seed?)          // Load seed from storage OR derive from password
+resetE2EE()                         // Drop all in-memory keys + clear seed from storage
+```
+
+`initE2EE` decides whether to upload a fresh prekey bundle: it calls `GET /keys/count/:device_id`, and if the count is below the local threshold (or no prekeys exist yet) it generates new one-time prekeys and uploads via `POST /keys/upload`.
+
+### Decrypt queue (`services/decryptQueue.ts`)
+
+Messages decryption is offloaded to a small in-memory queue so a wave of `MessageCreate` events doesn't stall the UI. Each item resolves to `useDecryptedContent(message)` (hook) values consumed by message renderers.
+
+---
+
+## 8. Zustand stores
+
+All stores live at module scope in `src/stores/`. Reset is centralised via `resetAllStores()` in `stores/reset.ts` so the logout flow can rewind every store atomically.
+
+| Store | Purpose | Key WS events |
+|-------|---------|---------------|
+| `auth.ts` | `user`, `isLoading`, `loadUser`, `setUser`, `logout` | `UserUpdate` (self), `EmailVerified` |
+| `servers.ts` | Server list, channels, categories, roles, overwrites, drag-positions | `ServerUpdate/Delete`, `ChannelCreate/Update/Delete`, `CategoryCreate/Update/Delete`, `MemberJoin/Leave/Update`, `RoleCreate/Update/Delete`, `ChannelPermissionUpdate` |
+| `messages.ts` | Channel + DM + thread message feeds, edits, pins, embeds, reactions | `MessageCreate/Update/Delete`, `ReactionUpdate`, `PollUpdate` |
+| `dm-reads.ts` | DM read receipts, last-read pointers | `DmMessagesRead`, `DmMessageHide`, `DmClose` |
+| `unread.ts` | Per-channel + per-server unread counts, mention badges | `MessageCreate`, `ChannelMessagesRead`, `ServerMessagesRead` |
+| `users.ts` | Cached user profiles (resolved from BE on demand) | `UserUpdate`, `FriendshipUpdate`, `PresenceUpdate` (status sync) |
+| `presence.ts` | `userId → status` map (server-driven) | `PresenceUpdate` |
+| `typing.ts` | `channelId → Set<userId>` with TTL | `TypingStart` |
+| `threads.ts` | Thread cache per channel | `ThreadCreate`, `ThreadUpdate` |
+| `voice.ts` | Active voice room state, mute/deafen, participants, audio levels | Voice WS events |
+| `call.ts` | Incoming + outgoing DM call overlays | `DmCallRing/Accept/Reject/End`, `UserCallPresence` |
+| `notification-settings.ts` | Per-target mute/notify prefs | `NotificationSettingUpdate` |
+| `gif-favorites.ts` | Favorite GIFs cache | `GifFavoriteUpdate` |
+| `locale.ts` | UI language; reads `preferred_language` from `MeProfile` | `UserUpdate.preferred_language` |
+| `context-menu.ts` | Active right-click context menu | — |
+| `toast.ts` | Toast notification queue | — |
+| `uploadProgress.ts` | Per-attachment upload progress | — |
+| `reset.ts` | `resetAllStores()` helper | — |
+
+### Lifecycle invariants
+
+- Stores never `import` from each other; cross-store calls use `useOtherStore.getState()` to avoid React re-renders.
+- All WS-driven mutations live inside the store, not inside hooks. Hooks only `useStore(s => s.selector)`.
+- `resetAllStores()` zeros every store back to its initial state on logout.
+
+---
+
+## 9. Services layer
+
+Module-level orchestration that doesn't fit a single store.
+
+| Service | Role |
+|---------|------|
+| `services/e2ee.ts` | `initE2EE`, `resetE2EE`, prekey replenishment |
+| `services/notifications.ts` | Native browser/system notifications, mute filtering, focus checks |
+| `services/pushRegistration.ts` | Web Push subscription via VAPID + `/api/devices` registration |
+| `services/decryptQueue.ts` | Async decryption pipeline |
+| `services/friendshipCache.ts` | Resolves friendship state for arbitrary user IDs (used by member rows) |
+| `services/pinnedCache.ts` | Per-channel pin list cache |
+| `services/unreadBadge.ts` | Updates the OS taskbar / dock badge in Tauri |
+| `services/updater.ts` | Tauri auto-updater check + apply |
+| `services/deepLink.ts` | `jolkr://invite/...` and `jolkr://add/...` handling via the Tauri deep-link plugin |
+
+### Push registration flow
+
+1. After login, `requestNotificationPermission()` prompts the user.
+2. `registerPush()` calls `getVapidKey()` to learn the VAPID public key.
+3. Web: `serviceWorkerRegistration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })` → registers the subscription with `POST /api/devices` (`device_type: 'web'`, push token = stringified subscription).
+4. Tauri desktop: same Web Push path because Tauri 2 embeds a real Web View.
+5. Tauri mobile: `device_type: 'android' | 'ios'` and a native FCM/APNs token is supplied (hooks exist in code; full native push pipeline still in progress).
+
+---
+
+## 10. Hooks that touch the network
+
+`src/hooks/` is intentionally thin — heavy state lives in stores. Notable network-aware hooks:
+
+| Hook | Purpose |
+|------|---------|
+| `useAuthedFileUrl(url)` | Streams an authenticated `/api/files/:id` URL into an object URL (for `<img>`, `<video>`); cleans up on unmount |
+| `useAuthedRedirectUrl(url)` | Calls `/api/files/:id/url` to get a fresh presigned URL |
+| `useDecryptedContent(message)` | Drives the decrypt queue for a message |
+| `useCallEvents()` | Listens to `wsClient` for `DmCallRing/Accept/Reject/End`/`UserCallPresence`, mutates `stores/call` |
+| `useT()` / `tStatic()` | i18n lookup against `locale` store |
+| `useLocaleFormatters()` | `Intl.DateTimeFormat` etc. bound to current locale |
+| `playerRegistry.ts` | Coordinates the embedded music + video player singletons |
+
+All other hooks are pure UI utilities (focus trap, click-outside, debounced value, viewport, shift-key).
+
+---
+
+## 11. App boot order & routing
+
+### Routing
+
+`<BrowserRouter basename={getBasename()}>` — basename is `/app` on web, `/` in Tauri.
+
+```
+/login            → <GuestGuard><Login />
+/register         → <GuestGuard><Register />
+/forgot-password  → <GuestGuard><ForgotPassword />
+/verify-email     → <VerifyEmail />  (no guard; handles its own auth)
+/invite/:code     → <InviteAccept /> (no guard)
+/*                → <AuthGuard><AppShell />
+*                 → <NotFound />
+```
+
+`<AuthGuard>` redirects to `/login` if no user, and to `/verify-email` if `user.email_verified === false`. `<GuestGuard>` redirects authenticated users back to `/`.
+
+### Boot order (`App.tsx::AppInit`)
+
+```
+1. startUnreadBadge()              // Tauri badge polling
+2. initTokens()                    // load tokens from secure storage
+3. authStore.loadUser()            // GET /users/@me (or stays null)
+4. if (accessToken) {
+     requestNotificationPermission() → registerPush()
+     initE2EE(localStorage[jolkr_e2ee_device_id])
+     warm @nomercy-entertainment/nomercy-video-player chunk
+   }
+5. setTimeout(checkForUpdate, 5000) if isTauri
+6. setReady(true) → unhide React tree (splash from index.html disappears)
+```
+
+The gateway is **not** connected by `AppInit`. `<AppShell />` (mounted by `<AuthGuard>`) is where `wsClient.connect()` runs in an effect, alongside `<DeepLinkHandler />` for `jolkr://` URLs.
+
+### Logout
+
+`authStore.logout()`:
+
+```
+1. voiceStore.leaveChannel()
+2. callStore.endCall()
+3. wsClient.disconnect()
+4. stopNotifications() / stopUnreadBadge()
+5. api.clearTokens()
+6. resetE2EE()
+7. resetAllStores()
+8. user = null  → guards redirect to /login
+```
+
+### Tauri-specific behavior
+
+- All browser shortcuts that interfere with desktop UX are blocked (`Ctrl+R/L/G/U/P/J/H`, `F5/F7`, `Ctrl+Shift+I` in release).
+- Right-click default menu suppressed in favor of `<ContextMenu />`.
+- Deep links register `jolkr://invite/:code` and `jolkr://add/:userId`.
+
+---
+
+## 12. Wire types (TypeScript)
+
+Source: `src/api/types.ts` re-exports the bulk of types from `src/api/generated/` (produced by `ts-rs` from the Rust DTOs in `jolkr-core/services/*` and `jolkr-api/ws/events.rs`). FE-side overlays narrow or extend a handful of types.
+
+### Re-exported generated types
+
+`Attachment`, `AuditLogEntry`, `Ban`, `Category`, `ChannelOverwrite`, `DmChannel`, `DmLastMessage`, `Friendship`, `FriendshipUser`, `GifFavorite`, `Invite`, `MessageEmbed`, `NotificationSetting`, `Poll`, `PollOption`, `PreKeyBundleResponse`, `Role`, `ServerEmoji`, `Thread`, `TokenPair`, `UpdateMeBody`, `Webhook`, and the WS event types under `src/api/generated/`.
+
+### FE overlays
+
+```typescript
+export type DmFilter = 'all' | 'friends' | 'none';
+
+export type ChannelKind = 'text' | 'voice' | 'category';   // 'category' is FE-only legacy
+
+export interface ServerThemeData {
+  hue: number | null;
+  orbs: { id: string; x: number; y: number; hue: number; scale?: number }[];
 }
 
-// MeProfile = User + self-only privacy preferences (only present on /users/@me)
-interface MeProfile extends User {
-  dm_filter?: 'all' | 'friends' | 'none';
-  allow_friend_requests?: boolean;
-  preferred_language?: string | null;   // BCP-47 lite, e.g. "en-US", "nl"
-}
+export type User      = Omit<GeneratedUser,      'dm_filter'> & { dm_filter: DmFilter | null };
+export type MeProfile = Omit<GeneratedMeProfile, 'dm_filter'> & { dm_filter: DmFilter | null };
+export type Server    = Omit<GeneratedServer,    'theme'>     & { theme?: ServerThemeData | null };
 
-interface Server {
-  id: string; name: string; description?: string | null;
-  icon_url?: string | null; banner_url?: string | null;
-  owner_id: string; is_public?: boolean;
-  member_count?: number;
-  theme?: { hue: number | null; orbs: { id: string; x: number; y: number; hue: number; scale?: number }[] } | null;
-  created_at?: string | null;
-}
+// FE adds `is_system` for forward-compat (BE not yet aware)
+export type Channel  = GeneratedChannel  & { is_system?: boolean };
 
-interface Channel {
-  id: string; server_id: string; name: string;
-  kind: 'text' | 'voice' | 'category'; topic?: string | null;
-  category_id?: string | null; position: number;
-  is_nsfw?: boolean; is_system?: boolean;
-  slowmode_seconds?: number;
-  e2ee_key_generation?: number;
-  created_at?: string | null;
-}
+// FE-only `me` flag (server doesn't ship per-viewer state)
+export type Reaction = GeneratedReaction & { me?: boolean };
 
-interface Message {
-  id: string; channel_id: string;
-  author_id: string; content: string;
-  nonce?: string | null;              // non-null = content is encrypted (base64 ciphertext)
-  created_at: string; updated_at?: string | null;
-  is_edited: boolean; is_pinned: boolean;
-  reply_to_id?: string | null; thread_id?: string | null;
+// Message overlays — author resolution + typed poll + relaxed null shapes
+export type Message = Omit<
+  GeneratedMessage,
+  'poll' | 'reactions' | 'thread_id' | 'thread_reply_count'
+       | 'webhook_id' | 'webhook_name' | 'webhook_avatar' | 'updated_at'
+> & {
+  author?: User | null;
+  poll?: Poll;
+  reactions?: Reaction[];
+  thread_id?: string | null;
   thread_reply_count?: number | null;
-  attachments: Attachment[]; reactions?: Reaction[];
-  embeds?: MessageEmbed[]; poll?: Poll;
   webhook_id?: string | null;
   webhook_name?: string | null;
   webhook_avatar?: string | null;
-  author?: User | null;
-}
+  updated_at?: string | null;
+};
 
-interface Attachment {
-  id: string; filename: string;
-  content_type: string; size_bytes: number; url: string;
-}
+export type Member = GeneratedMember & { user?: User };  // FE joins user via users store
+```
 
-interface MessageEmbed {
-  url: string; title?: string | null; description?: string | null;
-  image_url?: string | null; site_name?: string | null;
-  color?: string | null;
-}
+### Why some fields are FE-resolved
 
-interface Thread {
-  id: string; channel_id: string;
-  starter_msg_id?: string | null; name?: string | null;
-  is_archived: boolean; message_count: number;
-  created_at: string; updated_at: string;
-}
+`Message.author`, `Member.user` and the per-viewer `Reaction.me` are deliberately *not* on the wire — the backend ships denormalised user IDs and the FE joins them against `usersStore` so a single profile update propagates without re-syncing every message.
 
-interface Member {
-  id: string; server_id: string; user_id: string;
-  nickname?: string | null; joined_at: string;
-  timeout_until?: string | null;
-  user?: User; role_ids?: string[];
-}
+---
 
-interface Role {
-  id: string; server_id: string; name: string;
-  color: number; position: number; permissions: number;
-  is_default: boolean;
-}
+## 13. Build, env & platform detection
 
-interface Category {
-  id: string; server_id: string; name: string; position: number;
-}
+### Platform detection (`src/platform/detect.ts`)
 
-interface ChannelOverwrite {
-  id: string; channel_id: string;
-  target_type: 'role' | 'member'; target_id: string;
-  allow: number; deny: number;
-}
+```typescript
+isTauri    // hasTauriInternals() at module load
+isMobile() // TAURI_ENV_PLATFORM === 'android' | 'ios'  (build-time + runtime fallback)
+isDesktop  // isTauri && !isMobile()
+isWeb      // !isTauri
+```
 
-interface DmLastMessage {
-  id: string;
-  author_id: string;
-  content?: string | null;
-  nonce?: string | null;
-  created_at: string;
-}
+### Storage selection (`src/platform/storage.ts`)
 
-interface DmChannel {
-  id: string; is_group: boolean; name?: string | null;
-  members: string[];           // UUID array (not full User objects)
-  created_at: string;
-  last_message?: DmLastMessage | null;
-}
+`isDesktopTauri()` (Tauri + non-mobile UA) → `TauriStorage` (Stronghold). Everyone else → `WebStorage` (`localStorage`). Stronghold falls back to `localStorage` if init fails (logged).
 
-interface Friendship {
-  id: string; requester_id: string; addressee_id: string;
-  status: 'pending' | 'accepted' | 'blocked';
-  requester?: User; addressee?: User;
-}
+### Vite environment variables
 
-interface Ban {
-  id: string; server_id: string; user_id: string;
-  banned_by?: string | null; reason?: string | null;
-  created_at: string;
-}
+| Variable | Type | Meaning |
+|----------|------|---------|
+| `VITE_API_TARGET` | `'local'` or unset | Override Vite dev to use the local backend through the proxy |
+| `VITE_DEV_MODE` | `'true'` or unset | (Tauri dev) show a server-selection screen so a developer can point the desktop app at a custom backend |
+| `import.meta.env.DEV` | boolean | Vite-injected dev flag |
+| `import.meta.env.BASE_URL` | string | `/app/` (web) or `/` (Tauri) |
+| `__APP_VERSION__` | string | Injected at build time from `package.json` |
 
-interface Invite {
-  id: string; server_id: string; code: string;
-  creator_id: string; max_uses?: number | null;
-  use_count: number;
-  expires_at?: string | null;
-}
+### Build commands
 
-interface Webhook {
-  id: string; channel_id: string; server_id: string;
-  creator_id: string; name: string;
-  avatar_url?: string | null; token?: string;
-}
-
-interface Poll {
-  id: string; message_id: string; channel_id: string;
-  question: string; multi_select: boolean; anonymous: boolean;
-  expires_at?: string | null;
-  options: PollOption[];
-  votes: Record<string, number>;  // option_id → count
-  my_votes?: string[];             // option_ids I voted for
-  total_votes: number;
-}
-
-interface PollOption {
-  id: string; poll_id: string; position: number; text: string;
-}
-
-interface ServerEmoji {
-  id: string; server_id: string; name: string;
-  image_url: string; uploader_id: string; animated: boolean;
-}
-
-interface NotificationSetting {
-  target_type: 'server' | 'channel'; target_id: string;
-  muted: boolean; mute_until?: string | null;
-  suppress_everyone: boolean;
-}
-
-interface AuditLogEntry {
-  id: string; server_id: string; user_id: string;
-  action_type: string; target_id?: string | null;
-  target_type?: string | null;
-  changes?: Record<string, unknown> | null;
-  reason?: string | null; created_at: string;
-}
-
-interface TokenPair {
-  access_token: string;
-  refresh_token: string;
-  expires_in?: number;
-}
-
-interface PreKeyBundleResponse {
-  user_id: string; device_id: string;
-  identity_key: string;
-  signed_prekey: string;
-  signed_prekey_signature: string;
-  one_time_prekey?: string | null;
-  pq_signed_prekey?: string | null;
-  pq_signed_prekey_signature?: string | null;
-}
-
-interface GifFavorite {
-  gif_id: string;
-  gif_url: string;
-  preview_url: string;
-  title: string;
-  added_at: string;
-}
-
-interface Reaction {
-  emoji: string;
-  count: number;
-  me: boolean;
-  user_ids?: string[];
-}
+```
+npm run dev            # Vite dev server
+npm run build          # tsc -b && vite build  (web → dist/)
+npm run build:tauri    # tsc -b && vite build --outDir dist-tauri
+npm run tauri:dev      # Tauri dev with hot reload
+npm run tauri:build    # Tauri desktop/mobile package
+npm run verify:locales # Sanity-check locale JSON files
+npm run version:bump   # Bump version across package.json + Tauri + workspace
 ```
 
 ---
 
-## 13. Feature Flags & Platform Detectie
+## 14. Cloudflare upload bypass
 
-| Check | Hoe | Effect |
-|-------|-----|--------|
-| `isTauri` | `window.__TAURI_INTERNALS__` | Stronghold, deep links, updater, absolute URLs, geen push |
-| `VITE_DEV_MODE` | build-time env | Tauri server-selectiescherm |
-| `TAURI_ENV_PLATFORM` | build-time | Mobile vs desktop; Stronghold uit op Android/iOS |
+Source: `src/platform/config.ts::getUploadBaseUrl` + nginx `jolkr-upload` template (server side).
 
-### localStorage Preferences
+The flow:
 
-| Key | Waarden | Default |
-|-----|---------|---------|
-| `jolkr_theme` | `dark` / `light` | dark |
-| `jolkr_sound` | `true` / `false` | true |
-| `jolkr_desktop_notif` | `true` / `false` | true |
-| `jolkr_ringtone` | `classic` / `tone` | classic |
-| `jolkr_server_url` | URL string | — (Tauri dev only) |
-| `jolkr_logged_out` | `true` | — (set on logout) |
-| `jolkr_push_device_id` | UUID | — |
-| `jolkr_e2ee_device_id` | UUID | — |
-| `jolkr_last_seen` | JSON `Record<channelId, messageId>` | — |
+1. Frontend wants to POST `/api/channels/:id/messages/:mid/attachments` or `/api/dms/:id/messages/:mid/attachments` with a file up to 250 MB.
+2. `uploadAttachmentWithProgress` (or the non-progress variant) calls `getUploadBaseUrl()` → returns `https://upload.jolkr.app/api` in Tauri and prod web.
+3. DNS lookup for `upload.jolkr.app` resolves directly to the server IP (DNS-only A-record, no orange-cloud) — Cloudflare is bypassed for that hostname.
+4. The remote nginx has a `jolkr-upload` proxy template configured **only** for those two attachment paths; every other path returns 404.
+5. Backend `MAX_FILE_SIZE = 250 MB` and Axum `DefaultBodyLimit = 260 MB` apply to the actual upload.
+
+Every other call (avatars, icons, emoji, JSON) still goes through the regular `https://jolkr.app/api/...` path so it stays behind Cloudflare's protection.
 
 ---
 
-## 14. Migratiechecklist
+## 15. Migration checklist (porting to a new client)
 
-### Must-have (app werkt niet zonder)
+Use this list when rebuilding the frontend in another stack. Each item maps directly to one or more sections of this doc and to the [backend reference](docs-backend-api-reference.md).
 
-- [ ] **API Client**: `fetch()` wrapper met Bearer token, auto-refresh op 401, retry queue
-- [ ] **Token Storage**: opslaan/laden van access + refresh token (kies platform-specifiek)
-- [ ] **Auth Flow**: login → setTokens → getMe → WS connect → E2EE init
-- [ ] **WebSocket Client**: connect, identify, heartbeat (30s), reconnect (exp backoff, max 10x)
-- [ ] **WS Event Handlers**: alle 25+ server→client events registreren
-- [ ] **Channel Subscriptions**: refcount-based subscribe/unsubscribe + re-subscribe op reconnect
-- [ ] **URL Config**: platform-aware URL resolutie (relative vs absolute)
+### Bootstrapping
 
-### Must-have (features werken niet zonder)
+- [ ] Detect platform (web vs Tauri vs mobile) and pick an `apiBaseUrl`, `uploadBaseUrl`, `wsUrl`, `mediaWsUrl` following §2.
+- [ ] Implement secure token storage with the same fallback hierarchy: encrypted vault on desktop, OS keychain on mobile, `localStorage` on web.
+- [ ] Persist the `jolkr_logged_out` flag so a returning user starts logged out after manual logout.
 
-- [ ] **E2EE Key Generatie**: PBKDF2 seed → HKDF key derivation → upload
-- [ ] **DM Encryptie**: X25519 + ML-KEM-768 hybrid (v0x03 only — legacy verwijderd)
-- [ ] **Channel Key Management**: shared symmetric key distribute/fetch/cache
-- [ ] **Message Decryption Hook**: `useDecryptedContent` — nonce-based detection, channel-key decrypt
-- [ ] **Voice WS + WebRTC**: separate signaling WS, SDP offer/answer, ICE
-- [ ] **Voice E2EE**: Web Worker frame encryption
-- [ ] **Push Registration**: service worker + VAPID subscription
-- [ ] **DM Call Signaling**: REST endpoints + WS events
+### Auth
 
-### Nice-to-have (UX features)
+- [ ] Login / register / refresh / logout / logout-all wired to §2 of the backend ref.
+- [ ] JWT auto-refresh with all four triggers (proactive timer, periodic interval, visibility change, 401 handler) + 10 s dedup.
+- [ ] Email verification gate (`<AuthGuard>` redirects to `/verify-email` when `email_verified === false`).
+- [ ] Forgot/reset password + email verification + admin reset (`X-Admin-Secret`).
 
-- [ ] **Typing Indicators**: TypingStart send (3s throttle) + receive (5s TTL via `useTypingStore`)
-- [ ] **Presence Updates**: send/receive online status
-- [ ] **Unread Counts**: WS-driven met localStorage persistence
-- [ ] **Read Receipts**: DmMessagesRead + ChannelMessagesRead + ServerMessagesRead events
-- [ ] **Notification Sound**: Web Audio API beep
-- [ ] **Desktop Notifications**: Notification API
-- [ ] **Presign Refresh**: S3 URL refresh elke 3 uur
-- [ ] **Deep Links**: jolkr:// URL scheme (Tauri only)
-- [ ] **Auto Updater**: Tauri plugin (desktop only)
+### REST surface
 
-### Bestanden om 1:1 over te nemen
+- [ ] Every function from §4 mapped to the same path/method/body shape (the backend reference is the authoritative endpoint list).
+- [ ] Multipart uploads must omit the JSON `Content-Type` so the browser can set the multipart boundary.
+- [ ] Batch user fetches must chunk on 100 IDs (server-side cap).
 
-Deze bestanden zijn framework-onafhankelijk en kunnen (bijna) letterlijk gekopieerd worden:
+### WebSocket
 
-1. `src/api/client.ts` — volledige REST API surface
-2. `src/api/ws.ts` — WebSocket gateway client
-3. `src/api/types.ts` — alle TypeScript interfaces
-4. `src/crypto/keys.ts` — key generation primitives
-5. `src/crypto/e2ee.ts` — encrypt/decrypt logica
-6. `src/crypto/channelKeys.ts` — channel key management
-7. `src/crypto/keyStore.ts` — key persistence
-8. `src/voice/voiceClient.ts` — voice WS protocol
-9. `src/voice/voiceService.ts` — WebRTC orchestratie
-10. `src/voice/encryptionWorker.ts` — audio frame E2EE worker
-11. `src/platform/config.ts` — URL resolutie
-12. `src/platform/storage.ts` — storage abstractie
-13. `src/services/e2ee.ts` — E2EE service layer
-14. `src/services/pushRegistration.ts` — push subscription
-15. `src/services/notifications.ts` — notification sounds
+- [ ] Identify → Ready handshake (§5).
+- [ ] Heartbeat every ~30 s.
+- [ ] Refcounted channel subscriptions; replay on reconnect.
+- [ ] Exponential backoff reconnect with token refresh before reconnect.
+- [ ] Dispatch every event op from the backend ref (§30) into a state container; gracefully ignore unknown ops.
 
-### Zustand → nieuwe state library mapping
+### Voice
 
-| Huidige Store | State | Backend Koppeling |
-|---------------|-------|-------------------|
-| `useAuthStore` | user, loading, error | REST + WS (UserUpdate) |
-| `useServersStore` | servers, channels, members, roles, categories, permissions, emojis | REST + WS (6 events) |
-| `useMessagesStore` | messages (LRU 30), threads | REST + WS (7 events) |
-| `usePresenceStore` | presence | WS only (PresenceUpdate) |
-| `useTypingStore` | typing per channel | WS only (TypingStart, 5s TTL) |
-| `useVoiceStore` | voice state | Voice WS + WebRTC |
-| `useCallStore` | call state | REST (4 endpoints) + WS (4 events) |
-| `useUnreadStore` | counts, activeChannel, lastSeen | WS (4 events: MessageCreate, DmMessagesRead, ChannelMessagesRead, ServerMessagesRead) + localStorage |
-| `useDmReadsStore` | readStates | WS (1 event) |
+- [ ] Voice WS Identify + Join + Answer + ICE trickle (§6).
+- [ ] WebRTC peer connection with transceivers keyed by `audio_mid` / `video_mid`.
+- [ ] Optional voice E2EE worker (SFrame-style).
+- [ ] DM call overlays driven by `DmCallRing/Accept/Reject/End` and `UserCallPresence`.
+
+### E2EE
+
+- [ ] Per-installation device ID + persistent seed.
+- [ ] Local identity (Ed25519), signed prekey, one-time prekeys, PQ prekey (ML-KEM-768).
+- [ ] Prekey upload on init + replenishment based on `GET /keys/count/:device_id`.
+- [ ] Per-DM X3DH session keys, XChaCha20-Poly1305 sealing.
+- [ ] Channel sender keys, cached per `key_generation`; re-fetch on `ChannelUpdate` if the generation changed.
+- [ ] Encrypted message wire shape: `content` = base64 ciphertext, `nonce` = base64 nonce (non-null nonce signals encryption).
+
+### Storage URLs
+
+- [ ] Rewrite `minio:9000` → `/s3/` (or full proxy URL) on every attachment/avatar URL the FE renders (§2 `rewriteStorageUrl`).
+- [ ] Authenticated streaming for `/api/files/:id` (Range support).
+
+### UX invariants
+
+- [ ] DM `close` and DM message `hide` are self-only — never echo to other users.
+- [ ] `show_read_receipts=false` suppresses outgoing DM read receipts (BE enforces; FE simply doesn't surface the toggle for the peer).
+- [ ] `MemberLeave` should drop all WS subscriptions for that user on the affected server (BE does this; FE should not assume it can still receive events for them).
+- [ ] `RoleUpdate` requires the FE to re-fetch `/api/channels/:id/permissions/@me` for every affected channel.
+- [ ] `preferred_language` syncs across the user's sessions via `UserUpdate`; the FE picks it up in `stores/locale`.
+
+### Push
+
+- [ ] VAPID public key from `/api/push/vapid-key` (no auth required).
+- [ ] Subscribe via the Service Worker, send the stringified subscription to `POST /api/devices`.
+- [ ] Update tokens via `PATCH /api/devices/:id/push-token`.
+
+### Cleanup
+
+- [ ] `resetAllStores()` analogue: every long-lived state container must be reset on logout.
+- [ ] Voice + WS + push registrations torn down before tokens are cleared.
 
 ---
 
-> **Bijgewerkt op 2026-05-08** — versie 0.11.0, gebaseerd op de huidige staat van `jolkr-app/src/` en `jolkr-server/`. Belangrijkste wijzigingen sinds v0.10.0: i18n (9 talen, `preferred_language` veld + cross-device WS sync), NoMercy player, HLS support, any-file uploads, DM message hide ("delete for me"), DM attachments gallery, channel members listing, role/channel-permission WS events, GIF favorites WS sync, video call signaling (`is_video` query param + WS field), email-verified WS event.
+## Document hygiene
+
+This file and `docs-backend-api-reference.md` must be updated in the **same PR** as any backend route / WS event / DTO change. The integration team has full latitude to reject a change that introduces drift between the docs and the code. The mirrored `jolkr-app/docs-backend-api-reference.md` is a byte-for-byte copy; keep it in sync.

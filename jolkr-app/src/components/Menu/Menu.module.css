@@ -2,27 +2,14 @@
   position: fixed;
   z-index: var(--z-drawer);
   border-radius: 0.875rem;
-  background-image: var(--surface-raised);
-  background-color: var(--bg-shout);
-  box-shadow:
-    0 0 0 1px var(--jolkr-neutral-dark-4),
-    0 0 2px 0 var(--jolkr-neutral-dark-4),
-    0 4px 6px -2px var(--jolkr-neutral-dark-4),
-    0 16px 28px -8px var(--jolkr-neutral-dark-8),
-    0 24px 40px -12px var(--jolkr-neutral-dark-12);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: var(--menu-bg);
+  border: 1px solid var(--border-muted);
+  box-shadow: var(--popover-menu-shadow);
+  /* Insets items from the rim so menus match whether or not callers wrap in
+     MenuSection (ChannelSidebar renders items directly; TabBar uses sections). */
+  padding: 0.25rem;
   overflow: hidden;
   animation: popIn 120ms var(--ease-out-quart) both;
-}
-
-:global(:root.dark) .menu {
-  box-shadow:
-    0 0 0 1px oklch(0% 0 0 / 0.2),
-    0 0 2px 0 oklch(0% 0 0 / 0.1),
-    0 4px 6px -2px oklch(0% 0 0 / 0.1),
-    0 16px 28px -8px oklch(0% 0 0 / 0.2),
-    0 24px 40px -12px oklch(0% 0 0 / 0.2);
 }
 
 @keyframes popIn {
@@ -31,7 +18,7 @@
 }
 
 .section {
-  padding: 0.25rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.0625rem;

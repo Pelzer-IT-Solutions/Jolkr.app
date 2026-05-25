@@ -15,11 +15,30 @@ import { useThreadsStore } from '../../stores/threads'
 import { useUnreadStore } from '../../stores/unread'
 import { useUsersStore } from '../../stores/users'
 import { makeDraftDmId } from '../../utils/draftDm'
+import { STORAGE_KEYS } from '../../utils/storageKeys'
 import type { DmChannel, User } from '../../api/types'
 import type { ProfileCardState } from '../../components/ProfileCard/ProfileCard'
 import type { UserContextMenuState } from '../../components/UserContextMenu/UserContextMenu'
 import type { ServerTheme } from '../../types/ui'
 import type { MemberDisplay } from '../../types/ui'
+
+function tabbedKey(userId: string): string {
+  return `${STORAGE_KEYS.TABBED_SERVER_IDS}:${userId}`
+}
+
+function readSavedTabbedIds(userId: string | undefined): string[] {
+  if (!userId) return []
+  try {
+    const raw = localStorage.getItem(tabbedKey(userId))
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : []
+  } catch { return [] }
+}
+
+function writeSavedTabbedIds(userId: string, ids: string[]): void {
+  try { localStorage.setItem(tabbedKey(userId), JSON.stringify(ids)) } catch { /* quota / disabled */ }
+}
 
 export function useAppInit() {
   const navigate = useNavigate()
@@ -180,7 +199,12 @@ export function useAppInit() {
       const srvs = useServersStore.getState().servers
       // serverThemes is derived from `servers` via useMemo below — no seed needed.
 
-      const ids = srvs.slice(0, 5).map(s => s.id)
+      // Restore the user's last-known open tabs from localStorage; fall back to
+      // the first five servers for fresh logins. Filter to ids that still
+      // exist in case the user left/was removed from a server elsewhere.
+      const savedIds = readSavedTabbedIds(user?.id)
+      const validSaved = savedIds.filter(id => srvs.some(s => s.id === id))
+      const ids = validSaved.length > 0 ? validSaved : srvs.slice(0, 5).map(s => s.id)
 
       if (urlDmId) {
         setDmActive(true)
@@ -241,6 +265,14 @@ export function useAppInit() {
     init().catch(console.error)
     return () => { cancelled = true }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist the open-tab list to localStorage so a manual close survives
+  // reload. Gated on `ready` so we don't overwrite the saved value with the
+  // pre-hydration empty array.
+  useEffect(() => {
+    if (!ready || !user?.id) return
+    writeSavedTabbedIds(user.id, tabbedIds)
+  }, [ready, user?.id, tabbedIds])
 
   // ── Sync state → URL (only AFTER init is done) ──
   // Uses push (not replace) so each user-driven server/channel/DM switch

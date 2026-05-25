@@ -22,6 +22,7 @@ use jolkr_core::AuthService;
 use jolkr_db::repo::{ChannelRepo, DmRepo, MemberRepo, RoleRepo, ServerRepo};
 
 use super::events::{ClientEvent, GatewayEvent};
+use crate::middleware::client_ip::resolve_client_ip;
 use crate::routes::AppState;
 
 /// Maximum WebSocket connections allowed per IP address.
@@ -29,34 +30,6 @@ const MAX_WS_PER_IP: u32 = 10;
 
 /// Global per-IP WebSocket connection counter.
 static WS_CONNECTIONS: LazyLock<DashMap<IpAddr, AtomicU32>> = LazyLock::new(DashMap::new);
-
-/// Extract the real client IP from the request, considering trusted proxies.
-fn is_trusted_proxy_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => v4.is_loopback() || (v4.octets()[0] == 172 && (v4.octets()[1] & 0xF0) == 16),
-        IpAddr::V6(v6) => v6.is_loopback(),
-    }
-}
-
-fn resolve_client_ip(connect_addr: std::net::SocketAddr, headers: &HeaderMap) -> IpAddr {
-    let connect_ip = connect_addr.ip();
-    if is_trusted_proxy_ip(connect_ip) {
-        // Take the rightmost non-trusted IP (attacker can't control it)
-        headers
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| {
-                s.split(',')
-                    .rev()
-                    .map(|p| p.trim())
-                    .filter_map(|p| p.parse::<IpAddr>().ok())
-                    .find(|ip| !is_trusted_proxy_ip(*ip))
-            })
-            .unwrap_or(connect_ip)
-    } else {
-        connect_ip
-    }
-}
 
 /// Check if a user has access to a channel (regular or DM).
 /// For regular channels: checks VIEW_CHANNELS permission (with channel overwrites).
@@ -213,10 +186,22 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 // Validate the JWT and check blacklist (mirrors HTTP auth middleware)
                 match AuthService::validate_token(&state.jwt_secret, &token) {
                     Ok(claims) => {
-                        // Check if this token has been revoked (e.g. via logout)
+                        // Check if this token has been revoked (e.g. via logout).
+                        // Fail CLOSED on Redis errors — without the blacklist we
+                        // can't tell whether the token is still valid, so refuse
+                        // identification rather than silently honour it.
                         let blacklist_key = format!("blacklist:{}", claims.jti);
                         let mut conn = state.redis.connection();
-                        let is_revoked: bool = conn.exists(&blacklist_key).await.unwrap_or(false);
+                        let is_revoked: bool = match conn.exists(&blacklist_key).await {
+                            Ok(b) => b,
+                            Err(e) => {
+                                tracing::error!(error = %e, "Redis blacklist check failed during WS Identify");
+                                drop(tx.try_send(GatewayEvent::Error {
+                                    message: "Auth backend unavailable".to_string(),
+                                }));
+                                continue;
+                            }
+                        };
                         if is_revoked {
                             let err = GatewayEvent::Error {
                                 message: "Token has been revoked".to_string(),
@@ -280,7 +265,15 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                 if let Some(sid) = session_id {
                     if let Some(uid) = user_id {
                         if can_access_channel(&state, uid, channel_id).await {
-                            state.gateway.subscribe(&sid, channel_id);
+                            // Look up the owning server (None for DM channels) so
+                            // revoke_server_for_user can drop this subscription on
+                            // kick/ban. Caller-side lookup keeps gateway::subscribe
+                            // synchronous (F06).
+                            let server_id = ChannelRepo::get_by_id(&state.pool, channel_id)
+                                .await
+                                .ok()
+                                .map(|c| c.server_id);
+                            state.gateway.subscribe(&sid, channel_id, server_id);
                         } else {
                             drop(tx.try_send(GatewayEvent::Error {
                                 message: "Cannot subscribe: no access to channel".to_string(),

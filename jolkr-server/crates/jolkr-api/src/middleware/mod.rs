@@ -1,4 +1,5 @@
 pub(crate) mod auth;
+pub(crate) mod client_ip;
 pub(crate) mod metrics;
 pub(crate) mod rate_limit;
 

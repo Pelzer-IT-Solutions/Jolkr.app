@@ -22,5 +22,9 @@ async-nats = { workspace = true }
 hmac = "0.12"
 sha2 = "0.10"
 
+# F07 — voice WS controls (per-IP cap, rate limit, blacklist check).
+redis = { workspace = true }
+dashmap = "6"
+
 [lints]
 workspace = true

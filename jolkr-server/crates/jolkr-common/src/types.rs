@@ -225,3 +225,41 @@ pub enum FriendshipStatus {
     /// `Blocked` variant.
     Blocked,
 }
+
+/// Typed wrapper around the `channel_permission_overwrites.target_type` TEXT
+/// column. Using a strongly-typed enum at the read site means a typo or case
+/// drift in the DB ("Role" vs "role") fails loud at parse time rather than
+/// silently dropping the overwrite during permission resolution — which would
+/// be a privilege escalation in either direction. The DB column stays TEXT;
+/// no schema change.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OverwriteTarget {
+    /// Overwrite targets a role.
+    Role,
+    /// Overwrite targets an individual member.
+    Member,
+}
+
+impl OverwriteTarget {
+    /// Canonical wire/DB representation. Use this whenever writing the value
+    /// back to Postgres so reads and writes stay consistent.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Role => "role",
+            Self::Member => "member",
+        }
+    }
+
+    /// Parse a stored TEXT value into the typed enum. Unknown values return
+    /// `None` so callers can treat them as "skip this overwrite" rather than
+    /// silently matching against the wrong target.
+    #[must_use]
+    pub fn from_text(s: &str) -> Option<Self> {
+        match s {
+            "role" => Some(Self::Role),
+            "member" => Some(Self::Member),
+            _ => None,
+        }
+    }
+}

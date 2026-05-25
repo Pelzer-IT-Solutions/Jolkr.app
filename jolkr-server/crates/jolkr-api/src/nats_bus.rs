@@ -108,8 +108,11 @@ impl NatsBus {
     }
 
     /// Subscribe to all relevant NATS subjects and forward verified events to the local gateway.
+    /// `pool` is used by the server-arm to narrow channel-scoped events (ChannelCreate /
+    /// Update / Delete / PermissionUpdate) to recipients who actually have VIEW_CHANNELS
+    /// on the channel — see `GatewayState::broadcast_to_channel_visible`.
     /// This spawns a background Tokio task; call once at startup.
-    pub fn spawn_subscriber(&self, gateway: GatewayState) {
+    pub fn spawn_subscriber(&self, gateway: GatewayState, pool: sqlx::PgPool) {
         let client = self.client.clone();
         let hmac_secret = self.hmac_secret.clone();
         tokio::spawn(async move {
@@ -160,7 +163,31 @@ impl NatsBus {
                         if let Some(server_id_str) = msg.subject.as_str().strip_prefix("jolkr.server.") {
                             if let Ok(server_id) = Uuid::parse_str(server_id_str) {
                                 if let Some(event) = verify_and_parse(&hmac_secret, &msg.payload) {
-                                    gateway.broadcast_to_server(server_id, &event);
+                                    // Channel-scoped events leak channel name / topic /
+                                    // permissions to members who lack VIEW_CHANNELS when
+                                    // fanned out server-wide. Narrow recipients for those
+                                    // four variants; everything else stays server-broadcast.
+                                    match &event {
+                                        GatewayEvent::ChannelCreate { channel } => {
+                                            gateway.broadcast_to_channel_visible(server_id, channel.id, &event, &pool).await;
+                                        }
+                                        GatewayEvent::ChannelUpdate { channel } => {
+                                            gateway.broadcast_to_channel_visible(server_id, channel.id, &event, &pool).await;
+                                        }
+                                        GatewayEvent::ChannelDelete { channel_id, .. } => {
+                                            // Channel may already be gone from DB; the
+                                            // helper falls back to server-broadcast on
+                                            // lookup failure, which is safe here because
+                                            // the payload carries only IDs.
+                                            gateway.broadcast_to_channel_visible(server_id, *channel_id, &event, &pool).await;
+                                        }
+                                        GatewayEvent::ChannelPermissionUpdate { channel_id, .. } => {
+                                            gateway.broadcast_to_channel_visible(server_id, *channel_id, &event, &pool).await;
+                                        }
+                                        _ => {
+                                            gateway.broadcast_to_server(server_id, &event);
+                                        }
+                                    }
                                 }
                             }
                         }

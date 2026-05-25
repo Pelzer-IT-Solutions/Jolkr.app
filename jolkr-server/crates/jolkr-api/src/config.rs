@@ -60,8 +60,14 @@ impl Config {
                 .expect("SERVER_PORT must be a valid u16"),
             minio_endpoint: env_or("MINIO_ENDPOINT", "http://localhost:9000"),
             minio_public_url: env_or("MINIO_PUBLIC_URL", "http://localhost:9000"),
-            minio_access_key: env_or("MINIO_ACCESS_KEY", "jolkr"),
-            minio_secret_key: env_or("MINIO_SECRET_KEY", "jolkr_dev_secret"),
+            minio_access_key: std::env::var("MINIO_ACCESS_KEY")
+                .expect("FATAL: MINIO_ACCESS_KEY must be set. Refusing to start without it."),
+            minio_secret_key: {
+                let secret = std::env::var("MINIO_SECRET_KEY")
+                    .expect("FATAL: MINIO_SECRET_KEY must be set. Refusing to start without it.");
+                assert!(secret.len() >= 16, "FATAL: MINIO_SECRET_KEY is too short ({} chars). Minimum 16 characters required.", secret.len());
+                secret
+            },
             minio_bucket: env_or("MINIO_BUCKET", "jolkr"),
             nats_url: env_or("NATS_URL", "nats://localhost:4222"),
             nats_user: std::env::var("NATS_USER").ok(),
