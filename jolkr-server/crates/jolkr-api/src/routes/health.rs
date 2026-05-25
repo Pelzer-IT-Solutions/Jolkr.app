@@ -213,10 +213,10 @@ fn format_uptime(seconds: u64) -> String {
 }
 
 fn service_row(name: &str, s: &ServiceStatus) -> String {
-    let (dot, color, status_text) = if s.status == "up" {
-        ("●", "#3FB950", "Operational")
+    let (color, status_text) = if s.status == "up" {
+        ("#3FB950", "Operational")
     } else {
-        ("●", "#F85149", "Down")
+        ("#F85149", "Down")
     };
 
     let latency = s
@@ -227,19 +227,19 @@ fn service_row(name: &str, s: &ServiceStatus) -> String {
     let error_html = s
         .error
         .as_ref()
-        .map(|e| format!(r#"<span style="color:#8B949E;font-size:12px;margin-left:8px">({e})</span>"#))
+        .map(|e| format!(r#"<span class="row-error">({e})</span>"#))
         .unwrap_or_default();
 
     format!(
-        r#"<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#1C2333;border:1px solid #30363D;border-radius:12px;margin-bottom:8px">
-  <div style="display:flex;align-items:center;gap:10px">
-    <span style="color:{color};font-size:18px">{dot}</span>
-    <span style="font-weight:500">{name}</span>
+        r#"<div class="row">
+  <div class="row-left">
+    <span class="row-dot" style="color:{color}">●</span>
+    <span class="row-name">{name}</span>
     {error_html}
   </div>
-  <div style="display:flex;align-items:center;gap:12px">
-    <span style="color:#8B949E;font-size:13px">{latency}</span>
-    <span style="color:{color};font-size:13px;font-weight:500">{status_text}</span>
+  <div class="row-right">
+    <span class="row-latency">{latency}</span>
+    <span class="row-status" style="color:{color}">{status_text}</span>
   </div>
 </div>"#
     )
@@ -269,34 +269,115 @@ fn render_html(overall: &str, uptime: u64, services: &Services) -> String {
     ]
     .join("\n");
 
+    // Tokens / fonts / dot-pattern background mirror the landing page.
+    // Kept inline so /health stays self-contained (no external CSS asset).
+    // r##"..."## delimiter: the inline HTML embeds `"#hex"` color literals
+    // (e.g. `content="#e7ecec"`), and a single-hash raw string would treat
+    // `"#` as the closing delimiter and break compilation.
     format!(
-        r#"<!DOCTYPE html>
+        r##"<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="30">
 <title>Jolkr — Service Status</title>
+<link rel="icon" type="image/png" href="https://jolkr.app/favicon/favicon-96x96.png" sizes="96x96">
+<link rel="icon" type="image/svg+xml" href="https://jolkr.app/favicon/favicon.svg">
+<link rel="shortcut icon" href="https://jolkr.app/favicon/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="https://jolkr.app/favicon/apple-touch-icon.png">
+<meta name="theme-color" content="#e7ecec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161a1a" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Uncial+Antiqua&display=swap" rel="stylesheet">
 <style>
-  *{{margin:0;padding:0;box-sizing:border-box}}
-  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D1117;color:#F0F6FC;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 16px}}
-  a{{color:#2DD4BF;text-decoration:none}}
-  a:hover{{color:#5EEAD4}}
-  .container{{max-width:600px;width:100%}}
-  .header{{text-align:center;margin-bottom:32px}}
-  .header h1{{font-size:28px;font-weight:700;margin-bottom:4px}}
-  .header h1 span{{color:#2DD4BF}}
-  .badge{{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:14px;font-weight:500;margin-top:12px}}
-  .meta{{display:flex;justify-content:space-between;font-size:13px;color:#8B949E;margin-bottom:16px;padding:0 4px}}
-  .footer{{text-align:center;margin-top:32px;font-size:12px;color:#8B949E}}
+  *,*::before,*::after{{margin:0;padding:0;box-sizing:border-box}}
+  :root{{
+    color-scheme: light dark;
+    --theme-hue: 182;
+    --bg-primary: oklch(93% 0.004 var(--theme-hue));
+    --bg-surface: oklch(97.5% 0.004 var(--theme-hue));
+    --border-primary: oklch(25.42% 0.004 var(--theme-hue) / 0.16);
+    --text-primary: oklch(25.42% 0.004 var(--theme-hue));
+    --text-secondary: oklch(25.42% 0.004 var(--theme-hue) / 0.7);
+    --text-tertiary: oklch(25.42% 0.004 var(--theme-hue) / 0.4);
+    --accent: #697B4B;
+    --accent-hover: #788764;
+    --shadow-card: 0 4px 16px oklch(0% 0 0 / 0.08);
+    --dot-color: oklch(25.42% 0.004 var(--theme-hue) / 0.12);
+    --font-display: 'Uncial Antiqua', Georgia, 'Times New Roman', serif;
+  }}
+  @media (prefers-color-scheme: dark){{
+    :root{{
+      --bg-primary: #141414;
+      --bg-surface: #202020;
+      --border-primary: oklch(99% 0.004 var(--theme-hue) / 0.16);
+      --text-primary: oklch(99% 0.004 var(--theme-hue));
+      --text-secondary: oklch(99% 0.004 var(--theme-hue) / 0.7);
+      --text-tertiary: oklch(99% 0.004 var(--theme-hue) / 0.4);
+      --shadow-card: 0 4px 16px oklch(0% 0 0 / 0.35);
+      --dot-color: rgba(255,255,255,0.07);
+    }}
+  }}
+  body{{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:56px 16px 40px;
+    position:relative;
+    overflow-x:hidden;
+  }}
+  body::before{{
+    content:'';
+    position:absolute;
+    top:0;left:0;right:0;
+    height:120vh;
+    z-index:0;
+    pointer-events:none;
+    background-image:
+      radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px),
+      radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px);
+    background-size:28px 48px;
+    background-position:0 0, 14px 24px;
+    -webkit-mask-image:radial-gradient(ellipse 100% 90% at 50% 0%, black 0%, transparent 88%);
+    mask-image:radial-gradient(ellipse 100% 90% at 50% 0%, black 0%, transparent 88%);
+  }}
+  a{{color:var(--accent);text-decoration:none;transition:color .15s}}
+  a:hover{{color:var(--accent-hover)}}
+  .container{{position:relative;z-index:1;max-width:600px;width:100%}}
+  .header{{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:32px;text-align:center}}
+  .brand{{display:flex;align-items:center;gap:10px}}
+  .brand img{{width:32px;height:32px;border-radius:24%}}
+  .brand h1{{font-family:var(--font-display);font-size:28px;font-weight:400;letter-spacing:0.02em;color:var(--text-primary)}}
+  .badge{{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:14px;font-weight:500;background:{badge_bg};color:{badge_color}}}
+  .meta{{display:flex;justify-content:space-between;font-size:13px;color:var(--text-tertiary);margin-bottom:16px;padding:0 4px}}
+  .row{{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg-surface);border:1px solid var(--border-primary);border-radius:12px;margin-bottom:8px;box-shadow:var(--shadow-card)}}
+  .row-left{{display:flex;align-items:center;gap:10px}}
+  .row-dot{{font-size:18px;line-height:1}}
+  .row-name{{font-weight:500;color:var(--text-primary)}}
+  .row-error{{color:var(--text-tertiary);font-size:12px;margin-left:8px}}
+  .row-right{{display:flex;align-items:center;gap:12px}}
+  .row-latency{{color:var(--text-tertiary);font-size:13px}}
+  .row-status{{font-size:13px;font-weight:500}}
+  .footer{{text-align:center;margin-top:32px;font-size:12px;color:var(--text-tertiary)}}
 </style>
 </head>
 <body>
 <div class="container">
   <div class="header">
-    <h1><span>Jolkr</span> Status</h1>
-    <div class="badge" style="background:{badge_bg};color:{badge_color}">
-      <span style="font-size:16px">●</span> {badge_text}
+    <div class="brand">
+      <img src="https://jolkr.app/favicon/favicon.svg" alt="Jolkr" width="32" height="32">
+      <h1>Jolkr Status</h1>
+    </div>
+    <div class="badge">
+      <span style="font-size:16px;line-height:1">●</span> {badge_text}
     </div>
   </div>
   <div class="meta">
@@ -309,6 +390,6 @@ fn render_html(overall: &str, uptime: u64, services: &Services) -> String {
   </div>
 </div>
 </body>
-</html>"#
+</html>"##
     )
 }
