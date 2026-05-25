@@ -95,6 +95,24 @@
       }
     }
 
+    @media (prefers-color-scheme: dark) {
+      :root {
+        /* Surfaces — dark (app surface-nav / content / field) */
+        --bg-primary:    oklch(11% 0.004 var(--theme-hue));
+        --bg-secondary:  oklch(14% 0.004 var(--theme-hue));
+        --bg-surface:    oklch(18% 0.004 var(--theme-hue));
+
+        /* Borders — near-white at low alpha */
+        --border-primary: oklch(99% 0.004 var(--theme-hue) / 0.16);
+        --border-subtle:  oklch(99% 0.004 var(--theme-hue) / 0.08);
+
+        /* Text — near-white tinted */
+        --text-primary:   oklch(99% 0.004 var(--theme-hue));
+        --text-secondary: oklch(99% 0.004 var(--theme-hue) / 0.7);
+        --text-tertiary:  oklch(99% 0.004 var(--theme-hue) / 0.4);
+      }
+    }
+
     html {
       scroll-behavior: smooth;
     }
