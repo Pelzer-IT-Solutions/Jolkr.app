@@ -256,10 +256,26 @@ export function TabBar({
     syncTabsScrollTargets()
     const onScroll = () => syncTabsScrollTargets()
     el.addEventListener('scroll', onScroll, { passive: true })
+
+    // Translate vertical wheel input into horizontal scroll so a plain mouse
+    // wheel can pan the tab strip (it only scrolls on the x-axis). Native
+    // horizontal gestures (trackpad / shift+wheel → deltaX) are left untouched.
+    // Must be a native non-passive listener: React 19 registers synthetic
+    // onWheel as passive, so preventDefault() there would be a no-op.
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      if (el.scrollWidth <= el.clientWidth) return
+      // deltaMode 1 = lines (Firefox mouse wheel) → scale to a sensible px step.
+      el.scrollLeft += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
+      e.preventDefault()
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+
     const ro = new ResizeObserver(() => syncTabsScrollTargets())
     ro.observe(el)
     return () => {
       el.removeEventListener('scroll', onScroll)
+      el.removeEventListener('wheel', onWheel)
       ro.disconnect()
     }
   }, [tabbedServers]) // eslint-disable-line react-hooks/exhaustive-deps
