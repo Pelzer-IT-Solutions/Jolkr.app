@@ -215,12 +215,24 @@ export function useAppMemos(init: ReturnType<typeof useAppInit>) {
 
   // ── Mentionable users for current channel ──
   const mentionableUsers = useMemo(() => {
-    if (dmActive) return []
+    if (dmActive) {
+      // Group DMs: offer the other participants. 1:1 DMs offer nothing
+      // (mentioning your only counterpart adds no clarity).
+      const dm = dmList.find(d => d.id === activeDmId)
+      if (!dm || !dm.is_group) return []
+      return dm.members
+        .filter(id => id !== user?.id)
+        .map(id => {
+          const u = userMap.get(id)
+          return u ? { id, username: u.username } : null
+        })
+        .filter((m): m is { id: string; username: string } => m !== null)
+    }
     const members = membersByServer[activeServerId] ?? []
     return members
       .filter(m => m.user?.username)
       .map(m => ({ id: m.user_id, username: m.user!.username }))
-  }, [dmActive, activeServerId, membersByServer])
+  }, [dmActive, activeDmId, dmList, user, userMap, activeServerId, membersByServer])
 
   return {
     isDark, colorPref, setColorPref,
