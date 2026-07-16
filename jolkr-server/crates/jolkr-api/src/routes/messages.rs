@@ -78,11 +78,9 @@ pub(crate) async fn send_message(
     // Batch: all permission checks in-memory, single Redis MGET, single devices query
     let push = state.push.clone();
     let pool = state.pool.clone();
-    let msg_content = if message.nonce.is_some() {
-        Some("Sent an encrypted message".to_string())
-    } else {
-        message.content.clone()
-    };
+    // Never leak message content through the external push provider — always a
+    // generic body, regardless of encryption state (webhook plaintext included).
+    let msg_content = "Sent a message";
     let msg_id = message.id;
     let author_id = auth.user_id;
     tokio::spawn(async move {
@@ -137,7 +135,7 @@ pub(crate) async fn send_message(
             &eligible,
             &sender.username,
             &channel.name,
-            msg_content.as_deref().unwrap_or(""),
+            msg_content,
             channel_id,
             msg_id,
         ).await;

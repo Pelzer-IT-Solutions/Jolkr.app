@@ -198,6 +198,21 @@ pub struct MessageQuery {
 /// Maximum message content length (4000 characters, same as Discord).
 const MAX_MESSAGE_LENGTH: usize = 4000;
 
+/// Reject plaintext user content: any non-empty message body sent through a
+/// user endpoint MUST carry an encryption nonce. The official client always
+/// encrypts, so this only trips rogue/modified clients POSTing plaintext.
+/// Server-side inserts (webhook execute, poll announcements) bypass this — they
+/// write through the repo layer directly, not these service entry points.
+/// An empty nonce string counts as absent.
+pub(crate) fn require_ciphertext(content: Option<&str>, nonce: Option<&str>) -> Result<(), JolkrError> {
+    let has_content = content.is_some_and(|c| !c.trim().is_empty());
+    let has_nonce = nonce.is_some_and(|n| !n.is_empty());
+    if has_content && !has_nonce {
+        return Err(JolkrError::BadRequest("unencrypted content rejected".into()));
+    }
+    Ok(())
+}
+
 /// Batch load reactions and attach them to messages.
 pub(crate) async fn enrich_with_reactions(pool: &PgPool, messages: &mut [MessageInfo]) -> Result<(), JolkrError> {
     let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
@@ -415,6 +430,9 @@ impl MessageService {
                 ));
             }
         }
+
+        // Refuse plaintext: non-empty content must arrive encrypted (nonce present)
+        require_ciphertext(req.content.as_deref(), req.nonce.as_deref())?;
 
         // Verify the channel exists and the user is a member of its server
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
@@ -689,6 +707,9 @@ impl MessageService {
                 format!("Message content exceeds {MAX_MESSAGE_LENGTH} characters"),
             ));
         }
+
+        // Refuse plaintext: an edited body must arrive encrypted (nonce present)
+        require_ciphertext(Some(&content), req.nonce.as_deref())?;
 
         // Decode optional nonce (base64 → bytes)
         use base64::Engine;
