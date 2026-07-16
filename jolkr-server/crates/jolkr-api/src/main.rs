@@ -28,6 +28,7 @@ pub mod image_processing;
 /// Storage module.
 pub mod storage;
 mod stream_token;
+mod voice_token;
 mod ws;
 
 use config::Config;

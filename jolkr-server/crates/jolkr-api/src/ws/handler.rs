@@ -34,7 +34,10 @@ static WS_CONNECTIONS: LazyLock<DashMap<IpAddr, AtomicU32>> = LazyLock::new(Dash
 /// Check if a user has access to a channel (regular or DM).
 /// For regular channels: checks VIEW_CHANNELS permission (with channel overwrites).
 /// Server owner always has access.
-async fn can_access_channel(state: &AppState, user_id: Uuid, channel_id: Uuid) -> bool {
+///
+/// Shared with the voice-token issuer (`routes::voice`) so voice authorization
+/// uses the exact same access rules as the chat gateway.
+pub(crate) async fn can_access_channel(state: &AppState, user_id: Uuid, channel_id: Uuid) -> bool {
     // Try as a regular channel first
     if let Ok(channel) = ChannelRepo::get_by_id(&state.pool, channel_id).await {
         if let Ok(member) = MemberRepo::get_member(&state.pool, channel.server_id, user_id).await {

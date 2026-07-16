@@ -16,6 +16,7 @@ mod presence;
 mod rooms;
 mod signaling;
 mod sfu;
+mod voice_token;
 
 use config::Config;
 use presence::PresencePublisher;

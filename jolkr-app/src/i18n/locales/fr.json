@@ -410,6 +410,10 @@
     "uploadFailed": "Échec de l'envoi"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Appel annulé — chiffrement de bout en bout indisponible"
+  },
+
   "call": {
     "initiateFailed": "Impossible de lancer l'appel",
     "acceptFailed": "Impossible d'accepter l'appel",

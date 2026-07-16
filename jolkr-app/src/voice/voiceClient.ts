@@ -100,8 +100,14 @@ export class VoiceClient {
     });
   }
 
-  join(channelId: string, opts?: { withVideo?: boolean }) {
-    this.send('Join', { channel_id: channelId, with_video: opts?.withVideo ?? false });
+  join(channelId: string, voiceToken: string, opts?: { withVideo?: boolean }) {
+    this.send('Join', {
+      channel_id: channelId,
+      with_video: opts?.withVideo ?? false,
+      // F01: channel-authorization token minted by jolkr-api. The media server
+      // rejects joins without a valid one.
+      voice_token: voiceToken,
+    });
   }
   sendAnswer(sdp: string) { this.send('Answer', { sdp }); }
   sendIceCandidate(candidate: string) { this.send('IceCandidate', { candidate }); }

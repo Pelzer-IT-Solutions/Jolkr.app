@@ -59,6 +59,10 @@ pub(crate) enum VoiceClientEvent {
         channel_id: Uuid,
         #[serde(default)]
         with_video: bool,
+        /// Short-lived voice-authorization token issued by jolkr-api (F01).
+        /// Absent on pre-F01 clients — such joins are rejected (fail closed).
+        #[serde(default)]
+        voice_token: Option<String>,
     },
     /// SDP answer to a server-initiated offer.
     Answer { sdp: String },
@@ -222,13 +226,39 @@ async fn handle_voice_ws(socket: WebSocket, state: VoiceState) {
                 }
             }
 
-            VoiceClientEvent::Join { channel_id, with_video } => {
+            VoiceClientEvent::Join { channel_id, with_video, voice_token } => {
                 let uid = if let Some(id) = user_id { id } else {
                     drop(signal_tx.send(SignalOut::Error {
                         message: "Not authenticated".into(),
                     }));
                     continue;
                 };
+
+                // F01: channel-level authorization. jolkr-api mints a token
+                // bound to (user_id, channel_id) only after verifying the user
+                // may access that channel. Without a valid token we refuse and
+                // close the socket — fail closed. This is the check that stops
+                // any authenticated user from joining an arbitrary voice room
+                // just by knowing its UUID.
+                let token = match voice_token.as_deref() {
+                    Some(t) => t,
+                    None => {
+                        warn!(user_id = %uid, "Voice Join without authorization token — rejecting");
+                        drop(signal_tx.send(SignalOut::Error {
+                            message: "Voice authorization required".into(),
+                        }));
+                        break;
+                    }
+                };
+                if let Err(reason) =
+                    crate::voice_token::verify(&state.jwt_secret, token, uid, channel_id)
+                {
+                    warn!(user_id = %uid, reason, "Voice Join authorization failed — rejecting");
+                    drop(signal_tx.send(SignalOut::Error {
+                        message: "Voice authorization failed".into(),
+                    }));
+                    break;
+                }
 
                 joined = true;
 

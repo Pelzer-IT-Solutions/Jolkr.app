@@ -408,6 +408,10 @@
     "uploadFailed": "上传失败"
   },
 
+  "voice": {
+    "e2eeUnavailable": "通话已取消 — 端到端加密不可用"
+  },
+
   "call": {
     "initiateFailed": "无法发起通话",
     "acceptFailed": "无法接受通话",

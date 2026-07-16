@@ -411,6 +411,10 @@
     "uploadFailed": "Upload mislukt"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Oproep geannuleerd — eind-tot-eind-versleuteling niet beschikbaar"
+  },
+
   "call": {
     "initiateFailed": "Oproep starten mislukt",
     "acceptFailed": "Oproep accepteren mislukt",

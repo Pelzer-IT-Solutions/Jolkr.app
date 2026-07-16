@@ -560,6 +560,10 @@
     "uploadFailed": "Upload failed"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Call cancelled — end-to-end encryption unavailable"
+  },
+
   "call": {
     "initiateFailed": "Failed to initiate call",
     "acceptFailed": "Failed to accept call",

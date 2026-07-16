@@ -410,6 +410,10 @@
     "uploadFailed": "Error al subir"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Llamada cancelada — cifrado de extremo a extremo no disponible"
+  },
+
   "call": {
     "initiateFailed": "No se pudo iniciar la llamada",
     "acceptFailed": "No se pudo aceptar la llamada",

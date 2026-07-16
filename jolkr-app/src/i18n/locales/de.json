@@ -410,6 +410,10 @@
     "uploadFailed": "Upload fehlgeschlagen"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Anruf abgebrochen — Ende-zu-Ende-Verschlüsselung nicht verfügbar"
+  },
+
   "call": {
     "initiateFailed": "Anruf konnte nicht gestartet werden",
     "acceptFailed": "Anruf konnte nicht angenommen werden",

@@ -1,8 +1,59 @@
 import { create } from 'zustand';
-import { getAccessToken } from '../api/client';
+import { getAccessToken, getVoiceToken } from '../api/client';
+import { tStatic } from '../hooks/useT';
 import { getMediaWsUrl } from '../platform/config';
 import { VoiceService } from '../voice/voiceService';
+import { useToast } from './toast';
 import type { VoiceParticipant, VoiceConnectionState } from '../voice/voiceService';
+
+/**
+ * Establish the symmetric E2EE key for a DM call. Throws when a key that both
+ * peers will converge on cannot be produced — the caller MUST then abort the
+ * call (fail closed: never transmit unencrypted voice).
+ */
+async function establishVoiceKey(
+  recipientUserId: string,
+  e2eeSupported: boolean,
+): Promise<Uint8Array> {
+  // This browser can't encrypt WebRTC frames at all → we cannot guarantee E2EE.
+  if (!e2eeSupported) throw new Error('voice-e2ee-unsupported');
+
+  const { isE2EEReady, getLocalKeys, getRecipientBundle } = await import('../services/e2ee');
+  const { deriveConvergentVoiceKeyBytes, verifySignedPreKey, verifyPQSignedPreKey } =
+    await import('../crypto/keys');
+
+  if (!isE2EEReady()) throw new Error('voice-e2ee-not-ready');
+  const localKeys = getLocalKeys();
+  const bundle = await getRecipientBundle(recipientUserId);
+  if (!localKeys || !bundle) throw new Error('voice-e2ee-no-keys');
+
+  // Verify the recipient's signed prekey against their identity key.
+  if (!verifySignedPreKey(bundle.identityKey, bundle.signedPrekey, bundle.signedPrekeySignature)) {
+    throw new Error('voice-e2ee-bad-signed-prekey');
+  }
+
+  // Include the post-quantum layer only when BOTH peers published a validly
+  // signed ML-KEM prekey. This condition is symmetric across the two peers, so
+  // they make the same hybrid-vs-classical choice and converge either way.
+  let localPq: Uint8Array | undefined;
+  let remotePq: Uint8Array | undefined;
+  if (
+    localKeys.pqSignedPreKey &&
+    bundle.pqSignedPrekey &&
+    bundle.pqSignedPrekeySignature &&
+    verifyPQSignedPreKey(bundle.identityKey, bundle.pqSignedPrekey, bundle.pqSignedPrekeySignature)
+  ) {
+    localPq = localKeys.pqSignedPreKey.keyPair.encapsulationKey;
+    remotePq = bundle.pqSignedPrekey;
+  }
+
+  return deriveConvergentVoiceKeyBytes({
+    localSignedPrekeyPriv: localKeys.signedPreKey.keyPair.privateKey,
+    remoteSignedPrekeyPub: bundle.signedPrekey,
+    localPqEncapsulationKey: localPq,
+    remotePqEncapsulationKey: remotePq,
+  });
+}
 
 interface VoiceState {
   connectionState: VoiceConnectionState;
@@ -102,56 +153,39 @@ export const useVoiceStore = create<VoiceState>((set) => ({
       set({ error: 'Not authenticated' });
       return;
     }
-    try {
-      const svc = getVoiceService();
-      await svc.joinChannel(channelId, token, { withVideo: opts?.withVideo ?? false });
-      set({ channelId, serverId, channelName, callType: opts?.withVideo ? 'video' : 'voice' });
 
-      // Voice E2EE for DM calls: ephemeral X25519 DH + ML-KEM-768 hybrid key
-      if (recipientUserId) {
-        try {
-          const { isE2EEReady, getLocalKeys, getRecipientBundle } = await import('../services/e2ee');
-          const {
-            x25519KeyAgreement, deriveHybridMessageKey, mlkemEncapsulate,
-            verifySignedPreKey, verifyPQSignedPreKey,
-          } = await import('../crypto/keys');
-          const { x25519 } = await import('@noble/curves/ed25519.js');
+    const svc = getVoiceService();
 
-          if (isE2EEReady()) {
-            const localKeys = getLocalKeys();
-            const bundle = await getRecipientBundle(recipientUserId);
-            if (localKeys && bundle) {
-              // Verify bundle signatures
-              if (!verifySignedPreKey(bundle.identityKey, bundle.signedPrekey, bundle.signedPrekeySignature)) {
-                throw new Error('Invalid signed prekey signature');
-              }
-
-              // Ephemeral X25519 DH (forward secrecy per call)
-              const ephemeralPriv = x25519.utils.randomSecretKey();
-              const classicalShared = x25519KeyAgreement(ephemeralPriv, bundle.signedPrekey);
-
-              // ML-KEM-768 hybrid layer (quantum resistance)
-              let aesKey: CryptoKey;
-              if (bundle.pqSignedPrekey && bundle.pqSignedPrekeySignature) {
-                if (!verifyPQSignedPreKey(bundle.identityKey, bundle.pqSignedPrekey, bundle.pqSignedPrekeySignature)) {
-                  throw new Error('Invalid PQ signed prekey signature');
-                }
-                const { sharedSecret: pqShared } = mlkemEncapsulate(bundle.pqSignedPrekey);
-                aesKey = await deriveHybridMessageKey(classicalShared, pqShared);
-              } else {
-                // Fallback: classical-only with ephemeral DH
-                const { deriveMessageKey } = await import('../crypto/keys');
-                aesKey = await deriveMessageKey(classicalShared);
-              }
-
-              const rawBytes = new Uint8Array(await crypto.subtle.exportKey('raw', aesKey));
-              svc.setVoiceKey(rawBytes);
-            }
-          }
-        } catch {
-          // E2EE not available — voice continues unencrypted
-        }
+    // Fail closed: for DM calls, establish the shared E2EE key BEFORE any media
+    // is sent. If it cannot be established (unsupported browser, missing keys,
+    // bad signatures, derivation failure), abort the entire call — voice must
+    // never fall back to plaintext.
+    let voiceKeyBytes: Uint8Array | null = null;
+    if (recipientUserId) {
+      try {
+        voiceKeyBytes = await establishVoiceKey(recipientUserId, svc.e2eeSupported);
+      } catch {
+        set({
+          error: tStatic('voice.e2eeUnavailable'),
+          connectionState: 'disconnected',
+          channelId: null,
+          serverId: null,
+          channelName: null,
+          callType: null,
+        });
+        useToast.getState().show(tStatic('voice.e2eeUnavailable'), 'error');
+        // Surface to the call store so it tears down its own call state.
+        throw new Error(tStatic('voice.e2eeUnavailable'));
       }
+    }
+
+    try {
+      // F01: fetch the channel-authorization token. The media server rejects
+      // any Join without a valid one, so a failure here also fails closed.
+      const { token: voiceToken } = await getVoiceToken(channelId);
+      await svc.joinChannel(channelId, token, voiceToken, { withVideo: opts?.withVideo ?? false });
+      if (voiceKeyBytes) svc.setVoiceKey(voiceKeyBytes);
+      set({ channelId, serverId, channelName, callType: opts?.withVideo ? 'video' : 'voice' });
     } catch (e) {
       set({
         error: (e as Error).message || 'Failed to join voice channel',

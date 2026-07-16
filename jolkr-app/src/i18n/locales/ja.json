@@ -408,6 +408,10 @@
     "uploadFailed": "アップロード失敗"
   },
 
+  "voice": {
+    "e2eeUnavailable": "通話をキャンセルしました — エンドツーエンド暗号化を利用できません"
+  },
+
   "call": {
     "initiateFailed": "通話を開始できませんでした",
     "acceptFailed": "通話を受けられませんでした",

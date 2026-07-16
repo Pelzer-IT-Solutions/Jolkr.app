@@ -600,6 +600,14 @@ export const markDmRead = (dmId: string, messageId: string) =>
     body: JSON.stringify({ message_id: messageId }),
   });
 
+// Voice authorization (F01): fetch a short-lived token binding this user to
+// `channelId`, required by the media server on Join.
+export const getVoiceToken = (channelId: string) =>
+  request<{ token: string; expires_in: number }>(`/voice/token`, {
+    method: 'POST',
+    body: JSON.stringify({ channel_id: channelId }),
+  });
+
 // DM Voice/Video Call Signaling
 export const initiateCall = (dmId: string, opts?: { isVideo?: boolean }) => {
   const qs = opts?.isVideo ? '?is_video=true' : '';

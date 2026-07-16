@@ -410,6 +410,10 @@
     "uploadFailed": "Caricamento fallito"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Chiamata annullata — crittografia end-to-end non disponibile"
+  },
+
   "call": {
     "initiateFailed": "Impossibile avviare la chiamata",
     "acceptFailed": "Impossibile accettare la chiamata",
