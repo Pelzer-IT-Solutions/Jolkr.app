@@ -19,8 +19,7 @@ async function establishVoiceKey(
   if (!e2eeSupported) throw new Error('voice-e2ee-unsupported');
 
   const { isE2EEReady, getLocalKeys, getRecipientBundle } = await import('../services/e2ee');
-  const { deriveConvergentVoiceKeyBytes, verifySignedPreKey, verifyPQSignedPreKey } =
-    await import('../crypto/keys');
+  const { deriveConvergentVoiceKeyBytes, verifySignedPreKey } = await import('../crypto/keys');
 
   if (!isE2EEReady()) throw new Error('voice-e2ee-not-ready');
   const localKeys = getLocalKeys();
@@ -32,26 +31,11 @@ async function establishVoiceKey(
     throw new Error('voice-e2ee-bad-signed-prekey');
   }
 
-  // Include the post-quantum layer only when BOTH peers published a validly
-  // signed ML-KEM prekey. This condition is symmetric across the two peers, so
-  // they make the same hybrid-vs-classical choice and converge either way.
-  let localPq: Uint8Array | undefined;
-  let remotePq: Uint8Array | undefined;
-  if (
-    localKeys.pqSignedPreKey &&
-    bundle.pqSignedPrekey &&
-    bundle.pqSignedPrekeySignature &&
-    verifyPQSignedPreKey(bundle.identityKey, bundle.pqSignedPrekey, bundle.pqSignedPrekeySignature)
-  ) {
-    localPq = localKeys.pqSignedPreKey.keyPair.encapsulationKey;
-    remotePq = bundle.pqSignedPrekey;
-  }
-
+  // Classical X25519 only — no ML-KEM layer here, unlike message keys. See
+  // deriveConvergentVoiceKeyBytes for why a real PQ layer needs a wire change.
   return deriveConvergentVoiceKeyBytes({
     localSignedPrekeyPriv: localKeys.signedPreKey.keyPair.privateKey,
     remoteSignedPrekeyPub: bundle.signedPrekey,
-    localPqEncapsulationKey: localPq,
-    remotePqEncapsulationKey: remotePq,
   });
 }
 

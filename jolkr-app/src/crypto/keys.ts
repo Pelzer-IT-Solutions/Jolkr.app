@@ -176,78 +176,55 @@ export async function deriveHybridMessageKey(
 
 // ── Voice-call key agreement ────────────────────────────────────────
 
-const KEM_COINS_CONTEXT = new TextEncoder().encode('jolkr-voice-kem-coins-v1');
 const VOICE_KEY_CONTEXT = new TextEncoder().encode('jolkr-voice-e2ee-key-v1');
-const VOICE_HYBRID_KEY_CONTEXT = new TextEncoder().encode('jolkr-voice-e2ee-hybrid-key-v1');
 
 /**
  * Derive the raw bytes of a symmetric voice-call key that BOTH peers converge
- * on **without any extra key-exchange signaling**.
- *
- * - Classical layer: static→static X25519 ECDH between the two users' signed
- *   prekeys. `DH(myPriv, theirPub) == DH(theirPriv, myPub)`, so both ends
- *   compute the same secret from material each already holds.
- * - PQ layer (hybrid, when both peers published an ML-KEM prekey): both ends
- *   canonically pick the *same* ML-KEM public key (larger key bytes win) and
- *   derive the encapsulation randomness deterministically from the classical
- *   secret. Running ML-KEM encapsulation with identical inputs yields an
- *   identical shared secret on both sides — so neither has to transmit the
- *   ciphertext, yet both converge. If either peer lacks a PQ prekey, both fall
- *   back to the classical-only branch (the fallback condition is symmetric).
+ * on **without any extra key-exchange signaling**, via static→static X25519
+ * ECDH between the two users' signed prekeys: `DH(myPriv, theirPub) ==
+ * DH(theirPriv, myPub)`, so both ends compute the same secret from material
+ * each already holds.
  *
  * Returns 32 raw bytes; the frame-encryption worker runs its own HKDF over
  * them to obtain the actual AES-GCM key.
  *
- * NOTE: this trades per-call forward secrecy (the previous, broken design used
- * an ephemeral key that was never transmitted, so the two ends could never
- * agree) for guaranteed convergence. Signed prekeys rotate periodically, which
- * still bounds the exposure window.
+ * SECURITY POSTURE — this is classical X25519 only, deliberately:
+ *
+ * - **No post-quantum layer.** Unlike message keys (see
+ *   `deriveHybridMessageKey`), voice keys get no ML-KEM contribution. A KEM
+ *   needs its ciphertext delivered to the holder of the decapsulation key, and
+ *   the chosen wire shape carries no such field. Deriving the encapsulation
+ *   coins from the classical secret instead would make the KEM secret a pure
+ *   function of the classical secret plus public keys — anyone who breaks
+ *   X25519 recomputes it — so it would add cost and the *appearance* of PQ
+ *   protection while adding no security. A genuine hybrid requires a wire
+ *   change to carry the ciphertext.
+ * - **No per-call forward secrecy.** The key is fixed per user-pair until a
+ *   signed prekey rotates, which bounds the exposure window. Ephemeral keys
+ *   would need their public halves transmitted — the same missing wire field.
+ *   (The previous design generated ephemeral keys but transmitted nothing, so
+ *   the two ends derived different keys and the call fell back to plaintext;
+ *   it was non-functional, not forward-secret.)
  */
 export async function deriveConvergentVoiceKeyBytes(params: {
   localSignedPrekeyPriv: Uint8Array;
   remoteSignedPrekeyPub: Uint8Array;
-  localPqEncapsulationKey?: Uint8Array;
-  remotePqEncapsulationKey?: Uint8Array;
 }): Promise<Uint8Array> {
   const classical = x25519KeyAgreement(
     params.localSignedPrekeyPriv,
     params.remoteSignedPrekeyPub,
   );
 
-  let ikm: Uint8Array;
-  let info: Uint8Array;
-
-  if (params.localPqEncapsulationKey && params.remotePqEncapsulationKey) {
-    // Both peers select the identical ML-KEM public key so their deterministic
-    // encapsulations match.
-    const responderPq =
-      compareBytes(params.localPqEncapsulationKey, params.remotePqEncapsulationKey) >= 0
-        ? params.localPqEncapsulationKey
-        : params.remotePqEncapsulationKey;
-
-    const coinsInput = new Uint8Array(classical.length + KEM_COINS_CONTEXT.length);
-    coinsInput.set(classical);
-    coinsInput.set(KEM_COINS_CONTEXT, classical.length);
-    const coins = new Uint8Array(
-      await crypto.subtle.digest('SHA-256', toArrayBuffer(coinsInput)),
-    );
-
-    const { sharedSecret } = ml_kem768.encapsulate(responderPq, coins);
-
-    ikm = new Uint8Array(classical.length + sharedSecret.length);
-    ikm.set(classical);
-    ikm.set(sharedSecret, classical.length);
-    info = VOICE_HYBRID_KEY_CONTEXT;
-  } else {
-    ikm = classical;
-    info = VOICE_KEY_CONTEXT;
-  }
-
   const keyMaterial = await crypto.subtle.importKey(
-    'raw', toArrayBuffer(ikm), 'HKDF', false, ['deriveBits'],
+    'raw', toArrayBuffer(classical), 'HKDF', false, ['deriveBits'],
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: toArrayBuffer(info) },
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: new Uint8Array(0),
+      info: toArrayBuffer(VOICE_KEY_CONTEXT),
+    },
     keyMaterial,
     256,
   );
