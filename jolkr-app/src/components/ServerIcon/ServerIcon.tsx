@@ -22,7 +22,10 @@ const fontClass: Record<string, string> = {
 };
 
 export function ServerIcon({ name, iconUrl, serverId, size = 'md', className }: ServerIconProps) {
-  const imgSrc = serverId && iconUrl ? iconEndpoint(serverId) : (iconUrl ?? undefined);
+  // With a serverId we always go through the app-origin icon endpoint. Without
+  // one, only a local `blob:` upload preview is honored — a raw external/stored
+  // URL is never placed in an <img src>; it falls back to the initial instead.
+  const imgSrc = serverId && iconUrl ? iconEndpoint(serverId) : (iconUrl?.startsWith('blob:') ? iconUrl : undefined);
   const [imgError, setImgError] = useState(false);
   // Reset img-error when the underlying identity changes — store-prev-value pattern.
   const currentKey = serverId ?? iconUrl;

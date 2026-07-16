@@ -669,7 +669,6 @@
     "overview": {
       "bannerTitle": "Arrière-plan de la bannière",
       "bannerSolid": "Couleurs unies", "bannerGradients": "Dégradés", "bannerImage": "Image",
-      "bannerImageUrl": "URL de l'image (https://…)",
       "bannerUploading": "Téléversement…", "bannerUpload": "Téléverser", "bannerRemove": "Retirer la bannière image",
       "iconAlt": "Icône du serveur",
       "namePlaceholder": "Nom du serveur",

@@ -669,7 +669,6 @@
     "overview": {
       "bannerTitle": "Bannerachtergrond",
       "bannerSolid": "Effen kleuren", "bannerGradients": "Gradiënten", "bannerImage": "Afbeelding",
-      "bannerImageUrl": "Afbeeldings-URL (https://…)",
       "bannerUploading": "Uploaden…", "bannerUpload": "Uploaden", "bannerRemove": "Banner-afbeelding verwijderen",
       "iconAlt": "Server-icoon",
       "namePlaceholder": "Servernaam",

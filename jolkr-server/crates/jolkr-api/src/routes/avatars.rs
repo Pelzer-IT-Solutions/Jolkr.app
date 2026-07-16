@@ -31,16 +31,10 @@ pub(crate) async fn get_user_avatar(
 
     let key = user.avatar_url.ok_or(StatusCode::NOT_FOUND)?;
 
+    // Legacy rows may still hold an external URL from before uploads were
+    // mandatory. Never redirect to a foreign host — treat it as "no image".
     if key.starts_with("http") {
-        return Response::builder()
-            .status(StatusCode::TEMPORARY_REDIRECT)
-            .header(header::LOCATION, &key)
-            .header(header::CACHE_CONTROL, "public, max-age=3600")
-            .body(Body::empty())
-            .map_err(|e| {
-                tracing::warn!(?e, "avatar redirect response builder failed");
-                StatusCode::INTERNAL_SERVER_ERROR
-            });
+        return Err(StatusCode::NOT_FOUND);
     }
 
     serve_resized_avatar(&state, &key).await
@@ -63,16 +57,10 @@ pub(crate) async fn get_server_icon(
 
     let key = server.icon_url.ok_or(StatusCode::NOT_FOUND)?;
 
+    // Legacy rows may still hold an external URL from before uploads were
+    // mandatory. Never redirect to a foreign host — treat it as "no image".
     if key.starts_with("http") {
-        return Response::builder()
-            .status(StatusCode::TEMPORARY_REDIRECT)
-            .header(header::LOCATION, &key)
-            .header(header::CACHE_CONTROL, "public, max-age=3600")
-            .body(Body::empty())
-            .map_err(|e| {
-                tracing::warn!(?e, "server icon redirect response builder failed");
-                StatusCode::INTERNAL_SERVER_ERROR
-            });
+        return Err(StatusCode::NOT_FOUND);
     }
 
     serve_resized_avatar(&state, &key).await

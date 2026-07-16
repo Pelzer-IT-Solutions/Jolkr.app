@@ -368,7 +368,7 @@ export const getServers = () => request<Server[]>('/servers', {}, 'servers');
 export const createServer = (body: { name: string; description?: string }) =>
   request<Server>('/servers', { method: 'POST', body: JSON.stringify(body) }, 'server');
 export const getServer = (id: string) => request<Server>(`/servers/${id}`, {}, 'server');
-export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean; theme?: ServerThemeData | null }) =>
+export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; banner_url?: string; is_public?: boolean; theme?: ServerThemeData | null }) =>
   request<Server>(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'server');
 export const deleteServer = (id: string) =>
   request<void>(`/servers/${id}`, { method: 'DELETE' });
@@ -760,7 +760,7 @@ export const removeFriendByUserId = (userId: string) =>
 
 // General file upload (avatars, server icons, etc.)
 // When purpose is 'avatar' or 'icon', the backend converts to WebP and resizes.
-export const uploadFile = async (file: File, purpose?: 'avatar' | 'icon'): Promise<{ key: string; url: string }> => {
+export const uploadFile = async (file: File, purpose?: 'avatar' | 'icon' | 'banner'): Promise<{ key: string; url: string }> => {
   const form = new FormData();
   form.append('file', file);
   const query = purpose ? `?purpose=${purpose}` : '';

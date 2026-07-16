@@ -661,7 +661,6 @@
     "overview": {
       "bannerTitle": "Bannerhintergrund",
       "bannerSolid": "Einfarbig", "bannerGradients": "Verläufe", "bannerImage": "Bild",
-      "bannerImageUrl": "Bild-URL (https://…)",
       "bannerUploading": "Wird hochgeladen…", "bannerUpload": "Hochladen", "bannerRemove": "Bannerbild entfernen",
       "iconAlt": "Server-Symbol",
       "namePlaceholder": "Servername",

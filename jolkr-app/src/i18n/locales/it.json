@@ -660,7 +660,6 @@
     "overview": {
       "bannerTitle": "Sfondo banner",
       "bannerSolid": "Colori pieni", "bannerGradients": "Gradienti", "bannerImage": "Immagine",
-      "bannerImageUrl": "URL immagine (https://…)",
       "bannerUploading": "Caricamento…", "bannerUpload": "Carica", "bannerRemove": "Rimuovi banner immagine",
       "iconAlt": "Icona del server",
       "namePlaceholder": "Nome del server",

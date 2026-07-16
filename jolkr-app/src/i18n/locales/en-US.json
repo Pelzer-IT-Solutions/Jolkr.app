@@ -948,7 +948,6 @@
       "bannerSolid": "Solid colors",
       "bannerGradients": "Gradients",
       "bannerImage": "Image",
-      "bannerImageUrl": "Image URL (https://…)",
       "bannerUploading": "Uploading…",
       "bannerUpload": "Upload",
       "bannerRemove": "Remove image banner",

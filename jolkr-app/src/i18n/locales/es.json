@@ -660,7 +660,6 @@
     "overview": {
       "bannerTitle": "Fondo del banner",
       "bannerSolid": "Colores sólidos", "bannerGradients": "Degradados", "bannerImage": "Imagen",
-      "bannerImageUrl": "URL de imagen (https://…)",
       "bannerUploading": "Subiendo…", "bannerUpload": "Subir", "bannerRemove": "Quitar imagen del banner",
       "iconAlt": "Icono del servidor",
       "namePlaceholder": "Nombre del servidor",

@@ -79,6 +79,19 @@ pub struct ExecuteWebhookRequest {
     pub avatar_url: Option<String>,
 }
 
+/// Reject avatar values that are URLs. Only internal storage keys (as returned
+/// by `/api/upload`) may be stored — an external URL would later be served as
+/// an image, exactly the XSS / tracking / IP-leak surface we forbid. An empty
+/// string is left untouched (it clears the field).
+fn reject_avatar_url(value: &str) -> Result<(), JolkrError> {
+    if !value.is_empty() && (value.starts_with("http") || value.contains("://")) {
+        return Err(JolkrError::Validation(
+            "Avatar must be an uploaded image key, not a URL".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Domain service for `webhook` operations.
 pub struct WebhookService;
 
@@ -122,6 +135,9 @@ impl WebhookService {
         let name = req.name.trim().to_owned();
         if name.is_empty() || name.len() > 80 {
             return Err(JolkrError::Validation("Webhook name must be 1-80 characters".into()));
+        }
+        if let Some(ref avatar) = req.avatar_url {
+            reject_avatar_url(avatar)?;
         }
 
         let id = Uuid::new_v4();
@@ -183,6 +199,9 @@ impl WebhookService {
             if name.is_empty() || name.len() > 80 {
                 return Err(JolkrError::Validation("Webhook name must be 1-80 characters".into()));
             }
+        }
+        if let Some(ref avatar) = req.avatar_url {
+            reject_avatar_url(avatar)?;
         }
 
         let row = WebhookRepo::update(pool, webhook_id, req.name.as_deref(), req.avatar_url.as_deref()).await?;
@@ -279,6 +298,7 @@ impl WebhookService {
             if avatar.len() > 512 {
                 return Err(JolkrError::Validation("Avatar URL must be at most 512 characters".into()));
             }
+            reject_avatar_url(avatar)?;
         }
 
         // Create the message as the webhook creator but tag it with webhook_id

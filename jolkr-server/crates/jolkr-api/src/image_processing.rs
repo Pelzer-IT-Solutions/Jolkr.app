@@ -9,6 +9,10 @@ const AVATAR_MAX_PX: u32 = 256;
 /// Maximum pixel dimension for server icon images (covers 4x retina of 64px max display).
 const ICON_MAX_PX: u32 = 256;
 
+/// Maximum pixel dimension for server banner images (wide artwork behind the
+/// server header — larger than avatars/icons so it stays crisp full-width).
+const BANNER_MAX_PX: u32 = 1600;
+
 /// The purpose of the uploaded image — determines the max output size.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImagePurpose {
@@ -16,6 +20,8 @@ pub enum ImagePurpose {
     Avatar,
     /// `Icon` variant.
     Icon,
+    /// `Banner` variant.
+    Banner,
 }
 
 impl ImagePurpose {
@@ -24,6 +30,7 @@ impl ImagePurpose {
         match self {
             Self::Avatar => AVATAR_MAX_PX,
             Self::Icon => ICON_MAX_PX,
+            Self::Banner => BANNER_MAX_PX,
         }
     }
 
@@ -32,6 +39,7 @@ impl ImagePurpose {
         match s {
             "avatar" => Some(Self::Avatar),
             "icon" => Some(Self::Icon),
+            "banner" => Some(Self::Banner),
             _ => None,
         }
     }

@@ -657,7 +657,6 @@
     "overview": {
       "bannerTitle": "배너 배경",
       "bannerSolid": "단색", "bannerGradients": "그라데이션", "bannerImage": "이미지",
-      "bannerImageUrl": "이미지 URL (https://…)",
       "bannerUploading": "업로드 중…", "bannerUpload": "업로드", "bannerRemove": "이미지 배너 제거",
       "iconAlt": "서버 아이콘",
       "namePlaceholder": "서버 이름",

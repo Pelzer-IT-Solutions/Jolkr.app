@@ -309,18 +309,19 @@ pub(crate) async fn list_attachments(
 /// Query parameters for the upload endpoint.
 #[derive(Debug, Deserialize)]
 pub(crate) struct UploadQuery {
-    /// When set to "avatar" or "icon", the image is converted to WebP and resized.
+    /// When set to "avatar", "icon" or "banner", the image is converted to WebP and resized.
     pub purpose: Option<String>,
 }
 
 /// POST /api/upload
 ///
-/// General-purpose file upload (for avatars, server icons, etc.)
+/// General-purpose file upload (for avatars, server icons, banners, etc.)
 /// Returns the object key and a presigned download URL.
 ///
 /// Query params:
 ///   - `?purpose=avatar` — convert to 256×256 WebP
 ///   - `?purpose=icon`   — convert to 256×256 WebP
+///   - `?purpose=banner` — convert to WebP, max 1600px
 pub(crate) async fn upload_file(
     State(state): State<AppState>,
     _auth: AuthUser,
@@ -381,7 +382,10 @@ pub(crate) async fn upload_file(
         )));
     }
 
-    // If purpose is avatar/icon, convert to WebP; otherwise store as-is
+    // If purpose is avatar/icon/banner, magic-byte-safe decode + re-encode to
+    // WebP; otherwise store as-is but still verify the claimed content-type
+    // against the file's magic bytes (same as message attachments) so a
+    // mislabeled file can't be stored under a spoofed type.
     let (upload_data, upload_filename, upload_content_type) = if let Some(purpose) = purpose {
         let webp_data = crate::image_processing::convert_to_webp(&data, &content_type, purpose)
             .map_err(|e| {
@@ -393,7 +397,8 @@ pub(crate) async fn upload_file(
         let webp_filename = replace_extension(&filename, "webp");
         (webp_data, webp_filename, "image/webp".to_string())
     } else {
-        (data.to_vec(), filename.clone(), content_type.clone())
+        let effective = validate_content_type(&content_type, &data)?;
+        (data.to_vec(), filename.clone(), effective)
     };
 
     let file_id = Uuid::new_v4();

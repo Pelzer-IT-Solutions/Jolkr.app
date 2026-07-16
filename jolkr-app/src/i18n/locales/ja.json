@@ -657,7 +657,6 @@
     "overview": {
       "bannerTitle": "バナー背景",
       "bannerSolid": "単色", "bannerGradients": "グラデーション", "bannerImage": "画像",
-      "bannerImageUrl": "画像 URL (https://…)",
       "bannerUploading": "アップロード中…", "bannerUpload": "アップロード", "bannerRemove": "画像バナーを削除",
       "iconAlt": "サーバーアイコン",
       "namePlaceholder": "サーバー名",

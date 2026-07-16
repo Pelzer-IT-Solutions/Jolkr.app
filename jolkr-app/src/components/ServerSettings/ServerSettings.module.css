@@ -1396,23 +1396,6 @@
   align-items: stretch;
 }
 
-.bannerPopoverUrlInput {
-  flex: 1;
-  min-width: 0;
-  padding: 0.5rem 0.625rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--border-muted);
-  background: var(--bg-dark-muted);
-  color: var(--text-strong);
-  font-family: inherit;
-  font-size: 0.8125rem;
-}
-
-.bannerPopoverUrlInput:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
 .bannerPopoverFileInput {
   position: absolute;
   left: 0;
