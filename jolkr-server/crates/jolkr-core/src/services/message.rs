@@ -377,7 +377,7 @@ pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo
         let votes = votes_by_poll.remove(&poll.id).unwrap_or_default();
         let total = totals_by_poll.get(&poll.id).copied().unwrap_or(0);
 
-        poll_by_msg.insert(poll.message_id, serde_json::json!({
+        let mut poll_json = serde_json::json!({
             "id": poll.id,
             "message_id": poll.message_id,
             "channel_id": poll.channel_id,
@@ -389,7 +389,16 @@ pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo
             "votes": votes,
             "my_votes": [],
             "total_votes": total,
-        }));
+        });
+        // E2EE payload fields — only present for encrypted polls, mirroring
+        // PollInfo's skip_serializing_if so legacy polls keep the old shape.
+        if let Some(encrypted_payload) = poll.encrypted_payload {
+            poll_json["encrypted_payload"] = serde_json::Value::String(encrypted_payload);
+        }
+        if let Some(nonce) = poll.nonce {
+            poll_json["nonce"] = serde_json::Value::String(nonce);
+        }
+        poll_by_msg.insert(poll.message_id, poll_json);
     }
 
     for msg in messages.iter_mut() {

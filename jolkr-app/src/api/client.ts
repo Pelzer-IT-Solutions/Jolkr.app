@@ -968,9 +968,13 @@ export const regenerateWebhookToken = (webhookId: string) =>
 
 // ── Polls ────────────────────────────────────────────────────────────
 
+// Poll texts are E2EE: `encrypted_payload` is the channel-key-encrypted
+// JSON `{ q, opts }`; the server only learns `option_count` so it can
+// create the index-based option rows that votes reference.
 export const createPoll = (channelId: string, body: {
-  question: string;
-  options: string[];
+  encrypted_payload: string;
+  nonce: string;
+  option_count: number;
   multi_select?: boolean;
   anonymous?: boolean;
   expires_at?: string;

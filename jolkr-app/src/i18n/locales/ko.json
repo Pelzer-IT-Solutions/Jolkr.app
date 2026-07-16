@@ -145,7 +145,8 @@
       "anonymousLabel": "익명",
       "anonymousSub": "누가 무엇에 투표했는지 숨기기",
       "cancel": "취소", "submit": "투표 만들기",
-      "submitting": "만드는 중…", "errorGeneric": "투표 만들기 실패"
+      "submitting": "만드는 중…", "errorGeneric": "투표 만들기 실패",
+      "encryptFailed": "투표 암호화 실패"
     },
     "display": {
       "closed": "종료됨",

@@ -145,7 +145,8 @@
       "anonymousLabel": "匿名",
       "anonymousSub": "隐藏谁投了什么",
       "cancel": "取消", "submit": "创建投票",
-      "submitting": "创建中…", "errorGeneric": "创建投票失败"
+      "submitting": "创建中…", "errorGeneric": "创建投票失败",
+      "encryptFailed": "投票加密失败"
     },
     "display": {
       "closed": "已关闭",

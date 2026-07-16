@@ -145,7 +145,8 @@
       "anonymousLabel": "Anonyme",
       "anonymousSub": "Masquer qui a voté pour quoi",
       "cancel": "Annuler", "submit": "Créer le sondage",
-      "submitting": "Création…", "errorGeneric": "Échec de la création du sondage"
+      "submitting": "Création…", "errorGeneric": "Échec de la création du sondage",
+      "encryptFailed": "Échec du chiffrement du sondage"
     },
     "display": {
       "closed": "Fermé",

@@ -145,7 +145,8 @@
       "anonymousLabel": "Anónimo",
       "anonymousSub": "Ocultar quién votó por qué",
       "cancel": "Cancelar", "submit": "Crear encuesta",
-      "submitting": "Creando…", "errorGeneric": "Error al crear la encuesta"
+      "submitting": "Creando…", "errorGeneric": "Error al crear la encuesta",
+      "encryptFailed": "Error al cifrar la encuesta"
     },
     "display": {
       "closed": "Cerrada",

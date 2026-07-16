@@ -145,7 +145,8 @@
       "anonymousLabel": "Anonimo",
       "anonymousSub": "Nascondi chi ha votato cosa",
       "cancel": "Annulla", "submit": "Crea sondaggio",
-      "submitting": "Creazione…", "errorGeneric": "Creazione sondaggio fallita"
+      "submitting": "Creazione…", "errorGeneric": "Creazione sondaggio fallita",
+      "encryptFailed": "Crittografia del sondaggio fallita"
     },
     "display": {
       "closed": "Chiuso",

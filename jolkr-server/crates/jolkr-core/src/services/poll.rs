@@ -52,15 +52,30 @@ pub struct PollInfo {
     /// Total votes.
     #[ts(type = "number")]
     pub total_votes: i64,
+    /// Encrypted payload with question + option texts (base64 ciphertext).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub encrypted_payload: Option<String>,
+    /// Encryption nonce for `encrypted_payload` (base64).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub nonce: Option<String>,
 }
 
 /// Request payload for the `CreatePoll` operation.
+///
+/// Question and option texts are end-to-end encrypted: the client serializes
+/// `{ q, opts }` to JSON and encrypts it with the channel key. The server
+/// only learns how many options exist (`option_count`) so it can create the
+/// index-based option rows that votes reference.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreatePollRequest {
-    /// Question.
-    pub question: String,
-    /// Options list.
-    pub options: Vec<String>,
+    /// Encrypted `{ q, opts }` payload (base64 ciphertext).
+    pub encrypted_payload: String,
+    /// Encryption nonce for `encrypted_payload` (base64).
+    pub nonce: String,
+    /// Number of options inside the encrypted payload.
+    pub option_count: u8,
     /// Whether multiple options can be selected.
     pub multi_select: Option<bool>,
     /// Whether votes are anonymous.
@@ -88,17 +103,17 @@ impl PollService {
         author_id: Uuid,
         req: CreatePollRequest,
     ) -> Result<(PollInfo, Uuid), JolkrError> {
-        // Validate
-        if req.question.trim().is_empty() || req.question.len() > 500 {
-            return Err(JolkrError::Validation("Question must be 1-500 characters".into()));
+        // Validate. Texts are ciphertext — only structural checks are possible
+        // here. The 16 KiB cap comfortably fits the client-side limits
+        // (question ≤ 500 chars + 10 options × 200 chars, encrypted + base64).
+        if req.encrypted_payload.trim().is_empty() || req.encrypted_payload.len() > 16_384 {
+            return Err(JolkrError::Validation("Encrypted payload must be 1-16384 characters".into()));
         }
-        if req.options.len() < 2 || req.options.len() > 10 {
+        if req.nonce.trim().is_empty() || req.nonce.len() > 64 {
+            return Err(JolkrError::Validation("Nonce must be 1-64 characters".into()));
+        }
+        if req.option_count < 2 || req.option_count > 10 {
             return Err(JolkrError::Validation("Poll must have 2-10 options".into()));
-        }
-        for opt in &req.options {
-            if opt.trim().is_empty() || opt.len() > 200 {
-                return Err(JolkrError::Validation("Each option must be 1-200 characters".into()));
-            }
         }
 
         // Verify the channel exists and user is a member
@@ -108,28 +123,32 @@ impl PollService {
             JolkrError::Forbidden
         })?;
 
-        // Create a message for the poll
+        // Create a message for the poll. Static marker only — the question is
+        // E2EE and must never leak into the (server-generated) announcement.
+        // Nonce stays None: this is a server-side marker, not user content.
         let message_id = Uuid::new_v4();
-        let poll_text = format!("📊 {}", req.question);
         jolkr_db::repo::MessageRepo::create_message(
             pool, message_id, channel_id, author_id,
-            Some(&poll_text), None, None,
+            Some("📊"), None, None,
         ).await?;
 
-        // Create poll
+        // Create poll — plaintext question column stays empty for E2EE polls.
         let poll_id = Uuid::new_v4();
         let poll = PollRepo::create_poll(
             pool, poll_id, message_id, channel_id,
-            &req.question,
+            "",
             req.multi_select.unwrap_or(false),
             req.anonymous.unwrap_or(false),
             req.expires_at,
+            Some(&req.encrypted_payload),
+            Some(&req.nonce),
         ).await?;
 
-        // Create options
+        // Create index-based option rows with empty text — the real texts
+        // live inside the encrypted payload, keyed by position.
         let mut options = Vec::new();
-        for (i, text) in req.options.iter().enumerate() {
-            let opt = PollRepo::create_option(pool, Uuid::new_v4(), poll_id, i as i32, text).await?;
+        for i in 0..req.option_count {
+            let opt = PollRepo::create_option(pool, Uuid::new_v4(), poll_id, i as i32, "").await?;
             options.push(PollOptionInfo {
                 id: opt.id,
                 poll_id: opt.poll_id,
@@ -150,6 +169,8 @@ impl PollService {
             votes: HashMap::new(),
             my_votes: Vec::new(),
             total_votes: 0,
+            encrypted_payload: poll.encrypted_payload,
+            nonce: poll.nonce,
         };
 
         Ok((info, message_id))
@@ -266,6 +287,8 @@ impl PollService {
             votes: votes_map,
             my_votes,
             total_votes: total,
+            encrypted_payload: poll.encrypted_payload,
+            nonce: poll.nonce,
         })
     }
 }

@@ -10,6 +10,10 @@ pub struct PollRepo;
 
 impl PollRepo {
     /// Create a poll with options.
+    ///
+    /// E2EE polls carry `encrypted_payload` + `nonce` (base64) and store an
+    /// empty `question`; legacy plaintext polls pass `None` for both.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_poll(
         pool: &PgPool,
         id: Uuid,
@@ -19,11 +23,13 @@ impl PollRepo {
         multi_select: bool,
         anonymous: bool,
         expires_at: Option<DateTime<Utc>>,
+        encrypted_payload: Option<&str>,
+        nonce: Option<&str>,
     ) -> Result<PollRow, JolkrError> {
         let poll = sqlx::query_as::<_, PollRow>(
             "
-            INSERT INTO polls (id, message_id, channel_id, question, multi_select, anonymous, expires_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO polls (id, message_id, channel_id, question, multi_select, anonymous, expires_at, encrypted_payload, nonce)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
             ",
         )
@@ -34,6 +40,8 @@ impl PollRepo {
         .bind(multi_select)
         .bind(anonymous)
         .bind(expires_at)
+        .bind(encrypted_payload)
+        .bind(nonce)
         .fetch_one(pool)
         .await?;
 

@@ -146,7 +146,8 @@
       "anonymousLabel": "Anoniem",
       "anonymousSub": "Verberg wie op wat heeft gestemd",
       "cancel": "Annuleren", "submit": "Peiling maken",
-      "submitting": "Maken…", "errorGeneric": "Peiling maken mislukt"
+      "submitting": "Maken…", "errorGeneric": "Peiling maken mislukt",
+      "encryptFailed": "Peiling versleutelen mislukt"
     },
     "display": {
       "closed": "Gesloten",

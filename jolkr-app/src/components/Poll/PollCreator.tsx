@@ -2,7 +2,9 @@ import { X, Plus, Trash2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import * as api from '../../api/client'
+import { encryptChannelMessage } from '../../crypto/channelKeys'
 import { useT } from '../../hooks/useT'
+import { getLocalKeys } from '../../services/e2ee'
 import s from './PollCreator.module.css'
 
 interface Props {
@@ -83,9 +85,29 @@ export function PollCreator({ open, channelId, onClose }: Props) {
     setSubmitting(true)
     setError(null)
     try {
+      // Question + option texts are E2EE: pack them into one JSON payload and
+      // encrypt with the channel key — the server only sees the option count.
+      const localKeys = getLocalKeys()
+      if (!localKeys) {
+        setError(t('poll.create.encryptFailed'))
+        return
+      }
+      const payload = JSON.stringify({ q: trimmedQuestion, opts: nonEmptyOptions })
+      // Member IDs are only needed when no channel key exists yet (first
+      // encrypted content in the channel triggers key distribution).
+      const getMemberIds = async () => {
+        const members = await api.getChannelMembers(channelId)
+        return members.map((m) => m.user_id)
+      }
+      const encrypted = await encryptChannelMessage(channelId, localKeys, payload, getMemberIds)
+      if (!encrypted) {
+        setError(t('poll.create.encryptFailed'))
+        return
+      }
       await api.createPoll(channelId, {
-        question: trimmedQuestion,
-        options: nonEmptyOptions,
+        encrypted_payload: encrypted.encryptedContent,
+        nonce: encrypted.nonce,
+        option_count: nonEmptyOptions.length,
         multi_select: multiSelect,
         anonymous,
       })

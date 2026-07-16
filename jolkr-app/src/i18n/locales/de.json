@@ -145,7 +145,8 @@
       "anonymousLabel": "Anonym",
       "anonymousSub": "Verbergen, wer für was gestimmt hat",
       "cancel": "Abbrechen", "submit": "Umfrage erstellen",
-      "submitting": "Erstellen…", "errorGeneric": "Umfrage konnte nicht erstellt werden"
+      "submitting": "Erstellen…", "errorGeneric": "Umfrage konnte nicht erstellt werden",
+      "encryptFailed": "Umfrage konnte nicht verschlüsselt werden"
     },
     "display": {
       "closed": "Geschlossen",

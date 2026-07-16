@@ -194,7 +194,8 @@
       "cancel": "Cancel",
       "submit": "Create Poll",
       "submitting": "Creating…",
-      "errorGeneric": "Failed to create poll"
+      "errorGeneric": "Failed to create poll",
+      "encryptFailed": "Failed to encrypt poll"
     },
     "display": {
       "closed": "Closed",
