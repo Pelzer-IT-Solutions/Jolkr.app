@@ -16,6 +16,12 @@
 # it cannot be is both live and independent: the data only exists on
 # render-unit. The watchdog (jolkr-server/ops/) is what actually notices an
 # outage; this page is for people who come looking.
+#
+# This subdomain must stay GREY-CLOUDED in Cloudflare (DNS-only), as
+# upload.jolkr.app is. Proxied, Cloudflare replaces the origin's 5xx body with
+# its own 16-byte "error code: 502", so the fallback page never reaches anyone —
+# verified 2026-09-09. Orange-cloud it again and this page silently stops
+# working in the one situation it exists for.
 #=========================================================================#
 server {
     listen      %ip%:%proxy_ssl_port% ssl;

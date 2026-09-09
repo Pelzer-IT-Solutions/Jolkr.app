@@ -58,3 +58,21 @@ waarnemer juist overeind blijven — een monitor die met de storing meevalt, mel
 Uptime Kuma draait om dezelfde reden op web-unit (`/opt/uptime-kuma/`,
 bereikbaar op `http://192.168.178.20:3001`, bewust aan het LAN-adres gebonden en
 niet publiek).
+
+## status.jolkr.app
+
+De watchdog schrijft bij elke run `offline.html` naar de docroot van
+`status.jolkr.app`. Zolang de backend antwoordt proxyt dat domein de live
+`/health`-pagina door; valt de backend weg, dan serveert nginx die momentopname
+met de oorspronkelijke 5xx-status.
+
+Het subdomein staat **grey-clouded** in Cloudflare (DNS-only). Proxied vervangt
+Cloudflare de 5xx-body van de origin door zijn eigen `error code: 502` van 16
+bytes, waardoor de terugvalpagina niemand bereikt — geverifieerd op 2026-09-09.
+Zet het terug op oranje en deze pagina stopt stilzwijgend met werken in precies
+de situatie waarvoor hij bestaat.
+
+Gevolg van grey cloud: het origin-IP (`212.45.36.41`) is voor dit subdomein
+publiek zichtbaar, net als bij `upload.jolkr.app`. Er is ook geen
+Cloudflare-bescherming meer op dit ene domein. De watchdog dekt het CF-pad nog
+steeds af via zijn controle op `https://jolkr.app/app/`.
