@@ -4,7 +4,6 @@ import { initTokens, getAccessToken } from './api/client';
 import * as api from './api/client';
 import { IncomingCallDialog } from './components/CallDialogs/IncomingCallDialog';
 import { OutgoingCallDialog } from './components/CallDialogs/OutgoingCallDialog';
-import { ContextMenu } from './components/ContextMenu';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TextContextMenu } from './components/TextContextMenu';
 import { UpdateNotification } from './components/UpdateNotification';
@@ -133,7 +132,6 @@ function AppInit({ children }: { children: React.ReactNode }) {
       {updateInfo && <UpdateNotification update={updateInfo} />}
       <CallOverlays />
       <TextContextMenu />
-      <ContextMenu />
       {children}
     </>
   );
