@@ -19,7 +19,7 @@ CONF=/etc/jolkr-watchdog.conf
 # (dood endpoint, mail naar root) zonder de productieconfig aan te raken.
 # Zonder dit overschrijft `source` juist wat de aanroeper meegaf.
 _tunables=(ALERT_EMAIL MAIL_FROM FAIL_THRESHOLD REMIND_AFTER STATE LOG TIMEOUT
-           HEALTH_URL APP_URL UPLOAD_URL)
+           HEALTH_URL APP_URL UPLOAD_URL OFFLINE_PAGE OFFLINE_TEMPLATE)
 declare -A _from_env=()
 for _v in "${_tunables[@]}"; do
     [[ -v $_v ]] && _from_env[$_v]=${!_v}
@@ -45,6 +45,10 @@ done
 : "${HEALTH_URL:=https://jolkr.app/health}"
 : "${APP_URL:=https://jolkr.app/app/}"
 : "${UPLOAD_URL:=https://upload.jolkr.app/}"
+# Snapshot that status.jolkr.app falls back to when the backend is unreachable.
+# Rewritten on every run, so it always carries the most recent observation.
+: "${OFFLINE_TEMPLATE:=/usr/local/share/jolkr/status-offline.template.html}"
+: "${OFFLINE_PAGE:=/home/phillipp/web/status.jolkr.app/public_html/offline.html}"
 
 mkdir -p "$STATE"
 FAILFILE=$STATE/consecutive_failures
@@ -81,7 +85,34 @@ if [[ -z $code || $code == 000 || $code =~ ^5 ]]; then
     problems+=("upload.jolkr.app gaf HTTP ${code:-geen antwoord}")
 fi
 
+# Refresh the fallback page status.jolkr.app serves while the backend is down.
+# It is written on every run, healthy or not: during an outage it must already
+# hold an observation, and the only chance to record one is beforehand.
+write_offline_page() {
+    [[ -r $OFFLINE_TEMPLATE ]] || return 0
+    [[ -d ${OFFLINE_PAGE%/*} ]] || return 0
+
+    local verdict details tmp
+    if (($# == 0)); then
+        verdict='All checks passed at the last look'
+        details='<li>The backend answered normally when this page was written.</li>'
+    else
+        verdict='The backend did not answer'
+        details=''
+        local p
+        for p in "$@"; do
+            details+="<li>$(printf '%s' "$p" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')</li>"
+        done
+    fi
+
+    tmp=$(mktemp) || return 0
+    sed -e "s|__VERDICT__|${verdict}|"         -e "s|__DETAILS__|${details}|"         -e "s|__CHECKED__|$(date '+%Y-%m-%d %H:%M %Z')|"         "$OFFLINE_TEMPLATE" >"$tmp" 2>/dev/null         && install -o phillipp -g phillipp -m 644 "$tmp" "$OFFLINE_PAGE" 2>>"$LOG"
+    rm -f "$tmp"
+}
+
 fails=$(cat "$FAILFILE" 2>/dev/null || echo 0)
+
+write_offline_page "${problems[@]}"
 
 if ((${#problems[@]} == 0)); then
     if [[ -f $ALERTED ]]; then

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<meta http-equiv="refresh" content="60" />
+<title>Jolkr — Service Status</title>
+<link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon/favicon-96x96.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Uncial+Antiqua&display=swap" rel="stylesheet" />
+<style>
+  /* Neutral surfaces on the landing hue, olive accent from the mark — the same
+     token set as the landing page and the error pages. */
+  :root {
+    --theme-hue: 182;
+    --accent: #697B4B;
+    --bg: oklch(97% 0.004 var(--theme-hue));
+    --card: oklch(99.5% 0.002 var(--theme-hue));
+    --ink: oklch(28% 0.01 var(--theme-hue));
+    --ink-soft: oklch(48% 0.008 var(--theme-hue));
+    --line: oklch(88% 0.006 var(--theme-hue));
+    --bad: #B3261E;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: oklch(18% 0.008 var(--theme-hue));
+      --card: oklch(22% 0.009 var(--theme-hue));
+      --ink: oklch(94% 0.006 var(--theme-hue));
+      --ink-soft: oklch(72% 0.008 var(--theme-hue));
+      --line: oklch(32% 0.01 var(--theme-hue));
+      --accent: #8DA36A;
+      --bad: #F2B8B5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; min-height: 100dvh;
+    display: grid; place-items: center; padding: 1.5rem;
+    background: var(--bg); color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.55;
+  }
+  .card {
+    width: min(34rem, 100%);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 2rem;
+  }
+  .mark { display: flex; align-items: center; gap: .625rem; margin-bottom: 1.5rem; }
+  .mark img { width: 32px; height: 32px; }
+  .mark span { font-family: "Uncial Antiqua", Inter, serif; font-size: 1.125rem; }
+  h1 { margin: 0 0 .5rem; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.01em; }
+  p { margin: 0 0 1.25rem; color: var(--ink-soft); font-size: .9375rem; }
+  .state {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .75rem .875rem; border-radius: 10px;
+    border: 1px solid var(--line); margin-bottom: 1.25rem;
+    font-size: .875rem; font-weight: 600;
+  }
+  .dot { width: .625rem; height: .625rem; border-radius: 50%; background: var(--bad); flex: none; }
+  ul { margin: 0 0 1.25rem; padding-left: 1.125rem; color: var(--ink-soft); font-size: .875rem; }
+  li { margin-bottom: .25rem; }
+  .meta { font-size: .8125rem; color: var(--ink-soft); border-top: 1px solid var(--line); padding-top: 1rem; }
+  a.cta {
+    display: inline-block; margin-top: .25rem; padding: .625rem 1rem;
+    background: var(--accent); color: #fff; text-decoration: none;
+    border-radius: 10px; font-size: .875rem; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark"><img src="/favicon/favicon.svg" alt="" /><span>Jolkr</span></div>
+    <h1>Service status unavailable</h1>
+    <p>
+      This page normally reports live status straight from the Jolkr backend.
+      The backend is not answering right now, so what follows is the last
+      observation made from outside it.
+    </p>
+    <div class="state"><span class="dot"></span><span>__VERDICT__</span></div>
+    <ul>__DETAILS__</ul>
+    <div class="meta">
+      Last checked __CHECKED__ · rechecked every 5 minutes<br />
+      This page is served by the web front end, which is a separate machine from
+      the one running the backend.
+    </div>
+    <a class="cta" href="https://jolkr.app/">Back to Jolkr</a>
+  </div>
+</body>
+</html>
