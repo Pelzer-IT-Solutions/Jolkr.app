@@ -1,0 +1,94 @@
+#=========================================================================#
+# Custom Jolkr status template (port 443)
+#
+# Serves the API's /health page on status.jolkr.app. The Accept header is
+# passed through unchanged, so a browser gets the styled "Jolkr — Service
+# Status" document and `curl` gets the JSON — the same behaviour as
+# https://jolkr.app/health, just on its own name.
+#
+# Known trade-off, chosen deliberately: the page is rendered by the API on
+# render-unit, so a render-unit outage takes this subdomain with it. That is
+# exactly when a status page matters, which is why the error_page wiring
+# below is not decoration — a 502 here is a likely state, and it should say
+# something branded rather than showing nginx's default. The watchdog on
+# web-unit (jolkr-server/ops/) is what actually notices an outage.
+#=========================================================================#
+server {
+    listen      %ip%:%proxy_ssl_port% ssl;
+    server_name %domain_idn% %alias_idn%;
+    error_log   /var/log/apache2/domains/%domain%.error.log error;
+    access_log  /var/log/apache2/domains/%domain%.log combined;
+    access_log  /var/log/apache2/domains/%domain%.bytes bytes;
+
+    ssl_certificate     %ssl_pem%;
+    ssl_certificate_key %ssl_key%;
+    ssl_stapling        on;
+    ssl_stapling_verify on;
+
+    # A status check should fail fast rather than hang: if the backend is
+    # gone, return the 502 page quickly instead of holding the browser for
+    # the default 60s.
+    proxy_connect_timeout 5;
+    proxy_read_timeout    15;
+    proxy_send_timeout    15;
+
+    include /home/%user%/conf/web/%domain%/nginx.hsts.conf*;
+
+    # Lock down dotfiles. The negative lookahead keeps /.well-known
+    # reachable so the ACME challenge stays answerable.
+    location ~ /\.(?!well-known) { deny all; return 404; }
+
+    # Logo and favicons, served from the landing docroot on this same box.
+    # They must come from this host rather than jolkr.app — see the sub_filter
+    # note below. Longest-prefix match puts this ahead of `location /`.
+    location /favicon/ {
+        alias /home/%user%/web/jolkr.app/public_html/favicon/;
+        access_log off;
+        expires 7d;
+    }
+
+    # The status page itself. Everything else on this host maps to /health;
+    # there is nothing more here to serve.
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass https://192.168.178.22/health;
+
+        # The /health template hard-codes https://jolkr.app/favicon/... for its
+        # logo and icons. That is same-origin on jolkr.app, but cross-origin
+        # here — and the API sends `img-src 'self'`, so the browser blocks the
+        # logo outright. Rewriting the references to this host satisfies the
+        # CSP without loosening it, and without touching the backend.
+        # Accept-Encoding is cleared because sub_filter cannot rewrite a
+        # gzipped upstream response.
+        proxy_set_header Accept-Encoding "";
+        sub_filter 'https://jolkr.app/favicon/' '/favicon/';
+        sub_filter_once off;
+    }
+
+    # Jolkr error pages — per-vhost override of the http-level map in nginx.conf.
+    # proxy_intercept_errors stays off: upstream errors keep their own body.
+    error_page 400 /error/400.html;
+    error_page 401 /error/401.html;
+    error_page 403 /error/403.html;
+    error_page 404 /error/404.html;
+    error_page 410 /error/410.html;
+    error_page 413 /error/413.html;
+    error_page 429 /error/429.html;
+    error_page 500 /error/500.html;
+    error_page 502 /error/502.html;
+    error_page 503 /error/503.html;
+    error_page 504 /error/504.html;
+    error_page 501 505 /error/50x.html;
+
+    # Error documents. `internal` keeps them reachable only via error_page.
+    location /error/ {
+        internal;
+        alias /home/%user%/web/%domain%/document_errors/;
+    }
+
+    # Hestia LE http-01 token (regex location, evaluated before location /).
+    include /home/%user%/conf/web/%domain%/nginx.ssl.conf_*;
+}

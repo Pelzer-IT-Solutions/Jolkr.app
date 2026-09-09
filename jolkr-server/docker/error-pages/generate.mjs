@@ -24,10 +24,14 @@ const CODES = {
 };
 
 // jolkr.app serves the app itself, so the CTA stays relative; upload.jolkr.app
-// is a bare upload endpoint and has to send people back to the main domain.
+// and status.jolkr.app are bare endpoints and have to send people back to the
+// main domain. status.jolkr.app proxies the API's /health page, so a 502 there
+// is a likely state rather than an edge case — it is the page people land on
+// precisely when the backend is unreachable.
 const DOMAINS = {
   'jolkr.app': '/app/',
   'upload.jolkr.app': 'https://jolkr.app/app/',
+  'status.jolkr.app': 'https://jolkr.app/app/',
 };
 
 const escapeHtml = (s) =>
