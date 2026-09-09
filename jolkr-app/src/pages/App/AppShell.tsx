@@ -630,8 +630,10 @@ export function AppShell() {
             if (data.name !== undefined) body.name = data.name
             if (data.description !== undefined) body.description = data.description ?? undefined
             if (data.icon_url !== undefined) body.icon_url = data.icon_url ?? undefined
+            // Persist an uploaded banner image key (or empty string to clear it).
+            if (data.banner_url !== undefined) body.banner_url = data.banner_url ?? undefined
             if (data.discoverable !== undefined) body.is_public = data.discoverable
-            // `hue` (and any banner_url) are wrapped into the theme blob the backend stores.
+            // `hue` is wrapped into the theme blob the backend stores.
             if (data.hue !== undefined || data.banner_url !== undefined) {
               const nextHue = data.hue ?? serverThemes[serverId]?.hue ?? null
               const orbs = nextHue != null ? orbsForHue(nextHue) : []

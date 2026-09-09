@@ -146,7 +146,8 @@
       "anonymousLabel": "Anoniem",
       "anonymousSub": "Verberg wie op wat heeft gestemd",
       "cancel": "Annuleren", "submit": "Peiling maken",
-      "submitting": "Maken…", "errorGeneric": "Peiling maken mislukt"
+      "submitting": "Maken…", "errorGeneric": "Peiling maken mislukt",
+      "encryptFailed": "Peiling versleutelen mislukt"
     },
     "display": {
       "closed": "Gesloten",
@@ -410,6 +411,10 @@
     "uploadFailed": "Upload mislukt"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Oproep geannuleerd — eind-tot-eind-versleuteling niet beschikbaar"
+  },
+
   "call": {
     "initiateFailed": "Oproep starten mislukt",
     "acceptFailed": "Oproep accepteren mislukt",
@@ -669,7 +674,6 @@
     "overview": {
       "bannerTitle": "Bannerachtergrond",
       "bannerSolid": "Effen kleuren", "bannerGradients": "Gradiënten", "bannerImage": "Afbeelding",
-      "bannerImageUrl": "Afbeeldings-URL (https://…)",
       "bannerUploading": "Uploaden…", "bannerUpload": "Uploaden", "bannerRemove": "Banner-afbeelding verwijderen",
       "iconAlt": "Server-icoon",
       "namePlaceholder": "Servernaam",

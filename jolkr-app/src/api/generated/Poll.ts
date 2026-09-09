@@ -48,4 +48,12 @@ my_votes: Array<string>,
 /**
  * Total votes.
  */
-total_votes: number, };
+total_votes: number,
+/**
+ * Encrypted payload with question + option texts (base64 ciphertext).
+ */
+encrypted_payload?: string,
+/**
+ * Encryption nonce for `encrypted_payload` (base64).
+ */
+nonce?: string, };

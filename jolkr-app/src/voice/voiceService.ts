@@ -65,10 +65,17 @@ export class VoiceService {
 
   /** Web Worker for voice frame encryption/decryption (voice E2EE). */
   private encryptionWorker: Worker | null = null;
+  /** Raw voice-key bytes, cached so they can be (re)applied to the worker the
+   *  moment it is created. `setVoiceKey` may run before the peer connection —
+   *  and therefore the worker — exists, so we must not drop the key. */
+  private voiceKeyBytes: Uint8Array | null = null;
 
   constructor(wsUrl: string) {
     this.client = new VoiceClient(wsUrl);
   }
+
+  /** Whether this browser can encrypt/decrypt WebRTC frames (voice E2EE). */
+  get e2eeSupported(): boolean { return supportsVoiceE2EE; }
 
   get state() { return this._state; }
   get channelId() { return this._channelId; }
@@ -107,7 +114,7 @@ export class VoiceService {
 
   private connectingTimer: ReturnType<typeof setTimeout> | null = null;
 
-  async joinChannel(channelId: string, token: string, opts?: { withVideo?: boolean }) {
+  async joinChannel(channelId: string, token: string, voiceToken: string, opts?: { withVideo?: boolean }) {
     if (this._state !== 'disconnected') {
       await this.leaveChannel();
     }
@@ -134,7 +141,7 @@ export class VoiceService {
     try {
       await this.client.connect(token);
       this.setupListeners();
-      this.client.join(channelId, { withVideo: this._withVideo });
+      this.client.join(channelId, voiceToken, { withVideo: this._withVideo });
     } catch (e) {
       if (this.connectingTimer) { clearTimeout(this.connectingTimer); this.connectingTimer = null; }
       this.setState('disconnected');
@@ -235,15 +242,23 @@ export class VoiceService {
    * frame encryption, or null to disable.
    */
   setVoiceKey(rawKeyBytes: Uint8Array | null) {
-    if (!supportsVoiceE2EE || !this.encryptionWorker) return;
+    if (!supportsVoiceE2EE) return;
 
-    if (rawKeyBytes) {
-      // Transfer a copy of the buffer to the worker
-      const copy = rawKeyBytes.slice().buffer;
-      this.encryptionWorker.postMessage(
-        { type: 'setKey', keyBytes: copy },
-        [copy],
-      );
+    // Cache so the key survives until the worker exists — `setVoiceKey` is
+    // typically called right after Join, before the server's SDP offer has
+    // created the peer connection (and hence the worker). `pushVoiceKey()`
+    // re-applies it once the worker comes up.
+    this.voiceKeyBytes = rawKeyBytes ? rawKeyBytes.slice() : null;
+    this.pushVoiceKey();
+  }
+
+  /** Send the cached voice key (or a clear) to the worker, if it exists. */
+  private pushVoiceKey() {
+    if (!this.encryptionWorker) return;
+    if (this.voiceKeyBytes) {
+      // Transfer a copy of the buffer to the worker.
+      const copy = this.voiceKeyBytes.slice().buffer;
+      this.encryptionWorker.postMessage({ type: 'setKey', keyBytes: copy }, [copy]);
     } else {
       this.encryptionWorker.postMessage({ type: 'clearKey' });
     }
@@ -397,6 +412,8 @@ export class VoiceService {
           new URL('./encryptionWorker.ts', import.meta.url),
           { type: 'module' },
         );
+        // Apply any key that was set before the worker existed.
+        this.pushVoiceKey();
       } catch {
         console.warn('[Voice] Failed to create encryption worker, voice E2EE disabled');
       }
@@ -585,6 +602,7 @@ export class VoiceService {
       this.encryptionWorker.terminate();
       this.encryptionWorker = null;
     }
+    this.voiceKeyBytes = null;
 
     this._isMuted = false;
     this._isDeafened = false;

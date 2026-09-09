@@ -145,7 +145,8 @@
       "anonymousLabel": "匿名",
       "anonymousSub": "隐藏谁投了什么",
       "cancel": "取消", "submit": "创建投票",
-      "submitting": "创建中…", "errorGeneric": "创建投票失败"
+      "submitting": "创建中…", "errorGeneric": "创建投票失败",
+      "encryptFailed": "投票加密失败"
     },
     "display": {
       "closed": "已关闭",
@@ -407,6 +408,10 @@
     "uploadFailed": "上传失败"
   },
 
+  "voice": {
+    "e2eeUnavailable": "通话已取消 — 端到端加密不可用"
+  },
+
   "call": {
     "initiateFailed": "无法发起通话",
     "acceptFailed": "无法接受通话",
@@ -657,7 +662,6 @@
     "overview": {
       "bannerTitle": "横幅背景",
       "bannerSolid": "纯色", "bannerGradients": "渐变", "bannerImage": "图片",
-      "bannerImageUrl": "图片 URL (https://…)",
       "bannerUploading": "上传中…", "bannerUpload": "上传", "bannerRemove": "移除横幅图片",
       "iconAlt": "服务器图标",
       "namePlaceholder": "服务器名称",

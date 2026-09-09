@@ -138,6 +138,12 @@ pub(crate) async fn update_me(
     }
     if let Some(ref v) = body.avatar_url {
         if v.len() > 512 { return Err(AppError(jolkr_common::JolkrError::Validation("Avatar URL must be 512 characters or less".into()))); }
+        // Reject URL strings — only internal storage keys (as returned by
+        // `/api/upload`) are allowed. An external URL would later be served as
+        // an image (XSS / tracking / IP-leak surface). Empty string clears it.
+        if !v.is_empty() && (v.starts_with("http") || v.contains("://")) {
+            return Err(AppError(jolkr_common::JolkrError::Validation("Avatar must be an uploaded image key, not a URL".into())));
+        }
     }
     if let Some(ref v) = body.preferred_language {
         if !SUPPORTED_LOCALES.contains(&v.as_str()) {

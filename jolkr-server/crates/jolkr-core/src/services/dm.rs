@@ -10,7 +10,7 @@ use jolkr_common::JolkrError;
 use jolkr_db::models::DmMessageRow;
 use jolkr_db::repo::{DmRepo, FriendshipRepo, UserRepo};
 
-use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, ReactionAggregateByMsg, attachment_proxy_url};
+use super::message::{AttachmentInfo, EmbedInfo, ReactionInfo, ReactionAggregateByMsg, attachment_proxy_url, require_ciphertext};
 
 /// Lightweight last-message preview included in the DM channel list.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -524,6 +524,9 @@ impl DmService {
             }
         }
 
+        // Refuse plaintext: non-empty content must arrive encrypted (nonce present)
+        require_ciphertext(req.content.as_deref(), req.nonce.as_deref())?;
+
         if !DmRepo::is_member(pool, dm_channel_id, author_id).await? {
             return Err(JolkrError::Forbidden);
         }
@@ -596,6 +599,14 @@ impl DmService {
             return Err(JolkrError::Forbidden);
         }
 
+        // Re-check membership. Authorship alone isn't enough: a participant who's
+        // been removed from the DM channel still holds a valid JWT until expiry
+        // and could PATCH old messages, which then broadcast as MessageUpdate.
+        // Mirrors the server-channel edit recheck in MessageService::edit_message.
+        if !DmRepo::is_member(pool, msg.dm_channel_id, caller_id).await? {
+            return Err(JolkrError::Forbidden);
+        }
+
         let content = req.content.trim().to_owned();
         if content.is_empty() {
             return Err(JolkrError::Validation("Message content cannot be empty".into()));
@@ -605,6 +616,9 @@ impl DmService {
                 format!("Message content exceeds {MAX_DM_MESSAGE_LENGTH} characters"),
             ));
         }
+
+        // Refuse plaintext: an edited body must arrive encrypted (nonce present)
+        require_ciphertext(Some(&content), req.nonce.as_deref())?;
 
         // Decode optional nonce (base64 → bytes)
         use base64::Engine;

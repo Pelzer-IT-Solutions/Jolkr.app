@@ -145,7 +145,8 @@
       "anonymousLabel": "Anonimo",
       "anonymousSub": "Nascondi chi ha votato cosa",
       "cancel": "Annulla", "submit": "Crea sondaggio",
-      "submitting": "Creazione…", "errorGeneric": "Creazione sondaggio fallita"
+      "submitting": "Creazione…", "errorGeneric": "Creazione sondaggio fallita",
+      "encryptFailed": "Crittografia del sondaggio fallita"
     },
     "display": {
       "closed": "Chiuso",
@@ -409,6 +410,10 @@
     "uploadFailed": "Caricamento fallito"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Chiamata annullata — crittografia end-to-end non disponibile"
+  },
+
   "call": {
     "initiateFailed": "Impossibile avviare la chiamata",
     "acceptFailed": "Impossibile accettare la chiamata",
@@ -660,7 +665,6 @@
     "overview": {
       "bannerTitle": "Sfondo banner",
       "bannerSolid": "Colori pieni", "bannerGradients": "Gradienti", "bannerImage": "Immagine",
-      "bannerImageUrl": "URL immagine (https://…)",
       "bannerUploading": "Caricamento…", "bannerUpload": "Carica", "bannerRemove": "Rimuovi banner immagine",
       "iconAlt": "Icona del server",
       "namePlaceholder": "Nome del server",

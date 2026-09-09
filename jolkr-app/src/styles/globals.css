@@ -20,6 +20,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-strong);
+  /* Inter's calt raises @/punctuation next to caps — keeps @Mention baselines stable */
+  font-feature-settings: "calt" 0;
 }
 
 button {

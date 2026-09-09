@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { resolveContentUrl, isAppOriginUrl } from '../../utils/appOrigin';
 import s from './LinkEmbed.module.css';
 import type { MessageEmbed } from '../../api/types';
 
@@ -11,6 +12,10 @@ export function LinkEmbed({ embed }: LinkEmbedProps) {
   const [imgErrored, setImgErrored] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const safeUrl = /^https?:\/\//i.test(embed.url) ? embed.url : '#';
+  // Only render the thumbnail if it is served from our own origin. An external
+  // OG image URL would leak the viewer's IP / act as a tracking pixel, so it is
+  // simply dropped — the embed's text + link still render.
+  const showImage = embed.image_url && isAppOriginUrl(embed.image_url) && !imgErrored;
 
   return (
     <a
@@ -25,12 +30,12 @@ export function LinkEmbed({ embed }: LinkEmbedProps) {
         {embed.title && <div className={s.title}>{embed.title}</div>}
         {embed.description && <div className={s.description}>{embed.description}</div>}
       </div>
-      {embed.image_url && !imgErrored && (
+      {showImage && (
         <div className={s.imageWrap}>
           {!imgLoaded && <div className={s.imagePlaceholder} />}
           <img
             className={s.image}
-            src={embed.image_url}
+            src={resolveContentUrl(embed.image_url!)}
             alt=""
             style={{ opacity: imgLoaded ? 1 : 0 }}
             loading="lazy"

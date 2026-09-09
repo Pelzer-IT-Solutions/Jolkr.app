@@ -56,7 +56,14 @@ export function Avatar({ url, name, size = 'lg', status, userId, className, colo
   const versionHint = (userId && currentUser && userId === currentUser.id)
     ? currentUser.avatar_url
     : url
-  const imgSrc = userId && (url || versionHint) ? avatarEndpoint(userId, versionHint) : (url ?? undefined)
+  // With a userId we always go through the app-origin avatar endpoint. Without
+  // one, the only non-endpoint src we still honor is a local `blob:` upload
+  // preview — a raw external/stored URL is never placed in an <img src> (it
+  // would be an un-proxied, potentially external image). Everything else falls
+  // back to initials.
+  const imgSrc = userId && (url || versionHint)
+    ? avatarEndpoint(userId, versionHint)
+    : (url?.startsWith('blob:') ? url : undefined)
   const [imgError, setImgError] = useState(false)
   // Reset img-error when the underlying identity changes — store-prev-value
   // pattern (https://react.dev/reference/react/useState#storing-information-from-previous-renders).

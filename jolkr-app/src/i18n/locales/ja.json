@@ -145,7 +145,8 @@
       "anonymousLabel": "匿名",
       "anonymousSub": "誰が何に投票したかを隠す",
       "cancel": "キャンセル", "submit": "投票を作成",
-      "submitting": "作成中…", "errorGeneric": "投票の作成に失敗しました"
+      "submitting": "作成中…", "errorGeneric": "投票の作成に失敗しました",
+      "encryptFailed": "投票の暗号化に失敗しました"
     },
     "display": {
       "closed": "終了",
@@ -407,6 +408,10 @@
     "uploadFailed": "アップロード失敗"
   },
 
+  "voice": {
+    "e2eeUnavailable": "通話をキャンセルしました — エンドツーエンド暗号化を利用できません"
+  },
+
   "call": {
     "initiateFailed": "通話を開始できませんでした",
     "acceptFailed": "通話を受けられませんでした",
@@ -657,7 +662,6 @@
     "overview": {
       "bannerTitle": "バナー背景",
       "bannerSolid": "単色", "bannerGradients": "グラデーション", "bannerImage": "画像",
-      "bannerImageUrl": "画像 URL (https://…)",
       "bannerUploading": "アップロード中…", "bannerUpload": "アップロード", "bannerRemove": "画像バナーを削除",
       "iconAlt": "サーバーアイコン",
       "namePlaceholder": "サーバー名",

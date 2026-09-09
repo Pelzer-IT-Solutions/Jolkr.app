@@ -2,7 +2,6 @@ import { clearStreamUrlCache } from '../hooks/useAuthedRedirectUrl';
 import { invalidateFriendsCache } from '../services/friendshipCache';
 import { resetPushRegistration } from '../services/pushRegistration';
 import { useCallStore } from './call';
-import { useContextMenuStore } from './context-menu';
 import { useDmReadsStore } from './dm-reads';
 import { useGifFavoritesStore } from './gif-favorites';
 import { useMessagesStore } from './messages';
@@ -30,7 +29,6 @@ export function resetAllStores() {
   useVoiceStore.getState().reset();
   useGifFavoritesStore.getState().reset();
   useNotificationSettingsStore.getState().reset();
-  useContextMenuStore.getState().reset();
   useUsersStore.getState().reset();
   useUploadProgressStore.getState().reset();
   clearStreamUrlCache();

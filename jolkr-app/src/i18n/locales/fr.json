@@ -145,7 +145,8 @@
       "anonymousLabel": "Anonyme",
       "anonymousSub": "Masquer qui a voté pour quoi",
       "cancel": "Annuler", "submit": "Créer le sondage",
-      "submitting": "Création…", "errorGeneric": "Échec de la création du sondage"
+      "submitting": "Création…", "errorGeneric": "Échec de la création du sondage",
+      "encryptFailed": "Échec du chiffrement du sondage"
     },
     "display": {
       "closed": "Fermé",
@@ -409,6 +410,10 @@
     "uploadFailed": "Échec de l'envoi"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Appel annulé — chiffrement de bout en bout indisponible"
+  },
+
   "call": {
     "initiateFailed": "Impossible de lancer l'appel",
     "acceptFailed": "Impossible d'accepter l'appel",
@@ -669,7 +674,6 @@
     "overview": {
       "bannerTitle": "Arrière-plan de la bannière",
       "bannerSolid": "Couleurs unies", "bannerGradients": "Dégradés", "bannerImage": "Image",
-      "bannerImageUrl": "URL de l'image (https://…)",
       "bannerUploading": "Téléversement…", "bannerUpload": "Téléverser", "bannerRemove": "Retirer la bannière image",
       "iconAlt": "Icône du serveur",
       "namePlaceholder": "Nom du serveur",

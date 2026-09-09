@@ -3,21 +3,11 @@ import hljs from 'highlight.js/lib/common';
 import { marked } from 'marked';
 import { useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import 'highlight.js/styles/github-dark.css';
-import { getApiBaseUrl } from '../platform/config';
-import { isTauri } from '../platform/detect';
 import { useGifFavoritesStore, extractGiphyId } from '../stores/gif-favorites';
 import { useServersStore } from '../stores/servers';
+import { resolveContentUrl, isAppOriginUrl } from '../utils/appOrigin';
 import { renderUnicodeEmojis, isEmojiOnly } from '../utils/emoji';
 import s from './MessageContent.module.css';
-
-// Tauri's webview origin is `tauri.localhost`, so a relative `/api/...` URL
-// stored by a web client resolves to a non-existent path. Prepend the public
-// API origin in Tauri so cross-platform messages (GIFs, embeds) render.
-const apiOrigin = getApiBaseUrl().replace(/\/api$/, '');
-function resolveContentUrl(href: string): string {
-  if (isTauri && href.startsWith('/api/')) return apiOrigin + href;
-  return href;
-}
 
 // Unescape HTML entities that marked escapes in code blocks
 function unescapeHtml(html: string): string {
@@ -73,11 +63,20 @@ marked.use({
       const langLabel = safeLang ? `<div class="md-codelang">${safeLang}</div>` : '';
       return `<pre class="md-codeblock">${langLabel}<code class="hljs">${highlighted}</code></pre>`;
     },
-    image({ href, title }) {
-      const resolved = resolveContentUrl(href ?? '');
-      const safeHref = /^(https?:\/\/|\/api\/)/i.test(resolved) ? escapeAttr(resolved) : '#';
+    image({ href, title, text }) {
+      const raw = href ?? '';
+      // Only app-origin images (our GIF proxy, uploaded media) render as <img>.
+      // Any external URL degrades to a plain text link — no fetch, so no
+      // tracking pixel and no viewer-IP leak.
+      if (!isAppOriginUrl(raw)) {
+        const safeHref = /^https?:\/\//i.test(raw) ? escapeAttr(raw) : '#';
+        const label = escapeAttr(text || raw);
+        return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="md-link">${label}</a>`;
+      }
+      const resolved = resolveContentUrl(raw);
+      const safeHref = escapeAttr(resolved);
       const safeTitle = title ? ` title="${escapeAttr(title)}"` : '';
-      const isGif = GIF_PROXY_RE.test(href ?? '') || /\.gif(\?[^\s]*)?$/i.test(href ?? '');
+      const isGif = GIF_PROXY_RE.test(raw) || /\.gif(\?[^\s]*)?$/i.test(raw);
       const maxW = isGif ? '250px' : '450px';
       const imgTag = `<img src="${safeHref}" alt="GIF"${safeTitle} style="max-width:${maxW};max-height:300px;border-radius:0.5rem" loading="lazy" referrerpolicy="no-referrer" />`;
       // Wrap GIF proxy images with a heart-slot placeholder. The actual button +
@@ -85,8 +84,8 @@ marked.use({
       // so `button` / `svg` / `path` can be excluded from the allowlist — a
       // future markdown-renderer bug then can't smuggle interactive controls
       // into chat content.
-      if (GIF_PROXY_RE.test(href ?? '')) {
-        const gifId = extractGiphyId(href ?? '');
+      if (GIF_PROXY_RE.test(raw)) {
+        const gifId = extractGiphyId(raw);
         if (gifId) {
           return `<span class="gif-embed" data-gif-id="${escapeAttr(gifId)}" style="position:relative;display:inline-block;margin:0.25rem 0">${imgTag}<span class="gif-heart-slot" data-gif-id="${escapeAttr(gifId)}"></span></span>`;
         }
@@ -148,6 +147,16 @@ function highlightMentions(html: string): string {
 // Escape a string for safe use as an HTML attribute value
 function escapeAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Defense-in-depth: drop any <img> whose src is not app-origin. The markdown
+// image renderer already refuses to emit external images, so this only fires
+// if a future renderer/markdown bug slips one through. Scoped to the FIRST
+// sanitize pass (before emoji injection) so unicode/custom emoji images —
+// which legitimately load from the emoji CDN / server emoji storage — survive.
+function stripNonAppOriginImages(node: Element): void {
+  if (node.nodeName !== 'IMG') return;
+  if (!isAppOriginUrl(node.getAttribute('src'))) node.remove();
 }
 
 // Replace custom emoji shortcodes (:name:) with img tags
@@ -213,8 +222,12 @@ export const MessageContent = memo(function MessageContent({ content, className,
     if (!content) return '';
     const withLinks = autoLinkUrls(content);
     const raw = marked.parse(withLinks, { async: false }) as string;
-    // Sanitize to prevent XSS
+    // Sanitize to prevent XSS. The app-origin img hook runs only for this
+    // first pass (message body), then is removed so the second pass keeps the
+    // emoji <img> tags injected below.
+    DOMPurify.addHook('afterSanitizeAttributes', stripNonAppOriginImages);
     const sanitized = DOMPurify.sanitize(raw, { ALLOWED_TAGS, ALLOWED_ATTR });
+    DOMPurify.removeHook('afterSanitizeAttributes');
     // Highlight @mentions, then render custom emojis, then unicode emojis as images
     const withMentions = highlightMentions(sanitized);
     const withCustomEmojis = renderCustomEmojis(withMentions, resolvedEmojiMap);

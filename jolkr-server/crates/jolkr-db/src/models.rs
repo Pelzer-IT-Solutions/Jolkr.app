@@ -668,6 +668,10 @@ pub struct PollRow {
     pub anonymous: bool,
     /// Expiration timestamp.
     pub expires_at: Option<DateTime<Utc>>,
+    /// Encrypted payload with question + option texts (base64 ciphertext).
+    pub encrypted_payload: Option<String>,
+    /// Encryption nonce for `encrypted_payload` (base64).
+    pub nonce: Option<String>,
     /// Creation timestamp.
     pub created_at: DateTime<Utc>,
 }

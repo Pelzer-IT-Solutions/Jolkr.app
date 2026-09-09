@@ -1,0 +1,254 @@
+services:
+  # =============================================================================
+  # Jolkr API Server (Rust) — runtime image (loaded via `docker load`)
+  # =============================================================================
+  jolkr-api:
+    image: docker-jolkr-api:latest
+    container_name: jolkr-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+      DATABASE_URL: "postgres://jolkr:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@postgres:5432/jolkr"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-jolkr_redis_dev}@redis:6379"
+      MINIO_ENDPOINT: "http://minio:9000"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in .env}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in .env}"
+      MINIO_BUCKET: "jolkr"
+      NATS_URL: "nats://nats:4222"
+      NATS_USER: "${NATS_USER:?NATS_USER must be set in .env}"
+      NATS_PASSWORD: "${NATS_PASSWORD:?NATS_PASSWORD must be set in .env}"
+      NATS_HMAC_SECRET: "${NATS_HMAC_SECRET:?NATS_HMAC_SECRET must be set in .env}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
+      ADMIN_SECRET: "${ADMIN_SECRET:?ADMIN_SECRET must be set in .env}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
+      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@jolkr.app}"
+      MEDIA_SERVER_URL: "http://jolkr-media:8081"
+      MAIL_HOST: "${MAIL_HOST:-}"
+      MAIL_PORT: "${MAIL_PORT:-587}"
+      MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-noreply@jolkr.app}"
+      MAIL_USERNAME: "${MAIL_USERNAME:-}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
+      APP_URL: "${APP_URL:-https://jolkr.app/app}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-https://jolkr.app,https://tauri.localhost,http://localhost,http://localhost:1420}"
+      MINIO_PUBLIC_URL: "${MINIO_PUBLIC_URL:-https://jolkr.app/s3}"
+      GIPHY_API_KEY: "${GIPHY_API_KEY:-}"
+      RUST_LOG: "${RUST_LOG:-info}"
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # =============================================================================
+  # Jolkr Media Server (Rust — WebRTC / voice & video)
+  # =============================================================================
+  jolkr-media:
+    image: docker-jolkr-media:latest
+    container_name: jolkr-media
+    ports:
+      - "10000-10100:10000-10100/udp"
+    depends_on:
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+      MEDIA_PORT: "8081"
+      MEDIA_UDP_PORT: "10000"
+      PUBLIC_IP: "${PUBLIC_IP:-127.0.0.1}"
+      LOCAL_IP: "${LOCAL_IP:-}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
+      NATS_URL: "nats://nats:4222"
+      NATS_USER: "${NATS_USER:?NATS_USER must be set in .env}"
+      NATS_PASSWORD: "${NATS_PASSWORD:?NATS_PASSWORD must be set in .env}"
+      NATS_HMAC_SECRET: "${NATS_HMAC_SECRET:?NATS_HMAC_SECRET must be set in .env}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-jolkr_redis_dev}@redis:6379"
+      RUST_LOG: "${RUST_LOG:-info}"
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # =============================================================================
+  # PostgreSQL
+  # =============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: jolkr-postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    command: >
+      postgres
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c work_mem=4MB
+      -c statement_timeout=30000
+    environment:
+      POSTGRES_USER: jolkr
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}"
+      POSTGRES_DB: jolkr
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jolkr -d jolkr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # Redis
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: jolkr-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-jolkr_redis_dev}
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-jolkr_redis_dev}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # MinIO
+  # =============================================================================
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: jolkr-minio
+    ports:
+      - "127.0.0.1:9000:9000"
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:?MINIO_ROOT_USER must be set in .env}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set in .env}"
+    volumes:
+      - minio_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # NATS
+  # =============================================================================
+  nats:
+    image: nats:2-alpine
+    container_name: jolkr-nats
+    ports:
+      - "127.0.0.1:4222:4222"
+    command: >
+      --jetstream
+      --store_dir /data
+      --http_port 8222
+      --user ${NATS_USER:?NATS_USER must be set in .env}
+      --pass ${NATS_PASSWORD:?NATS_PASSWORD must be set in .env}
+    volumes:
+      - nats_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+  # =============================================================================
+  # Nginx — reverse proxy & TLS
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: jolkr-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./security_headers.conf:/etc/nginx/security_headers.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ../dist:/usr/share/nginx/html/app:ro
+      - ./landing:/usr/share/nginx/html/landing:ro
+      - ./updates:/usr/share/nginx/html/updates:ro
+    depends_on:
+      - jolkr-api
+      - jolkr-media
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    networks:
+      - jolkr-net
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  nats_data:
+    driver: local
+
+networks:
+  jolkr-net:
+    driver: bridge

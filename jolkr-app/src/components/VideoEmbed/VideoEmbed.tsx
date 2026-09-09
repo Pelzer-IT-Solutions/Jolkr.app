@@ -2,6 +2,7 @@ import { Play, Video } from 'lucide-react';
 import { useState, useEffect, memo } from 'react';
 import { getOembed } from '../../api/client';
 import { isTauri } from '../../platform/detect';
+import { resolveContentUrl, isAppOriginUrl } from '../../utils/appOrigin';
 import { getYouTubeThumbnail, getPlatformColor, getPlatformName } from '../../utils/videoUrl';
 import { NMVideoPlayer } from '../NMVideoPlayer/NMVideoPlayer';
 import s from './VideoEmbed.module.css';
@@ -41,7 +42,12 @@ function VideoEmbedInner({ embed, videoInfo }: VideoEmbedProps) {
     return () => { cancelled = true; };
   }, [embed.title, embed.url, videoInfo.platform, videoInfo.id, videoInfo.kind]);
 
-  const thumbnailUrl = embed.image_url || (videoInfo.platform === 'youtube' && videoInfo.id ? getYouTubeThumbnail(videoInfo.id) : null);
+  // Thumbnails only render when served from our own origin — external OG /
+  // CDN images (including YouTube's img.youtube.com) leak the viewer's IP, so
+  // they fall back to the platform placeholder. Playback (iframe / player) is
+  // unaffected.
+  const rawThumb = embed.image_url || (videoInfo.platform === 'youtube' && videoInfo.id ? getYouTubeThumbnail(videoInfo.id) : null);
+  const thumbnailUrl = rawThumb && isAppOriginUrl(rawThumb) ? resolveContentUrl(rawThumb) : null;
 
   return (
     <div className={s.card} style={{ '--embed-color': borderColor } as React.CSSProperties}>
@@ -140,7 +146,7 @@ function PlayerArea({ videoInfo, embed }: { videoInfo: VideoInfo; embed: Message
     return <IframePlayer src={`https://play.vidyard.com/${id}`} title="Vidyard video" />;
 
   if ((platform === 'direct' || platform === 'hls') && src)
-    return <NMVideoPlayer src={src} title={embed.title ?? ''} image={embed.image_url ?? ''} autoPlay />;
+    return <NMVideoPlayer src={src} title={embed.title ?? ''} image={isAppOriginUrl(embed.image_url) ? resolveContentUrl(embed.image_url!) : ''} autoPlay />;
 
   if (platform === 'spotify' && id) {
     // Spotify iframe heights are fixed: tracks render compact (152 px),

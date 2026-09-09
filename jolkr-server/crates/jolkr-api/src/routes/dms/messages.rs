@@ -136,11 +136,9 @@ pub(crate) async fn send_dm_message(
     // Push notification to offline DM recipient (fire-and-forget)
     let push = state.push.clone();
     let pool = state.pool.clone();
-    let msg_content = if message.nonce.is_some() {
-        "Sent an encrypted message".to_string()
-    } else {
-        message.content.clone().unwrap_or_default()
-    };
+    // Never leak message content through the external push provider — always a
+    // generic body, regardless of encryption state.
+    let msg_content = "Sent a message";
     let author_id = auth.user_id;
     tokio::spawn(async move {
         let sender = match UserRepo::get_by_id(&pool, author_id).await {
@@ -153,7 +151,7 @@ pub(crate) async fn send_dm_message(
                     push.notify_dm(
                         member.user_id,
                         &sender.username,
-                        &msg_content,
+                        msg_content,
                         dm_id,
                     ).await;
                 }

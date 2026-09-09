@@ -174,6 +174,63 @@ export async function deriveHybridMessageKey(
   );
 }
 
+// ── Voice-call key agreement ────────────────────────────────────────
+
+const VOICE_KEY_CONTEXT = new TextEncoder().encode('jolkr-voice-e2ee-key-v1');
+
+/**
+ * Derive the raw bytes of a symmetric voice-call key that BOTH peers converge
+ * on **without any extra key-exchange signaling**, via static→static X25519
+ * ECDH between the two users' signed prekeys: `DH(myPriv, theirPub) ==
+ * DH(theirPriv, myPub)`, so both ends compute the same secret from material
+ * each already holds.
+ *
+ * Returns 32 raw bytes; the frame-encryption worker runs its own HKDF over
+ * them to obtain the actual AES-GCM key.
+ *
+ * SECURITY POSTURE — this is classical X25519 only, deliberately:
+ *
+ * - **No post-quantum layer.** Unlike message keys (see
+ *   `deriveHybridMessageKey`), voice keys get no ML-KEM contribution. A KEM
+ *   needs its ciphertext delivered to the holder of the decapsulation key, and
+ *   the chosen wire shape carries no such field. Deriving the encapsulation
+ *   coins from the classical secret instead would make the KEM secret a pure
+ *   function of the classical secret plus public keys — anyone who breaks
+ *   X25519 recomputes it — so it would add cost and the *appearance* of PQ
+ *   protection while adding no security. A genuine hybrid requires a wire
+ *   change to carry the ciphertext.
+ * - **No per-call forward secrecy.** The key is fixed per user-pair until a
+ *   signed prekey rotates, which bounds the exposure window. Ephemeral keys
+ *   would need their public halves transmitted — the same missing wire field.
+ *   (The previous design generated ephemeral keys but transmitted nothing, so
+ *   the two ends derived different keys and the call fell back to plaintext;
+ *   it was non-functional, not forward-secret.)
+ */
+export async function deriveConvergentVoiceKeyBytes(params: {
+  localSignedPrekeyPriv: Uint8Array;
+  remoteSignedPrekeyPub: Uint8Array;
+}): Promise<Uint8Array> {
+  const classical = x25519KeyAgreement(
+    params.localSignedPrekeyPriv,
+    params.remoteSignedPrekeyPub,
+  );
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', toArrayBuffer(classical), 'HKDF', false, ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: new Uint8Array(0),
+      info: toArrayBuffer(VOICE_KEY_CONTEXT),
+    },
+    keyMaterial,
+    256,
+  );
+  return new Uint8Array(bits);
+}
+
 // ── AES-256-GCM encryption ────────────────────────────────────────
 
 export async function encryptMessage(

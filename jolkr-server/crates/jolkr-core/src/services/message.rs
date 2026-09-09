@@ -198,6 +198,21 @@ pub struct MessageQuery {
 /// Maximum message content length (4000 characters, same as Discord).
 const MAX_MESSAGE_LENGTH: usize = 4000;
 
+/// Reject plaintext user content: any non-empty message body sent through a
+/// user endpoint MUST carry an encryption nonce. The official client always
+/// encrypts, so this only trips rogue/modified clients POSTing plaintext.
+/// Server-side inserts (webhook execute, poll announcements) bypass this — they
+/// write through the repo layer directly, not these service entry points.
+/// An empty nonce string counts as absent.
+pub(crate) fn require_ciphertext(content: Option<&str>, nonce: Option<&str>) -> Result<(), JolkrError> {
+    let has_content = content.is_some_and(|c| !c.trim().is_empty());
+    let has_nonce = nonce.is_some_and(|n| !n.is_empty());
+    if has_content && !has_nonce {
+        return Err(JolkrError::BadRequest("unencrypted content rejected".into()));
+    }
+    Ok(())
+}
+
 /// Batch load reactions and attach them to messages.
 pub(crate) async fn enrich_with_reactions(pool: &PgPool, messages: &mut [MessageInfo]) -> Result<(), JolkrError> {
     let msg_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
@@ -362,7 +377,7 @@ pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo
         let votes = votes_by_poll.remove(&poll.id).unwrap_or_default();
         let total = totals_by_poll.get(&poll.id).copied().unwrap_or(0);
 
-        poll_by_msg.insert(poll.message_id, serde_json::json!({
+        let mut poll_json = serde_json::json!({
             "id": poll.id,
             "message_id": poll.message_id,
             "channel_id": poll.channel_id,
@@ -374,7 +389,16 @@ pub(crate) async fn enrich_with_polls(pool: &PgPool, messages: &mut [MessageInfo
             "votes": votes,
             "my_votes": [],
             "total_votes": total,
-        }));
+        });
+        // E2EE payload fields — only present for encrypted polls, mirroring
+        // PollInfo's skip_serializing_if so legacy polls keep the old shape.
+        if let Some(encrypted_payload) = poll.encrypted_payload {
+            poll_json["encrypted_payload"] = serde_json::Value::String(encrypted_payload);
+        }
+        if let Some(nonce) = poll.nonce {
+            poll_json["nonce"] = serde_json::Value::String(nonce);
+        }
+        poll_by_msg.insert(poll.message_id, poll_json);
     }
 
     for msg in messages.iter_mut() {
@@ -415,6 +439,9 @@ impl MessageService {
                 ));
             }
         }
+
+        // Refuse plaintext: non-empty content must arrive encrypted (nonce present)
+        require_ciphertext(req.content.as_deref(), req.nonce.as_deref())?;
 
         // Verify the channel exists and the user is a member of its server
         let channel = ChannelRepo::get_by_id(pool, channel_id).await?;
@@ -689,6 +716,9 @@ impl MessageService {
                 format!("Message content exceeds {MAX_MESSAGE_LENGTH} characters"),
             ));
         }
+
+        // Refuse plaintext: an edited body must arrive encrypted (nonce present)
+        require_ciphertext(Some(&content), req.nonce.as_deref())?;
 
         // Decode optional nonce (base64 → bytes)
         use base64::Engine;

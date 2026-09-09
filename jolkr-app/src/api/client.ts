@@ -368,7 +368,7 @@ export const getServers = () => request<Server[]>('/servers', {}, 'servers');
 export const createServer = (body: { name: string; description?: string }) =>
   request<Server>('/servers', { method: 'POST', body: JSON.stringify(body) }, 'server');
 export const getServer = (id: string) => request<Server>(`/servers/${id}`, {}, 'server');
-export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; is_public?: boolean; theme?: ServerThemeData | null }) =>
+export const updateServer = (id: string, body: { name?: string; description?: string; icon_url?: string; banner_url?: string; is_public?: boolean; theme?: ServerThemeData | null }) =>
   request<Server>(`/servers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, 'server');
 export const deleteServer = (id: string) =>
   request<void>(`/servers/${id}`, { method: 'DELETE' });
@@ -600,6 +600,14 @@ export const markDmRead = (dmId: string, messageId: string) =>
     body: JSON.stringify({ message_id: messageId }),
   });
 
+// Voice authorization (F01): fetch a short-lived token binding this user to
+// `channelId`, required by the media server on Join.
+export const getVoiceToken = (channelId: string) =>
+  request<{ token: string; expires_in: number }>(`/voice/token`, {
+    method: 'POST',
+    body: JSON.stringify({ channel_id: channelId }),
+  });
+
 // DM Voice/Video Call Signaling
 export const initiateCall = (dmId: string, opts?: { isVideo?: boolean }) => {
   const qs = opts?.isVideo ? '?is_video=true' : '';
@@ -760,7 +768,7 @@ export const removeFriendByUserId = (userId: string) =>
 
 // General file upload (avatars, server icons, etc.)
 // When purpose is 'avatar' or 'icon', the backend converts to WebP and resizes.
-export const uploadFile = async (file: File, purpose?: 'avatar' | 'icon'): Promise<{ key: string; url: string }> => {
+export const uploadFile = async (file: File, purpose?: 'avatar' | 'icon' | 'banner'): Promise<{ key: string; url: string }> => {
   const form = new FormData();
   form.append('file', file);
   const query = purpose ? `?purpose=${purpose}` : '';
@@ -968,9 +976,13 @@ export const regenerateWebhookToken = (webhookId: string) =>
 
 // ── Polls ────────────────────────────────────────────────────────────
 
+// Poll texts are E2EE: `encrypted_payload` is the channel-key-encrypted
+// JSON `{ q, opts }`; the server only learns `option_count` so it can
+// create the index-based option rows that votes reference.
 export const createPoll = (channelId: string, body: {
-  question: string;
-  options: string[];
+  encrypted_payload: string;
+  nonce: string;
+  option_count: number;
   multi_select?: boolean;
   anonymous?: boolean;
   expires_at?: string;

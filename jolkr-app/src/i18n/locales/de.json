@@ -145,7 +145,8 @@
       "anonymousLabel": "Anonym",
       "anonymousSub": "Verbergen, wer für was gestimmt hat",
       "cancel": "Abbrechen", "submit": "Umfrage erstellen",
-      "submitting": "Erstellen…", "errorGeneric": "Umfrage konnte nicht erstellt werden"
+      "submitting": "Erstellen…", "errorGeneric": "Umfrage konnte nicht erstellt werden",
+      "encryptFailed": "Umfrage konnte nicht verschlüsselt werden"
     },
     "display": {
       "closed": "Geschlossen",
@@ -409,6 +410,10 @@
     "uploadFailed": "Upload fehlgeschlagen"
   },
 
+  "voice": {
+    "e2eeUnavailable": "Anruf abgebrochen — Ende-zu-Ende-Verschlüsselung nicht verfügbar"
+  },
+
   "call": {
     "initiateFailed": "Anruf konnte nicht gestartet werden",
     "acceptFailed": "Anruf konnte nicht angenommen werden",
@@ -661,7 +666,6 @@
     "overview": {
       "bannerTitle": "Bannerhintergrund",
       "bannerSolid": "Einfarbig", "bannerGradients": "Verläufe", "bannerImage": "Bild",
-      "bannerImageUrl": "Bild-URL (https://…)",
       "bannerUploading": "Wird hochgeladen…", "bannerUpload": "Hochladen", "bannerRemove": "Bannerbild entfernen",
       "iconAlt": "Server-Symbol",
       "namePlaceholder": "Servername",

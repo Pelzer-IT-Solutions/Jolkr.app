@@ -145,7 +145,8 @@
       "anonymousLabel": "익명",
       "anonymousSub": "누가 무엇에 투표했는지 숨기기",
       "cancel": "취소", "submit": "투표 만들기",
-      "submitting": "만드는 중…", "errorGeneric": "투표 만들기 실패"
+      "submitting": "만드는 중…", "errorGeneric": "투표 만들기 실패",
+      "encryptFailed": "투표 암호화 실패"
     },
     "display": {
       "closed": "종료됨",
@@ -407,6 +408,10 @@
     "uploadFailed": "업로드 실패"
   },
 
+  "voice": {
+    "e2eeUnavailable": "통화가 취소되었습니다 — 종단 간 암호화를 사용할 수 없습니다"
+  },
+
   "call": {
     "initiateFailed": "통화를 시작할 수 없습니다",
     "acceptFailed": "통화를 받을 수 없습니다",
@@ -657,7 +662,6 @@
     "overview": {
       "bannerTitle": "배너 배경",
       "bannerSolid": "단색", "bannerGradients": "그라데이션", "bannerImage": "이미지",
-      "bannerImageUrl": "이미지 URL (https://…)",
       "bannerUploading": "업로드 중…", "bannerUpload": "업로드", "bannerRemove": "이미지 배너 제거",
       "iconAlt": "서버 아이콘",
       "namePlaceholder": "서버 이름",

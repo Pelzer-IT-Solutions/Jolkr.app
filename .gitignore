@@ -96,3 +96,7 @@ docs/
 # Build artifacts
 # -----------------------------------------------------------------------------
 *.apk
+# De gegenereerde error-pages worden bewust wél getrackt: het maakt de HTML
+# die daadwerkelijk op web-unit staat reviewbaar in een PR. Bron: template.html
+# + generate.mjs in dezelfde map.
+!jolkr-server/docker/error-pages/dist/

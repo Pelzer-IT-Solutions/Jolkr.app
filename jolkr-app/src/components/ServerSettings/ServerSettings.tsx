@@ -1031,7 +1031,7 @@ function OverviewSection({
     if (!file) return
     setBannerUploading(true)
     try {
-      const result = await api.uploadFile(file)
+      const result = await api.uploadFile(file, 'banner')
       const url = result.url ?? result.key
       handleImageUrlChange(url)
     } catch {
@@ -1106,14 +1106,6 @@ function OverviewSection({
               <div className={s.bannerPopoverSection}>
                 <span className={`${s.bannerPopoverLabel} txt-tiny txt-semibold`}>{t('serverSettings.overview.bannerImage')}</span>
                 <div className={s.bannerPopoverImageRow}>
-                  <input
-                    type="text"
-                    className={s.bannerPopoverUrlInput}
-                    value={currentBannerUrl}
-                    onChange={e => handleImageUrlChange(e.target.value)}
-                    placeholder={t('serverSettings.overview.bannerImageUrl')}
-                    autoComplete="off"
-                  />
                   <input
                     ref={bannerFileInputRef}
                     type="file"

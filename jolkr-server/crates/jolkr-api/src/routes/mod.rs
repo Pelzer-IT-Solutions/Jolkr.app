@@ -25,6 +25,7 @@ pub(crate) mod roles;
 pub(crate) mod servers;
 pub(crate) mod threads;
 pub(crate) mod users;
+pub(crate) mod voice;
 
 use axum::{
     extract::{DefaultBodyLimit, Extension},
@@ -196,6 +197,8 @@ pub(crate) fn create_router(
         .route("/api/dms/:dm_id/call/accept", post(dms::accept_call))
         .route("/api/dms/:dm_id/call/reject", post(dms::reject_call))
         .route("/api/dms/:dm_id/call/end", post(dms::end_call))
+        // ── Voice authorization (F01) ─────────────────────────────────
+        .route("/api/voice/token", post(voice::issue_voice_token))
         // ── Servers ─────────────────────────────────────────────────
         .route("/api/users/@me/servers/reorder", put(servers::reorder_servers))
         .route("/api/servers", get(servers::list_servers).post(servers::create_server))

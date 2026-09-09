@@ -194,7 +194,8 @@
       "cancel": "Cancel",
       "submit": "Create Poll",
       "submitting": "Creating…",
-      "errorGeneric": "Failed to create poll"
+      "errorGeneric": "Failed to create poll",
+      "encryptFailed": "Failed to encrypt poll"
     },
     "display": {
       "closed": "Closed",
@@ -557,6 +558,10 @@
     "inviteCopyFailed": "Copy failed — link: {url}",
     "inviteCreateFailed": "Failed to create invite",
     "uploadFailed": "Upload failed"
+  },
+
+  "voice": {
+    "e2eeUnavailable": "Call cancelled — end-to-end encryption unavailable"
   },
 
   "call": {
@@ -948,7 +953,6 @@
       "bannerSolid": "Solid colors",
       "bannerGradients": "Gradients",
       "bannerImage": "Image",
-      "bannerImageUrl": "Image URL (https://…)",
       "bannerUploading": "Uploading…",
       "bannerUpload": "Upload",
       "bannerRemove": "Remove image banner",

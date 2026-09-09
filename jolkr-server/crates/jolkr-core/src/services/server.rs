@@ -270,6 +270,20 @@ impl ServerService {
             }
         }
 
+        // Reject URL strings in image fields. Only internal storage keys (as
+        // returned by `/api/upload`) may be stored — an external URL would be
+        // served as an image later, exactly the XSS / tracking / IP-leak
+        // surface we forbid. An empty string still means "clear the field".
+        for (field, value) in [("icon_url", &req.icon_url), ("banner_url", &req.banner_url)] {
+            if let Some(v) = value {
+                if !v.is_empty() && (v.starts_with("http") || v.contains("://")) {
+                    return Err(JolkrError::Validation(format!(
+                        "{field} must be an uploaded image key, not a URL"
+                    )));
+                }
+            }
+        }
+
         let updated = ServerRepo::update(
             pool,
             server_id,
