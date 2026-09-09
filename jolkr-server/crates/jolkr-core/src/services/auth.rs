@@ -103,7 +103,7 @@ impl AuthService {
     /// 2. Hashes the password with Argon2id.
     /// 3. Persists the user row.
     /// 4. Issues a JWT token pair.
-    #[tracing::instrument(skip(pool, jwt_secret, password))]
+    #[tracing::instrument(skip(pool, jwt_secret, password, email, username))]
     pub async fn register(
         pool: &PgPool,
         jwt_secret: &str,
@@ -152,7 +152,7 @@ impl AuthService {
     // ── Login ──────────────────────────────────────────────────────────
 
     /// Authenticate with email + password and receive a JWT pair.
-    #[tracing::instrument(skip(pool, jwt_secret, password))]
+    #[tracing::instrument(skip(pool, jwt_secret, password, email))]
     pub async fn login(
         pool: &PgPool,
         jwt_secret: &str,
@@ -212,7 +212,7 @@ impl AuthService {
     // ── Password reset ────────────────────────────────────────────────
 
     /// Admin-only password reset: look up user by email and set a new password.
-    #[tracing::instrument(skip(pool, new_password))]
+    #[tracing::instrument(skip(pool, new_password, email))]
     pub async fn reset_password(
         pool: &PgPool,
         email: &str,
@@ -253,7 +253,7 @@ impl AuthService {
     /// Returns `Some((token, username))` if a user with that email exists,
     /// `None` otherwise. The caller should always return a success response
     /// regardless (no email enumeration).
-    #[tracing::instrument(skip(pool))]
+    #[tracing::instrument(skip(pool, email))]
     pub async fn request_password_reset(
         pool: &PgPool,
         email: &str,
