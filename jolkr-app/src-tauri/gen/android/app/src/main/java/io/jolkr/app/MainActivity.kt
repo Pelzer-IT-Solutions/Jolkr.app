@@ -36,15 +36,9 @@ class MainActivity : TauriActivity() {
   private var webViewRef: WebView? = null
   private var cssFullscreenActive = false
 
-  // Created during onCreate so that RustWebChromeClient's internal
-  // registerForActivityResult() calls happen before the Activity is STARTED.
-  // Creating it later (e.g. in onWebViewCreate) crashes with
-  // "LifecycleOwners must call register before they are STARTED".
-  private lateinit var rustChromeDelegate: RustWebChromeClient
-
   // Pending WebView permission request held while we ask the user for runtime
-  // perms. Same lifecycle constraint as `rustChromeDelegate`: the launcher
-  // must be registered before the Activity transitions to STARTED.
+  // perms. The launcher must be registered during onCreate, before the
+  // Activity transitions to STARTED.
   private var pendingMediaRequest: PermissionRequest? = null
   private var pendingGrantedResources: Array<String> = emptyArray()
   private lateinit var mediaPermLauncher: ActivityResultLauncher<Array<String>>
@@ -65,7 +59,6 @@ class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
-    rustChromeDelegate = RustWebChromeClient(this)
     mediaPermLauncher = registerForActivityResult(
       ActivityResultContracts.RequestMultiplePermissions(),
     ) { results ->
@@ -136,6 +129,10 @@ class MainActivity : TauriActivity() {
   override fun onWebViewCreate(webView: WebView) {
     super.onWebViewCreate(webView)
     webViewRef = webView
+    // Since Tauri 2.12 the Rust chrome client is bound to its webview's id and
+    // no longer registers activity-result launchers itself, so it is created
+    // here rather than in onCreate.
+    val rustChromeDelegate = RustWebChromeClient(this, (webView as RustWebView).id)
     webView.webChromeClient = FullscreenWebChromeClient(this, rustChromeDelegate)
     // Direct JS→Kotlin bridge. Tauri/Wry intercepts console messages via
     // its own Rust path (the `Tauri/Console` logcat tag), bypassing
