@@ -80,11 +80,18 @@ pub(crate) async fn serve_file(
     // skips the membership re-check too. Bearer auth still re-runs the
     // membership lookup since the JWT is global and could outlive a
     // channel-leave / DM-block.
+    //
+    // Copy the cached entry out before matching. A `cache.get` guard in the
+    // match scrutinee lives until the end of the whole match, so the
+    // `cache.insert` below would wait for a write lock on the shard this
+    // task still holds for reading — a self-deadlock that parks the worker
+    // thread for good and, one request at a time, hangs the whole API.
     let cache = meta_cache();
-    let (s3_key, content_type, total) = match cache.get(&attachment_id) {
-        Some(meta) if matches!(auth, AuthSource::StreamToken(_)) => {
-            (meta.s3_key.clone(), meta.content_type.clone(), meta.total)
-        }
+    let cached = cache
+        .get(&attachment_id)
+        .map(|meta| (meta.s3_key.clone(), meta.content_type.clone(), meta.total));
+    let (s3_key, content_type, total) = match cached {
+        Some(meta) if matches!(auth, AuthSource::StreamToken(_)) => meta,
         _ => {
             let user_id = auth.user_id();
             let (s3_key, content_type, _filename) =
@@ -94,11 +101,7 @@ pub(crate) async fn serve_file(
                 };
             // Re-use cached size if present (auth was Bearer and the
             // record predates this request); otherwise HEAD MinIO once.
-            // Extract `total` as a Copy `u64` so the read-guard from
-            // `cache.get` doesn't outlive its expression — the awaited
-            // `head_object_meta` below would otherwise hold a lock under
-            // edition-2024 drop semantics (`if_let_rescope`).
-            let cached_total = cache.get(&attachment_id).map(|m| m.total);
+            let cached_total = cached.map(|(_, _, total)| total);
             let total = if let Some(t) = cached_total {
                 t
             } else {
