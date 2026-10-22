@@ -200,6 +200,20 @@ jobs:
           status: draft
           releaseName: ${{ github.ref_name }}
 
+  # ─── Publish GitHub release ───
+  # Both builds upload into a draft so the release never goes public half
+  # built. Publishing it here, once every asset (and the merged latest.json
+  # the desktop updater reads) is attached, makes it the "latest" release.
+  publish-release:
+    needs: [build-desktop, build-android]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
+        run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ─── iOS build (disabled — requires Apple Developer Account) ───
   # build-ios:
   #   ...
