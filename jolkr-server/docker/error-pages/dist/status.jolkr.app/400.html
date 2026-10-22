@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Bad request — Jolkr</title>
+<!-- Absolute on purpose: upload.jolkr.app 404s every path outside its two
+     upload routes, so a relative /favicon/… would never resolve there. -->
+<link rel="icon" type="image/svg+xml" href="https://jolkr.app/favicon/favicon.svg" />
+<link rel="icon" type="image/png" sizes="96x96" href="https://jolkr.app/favicon/favicon-96x96.png" />
+<link rel="shortcut icon" href="https://jolkr.app/favicon/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="https://jolkr.app/favicon/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Uncial+Antiqua&display=swap" rel="stylesheet" />
+<style>
+  /* Tokens mirror landing/index.html, which mirrors the jolkr-app scales.
+     All CSS is inline so the page needs no asset from our own servers — the
+     ones that may well be the thing that is down. The webfonts are the same
+     pair the landing uses and load with display=swap, so text paints
+     immediately in the fallback stack and upgrades only if they arrive. */
+  :root {
+    color-scheme: light dark;
+    --theme-hue: 182;
+
+    --bg-primary:   oklch(93%   0.004 var(--theme-hue));
+    --bg-surface:   oklch(97.5% 0.004 var(--theme-hue));
+    --bg-raised:    oklch(99%   0.004 var(--theme-hue));
+
+    --border-primary: oklch(25.42% 0.004 var(--theme-hue) / 0.16);
+    --border-subtle:  oklch(25.42% 0.004 var(--theme-hue) / 0.08);
+
+    --text-primary:   oklch(25.42% 0.004 var(--theme-hue));
+    --text-secondary: oklch(25.42% 0.004 var(--theme-hue) / 0.7);
+    --text-tertiary:  oklch(25.42% 0.004 var(--theme-hue) / 0.4);
+
+    --accent:        #697B4B;
+    --accent-hover:  #788764;
+    --text-on-accent: #fff;
+
+    --shadow-card: 0 4px 16px oklch(0% 0 0 / 0.08);
+    --dot-color:   oklch(25.42% 0.004 var(--theme-hue) / 0.12);
+    /* The code carries the page's identity, so it sits above --text-tertiary,
+       but stays neutral: the CTA is the only accent on the page. */
+    --code-ink:    oklch(25.42% 0.004 var(--theme-hue) / 0.55);
+
+    /* Concentric pair: card 20 − gap 10 = panel 10 */
+    --radius-card:  20px;
+    --radius-gap:   10px;
+    --radius-panel: 10px;
+
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Uncial Antiqua', Georgia, 'Times New Roman', serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary:  #141414;
+      --bg-surface:  #202020;
+      --bg-raised:   #262626;
+
+      --border-primary: oklch(99% 0.004 var(--theme-hue) / 0.16);
+      --border-subtle:  oklch(99% 0.004 var(--theme-hue) / 0.08);
+
+      --text-primary:   oklch(99% 0.004 var(--theme-hue));
+      --text-secondary: oklch(99% 0.004 var(--theme-hue) / 0.7);
+      --text-tertiary:  oklch(99% 0.004 var(--theme-hue) / 0.4);
+
+      --shadow-card: 0 4px 16px oklch(0% 0 0 / 0.35);
+      --dot-color:   oklch(99% 0 0 / 0.07);
+      --code-ink:    oklch(99% 0.004 var(--theme-hue) / 0.55);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    font-family: var(--font-body);
+    font-feature-settings: 'kern' 1, 'liga' 1;
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--bg-primary);
+    background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--text-primary);
+  }
+
+  .card {
+    width: 100%;
+    max-width: 460px;
+    padding: var(--radius-gap);
+    background: var(--bg-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .panel {
+    padding: 48px 32px 40px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-panel);
+    text-align: center;
+  }
+
+  /* The code is identity, not the action: neutral, never the accent. */
+  .code {
+    font-family: var(--font-display);
+    font-size: clamp(56px, 14vw, 76px);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+    color: var(--code-ink);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-size: 22px;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+    color: var(--text-primary);
+  }
+
+  p {
+    font-size: 15px;
+    line-height: 1.55;
+    margin: 0 auto 28px;
+    max-width: 34ch;
+    color: var(--text-secondary);
+  }
+
+  /* The single full-accent element on the page. */
+  .cta {
+    display: inline-block;
+    padding: 11px 22px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s ease;
+  }
+  .cta:hover { background: var(--accent-hover); }
+  .cta:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .brand {
+    margin: 24px 0 0;
+    font-size: 13px;
+    color: var(--text-tertiary);
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .card {
+      animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="panel">
+      <p class="code">400</p>
+      <h1>Bad request</h1>
+      <p>The server couldn't read that request.</p>
+      <a class="cta" href="https://jolkr.app/app/">Back to Jolkr</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -13,7 +13,7 @@ set -uo pipefail
 
 SRC=/root/jolkr-error-pages
 WEB=/home/phillipp/web
-DOMAINS=(jolkr.app upload.jolkr.app)
+DOMAINS=(jolkr.app upload.jolkr.app status.jolkr.app)
 LOG=/var/log/jolkr-error-pages.log
 healed=0
 

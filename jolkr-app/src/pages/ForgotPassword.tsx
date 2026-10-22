@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as api from '../api/client';
 import { useT } from '../hooks/useT';
@@ -22,7 +22,12 @@ const s: Record<string, React.CSSProperties> = {
 };
 
 export function ForgotPassword() {
-  useEffect(resetAuthTheme, []);
+  // Layout, not plain effect: this has to land before the browser paints.
+  // The stylesheet default is a vivid teal (hue 182), so running after paint
+  // shows one frame of it before the olive arrives — a green flash on every
+  // load. It also clears whatever the in-app theme left on :root when someone
+  // arrives here from a themed server.
+  useLayoutEffect(resetAuthTheme, []);
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   if (token) return <ResetPasswordForm token={token} />;

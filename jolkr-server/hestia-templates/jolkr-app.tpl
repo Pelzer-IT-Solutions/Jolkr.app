@@ -58,13 +58,12 @@ server {
 		proxy_pass https://192.168.178.22/api/;
 	}
 	
+	# Service status lives on its own name now. Redirected rather than dropped:
+	# bookmarks and any external monitor still pointing here keep working, and
+	# the endpoint has been public long enough that a 404 would break something
+	# unseen. status.jolkr.app proxies straight through to the same backend.
 	location /health {
-		proxy_set_header Host $host;
-		proxy_set_header X-Real-IP $remote_addr;
-		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-		proxy_set_header X-Forwarded-Proto $scheme;
-		proxy_read_timeout 90;
-		proxy_pass https://192.168.178.22/health;
+		return 301 https://status.jolkr.app$request_uri;
 	}
 
 	location /ws {
